@@ -30,20 +30,20 @@
  * separately-scoped follow-up.
  *
  * SECOND REALITY-WINS DIVERGENCE: AgentManager.spawn()'s root-spawn
- * normalization (tools/agent/wrfc-batch-policy.ts isRootReviewRoleTask) force
- * -rewrites any PARENTLESS spawn whose template is literally
- * reviewer/tester/verifier/qa/review/test, OR whose task text matches
- * ROLE_ACTION_RE/ROLE_PREFIX_RE (e.g. "review the diff"), into an
- * 'engineer'-templated WRFC-owner chain with `dangerously_disable_wrfc`
- * forced back to `false` — REGARDLESS of what this module passes in.
- * Phase-runner spawns are always parentless (a workstream has no owning
- * AgentRecord), so it must dodge that heuristic by construction: never
- * literally template review/test-flavored phases as one of those role
- * strings (use 'general' instead — see templateForPhase), and phrase
- * review-phase prompts with "assess/evaluate" rather than "review/test/
- * verify" (see buildPhaseTask). This is load-bearing: changing this wording
- * without checking wrfc-batch-policy.ts's regexes again risks silently
- * re-activating the WRFC hijack for review-kind phases.
+ * normalization (tools/agent/wrfc-batch-policy.ts) rewrites a PARENTLESS spawn
+ * that reads as root review/test work into an 'engineer'-templated WRFC-owner
+ * chain. Phase-runner spawns are always parentless (a workstream has no owning
+ * AgentRecord), so both halves of that rule reach this module:
+ *
+ * - A DECLARED role template (reviewer/tester/verifier/qa/review/test) still
+ *   triggers the rewrite whatever this module passes in, so review-kind phases
+ *   must never be templated as one of those strings — use 'general' instead
+ *   (see templateForPhase). That part is still load-bearing.
+ * - The task-WORDING match (ROLE_ACTION_RE/ROLE_PREFIX_RE, e.g. "review the
+ *   diff") no longer overrides the `dangerously_disable_wrfc: true` this module
+ *   passes on every phase spawn. The "assess/evaluate" phrasing in
+ *   buildPhaseTask is therefore no longer a dodge; it is kept because it reads
+ *   better in the prompt.
  */
 import type { AgentManager, AgentRecord } from '../tools/agent/manager.js';
 import type { ConfigManager } from '../config/manager.js';

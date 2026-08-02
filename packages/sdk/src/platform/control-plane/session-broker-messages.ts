@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { logger } from '../utils/logger.js';
 import type {
   SharedSessionMessage,
   SharedSessionMessageRole,
@@ -30,6 +31,57 @@ export function listSharedSessionMessages(
 ): SharedSessionMessage[] {
   const bucket = store.messages.get(sessionId) ?? [];
   return bucket.slice(-Math.max(1, limit));
+}
+
+/**
+ * The stored completion message for `agentId` in this session, if one exists.
+ *
+ * An agent finishes ONCE, but more than one path reports that it finished: the
+ * runtime event bus writes the terminal AGENT_COMPLETED / AGENT_FAILED /
+ * AGENT_CANCELLED payload, and the daemon's pending-surface-reply poller writes
+ * the same agent's rendered answer when it observes the finished record. Both
+ * call the broker's completeAgent, so a conversation stored every assistant
+ * reply twice — and because the next turn's prompt is built from that
+ * transcript, the model was shown every one of its own answers twice.
+ *
+ * Matching is by agent id plus the presence of a terminal `status` in the
+ * message metadata, which only the completion path writes. Reading it back off
+ * the stored bucket rather than an in-memory set means a restart mid-flight
+ * cannot lose the fact that the agent already reported.
+ */
+export function findAgentCompletionMessage(
+  store: SharedSessionMessageStore,
+  sessionId: string,
+  agentId: string,
+): SharedSessionMessage | undefined {
+  const bucket = store.messages.get(sessionId);
+  if (!bucket) return undefined;
+  for (let index = bucket.length - 1; index >= 0; index -= 1) {
+    const message = bucket[index]!;
+    if (message.agentId !== agentId) continue;
+    if (typeof message.metadata?.status === 'string') return message;
+  }
+  return undefined;
+}
+
+/**
+ * Whether this agent's completion still needs storing, or whether another
+ * reporter already stored it. Logs the skip so a missing second row is
+ * explained rather than mysterious.
+ */
+export function shouldStoreAgentCompletion(
+  store: SharedSessionMessageStore,
+  sessionId: string,
+  agentId: string,
+): boolean {
+  const existing = findAgentCompletionMessage(store, sessionId, agentId);
+  if (!existing) return true;
+  logger.debug('[SharedSessionBroker] agent already reported; not storing its completion twice', {
+    sessionId,
+    agentId,
+    storedMessageId: existing.id,
+  });
+  return false;
 }
 
 export function appendSharedSessionMessage(

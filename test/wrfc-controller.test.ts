@@ -863,11 +863,14 @@ describe('WrfcController — wrfc.commitScope', () => {
 
     const owner = h.agentStore.get('owner-ignored-1')!;
     expect(owner.status).toBe('completed');
-    // Review outcome and commit outcome are stated separately in the completion message; the
-    // gitignored bookkeeping path is reported as skipped, not as a failure.
-    expect(owner.fullOutput).toContain('review 10/10');
-    expect(owner.fullOutput).toContain('committed ');
-    expect(owner.fullOutput).toContain('1 ignored path skipped');
+    // Review outcome and commit outcome are stated separately on the operator-facing
+    // status line; the gitignored bookkeeping path is reported as skipped, not as a
+    // failure. `fullOutput` carries the work's answer, which readers of a finished
+    // agent — including chat surfaces — receive instead of this bookkeeping.
+    expect(owner.progress).toContain('review 10/10');
+    expect(owner.progress).toContain('committed ');
+    expect(owner.progress).toContain('1 ignored path skipped');
+    expect(owner.fullOutput).toBe('I have completed the feature. Summary: done.');
 
     h.controller.dispose();
   });
@@ -902,8 +905,9 @@ describe('WrfcController — wrfc.commitScope', () => {
 
     const owner = h.agentStore.get('owner-commitfail-1')!;
     expect(owner.status).toBe('completed');
-    expect(owner.fullOutput).toContain('review 10/10');
-    expect(owner.fullOutput).toContain('commit failed (non-fatal)');
+    expect(owner.progress).toContain('review 10/10');
+    expect(owner.progress).toContain('commit failed (non-fatal)');
+    expect(owner.fullOutput).toBe('I have completed the feature. Summary: done.');
 
     h.controller.dispose();
   });

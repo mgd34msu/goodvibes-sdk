@@ -95,10 +95,43 @@ export function isRootReviewRoleTemplate(template: string | undefined): boolean 
   return ROOT_REVIEW_ROLE_TEMPLATES.has((template ?? '').trim().toLowerCase());
 }
 
-export function isRootReviewRoleTask(task: Pick<BatchTask, 'task' | 'template'>): boolean {
-  if (isRootReviewRoleTemplate(task.template)) return true;
-  const text = task.task.trim();
+/**
+ * True when the CALLER already decided this spawn must not become a
+ * write-review-fix-confirm chain.
+ *
+ * Consulted by the ROOT-SPAWN normalization in AgentManager.spawn, and only
+ * against the prose test below — never against a declared role template, and
+ * never inside a batch (see evaluateWrfcBatchPolicy, where a role-labelled
+ * fan-out is exactly the model behaviour the collapse exists to correct).
+ *
+ * An explicit `reviewMode: 'wrfc'` is the opposite decision and wins over a
+ * suppression flag on the same input.
+ */
+export function callerSuppressedWrfcChain(
+  input: Pick<AgentInput, 'dangerously_disable_wrfc' | 'reviewMode'>,
+): boolean {
+  if (input.reviewMode === 'wrfc') return false;
+  return input.dangerously_disable_wrfc === true || input.reviewMode === 'none';
+}
+
+/**
+ * True when the task PROSE reads like review/test/verification work.
+ *
+ * Separate from the template test on purpose. A template of `reviewer` is the
+ * caller stating a role; this is a guess made from wording, and wording is not
+ * always a task description. A continuation prompt carries the chat transcript
+ * inside its task text, so one earlier assistant sentence — "I'll review the
+ * route, timing, stops" — made a whole conversation read as a root review task.
+ * See the caller of this function for what that guess is and is not allowed to
+ * override.
+ */
+export function taskProseReadsAsRootReviewRole(task: string): boolean {
+  const text = task.trim();
   return ROLE_PREFIX_RE.test(text) || ROLE_ACTION_RE.test(text);
+}
+
+export function isRootReviewRoleTask(task: Pick<BatchTask, 'task' | 'template'>): boolean {
+  return isRootReviewRoleTemplate(task.template) || taskProseReadsAsRootReviewRole(task.task);
 }
 
 function isImplementationLikeTask(task: Pick<BatchTask, 'task' | 'template'>): boolean {

@@ -163,8 +163,13 @@ describe('WRFC owner agent orchestration', () => {
 
     expect(chain.state).toBe('passed');
     expect(owner.status).toBe('completed');
-    expect(owner.fullOutput).toContain('WRFC chain');
-    expect(owner.fullOutput).toContain('passed');
+    // The owner reports the WORK's answer, not the chain's bookkeeping. The
+    // status line stays on progress, which the channel delivery path treats as
+    // operator-only, so a person never receives it.
+    expect(owner.fullOutput).toBe('Implementation complete.');
+    expect(owner.fullOutput).not.toContain('WRFC chain');
+    expect(owner.progress).toContain('WRFC chain');
+    expect(owner.progress).toContain('passed');
     expect(chain.ownerDecisions.map((decision) => decision.action)).toEqual(expect.arrayContaining([
       'chain_created',
       'spawn_engineer',

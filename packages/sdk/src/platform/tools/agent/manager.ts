@@ -29,11 +29,11 @@ import type { WrfcAgentRole } from '../../agents/wrfc-types.js';
 import type { TurnInjectionRecord } from '../../agents/turn-knowledge-injection.js';
 import type { ProgressBearingRecord } from '../../agents/progress-audience.js';
 import {
-  isRootReviewRoleTask,
   resolveAuthoritativeWrfcScope,
   resolveImplementationToolContract,
   resolveNarrowedRootSpawnScope,
 } from './wrfc-batch-policy.js';
+import { rootSpawnNeedsWrfcNormalization } from './root-spawn-chain-decision.js';
 
 export type AgentExecutor = {
   runAgent(record: AgentRecord): Promise<void>;
@@ -338,7 +338,7 @@ export class AgentManager {
     }
     let template = input.template ?? 'general';
     let wrfcRouteReason: string | undefined;
-    const rootReviewRoleTask = !input.parentAgentId && isRootReviewRoleTask({ task, template });
+    const rootReviewRoleTask = rootSpawnNeedsWrfcNormalization(input, task, template);
     if (rootReviewRoleTask) {
       wrfcRouteReason = 'root-review-role-normalized';
       const scope = resolveAuthoritativeWrfcScope(input, task);
