@@ -69,6 +69,23 @@ describe('what a conversational turn is spawned with', () => {
     expect(context.toLowerCase()).toContain('if a capture does not complete');
   });
 
+  it('tells the turn to infer what the thing means and to use it, with work still opt-in', () => {
+    // Owner ruling 2026-08-02: "if i give the agent something like a plane
+    // itinerary, i expect it to know what to do with it — where to save it,
+    // how to use it, the things to infer from it."
+    const context = buildConversationalTurnContext({ sessionId: 's1', surfaceKind: 'telegram' });
+    expect(context).toContain('Capture what the message implies, not only what it states.');
+    // Inference has named examples, not vibes: the away-span and the people.
+    expect(context.toLowerCase()).toContain('he is away');
+    expect(context.toLowerCase()).toContain('people in his life');
+    // Use follows capture: the stored thing shapes the answer and the offers.
+    expect(context).toContain('Then use it.');
+    expect(context.toLowerCase()).toContain('reminder before departure');
+    // The conversation-first boundary survives the ambition: anything beyond
+    // the conversation is proposed, never started.
+    expect(context.toLowerCase()).toContain('waits for his yes');
+  });
+
   it('says so in the context when this turn may not record', () => {
     const context = buildConversationalTurnContext({
       sessionId: 's1',

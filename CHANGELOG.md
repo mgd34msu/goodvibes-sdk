@@ -2,6 +2,21 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.7] - 2026-08-02
+
+### Changed
+
+- **A conversational turn is told to understand what it captures, not just
+  file it.** The capture contract now instructs the turn to read what a shared
+  thing implies and fold that into the same answer — an itinerary also means
+  an away-span said back in plain words, travelers who are people in his life,
+  and durable facts about the destination — and then to USE what it stored:
+  name collisions with existing plans and offer the obviously useful next
+  things once (a reminder before departure, weather at the destination).
+  Capturing and inferring are part of answering; anything beyond the
+  conversation — booking, monitoring, a standing job — is still proposed and
+  waits for a yes.
+
 ## [2.0.6] - 2026-08-02
 
 ### Fixed
