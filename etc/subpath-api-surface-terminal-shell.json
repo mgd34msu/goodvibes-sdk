@@ -177,6 +177,16 @@
       "text": "FEATURE_SETTINGS_BY_ID: ReadonlyMap<string, FeatureSetting> ;; via FeatureSetting = export interface FeatureSetting { readonly id: string; readonly name: string; readonly description: string; readonly domain: string; readonly enablement: { readonly key: ConfigKey; readonly kind: FeatureEnablementKind; readonly enabledValues?: readonly string[]; }; readonly settings: readonly ConfigKey[]; readonly restartRequired: boolean; readonly defaultEnabled: boolean; readonly operable: boolean; readonly inoperableDetail: string | null; } ;; ReadonlyMap = interface ReadonlyMap<K, V> { forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void; get(key: K): V | undefined; has(key: K): boolean; readonly size: number; }"
     },
     {
+      "name": "FOLDED_SHORT_CONTENT_CHARS",
+      "kind": "const",
+      "text": "FOLDED_SHORT_CONTENT_CHARS = 200"
+    },
+    {
+      "name": "FOLD_PREVIEW_MIN_COLS",
+      "kind": "const",
+      "text": "FOLD_PREVIEW_MIN_COLS = 6"
+    },
+    {
       "name": "FeatureEnablementWrite",
       "kind": "interface",
       "required": [
@@ -865,6 +875,16 @@
       "text": "export declare function fitLabelDetailColumns(label: string, detail: string, totalWidth: number, labelRatio?: number): { labelWidth: number; detailWidth: number; };"
     },
     {
+      "name": "foldPreviewText",
+      "kind": "function",
+      "text": "export declare function foldPreviewText(raw: string, availableCols: number): string | null;"
+    },
+    {
+      "name": "foldedToolResult",
+      "kind": "function",
+      "text": "export declare function foldedToolResult(input: { readonly contentLength: number; readonly hasSummary: boolean; readonly storedCollapsed: boolean | undefined; }): boolean;"
+    },
+    {
       "name": "formatRuntimeEndpointBinding",
       "kind": "function",
       "text": "export declare function formatRuntimeEndpointBinding(binding: RuntimeEndpointBinding): string;"
@@ -1123,6 +1143,11 @@
       "name": "stripDangerousAnsi",
       "kind": "function",
       "text": "export declare function stripDangerousAnsi(input: string): string;"
+    },
+    {
+      "name": "trailingBlankAfterRow",
+      "kind": "function",
+      "text": "export declare function trailingBlankAfterRow(input: { readonly nextIsBranchRow: boolean; readonly nextIsToolMachinery: boolean; readonly rowRendersFolded: boolean; }): boolean;"
     },
     {
       "name": "treeBranchCol",

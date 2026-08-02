@@ -64,6 +64,13 @@ describe('transport: private-network http origins are a supported posture', () =
     expect(isPrivateNetworkHost('mybox.local')).toBe(true);
     expect(isPrivateNetworkHost('localhost')).toBe(true);
     expect(isPrivateNetworkHost('[::1]')).toBe(true);
+    // Wildcard binds: as dial targets they reach the local machine. A client
+    // that inherited a daemon's bind host (0.0.0.0 = "listen everywhere")
+    // must not be refused as if it were dialing a public origin — the live
+    // failure was profile calls dying on http://0.0.0.0:3421.
+    expect(isPrivateNetworkHost('0.0.0.0')).toBe(true);
+    expect(isPrivateNetworkHost('[::]')).toBe(true);
+    expect(isPrivateNetworkHost('::')).toBe(true);
     // Just outside each range: public.
     expect(isPrivateNetworkHost('172.15.0.1')).toBe(false);
     expect(isPrivateNetworkHost('172.32.0.1')).toBe(false);

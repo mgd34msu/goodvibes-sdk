@@ -283,6 +283,14 @@ export { TRANSCRIPT_LAYOUT } from './transcript-layout.js';
 export { InfiniteBuffer } from './conversation-history.js';
 
 export {
+  FOLDED_SHORT_CONTENT_CHARS,
+  FOLD_PREVIEW_MIN_COLS,
+  foldedToolResult,
+  foldPreviewText,
+  trailingBlankAfterRow,
+} from './conversation-fold-policy.js';
+
+export {
   SelectionManager,
   type SelectionPoint,
 } from './text-selection.js';

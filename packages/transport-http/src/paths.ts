@@ -49,6 +49,12 @@ export interface TransportPaths {
 export function isPrivateNetworkHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (host === 'localhost' || host === '::1' || host.endsWith('.localhost')) return true;
+  // The wildcard bind addresses. As a DIAL target the wildcard reaches the
+  // local machine (platforms route it to loopback), so it is never a public
+  // origin. Clients that inherit a daemon's bind host (0.0.0.0 means "listen
+  // everywhere") must not be refused as if they were dialing across the
+  // open internet.
+  if (host === '0.0.0.0' || host === '::' || host === '0:0:0:0:0:0:0:0') return true;
   if (host.endsWith('.local')) return true; // mDNS
   const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
   if (!ipv4) return false;

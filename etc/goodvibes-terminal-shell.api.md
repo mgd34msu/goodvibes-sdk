@@ -351,6 +351,22 @@ export interface FleetServicesDeps extends Omit<ProcessRegistryDeps, 'observedAg
 }
 
 // @public
+export const FOLD_PREVIEW_MIN_COLS = 6;
+
+// @public
+export const FOLDED_SHORT_CONTENT_CHARS = 200;
+
+// @public
+export function foldedToolResult(input: {
+    readonly contentLength: number;
+    readonly hasSummary: boolean;
+    readonly storedCollapsed: boolean | undefined;
+}): boolean;
+
+// @public
+export function foldPreviewText(raw: string, availableCols: number): string | null;
+
+// @public
 export function formatRuntimeEndpointBinding(binding: RuntimeEndpointBinding): string;
 
 // @public (undocumented)
@@ -1063,6 +1079,13 @@ export interface TerminalSequenceSet {
     // (undocumented)
     readonly PASTE_ENABLE: string;
 }
+
+// @public
+export function trailingBlankAfterRow(input: {
+    readonly nextIsBranchRow: boolean;
+    readonly nextIsToolMachinery: boolean;
+    readonly rowRendersFolded: boolean;
+}): boolean;
 
 // @public
 export const TRANSCRIPT_LAYOUT: {

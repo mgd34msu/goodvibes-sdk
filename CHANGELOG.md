@@ -2,6 +2,28 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.3] - 2026-08-01
+
+### Fixed
+
+- A client that inherited a daemon's bind host no longer gets refused as
+  "insecure PUBLIC transport" when that host is a wildcard. `0.0.0.0` and `::`
+  are listen addresses; as dial targets they reach the local machine, so the
+  transport now classifies them with loopback and the other private-network
+  origins. The live failure this ends: a daemon deliberately bound to
+  `0.0.0.0` for LAN access left every client that imported that host unable to
+  call it — profile reads included — over plain http.
+
+### Added
+
+- `@pellux/goodvibes-terminal-shell` exports the shared conversation fold
+  policy: `foldedToolResult`, `trailingBlankAfterRow`, `foldPreviewText`, and
+  their thresholds. A folded transcript block is exactly one row — the header
+  with its `▸ N lines` badge and the content's head riding the same line; no
+  frame rows, no interior padding, no separate hidden-count marker, and no
+  blank rows between consecutive folded tool rows. Both terminal products
+  read these decisions from here so their renderers cannot drift apart again.
+
 ## [2.0.2] - 2026-08-01
 
 ### Fixed
