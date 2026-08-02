@@ -282,11 +282,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * degrade for embeds that wire no channel intake).
    */
   readonly sessionIntake?: InboundIntakeBroker | undefined;
-  /**
-   * Optional: the channel ingress-policy manager. When present, `sessionIntake`
-   * attributes a policy-authorized-owner sender to the owner principal instead
-   * of unknown (see `attributeInboundSession`). Absent → unchanged behavior.
-   */
+  /** Optional channel ingress-policy manager. Present: `sessionIntake` attributes a policy-authorized-owner sender to the owner principal instead of unknown (see `attributeInboundSession`). Absent: unchanged behavior. */
   readonly channelPolicy?: Pick<ChannelPolicyManager, 'getPolicy'> | undefined;
   /**
    * The daemon's working directory (source working tree). When present, the
