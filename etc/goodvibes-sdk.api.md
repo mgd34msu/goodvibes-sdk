@@ -6278,7 +6278,7 @@ export interface OperatorMethodInputMap {
     // (undocumented)
     "sessions.register": ({
         sessionId: string;
-        kind?: "acp" | "agent" | "automation" | "channel" | "companion-chat" | "companion-task" | "hosted" | "tui" | "webui";
+        kind?: "acp" | "agent" | "automation" | "companion-chat" | "companion-task" | "hosted" | "tui" | "webui";
         project?: string;
         title?: string;
         participant: {
