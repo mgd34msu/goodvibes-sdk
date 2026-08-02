@@ -114,7 +114,7 @@ export interface AgentRecord extends ProgressBearingRecord {
   executionIntent?: ExecutionIntent | undefined;
   reasoningEffort?: string | undefined;
   context?: string | undefined;
-  tools: string[];
+  tools: string[]; /** Bound write authority for this run's `profile` tool; see AgentInput.captureAuthority. */ captureAuthority?: import('../../personal-capture/index.js').CaptureAuthorityDecision | undefined;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   /**
    * Set by cancel(id, kind) when status transitions to 'cancelled'. Distinguishes
@@ -509,7 +509,7 @@ export class AgentManager {
       executionIntent: input.executionIntent,
       reasoningEffort: input.reasoningEffort,
       context: input.context,
-      tools,
+      tools, ...(input.captureAuthority ? { captureAuthority: input.captureAuthority } : {}),
       orchestrationDepth,
       executionProtocol,
       reviewMode,

@@ -48,6 +48,7 @@ import { createQueryTool } from './query/index.js';
 import { createRemoteTool } from './remote-trigger/index.js';
 import { createReplTool } from './repl/index.js';
 import { controlTool } from './control/index.js';
+import { createProfileTool } from './profile/index.js';
 import { createChannelTool } from './channel/index.js';
 import { createWebSearchTool } from './web-search/index.js';
 import { ProcessManager } from './shared/process-manager.js';
@@ -290,6 +291,14 @@ export function registerAllTools(
     /** Project memory registry — when present, `state mode=memory set` mirrors writes into retrievable records. */
     memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
     /**
+     * Where the owner profile store and occasions service arrive once the
+     * gateway composition has built them. Supplying it registers the `profile`
+     * tool, which is how a conversational turn records a trip, a date or a fact
+     * the owner just stated. Without it the tool is not registered at all,
+     * rather than registered and quietly unable to write.
+     */
+    personalCapture?: import('../personal-capture/index.js').PersonalCaptureHolder | undefined;
+    /**
      * Post-edit diagnostics provider for write/edit tool results. Defaults to
      * the in-process tree-sitter syntax provider; pass null to disable, or a
      * custom provider to override.
@@ -414,6 +423,24 @@ export function registerAllTools(
     configManager: deps.configManager,
     configRouting: deps.configRouting,
   }));
+  if (deps.personalCapture) {
+    const captureConfig = deps.configManager;
+    registerTool(createProfileTool({
+      holder: deps.personalCapture,
+      ...(captureConfig
+        ? { captureEnabled: (): boolean => captureConfig.get('profile.conversationalCapture') !== false }
+        : {}),
+      // A tool nobody re-bound is answering on a surface the owner is sitting
+      // at; the channel-bound case is produced per turn by bindCapture.
+      defaultAuthority: {
+        authority: 'owner-direct',
+        surface: 'agent',
+        canCapture: true,
+        source: 'local-surface',
+        reason: 'This turn came from a surface you are using directly, so it carries your authority.',
+      },
+    }));
+  }
   registerTool(new ReadTool(projectIndex, fileCache));
   // One post-edit diagnostics provider shared by write and edit. Default: the
   // in-process tree-sitter syntax provider (no process spawn). `null` disables.

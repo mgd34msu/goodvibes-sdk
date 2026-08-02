@@ -36,6 +36,8 @@ export const ownerProfileConfigDefaults: { profile: OwnerProfileConfig } = {
     consumerFallback: true,
     reloadThrottleMs: 2000,
     path: '',
+    conversationalCapture: true,
+    ownerChannels: '',
   },
 };
 
@@ -96,5 +98,19 @@ export const ownerProfileConfigSettings: ConfigSettingDefinition[] = [
     default: '',
     description:
       'Absolute path to the profile Markdown file. Empty means the default, owner-profile.md under the daemon home — which already honours GOODVIBES_DAEMON_HOME, so this override is only for keeping the file somewhere else entirely.',
+  },
+  {
+    key: 'profile.conversationalCapture',
+    type: 'boolean',
+    default: true,
+    description:
+      'Let a conversation record what you say about yourself as you say it — a trip and its itinerary, a birthday, a preference, a person. On by default because the alternative is what shipped before it: you paste a flight itinerary, get a warm reply, and nothing is stored. Off leaves conversations working and every profile read unchanged; it only stops the writing, and a turn that would have recorded something says so instead of staying quiet.',
+  },
+  {
+    key: 'profile.ownerChannels',
+    type: 'string',
+    default: '',
+    description:
+      'The channels whose incoming messages are you, comma-separated, each as a surface name or surface:address — the same form as occasions.nudgeChannel. Only these may record to your profile; anything arriving anywhere else is treated as someone else\'s words and is refused, which is the rule that keeps a forwarded email from editing what the system believes about you. Empty means the channels already set to reach you privately in occasions.nudgeChannel, so the channel that sends you a birthday reminder can also hear you say when your flight leaves.',
   },
 ];

@@ -302,6 +302,38 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
   };
 }
 
+/**
+ * Make one free-text detail safe to carry as a segment on a plan line.
+ *
+ * A plan's details — a confirmation number, a flight and its times, who is
+ * travelling, why he is going — are the reason he pasted the itinerary, so they
+ * are kept verbatim wherever verbatim is possible. Three things would corrupt
+ * the line if they went through untouched, and each is handled rather than
+ * refused:
+ *
+ *  - A separator character inside the text would split one detail into two.
+ *    Both accepted separators are replaced with a hyphen.
+ *  - A newline would end the line early. All whitespace collapses to spaces.
+ *  - A detail that happens to READ like structure — a bare `away`, an `in X`,
+ *    or a `YYYY-MM-DD..YYYY-MM-DD` range — would be parsed back as the plan's
+ *    own attributes and silently change the record. Those are prefixed with
+ *    `note`, which parses back as an ordinary detail.
+ *
+ * Returns an empty string for a detail that was only whitespace; the caller
+ * drops those rather than writing a bare separator.
+ */
+export function normalizePlanDetail(detail: string): string {
+  const flattened = detail
+    .replace(/[·|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (flattened.length === 0) return '';
+  const readsAsStructure = flattened.toLowerCase() === 'away'
+    || IN.test(flattened)
+    || RANGE.test(flattened);
+  return readsAsStructure ? `note ${flattened}` : flattened;
+}
+
 /** Render a plan back to a line, without its marker or provenance. */
 export function renderPlanLine(plan: Plan): string {
   const parts = [plan.title, `${plan.from}..${plan.to}`];

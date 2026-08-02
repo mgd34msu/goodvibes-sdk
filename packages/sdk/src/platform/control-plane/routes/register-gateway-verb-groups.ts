@@ -119,6 +119,8 @@ import type { FleetEvent } from '../../../events/fleet.js';
 export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
+  /** Filled with the owner profile store and occasions service below, which is what lets the `profile` capture tool write. Absent in a host with no agent tools. */
+  readonly personalCapture?: Pick<import('../../personal-capture/index.js').PersonalCaptureHolder, 'setPort'> | undefined;
   /**
    * Teardown registry for the pollers this registration starts — today the
    * push-subscription sweep, which is constructed here and so is otherwise
@@ -460,6 +462,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     const ownerProfile = composeOwnerProfile(catalog, {
       configManager: deps.configManager,
       occasions: deps,
+      ...(deps.personalCapture === undefined ? {} : { personalCapture: deps.personalCapture }),
       // The runtime's own home, so an injected home resolves the profile under
       // it instead of falling through to whoever is logged in.
       ...(deps.homeDirectory === undefined ? {} : { homeDir: deps.homeDirectory }),

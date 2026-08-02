@@ -41,6 +41,7 @@ import { WrfcController } from '../agents/wrfc-controller.js';
 import type { AgentOrchestrator } from '../agents/orchestrator.js';
 import type { ArchetypeLoader } from '../agents/archetypes.js';
 import { continuationChainOptions } from '../agents/conversation-continuation.js';
+import { PersonalCaptureHolder, conversationalTurnSpawnOptions } from '../personal-capture/index.js';
 import { ProcessManager } from '../tools/shared/process-manager.js';
 import { ModeManager } from '../state/mode-manager.js';
 import { FileUndoManager } from '../state/file-undo.js';
@@ -453,6 +454,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
     { sessionExists: (sessionId: string) => sessionBroker.getSession(sessionId) !== null },
   );
+  // Created here so it can be handed to the agent tool registry below and
+  // filled by registerGatewayVerbGroups further down, which is where the owner
+  // profile store and occasions service are actually built.
+  const personalCapture = new PersonalCaptureHolder();
   sessionBroker.setContinuationRunner(async ({ task, input }) => {
     const record = agentManager.spawn({
       mode: 'spawn',
@@ -460,8 +465,15 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       // Conversation first: a follow-up gets an answer, not a review chain —
       // only the authorization marker or a local surface opens one.
       ...continuationChainOptions(input, { configReader: configManager }),
+      // The tools, the instruction and the bound write authority for a
+      // conversational turn. The routing builder sets `restrictTools: true` and
+      // — unless the routing intent named tools — no tool list at all, which
+      // AgentManager reads as "only these" over an empty set. The turn then ran
+      // with an empty registry and could record nothing the owner told it about
+      // himself. Spread FIRST so a routing intent that DID name tools still
+      // wins: that builder only emits a `tools` key when it has one.
+      ...conversationalTurnSpawnOptions(input, { configReader: configManager }),
       ...buildSharedSessionAgentSpawnRoutingInput(input.routing, { restrictTools: true, modelCandidates: providerRegistry.listModels() }),
-      context: `shared-session:${input.sessionId}`,
     });
     return { agentId: record.id };
   });
@@ -816,6 +828,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Late-bound CI auto-watch observer (filled by registerGatewayVerbGroups below).
   let ciAutoWatchObserver: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | null = null;
   agentOrchestrator.setDependencies({
+    personalCapture,
     sandboxEscalationHandler,
     execPromptAnswerHandler,
     localhostFetchApproval,
@@ -1012,7 +1025,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),
     admitExpensiveWork: (label) => admitExpensiveWork(label),
   });
-  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, credentialWrites: { config: configManager, secrets: secretsManager }, approvalRaise: approvalBroker, disposal: disposalScope.registry, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, credentialWrites: { config: configManager, secrets: secretsManager }, approvalRaise: approvalBroker, disposal: disposalScope.registry, personalCapture, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   // Teardown for every poller started above. RuntimePollerOwners is all-required,
   // so a poller added to this graph later cannot compile without being named here.
   registerRuntimePollers(disposalScope.registry, {

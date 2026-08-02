@@ -34,6 +34,7 @@ import { OwnerProfileStore, resolveOwnerProfilePath } from '../../owner-profile/
 import { installOwnerProfileConsumers } from '../../owner-profile/consumers.js';
 import { registerOwnerProfileGatewayMethods } from './owner-profile.js';
 import { installOccasions, type OccasionsInstallDeps } from './occasions-composition.js';
+import type { PersonalCaptureHolder } from '../../personal-capture/index.js';
 import { logger } from '../../utils/logger.js';
 
 /** What the composition needs from the runtime graph. */
@@ -67,6 +68,22 @@ export interface OwnerProfileCompositionDeps {
    * group here uses.
    */
   readonly occasions?: OccasionsInstallDeps | undefined;
+  /**
+   * The holder the agent tool registry was built around, filled here with the
+   * store and service this composition just created.
+   *
+   * Late-bound rather than passed into the tool registry directly because the
+   * two compositions cannot be reordered: the tool registry is built before the
+   * gateway verb groups, and both orders are load-bearing for other reasons.
+   * The `profile` capture tool therefore exists from the start and becomes able
+   * to write the moment this runs — and reports plainly, rather than throwing,
+   * on the narrow window before it.
+   *
+   * Filled ONLY when the occasions loop is also composed: a port with a profile
+   * store and no occasions service could take a fact and silently not take a
+   * trip, which is the half-working state this whole change exists to end.
+   */
+  readonly personalCapture?: Pick<PersonalCaptureHolder, 'setPort'> | undefined;
 }
 
 /** The store, and the one call that unwires everything this installed. */
@@ -119,7 +136,16 @@ export function composeOwnerProfile(
   // is synchronous and a fallback reader has nothing to await with. One small
   // file read at boot, on the path that already reads settings.json the same
   // way, removes the window instead of making it awaitable.
-  if (deps.occasions !== undefined) installOccasions(catalog, store, deps.occasions);
+  const occasions = deps.occasions === undefined
+    ? undefined
+    : installOccasions(catalog, store, deps.occasions);
+
+  // Hand the capture tool its store and service. Both or neither — see the dep's
+  // comment: a port that could record a fact but not a trip is exactly the
+  // half-working state being corrected.
+  if (occasions && deps.personalCapture) {
+    deps.personalCapture.setPort({ occasions: occasions.service, profile: store });
+  }
 
   const state = store.loadSync();
   // Counts and names only; the store's own logging never carries a value.
