@@ -16,9 +16,12 @@ export { PrincipalStore } from './store.js';
 export {
   PrincipalRegistryError,
   UNKNOWN_PRINCIPAL_ID,
+  OWNER_PRINCIPAL_ID,
   PRINCIPAL_KINDS,
   unknownPrincipal,
   isUnknownPrincipal,
+  ownerPrincipal,
+  isOwnerPrincipal,
   normalizeIdentity,
   identityKey,
   type PrincipalKind,

@@ -55,6 +55,7 @@ import {
   installInboundIntakeEnrichment,
   type InboundIntakeBroker,
 } from '../../channel-profiles/index.js';
+import type { ChannelPolicyManager } from '../../channels/policy-manager.js';
 import { registerCheckinGatewayMethods } from './checkin.js';
 import {
   CheckinService,
@@ -280,6 +281,12 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    */
   readonly sessionIntake?: InboundIntakeBroker | undefined;
   /**
+   * Optional: the channel ingress-policy manager. When present, `sessionIntake`
+   * attributes a policy-authorized-owner sender to the owner principal instead
+   * of unknown (see `attributeInboundSession`). Absent → unchanged behavior.
+   */
+  readonly channelPolicy?: Pick<ChannelPolicyManager, 'getPolicy'> | undefined;
+  /**
    * The daemon's working directory (source working tree). When present, the
    * worktrees.setup.run rerun verb is registered over a worktree registry rooted
    * here (the same store worktrees.snapshot reads); absent → the verb stays
@@ -498,6 +505,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     installInboundIntakeEnrichment(deps.sessionIntake, {
       principals: principalRegistry,
       channelProfiles: channelProfileRegistry,
+      ...(deps.channelPolicy ? { channelPolicy: deps.channelPolicy } : {}),
     });
   }
 

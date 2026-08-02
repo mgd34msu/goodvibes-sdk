@@ -93728,6 +93728,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "companion-task",
                 "companion-chat",
                 "automation",
+                "channel",
                 "acp",
                 "hosted"
               ]

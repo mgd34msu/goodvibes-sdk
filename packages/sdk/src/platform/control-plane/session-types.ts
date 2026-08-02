@@ -54,6 +54,14 @@ export interface SharedSessionMessage {
  * - 'companion-task': created via task-submit flow (agent spawn)
  * - 'companion-chat': created via companion chat-mode API (no agent spawn; uses per-session orchestrator)
  * - 'automation': created by an automation job/run
+ * - 'channel': created by a third-party messaging channel adapter (Telegram,
+ *   Slack, ntfy, a webhook, ...) — see `isChannelSurfaceKind` in
+ *   events/surfaces.ts, which decides this from the originating participant's
+ *   surfaceKind. Never claims a filesystem project root: like companion chat,
+ *   a channel session is home-scoped and its `project` defaults to 'unknown'.
+ *   A private chat is never mistaken for an operator terminal session rooted
+ *   at a project directory just because that happens to be the daemon's
+ *   process cwd.
  */
 export type SharedSessionKind =
   | 'tui'
@@ -62,6 +70,7 @@ export type SharedSessionKind =
   | 'companion-task'
   | 'companion-chat'
   | 'automation'
+  | 'channel'
   // A hosted third-party coding agent (Claude Code / Codex CLI / opencode)
   // running as a daemon session over the Agent Client Protocol.
   | 'acp'
