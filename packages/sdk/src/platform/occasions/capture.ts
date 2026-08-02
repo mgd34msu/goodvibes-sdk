@@ -25,6 +25,7 @@ import type { AuthoritySurface } from '../security/untrusted-content.js';
 import type { ProfileSurface } from '../owner-profile/types.js';
 import { parseOccasionDate, renderOccasionDate } from './dates.js';
 import {
+  normalizePlanDetail,
   occasionIdFor,
   parsePlanLine,
   renderOccasionLine,
@@ -209,6 +210,17 @@ export interface ProposePlanInput {
   readonly to: string;
   readonly away?: boolean | undefined;
   readonly destination?: string | undefined;
+  /**
+   * Everything else he said about it, one detail per entry: a confirmation
+   * number, a flight and its times, who is travelling, why he is going.
+   *
+   * Kept because a trip stripped to its dates answers "am I away" and nothing
+   * else — and the itinerary was pasted precisely so the details would be
+   * there later. Each entry is normalised to survive the line grammar
+   * (`normalizePlanDetail`) and then the whole line is re-read to prove it
+   * round-trips before anything is written.
+   */
+  readonly details?: readonly string[] | undefined;
 }
 
 export interface ConfirmPlanInput extends ProposePlanInput {
@@ -221,6 +233,9 @@ export interface ConfirmPlanInput extends ProposePlanInput {
 export function proposePlan(input: ProposePlanInput): OccasionProposal {
   const title = input.title.trim();
   if (title.length === 0) return refuse('A plan needs a name.');
+  const details = (input.details ?? [])
+    .map((detail) => normalizePlanDetail(detail))
+    .filter((detail) => detail.length > 0);
   const line = renderPlanLine({
     id: occasionIdFor(title),
     title,
@@ -228,13 +243,24 @@ export function proposePlan(input: ProposePlanInput): OccasionProposal {
     to: input.to.trim(),
     away: input.away === true,
     destination: (input.destination ?? '').trim(),
-    extras: [],
+    extras: details,
     lineIndex: -1,
     text: '',
   });
   const reread = readPlanLineStrict(line);
   if (reread === null) {
     return refuse(`I could not read ${input.from} to ${input.to} as a range. Write both ends as YYYY-MM-DD.`);
+  }
+  // The details are the point of recording the trip, so prove they survived
+  // rather than assuming it. A detail that came back changed or missing means
+  // the line grammar ate it, and writing the line anyway would lose the very
+  // thing he pasted while reporting success.
+  if (reread.extras.length !== details.length
+    || details.some((detail, index) => reread.extras[index] !== detail)) {
+    return refuse(
+      'I could not store those details without changing them, so I have not written the plan. '
+      + 'Tell me the trip again with the details in plainer words and I will record it.',
+    );
   }
   const where = reread.destination.length > 0 ? ` in ${reread.destination}` : '';
   return {

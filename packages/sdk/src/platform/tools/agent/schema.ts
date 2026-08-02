@@ -286,6 +286,13 @@ export interface AgentInput {
   tools?: string[] | undefined;
   restrictTools?: boolean | undefined;
   context?: string | undefined;
+  /**
+   * Internal: the write authority to bind this run's `profile` capture tool to.
+   * Set by the composition root from the turn's channel, never by model output —
+   * see personal-capture/authority.ts. Deliberately absent from the tool's own
+   * JSON schema so a model cannot ask for it.
+   */
+  captureAuthority?: import('../../personal-capture/index.js').CaptureAuthorityDecision | undefined;
   /** Internal prompt addendum used by WRFC phase agents. */
   systemPromptAddendum?: string | undefined;
   /** Internal compound WRFC deliverables owned by one top-level WRFC chain. */

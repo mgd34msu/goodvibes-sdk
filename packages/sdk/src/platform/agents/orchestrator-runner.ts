@@ -165,7 +165,7 @@ export interface AgentOrchestratorRunContext {
    */
   readonly permissionManager?: BackgroundPermissionManager | undefined;
   readonly getFullRegistry: () => ToolRegistry;
-  readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry) => ToolRegistry;
+  readonly buildScopedRegistry: (allowedNames: string[], fullRegistry: ToolRegistry, captureAuthority?: import('../personal-capture/index.js').CaptureAuthorityDecision | undefined) => ToolRegistry;
   readonly providerRegistry: Pick<ProviderRegistry, 'getCurrentModel' | 'getForModel' | 'listModels' | 'getContextWindowForModel' | 'recordContextWindowRejection'>;
   readonly providerOptimizer?: Pick<ProviderOptimizer, 'recordFallbackTransition'> | undefined;
   readonly resolveProviderForRecord: (
@@ -420,7 +420,7 @@ export async function runAgentTask(
     }, context.atRestPolicy);
     session.appendMessage({ type: 'session_config', template: record.template, task: record.task, tools: record.tools, model: modelId, provider: record.provider ?? 'unknown', timestamp: new Date().toISOString() });
 
-    const toolRegistry = context.buildScopedRegistry(record.tools, context.getFullRegistry());
+    const toolRegistry = context.buildScopedRegistry(record.tools, context.getFullRegistry(), record.captureAuthority);
     const toolDefinitions = toolRegistry.getToolDefinitions();
     const toolTokens = toolDefinitions.length > 0
       ? estimateTokens(JSON.stringify(toolDefinitions))

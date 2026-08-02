@@ -1,4 +1,5 @@
 import { ToolRegistry } from '../tools/registry.js';
+import type { Tool } from '../types/tools.js';
 import type { ConfigManager } from '../config/manager.js';
 import type { ConfigKey } from '../config/schema-types.js';
 import { resolveAtRestPolicy } from '../runtime/at-rest-persistence.js';
@@ -73,6 +74,17 @@ type ResolvedAgentProviderRouting = {
   readonly fallbackModels: readonly string[];
 };
 
+/**
+ * True when `tool` is the profile capture tool — i.e. it can be re-bound to one
+ * turn's write authority. Structural rather than a name match so a host that
+ * registers its own capture tool under the same contract is bound too.
+ */
+function isCaptureBindableTool(
+  tool: Tool,
+): tool is Tool & { bindCapture: (decision: import('../personal-capture/index.js').CaptureAuthorityDecision) => Tool } {
+  return typeof (tool as { bindCapture?: unknown }).bindCapture === 'function';
+}
+
 type AgentOrchestratorToolDeps = {
   readonly fileCache: FileStateCache;
   readonly projectIndex: ProjectIndex;
@@ -87,6 +99,8 @@ type AgentOrchestratorToolDeps = {
   readonly remoteRunnerRegistry?: import('../runtime/remote/index.js').RemoteRunnerRegistry | undefined;
   readonly knowledgeService?: import('../knowledge/index.js').KnowledgeService | undefined;
   readonly memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
+  /** Supplying it registers the `profile` capture tool. See registerAllTools. */
+  readonly personalCapture?: import('../personal-capture/index.js').PersonalCaptureHolder | undefined;
   readonly codeIndex?: import('./turn-knowledge-injection.js').TurnCodeIndexSource | undefined;
   readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
   readonly codeIndexReindexScheduler?: Pick<import('../state/code-index-reindex.js').CodeIndexReindexScheduler, 'onToolExecuted'> | undefined;
@@ -448,14 +462,26 @@ export class AgentOrchestrator {
    * the allowedNames list. Filters the provided full registry into a fresh
    * scoped registry.
    */
-  private buildScopedRegistry(allowedNames: string[], fullRegistry: ToolRegistry): ToolRegistry {
+  private buildScopedRegistry(
+    allowedNames: string[],
+    fullRegistry: ToolRegistry,
+    captureAuthority?: import('../personal-capture/index.js').CaptureAuthorityDecision | undefined,
+  ): ToolRegistry {
     const allowed = new Set(allowedNames.filter((n) => n !== 'agent'));
 
     const scopedRegistry = new ToolRegistry();
     for (const tool of fullRegistry.list()) {
-      if (allowed.has(tool.definition.name)) {
-        scopedRegistry.register(tool);
+      if (!allowed.has(tool.definition.name)) continue;
+      // The profile tool writes under an authority the MODEL must not be able to
+      // assert — a sentence inside a forwarded email claiming to be the owner
+      // would otherwise walk straight through the write gate. So the authority
+      // the composition root resolved for this turn is bound onto the instance
+      // this run sees, and never appears in the tool's arguments.
+      if (captureAuthority && isCaptureBindableTool(tool)) {
+        scopedRegistry.register(tool.bindCapture(captureAuthority));
+        continue;
       }
+      scopedRegistry.register(tool);
     }
 
     return scopedRegistry;
@@ -699,7 +725,7 @@ export class AgentOrchestrator {
       providerRegistry: this.toolDeps!.providerRegistry!,
       ...(this.toolDeps?.permissionManager ? { permissionManager: this.toolDeps.permissionManager } : {}),
       getFullRegistry: () => this.getFullRegistry(cwd),
-      buildScopedRegistry: (allowedNames, fullRegistry) => this.buildScopedRegistry(allowedNames, fullRegistry),
+      buildScopedRegistry: (allowedNames, fullRegistry, captureAuthority) => this.buildScopedRegistry(allowedNames, fullRegistry, captureAuthority),
       resolveProviderForRecord: (providerRegistry, record, currentModel) =>
         this.resolveProviderForRecord(providerRegistry, record, currentModel),
       resolveFallbackModelRoutes: (providerRegistry, record, currentModel, primaryRequestedModelId) =>

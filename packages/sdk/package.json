@@ -377,6 +377,10 @@
       "types": "./dist/platform/owner-profile/index.d.ts",
       "import": "./dist/platform/owner-profile/index.js"
     },
+    "./platform/personal-capture": {
+      "types": "./dist/platform/personal-capture/index.d.ts",
+      "import": "./dist/platform/personal-capture/index.js"
+    },
     "./platform/pairing": {
       "types": "./dist/platform/pairing/index.d.ts",
       "import": "./dist/platform/pairing/index.js"
