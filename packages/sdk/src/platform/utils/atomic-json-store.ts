@@ -210,7 +210,13 @@ export function quarantineCorruptFile(filePath: string, options: QuarantineOptio
     });
   }
 
-  const reapResult = moved ? reapCorruptQuarantineFiles(dir, base) : { scanned: 0, reaped: 0 };
+  // The just-quarantined file is excluded from reaping by name: its .why is
+  // written only after the reap, so on a filesystem with coarse mtimes an
+  // all-tie sort could otherwise pick it as the "oldest" victim and leave the
+  // receipt written below orphaned — the exact failure a matrix runner caught.
+  const reapResult = moved
+    ? reapCorruptQuarantineFiles(dir, base, basename(quarantinePath))
+    : { scanned: 0, reaped: 0 };
 
   if (moved) {
     const whyLines = [
@@ -273,7 +279,12 @@ function cleanupStaleTempFiles(dir: string, filePath: string): void {
  * quarantine so a repeatedly-corrupting writer cannot accumulate files without
  * bound.
  */
-function reapCorruptQuarantineFiles(dir: string, base: string): { scanned: number; reaped: number } {
+function reapCorruptQuarantineFiles(
+  dir: string,
+  base: string,
+  /** The quarantine file created by the caller in this same pass — never a victim. */
+  currentName?: string,
+): { scanned: number; reaped: number } {
   const prefix = `${base}.corrupt-`;
   let names: string[];
   try {
@@ -282,8 +293,23 @@ function reapCorruptQuarantineFiles(dir: string, base: string): { scanned: numbe
     return { scanned: 0, reaped: 0 };
   }
 
-  const corruptFiles = names
-    .filter((name) => name.startsWith(prefix) && !name.endsWith('.why'))
+  const quarantineNames = new Set(names.filter((name) => name.startsWith(prefix) && !name.endsWith('.why')));
+
+  // Self-heal: a .why with no surviving quarantine file discloses nothing and
+  // keeps nothing — delete it, whatever past interruption produced it.
+  for (const name of names) {
+    if (!name.startsWith(prefix) || !name.endsWith('.why')) continue;
+    if (!quarantineNames.has(name.slice(0, -'.why'.length))) {
+      try {
+        unlinkSync(join(dir, name));
+      } catch {
+        // Best-effort.
+      }
+    }
+  }
+
+  const corruptFiles = [...quarantineNames]
+    .filter((name) => name !== currentName)
     .map((name) => {
       const full = join(dir, name);
       let mtimeMs = 0;
@@ -292,13 +318,22 @@ function reapCorruptQuarantineFiles(dir: string, base: string): { scanned: numbe
       } catch {
         mtimeMs = 0;
       }
-      return { full, mtimeMs };
+      return { full, name, mtimeMs };
     });
 
+  // The cap counts every quarantine file including the current one; only the
+  // older ones are eligible victims.
+  const cap = currentName !== undefined && quarantineNames.has(currentName)
+    ? CORRUPT_QUARANTINE_MAX_FILES - 1
+    : CORRUPT_QUARANTINE_MAX_FILES;
+
   let reaped = 0;
-  if (corruptFiles.length > CORRUPT_QUARANTINE_MAX_FILES) {
-    corruptFiles.sort((a, b) => a.mtimeMs - b.mtimeMs); // oldest first
-    const excess = corruptFiles.length - CORRUPT_QUARANTINE_MAX_FILES;
+  if (corruptFiles.length > cap) {
+    // Oldest first; mtime ties (coarse-mtime filesystems) break by the
+    // millisecond timestamp baked into the quarantine name, so the order is
+    // total and matches creation order.
+    corruptFiles.sort((a, b) => (a.mtimeMs - b.mtimeMs) || a.name.localeCompare(b.name));
+    const excess = corruptFiles.length - cap;
     for (const victim of corruptFiles.slice(0, excess)) {
       try {
         unlinkSync(victim.full);
@@ -314,5 +349,5 @@ function reapCorruptQuarantineFiles(dir: string, base: string): { scanned: numbe
     }
   }
 
-  return { scanned: corruptFiles.length, reaped };
+  return { scanned: quarantineNames.size, reaped };
 }

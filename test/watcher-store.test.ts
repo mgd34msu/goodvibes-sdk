@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { makeProjectTempDir } from './_helpers/project-temp.ts';
 import {
@@ -237,6 +237,37 @@ describe('watcher store: quarantine-don\'t-crash load', () => {
     }
 
     // No orphaned .why receipts for a quarantine file that was reaped.
+    const whyFiles = siblingsMatching(dir, `${basename(storePath)}.corrupt-`).filter((name) => name.endsWith('.why'));
+    expect(whyFiles.length).toBe(remaining.length);
+  });
+
+  test('the reap never orphans a receipt when every mtime ties — the coarse-mtime filesystem probe', () => {
+    // A CI matrix runner's filesystem rounded mtimes coarsely enough that a
+    // tight corrupt-load loop produced all-equal mtimes; the old mtime-only
+    // sort could then pick the JUST-quarantined file as the "oldest" victim,
+    // whose .why had not been written yet — deleting the file and leaving the
+    // receipt written afterwards orphaned (5 files, 6 receipts). This probe
+    // constructs the tie deliberately instead of hoping a runner provides it.
+    const dir = makeStoreDir();
+    const storePath = storePathIn(dir);
+    mkdirSync(dir, { recursive: true });
+
+    const tie = new Date('2026-01-01T00:00:00Z');
+    for (let i = 0; i < 8; i += 1) {
+      writeFileSync(storePath, `still not json #${i}`, 'utf-8');
+      expect(loadWatcherSnapshotFromPath(storePath)).toBeNull();
+      // Flatten every quarantine artifact onto one identical mtime so the
+      // sort's mtime component carries no information at all.
+      for (const name of siblingsMatching(dir, `${basename(storePath)}.corrupt-`)) {
+        utimesSync(join(dir, name), tie, tie);
+      }
+    }
+
+    const remaining = corruptSiblings(dir, storePath);
+    expect(remaining.length).toBeLessThanOrEqual(5);
+    for (const name of remaining) {
+      expect(existsSync(join(dir, `${name}.why`))).toBe(true);
+    }
     const whyFiles = siblingsMatching(dir, `${basename(storePath)}.corrupt-`).filter((name) => name.endsWith('.why'));
     expect(whyFiles.length).toBe(remaining.length);
   });
