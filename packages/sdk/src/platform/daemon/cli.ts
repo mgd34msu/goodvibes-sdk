@@ -86,6 +86,10 @@ async function main(): Promise<void> {
     homeDir: homeDirectory,
     surfaceRoot: 'goodvibes',
     daemonTierPath,
+    // The standalone daemon owns its settings store, so it is the process that
+    // migrates that file on disk. Every client reads the same file and applies
+    // migrations only to its own in-memory view.
+    ownsDaemonTier: true,
   });
   if (process.argv.includes('--install-service')) {
     installServiceAndExit(config, workingDir, homeDirectory);

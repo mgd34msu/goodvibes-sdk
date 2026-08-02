@@ -226,7 +226,7 @@ describe('an existing file is carried across', () => {
 
   test('the owner\'s live daemon file: perPurchaseCeilingCents 10000 reads back as perPurchaseCeiling 100, with a receipt', () => {
     const home = makeProjectTempDir('gv-money-migrate');
-    const configDir = join(home, '.goodvibes', 'tui');
+    const configDir = join(home, '.goodvibes', 'goodvibes');
     const daemonTierPath = join(home, '.goodvibes', 'daemon', 'settings.json');
     mkdirSync(configDir, { recursive: true });
     mkdirSync(join(home, '.goodvibes', 'daemon'), { recursive: true });
@@ -236,7 +236,16 @@ describe('an existing file is carried across', () => {
       'utf-8',
     );
 
-    const manager = new ConfigManager({ configDir, homeDir: home, surfaceRoot: 'tui', daemonTierPath });
+    // The DAEMON composition: the runtime that owns this file, and so the one
+    // that rewrites it. A client loading the same file migrates only its own
+    // view — see daemon-tier-migration-ownership.test.ts.
+    const manager = new ConfigManager({
+      configDir,
+      homeDir: home,
+      surfaceRoot: 'goodvibes',
+      daemonTierPath,
+      ownsDaemonTier: true,
+    });
 
     // The resolved config reads the amount, not the old count.
     expect(manager.get('payments.budget.perPurchaseCeiling')).toBe(100);

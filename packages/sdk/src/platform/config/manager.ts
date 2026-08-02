@@ -49,6 +49,12 @@ interface ConfigCliOverrides {
   systemPromptFile?: string | undefined;
   workingDir?: string | undefined;
   surfaceRoot?: string | undefined;
+  /**
+   * True only in the daemon composition, which OWNS the daemon tier file. A
+   * client READS it and migrates its own view, never the bytes; the default is
+   * that non-writing answer. See MigrationOwnership in ./manager-migration-passes.ts.
+   */
+  ownsDaemonTier?: boolean | undefined;
 }
 
 export type ConfigOverrides = ConfigCliOverrides & (
@@ -113,6 +119,8 @@ export class ConfigManager {
   private readonly sharedTierPath: string | null;
   /** The daemon's own settings store (`~/.goodvibes/daemon/settings.json`), or null. */
   private readonly daemonTierPath: string | null;
+  /** True only in the daemon composition — the runtime allowed to REWRITE that store. */
+  private readonly daemonTierOwner: boolean;
   /** Shared keys whose value the last load actually sourced from the shared tier file. */
   private readonly sharedKeysPresent = new Set<ConfigKey>();
   /** Daemon-owned keys the last load sourced from the daemon store. */
@@ -169,6 +177,8 @@ export class ConfigManager {
     this.daemonTierPath = daemonTierPath ?? (
       this.homeDirectory ? daemonConfigPath(this.homeDirectory) : null
     );
+    // Set BEFORE load(): that load is where the daemon-tier migration asks.
+    this.daemonTierOwner = overrides.ownsDaemonTier === true;
 
     this.load();
 
@@ -601,10 +611,12 @@ export class ConfigManager {
       // Daemon-owned keys live ONLY here, so a rename of one has to be applied
       // here too. Only the rename pass runs: the other passes describe
       // surface-file shapes this file does not have.
+      // DAEMON-OWNED, CLIENT-READ: a non-owner migrates its parsed copy only.
       const stored = this.ingest(
         readDaemonTierFile(this.daemonTierPath),
         this.daemonTierPath,
-        (raw) => applyPaymentsBudgetMigrationPass(raw, this.daemonTierPath!, (id, text) => this.migrationReceipt(id, text)),
+        (raw) => applyPaymentsBudgetMigrationPass(raw, this.daemonTierPath!,
+          (id, text) => this.migrationReceipt(id, text), { ownsFile: this.daemonTierOwner }),
       );
       const applied = overlayDaemonTierFrom(stored, (key, value) => {
         const { parent, field } = resolveOrCreateDaemonPath(this.config as unknown as Record<string, unknown>, key);

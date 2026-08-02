@@ -31,7 +31,13 @@ export interface BootDaemonOptions {
   readonly token?: string | undefined;
   /** Daemon home dir (identity state). Defaults to the runtime resolution. */
   readonly daemonHomeDir?: string | undefined;
-  /** Optional preconfigured ConfigManager; otherwise one is built from the dirs. */
+  /**
+   * Optional preconfigured ConfigManager; otherwise one is built from the dirs.
+   *
+   * An embedder supplying one is composing a daemon and should construct it with
+   * `ownsDaemonTier: true` — that flag is read during the manager's own
+   * constructor load, so it cannot be applied here after the fact.
+   */
   readonly configManager?: import('../config/manager.js').ConfigManager | undefined;
   /** Optional custom serve factory (tests inject Bun.serve stand-ins). */
   readonly serveFactory?: typeof Bun.serve | undefined;
@@ -85,6 +91,10 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
     workingDir: options.workingDir,
     homeDir: options.homeDirectory,
     surfaceRoot: 'goodvibes',
+    // This IS the daemon, so it owns ~/.goodvibes/daemon/settings.json and is
+    // the one runtime allowed to migrate it on disk. Clients read that file and
+    // must not rewrite it under a daemon that may be an older build.
+    ownsDaemonTier: true,
   });
 
   const server = new DaemonServer({

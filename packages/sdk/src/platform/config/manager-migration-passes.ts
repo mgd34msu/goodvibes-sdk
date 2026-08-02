@@ -15,11 +15,52 @@ import {
   migratePaymentsBudgetAmounts,
 } from './migrations.js';
 import { isFrozenDefaultDump, stripFrozenDefaults } from './settings-io.js';
+import {
+  PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR,
+  raiseSettingsReaderFloor,
+} from './settings-reader-floor.js';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
 /** Announce-once receipt sink (the manager binds FeatureAnnouncementStore.record). */
 export type MigrationReceiptSink = (id: string, text: string) => void;
+
+/**
+ * Whether the process running a pass OWNS the file it is migrating.
+ *
+ * ── The failure this closes ────────────────────────────────────────────────
+ *
+ * `~/.goodvibes/daemon/settings.json` is written by the daemon and READ by
+ * every terminal product, because a client resolves daemon-owned keys to show
+ * and edit them. A pass that rewrites the file on load therefore runs in
+ * processes that do not own it — and on a real machine those processes are not
+ * the same version at the same moment.
+ *
+ * That is not hypothetical. A 2.0.5-runtime client loaded the daemon tier,
+ * migrated `payments.budget.perPurchaseCeilingCents` to `perPurchaseCeiling` on
+ * disk, and the still-running 1.28.6 daemon then read a key its build did not
+ * know, skipped it, and stopped resolving a configured ceiling. The client was
+ * right about the rename and had no business writing it.
+ *
+ * ── The rule ──────────────────────────────────────────────────────────────
+ *
+ * A process migrates ON DISK only the files it owns. A reader that does not own
+ * the file migrates its in-memory view — so a new client reading an old file
+ * still resolves the right values — and leaves the bytes alone. No receipt is
+ * filed either: a receipt says "your file now reads this way", and with nothing
+ * written that sentence would be false.
+ *
+ * `ownsFile` is explicit rather than inferred. Nothing about a path says who is
+ * allowed to write it, and guessing from a surface root would make ownership a
+ * naming convention instead of a decision the composing runtime states.
+ */
+export interface MigrationOwnership {
+  /** True only in the runtime that owns this file on disk. */
+  readonly ownsFile: boolean;
+}
+
+/** The default for a pass over a file the loading process owns outright. */
+export const OWNS_FILE: MigrationOwnership = { ownsFile: true };
 
 function persistMigratedFile(sourcePath: string, config: Record<string, unknown>, label: string): void {
   try {
@@ -169,15 +210,51 @@ export function applyDaemonEmbedInProcessMigrationPass(
  * They now hold the amount itself. The receipt quotes what each key was and
  * what it is, because a spending limit silently changing shape is the one thing
  * this migration must never do quietly.
+ *
+ * This is the one pass with a NON-OWNING caller: it runs over the daemon tier,
+ * which every client reads and only the daemon writes. See {@link
+ * MigrationOwnership} — `ownsFile: false` applies the rename to the in-memory
+ * view and writes neither the file nor a receipt.
+ *
+ * The owning write also records a reader floor. Ownership stops a client from
+ * renaming keys under an older daemon; the floor covers the other direction,
+ * where the DAEMON is newer — an older reader of the migrated file then names
+ * the version and says to update, instead of skipping four limits it cannot
+ * place. See PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR.
  */
 export function applyPaymentsBudgetMigrationPass(
   parsed: Record<string, unknown>,
   sourcePath: string,
   receipt: MigrationReceiptSink,
+  ownership: MigrationOwnership = OWNS_FILE,
 ): Record<string, unknown> {
   const result = migratePaymentsBudgetAmounts(parsed);
   if (!result.migrated) return parsed;
-  persistMigratedFile(sourcePath, result.config, 'payments budget migration');
+  if (!ownership.ownsFile) {
+    // The reader's own view is correct; the bytes belong to the owner, who will
+    // migrate them when it next loads. Debug, not info: a client re-derives this
+    // on every load until the owner catches up, and an info line per start would
+    // be noise about a state that is working as designed.
+    logger.debug(
+      `payments budget migration applied in memory only for ${sourcePath}: this process does not own the file.`,
+    );
+    return result.config;
+  }
+  // ONE write, carrying both the rename and the version that explains it. A
+  // separate floor-raising write would leave a window in which the file holds
+  // the new names and nothing saying which reader can understand them, and that
+  // window is exactly when an older daemon reloads.
+  //
+  // The marker rides a COPY. ingestSettingsFile strips the floor BEFORE it calls
+  // a migration and then screens whatever that migration returns, so a marker
+  // left on the returned object would be reported as a setting this build does
+  // not know — the very sentence this change exists to stop producing.
+  const persisted = raiseSettingsReaderFloor(
+    { ...result.config },
+    PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR,
+    'payments-budget-amounts-migration',
+  ).raw;
+  persistMigratedFile(sourcePath, persisted, 'payments budget migration');
   const moved = result.moves
     .map((move) => `${move.from} ${move.oldValue} is now ${move.to} ${move.newValue}`)
     .join('; ');
@@ -200,6 +277,14 @@ export function applyPaymentsBudgetMigrationPass(
  * The order lives here rather than at the call site because it is a property of
  * the passes: each runs on the output of the one before it, and the default-strip
  * pass has to come last so it sees the shape the others leave behind.
+ *
+ * OWNERSHIP: every pass in this sequence runs over a SURFACE settings file —
+ * the global `~/.goodvibes/<surface>/settings.json` and the project
+ * `<workingDir>/.goodvibes/<surface>/settings.json`. A surface file is written
+ * and read by that surface's own process, so writer and owner are the same
+ * runtime by construction and these passes take no ownership argument. The
+ * daemon tier is the exception, and it is loaded separately — see
+ * ConfigManager.loadDaemonTier and {@link MigrationOwnership}.
  */
 export function runLoadMigrationPasses(
   parsed: Record<string, unknown>,

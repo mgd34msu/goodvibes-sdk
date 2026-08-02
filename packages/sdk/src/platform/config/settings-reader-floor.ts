@@ -60,6 +60,25 @@ export interface SettingsReaderFloor {
  */
 export const SWEPT_CREDENTIAL_READER_FLOOR = '1.20.0';
 
+/**
+ * The floor for a settings file whose payments budget amounts have been renamed.
+ *
+ * 2.0.5 is the first release whose reader knows `payments.budget.dailyItem`,
+ * `dailyOverage`, `perPurchaseCeiling` and `overageToleranceDailyAllowance`.
+ * An older reader knows only the `…Cents` names, so once the rename is on disk
+ * it finds four keys it cannot place and skips them — and a skipped spending
+ * limit is a limit that stops being enforced.
+ *
+ * That is not a hypothetical: a client on this runtime renamed the keys under a
+ * running 1.28.6 daemon, which then said "payments.budget.perPurchaseCeiling is
+ * not a setting this build knows" and stopped resolving a configured ceiling.
+ * Ownership now stops the client from writing at all; this floor covers the
+ * remaining half, where the DAEMON is the newer component. With it recorded,
+ * an older reader of the migrated file names the version and says to update,
+ * instead of reporting four unrelated keys it does not recognize.
+ */
+export const PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR = '2.0.5';
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
