@@ -159,8 +159,8 @@
     "rationale": "new public package export budget; measured 111 B gzip @ v0.33.0 release verification; headroom max(ceil(111*1.2)=134, 111+50=161) -> 161 (+50 B floor dominates)"
   },
   "./events/surfaces": {
-    "gzip_bytes": 778,
-    "rationale": "measured 648 B gzip @ v1.0.0 release verification (session-lifecycle SSE events + spine surface events grew the events/surfaces export); headroom max(ceil(648*1.2)=778, 648+50=698) -> 778 (1.2x dominates)"
+    "gzip_bytes": 1295,
+    "rationale": "measured 1079 B gzip @ v2.0.6 release verification (channel surface-kind classification exports \u2014 CHANNEL_SURFACE_KINDS/isChannelSurfaceKind \u2014 grew the events/surfaces export); headroom max(ceil(1079*1.2)=1295, 1079+50=1129) -> 1295 (1.2x dominates)"
   },
   "./events/tasks": {
     "gzip_bytes": 161,
@@ -637,5 +637,9 @@
   "./workers": {
     "gzip_bytes": 3681,
     "rationale": "Cloudflare Workers surface; measured 3067 B gzip @ commit c0e5910; headroom max(ceil(3067*1.2)=3681, 3067+50=3117) \u2192 3681 (1.2x dominates by 564 B); budget bumped from 3095 (only 28 B headroom) to 3681 per re-anchor; dominated by createGoodVibesCloudflareWorker (~1200 B), readTextBodyWithinLimit + proxyDaemonBatch + proxyDaemonJson (~600 B), GoodVibesCloudflareWorkerEnv/Options/Worker interfaces + requireWorkerAuth (~400 B)"
+  },
+  "./platform/personal-capture": {
+    "gzip_bytes": 456,
+    "rationale": "new public package export budget; measured 380 B gzip @ v2.0.6 release verification (personal-capture authority/spawn-contract/port for conversational channel turns); headroom max(ceil(380*1.2)=456, 380+50=430) -> 456 (1.2x dominates)"
   }
 }
