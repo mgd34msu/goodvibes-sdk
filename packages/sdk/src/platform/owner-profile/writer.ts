@@ -30,6 +30,7 @@ import {
   canonicalProfileSection,
   normalizeProfileKey,
   profileFieldById,
+  unknownProfileFieldMessage,
   type ProfileSectionName,
 } from './fields.js';
 import type {
@@ -307,7 +308,7 @@ export interface SetFieldInput {
 export function setField(projection: ProfileProjection, input: SetFieldInput): ProfileEditResult {
   const def = profileFieldById(input.fieldId);
   if (def === undefined) {
-    return refuse(projection, `"${input.fieldId}" is not a profile field.`);
+    return refuse(projection, unknownProfileFieldMessage(input.fieldId));
   }
 
   const existing = projection.fields.get(def.id);
@@ -475,7 +476,7 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   }
 
   const def = profileFieldById(input.fieldId);
-  if (def === undefined) return refuse(projection, `"${input.fieldId}" is not a profile field.`);
+  if (def === undefined) return refuse(projection, unknownProfileFieldMessage(input.fieldId));
   const existing = projection.fields.get(def.id);
   const history = projection.superseded.get(def.id) ?? [];
   // Every line carrying this field, not just the active one:
@@ -537,7 +538,7 @@ export function mostRecentSuperseded(
  */
 export function undo(projection: ProfileProjection, fieldId: string): ProfileEditResult {
   const def = profileFieldById(fieldId);
-  if (def === undefined) return refuse(projection, `"${fieldId}" is not a profile field.`);
+  if (def === undefined) return refuse(projection, unknownProfileFieldMessage(fieldId));
   const entry = mostRecentSuperseded(projection.superseded.get(def.id) ?? []);
   if (entry === undefined) {
     return refuse(projection, `Your profile has no earlier ${def.label} to go back to.`);

@@ -2,6 +2,26 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.4] - 2026-08-02
+
+### Fixed
+
+- **A corrupt watcher snapshot can no longer take the daemon down.** Snapshot
+  saves are atomic — written to a sibling temp file, flushed to disk, renamed
+  over the target — so a power loss or hard freeze mid-write leaves the old
+  snapshot intact instead of a torn file. And a snapshot that is corrupt
+  anyway (the live incident: a host freeze left valid JSON followed by NUL
+  bytes, and the daemon crash-looped parsing it — once at boot, once on a
+  periodic tick 47 seconds in) is quarantined beside the store with a receipt
+  naming what happened, bounded so a flapping writer cannot fill the disk,
+  and watcher state rebuilds from live registrations. Both halves apply to
+  every consumer of the store: daemon, terminal app, agent.
+- The "not a profile field" refusal names the valid field ids. It used to
+  cite a documentation section — useless to the model that just guessed a
+  wrong id mid-conversation, which is exactly who receives it. All refusal
+  sites (set, forget, undo, and the HTTP route) now enumerate the real
+  catalog from one shared formatter.
+
 ## [2.0.3] - 2026-08-01
 
 ### Fixed

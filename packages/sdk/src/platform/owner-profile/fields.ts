@@ -236,6 +236,19 @@ export function profileFieldById(fieldId: string): ProfileFieldDef | undefined {
   return FIELD_BY_ID.get(fieldId);
 }
 
+/**
+ * The refusal text for an unrecognised field id.
+ *
+ * Names every valid id compactly instead of pointing at docs/owner-profile.md
+ * §4.3 — a doc citation reads fine to a person but is useless to a model at
+ * runtime, which cannot open the file and retry. One formatter, used by every
+ * "not a profile field" refusal in the gateway route and the writer, so the
+ * enumerated list can never drift between call sites.
+ */
+export function unknownProfileFieldMessage(fieldId: string): string {
+  return `"${fieldId}" is not a profile field. Valid: ${PROFILE_FIELDS.map((field) => field.id).join(', ')}.`;
+}
+
 /** The field a `key:` names under a canonical section, or `undefined` for prose. */
 export function profileFieldForLabel(
   section: ProfileSectionName,

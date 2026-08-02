@@ -503,3 +503,25 @@ describe('placement and caps', () => {
     expect(bytes.split('\n').every((line) => line.length === 0 || line.endsWith('\r'))).toBe(true);
   });
 });
+
+describe('an unrecognised field id names what is valid instead of pointing at a doc', () => {
+  test('the refusal enumerates real field ids a model can retry with, not a docs citation', () => {
+    const projection = parseProfileDocument({
+      path: '/x',
+      text: ['## Location', '', 'city: Lansing, MI', ''].join('\n'),
+      exists: true,
+    });
+    const result = setField(projection, {
+      fieldId: 'location.notARealField',
+      value: 'whatever',
+      provenance: { surface: 'tui', date: '2026-07-27', said: 'x' },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain('"location.notARealField" is not a profile field');
+    // Enumerates real ids a caller can retry with, rather than sending it to a doc it cannot open.
+    expect(result.reason).toContain('identity.name');
+    expect(result.reason).toContain('location.timezone');
+    expect(result.reason).not.toContain('docs/owner-profile.md');
+  });
+});

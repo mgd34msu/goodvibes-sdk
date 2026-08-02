@@ -44,6 +44,7 @@ export {
   profileFieldForLabel,
   profileFieldsForSection,
   profileSectionTier,
+  unknownProfileFieldMessage,
   type ProfileFieldDef,
   type ProfileFieldValidation,
   type ProfileFieldValidator,

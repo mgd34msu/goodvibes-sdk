@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -195,13 +195,26 @@ describe('state persistence failures', () => {
     await kv.dispose();
   });
 
-  test('watcher snapshots reject malformed persisted state instead of loading as empty', () => {
+  test('watcher snapshots quarantine malformed persisted state instead of crashing the caller', () => {
+    // Watcher snapshots are a special case among this file's stores: a crash
+    // parsing this one at daemon boot / on a periodic tick took the whole
+    // daemon down twice in production (a host freeze zero-tailed the file).
+    // The deliberate fix is the opposite of every other test in this
+    // describe block — a corrupt file is quarantined (renamed aside with a
+    // `.why` receipt, never deleted, never re-parsed) and treated exactly
+    // like "no snapshot yet" so the caller rebuilds from live registrations,
+    // instead of throwing and crash-looping the process. See
+    // packages/sdk/src/platform/watchers/store.ts.
     const dir = tempDir('watcher-store');
     mkdirSync(dir, { recursive: true });
     const file = join(dir, 'watchers.json');
     writeFileSync(file, '{bad', 'utf-8');
 
-    expect(() => loadWatcherSnapshotFromPath(file)).toThrow();
+    expect(loadWatcherSnapshotFromPath(file)).toBeNull();
+    expect(existsSync(file)).toBe(false);
+    const quarantined = readdirSync(dir).filter((name) => name.startsWith('watchers.json.corrupt-') && !name.endsWith('.why'));
+    expect(quarantined.length).toBe(1);
+    expect(existsSync(join(dir, `${quarantined[0]}.why`))).toBe(true);
   });
 
   test('worklist tool rejects malformed persisted state instead of overwriting it', async () => {

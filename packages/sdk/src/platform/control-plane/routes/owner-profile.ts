@@ -60,6 +60,7 @@ import {
   describeProfileRead,
   isProfileSurface,
   profileFieldById,
+  unknownProfileFieldMessage,
   type OwnerProfileStore,
   type ProfileSurface,
 } from '../../owner-profile/index.js';
@@ -95,7 +96,7 @@ function requireFieldId(value: unknown): string {
   const fieldId = requireString(value, 'fieldId');
   if (profileFieldById(fieldId) === undefined) {
     throw new GatewayVerbError(
-      `"${fieldId}" is not a profile field. Profile fields are the mechanical fields listed in docs/owner-profile.md §4.3; everything else in the document is prose.`,
+      unknownProfileFieldMessage(fieldId),
       'INVALID_ARGUMENT',
       400,
       'fieldId',
