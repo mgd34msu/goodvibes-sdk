@@ -91303,6 +91303,7 @@
                       "companion-task",
                       "companion-chat",
                       "automation",
+                      "channel",
                       "acp",
                       "hosted"
                     ]

@@ -12,9 +12,11 @@
  * single call before submitMessage/trySpawnAgent, without the SharedSessionBroker
  * needing to know about principals or channel profiles.
  */
-import type { PrincipalRegistry, PrincipalResolution } from '../principals/index.js';
+import { ownerPrincipal, type PrincipalRegistry, type PrincipalResolution } from '../principals/index.js';
 import type { ChannelProfileRegistry } from './registry.js';
 import type { ChannelPermissionMode, ChannelProfileDefaults } from './types.js';
+import type { ChannelPolicyManager } from '../channels/policy-manager.js';
+import type { ChannelSurface } from '../channels/types.js';
 
 /** Stable session-metadata keys the attribution stamps. */
 export const ATTRIBUTED_PRINCIPAL_ID_KEY = 'attributedPrincipalId';
@@ -46,10 +48,21 @@ export interface InboundSender {
  * metadata that attributes the originated session to it. An absent userId or an
  * unmapped identity attributes to the honest unknown principal (known:false) —
  * never a guess.
+ *
+ * `channelPolicy`, when supplied, is the one exception to "never a guess": a
+ * sender who is not in the named-principal registry but whom the channel's OWN
+ * ingress policy already authorized as its owner (the per-surface allowlist
+ * self-seeded from whoever pairs the channel first — see
+ * `ChannelPolicyManager.evaluateIngress`) is attributed to the honest OWNER
+ * principal, not the unknown one. Channel policy already decided this sender is
+ * the owner in order to let the message through at all; attribution repeating
+ * "unknown" for the person the platform just finished authorizing would be
+ * dishonest, not cautious.
  */
 export async function attributeInboundSession(
   principals: Pick<PrincipalRegistry, 'resolveByIdentity'>,
   sender: InboundSender,
+  channelPolicy?: Pick<ChannelPolicyManager, 'getPolicy'> | undefined,
 ): Promise<{ readonly metadata: Record<string, unknown>; readonly resolution: PrincipalResolution | null }> {
   const value = sender.userId?.trim();
   if (!value) {
@@ -59,6 +72,21 @@ export async function attributeInboundSession(
     };
   }
   const resolution = await principals.resolveByIdentity({ channel: sender.surfaceKind, value });
+  if (!resolution.known && channelPolicy) {
+    const policy = channelPolicy.getPolicy(sender.surfaceKind as ChannelSurface);
+    if (policy.allowlistUserIds.includes(value)) {
+      const owner = ownerPrincipal({ channel: sender.surfaceKind, value });
+      const ownerResolution: PrincipalResolution = { principal: owner, known: true };
+      return {
+        metadata: {
+          [ATTRIBUTED_PRINCIPAL_ID_KEY]: owner.id,
+          [ATTRIBUTED_PRINCIPAL_NAME_KEY]: owner.name,
+          [ATTRIBUTED_PRINCIPAL_KNOWN_KEY]: true,
+        },
+        resolution: ownerResolution,
+      };
+    }
+  }
   return {
     metadata: {
       [ATTRIBUTED_PRINCIPAL_ID_KEY]: resolution.principal.id,
@@ -111,11 +139,12 @@ export async function buildInboundIntakeEnrichment(
   deps: {
     readonly principals: Pick<PrincipalRegistry, 'resolveByIdentity'>;
     readonly channelProfiles: Pick<ChannelProfileRegistry, 'resolve'>;
+    readonly channelPolicy?: Pick<ChannelPolicyManager, 'getPolicy'> | undefined;
   },
   sender: InboundSender,
 ): Promise<InboundIntakeEnrichment> {
   const [attribution, profile] = await Promise.all([
-    attributeInboundSession(deps.principals, sender),
+    attributeInboundSession(deps.principals, sender, deps.channelPolicy),
     resolveOriginationProfile(deps.channelProfiles, sender),
   ]);
   return {

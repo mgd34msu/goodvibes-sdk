@@ -26,6 +26,7 @@ import {
   CHANNEL_PROFILE_PERMISSION_MODE_KEY,
 } from './intake.js';
 import type { ChannelProfileRegistry } from './registry.js';
+import type { ChannelPolicyManager } from '../channels/policy-manager.js';
 
 /** The broker surface this decorator needs: just the transport intake entry point. */
 export interface InboundIntakeBroker {
@@ -35,6 +36,15 @@ export interface InboundIntakeBroker {
 export interface InboundIntakeEnrichmentDeps {
   readonly principals: Pick<PrincipalRegistry, 'resolveByIdentity'>;
   readonly channelProfiles: Pick<ChannelProfileRegistry, 'resolve'>;
+  /**
+   * Optional: the channel ingress-policy manager. When present, a sender who
+   * is not a named principal but whom this surface's owner allowlist already
+   * authorizes is attributed to the honest owner principal instead of the
+   * unknown one — see {@link attributeInboundSession}. Absent (a narrower
+   * composition, or every existing test) keeps the prior unknown-principal
+   * behavior exactly.
+   */
+  readonly channelPolicy?: Pick<ChannelPolicyManager, 'getPolicy'> | undefined;
 }
 
 /**

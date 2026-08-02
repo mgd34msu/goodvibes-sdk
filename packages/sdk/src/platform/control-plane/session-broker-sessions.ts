@@ -11,6 +11,21 @@ import type {
 } from './session-types.js';
 import { dedupeSessionSurfaceKinds } from './session-broker-helpers.js';
 import { upsertSessionParticipant } from './session-broker-state.js';
+import { isChannelSurfaceKind } from '../../events/surfaces.js';
+
+/**
+ * The origin `kind` a freshly-created session gets when the caller does not
+ * name one explicitly (e.g. every channel adapter's `submitMessage` call, and
+ * the rollover create-path in session-broker-intent.ts). Derived from the
+ * surface that is actually creating it — the participant's surfaceKind, or
+ * failing that the route binding's — so a genuine third-party channel
+ * (Telegram, Slack, ntfy, ...) is stamped 'channel', never 'tui'. A session
+ * with no surface information at all (a bare `createSession({})`) falls back
+ * to 'tui', the documented default for legacy/ungrounded records.
+ */
+function classifySessionOriginKind(surfaceKind: string | undefined): SharedSessionRecord['kind'] {
+  return isChannelSurfaceKind(surfaceKind) ? 'channel' : 'tui';
+}
 
 export const RESERVED_SHARED_SESSION_IDS = new Set(['', 'system']);
 
@@ -119,7 +134,7 @@ export function createSharedSessionRecord(input: CreateSharedSessionRecordInput)
   const routeIds = input.routeBinding?.id ? [input.routeBinding.id] : [];
   return {
     id: sessionId,
-    kind: input.kind ?? 'tui',
+    kind: input.kind ?? classifySessionOriginKind(participant?.surfaceKind ?? input.routeBinding?.surfaceKind),
     project: input.project?.trim() || 'unknown',
     title: input.title?.trim() || input.routeBinding?.title || `Session ${sessionId}`,
     status: 'active',
