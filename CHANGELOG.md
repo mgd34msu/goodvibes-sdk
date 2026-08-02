@@ -2,6 +2,47 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.6] - 2026-08-02
+
+### Fixed
+
+- **A conversation stays a conversation.** The conversation gate's explicit
+  no-chain decision is now authoritative: the keyword heuristic that
+  normalizes review-shaped root tasks into write-review-fix-confirm chains
+  yields to a caller that suppressed the chain, so a chat message whose
+  transcript happens to contain "review the route" gets an answer, not an
+  owner/engineer/reviewer chain. A declared reviewer/tester template is still
+  normalized — naming the role is a statement, matching prose is a guess.
+- **The reply a person sees is the answer.** A chained agent's recorded
+  output now carries what it actually found or did; the chain status line
+  ("passed (review 10/10); commit skipped …") stays with the operator
+  progress feed and the chain journal, and never rides a channel reply.
+- **Each answer appears once.** The two agent-completion reporters (runtime
+  bus and the pending-reply poller) raced and could store the same reply
+  twice; the session broker now stores one completion per agent.
+- **The daemon settings file is rewritten only by the daemon.** Clients
+  applying the payments-budget rename migrate their in-memory view and leave
+  the file bytes untouched — no write, no receipt. The daemon folds the
+  rename, the receipt, and a reader floor into one atomic write, so an older
+  reader refuses loudly, naming both versions, instead of silently skipping
+  the owner's spending limits.
+- **A chat session is filed as a chat.** Channel-originated sessions get the
+  new home-scoped `channel` kind derived from their surface instead of
+  defaulting to a TUI project session rooted in a filesystem path, rollover
+  re-derives the classification, and a sender on the channel's owner
+  allowlist is attributed as the owner principal instead of unknown.
+
+### Added
+
+- **Personal information shared in conversation gets captured.** A
+  conversational channel turn — which previously spawned with zero tools —
+  now carries read/find/fetch plus the new `profile` capture tool, bound to
+  per-run owner authority that never travels in tool arguments. A pasted trip
+  itinerary lands in the owner profile's Plans section with its dates,
+  flights, travelers and confirmation number, and the reply states concretely
+  what was stored. Configurable via `profile.conversationalCapture` (default
+  on) and `profile.ownerChannels` (defaults to the occasions nudge channel).
+
 ## [2.0.5] - 2026-08-02
 
 ### Changed
