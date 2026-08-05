@@ -375,8 +375,8 @@
     "rationale": "re-anchored after intentional export expansion: review-task-source parser/planner, graph dynamics (live edges, cycle refusal, orphans, graph snapshot), elastic pool, fix-workstream runner; measured 834 B gzip @ commit f22cfa27; headroom max(ceil(834*1.2)=1001, 834+50=884) \u2192 1001 (1.2x dominates by 117 B)"
   },
   "./platform/occasions": {
-    "gzip_bytes": 1353,
-    "rationale": "new entry: the occasions surface \u2014 occasion/plan/nudge/interview types, the line grammar, the calendar date arithmetic, the nudge composer, the profile reader and the policy/sweep shapes a surface renders. The service, the state store and the capture flow are deliberately NOT in the barrel: the daemon owns one of each and every operation is an occasions.* verb. Measured 1127 B gzip @ the 1.19.2 occasions round; headroom max(ceil(1127*1.2)=1353, 1127+50=1177) \u2192 1353 (1.2x dominates)"
+    "gzip_bytes": 1632,
+    "rationale": "measured 1360 B gzip @ v2.0.9 release verification (acknowledgment capture, subject attribution and the served-boundaries ledger); headroom max(ceil(1360*1.2)=1632, 1360+50=1410) -> 1632 (1.2x dominates)"
   },
   "./platform/owner-profile": {
     "gzip_bytes": 1031,
@@ -527,8 +527,8 @@
     "rationale": "public runtime seam; measured 695 B gzip @ commit c0e5910; headroom max(ceil(695*1.2)=834, 695+50=745) \u2192 834 (1.2x dominates by 89 B)"
   },
   "./platform/runtime/voice-setup": {
-    "gzip_bytes": 1924,
-    "rationale": "managed local-voice setup composer for fork-composed runtimes (TUI): createVoiceSetupService wires the single-flight install + live-progress status over the voice/provisioning primitives (provisionLocalVoiceRuntime/localVoiceRuntimeStatus/preconfigureLocalVoiceKeys/install-stamp) plus singleFlight; measured 1603 B gzip at first export; headroom max(ceil(1603*1.2)=1924, 1603+50=1653) -> 1924 (1.2x dominates)"
+    "gzip_bytes": 3142,
+    "rationale": "measured 2618 B gzip @ v2.0.9 release verification (setup chain, round-trip proof and supersede receipts); headroom max(ceil(2618*1.2)=3142, 2618+50=2668) -> 3142 (1.2x dominates)"
   },
   "./platform/scheduler": {
     "gzip_bytes": 102,
@@ -563,8 +563,8 @@
     "rationale": "tool registry surface; re-anchored after cancelAllAgentRuns was published here so consumers can satisfy the required RuntimePollerOwners.cancelHostedAgentRuns; measured 4321 B gzip @ 1.17.2; headroom max(ceil(4321*1.2)=5186, 4321+50=4371) -> 5186 (1.2x dominates); previously 4209 B, re-measured 3507 B gzip after the exec PTY prompt-answer path landed (interactive.ts runner + detection reachable from runtime.ts, detectPtyAvailability/probePtyHost wired in registerAllTools); headroom max(ceil(3507*1.2)=4209, 3507+50=3557) -> 4209 (1.2x dominates); previously dominated by registerAllTools (~1400 B), the exec sandbox runner (~500 B), registerToolWithContractGate + tool registration logic (~600 B)"
   },
   "./platform/tools/exec/sandbox": {
-    "gzip_bytes": 4294,
-    "rationale": "per-command exec sandbox runner (detectSandboxAvailability, probeSandboxHost, buildBwrapArgv, resolveExecSandboxPlan/resolveRuntimeSandboxPlan, attachSandboxMeta + their types) exposed so consumers can detect availability and probe the host when wiring approval flows to the sandbox; measured 3578 B gzip @ commit 01b2cf4c; headroom max(ceil(3578*1.2)=4294, 3578+50=3628) -> 4294 (1.2x dominates); dominated by the bwrap-argv construction + plan-resolution logic and the command-normalization import"
+    "gzip_bytes": 5883,
+    "rationale": "measured 4902 B gzip @ v2.0.9 release verification (sandbox self-labeling note and per-verbosity metadata); headroom max(ceil(4902*1.2)=5883, 4902+50=4952) -> 5883 (1.2x dominates)"
   },
   "./platform/triggers": {
     "gzip_bytes": 492,
@@ -583,8 +583,8 @@
     "rationale": "single-file SDK VERSION constant (cli/acp/mcp compose it) \u2014 exported for consumer composition roots after the 2026-07-14 phantom-export find; measured 245 B gzip; headroom max(ceil(245*1.2)=294, 245+50=295) -> 295 (+50 B floor dominates)"
   },
   "./platform/voice": {
-    "gzip_bytes": 546,
-    "rationale": "public facade; grew again when the wake-word engine, front end, supervision and checksum-pinned provisioning were re-exported here beside the spoken-turn (live TTS) policy engine; measured 455 B gzip @ 1.15.0 release preparation; headroom max(ceil(455*1.2)=546, 455+50=505) -> 546 (1.2x dominates)"
+    "gzip_bytes": 1090,
+    "rationale": "measured 908 B gzip @ v2.0.9 release verification (daemon-first stt routing and voice diagnostics); headroom max(ceil(908*1.2)=1090, 908+50=958) -> 1090 (1.2x dominates)"
   },
   "./platform/voice/capture": {
     "gzip_bytes": 1127,
