@@ -13427,6 +13427,19 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
       }
     }
   },
+  "occasions.acknowledge": {
+    "methodId": "occasions.acknowledge",
+    "http": {
+      "method": "POST",
+      "path": "/api/occasions/acknowledge"
+    },
+    "status": 200,
+    "body": {
+      "ok": false,
+      "reason": "sample",
+      "reply": "sample"
+    }
+  },
   "occasions.answer": {
     "methodId": "occasions.answer",
     "http": {
@@ -13619,6 +13632,8 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "recurrence": "annual",
             "kind": "gift-giving",
             "person": "sample",
+            "selfDeclared": false,
+            "subject": "owner",
             "leadDays": 0,
             "mirrored": false,
             "extras": [
@@ -13674,7 +13689,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "title": "sample",
             "person": "sample",
             "kind": "gift-giving",
-            "proximity": "approaching"
+            "proximity": "approaching",
+            "subject": "owner",
+            "acknowledged": false
           }
         ],
         "message": "sample",
@@ -13684,6 +13701,17 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         {
           "occasionId": "sample",
           "message": "sample"
+        }
+      ],
+      "acknowledged": [
+        {
+          "occasionId": "sample",
+          "title": "sample",
+          "person": "sample",
+          "kind": "gift-giving",
+          "proximity": "approaching",
+          "subject": "owner",
+          "acknowledged": false
         }
       ],
       "interviews": [
@@ -13844,6 +13872,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "droppedInterviews": 0,
         "staleMirrors": 0
       },
+      "reconciledOpenItems": 0,
       "corruption": "sample"
     }
   },
@@ -13867,7 +13896,9 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
             "title": "sample",
             "person": "sample",
             "kind": "gift-giving",
-            "proximity": "approaching"
+            "proximity": "approaching",
+            "subject": "owner",
+            "acknowledged": false
           }
         ],
         "message": "sample",

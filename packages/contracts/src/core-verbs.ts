@@ -211,6 +211,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //  - `answer` is not `set`: it records yes, no or LATER, and "later" is a
     //    distinct third answer that returns nearer the date rather than a
     //    softer decline.
+    //  - `acknowledge` is not a fourth `answer`, and the difference is the
+    //    whole reason it has its own verb: yes, no and later all RESOLVE the
+    //    open item and remove it, while this one leaves it standing. It means
+    //    "heard you" — the occasion stays open, stays enumerable and still
+    //    answers when he asks what is coming up; only the push stops. "Stop
+    //    telling me about this" and "forget about this" are different
+    //    instructions, and the feature had no way to hear the first one.
     //  - `sweep` is not `run`: it is the housekeeping-plus-approach pass, and
     //    it reaps even when it is not allowed to speak.
     //  - `pending` is not `list`: it returns what is UNRESOLVED, composed as it
@@ -218,7 +225,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //  - `gifts` is the history of what he landed on, named for what it holds.
     //  - `state` is the persisted-state disclosure — counts and reasons, never
     //    a date or an answer — distinct from a generic `status`.
-    'propose', 'confirm', 'answer', 'sweep', 'pending', 'gifts', 'state',
+    'propose', 'confirm', 'answer', 'acknowledge', 'sweep', 'pending', 'gifts', 'state',
   ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's

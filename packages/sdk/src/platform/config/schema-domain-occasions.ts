@@ -87,7 +87,7 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3,
     description:
-      'How often an unanswered occasion is raised again, in days, until the final stretch. Three was my choice rather than yours and is a setting for that reason. Silence never ends a nudge — there is no give-up-after-one-retry anywhere in this feature — so this governs the rhythm, not whether it stops.',
+      'How often an unresolved CONFLICT in your dates — two different dates recorded for the same thing — is raised again, in days. It no longer governs birthday reminders: those speak twice, when the date enters its runway and on the day itself, and never repeat beyond that. A conflict is a fact about your file that stays wrong until you fix it, so it does keep coming back.',
     ...intRange(1, 60),
   },
   {
@@ -95,7 +95,7 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 2,
     description:
-      'How many days before the date the rhythm goes daily. Two, so the last thing you heard about it is not four days old when it arrives. Also my choice rather than yours.',
+      'Currently governs nothing, and is kept only so an existing value in your settings file is not silently discarded. It used to make reminders go daily near the date, which is how one birthday produced a reminder every hour; that rhythm was replaced by two fixed moments — the start of the runway, and the day itself — and a setting cannot tune a count of two. It will either be given a real job or removed outright rather than left here.',
     ...intRange(0, 30),
   },
   {

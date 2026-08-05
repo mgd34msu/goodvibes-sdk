@@ -47,6 +47,7 @@ import type { ChannelDeliveryRouter } from '../../channels/delivery-router.js';
 import type { OwnerProfileStore } from '../../owner-profile/index.js';
 import { OccasionStateStore } from '../../occasions/state-store.js';
 import { OccasionsService } from '../../occasions/service.js';
+import { nudgeDeliveryText } from '../../occasions/destinations.js';
 import { readOccasionsPolicy } from '../../occasions/policy.js';
 import { startOccasionSweepTicker } from '../../occasions/ticker.js';
 import { logger } from '../../utils/logger.js';
@@ -89,6 +90,14 @@ export function composeOccasions(
       importantDates: () => profile.importantDates(),
       plans: () => profile.plans(),
       person: (name) => profile.person(name),
+      // What he calls HIMSELF, so an occasion about him can be told apart from
+      // one about anyone else. Two declared fields and nothing inferred: this
+      // is the linkage that lets his own birthday stop being pushed at him
+      // without a name literal existing anywhere in the code.
+      ownerNames: () => [
+        profile.get('identity.name')?.value ?? '',
+        profile.get('identity.goesBy')?.value ?? '',
+      ].filter((name) => name.trim().length > 0),
     },
     writer: {
       append: (input) => profile.append(input),
@@ -110,14 +119,21 @@ export function composeOccasions(
       ? {}
       : {
         deliverer: {
-          deliver: async ({ channel, nudge }) => router.deliver({
-            target: parseChannelDeliveryTarget(channel),
-            body: nudge.message,
-            title: 'A date is coming up',
-            jobId: 'occasions',
-            runId: nudge.id,
-            includeLinks: false,
-          }),
+          // The text is chosen by destination rather than fixed here. A message
+          // channel gets the plain line; the agent's own conversation gets the
+          // framed notice, because text dropped bare into a conversation is
+          // indistinguishable from the conversation. See destinations.ts.
+          deliver: async ({ channel, nudge }) => {
+            const { title, body } = nudgeDeliveryText(channel, nudge);
+            return router.deliver({
+              target: parseChannelDeliveryTarget(channel),
+              body,
+              title,
+              jobId: 'occasions',
+              runId: nudge.id,
+              includeLinks: false,
+            });
+          },
         },
       }),
   });

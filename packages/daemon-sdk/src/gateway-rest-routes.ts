@@ -95,6 +95,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/occasions/confirm', 'occasions.confirm'),
   route('POST', '/api/occasions/remove', 'occasions.remove'),
   route('POST', '/api/occasions/answer', 'occasions.answer'),
+  route('POST', '/api/occasions/acknowledge', 'occasions.acknowledge'),
   route('POST', '/api/occasions/interview', 'occasions.interview.get'),
   route('POST', '/api/occasions/interview/answer', 'occasions.interview.answer'),
   route('POST', '/api/occasions/interview/record', 'occasions.interview.record'),

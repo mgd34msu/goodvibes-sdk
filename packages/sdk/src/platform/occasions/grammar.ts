@@ -18,7 +18,14 @@
  * - Sarah's birthday · 03-14 · annual · gift-giving · for Sarah · lead 21
  * - Dad · 11-02 · annual · remember-only
  * - Our anniversary · 2015-09-12 · annual · gift-giving · for Jane
+ * - My birthday · 08-06 · annual · remember-only · for me
  * ```
+ *
+ * `for me` — and a bare `mine`, `myself` or `self` — says the occasion is about
+ * the OWNER. It is the one attribution the parser can settle by itself, and it
+ * matters because something he only has to remember about himself is something
+ * he already knows: see subject.ts. Every other attribution is reported as
+ * written and resolved by the reader, which can see what he calls himself.
  *
  * Segments after the title are classified BY SHAPE rather than by position, so
  * he can write them in whatever order he thinks of them and a line stays valid
@@ -39,6 +46,7 @@ import {
   type OccasionDate,
   type OccasionRecurrence,
 } from './dates.js';
+import { isSelfAttribution } from './subject.js';
 import {
   isOccasionKind,
   type Occasion,
@@ -124,6 +132,7 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
   let recurrence: OccasionRecurrence | null = null;
   let kind: OccasionKind | null = null;
   let person = '';
+  let selfDeclared = false;
   let leadDays: number | null = null;
   let mirrored = false;
   const extras: string[] = [];
@@ -149,9 +158,21 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
       leadDays = Number(lead[1]);
       continue;
     }
+    // `for me` and a bare `mine` both say the occasion is about HIM. Checked
+    // before the general `for <name>` branch so "me" never lands in `person`
+    // as if it were somebody's name.
+    if (isSelfAttribution(segment)) {
+      selfDeclared = true;
+      continue;
+    }
     const who = FOR.exec(segment);
     if (who !== null) {
-      person = (who[1] ?? '').trim();
+      const named = (who[1] ?? '').trim();
+      if (isSelfAttribution(named)) {
+        selfDeclared = true;
+        continue;
+      }
+      person = named;
       continue;
     }
     if (segment.trim().toLowerCase() === 'mirrored') {
@@ -188,6 +209,12 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
       recurrence: recurrence ?? (date.kind === 'dated' ? 'once' : 'annual'),
       kind,
       person,
+      selfDeclared,
+      // The parser reads ONE LINE and has never seen the Identity section, so
+      // it cannot know whether "Mike" is him. It reports what the line says and
+      // leaves the conclusion to `readOccasions`, which has his declared names.
+      // Unattributed is the safe default: it behaves exactly as before.
+      subject: selfDeclared ? 'owner' : 'unattributed',
       leadDays,
       mirrored,
       extras,
@@ -215,7 +242,8 @@ export function renderOccasionLine(occasion: Occasion): string {
     occasion.recurrence,
     occasion.kind,
   ];
-  if (occasion.person.length > 0) parts.push(`for ${occasion.person}`);
+  if (occasion.selfDeclared) parts.push('for me');
+  else if (occasion.person.length > 0) parts.push(`for ${occasion.person}`);
   if (occasion.leadDays !== null) parts.push(`lead ${occasion.leadDays}`);
   if (occasion.mirrored) parts.push('mirrored');
   parts.push(...occasion.extras);

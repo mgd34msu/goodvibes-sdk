@@ -10,7 +10,7 @@ import type { OperatorMethodId } from './operator-method-ids.js';
  * call sites) hand-written on top of these generated primitives.
  *
  * Contract product version: 2.0.8
- * Methods: 506 total, 434 REST-routed, 72 ws-only invoke.
+ * Methods: 507 total, 435 REST-routed, 72 ws-only invoke.
  */
 
 export type WebuiHttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -1180,6 +1180,10 @@ export const WEBUI_METHOD_ROUTES: Readonly<Record<string, WebuiRouteDefinition>>
     "method": "GET",
     "path": "/api/memory/vector"
   },
+  "occasions.acknowledge": {
+    "method": "POST",
+    "path": "/api/occasions/acknowledge"
+  },
   "occasions.answer": {
     "method": "POST",
     "path": "/api/occasions/answer"
@@ -2177,6 +2181,7 @@ export const WEBUI_METHOD_DISPOSITION: Readonly<Record<string, WebuiMethodDispos
   "memory.review-queue": "rest",
   "memory.vector.rebuild": "rest",
   "memory.vector.stats": "rest",
+  "occasions.acknowledge": "rest",
   "occasions.answer": "rest",
   "occasions.confirm": "rest",
   "occasions.conflict.resolve": "rest",
@@ -16002,6 +16007,18 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
       }
     }
   },
+  "occasions.acknowledge": {
+    "input": {
+      "occasionId": "sample",
+      "source": "conversation",
+      "occurrence": "sample"
+    },
+    "output": {
+      "ok": false,
+      "reason": "sample",
+      "reply": "sample"
+    }
+  },
   "occasions.answer": {
     "input": {
       "occasionId": "sample",
@@ -16181,6 +16198,8 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "recurrence": "annual",
             "kind": "gift-giving",
             "person": "sample",
+            "selfDeclared": false,
+            "subject": "owner",
             "leadDays": 0,
             "mirrored": false,
             "extras": [
@@ -16231,7 +16250,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "title": "sample",
             "person": "sample",
             "kind": "gift-giving",
-            "proximity": "approaching"
+            "proximity": "approaching",
+            "subject": "owner",
+            "acknowledged": false
           }
         ],
         "message": "sample",
@@ -16241,6 +16262,17 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         {
           "occasionId": "sample",
           "message": "sample"
+        }
+      ],
+      "acknowledged": [
+        {
+          "occasionId": "sample",
+          "title": "sample",
+          "person": "sample",
+          "kind": "gift-giving",
+          "proximity": "approaching",
+          "subject": "owner",
+          "acknowledged": false
         }
       ],
       "interviews": [
@@ -16397,6 +16429,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "droppedInterviews": 0,
         "staleMirrors": 0
       },
+      "reconciledOpenItems": 0,
       "corruption": "sample"
     }
   },
@@ -16415,7 +16448,9 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
             "title": "sample",
             "person": "sample",
             "kind": "gift-giving",
-            "proximity": "approaching"
+            "proximity": "approaching",
+            "subject": "owner",
+            "acknowledged": false
           }
         ],
         "message": "sample",

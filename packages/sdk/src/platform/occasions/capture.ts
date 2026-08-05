@@ -90,6 +90,16 @@ export interface ProposeOccasionInput {
   readonly person?: string | undefined;
   readonly recurrence?: string | undefined;
   readonly leadDays?: number | undefined;
+  /**
+   * True when the occasion is about the OWNER himself.
+   *
+   * Written onto the line as `for me`, and the reason it is captured rather
+   * than worked out later: he knows when his own birthday is, so an occasion
+   * about him that he only has to remember is never pushed at him. Stating it
+   * at capture is the reliable path; the reader can also resolve a possessive
+   * title against his declared name, but only he can settle the ambiguous ones.
+   */
+  readonly self?: boolean | undefined;
 }
 
 export interface ConfirmOccasionInput extends ProposeOccasionInput {
@@ -147,7 +157,13 @@ export function proposeOccasion(
     // written. When he has not chosen one, `needsKind` is true and `confirm`
     // refuses rather than writing this placeholder.
     kind: kind ?? 'remember-only',
-    person: (input.person ?? '').trim(),
+    person: input.self === true ? '' : (input.person ?? '').trim(),
+    selfDeclared: input.self === true,
+    // The proposal is not read back through the reader, so nothing here can
+    // resolve a possessive title against his name. `for me` is the only
+    // attribution a capture settles by itself; everything else resolves the
+    // first time the written line is read.
+    subject: input.self === true ? 'owner' : 'unattributed',
     leadDays: typeof input.leadDays === 'number' && Number.isFinite(input.leadDays)
       ? Math.max(0, Math.round(input.leadDays))
       : null,
