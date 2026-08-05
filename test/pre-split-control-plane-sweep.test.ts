@@ -19,7 +19,7 @@
  */
 
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -55,8 +55,8 @@ interface Home {
   readonly root: string;
   /** `<home>/.goodvibes/control-plane` — the unscoped, pre-split store. */
   readonly legacyDirectory: string;
-  /** `<home>/.goodvibes/tui/control-plane` — what the broker serves. */
-  readonly liveDirectory: string;
+  /** `<home>/.goodvibes/tui/control-plane` — where the daemon's own state belongs. */
+  readonly scopedDirectory: string;
   readonly goodvibesRoot: string;
 }
 
@@ -65,10 +65,10 @@ function makeHome(): Home {
   roots.push(root);
   const goodvibesRoot = join(root, '.goodvibes');
   const legacyDirectory = join(goodvibesRoot, 'control-plane');
-  const liveDirectory = join(goodvibesRoot, 'tui', 'control-plane');
+  const scopedDirectory = join(goodvibesRoot, 'tui', 'control-plane');
   mkdirSync(legacyDirectory, { recursive: true });
-  mkdirSync(liveDirectory, { recursive: true });
-  return { root, legacyDirectory, liveDirectory, goodvibesRoot };
+  mkdirSync(scopedDirectory, { recursive: true });
+  return { root, legacyDirectory, scopedDirectory, goodvibesRoot };
 }
 
 function quarantineDirectories(goodvibesRoot: string): readonly string[] {
@@ -80,7 +80,7 @@ describe('pre-split control-plane sweep', () => {
     const home = makeHome();
 
     // The store the broker serves: two sessions.
-    const live = makeBroker(join(home.liveDirectory, 'sessions.json'));
+    const live = makeBroker(join(home.scopedDirectory, 'sessions.json'));
     await live.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
     await live.createSession({ id: 'shared', kind: 'agent', project: '/w' });
 
@@ -91,7 +91,8 @@ describe('pre-split control-plane sweep', () => {
 
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
 
     expect(report.status).toBe('swept');
@@ -101,7 +102,7 @@ describe('pre-split control-plane sweep', () => {
     expect(report.failures).toEqual([]);
 
     // The session is now readable from the store the broker actually serves.
-    const reopened = makeBroker(join(home.liveDirectory, 'sessions.json'));
+    const reopened = makeBroker(join(home.scopedDirectory, 'sessions.json'));
     await reopened.start();
     const ids = new Set(reopened.listSessions(100).map((session) => session.id));
     expect(ids.has('only-in-stale')).toBe(true);
@@ -124,56 +125,146 @@ describe('pre-split control-plane sweep', () => {
     expect(report.receipt).toContain(report.quarantineDirectory as string);
   });
 
-  test('leaves a file that exists ONLY at the legacy path alone and says so in the receipt', async () => {
+  test('MOVES a file that exists only at the legacy path into the scoped directory, whole, with a receipt naming it', async () => {
     const home = makeHome();
 
-    const live = makeBroker(join(home.liveDirectory, 'sessions.json'));
+    const live = makeBroker(join(home.scopedDirectory, 'sessions.json'));
     await live.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
     const stale = makeBroker(join(home.legacyDirectory, 'sessions.json'));
     await stale.createSession({ id: 'only-in-stale', kind: 'tui', project: '/w' });
 
     // The two files that were live-in-use on the owner's machine: no counterpart
-    // in the live store, so they are the ONLY copy, not a second one.
-    writeFileSync(join(home.legacyDirectory, 'occasions-state.json'), '{"occasions":[]}');
-    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), '{"registrations":[]}');
+    // in the scoped directory, so each is the ONLY copy of real state — written
+    // there by a composition site that forgot the surface segment.
+    const occasions = '{"occasions":[{"id":"birthday-1"}]}';
+    const principals = '{"principals":[]}';
+    writeFileSync(join(home.legacyDirectory, 'occasions-state.json'), occasions);
+    writeFileSync(join(home.legacyDirectory, 'principals.json'), principals);
 
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
 
     expect(report.status).toBe('swept');
+    expect(report.adoptedFiles).toEqual(['occasions-state.json', 'principals.json']);
     expect(report.movedFiles).toEqual(['sessions.json']);
-    expect(report.leftInPlace).toEqual(['occasions-state.json', 'workspace-registrations.json']);
+    expect(report.conflictedFiles).toEqual([]);
 
-    // Still there, untouched. Moving them would have deleted working state.
-    expect(existsSync(join(home.legacyDirectory, 'occasions-state.json'))).toBe(true);
-    expect(existsSync(join(home.legacyDirectory, 'workspace-registrations.json'))).toBe(true);
+    // Moved, not copied, and byte-for-byte: a move carries the state whole, so
+    // no shape is parsed and no merge is invented.
+    expect(readFileSync(join(home.scopedDirectory, 'occasions-state.json'), 'utf8')).toBe(occasions);
+    expect(readFileSync(join(home.scopedDirectory, 'principals.json'), 'utf8')).toBe(principals);
+    expect(existsSync(join(home.legacyDirectory, 'occasions-state.json'))).toBe(false);
+
+    // Nothing is left, so the pre-split directory is gone — one store, no decoy.
+    expect(report.legacyDirectoryRemoved).toBe(true);
+    expect(existsSync(home.legacyDirectory)).toBe(false);
+
+    expect(report.receipt).toContain('occasions-state.json');
+    expect(report.receipt).toContain(home.scopedDirectory);
+    expect(report.receipt).toContain('the pre-split directory is gone');
+  });
+
+  test('leaves the cross-product workspace register at the unscoped path on purpose, and says why', async () => {
+    const home = makeHome();
+    writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
+    const registrations = '{"registrations":["/home/somebody/project"]}';
+    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), registrations);
+
+    const report = await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
+    });
+
+    // goodvibes-agent reads this same file directly. Moving it under one
+    // product's surface root would hide it from the others, so the sweep does
+    // not touch it — and the directory it keeps alive is explained rather than
+    // left looking like an unfinished migration.
+    expect(report.sharedFiles).toEqual(['workspace-registrations.json']);
+    expect(report.adoptedFiles).toEqual([]);
+    expect(report.movedFiles).toEqual([]);
+    expect(readFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), 'utf8')).toBe(registrations);
+    expect(existsSync(join(home.scopedDirectory, 'workspace-registrations.json'))).toBe(false);
+    expect(report.legacyDirectoryRemoved).toBe(false);
+    expect(report.receipt).toContain('on purpose');
+    expect(report.receipt).toContain('workspace-registrations.json');
+  });
+
+  test('REFUSES loudly when both copies exist and disagree: nothing moves, both survive, the receipt names the conflict', async () => {
+    const home = makeHome();
+    writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
+
+    const inUse = '{"occasions":[{"id":"scoped"}]}';
+    const older = '{"occasions":[{"id":"legacy"}]}';
+    writeFileSync(join(home.scopedDirectory, 'occasions-state.json'), inUse);
+    writeFileSync(join(home.legacyDirectory, 'occasions-state.json'), older);
+
+    const report = await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
+    });
+
+    expect(report.status).toBe('conflicted');
+    expect(report.conflictedFiles).toEqual(['occasions-state.json']);
+    expect(report.adoptedFiles).toEqual([]);
+    expect(report.movedFiles).toEqual([]);
+    expect(report.quarantineDirectory).toBeNull();
+
+    // NOTHING is lost and nothing is picked as a winner. Both bytes survive.
+    expect(readFileSync(join(home.scopedDirectory, 'occasions-state.json'), 'utf8')).toBe(inUse);
+    expect(readFileSync(join(home.legacyDirectory, 'occasions-state.json'), 'utf8')).toBe(older);
     expect(report.legacyDirectoryRemoved).toBe(false);
 
-    // And the remaining condition is disclosed rather than quietly half-fixed.
+    // The receipt says which copy readers use and where the other one is.
     expect(report.receipt).toContain('occasions-state.json');
-    expect(report.receipt).toContain('workspace-registrations.json');
-    expect(report.receipt).toContain('only copy');
+    expect(report.receipt).toContain('different content');
+    expect(report.receipt).toContain(home.scopedDirectory);
+    expect(report.receipt).toContain(home.legacyDirectory);
+  });
+
+  test('retires a legacy copy that says exactly what the scoped one already says', async () => {
+    const home = makeHome();
+    writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
+    const same = '{"profiles":[]}';
+    writeFileSync(join(home.scopedDirectory, 'channel-profiles.json'), same);
+    writeFileSync(join(home.legacyDirectory, 'channel-profiles.json'), same);
+
+    const report = await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
+    });
+
+    expect(report.status).toBe('swept');
+    expect(report.movedFiles).toEqual(['channel-profiles.json']);
+    expect(report.conflictedFiles).toEqual([]);
+    expect(readFileSync(join(home.scopedDirectory, 'channel-profiles.json'), 'utf8')).toBe(same);
+    expect(report.legacyDirectoryRemoved).toBe(true);
   });
 
   test('is idempotent: a second run finds nothing to do and mints no second quarantine', async () => {
     const home = makeHome();
-    const live = makeBroker(join(home.liveDirectory, 'sessions.json'));
+    const live = makeBroker(join(home.scopedDirectory, 'sessions.json'));
     await live.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
     const stale = makeBroker(join(home.legacyDirectory, 'sessions.json'));
     await stale.createSession({ id: 'only-in-stale', kind: 'tui', project: '/w' });
 
     const first = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
     expect(first.status).toBe('swept');
     expect(quarantineDirectories(home.goodvibesRoot).length).toBe(1);
 
     const second = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
     // The directory is gone, so there is nothing left to detect.
     expect(second.status).toBe('absent');
@@ -181,22 +272,21 @@ describe('pre-split control-plane sweep', () => {
     expect(quarantineDirectories(home.goodvibesRoot).length).toBe(1);
   });
 
-  test('a legacy directory with nothing duplicated is reported clean, moves nothing and mints no receipt', async () => {
+  test('an empty legacy directory is reported clean and removed', async () => {
     const home = makeHome();
-    makeBroker(join(home.liveDirectory, 'sessions.json'));
-    writeFileSync(join(home.liveDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
-    writeFileSync(join(home.legacyDirectory, 'occasions-state.json'), '{"occasions":[]}');
+    writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
 
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
 
     expect(report.status).toBe('clean');
     expect(report.movedFiles).toEqual([]);
-    expect(report.leftInPlace).toEqual(['occasions-state.json']);
+    expect(report.adoptedFiles).toEqual([]);
     expect(report.receipt).toBeNull();
-    expect(existsSync(join(home.legacyDirectory, 'occasions-state.json'))).toBe(true);
+    expect(report.legacyDirectoryRemoved).toBe(true);
   });
 
   test('no legacy directory at all is absent, not an error', async () => {
@@ -205,7 +295,8 @@ describe('pre-split control-plane sweep', () => {
 
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
-      liveDirectory: home.liveDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
 
     expect(report.status).toBe('absent');
@@ -214,15 +305,16 @@ describe('pre-split control-plane sweep', () => {
 
   test('never sweeps the live store when both paths resolve to the same place', async () => {
     const home = makeHome();
-    writeFileSync(join(home.liveDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
+    writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
 
     const report = await sweepPreSplitControlPlaneStore({
-      legacyDirectory: home.liveDirectory,
-      liveDirectory: home.liveDirectory,
+      legacyDirectory: home.scopedDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
     });
 
     expect(report.status).toBe('absent');
-    expect(existsSync(join(home.liveDirectory, 'sessions.json'))).toBe(true);
+    expect(existsSync(join(home.scopedDirectory, 'sessions.json'))).toBe(true);
   });
 
   test('quarantine directories are bounded: expired ones are reaped and the count is capped, newest kept', () => {
@@ -270,7 +362,7 @@ describe('boot fold targets the store the broker actually serves', () => {
 
   test('folds into the live store and leaves the unscoped path unwritten', async () => {
     const home = makeHome();
-    const liveStorePath = join(home.liveDirectory, 'sessions.json');
+    const liveStorePath = join(home.scopedDirectory, 'sessions.json');
     const live = makeBroker(liveStorePath);
     await live.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
 
@@ -288,7 +380,7 @@ describe('boot fold targets the store the broker actually serves', () => {
 
   test('treats an existing unscoped store as a SOURCE, so what landed there is folded forward once', async () => {
     const home = makeHome();
-    const liveStorePath = join(home.liveDirectory, 'sessions.json');
+    const liveStorePath = join(home.scopedDirectory, 'sessions.json');
     const live = makeBroker(liveStorePath);
     await live.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
 
@@ -306,13 +398,13 @@ describe('boot fold targets the store the broker actually serves', () => {
 
   test('a broker built on a path exposes that path', () => {
     const home = makeHome();
-    const liveStorePath = join(home.liveDirectory, 'sessions.json');
+    const liveStorePath = join(home.scopedDirectory, 'sessions.json');
     expect(makeBroker(liveStorePath).storePath).toBe(liveStorePath);
   });
 
   test('the combined boot step folds, sweeps and hands the receipt to the caller in one pass', async () => {
     const home = makeHome();
-    const liveStorePath = join(home.liveDirectory, 'sessions.json');
+    const liveStorePath = join(home.scopedDirectory, 'sessions.json');
     const broker = makeBroker(liveStorePath);
     await broker.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
     const stale = makeBroker(join(home.legacyDirectory, 'sessions.json'));
@@ -322,6 +414,7 @@ describe('boot fold targets the store the broker actually serves', () => {
     const report = await runDaemonSessionStoreBoot({
       sessionBroker: broker,
       shellPaths: shellPathsFor(home),
+      surfaceRoot: 'tui',
       recordReceipt: (text) => receipts.push(text),
     });
 
@@ -338,7 +431,61 @@ describe('boot fold targets the store the broker actually serves', () => {
     expect(reopened.listSessions(100).map((session) => session.id)).toContain('stranded');
   });
 
-  test('a broker with no file of its own is skipped entirely rather than given a guessed path', async () => {
+  test('one boot migrates a pre-split machine whole; the second boot is a no-op', async () => {
+    const home = makeHome();
+    const liveStorePath = join(home.scopedDirectory, 'sessions.json');
+    const broker = makeBroker(liveStorePath);
+    await broker.createSession({ id: 'live-1', kind: 'agent', project: '/w' });
+
+    // The owner's machine, reproduced: a pre-split directory holding a stale
+    // session store plus the two files that were the only copy of live state.
+    const stale = makeBroker(join(home.legacyDirectory, 'sessions.json'));
+    await stale.createSession({ id: 'stranded', kind: 'tui', project: '/w' });
+    const occasions = '{"occasions":[{"id":"birthday-1"}]}';
+    writeFileSync(join(home.legacyDirectory, 'occasions-state.json'), occasions);
+    writeFileSync(join(home.legacyDirectory, 'principals.json'), '{"principals":[]}');
+
+    const firstBootReceipts: string[] = [];
+    const first = await runDaemonSessionStoreBoot({
+      sessionBroker: broker,
+      shellPaths: shellPathsFor(home),
+      surfaceRoot: 'tui',
+      recordReceipt: (text) => firstBootReceipts.push(text),
+    });
+
+    // After ONE boot: the state is all in the scoped directory and the
+    // pre-split directory is gone. No second store, no empty decoy.
+    expect(first?.status).toBe('swept');
+    expect(first?.legacyDirectoryRemoved).toBe(true);
+    expect(existsSync(home.legacyDirectory)).toBe(false);
+    expect(readFileSync(join(home.scopedDirectory, 'occasions-state.json'), 'utf8')).toBe(occasions);
+    expect(existsSync(join(home.scopedDirectory, 'principals.json'))).toBe(true);
+    expect(firstBootReceipts.length).toBe(1);
+
+    // The stranded session survived, in the store the broker serves.
+    const reopened = makeBroker(liveStorePath);
+    await reopened.start();
+    const ids = new Set(reopened.listSessions(100).map((session) => session.id));
+    expect(ids.has('stranded')).toBe(true);
+    expect(ids.has('live-1')).toBe(true);
+
+    // Second boot: nothing to find, nothing said, no second quarantine.
+    const quarantinesAfterFirst = quarantineDirectories(home.goodvibesRoot).length;
+    const secondBootReceipts: string[] = [];
+    const second = await runDaemonSessionStoreBoot({
+      sessionBroker: reopened,
+      shellPaths: shellPathsFor(home),
+      surfaceRoot: 'tui',
+      recordReceipt: (text) => secondBootReceipts.push(text),
+    });
+
+    expect(second?.status).toBe('absent');
+    expect(secondBootReceipts).toEqual([]);
+    expect(quarantineDirectories(home.goodvibesRoot).length).toBe(quarantinesAfterFirst);
+    expect(readFileSync(join(home.scopedDirectory, 'occasions-state.json'), 'utf8')).toBe(occasions);
+  });
+
+  test('a broker with no file of its own leaves the session store alone rather than moving it where nothing reads', async () => {
     const home = makeHome();
     writeFileSync(join(home.legacyDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
 
@@ -346,12 +493,17 @@ describe('boot fold targets the store the broker actually serves', () => {
     const report = await runDaemonSessionStoreBoot({
       sessionBroker: { storePath: null },
       shellPaths: shellPathsFor(home),
+      surfaceRoot: 'tui',
       recordReceipt: (text) => receipts.push(text),
     });
 
-    expect(report).toBeNull();
-    expect(receipts).toEqual([]);
-    // Nothing was folded, moved or removed on its behalf.
+    // The other stores still migrate — that is real work and unrelated to the
+    // broker. The SESSION store alone is left exactly where it is, and said so,
+    // because nothing here can name where those sessions belong.
+    expect(report?.skippedFiles).toEqual(['sessions.json']);
+    expect(report?.adoptedFiles).toEqual([]);
     expect(existsSync(join(home.legacyDirectory, 'sessions.json'))).toBe(true);
+    expect(existsSync(join(home.scopedDirectory, 'sessions.json'))).toBe(false);
+    expect(receipts[0]).toContain('injected store');
   });
 });

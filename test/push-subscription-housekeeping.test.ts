@@ -517,6 +517,7 @@ describe('push.vapidSubject reaches a real delivery', () => {
         },
       },
       shellPaths: { resolveUserPath: (...segments: string[]): string => join(dir, ...segments) },
+      surfaceRoot: 'test-surface',
       configManager: { get: ((key: ConfigKey) => config[key]) as never },
     };
     try {
@@ -563,6 +564,7 @@ describe('push.vapidSubject reaches a real delivery', () => {
         set: async (): Promise<void> => undefined,
       },
       shellPaths: { resolveUserPath: (...segments: string[]): string => join(dir, ...segments) },
+      surfaceRoot: 'test-surface',
       configManager: { get: ((key: ConfigKey) => config[key]) as never },
     };
     // Construction succeeds (a hand-edited config file must not wedge the

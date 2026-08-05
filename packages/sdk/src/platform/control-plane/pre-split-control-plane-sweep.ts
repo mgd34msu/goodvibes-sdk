@@ -1,64 +1,71 @@
 /**
- * pre-split-control-plane-sweep.ts — the boot-time sweep that ends the
+ * pre-split-control-plane-sweep.ts — the boot-time pass that ends the
  * two-control-plane-stores condition on a machine that ran a pre-split daemon.
  *
  * ── What was actually on disk ─────────────────────────────────────────────
  *
  * Every piece of the daemon's own state is supposed to live under
- * `.goodvibes/<surface root>/` (see the daemon's config/surface.ts). Its
- * session broker does: it is constructed on
- * `resolveProjectPath(surfaceRoot, 'control-plane', 'sessions.json')`, which on
- * an owner install is `~/.goodvibes/tui/control-plane/sessions.json`.
+ * `.goodvibes/<surface root>/` (see the daemon's config/surface.ts).
+ * `shellPaths.resolveUserPath(...)` adds no surface segment — the segment is
+ * always the caller's to pass — and a set of control-plane stores forgot to
+ * pass it. So `~/.goodvibes/control-plane/` accumulated state that belonged in
+ * `~/.goodvibes/tui/control-plane/`, and on the owner's machine it held:
  *
- * The boot-time legacy fold did not. `importLegacyDaemonSessionStores` folded
- * every pre-existing session store into `resolveUserPath('control-plane',
- * 'sessions.json')` — no surface segment, because `resolveUserPath` never adds
- * one; the segment is always the caller's to pass. So the fold's TARGET was
- * `~/.goodvibes/control-plane/sessions.json`, a path the broker has never read
- * from. It is written unconditionally on every boot (the importer persists even
- * when it merged nothing), which is why the stale store's mtime is the second
- * the current daemon started, and why it looks alive to anyone who checks.
+ *   sessions.json               274 KB, rewritten every boot by a legacy fold
+ *                               whose target was this unscoped path, read by
+ *                               nothing, and holding sessions the live store
+ *                               did not have.
+ *   occasions-state.json        live — written the day before this was found.
+ *   workspace-registrations.json live.
  *
- * The result on the owner's machine: two session stores, both plausible, both
- * recently written, disagreeing. The pre-split one held 274 KB of sessions the
- * live 55 KB store did not have, and nothing read it.
+ * The writers are repointed (control-plane-store-paths.ts). This is the other
+ * half: what to do about the state already sitting at the old address.
  *
- * ── What this sweep does, and what it deliberately does not ───────────────
+ * ── The four cases, and why each is what it is ────────────────────────────
  *
- * Two things live at the legacy path, and they need opposite treatment:
+ * One pass over the legacy directory, one decision per file:
  *
- *  - A file that ALSO exists in the live store is a DUPLICATE, and a duplicate
- *    that disagrees is the whole defect. Its contents are folded forward into
- *    the live store where a folder exists for its kind (today: sessions.json,
- *    via the id-keyed merge in session-store-importer.ts, so a re-run is a
- *    no-op), and the file is then moved aside into a quarantine directory with
- *    a receipt naming it. After that there is one store, not two.
+ *  1. THE SESSION STORE is folded, never adopted. It is the one store whose
+ *     scoped home is decided by the broker rather than by this directory's
+ *     layout (the broker's file is project-scoped), and the one with real
+ *     merge semantics of its own: an id-keyed union where the newer updatedAt
+ *     wins (session-store-importer.ts). Fold first, then retire.
  *
- *  - A file that exists ONLY at the legacy path is not a second store — it is
- *    the only copy of live state, written by a composition root that still
- *    resolves that path (occasions-state.json and workspace-registrations.json
- *    are the two on the owner's machine, and the latter was written the day
- *    before this was found). Moving those aside would not fix a disagreement;
- *    it would delete working state. They are LEFT WHERE THEY ARE and named in
- *    the receipt, so the remaining condition is disclosed rather than half
- *    fixed in silence.
+ *  2. NO SCOPED COUNTERPART → ADOPT: the file is MOVED to the scoped
+ *     directory. This is the migration. A move carries the state whole, parses
+ *     no shape and invents no merge, which is why a store this file has never
+ *     heard of migrates exactly as correctly as one it has.
  *
- * When the fold empties the legacy directory, the directory itself is removed —
- * so on a machine where everything was a duplicate, the stale store is gone
- * rather than left as an empty decoy.
+ *  3. A SCOPED COUNTERPART WITH IDENTICAL BYTES → RETIRE: the legacy copy is
+ *     redundant, so it moves to a quarantine directory named in the receipt.
  *
- * Quarantine directories are bounded the same way every other preserved-aside
- * artifact on this platform is (worktree/registry.ts's preserveUnreadableStore):
- * an age TTL plus a count cap, newest kept, ENOENT treated as success so two
- * processes sweeping at once is safe.
+ *  4. A SCOPED COUNTERPART WITH DIFFERENT BYTES → REFUSE, LOUDLY. There are no
+ *     merge semantics here for an arbitrary store's shape, and inventing one
+ *     would be a guess applied to the owner's data. Both files stay exactly
+ *     where they are, the receipt names the conflict, says which copy readers
+ *     are using, and says where the other one is. A sweep that quietly picked
+ *     a winner would be the same class of defect as the one it is fixing.
  *
- * Nothing here throws. A sweep that cannot read, move or remove something
- * records the failure in its report, leaves the file alone, and lets the daemon
- * boot.
+ * When nothing is left, the legacy directory is removed — so a machine that
+ * migrated cleanly is left with one store and no empty decoy. Running it again
+ * finds nothing to do.
+ *
+ * ORDERING: this runs before any of those stores is read. They all load lazily
+ * on first use (see e.g. occasions/state-store.ts's `state()`), and the daemon
+ * facade runs this before it starts the services that reach them. Adopting a
+ * file after its store had already read an empty one would leave the store
+ * about to overwrite what was just migrated in.
+ *
+ * Quarantine directories are bounded the way every other preserved-aside
+ * artifact here is (worktree/registry.ts): an age TTL plus a count cap, newest
+ * kept, ENOENT treated as success so two processes sweeping at once is safe.
+ *
+ * Nothing here throws. Anything that cannot be read, moved or removed is
+ * recorded in the report, left alone, and the daemon boots.
  */
 
-import { existsSync, mkdirSync, readdirSync, renameSync, rmdirSync, rmSync, statSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmdirSync, rmSync, statSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { importLegacySessionStores } from './session-store-importer.js';
@@ -76,53 +83,85 @@ const QUARANTINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 /** Count cap on quarantine directories. The age TTL alone is not a bound. Newest kept. */
 const MAX_QUARANTINE_DIRECTORIES = 5;
 
+/** The one store whose scoped home the broker decides, and which merges by id. */
+const SESSION_STORE_FILE = 'sessions.json';
+
 /**
- * Legacy store file names that have a real folder-forward path into the live
- * store, by file name. Anything else that duplicates a live file is quarantined
- * without folding — moving a duplicate aside is safe, inventing a merge for a
- * store shape nothing here understands is not.
+ * Stores that legitimately live at the unscoped path and must NOT be migrated.
+ *
+ * `workspace-registrations.json` is read and written directly by more than one
+ * product — the SDK's gateway, the daemon's checkpoint-eligibility reader, and
+ * goodvibes-agent's own store — so it is cross-product state rather than any
+ * one surface's. Moving it under a surface root would move it out from under
+ * every product that did not agree on that root, and workspaces registered from
+ * one would vanish from the other. It stays, and the receipt says so, until
+ * where cross-product state belongs is actually ruled.
  */
-const FOLDABLE_STORES: ReadonlySet<string> = new Set(['sessions.json']);
+const SHARED_UNSCOPED_STORES: ReadonlySet<string> = new Set(['workspace-registrations.json']);
 
 export interface PreSplitControlPlaneSweepReport {
   /**
-   * `absent`  — no legacy store directory (the ordinary case on a clean install).
-   * `clean`   — a legacy directory exists but nothing in it duplicates the live store.
-   * `swept`   — at least one duplicate was folded and/or moved aside.
+   * `absent`     — no legacy store directory (the ordinary case on a clean install).
+   * `clean`      — a legacy directory existed and there was nothing left to do.
+   * `swept`      — state was adopted, folded and/or retired this pass.
+   * `conflicted` — nothing moved, and at least one file disagrees with its
+   *                scoped counterpart; the sweep refused rather than guess.
    */
-  readonly status: 'absent' | 'clean' | 'swept';
+  readonly status: 'absent' | 'clean' | 'swept' | 'conflicted';
   readonly legacyDirectory: string;
-  readonly liveDirectory: string;
-  /** Sessions the fold added to the live store that were not already in it. */
+  readonly scopedDirectory: string;
+  /** Sessions the fold added to the broker's store that were not already in it. */
   readonly foldedSessions: number;
-  /** Legacy file names moved into the quarantine directory. */
+  /** Files MOVED to the scoped directory because nothing was there — the migration. */
+  readonly adoptedFiles: readonly string[];
+  /** Files retired into quarantine because the scoped copy already says the same thing. */
   readonly movedFiles: readonly string[];
-  /** Where they were moved, or null when nothing was moved. */
+  /** Where they were retired to, or null when nothing was retired. */
   readonly quarantineDirectory: string | null;
-  /** Legacy file names that exist ONLY at the legacy path — live state, left alone. */
-  readonly leftInPlace: readonly string[];
+  /**
+   * Files that exist in BOTH places with DIFFERENT content. Left alone, both of
+   * them: this sweep knows no merge semantics for an arbitrary store's shape,
+   * and the honest move is to say so rather than pick a winner over the owner's
+   * data. Named in the receipt.
+   */
+  readonly conflictedFiles: readonly string[];
+  /**
+   * Files this pass could not place, and did not guess at. Only the session
+   * store, and only for a composition whose broker was handed a store object
+   * rather than a path: there is then no scoped home to name for it.
+   */
+  readonly skippedFiles: readonly string[];
+  /**
+   * Files left at the unscoped path ON PURPOSE, because more than one product
+   * reads them there. Not a failure and not a conflict — a deliberate
+   * exclusion, named so the directory that survives is explained.
+   */
+  readonly sharedFiles: readonly string[];
   /** True when the legacy directory itself was removed because nothing was left in it. */
   readonly legacyDirectoryRemoved: boolean;
   /** Anything that could not be read, moved or removed. Never fatal. */
   readonly failures: readonly string[];
-  /** One owner-facing line naming what moved and why, or null when nothing moved. */
+  /** One owner-facing line naming what moved and why, or null when nothing did. */
   readonly receipt: string | null;
 }
 
 function emptyReport(
   status: 'absent' | 'clean',
   legacyDirectory: string,
-  liveDirectory: string,
+  scopedDirectory: string,
   extra: Partial<PreSplitControlPlaneSweepReport> = {},
 ): PreSplitControlPlaneSweepReport {
   return {
     status,
     legacyDirectory,
-    liveDirectory,
+    scopedDirectory,
     foldedSessions: 0,
+    adoptedFiles: [],
     movedFiles: [],
     quarantineDirectory: null,
-    leftInPlace: [],
+    conflictedFiles: [],
+    skippedFiles: [],
+    sharedFiles: [],
     legacyDirectoryRemoved: false,
     failures: [],
     receipt: null,
@@ -150,93 +189,147 @@ function listFiles(directory: string): readonly string[] {
 export async function sweepPreSplitControlPlaneStore(input: {
   /** The unscoped, pre-split store directory, e.g. `~/.goodvibes/control-plane`. */
   readonly legacyDirectory: string;
-  /** The surface-scoped store the daemon actually serves, e.g. `~/.goodvibes/tui/control-plane`. */
-  readonly liveDirectory: string;
+  /** The surface-scoped directory those stores belong in, e.g. `~/.goodvibes/tui/control-plane`. */
+  readonly scopedDirectory: string;
+  /**
+   * The session store the BROKER serves, which is project-scoped and therefore
+   * need not sit in `scopedDirectory` at all. `null` for a broker with no file:
+   * sessions.json is then treated like any other store.
+   */
+  readonly sessionStorePath?: string | null | undefined;
   readonly now?: number | undefined;
   readonly pid?: number | undefined;
 }): Promise<PreSplitControlPlaneSweepReport> {
-  const { legacyDirectory, liveDirectory } = input;
+  const { legacyDirectory, scopedDirectory } = input;
+  const sessionStorePath = input.sessionStorePath ?? null;
   const now = input.now ?? Date.now();
   const pid = input.pid ?? process.pid;
 
-  // Never sweep the live store. A composition that resolves both to the same
-  // place (an embedded daemon whose surface root is empty, a test home) has one
-  // store, not two, and there is nothing here to do.
-  if (legacyDirectory === liveDirectory) return emptyReport('absent', legacyDirectory, liveDirectory);
-  if (!existsSync(legacyDirectory)) return emptyReport('absent', legacyDirectory, liveDirectory);
+  // Never sweep the scoped store into itself. A composition that resolves both
+  // to the same place (a surface root of '', a test home) has one store, not
+  // two, and there is nothing here to do.
+  if (legacyDirectory === scopedDirectory) return emptyReport('absent', legacyDirectory, scopedDirectory);
+  if (!existsSync(legacyDirectory)) return emptyReport('absent', legacyDirectory, scopedDirectory);
 
   const legacyFiles = listFiles(legacyDirectory);
   if (legacyFiles.length === 0) {
-    const removed = removeDirectoryIfEmpty(legacyDirectory);
-    return emptyReport('clean', legacyDirectory, liveDirectory, { legacyDirectoryRemoved: removed });
-  }
-
-  const liveFiles = new Set(listFiles(liveDirectory));
-  const duplicated = legacyFiles.filter((name) => liveFiles.has(name));
-  const leftInPlace = legacyFiles.filter((name) => !liveFiles.has(name));
-
-  if (duplicated.length === 0) {
-    return emptyReport('clean', legacyDirectory, liveDirectory, { leftInPlace });
+    return emptyReport('clean', legacyDirectory, scopedDirectory, {
+      legacyDirectoryRemoved: removeDirectoryIfEmpty(legacyDirectory),
+    });
   }
 
   const failures: string[] = [];
-  /**
-   * Files whose fold did not finish. They stay where they are: moving a store
-   * aside because its fold failed would put the only readable copy out of
-   * reach of the next attempt.
-   */
-  const unfolded = new Set<string>();
-
-  // ── Fold forward, before anything moves ─────────────────────────────────
-  // The fold has to succeed before the quarantine, or a failed move would be
-  // the only thing standing between the owner and a lost session history.
-  let foldedSessions = 0;
-  for (const name of duplicated) {
-    if (!FOLDABLE_STORES.has(name)) continue;
-    try {
-      const result = await importLegacySessionStores({
-        homeStorePath: join(liveDirectory, name),
-        // No `project` on the source: these records already carry the project
-        // they were created under, and restamping them would be a second lie
-        // on top of the one this sweep exists to clear.
-        sources: [{ kind: 'broker-store', path: join(legacyDirectory, name) }],
-      });
-      foldedSessions += result.imported;
-    } catch (error) {
-      unfolded.add(name);
-      failures.push(`${name} could not be folded forward (${summarizeError(error)})`);
-    }
-  }
-
-  const movable = duplicated.filter((name) => !unfolded.has(name));
-
   const movedFiles: string[] = [];
+  const adoptedFiles: string[] = [];
+  const conflictedFiles: string[] = [];
+  const skippedFiles: string[] = [];
+  const sharedFiles: string[] = [];
+  let foldedSessions = 0;
   let quarantineDirectory: string | null = null;
-  if (movable.length > 0) {
-    quarantineDirectory = join(dirname(legacyDirectory), `${PRE_SPLIT_QUARANTINE_PREFIX}${now}-${pid}`);
+
+  /** Opened lazily, so a run that retires nothing mints no empty directory. */
+  const quarantine = (): string | null => {
+    if (quarantineDirectory !== null) return quarantineDirectory;
+    const path = join(dirname(legacyDirectory), `${PRE_SPLIT_QUARANTINE_PREFIX}${now}-${pid}`);
     try {
-      mkdirSync(quarantineDirectory, { recursive: true });
+      mkdirSync(path, { recursive: true });
+      quarantineDirectory = path;
+      return path;
     } catch (error) {
       failures.push(`the quarantine directory could not be created (${summarizeError(error)})`);
-      quarantineDirectory = null;
+      return null;
     }
-  }
-  if (quarantineDirectory !== null) {
-    for (const name of movable) {
-      try {
-        renameSync(join(legacyDirectory, name), join(quarantineDirectory, name));
-        movedFiles.push(name);
-      } catch (error) {
-        const code = (error as { code?: string }).code;
-        // Another process swept it between the listing and the move: the end
-        // state this sweep wanted is the end state on disk.
-        if (code === 'ENOENT') continue;
-        failures.push(`${name} could not be moved aside (${summarizeError(error)})`);
+  };
+
+  const retire = (name: string): void => {
+    const directory = quarantine();
+    if (directory === null) return;
+    try {
+      renameSync(join(legacyDirectory, name), join(directory, name));
+      movedFiles.push(name);
+    } catch (error) {
+      // Another process swept it between the listing and the move: the end
+      // state this sweep wanted is the end state on disk.
+      if ((error as { code?: string }).code === 'ENOENT') return;
+      failures.push(`${name} could not be moved aside (${summarizeError(error)})`);
+    }
+  };
+
+  for (const name of legacyFiles) {
+    // Shared, deliberately unscoped: not this sweep's to move. Disclosed rather
+    // than silently skipped, so the directory that survives is explained.
+    if (SHARED_UNSCOPED_STORES.has(name)) {
+      sharedFiles.push(name);
+      continue;
+    }
+    const legacyPath = join(legacyDirectory, name);
+
+    // ── The session store: folded, never adopted ─────────────────────────
+    // It is the one store here whose scoped home is decided by the broker
+    // rather than by this directory's layout (the broker's file is
+    // project-scoped), and the one with real merge semantics of its own — an
+    // id-keyed union where the newer updatedAt wins. Fold first, always: the
+    // fold is what guarantees nothing is lost before the file is retired.
+    if (name === SESSION_STORE_FILE) {
+      // No broker file to fold into: this composition was handed a store
+      // object, so nothing here can name where these sessions belong. Adopting
+      // it into the scoped directory would move it somewhere no broker reads —
+      // a tidier-looking directory and the same orphan. Left alone and said.
+      if (sessionStorePath === null) {
+        skippedFiles.push(name);
+        continue;
       }
+      try {
+        const result = await importLegacySessionStores({
+          homeStorePath: sessionStorePath,
+          // No `project` on the source: these records already carry the project
+          // they were created under, and restamping them would be a second lie
+          // on top of the one this sweep exists to clear.
+          sources: [{ kind: 'broker-store', path: legacyPath }],
+        });
+        foldedSessions += result.imported;
+      } catch (error) {
+        // A store whose fold failed stays where it is: retiring it would put
+        // the only readable copy out of reach of the next attempt.
+        failures.push(`${name} could not be folded forward (${summarizeError(error)})`);
+        continue;
+      }
+      retire(name);
+      continue;
     }
-    if (movedFiles.length === 0) {
-      removeDirectoryIfEmpty(quarantineDirectory);
-      quarantineDirectory = null;
+
+    const scopedPath = join(scopedDirectory, name);
+
+    // ── No counterpart: this file IS the state, at the wrong address ─────
+    // Adopting it is a move, so the state arrives whole — no shape is parsed,
+    // no merge is invented, and a store this sweep has never heard of migrates
+    // exactly as correctly as one it has.
+    if (!existsSync(scopedPath)) {
+      try {
+        mkdirSync(scopedDirectory, { recursive: true });
+        renameSync(legacyPath, scopedPath);
+        adoptedFiles.push(name);
+      } catch (error) {
+        if ((error as { code?: string }).code === 'ENOENT') continue;
+        failures.push(`${name} could not be moved to ${scopedDirectory} (${summarizeError(error)})`);
+      }
+      continue;
+    }
+
+    // ── A counterpart exists ─────────────────────────────────────────────
+    // Identical: the legacy copy is redundant and retiring it loses nothing.
+    // Divergent: this sweep has no merge semantics for an arbitrary store's
+    // shape, and inventing one would be a guess applied to the owner's data.
+    // It REFUSES — both files stay, the conflict is named in the receipt, and
+    // the scoped file (the one every reader now uses) is left untouched.
+    try {
+      if (readFileSync(legacyPath).equals(readFileSync(scopedPath))) {
+        retire(name);
+      } else {
+        conflictedFiles.push(name);
+      }
+    } catch (error) {
+      failures.push(`${name} could not be compared with its scoped counterpart (${summarizeError(error)})`);
     }
   }
 
@@ -246,14 +339,18 @@ export async function sweepPreSplitControlPlaneStore(input: {
 
   reapQuarantineDirectories(dirname(legacyDirectory), now);
 
+  const changed = movedFiles.length > 0 || adoptedFiles.length > 0 || foldedSessions > 0;
   const report: PreSplitControlPlaneSweepReport = {
-    status: movedFiles.length > 0 || foldedSessions > 0 ? 'swept' : 'clean',
+    status: changed ? 'swept' : (conflictedFiles.length > 0 ? 'conflicted' : 'clean'),
     legacyDirectory,
-    liveDirectory,
+    scopedDirectory,
     foldedSessions,
     movedFiles,
+    adoptedFiles,
     quarantineDirectory,
-    leftInPlace,
+    conflictedFiles,
+    skippedFiles,
+    sharedFiles,
     legacyDirectoryRemoved,
     failures,
     receipt: null,
@@ -267,30 +364,41 @@ export async function sweepPreSplitControlPlaneStore(input: {
  * split is fully closed.
  */
 export function preSplitSweepReceipt(report: PreSplitControlPlaneSweepReport): string | null {
-  if (report.movedFiles.length === 0 && report.foldedSessions === 0) return null;
   const parts: string[] = [];
-  parts.push(
-    `a pre-split control-plane store at ${report.legacyDirectory} was disagreeing with the one this daemon serves at ${report.liveDirectory}`,
-  );
-  parts.push(
-    report.foldedSessions > 0
-      ? `${report.foldedSessions} session${report.foldedSessions === 1 ? '' : 's'} it held and the live store did not were folded forward`
-      : 'it held nothing the live store did not already have',
-  );
-  if (report.movedFiles.length > 0 && report.quarantineDirectory !== null) {
-    parts.push(`${report.movedFiles.join(', ')} moved to ${report.quarantineDirectory}`);
-  }
-  if (report.legacyDirectoryRemoved) {
-    parts.push('the old directory is gone');
-  } else if (report.leftInPlace.length > 0) {
+  if (report.adoptedFiles.length > 0) {
     parts.push(
-      `${report.leftInPlace.join(', ')} stayed there because nothing in the live store duplicates them — they are the only copy, still written at the old path`,
+      `${report.adoptedFiles.join(', ')} moved from ${report.legacyDirectory} to ${report.scopedDirectory}, where this daemon keeps its own state`,
     );
   }
-  if (report.failures.length > 0) {
-    parts.push(`could not finish: ${report.failures.join('; ')}`);
+  if (report.foldedSessions > 0) {
+    parts.push(
+      `${report.foldedSessions} session${report.foldedSessions === 1 ? '' : 's'} the pre-split store held and the live one did not were folded forward`,
+    );
   }
-  return parts.join('; ');
+  if (report.movedFiles.length > 0 && report.quarantineDirectory !== null) {
+    parts.push(
+      `${report.movedFiles.join(', ')} said the same as the copy already in use, so ${report.movedFiles.length === 1 ? 'it was' : 'they were'} retired to ${report.quarantineDirectory}`,
+    );
+  }
+  if (report.conflictedFiles.length > 0) {
+    parts.push(
+      `${report.conflictedFiles.join(', ')} exist${report.conflictedFiles.length === 1 ? 's' : ''} in both places with different content and ${report.conflictedFiles.length === 1 ? 'was' : 'were'} left alone — nothing here knows how to merge ${report.conflictedFiles.length === 1 ? 'that store' : 'those stores'}, the copy under ${report.scopedDirectory} is the one in use, and the old one is still at ${report.legacyDirectory} to be compared by hand`,
+    );
+  }
+  if (report.skippedFiles.length > 0) {
+    parts.push(
+      `${report.skippedFiles.join(', ')} was left where it is — this daemon's session broker was built on an injected store, so nothing here can say where those sessions belong`,
+    );
+  }
+  if (report.sharedFiles.length > 0) {
+    parts.push(
+      `${report.sharedFiles.join(', ')} stayed at ${report.legacyDirectory} on purpose — more than one product reads ${report.sharedFiles.length === 1 ? 'it' : 'them'} there, so moving ${report.sharedFiles.length === 1 ? 'it' : 'them'} under one product's directory would hide ${report.sharedFiles.length === 1 ? 'it' : 'them'} from the others`,
+    );
+  }
+  if (report.legacyDirectoryRemoved) parts.push('the pre-split directory is gone');
+  if (report.failures.length > 0) parts.push(`could not finish: ${report.failures.join('; ')}`);
+  if (parts.length === 0) return null;
+  return `pre-split control-plane store: ${parts.join('; ')}`;
 }
 
 function removeDirectoryIfEmpty(directory: string): boolean {
@@ -361,14 +469,4 @@ function removeQuarantineDirectory(path: string): boolean {
     });
     return false;
   }
-}
-
-/** The legacy (unscoped) control-plane directory for a home, by convention. */
-export function preSplitControlPlaneDirectory(userGoodVibesRoot: string): string {
-  return join(userGoodVibesRoot, 'control-plane');
-}
-
-/** Named for symmetry with the above; `basename` keeps the pair honest in tests. */
-export function isPreSplitQuarantineDirectory(path: string): boolean {
-  return basename(path).startsWith(PRE_SPLIT_QUARANTINE_PREFIX);
 }

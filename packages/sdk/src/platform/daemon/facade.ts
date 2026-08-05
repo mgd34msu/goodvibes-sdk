@@ -461,7 +461,7 @@ export class DaemonServer {
       });
 
       // Boot precondition: fold legacy session stores into the store the broker serves, then sweep the pre-split one aside. See daemon-session-store-boot.ts.
-      await runDaemonSessionStoreBoot({ sessionBroker: this.sessionBroker, shellPaths: this.runtimeServices.shellPaths, recordReceipt: (text) => this.lifecycle?.receiptStore().record(text) });
+      await runDaemonSessionStoreBoot({ sessionBroker: this.sessionBroker, shellPaths: this.runtimeServices.shellPaths, surfaceRoot: this.runtimeServices.surfaceRoot, recordReceipt: (text) => this.lifecycle?.receiptStore().record(text) });
       await Promise.all([
         this.sessionBroker.start(),
         this.approvalBroker.start(),

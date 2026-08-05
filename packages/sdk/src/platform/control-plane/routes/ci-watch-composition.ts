@@ -30,11 +30,13 @@ import {
 import { parseChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { logger } from '../../utils/logger.js';
 import type { GatewayVerbGroupDeps } from './register-gateway-verb-groups.js';
+import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 
 /** Exactly the deps this composition reads — a slice of the registrar's own. */
 export type CiWatchCompositionDeps = Pick<
   GatewayVerbGroupDeps,
   | 'shellPaths'
+  | 'surfaceRoot'
   | 'channelDeliveryRouter'
   | 'automationManager'
   | 'stampFixSessionOnApproval'
@@ -55,7 +57,7 @@ export type CiWatchCompositionDeps = Pick<
 export function composeCiWatchGatewayVerbs(catalog: GatewayMethodCatalog, deps: CiWatchCompositionDeps): void {
   const ciWatchService = new CiWatchService({
     source: createGhCliCiSource(),
-    store: new CiWatchStore(deps.shellPaths.resolveUserPath('control-plane', 'ci-watches.json')),
+    store: new CiWatchStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'ci-watches.json')),
     ...(deps.channelDeliveryRouter
       ? {
         notifier: async (channel: string, title: string, body: string): Promise<string | undefined> =>

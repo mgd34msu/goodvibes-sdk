@@ -12,7 +12,6 @@
  * control-plane/pre-split-control-plane-sweep.ts.
  */
 
-import { dirname } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
@@ -41,14 +40,16 @@ export interface DaemonSessionStoreBootPaths {
 export async function runDaemonSessionStoreBoot(input: {
   readonly sessionBroker: { readonly storePath: string | null };
   readonly shellPaths: DaemonSessionStoreBootPaths;
+  /** This daemon's surface root — the segment `resolveUserPath` never adds. */
+  readonly surfaceRoot: string;
   readonly recordReceipt: (text: string) => void;
 }): Promise<PreSplitControlPlaneSweepReport | null> {
   const liveStorePath = input.sessionBroker.storePath;
-  if (liveStorePath === null) return null;
-  await importLegacyDaemonSessionStores(input.shellPaths, liveStorePath);
+  if (liveStorePath !== null) await importLegacyDaemonSessionStores(input.shellPaths, liveStorePath);
   return sweepPreSplitDaemonControlPlaneStore({
     shellPaths: input.shellPaths,
-    liveStorePath,
+    surfaceRoot: input.surfaceRoot,
+    sessionStorePath: liveStorePath,
     recordReceipt: input.recordReceipt,
   });
 }
@@ -105,25 +106,37 @@ export async function importLegacyDaemonSessionStores(
  */
 export async function sweepPreSplitDaemonControlPlaneStore(input: {
   readonly shellPaths: Pick<DaemonSessionStoreBootPaths, 'resolveUserPath'>;
-  readonly liveStorePath: string;
+  readonly surfaceRoot: string;
+  readonly sessionStorePath: string | null;
   readonly recordReceipt: (text: string) => void;
 }): Promise<PreSplitControlPlaneSweepReport | null> {
   try {
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: input.shellPaths.resolveUserPath('control-plane'),
-      liveDirectory: dirname(input.liveStorePath),
+      // Where those stores belong: the same surface-scoped directory their
+      // writers now resolve (control-plane-store-paths.ts). NOT the broker's
+      // own directory — the broker's file is project-scoped and these are
+      // home-scoped, and on a daemon started outside the home they differ.
+      scopedDirectory: input.shellPaths.resolveUserPath(input.surfaceRoot, 'control-plane'),
+      sessionStorePath: input.sessionStorePath,
     });
-    if (report.status === 'swept') {
+    // Gated on there being something to SAY, not on a particular status: a pass
+    // that only had to leave something alone still owes the owner the sentence
+    // explaining why his two directories are still two.
+    if (report.receipt !== null) {
       logger.warn('DaemonServer: swept a pre-split control-plane store', {
         legacyDirectory: report.legacyDirectory,
-        liveDirectory: report.liveDirectory,
+        scopedDirectory: report.scopedDirectory,
         foldedSessions: report.foldedSessions,
+        adoptedFiles: report.adoptedFiles,
         movedFiles: report.movedFiles,
         quarantineDirectory: report.quarantineDirectory,
-        leftInPlace: report.leftInPlace,
+        conflictedFiles: report.conflictedFiles,
+        skippedFiles: report.skippedFiles,
+        sharedFiles: report.sharedFiles,
         failures: report.failures,
       });
-      if (report.receipt) input.recordReceipt(report.receipt);
+      input.recordReceipt(report.receipt);
     }
     return report;
   } catch (error) {

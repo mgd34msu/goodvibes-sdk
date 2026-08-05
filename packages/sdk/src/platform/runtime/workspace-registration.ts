@@ -94,6 +94,10 @@ export class WorkspaceRegistrationManager {
     this.store =
       options.store ??
       new WorkspaceRegistrationStore({
+        // Deliberately unscoped — see the note at the matching construction in
+        // control-plane/routes/register-gateway-verb-groups.ts. This register is
+        // shared with goodvibes-agent, which reads the same file directly, so
+        // scoping it per surface would split it between products.
         path: shellPaths.resolveUserPath('control-plane', REGISTRATIONS_FILE),
         homeDir: this.homeDir,
         daemonStateDir: this.daemonStateDir,

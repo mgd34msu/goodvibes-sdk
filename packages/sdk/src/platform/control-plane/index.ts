@@ -90,13 +90,15 @@ export type {
 } from './session-store-importer.js';
 export {
   PRE_SPLIT_QUARANTINE_PREFIX,
-  isPreSplitQuarantineDirectory,
-  preSplitControlPlaneDirectory,
   preSplitSweepReceipt,
   reapQuarantineDirectories,
   sweepPreSplitControlPlaneStore,
 } from './pre-split-control-plane-sweep.js';
 export type { PreSplitControlPlaneSweepReport } from './pre-split-control-plane-sweep.js';
+// The one resolver every control-plane store file path goes through — the
+// surface segment is mandatory, never a silent default (see the file header).
+export { controlPlaneStorePath } from './control-plane-store-paths.js';
+export type { ControlPlaneStorePathShellPaths } from './control-plane-store-paths.js';
 export type {
   SharedApprovalRecord,
   SharedApprovalAuditRecord,

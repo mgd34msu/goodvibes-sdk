@@ -52,6 +52,7 @@ import { startOccasionSweepTicker } from '../../occasions/ticker.js';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { registerOccasionsGatewayMethods } from './occasions.js';
+import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 
 /** What the composition needs from the runtime graph. */
 export interface OccasionsCompositionDeps {
@@ -182,6 +183,8 @@ export function composeOccasions(
 export interface OccasionsInstallDeps {
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
+  /** Surface root the state file resolves under; required, never defaulted (control-plane-store-paths.ts). */
+  readonly surfaceRoot: string;
   readonly channelDeliveryRouter?: Pick<ChannelDeliveryRouter, 'deliver'> | undefined;
   readonly disposal?: { add(label: string, dispose: () => void): void } | undefined;
 }
@@ -202,7 +205,7 @@ export function installOccasions(
   const composition = composeOccasions(catalog, {
     ownerProfile,
     configManager: deps.configManager,
-    statePath: deps.shellPaths.resolveUserPath('control-plane', 'occasions-state.json'),
+    statePath: controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'occasions-state.json'),
     ...(deps.channelDeliveryRouter === undefined
       ? {}
       : { channelDeliveryRouter: deps.channelDeliveryRouter }),
