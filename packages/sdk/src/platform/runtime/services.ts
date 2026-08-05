@@ -9,7 +9,7 @@ import { SubscriptionManager } from '../config/subscriptions.js';
 import { AutomationDeliveryManager, AutomationManager, AutomationRouteStore } from '../automation/index.js';
 import { ChannelPluginRegistry, ChannelPolicyManager, RouteBindingManager, SurfaceRegistry } from '../channels/index.js';
 import { ChannelDeliveryRouter } from '../channels/delivery-router.js';
-import { ApprovalBroker, GatewayMethodCatalog, SessionLiveTurnControlsHolder, SharedSessionBroker, registerGatewayVerbGroups } from '../control-plane/index.js';
+import { ApprovalBroker, GatewayMethodCatalog, SessionLiveTurnControlsHolder, SharedSessionBroker, registerGatewayVerbGroups, controlPlaneStorePath } from '../control-plane/index.js';
 import { StepUpService } from '../relay/step-up-service.js';
 import { hasFreshSurfaceParticipant, SURFACE_ROUTE_FRESHNESS_MS } from '../control-plane/session-broker-sessions.js';
 import { buildSharedSessionAgentSpawnRoutingInput } from '../control-plane/session-intents.js';
@@ -185,6 +185,13 @@ export interface RuntimeServicesOptions {
 export interface RuntimeServices {
   readonly workingDirectory: string;
   readonly homeDirectory: string;
+  /**
+   * The `.goodvibes/<surface root>/` segment this composition's own state lives
+   * under. Already returned by createRuntimeServices; declaring it here is what
+   * lets a consumer ask for it instead of deriving a second one — the omission
+   * that produced the unscoped pre-split control-plane store.
+   */
+  readonly surfaceRoot: string;
   /** SDK-owned memory governance: samples RSS/heap, sheds caches, pauses jobs, trips on leaks. */
   readonly memoryGovernor: MemoryGovernor;
   /** Registry of every retained cache the governor can observe and shrink. */
@@ -386,7 +393,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   const localUserAuthManager = new UserAuthManager({ bootstrapFilePath: shellPaths.resolveUserPath(surfaceRoot, 'auth-users.json'), bootstrapCredentialPath: shellPaths.resolveUserPath(surfaceRoot, 'auth-bootstrap.txt') });
   // Per-pairing named revocable operator tokens (device-scoped); consulted by the operator-auth path. The cap is read per mint, so a `device.nodes.maxPaired` change applies to the next pairing without a restart.
-  const pairingTokens = new PairingTokenManager(shellPaths.resolveUserPath('control-plane', 'pairing-tokens.json'), { maxPaired: () => configManager.get('device.nodes.maxPaired') });
+  const pairingTokens = new PairingTokenManager(controlPlaneStorePath(shellPaths, surfaceRoot, 'pairing-tokens.json'), { maxPaired: () => configManager.get('device.nodes.maxPaired') });
   const profileManager = new ProfileManager(shellPaths.resolveUserPath(surfaceRoot, 'profiles'));
   const bookmarkManager = new BookmarkManager(shellPaths.resolveUserPath(surfaceRoot, 'bookmarks'));
   const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
@@ -427,7 +434,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // ONE home-scoped durable session store; project is DATA on each record.
   // `conversationGateConfig` keeps the live-agent handover behind the gate.
   const sessionBroker = new SharedSessionBroker({
-    storePath: options.sessionStorePath ?? shellPaths.resolveUserPath('control-plane', 'sessions.json'),
+    // Surface-SCOPED, like every other store this composition owns. The
+    // default here was `resolveUserPath('control-plane', 'sessions.json')` —
+    // no surface segment, so a composition that did not pass its own path got
+    // the unscoped orphan directory. Same omission as the control-plane stores
+    // beside it, same resolver now (control-plane-store-paths.ts).
+    storePath: options.sessionStorePath ?? controlPlaneStorePath(shellPaths, surfaceRoot, 'sessions.json'),
     routeBindings,
     agentStatusProvider: agentManager,
     messageSender: agentMessageBus,
@@ -1025,7 +1037,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     resetLocalEngineFailureState: () => voiceProviders.get('local')?.resetEngineFailureState?.(),
     admitExpensiveWork: (label) => admitExpensiveWork(label),
   });
-  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, channelPolicy, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, credentialWrites: { config: configManager, secrets: secretsManager }, approvalRaise: approvalBroker, disposal: disposalScope.registry, personalCapture, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
+  registerGatewayVerbGroups(gatewayMethods, { homeDirectory, processRegistry, workspaceCheckpointManager, sessionBroker, secretsManager, approvalBroker, requestApproval: (input) => approvalBroker.requestApproval(input), stampFixSessionOnApproval: (offerCallId, outcome) => approvalBroker.stampFixSession(offerCallId, outcome), watcherRegistry, userPermissionRuleStore, shellPaths, surfaceRoot, runtimeBus: options.runtimeBus, sessionPresence: { isAttached }, configManager, runtimeStore: options.runtimeStore, channelDeliveryRouter, providerRegistry, automationManager, sessionLister: sessionBroker, sessionIntake: sessionBroker, channelPolicy, workingDirectory, attemptsController: orchestrationEngine, stepUpService, memoryRegistry, pairingTokens, acpHost, sessionLiveTurnControls, powerManager, memoryGovernor, voiceSetup, credentialWrites: { config: configManager, secrets: secretsManager }, approvalRaise: approvalBroker, disposal: disposalScope.registry, personalCapture, onCiAutoWatch: (observer) => { ciAutoWatchObserver = observer; } }); // see routes/register-gateway-verb-groups.ts
   // Teardown for every poller started above. RuntimePollerOwners is all-required,
   // so a poller added to this graph later cannot compile without being named here.
   registerRuntimePollers(disposalScope.registry, {
@@ -1037,6 +1049,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   return {
     workingDirectory,
     homeDirectory,
+    surfaceRoot,
     memoryGovernor,
     cacheRegistry,
     pauseController,

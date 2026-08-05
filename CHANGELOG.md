@@ -2,6 +2,58 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.8] - 2026-08-05
+
+### Fixed
+
+- **The daemon's answers match its own contract, and a test now proves it.**
+  `profile.get` leaked two internal properties past a strict schema, so every
+  strict client's profile reads failed ("Ensure the daemon is running the
+  matching GoodVibes contract version") — the daemon could not tell its owner
+  his own address. The response is now an explicit wire projection, `section`
+  is a declared contract property, and `profile.provenance` correctly declares
+  its null for hand-edited fields. A conformance test runs the real route
+  handlers' responses through the same validator clients use, across the whole
+  profile and occasions families.
+- **Session event streams carry what the agent did, scoped to the session.**
+  The hosted-session event stream omitted the tools domain (a remote viewer
+  saw everything said, nothing done) and delivered every session's frames down
+  one session's stream. Render-grade domains and per-session scoping now, in
+  the companion-chat stream too.
+- **One control-plane store.** A path-derivation defect made every daemon boot
+  rewrite a legacy unscoped store the broker never reads. The fold now takes
+  its path from the broker, legacy duplicates are quarantined with a receipt,
+  and the stores that still lived only at the legacy location migrate to the
+  surface-scoped home on boot, receipted and idempotent.
+- **Browser automation cannot touch your browser.** Managed launches resolve
+  only into the platform's own profile directory (traversal-hardened), one
+  session is reused instead of relaunch-looping, retries are capped, unknown
+  tool errors name the tools that exist, and the engine refuses to type into
+  sign-in pages — it hands the URL back instead.
+
+### Changed
+
+- **Connecting Google is one action.** Discovery decides the path before
+  anything runs: a stored credential proves itself with zero actions; a stored
+  client goes straight to one consent URL carrying every needed scope (mail
+  read, send, calendar) in a single consent; a signed-in gcloud CLI is a real
+  source; the guided path never mentions credential files (their download flow
+  is not documented by Google) and costs exactly one copy-paste for a stated
+  reason. No filesystem scanning — a credential file is used only when you
+  point at it. A dead grant is diagnosed once in plain words (including the
+  wrong-account case) instead of retried; removing a stored credential takes
+  your explicit yes; a finished run proves itself with a live mail and
+  calendar read.
+- **Dialing the connected host has its own switch.** `daemon.enabled` kept its
+  historical meaning and silently disabled half the platform's dial paths on
+  machines that set it. It now means only "adopt your own daemon";
+  `daemon.connectedHost.enabled` (default on) governs dialing, with a
+  receipted migration for existing files.
+- The settings catalog carries the connector keys the daemon really reads
+  (calendar, google, email — 22 described settings), and operator catalog
+  search understands plain words like "google" instead of answering nothing
+  out of 434 methods.
+
 ## [2.0.7] - 2026-08-02
 
 ### Changed

@@ -2,7 +2,7 @@ import { runDaemonBootGuarantees } from './facade-boot-guarantees.js';
 import { logger } from '../utils/logger.js';
 import { jsonErrorResponse } from './http/error-response.js';
 import { summarizeError } from '../utils/error-display.js';
-import { DaemonLifecycleRuntime, createDaemonOwnerAlerter, importLegacyDaemonSessionStores, registerDaemonHeartbeatWatcher } from './facade-lifecycle.js';
+import { DaemonLifecycleRuntime, createDaemonOwnerAlerter, registerDaemonHeartbeatWatcher, runDaemonSessionStoreBoot } from './facade-lifecycle.js';
 import { registerUpdateGatewayMethods } from '../control-plane/routes/update.js';
 import { registerRelayGatewayMethods } from '../control-plane/routes/relay.js';
 import { AgentManager } from '../tools/agent/index.js';
@@ -460,8 +460,8 @@ export class DaemonServer {
         },
       });
 
-      // Boot precondition: fold legacy stores into the home store before the broker serves (idempotent).
-      await importLegacyDaemonSessionStores(this.runtimeServices.shellPaths);
+      // Boot precondition: fold legacy session stores into the store the broker serves, then sweep the pre-split one aside. See daemon-session-store-boot.ts.
+      await runDaemonSessionStoreBoot({ sessionBroker: this.sessionBroker, shellPaths: this.runtimeServices.shellPaths, surfaceRoot: this.runtimeServices.surfaceRoot, recordReceipt: (text) => this.lifecycle?.receiptStore().record(text) });
       await Promise.all([
         this.sessionBroker.start(),
         this.approvalBroker.start(),

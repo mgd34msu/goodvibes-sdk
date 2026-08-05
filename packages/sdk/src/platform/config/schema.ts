@@ -28,6 +28,7 @@
  * runtime cost and no new dependency; it only pins them into the declarations.
  */
 import './schema-domain-cluster.js';
+import './schema-domain-connectors.js';
 import './schema-domain-conversation-gate.js';
 import './schema-domain-device.js';
 import './schema-domain-features.js';
@@ -59,6 +60,7 @@ import { deviceConfigDefaults, deviceConfigSettings } from './schema-domain-devi
 import { pushConfigDefaults, pushConfigSettings } from './schema-domain-push.js';
 import { fleetConfigDefaults, fleetConfigSettings } from './schema-domain-fleet.js';
 import { clusterConfigDefaults, clusterConfigSettings } from './schema-domain-cluster.js';
+import { connectorConfigDefaults, connectorConfigSettings } from './schema-domain-connectors.js';
 import { surfaceConfigDefaults, surfaceConfigSettings } from './schema-domain-surfaces.js';
 import { featureConfigDefaults, featureConfigSettings } from './schema-domain-features.js';
 import { featureControlSettings } from './schema-domain-feature-controls.js';
@@ -126,6 +128,9 @@ export const DEFAULT_CONFIG = {
   agents: featureConfigDefaults.agents,
   pricing: pricingConfigDefaults.pricing,
   payments: paymentsConfigDefaults.payments,
+  email: connectorConfigDefaults.email,
+  calendar: connectorConfigDefaults.calendar,
+  google: connectorConfigDefaults.google,
 } as GoodVibesConfig;
 
 export const CONFIG_SCHEMA: ConfigSetting[] = [
@@ -155,6 +160,7 @@ export const CONFIG_SCHEMA: ConfigSetting[] = [
   ...featureConfigSettings,
   ...featureControlSettings,
   ...pricingConfigSettings,
+  ...connectorConfigSettings,
 ] as ConfigSetting[];
 
 /** Set of all valid config keys for runtime validation. */

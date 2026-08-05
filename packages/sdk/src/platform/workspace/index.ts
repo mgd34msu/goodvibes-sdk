@@ -21,3 +21,12 @@ export {
   type CheckpointSessionResolveContext,
   type CheckpointSessionResolver,
 } from './checkpoint/index.js';
+export {
+  SHARED_TIER_DIRECTORY,
+  WORKSPACE_REGISTER_FILE,
+  legacyWorkspaceRegisterPath,
+  resolveWorkspaceRegisterReadPath,
+  sharedWorkspaceRegisterPath,
+} from './registration/shared-register-path.js';
+export { foldLegacyWorkspaceRegister } from './registration/fold-legacy-register.js';
+export type { FoldLegacyRegisterResult } from './registration/fold-legacy-register.js';

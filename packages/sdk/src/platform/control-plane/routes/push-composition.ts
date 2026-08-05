@@ -26,6 +26,7 @@ import type { ConfigManager } from '../../config/manager.js';
 import type { ConfigKey } from '../../config/schema.js';
 import type { DisposalRegistry } from '../../runtime/disposal.js';
 import { logger } from '../../utils/logger.js';
+import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 
 /** The slice of the gateway dependency bag push composition needs. */
 export interface PushCompositionDeps {
@@ -33,6 +34,8 @@ export interface PushCompositionDeps {
   readonly secretsManager: VapidSecretStore;
   /** Home-scoped path service; the subscription store file resolves under it. */
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
+  /** Surface root the subscription store resolves under; required, never defaulted (control-plane-store-paths.ts). */
+  readonly surfaceRoot: string;
   readonly configManager?: Pick<ConfigManager, 'get'> | undefined;
   /** Explicit VAPID `sub` override; absent ⇒ the `push.vapidSubject` config key. */
   readonly vapidSubject?: string | undefined;
@@ -97,7 +100,7 @@ export function createPushSubscriptionStore(deps: PushCompositionDeps): PushSubs
     ),
   });
   const store = new PushSubscriptionStore(
-    deps.shellPaths.resolveUserPath('control-plane', 'push-subscriptions.json'),
+    controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'push-subscriptions.json'),
     { policy },
   );
   void store.runRecoverySweep().catch((error) => {

@@ -263,5 +263,16 @@
       "runtime legitimacy scoring from page signals (injectable)"
     ],
     "agent": "engineer"
+  },
+  {
+    "title": "Control-plane store paths route through one resolver (surfaceRoot required); the cross-product workspace register deliberately stays unscoped",
+    "date": "2026-08-05",
+    "rationale": "A set of control-plane stores (principals, channel-profiles, channel-sync, checkin-receipts, tailscale-serve-receipts, ci-watches, occasions-state, push-subscriptions, pairing-tokens, sessions) called shellPaths.resolveUserPath('control-plane', file) directly and omitted the surface segment resolveUserPath never adds on its own, so each wrote to the unscoped ~/.goodvibes/control-plane/ orphan instead of ~/.goodvibes/<surfaceRoot>/control-plane/. Fixed with packages/sdk/src/platform/control-plane/control-plane-store-paths.ts exporting controlPlaneStorePath(shellPaths, surfaceRoot, file), which THROWS on a blank surfaceRoot rather than silently reproducing the orphan; every deps type gained a REQUIRED (not defaulted) surfaceRoot. EXCEPTION, and it is the important part: workspace-registrations.json is NOT surface-scoped. goodvibes-agent reads and writes that same file directly (src/config/workspace-registration.ts), the daemon reads it again for checkpoint eligibility, and the SDK gateway writes it \u2014 so it is cross-product state, not one surface's. Scoping it moved it under whichever product composed the gateway (the daemon), which would have split the register: workspaces registered from the agent would vanish from the daemon and checkpoint eligibility would refuse workspaces the operator had registered. That split was written and then reverted before it shipped. The pre-split boot sweep excludes the file for the same reason and names it in its receipt, so the directory that survives is explained rather than looking like an unfinished migration. Where cross-product state belongs (a shared tier beside ~/.goodvibes/shared/settings.json, or the daemon's root behind one SDK resolver every product calls) is an open ruling, not this round's to make.",
+    "alternatives": [
+      "sprinkle resolveUserPath(surfaceRoot, \"control-plane\", name) at each call site (rejected: exactly how the omission happened the first time, no compile-time guard against the next one)",
+      "optional surfaceRoot with a default (rejected: a default is what let the segment go missing silently)",
+      "scope workspace-registrations.json under the daemon's root and teach the agent that root (rejected for now: real cross-product coupling plus a read-before-first-sweep window where the agent would see an empty register; needs an explicit ruling)"
+    ],
+    "agent": "engineer"
   }
 ]

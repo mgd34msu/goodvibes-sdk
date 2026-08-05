@@ -60,6 +60,7 @@ function fakeVerbGroupDeps(): GatewayVerbGroupDeps {
     shellPaths: {
       resolveUserPath: (...segments: string[]) => `/nonexistent-conformance-test/${segments.join('/')}`,
     },
+    surfaceRoot: 'test-surface',
   };
   return deps as unknown as GatewayVerbGroupDeps;
 }

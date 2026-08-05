@@ -3,6 +3,7 @@
  */
 import type { ProfileConfigKey, ProfileConfigValue } from './schema-types-owner-profile.js';
 import type { OccasionsConfigKey } from './schema-types-occasions.js';
+import type { ConnectorsConfigKey } from './schema-types-connectors.js';
 
 
 export * from "./schema-types-surfaces.js";
@@ -779,6 +780,8 @@ export type ConfigKey =
   // The owner profile's policy (schema-types-owner-profile.ts / schema-domain-owner-profile.ts).
   | ProfileConfigKey
   // Proactive occasions and plans (schema-types-occasions.ts / schema-domain-occasions.ts).
-  | OccasionsConfigKey;
+  | OccasionsConfigKey
+  // The mail and calendar connector (schema-types-connectors.ts / schema-domain-connectors.ts).
+  | ConnectorsConfigKey;
 
 export * from "./schema-types-values.js";

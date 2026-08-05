@@ -41,6 +41,7 @@ describe('WorkspaceRegistrationManager', () => {
     mkdirSync(project, { recursive: true });
     const mgr = new WorkspaceRegistrationManager({
       shellPaths: makeShellPaths(home, project),
+      
       store: memoryStore(home),
     });
     const evaluation = await mgr.evaluate();
@@ -89,6 +90,7 @@ describe('WorkspaceRegistrationManager', () => {
   it('a broad root (the home directory) is never offered and the store refuses it', async () => {
     const mgr = new WorkspaceRegistrationManager({
       shellPaths: makeShellPaths(home, home),
+      
       store: memoryStore(home),
     });
     const evaluation = await mgr.evaluate();
@@ -102,6 +104,7 @@ describe('WorkspaceRegistrationManager', () => {
   it('the filesystem root is treated as broad', async () => {
     const mgr = new WorkspaceRegistrationManager({
       shellPaths: makeShellPaths(home, '/'),
+      
       store: memoryStore(home),
     });
     const evaluation = await mgr.evaluate();

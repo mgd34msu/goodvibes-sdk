@@ -116,6 +116,8 @@ import type {
 import { createPushService } from './push-composition.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { FleetEvent } from '../../../events/fleet.js';
+import { controlPlaneStorePath } from '../control-plane-store-paths.js';
+import { legacyWorkspaceRegisterPath, sharedWorkspaceRegisterPath } from '../../workspace/registration/shared-register-path.js';
 
 export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
@@ -162,6 +164,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   readonly userPermissionRuleStore?: Pick<UserPermissionRuleStore, 'list' | 'delete'> | undefined;
   /** Home-scoped path service; the subscription store file resolves under it. */
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
+  /** Surface root every control-plane store here resolves under; required, never defaulted. */ readonly surfaceRoot: string;
   /**
    * Optional explicit VAPID JWT `sub` contact, overriding the `push.vapidSubject`
    * config key. Absent (the normal case) ⇒ the config key is read; empty or
@@ -426,25 +429,23 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
 
   // The shared registered-workspace registry: which project roots the operator
   // has opted into (coverage flows down each root's subtree, inherited through
-  // the git worktree→main-repo link), over a JSON snapshot under the daemon's
-  // control-plane state directory. The daemon state dir is resolveUserPath()
-  // itself (~/.goodvibes); the home directory is its parent — both are refused
-  // as absurdly broad roots by the same root-guard checkpointing uses.
+  // the git worktree→main-repo link). The daemon state dir is resolveUserPath()
+  // itself (~/.goodvibes); its parent (the home directory) is refused as an
+  // absurdly broad root by the same guard checkpointing uses.
   const daemonStateDir = deps.shellPaths.resolveUserPath();
   const workspaceRegistrationStore = new WorkspaceRegistrationStore({
-    path: deps.shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json'),
+    // SHARED TIER, not surface-scoped — three products read this register. See workspace/registration/shared-register-path.ts.
+    path: sharedWorkspaceRegisterPath(deps.shellPaths),
+    fallbackReadPath: legacyWorkspaceRegisterPath(deps.shellPaths),
     homeDir: dirname(daemonStateDir),
     daemonStateDir,
   });
   registerWorkspacesGatewayMethods(catalog, workspaceRegistrationStore);
 
-  // The cross-channel principal identity registry over a JSON snapshot under the
-  // daemon's own control-plane state directory. Constructed here (from the
-  // shellPaths this registrar already receives) rather than threaded through the
-  // runtime-services composition root, exactly like the skill/push groups.
-  const principalRegistry = new PrincipalRegistry(
-    new PrincipalStore(deps.shellPaths.resolveUserPath('control-plane', 'principals.json')),
-  );
+  // The cross-channel principal identity registry over a JSON snapshot under
+  // the daemon's own control-plane state directory, constructed here like the
+  // skill/push groups rather than threaded through the composition root.
+  const principalRegistry = new PrincipalRegistry(new PrincipalStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'principals.json')));
   registerPrincipalsGatewayMethods(catalog, principalRegistry);
 
   // The owner profile: one Markdown file at daemon scope, its nine profile.*
@@ -479,7 +480,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // intake helpers in ../../channel-profiles (attribution + profile resolution)
   // pair this registry with the principal registry above at the inbound seam.
   const channelProfileRegistry = new ChannelProfileRegistry(
-    new ChannelProfileStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-profiles.json')),
+    new ChannelProfileStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'channel-profiles.json')),
   );
   registerChannelProfilesGatewayMethods(catalog, channelProfileRegistry);
 
@@ -490,7 +491,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   registerChannelSyncGatewayMethods(
     catalog,
     new ChannelSyncRegistry(
-      new ChannelSyncStore(deps.shellPaths.resolveUserPath('control-plane', 'channel-sync.json')),
+      new ChannelSyncStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'channel-sync.json')),
     ),
   );
 
@@ -572,7 +573,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
           });
         },
       },
-      receipts: new CheckinReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'checkin-receipts.json')),
+      receipts: new CheckinReceiptStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'checkin-receipts.json')),
       automation,
     });
     registerCheckinGatewayMethods(catalog, checkinService);
@@ -646,7 +647,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // tailscale is absent, detection reports it once; nothing nags.
   registerTailscaleGatewayMethods(catalog, {
     runner: deps.tailscaleRunner ?? defaultTailscaleRunner(),
-    receipts: new TailscaleServeReceiptStore(deps.shellPaths.resolveUserPath('control-plane', 'tailscale-serve-receipts.json')),
+    receipts: new TailscaleServeReceiptStore(controlPlaneStorePath(deps.shellPaths, deps.surfaceRoot, 'tailscale-serve-receipts.json')),
     resolveWebPort: () => resolveWebPort(deps.configManager.get('web.port')),
     setPublicBaseUrl: (url) => {
       deps.configManager.set('web.publicBaseUrl', url);

@@ -74,6 +74,14 @@ export interface WorkspaceRegistrationStoreOptions {
   readonly homeDir: string;
   /** The daemon state directory (~/.goodvibes) — refused as a broad root. */
   readonly daemonStateDir: string;
+  /**
+   * A second path to READ from when `path` does not exist yet — the pre-split
+   * location, during the one auto-update cycle before the daemon's boot fold
+   * moves the register into the shared tier. Never written to: a
+   * read-modify-write that started from the fallback still persists to `path`.
+   * See registration/shared-register-path.ts.
+   */
+  readonly fallbackReadPath?: string | undefined;
   /** Injectable worktree-link probe; defaults to a real `git rev-parse` probe. */
   readonly probe?: (path: string) => WorkspaceGitMetadata;
 }
@@ -85,6 +93,8 @@ export interface RegisterWorkspaceResult {
 
 export class WorkspaceRegistrationStore {
   private readonly store: PersistentStore<PersistedRegistry>;
+  /** Read-only source for the pre-split location; see fallbackReadPath. */
+  private readonly fallbackStore: PersistentStore<PersistedRegistry> | null;
   private readonly homeDir: string;
   private readonly daemonStateDir: string;
   private readonly probe: (path: string) => WorkspaceGitMetadata;
@@ -93,6 +103,9 @@ export class WorkspaceRegistrationStore {
 
   constructor(options: WorkspaceRegistrationStoreOptions) {
     this.store = new PersistentStore<PersistedRegistry>(options.path);
+    this.fallbackStore = options.fallbackReadPath
+      ? new PersistentStore<PersistedRegistry>(options.fallbackReadPath)
+      : null;
     this.homeDir = options.homeDir;
     this.daemonStateDir = options.daemonStateDir;
     this.probe = options.probe ?? probeWorktreeLink;
@@ -129,7 +142,14 @@ export class WorkspaceRegistrationStore {
   }
 
   private async read(): Promise<PersistedRegistry> {
-    return validate(await this.store.load());
+    const primary = await this.store.load();
+    // A register that has not been folded into the shared tier yet still has to
+    // be visible, or an updated product would report the operator's registered
+    // workspaces as gone until the daemon next booted.
+    if (primary === null && this.fallbackStore !== null) {
+      return validate(await this.fallbackStore.load());
+    }
+    return validate(primary);
   }
 
   async snapshot(): Promise<WorkspaceRegistrySnapshot> {
