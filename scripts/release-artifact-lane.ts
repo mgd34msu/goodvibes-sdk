@@ -81,6 +81,10 @@ const verbGroupDeps = {
   secretsManager: { get: async () => null, set: async () => {} },
   approvalBroker: { subscribe: () => () => {} },
   shellPaths: { resolveUserPath: (...segments) => '/nonexistent-artifact-lane/' + segments.join('/') },
+  // The control-plane store resolver refuses a blank surface segment (that is
+  // the defect it exists to prevent); registration never opens the stores, but
+  // the paths are computed eagerly, so the lane names a surface like any host.
+  surfaceRoot: 'artifact-lane',
 };
 
 check('packed-catalog-vs-contract-parity', () => {
