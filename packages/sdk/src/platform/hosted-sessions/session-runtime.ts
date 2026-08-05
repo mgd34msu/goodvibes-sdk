@@ -42,6 +42,36 @@ import type { SessionLiveTurnControls } from '../control-plane/routes/session-ru
 import type { ModelDefinition } from '../providers/registry.js';
 import { withHostedSessionModel } from './model-route.js';
 import type { HostedWorkspaceFloor } from './workspace-floor.js';
+import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
+
+/**
+ * Where a hosted session's client-owned settings live, when the session belongs
+ * to a surface other than the host.
+ *
+ * Returns null when the session IS the host's own — the host's ConfigManager is
+ * then already the right answer — and null when the host has no home directory
+ * to resolve a sibling surface against, which is the honest outcome rather than
+ * inventing a path. A hosted session on a host with no home keeps the host's
+ * store, exactly as it did before, instead of writing somewhere nobody reads.
+ *
+ * Deliberately a PATH and not a ConfigManager: constructing a manager for
+ * another surface runs that surface's load migrations and shared-config
+ * bootstrap. That is a non-owner rewriting a store it does not own — the very
+ * class of defect this is here to close, and it would be self-defeating to
+ * reintroduce it while fixing it.
+ */
+function resolveClientOwnedStore(
+  services: HostedWorkspaceFloor['services'],
+  originSurface: string,
+): { readonly surface: string; readonly settingsPath: string } | null {
+  if (originSurface === services.surfaceRoot) return null;
+  const home = services.configManager.getHomeDirectory();
+  if (!home) return null;
+  return {
+    surface: originSurface,
+    settingsPath: resolveSurfaceDirectory(home, originSurface, 'settings.json'),
+  };
+}
 
 /** What a hosted session's loop is composed with. */
 export interface HostedSessionRuntimeOptions {
@@ -60,6 +90,19 @@ export interface HostedSessionRuntimeOptions {
    * current selection, exactly as a terminal does.
    */
   readonly model?: ModelDefinition | undefined;
+  /**
+   * The surface this session was created FOR — `agent`, `tui`, `webui`.
+   *
+   * A hosted session is composed inside the host, and it used to take the host's
+   * identity with it. That is wrong in a way that is invisible until it costs a
+   * session: an agent conversation hosted by a `tui`-rooted floor resolved every
+   * client-owned setting against the TUI's store, so enabling the wake word
+   * changed the TUI and reported success to a user who was talking to the agent.
+   *
+   * Omitted ⇒ the host's own surface, which is right only when the host created
+   * the session for itself.
+   */
+  readonly originSurface?: string | undefined;
 }
 
 /**
@@ -89,6 +132,8 @@ export interface HostedSessionRuntime {
 /** Compose one hosted session's loop over an already-acquired workspace floor. */
 export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions): HostedSessionRuntime {
   const services = options.floor.services;
+  const originSurface = options.originSurface?.trim() || services.surfaceRoot;
+  const clientOwnedStore = resolveClientOwnedStore(services, originSurface);
   const sessionId = options.sessionId;
   const conversation = new ConversationManager();
   const toolRegistry = new ToolRegistry();
@@ -128,7 +173,18 @@ export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions)
     resolveSessionId: () => sessionId,
     sandboxSessionRegistry: services.sandboxSessionRegistry,
     workingDirectory: options.workspaceRoot,
-    surfaceRoot: services.surfaceRoot,
+    // The session's OWN surface, not the host's. Everything keyed on this —
+    // per-surface tool state under `.goodvibes/<surface>/`, and the store that
+    // answers client-owned settings — follows the surface the session belongs to.
+    surfaceRoot: originSurface,
+    // This process IS the daemon, so daemon-owned keys are already local. What
+    // must NOT be local is a client-owned key belonging to another surface, and
+    // that is what `clientOwnedStore` redirects: to the originating surface's
+    // own settings file, which the live surface is already watching.
+    configRouting: {
+      hostsDaemon: true,
+      ...(clientOwnedStore ? { clientOwnedStore } : {}),
+    },
     archetypeLoader: services.archetypeLoader,
     configManager: services.configManager,
     providerRegistry,

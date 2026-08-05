@@ -333,11 +333,10 @@ export class HostedSessionManager {
         : undefined;
       const at = this.now();
       const runtime = createHostedSessionRuntime({
-        sessionId,
-        workspaceRoot,
-        floor: lease.floor,
+        sessionId, workspaceRoot, floor: lease.floor,
         systemPrompt: this.options.systemPrompt({ sessionId, workspaceRoot }),
         ...(model === undefined ? {} : { model }),
+        ...(input.originSurface ? { originSurface: input.originSurface } : {}),
       });
       record = {
         id: sessionId,
@@ -353,6 +352,7 @@ export class HostedSessionManager {
         turnCount: 0,
         messageCount: 0,
         restoredFromDisk: false,
+        ...(input.originSurface ? { originSurface: input.originSurface } : {}),
       };
       const live: LiveSession = {
         record,
@@ -517,11 +517,11 @@ export class HostedSessionManager {
         ? resolveHostedModelDefinition(lease.floor.services.providerRegistry, live.record.modelId)
         : undefined;
       const runtime = createHostedSessionRuntime({
-        sessionId: live.record.id,
-        workspaceRoot,
-        floor: lease.floor,
+        sessionId: live.record.id, workspaceRoot, floor: lease.floor,
         systemPrompt: this.options.systemPrompt({ sessionId: live.record.id, workspaceRoot }),
         ...(model === undefined ? {} : { model }),
+        // Rebuilding as the host would move client-owned settings mid-life.
+        ...(live.record.originSurface ? { originSurface: live.record.originSurface } : {}),
       });
       this.replayConversation(live, runtime);
       live.runtime = runtime;
