@@ -267,8 +267,8 @@
     "rationale": "config facade with secrets, services, subscriptions, helper model, tool LLM, the daemon-served shared-config tier + admin-scoped credential-status read, and the config-ownership surface (scope resolution, daemon-tier paths, the daemon-owned migration and the derived control-plane base-url readers); re-anchored when the tree-root and daemon-home resolution policy (goodvibes-home.ts: the GOODVIBES_HOME / GOODVIBES_DAEMON_HOME readers, the derived tree directory, the ownership record and the relocated-process question) moved here from the two products that each carried a copy, together with the getConfiguredProviderId and isEffectiveDangerMode derivations; measured 3163 B gzip @ the config-twin hoist; headroom max(ceil(3163*1.2)=3796, 3163+50=3213) \u2192 3796 (1.2x dominates by 583 B)"
   },
   "./platform/control-plane": {
-    "gzip_bytes": 1494,
-    "rationale": "re-anchored when the device method catalog/routes and the client build-floor compatibility helper joined the barrel; measured 1245 B gzip @ 1.15.0 release preparation; headroom max(ceil(1245*1.2)=1494, 1245+50=1295) -> 1494 (1.2x dominates)"
+    "gzip_bytes": 1967,
+    "rationale": "measured 1639 B gzip @ v2.0.8 release verification (control-plane store path resolver, pre-split sweep, and broker storePath exports); headroom max(ceil(1639*1.2)=1967, 1639+50=1689) -> 1967 (1.2x dominates)"
   },
   "./platform/core": {
     "gzip_bytes": 342,
@@ -607,8 +607,8 @@
     "rationale": "facade now also carries the per-project work plan store and its retention constants; measured 181 B gzip @ commit f3c14554; headroom max(ceil(181*1.2)=218, 181+50=231) -> 231 (+50 B floor dominates)"
   },
   "./platform/workspace": {
-    "gzip_bytes": 131,
-    "rationale": "new public package export budget; measured 81 B gzip @ v0.33.0 release verification; headroom max(ceil(81*1.2)=98, 81+50=131) -> 131 (+50 B floor dominates)"
+    "gzip_bytes": 291,
+    "rationale": "measured 241 B gzip @ v2.0.8 release verification (shared workspace register path resolver); headroom max(ceil(241*1.2)=290, 241+50=291) -> 291 (+50 B floor dominates)"
   },
   "./react-native": {
     "gzip_bytes": 1601,
