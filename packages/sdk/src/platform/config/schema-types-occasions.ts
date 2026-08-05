@@ -25,8 +25,6 @@ export interface OccasionsConfig {
   nudgeChannel: string;
   /** Ordinary gap between nudges, in days. */
   cadenceDays: number;
-  /** How many days before the date the rhythm goes daily. */
-  finalStretchDays: number;
   /** Whether a plan that takes the owner away moves a nudge earlier. */
   awayAdjust: boolean;
   /** Whether occasions are written out to a calendar as a mirror. */
@@ -48,7 +46,6 @@ export type OccasionsConfigKey =
   | 'occasions.activeHours'
   | 'occasions.nudgeChannel'
   | 'occasions.cadenceDays'
-  | 'occasions.finalStretchDays'
   | 'occasions.awayAdjust'
   | 'occasions.calendarMirror'
   | 'occasions.suppressMirroredNudges'
@@ -71,7 +68,6 @@ export type OccasionsConfigValue<K extends OccasionsConfigKey> =
   K extends 'occasions.activeHours' ? string :
   K extends 'occasions.nudgeChannel' ? string :
   K extends 'occasions.cadenceDays' ? number :
-  K extends 'occasions.finalStretchDays' ? number :
   K extends 'occasions.awayAdjust' ? boolean :
   K extends 'occasions.calendarMirror' ? boolean :
   K extends 'occasions.suppressMirroredNudges' ? boolean :

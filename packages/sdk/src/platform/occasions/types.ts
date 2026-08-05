@@ -453,7 +453,6 @@ export const OCCASIONS_CONFIG_KEYS = {
   activeHours: 'occasions.activeHours',
   nudgeChannel: 'occasions.nudgeChannel',
   cadenceDays: 'occasions.cadenceDays',
-  finalStretchDays: 'occasions.finalStretchDays',
   awayAdjust: 'occasions.awayAdjust',
   calendarMirror: 'occasions.calendarMirror',
   suppressMirroredNudges: 'occasions.suppressMirroredNudges',

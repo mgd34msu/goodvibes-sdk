@@ -4,7 +4,7 @@ Generated from the synced GoodVibes operator contract artifact.
 
 ## Summary
 
-- Methods: `506`
+- Methods: `507`
 - Events: `35`
 - Auth modes: `shared-bearer`, `session-login`
 - HTTP status path: `/status`
@@ -73231,9 +73231,83 @@ Return the current sqlite-vec vector-store posture.
 
 ### occasions
 
+#### `occasions.acknowledge`
+
+Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.
+
+- Title: `Acknowledge An Occasion`
+- Source: `builtin`
+- Access: `authenticated`
+- Transport: `http`, `ws`
+- HTTP: `POST /api/occasions/acknowledge`
+- Scopes: `write:occasions`
+- Emits events: none
+- Dangerous: `no`
+- Invokable: `yes`
+
+##### Input schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "occasionId": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "conversation",
+        "explicit",
+        "gift-flow"
+      ]
+    },
+    "occurrence": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "occasionId"
+  ],
+  "additionalProperties": false
+}
+```
+
+##### Output schema
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "reply": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "reason",
+    "reply"
+  ],
+  "additionalProperties": false
+}
+```
+
 #### `occasions.answer`
 
-Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question.
+Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.
 
 - Title: `Answer An Occasion Nudge`
 - Source: `builtin`
@@ -73259,7 +73333,8 @@ Record yes, no or later for one occurrence. A no goes silent for the rest of thi
       "enum": [
         "yes",
         "no",
-        "later"
+        "later",
+        "acknowledged"
       ]
     },
     "occurrence": {
@@ -74173,6 +74248,17 @@ Return every occasion declared in the owner profile, with its next occurrence, h
               "person": {
                 "type": "string"
               },
+              "selfDeclared": {
+                "type": "boolean"
+              },
+              "subject": {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "other",
+                  "unattributed"
+                ]
+              },
               "leadDays": {
                 "anyOf": [
                   {
@@ -74206,6 +74292,8 @@ Return every occasion declared in the owner profile, with its next occurrence, h
               "recurrence",
               "kind",
               "person",
+              "selfDeclared",
+              "subject",
               "leadDays",
               "mirrored",
               "extras",
@@ -74247,7 +74335,8 @@ Return every occasion declared in the owner profile, with its next occurrence, h
                 "enum": [
                   "yes",
                   "no",
-                  "later"
+                  "later",
+                  "acknowledged"
                 ]
               },
               {
@@ -74412,6 +74501,17 @@ Return everything unresolved, without delivering anything: the batched nudge, an
                       "soon",
                       "imminent"
                     ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "other",
+                      "unattributed"
+                    ]
+                  },
+                  "acknowledged": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -74419,7 +74519,9 @@ Return everything unresolved, without delivering anything: the batched nudge, an
                   "title",
                   "person",
                   "kind",
-                  "proximity"
+                  "proximity",
+                  "subject",
+                  "acknowledged"
                 ],
                 "additionalProperties": false
               }
@@ -74460,6 +74562,60 @@ Return everything unresolved, without delivering anything: the batched nudge, an
         "required": [
           "occasionId",
           "message"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "acknowledged": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "occasionId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "person": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "gift-giving",
+              "remember-only",
+              "neither"
+            ]
+          },
+          "proximity": {
+            "type": "string",
+            "enum": [
+              "approaching",
+              "soon",
+              "imminent"
+            ]
+          },
+          "subject": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "other",
+              "unattributed"
+            ]
+          },
+          "acknowledged": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "occasionId",
+          "title",
+          "person",
+          "kind",
+          "proximity",
+          "subject",
+          "acknowledged"
         ],
         "additionalProperties": false
       }
@@ -74558,6 +74714,7 @@ Return everything unresolved, without delivering anything: the batched nudge, an
   "required": [
     "today",
     "nudge",
+    "acknowledged",
     "conflicts",
     "interviews"
   ],
@@ -75198,6 +75355,9 @@ What the machine-owned store is holding — counts of answers, gift records, ope
         }
       ]
     },
+    "reconciledOpenItems": {
+      "type": "number"
+    },
     "corruption": {
       "anyOf": [
         {
@@ -75217,6 +75377,7 @@ What the machine-owned store is holding — counts of answers, gift records, ope
     "interviews",
     "mirrors",
     "lastSweep",
+    "reconciledOpenItems",
     "corruption"
   ],
   "additionalProperties": false
@@ -75309,6 +75470,17 @@ Run one pass immediately: reap expired and orphaned state, find the occasions en
                       "soon",
                       "imminent"
                     ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "other",
+                      "unattributed"
+                    ]
+                  },
+                  "acknowledged": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -75316,7 +75488,9 @@ Run one pass immediately: reap expired and orphaned state, find the occasions en
                   "title",
                   "person",
                   "kind",
-                  "proximity"
+                  "proximity",
+                  "subject",
+                  "acknowledged"
                 ],
                 "additionalProperties": false
               }

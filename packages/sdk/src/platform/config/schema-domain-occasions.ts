@@ -42,7 +42,6 @@ export const occasionsConfigDefaults: { occasions: OccasionsConfig } = {
     activeHours: '08:00-22:00',
     nudgeChannel: 'telegram',
     cadenceDays: 3,
-    finalStretchDays: 2,
     awayAdjust: true,
     calendarMirror: false,
     suppressMirroredNudges: true,
@@ -89,14 +88,6 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     description:
       'How often an unresolved CONFLICT in your dates — two different dates recorded for the same thing — is raised again, in days. It no longer governs birthday reminders: those speak twice, when the date enters its runway and on the day itself, and never repeat beyond that. A conflict is a fact about your file that stays wrong until you fix it, so it does keep coming back.',
     ...intRange(1, 60),
-  },
-  {
-    key: 'occasions.finalStretchDays',
-    type: 'number',
-    default: 2,
-    description:
-      'Currently governs nothing, and is kept only so an existing value in your settings file is not silently discarded. It used to make reminders go daily near the date, which is how one birthday produced a reminder every hour; that rhythm was replaced by two fixed moments — the start of the runway, and the day itself — and a setting cannot tune a count of two. It will either be given a real job or removed outright rather than left here.',
-    ...intRange(0, 30),
   },
   {
     key: 'occasions.awayAdjust',

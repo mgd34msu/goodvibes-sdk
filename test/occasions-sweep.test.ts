@@ -47,7 +47,6 @@ const POLICY: OccasionsPolicy = {
   activeHours: '08:00-22:00',
   nudgeChannel: 'telegram',
   cadenceDays: 3,
-  finalStretchDays: 2,
   awayAdjust: true,
   calendarMirror: false,
   suppressMirroredNudges: true,

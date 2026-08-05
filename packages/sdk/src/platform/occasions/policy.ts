@@ -30,7 +30,6 @@ export const OCCASIONS_DEFAULTS = {
   activeHours: '08:00-22:00',
   nudgeChannel: 'telegram',
   cadenceDays: 3,
-  finalStretchDays: 2,
   awayAdjust: true,
   calendarMirror: false,
   suppressMirroredNudges: true,
@@ -61,12 +60,6 @@ export function readOccasionsPolicy(config: OccasionsConfigAccess): OccasionsPol
     activeHours: text(get(OCCASIONS_CONFIG_KEYS.activeHours), OCCASIONS_DEFAULTS.activeHours),
     nudgeChannel: text(get(OCCASIONS_CONFIG_KEYS.nudgeChannel), OCCASIONS_DEFAULTS.nudgeChannel),
     cadenceDays: int(get(OCCASIONS_CONFIG_KEYS.cadenceDays), OCCASIONS_DEFAULTS.cadenceDays, 1, 60),
-    finalStretchDays: int(
-      get(OCCASIONS_CONFIG_KEYS.finalStretchDays),
-      OCCASIONS_DEFAULTS.finalStretchDays,
-      0,
-      30,
-    ),
     awayAdjust: bool(get(OCCASIONS_CONFIG_KEYS.awayAdjust), OCCASIONS_DEFAULTS.awayAdjust),
     calendarMirror: bool(get(OCCASIONS_CONFIG_KEYS.calendarMirror), OCCASIONS_DEFAULTS.calendarMirror),
     suppressMirroredNudges: bool(

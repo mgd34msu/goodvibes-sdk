@@ -44,8 +44,6 @@ import {
 export interface CadencePolicy {
   /** Ordinary gap between nudges, in days. Default 3. */
   readonly cadenceDays: number;
-  /** How many days before the occurrence the rhythm goes daily. Default 2. */
-  readonly finalStretchDays: number;
 }
 
 export function nudgeItemId(occasionId: string, occurrence: IsoDate): string {

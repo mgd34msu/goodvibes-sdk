@@ -13,6 +13,7 @@ import {
   migrateDangerDaemonAlias,
   migrateFleetMaxSizeRename,
   migrateLegacyFeatureToggles,
+  migrateOccasionsFinalStretchRemoval,
   migratePaymentsBudgetAmounts,
 } from './migrations.js';
 import { isFrozenDefaultDump, stripFrozenDefaults } from './settings-io.js';
@@ -323,6 +324,85 @@ export function applyPaymentsBudgetMigrationPass(
     logger.warn(`payments budget migration receipt could not be queued: ${summarizeError(err)}`);
   }
   return result.config;
+}
+
+/**
+ * The retired `occasions.finalStretchDays` is dropped, with a receipt.
+ *
+ * DAEMON-OWNED, CLIENT-READ, exactly like the payments rename beside it: the
+ * `occasions.` prefix lives in the daemon tier, which every terminal product
+ * reads and only the daemon writes. So ownership applies (see {@link
+ * MigrationOwnership}) — a non-owning reader drops the key from its in-memory
+ * view and writes neither the bytes nor a receipt, because "your file now reads
+ * this way" would not be true, and because a client rewriting daemon-owned keys
+ * under an older daemon is the precise shape of the incident that made
+ * ownership explicit in the first place.
+ *
+ * No reader floor is recorded, and the difference from the payments pass is
+ * worth stating. That one RENAMED keys, so an older daemon reading the migrated
+ * file would find names it could not place and silently skip four spending
+ * limits — the floor exists to make that loud. This one only removes a key that
+ * no longer governs anything. An older reader of the migrated file simply falls
+ * back to a default for a setting whose value never reaches a decision, so
+ * there is nothing for it to get wrong and nothing to refuse a start over.
+ */
+export function applyOccasionsFinalStretchMigrationPass(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+  ownership: MigrationOwnership = OWNS_FILE,
+): Record<string, unknown> {
+  const result = migrateOccasionsFinalStretchRemoval(parsed);
+  if (!result.migrated) return parsed;
+  if (!ownership.ownsFile) {
+    logger.debug(
+      `occasions.finalStretchDays removal applied in memory only for ${sourcePath}: this process does not own the file.`,
+    );
+    return result.config;
+  }
+  persistMigratedFile(sourcePath, result.config, 'occasions.finalStretchDays removal');
+  const quoted = result.removedValue === undefined ? '' : ` (it was ${String(result.removedValue)})`;
+  const receiptText =
+    `Setting removed: occasions.finalStretchDays${quoted} is gone from ${sourcePath}. `
+    + 'It set how many days before a date your reminders went daily, and nothing goes daily any more: '
+    + 'an upcoming date is now raised twice — when it enters its runway, and on the day itself — and '
+    + 'stays quiet in between. Your dates, how far ahead they are raised, and where reminders go are '
+    + 'all unchanged.';
+  logger.info(receiptText);
+  try {
+    receipt(`settings-migration-occasions-final-stretch:${sourcePath}`, receiptText);
+  } catch (err) {
+    logger.warn(`occasions.finalStretchDays removal receipt could not be queued: ${summarizeError(err)}`);
+  }
+  return result.config;
+}
+
+/**
+ * Every load-time pass over the DAEMON TIER, in order.
+ *
+ * A separate sequence from {@link runLoadMigrationPasses} because it is a
+ * separate file with separate rules. `~/.goodvibes/daemon/settings.json` holds
+ * the daemon-owned keys, is written by the daemon and read by every terminal
+ * product, and the surface-file passes describe shapes it does not have.
+ *
+ * Ownership is threaded through every pass rather than assumed, and it is the
+ * lesson of the payments money-key incident: a 2.0.5 client migrated this file
+ * on load while a 1.28.6 daemon was still running, and the daemon then skipped a
+ * key its build did not know and stopped resolving a configured spending limit.
+ * The client was right about the change and had no business writing it.
+ *
+ * These run BEFORE the ingestion key screen — see ingestSettingsFile's `migrate`
+ * hook. A key one of these removes or renames is not a key the build fails to
+ * understand, and screening first would report a state that is already handled.
+ */
+export function runDaemonTierMigrationPasses(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+  ownership: MigrationOwnership,
+): Record<string, unknown> {
+  const renamed = applyPaymentsBudgetMigrationPass(parsed, sourcePath, receipt, ownership);
+  return applyOccasionsFinalStretchMigrationPass(renamed, sourcePath, receipt, ownership);
 }
 
 /**

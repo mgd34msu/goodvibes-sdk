@@ -154,11 +154,26 @@ can still catch a mishearing. Silent afterwards; no re-confirmation at nudge
 time. For an annual date a silent write means he discovers the error up to
 eleven months later.
 
-### 4.6 Silence does not end anything — the nudges continue
-No give-up-after-one-retry. Cadence (**my choice, not his** — flagged and not
-objected to, and settings rather than constants): first at the top of the
-window, then every `occasions.cadenceDays` days, then daily for the last
-`occasions.finalStretchDays`.
+### 4.6 Silence does not end anything — but the push does not repeat
+No give-up-after-one-retry: the open ITEM persists and stays enumerable until it
+is resolved or its date passes, so asking "anything coming up?" always finds it.
+That is what "nothing unresolved drops" means, and it is not a licence to say the
+same thing again.
+
+**Owner ruling, 2026-08-05**, after being told about his own birthday five times
+in one day: an occasion is raised ONCE when it enters its lead window, and at
+most once more on the day itself. Between those it stays open and quiet. The
+ceiling is structural — each raise records which of the two boundaries it served,
+and a served boundary is never served again — so no sweep interval, restart or
+clock change can produce a third push.
+
+The earlier rhythm here (every `occasions.cadenceDays` days, then daily for the
+last `occasions.finalStretchDays`) was **my choice, not his**, flagged and not
+objected to at the time. It is what an hourly sweep turned into an hourly
+reminder. `occasions.cadenceDays` now governs only conflict re-raise (§4.14);
+`occasions.finalStretchDays` is REMOVED, with a load-time migration that strips
+it from existing settings files and files a receipt — a count of two has nothing
+to tune, and a setting that changes nothing is worse than no setting.
 
 ### 4.7 Quiet hours — 8am to 10pm, in his timezone
 *"8am to 10pm are generally fine, anything outside of that probably not, so
@@ -286,8 +301,7 @@ came from originally.
 | `occasions.leadDays` | `10` | Owner ruling §4.1. |
 | `occasions.activeHours` | `08:00-22:00` | Owner ruling §4.7. |
 | `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. A comma-separated list, so `telegram,agent` is his §4.2 ruling in full; empty makes it pull-only. |
-| `occasions.cadenceDays` | `3` | My choice, flagged (§4.6). |
-| `occasions.finalStretchDays` | `2` | My choice, flagged (§4.6). |
+| `occasions.cadenceDays` | `3` | My choice, flagged (§4.6). Conflict re-raise only since the two-touch ruling. |
 | `occasions.awayAdjust` | `true` | Owner ruling §4.13. |
 | `occasions.calendarMirror` | `false` | Not pinned; §5 permits mirroring, it does not require it. |
 | `occasions.suppressMirroredNudges` | `true` | Owner ruling §5. |
