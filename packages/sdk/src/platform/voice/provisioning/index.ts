@@ -73,12 +73,26 @@ export {
 } from './install-progress.js';
 
 export {
+  describeSupersededVoiceKeys,
   preconfigureLocalVoiceKeys,
   type VoicePreconfigReceipt,
   type VoicePreconfigDeps,
   type VoiceKeyPreconfig,
   type VoiceKeySkip,
+  type VoiceKeySupersede,
 } from './config-preconfigure.js';
+
+// Provisioning's last act: speak a phrase with the managed TTS and read it back
+// with the managed STT, so "provisioned" is a proven claim.
+export {
+  VOICE_PROOF_MIN_WORD_OVERLAP,
+  VOICE_PROOF_PHRASE,
+  proveVoiceRoundTrip,
+  transcriptWordOverlap,
+  type ProofEngineRunner,
+  type VoiceRoundTripProof,
+  type VoiceRoundTripProofOptions,
+} from './round-trip-proof.js';
 
 export {
   resolveManagedVoiceRoot,

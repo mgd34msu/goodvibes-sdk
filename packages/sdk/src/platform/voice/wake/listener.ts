@@ -143,6 +143,12 @@ export interface WakeListenerOptions {
  */
 const MAX_QUEUED_FRAMES = 4;
 
+/**
+ * How often a run of dropped frames is summarised while it continues. The first
+ * drop of a burst is always reported at once; this only bounds the repeats.
+ */
+const DROPPED_FRAME_REPORT_INTERVAL_MS = 30_000;
+
 /** Runs wake detection over one capture stream, per resolved settings. */
 export class WakeListener {
   readonly #options: WakeListenerOptions;
@@ -165,6 +171,12 @@ export class WakeListener {
   #lastWakeAt: number | null = null;
   #lastError: string | null = null;
   #stopping = false;
+  /** Frames dropped since the last line was written about them. */
+  #droppedSinceReport = 0;
+  /** When the current run of drops began, for the summary's window. */
+  #dropBurstStartedAt: number | null = null;
+  /** When a drop was last reported, so repeats stay on an interval. */
+  #lastDropReportAt = 0;
 
   constructor(options: WakeListenerOptions) {
     this.#options = options;
@@ -308,11 +320,22 @@ export class WakeListener {
     }
     if (this.#engine === null) return;
     if (this.#queued >= MAX_QUEUED_FRAMES) {
-      this.#options.warn?.('wake detection is behind real time; dropping a frame', {
-        queued: this.#queued,
-      });
+      // DROPPING IS THE CHEAP PART; SAYING SO EVERY TIME WAS NOT.
+      //
+      // This warned per dropped frame. A host that fell behind for 23 minutes
+      // wrote 324 identical lines and grew the activity log to 10 MB — and
+      // because the log line ran per frame, the logging itself competed with
+      // the scoring that was already behind. The condition is inherently bursty:
+      // every frame in a busy stretch trips it, and the 324th line says exactly
+      // what the 1st did.
+      //
+      // So: the FIRST drop in a burst is reported immediately (that is the
+      // signal), and the rest are counted and summarised once the burst ends or
+      // the interval elapses. Nothing is hidden — the count is the whole story.
+      this.#noteDroppedFrame();
       return;
     }
+    if (this.#droppedSinceReport > 0) this.#reportDroppedFrames();
     this.#queued += 1;
     this.#chain = this.#chain.then(async () => {
       const engine = this.#engine;
@@ -327,6 +350,47 @@ export class WakeListener {
       } finally {
         this.#queued -= 1;
       }
+    });
+  }
+
+  /**
+   * Count one dropped frame, reporting the first of a burst immediately and the
+   * rest at most once per interval. Doing no work here beyond arithmetic is the
+   * point: the host is already behind, and the old per-frame log line spent the
+   * time it was complaining about not having.
+   */
+  #noteDroppedFrame(): void {
+    const at = this.#now();
+    this.#droppedSinceReport += 1;
+    if (this.#dropBurstStartedAt === null) {
+      this.#dropBurstStartedAt = at;
+      this.#lastDropReportAt = at;
+      this.#options.warn?.('wake detection is behind real time; dropping frames until it catches up', {
+        queued: this.#queued,
+      });
+      // The line above IS the report for this frame.
+      this.#droppedSinceReport = 0;
+      return;
+    }
+    if (at - this.#lastDropReportAt >= DROPPED_FRAME_REPORT_INTERVAL_MS) this.#reportDroppedFrames();
+  }
+
+  /** Write the counted summary for a run of drops, then reset the run. */
+  #reportDroppedFrames(): void {
+    const dropped = this.#droppedSinceReport;
+    this.#droppedSinceReport = 0;
+    if (dropped === 0) {
+      this.#dropBurstStartedAt = null;
+      return;
+    }
+    const at = this.#now();
+    const startedAt = this.#dropBurstStartedAt ?? at;
+    this.#lastDropReportAt = at;
+    this.#dropBurstStartedAt = null;
+    this.#options.warn?.('wake detection fell behind real time', {
+      droppedFrames: dropped,
+      overMs: at - startedAt,
+      queued: this.#queued,
     });
   }
 

@@ -25,6 +25,40 @@ export { createLocalVoiceProvider } from './providers/local.js';
 export type { LocalVoiceProviderOptions, LocalEngineRunner, LocalVoiceConfigReader, ManagedEngineResolver } from './providers/local.js';
 export { downloadVoiceModel } from './model-download.js';
 export type { VoiceModelDownloadOptions, VoiceModelDownloadResult } from './model-download.js';
+
+// Where captured audio becomes words: the connected host first, this process's
+// own provider as a stated fallback. See ./stt-routing.ts.
+export { SttRoutesExhaustedError, describeRoute, transcribeThroughBestRoute } from './stt-routing.js';
+export type { SttAudioInput, SttRouteCandidate, SttRoutingDeps, SttTranscription } from './stt-routing.js';
+
+// What a setup request actually commits the platform to: do the ask, propose
+// the inferred extensions, ask only at genuine forks. See ./setup-chain.ts.
+export {
+  planVoiceSetupChain,
+  renderVoiceSetupChain,
+  voiceSetupChainStrings,
+  voiceSetupStepMentionsUserCommand,
+  voiceSetupStepsOfKind,
+} from './setup-chain.js';
+export type {
+  VoiceSetupChain,
+  VoiceSetupContext,
+  VoiceSetupIntent,
+  VoiceSetupOption,
+  VoiceSetupStep,
+} from './setup-chain.js';
+
+// Voice failures leave evidence on disk rather than only in a banner.
+export {
+  VOICE_DIAGNOSTICS_FILE,
+  VOICE_DIAGNOSTICS_MAX_AGE_MS,
+  VOICE_DIAGNOSTICS_MAX_ENTRIES,
+  describeVoiceDiagnostic,
+  readVoiceDiagnostics,
+  recordVoiceDiagnostic,
+  voiceDiagnosticsPath,
+} from './diagnostics.js';
+export type { VoiceDiagnosticEntry, VoiceDiagnosticRoute, VoiceDiagnosticsWriteOptions } from './diagnostics.js';
 export * from './provisioning/index.js';
 export type { VoiceBillableUsage } from './service.js';
 

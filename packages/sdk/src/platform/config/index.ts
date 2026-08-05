@@ -98,6 +98,7 @@ export {
   applyConfigWrite,
   discoverDaemonEndpoint,
   readDaemonConfig,
+  reapUnansweringRuntimeRecord,
   resolveConfigWriteRoute,
   resolveLiveConfigWriteRoute,
 } from './daemon-config-route.js';

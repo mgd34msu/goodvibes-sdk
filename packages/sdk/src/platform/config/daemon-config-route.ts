@@ -17,16 +17,32 @@
  *     tier, which is the store the daemon will read when it next starts. There
  *     is no unreachable runtime in this case; there is no runtime at all.
  *
- * FAILURE IS LOUD. When a daemon is expected — a running-daemon record exists,
- * or a base URL was configured — and the write cannot be delivered, this throws
- * {@link DaemonConfigUnreachableError}. It does NOT fall back to writing
- * locally and reporting success. "Written locally, not applied to the daemon"
- * is a failure, and it is reported as one, because reporting it as success is
- * exactly what cost a Telegram bot token, a chat id and a network-mode switch.
+ * FAILURE IS LOUD. When a daemon is expected — a base URL was configured, or a
+ * daemon actually ANSWERED at the address discovery produced — and the write
+ * cannot be delivered, this throws {@link DaemonConfigUnreachableError}. It does
+ * NOT fall back to writing locally and reporting success. "Written locally, not
+ * applied to the daemon" is a failure, and it is reported as one, because
+ * reporting it as success is exactly what cost a Telegram bot token, a chat id
+ * and a network-mode switch.
+ *
+ * "EXPECTED" IS PROVEN, NOT ASSUMED. A running-daemon record used to count as a
+ * daemon being there. It does not: a record is written when a daemon is spawned
+ * and nothing removes it when that daemon dies, so a stale one made every
+ * daemon-owned READ answer "unavailable" against a dead port for days while a
+ * live daemon sat elsewhere. The record is now a hint — pid checked here, port
+ * checked by the probe, reaped with a receipt when it fails either — and only a
+ * configured address or an address that answered makes failure loud. See
+ * {@link discoverDaemonEndpoint}.
  */
 
 import { configKeyScope, describeConfigOwnership, type ConfigScope } from './config-ownership.js';
-import { readDetachedDaemonRuntime } from '../runtime/detached-daemon-runtime.js';
+import {
+  detachedDaemonProcessAlive,
+  readDetachedDaemonRuntime,
+  reapDetachedDaemonRuntime,
+  type DetachedDaemonRuntimeHint,
+  type ProcessAliveCheck,
+} from '../runtime/detached-daemon-runtime.js';
 import { deriveControlPlaneBaseUrl, type ControlPlaneBinding } from './control-plane-base-url.js';
 
 /** How to reach a daemon's control plane for config reads and writes. */
@@ -105,8 +121,31 @@ export interface DaemonConfigRouterDeps {
    * null when no daemon config exists.
    */
   readonly readDaemonBinding?: (() => ControlPlaneBinding | null) | undefined;
+  /**
+   * Read the daemon's whole resolved config through a connection this process
+   * ALREADY holds, instead of rediscovering an address and dialling it.
+   *
+   * This is what keeps reads and writes on one resolution. Writes route through
+   * the connected host's `config.set`; when this is supplied, reads route
+   * through the same connection's `config.get`, so a value that was just
+   * written is read back from the runtime that applied it. Without it the two
+   * directions resolve the daemon independently and can disagree — a write that
+   * succeeds and is then unreadable, which is what a whole session was lost to.
+   *
+   * Returns null when the connection holds no answer; discovery is then tried.
+   */
+  readonly readDaemonSnapshot?: (() => Promise<Record<string, unknown> | null>) | undefined;
   /** Injected for tests. */
-  readonly readRuntimeRecord?: ((dir: string) => { host: string; port: number } | null) | undefined;
+  readonly readRuntimeRecord?: ((dir: string) => DetachedDaemonRuntimeHint | null) | undefined;
+  /** Injected for tests: whether a recorded pid still exists. */
+  readonly isProcessAlive?: ProcessAliveCheck | undefined;
+  /**
+   * Remove a runtime record proven stale, leaving a receipt. Injected for tests;
+   * defaults to the real reaper.
+   */
+  readonly reapRuntimeRecord?: ((dir: string, record: DetachedDaemonRuntimeHint, reason: string) => void) | undefined;
+  /** Told what was reaped and why, so a surface can say it out loud. */
+  readonly onRuntimeRecordReaped?: ((event: { readonly baseUrl: string; readonly reason: string }) => void) | undefined;
   readonly fetchImpl?: typeof fetch | undefined;
   /** Request timeout for daemon calls, ms. */
   readonly timeoutMs?: number | undefined;
@@ -145,7 +184,7 @@ export function resolveConfigWriteRoute(key: string, deps: DaemonConfigRouterDep
  *   1. an explicit endpoint — the only option when the daemon is on another
  *      machine, and always authoritative;
  *   2. the running-daemon record a surface writes when it SPAWNS a detached
- *      daemon;
+ *      daemon — a HINT, validated here and never simply believed;
  *   3. the control-plane binding in the daemon's own config, derived (never a
  *      stored `baseUrl` string, which drifts — see control-plane-base-url.ts).
  *
@@ -155,10 +194,26 @@ export function resolveConfigWriteRoute(key: string, deps: DaemonConfigRouterDep
  * exact silent-divergence this whole change removes, so it is not acceptable to
  * depend on the record alone.
  *
- * `certain` distinguishes the two: an endpoint from (1) or (2) is a daemon that
- * is SUPPOSED to be there, so failing to reach it is an error. An endpoint from
- * (3) only describes where a daemon WOULD listen, so it must be probed before
- * it is trusted.
+ * THE RECORD IS A HINT, NOT AN ADDRESS.
+ *
+ * It used to be returned as `certain: true` — never liveness-checked, and never
+ * fallen through. One record left behind by a daemon that had exited made every
+ * daemon-owned settings READ answer "unavailable" against a port nothing
+ * listened on, for days, while a live daemon sat on another port with a
+ * perfectly good control-plane binding two lines further down. So the record is
+ * now validated before it is trusted, in two stages:
+ *
+ *   - pid alive, HERE, synchronously. A record naming a pid that no longer
+ *     exists describes a daemon that is gone. It is REAPED (with a receipt) and
+ *     discovery falls through to (3), which is how the live daemon is found.
+ *   - the port answers, in the async probe below. A record survives the pid
+ *     check but is still only `certain: false`, so nothing is reported
+ *     unavailable until something has actually answered at that address. A pid
+ *     can be recycled onto an unrelated process; only an answer proves a daemon.
+ *
+ * An explicit endpoint (1) stays `certain: true`: an operator naming an address
+ * is asserting a daemon is there, and failing to reach it must be loud rather
+ * than quietly downgraded to a local write.
  */
 export function discoverDaemonEndpoint(deps: DaemonConfigRouterDeps): DaemonConfigEndpoint | null {
   if (deps.endpoint && deps.endpoint.baseUrl.trim()) return { ...deps.endpoint, certain: true };
@@ -166,13 +221,10 @@ export function discoverDaemonEndpoint(deps: DaemonConfigRouterDeps): DaemonConf
   const read = deps.readRuntimeRecord ?? ((dir: string) => readDetachedDaemonRuntime(dir));
   const record = read(deps.daemonHomeDir);
   if (record) {
-    const host = record.host === '0.0.0.0' ? '127.0.0.1' : record.host;
-    return {
-      baseUrl: `http://${host}:${record.port}`,
-      token: deps.token,
-      source: 'running-daemon record',
-      certain: true,
-    };
+    const endpoint = validatedRecordEndpoint(record, deps);
+    if (endpoint) return endpoint;
+    // Reaped: fall through to the derived binding rather than returning null,
+    // which is the whole point — the daemon is usually still running.
   }
   if (!deps.readDaemonBinding) return null;
   const binding = deps.readDaemonBinding();
@@ -183,6 +235,71 @@ export function discoverDaemonEndpoint(deps: DaemonConfigRouterDeps): DaemonConf
     source: 'control-plane binding in the daemon config',
     certain: false,
   };
+}
+
+/** The base URL a runtime record points at (`0.0.0.0` means "reach me on loopback"). */
+function recordBaseUrl(record: DetachedDaemonRuntimeHint): string {
+  const host = record.host === '0.0.0.0' ? '127.0.0.1' : record.host;
+  return `http://${host}:${record.port}`;
+}
+
+/**
+ * Turn a runtime record into an endpoint, or reap it and return null.
+ *
+ * Returns an UNCERTAIN endpoint on success: the pid check proves a process
+ * exists, not that it is this daemon answering on this port. The port probe
+ * finishes the job.
+ */
+function validatedRecordEndpoint(
+  record: DetachedDaemonRuntimeHint,
+  deps: DaemonConfigRouterDeps,
+): DaemonConfigEndpoint | null {
+  if (!detachedDaemonProcessAlive(record, deps.isProcessAlive)) {
+    reapRecord(
+      record,
+      deps,
+      `the process it names (pid ${String(record.pid)}) no longer exists, so the daemon it described has exited`,
+    );
+    return null;
+  }
+  return {
+    baseUrl: recordBaseUrl(record),
+    token: deps.token,
+    source: 'running-daemon record',
+    certain: false,
+  };
+}
+
+/** Reap a record proven stale, disclose it, and never throw doing so. */
+function reapRecord(record: DetachedDaemonRuntimeHint, deps: DaemonConfigRouterDeps, reason: string): void {
+  const dir = deps.daemonHomeDir;
+  if (!dir) return;
+  const reap = deps.reapRuntimeRecord
+    ?? ((target: string, stale: DetachedDaemonRuntimeHint, why: string) => {
+      reapDetachedDaemonRuntime(target, stale, why);
+    });
+  try {
+    reap(dir, record, reason);
+  } catch {
+    // A record that could not be removed is still not trusted by this call;
+    // the next one re-checks it. Failing to reap must not fail the read.
+  }
+  deps.onRuntimeRecordReaped?.({ baseUrl: recordBaseUrl(record), reason });
+}
+
+/**
+ * Reap a record whose pid is alive but whose port answers nothing.
+ *
+ * This is the pid-reuse case: the recorded pid was recycled onto an unrelated
+ * process, so liveness says "alive" while no daemon is there. Exported for the
+ * read path, which discovers the non-answer rather than this module.
+ */
+export function reapUnansweringRuntimeRecord(deps: DaemonConfigRouterDeps, baseUrl: string): void {
+  if (!deps.daemonHomeDir) return;
+  const read = deps.readRuntimeRecord ?? ((dir: string) => readDetachedDaemonRuntime(dir));
+  const record = read(deps.daemonHomeDir);
+  if (!record || recordBaseUrl(record) !== baseUrl) return;
+  reapRecord(record, deps, `nothing answered at ${baseUrl}, so the record no longer describes a reachable daemon`);
 }
 
 /**
@@ -199,13 +316,53 @@ export async function resolveLiveConfigWriteRoute(
   key: string,
   deps: DaemonConfigRouterDeps,
 ): Promise<ConfigWriteRoute> {
-  const route = resolveConfigWriteRoute(key, deps);
-  if (route.mode !== 'daemon' || route.endpoint.certain !== false) return route;
-  if (await daemonAnswers(route.endpoint, deps)) return route;
+  let lastBaseUrl = '';
+  // A record that named a daemon and then could not be found anywhere. Held so
+  // the failure below stays LOUD: a record existing means a daemon was supposed
+  // to be running, and quietly writing to a local file in that case is the
+  // silent divergence this module exists to prevent.
+  let reapedRecord: DaemonConfigEndpoint | null = null;
+
+  // At most two attempts: when the first endpoint came from a runtime record
+  // that does not answer, reaping it makes the NEXT discovery return the derived
+  // control-plane binding, which is where a live daemon usually is. Not looking
+  // there is how a daemon-owned setting was written to a file nothing reads
+  // while the daemon was up on another port.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const route = resolveConfigWriteRoute(key, deps);
+    if (route.mode !== 'daemon') {
+      // No daemon address left at all. If a record had named one, that is a
+      // failure to report, not a local write to perform.
+      if (reapedRecord) break;
+      return route;
+    }
+    if (route.endpoint.certain !== false) return route;
+    lastBaseUrl = route.endpoint.baseUrl;
+    if (await daemonAnswers(route.endpoint, deps)) {
+      // It answered, so it is proven, not merely derived: an error reaching it
+      // from here on is a real failure rather than an absent daemon.
+      return { ...route, endpoint: { ...route.endpoint, certain: true } };
+    }
+    if (route.endpoint.source !== 'running-daemon record') break;
+    reapedRecord = route.endpoint;
+    reapUnansweringRuntimeRecord(deps, route.endpoint.baseUrl);
+  }
+
+  if (reapedRecord) {
+    // A daemon was recorded as running and nothing answers for it anywhere —
+    // neither at its recorded address nor at the address its own config derives.
+    // Reported as an unreachable daemon so the write fails loudly.
+    return {
+      mode: 'daemon',
+      scope: 'daemon',
+      endpoint: { ...reapedRecord, certain: true },
+      reason: describeConfigOwnership(key),
+    };
+  }
   return {
     mode: 'local',
     scope: 'daemon',
-    reason: `${key} is daemon-owned; no daemon answered at ${route.endpoint.baseUrl}, so the daemon `
+    reason: `${key} is daemon-owned; no daemon answered at ${lastBaseUrl}, so the daemon `
       + 'config store is written directly and the daemon reads it when it next starts.',
   };
 }
