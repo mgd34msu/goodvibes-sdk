@@ -26,6 +26,7 @@
  * resolution says UNKNOWN; a covered or declined path never re-asks.
  */
 import { dirname } from 'node:path';
+import { legacyWorkspaceRegisterPath, sharedWorkspaceRegisterPath } from '../workspace/registration/shared-register-path.js';
 import { parse as parsePath } from 'node:path';
 import {
   WorkspaceRegistrationStore,
@@ -43,7 +44,7 @@ export interface WorkspaceRegistrationShellPaths {
 }
 
 /** Filename of the shared control-plane registry document (matches the daemon composition). */
-const REGISTRATIONS_FILE = 'workspace-registrations.json';
+
 
 export interface WorkspaceRegistrationEvaluation {
   /** Normalized absolute working directory the prompt would ask about. */
@@ -94,11 +95,11 @@ export class WorkspaceRegistrationManager {
     this.store =
       options.store ??
       new WorkspaceRegistrationStore({
-        // Deliberately unscoped — see the note at the matching construction in
-        // control-plane/routes/register-gateway-verb-groups.ts. This register is
-        // shared with goodvibes-agent, which reads the same file directly, so
-        // scoping it per surface would split it between products.
-        path: shellPaths.resolveUserPath('control-plane', REGISTRATIONS_FILE),
+        // Shared tier — see registration/shared-register-path.ts. Writes go
+        // there; reads fall back to the pre-split path until the daemon's boot
+        // fold has run, so an updated product never reports an empty register.
+        path: sharedWorkspaceRegisterPath(shellPaths),
+        fallbackReadPath: legacyWorkspaceRegisterPath(shellPaths),
         homeDir: this.homeDir,
         daemonStateDir: this.daemonStateDir,
       });

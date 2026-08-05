@@ -167,30 +167,106 @@ describe('pre-split control-plane sweep', () => {
     expect(report.receipt).toContain('the pre-split directory is gone');
   });
 
-  test('leaves the cross-product workspace register at the unscoped path on purpose, and says why', async () => {
+  test('folds the shared workspace register into the SHARED tier, then retires the legacy file so the directory can empty', async () => {
     const home = makeHome();
     writeFileSync(join(home.scopedDirectory, 'sessions.json'), '{"version":1,"sessions":[]}');
-    const registrations = '{"registrations":["/home/somebody/project"]}';
-    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), registrations);
+    const sharedRegister = join(home.goodvibesRoot, 'shared', 'workspace-registrations.json');
+
+    // The legacy register holds a registration the shared tier has never seen.
+    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), JSON.stringify({
+      version: 1,
+      workspaces: [{ root: '/home/somebody/project', registeredAt: '2026-01-01T00:00:00.000Z' }],
+      declines: [],
+    }));
 
     const report = await sweepPreSplitControlPlaneStore({
       legacyDirectory: home.legacyDirectory,
       scopedDirectory: home.scopedDirectory,
       sessionStorePath: join(home.scopedDirectory, 'sessions.json'),
+      workspaceRegisterPath: sharedRegister,
     });
 
-    // goodvibes-agent reads this same file directly. Moving it under one
-    // product's surface root would hide it from the others, so the sweep does
-    // not touch it — and the directory it keeps alive is explained rather than
-    // left looking like an unfinished migration.
-    expect(report.sharedFiles).toEqual(['workspace-registrations.json']);
-    expect(report.adoptedFiles).toEqual([]);
-    expect(report.movedFiles).toEqual([]);
-    expect(readFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), 'utf8')).toBe(registrations);
+    expect(report.status).toBe('swept');
+    expect(report.foldedWorkspaceRows).toBe(1);
+    // Folded into the SHARED tier — not the scoped directory, where the stores
+    // around it went, because three products read this one.
+    expect(readFileSync(sharedRegister, 'utf8')).toContain('/home/somebody/project');
     expect(existsSync(join(home.scopedDirectory, 'workspace-registrations.json'))).toBe(false);
-    expect(report.legacyDirectoryRemoved).toBe(false);
-    expect(report.receipt).toContain('on purpose');
-    expect(report.receipt).toContain('workspace-registrations.json');
+
+    // Then retired, so nothing is left and the pre-split directory is gone.
+    expect(report.movedFiles).toContain('workspace-registrations.json');
+    expect(report.legacyDirectoryRemoved).toBe(true);
+    expect(existsSync(home.legacyDirectory)).toBe(false);
+    expect(report.receipt).toContain('shared tier');
+  });
+
+  test('the register fold is an id-keyed union and the LATER registeredAt wins', async () => {
+    const home = makeHome();
+    const sharedRegister = join(home.goodvibesRoot, 'shared', 'workspace-registrations.json');
+    mkdirSync(join(home.goodvibesRoot, 'shared'), { recursive: true });
+
+    // Same root in both, different timestamps and labels; plus one root each
+    // side has alone. Nothing may be dropped, and the newer label must win.
+    writeFileSync(sharedRegister, JSON.stringify({
+      version: 1,
+      workspaces: [
+        { root: '/both', registeredAt: '2026-01-01T00:00:00.000Z', label: 'older-in-shared' },
+        { root: '/only-shared', registeredAt: '2026-01-01T00:00:00.000Z' },
+      ],
+      declines: [],
+    }));
+    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), JSON.stringify({
+      version: 1,
+      workspaces: [
+        { root: '/both', registeredAt: '2026-06-01T00:00:00.000Z', label: 'newer-in-legacy' },
+        { root: '/only-legacy', registeredAt: '2026-01-01T00:00:00.000Z' },
+      ],
+      declines: [],
+    }));
+
+    await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: null,
+      workspaceRegisterPath: sharedRegister,
+    });
+
+    const merged = JSON.parse(readFileSync(sharedRegister, 'utf8')) as {
+      workspaces: { root: string; label?: string }[];
+    };
+    const byRoot = new Map(merged.workspaces.map((row) => [row.root, row]));
+    expect([...byRoot.keys()].sort()).toEqual(['/both', '/only-legacy', '/only-shared']);
+    expect(byRoot.get('/both')?.label).toBe('newer-in-legacy');
+  });
+
+  test('the register fold is idempotent: a second pass over the same pair changes nothing', async () => {
+    const home = makeHome();
+    const sharedRegister = join(home.goodvibesRoot, 'shared', 'workspace-registrations.json');
+    const rows = JSON.stringify({
+      version: 1,
+      workspaces: [{ root: '/p', registeredAt: '2026-01-01T00:00:00.000Z' }],
+      declines: [],
+    });
+    writeFileSync(join(home.legacyDirectory, 'workspace-registrations.json'), rows);
+
+    const first = await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: null,
+      workspaceRegisterPath: sharedRegister,
+    });
+    expect(first.foldedWorkspaceRows).toBe(1);
+    const afterFirst = readFileSync(sharedRegister, 'utf8');
+
+    // The legacy file is gone now, so a second pass has nothing to fold.
+    const second = await sweepPreSplitControlPlaneStore({
+      legacyDirectory: home.legacyDirectory,
+      scopedDirectory: home.scopedDirectory,
+      sessionStorePath: null,
+      workspaceRegisterPath: sharedRegister,
+    });
+    expect(second.foldedWorkspaceRows).toBe(0);
+    expect(readFileSync(sharedRegister, 'utf8')).toBe(afterFirst);
   });
 
   test('REFUSES loudly when both copies exist and disagree: nothing moves, both survive, the receipt names the conflict', async () => {

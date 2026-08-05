@@ -117,6 +117,7 @@ import { createPushService } from './push-composition.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { FleetEvent } from '../../../events/fleet.js';
 import { controlPlaneStorePath } from '../control-plane-store-paths.js';
+import { legacyWorkspaceRegisterPath, sharedWorkspaceRegisterPath } from '../../workspace/registration/shared-register-path.js';
 
 export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
   /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
@@ -433,9 +434,9 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // absurdly broad root by the same guard checkpointing uses.
   const daemonStateDir = deps.shellPaths.resolveUserPath();
   const workspaceRegistrationStore = new WorkspaceRegistrationStore({
-    // DELIBERATELY UNSCOPED — cross-product state; scoping it splits the
-    // register. See SHARED_UNSCOPED_STORES in pre-split-control-plane-sweep.ts.
-    path: deps.shellPaths.resolveUserPath('control-plane', 'workspace-registrations.json'),
+    // SHARED TIER, not surface-scoped — three products read this register. See workspace/registration/shared-register-path.ts.
+    path: sharedWorkspaceRegisterPath(deps.shellPaths),
+    fallbackReadPath: legacyWorkspaceRegisterPath(deps.shellPaths),
     homeDir: dirname(daemonStateDir),
     daemonStateDir,
   });

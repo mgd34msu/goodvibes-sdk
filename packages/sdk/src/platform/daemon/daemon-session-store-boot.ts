@@ -19,6 +19,7 @@ import {
   sweepPreSplitControlPlaneStore,
   type PreSplitControlPlaneSweepReport,
 } from '../control-plane/pre-split-control-plane-sweep.js';
+import { sharedWorkspaceRegisterPath } from '../workspace/registration/shared-register-path.js';
 
 /** The subset of the shell path service these two steps need. */
 export interface DaemonSessionStoreBootPaths {
@@ -119,6 +120,9 @@ export async function sweepPreSplitDaemonControlPlaneStore(input: {
       // home-scoped, and on a daemon started outside the home they differ.
       scopedDirectory: input.shellPaths.resolveUserPath(input.surfaceRoot, 'control-plane'),
       sessionStorePath: input.sessionStorePath,
+      // The shared tier, which takes no surface root: three products read this
+      // register, so it must not land under any one of their directories.
+      workspaceRegisterPath: sharedWorkspaceRegisterPath(input.shellPaths),
     });
     // Gated on there being something to SAY, not on a particular status: a pass
     // that only had to leave something alone still owes the owner the sentence
@@ -134,6 +138,7 @@ export async function sweepPreSplitDaemonControlPlaneStore(input: {
         conflictedFiles: report.conflictedFiles,
         skippedFiles: report.skippedFiles,
         sharedFiles: report.sharedFiles,
+        foldedWorkspaceRows: report.foldedWorkspaceRows,
         failures: report.failures,
       });
       input.recordReceipt(report.receipt);

@@ -7,11 +7,12 @@
  * orphan `~/.goodvibes/control-plane/` a missing surface segment produces.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeProjectTempDir } from './_helpers/project-temp.ts';
 import { createShellPathService } from '../packages/sdk/src/platform/runtime/shell-paths.ts';
 import { controlPlaneStorePath } from '../packages/sdk/src/platform/control-plane/control-plane-store-paths.ts';
+import { resolveWorkspaceRegisterReadPath } from '../packages/sdk/src/platform/workspace/registration/shared-register-path.ts';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { installOccasions } from '../packages/sdk/src/platform/control-plane/routes/occasions-composition.ts';
@@ -88,15 +89,7 @@ describe('the repointed writers actually write scoped', () => {
     expect(existsSync(unscopedDir)).toBe(false);
   });
 
-  test('the SHARED workspace register stays unscoped, and is the same file whatever surface root asks for it', async () => {
-    // This one is deliberately NOT surface-scoped. goodvibes-agent reads and
-    // writes the same file directly and the daemon reads it again for
-    // checkpoint eligibility, so scoping it to whichever product composed the
-    // gateway would split the register: workspaces registered from one product
-    // would vanish from the other, and checkpoint eligibility would refuse
-    // workspaces the operator had registered. See SHARED_UNSCOPED_STORES in
-    // control-plane/pre-split-control-plane-sweep.ts, which leaves it alone for
-    // the same reason.
+  test('the workspace register writes to the SHARED tier, under no surface root at all', async () => {
     const home = makeProjectTempDir('gv-cp-paths-workspace');
     const project = join(home, 'projects', 'app');
     mkdirSync(project, { recursive: true });
@@ -109,16 +102,17 @@ describe('the repointed writers actually write scoped', () => {
     const outcome = await new WorkspaceRegistrationManager({ shellPaths }).register();
     expect(outcome.registered).toBe(true);
 
-    const sharedPath = join(home, '.goodvibes', 'control-plane', 'workspace-registrations.json');
+    const sharedPath = join(home, '.goodvibes', 'shared', 'workspace-registrations.json');
     expect(existsSync(sharedPath)).toBe(true);
-    expect(readdirSync(join(home, '.goodvibes', 'control-plane'))).toContain('workspace-registrations.json');
 
-    // And emphatically NOT under any surface root — that is the split.
+    // Not under any surface root — that is the split — and not at the pre-split
+    // address either, which is what this whole round is clearing out.
     expect(existsSync(join(home, '.goodvibes', 'tui', 'control-plane', 'workspace-registrations.json'))).toBe(false);
     expect(existsSync(join(home, '.goodvibes', 'agent', 'control-plane', 'workspace-registrations.json'))).toBe(false);
+    expect(existsSync(join(home, '.goodvibes', 'control-plane', 'workspace-registrations.json'))).toBe(false);
   });
 
-  test('two products registering workspaces see one register, not one each', async () => {
+  test('two products registering workspaces converge on ONE shared register', async () => {
     // The regression this guards: the daemon and the agent each holding their
     // own copy, each certain the other had registered nothing.
     const home = makeProjectTempDir('gv-cp-paths-shared');
@@ -135,9 +129,59 @@ describe('the repointed writers actually write scoped', () => {
     await new WorkspaceRegistrationManager({ shellPaths: shellPathsFor(fromDaemon) }).register();
     await new WorkspaceRegistrationManager({ shellPaths: shellPathsFor(fromAgent) }).register();
 
-    const sharedPath = join(home, '.goodvibes', 'control-plane', 'workspace-registrations.json');
+    const sharedPath = join(home, '.goodvibes', 'shared', 'workspace-registrations.json');
     const written = readFileSync(sharedPath, 'utf8');
     expect(written).toContain('from-daemon');
     expect(written).toContain('from-agent');
+    expect(readdirSync(join(home, '.goodvibes', 'shared'))).toContain('workspace-registrations.json');
+  });
+
+  test('READ falls back to the pre-split file, so state is visible before any fold has run', async () => {
+    // The version-skew window: an updated product starts on a machine whose
+    // register has not been folded yet. It must see the operator's workspaces,
+    // not an empty list.
+    const home = makeProjectTempDir('gv-cp-paths-fallback');
+    const project = join(home, 'projects', 'legacy-only');
+    mkdirSync(project, { recursive: true });
+    const legacyDir = join(home, '.goodvibes', 'control-plane');
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(legacyDir, 'workspace-registrations.json'), JSON.stringify({
+      version: 1,
+      workspaces: [{ root: project, registeredAt: '2026-01-01T00:00:00.000Z' }],
+      declines: [],
+    }));
+
+    const shellPaths = {
+      workingDirectory: project,
+      homeDirectory: home,
+      resolveUserPath: (...segments: string[]): string => join(home, '.goodvibes', ...segments),
+    };
+
+    // The read resolver points at the legacy file while it is the only copy.
+    expect(resolveWorkspaceRegisterReadPath(shellPaths, existsSync))
+      .toBe(join(legacyDir, 'workspace-registrations.json'));
+
+    // And the store itself reads through, rather than starting empty. The
+    // status is 'covered' rather than 'registered' because the recorded root
+    // normalizes to the covering subtree — either answer means the operator's
+    // registration was SEEN; 'unknown' is the failure this guards, and is what
+    // an updated product would report without the fallback.
+    const evaluation = await new WorkspaceRegistrationManager({ shellPaths }).evaluate();
+    expect(evaluation.status).not.toBe('unknown');
+    expect(['registered', 'covered']).toContain(evaluation.status);
+  });
+
+  test('once the shared file exists it wins, and the legacy one is no longer consulted', () => {
+    const home = makeProjectTempDir('gv-cp-paths-prefers-shared');
+    const sharedDir = join(home, '.goodvibes', 'shared');
+    const legacyDir = join(home, '.goodvibes', 'control-plane');
+    mkdirSync(sharedDir, { recursive: true });
+    mkdirSync(legacyDir, { recursive: true });
+    writeFileSync(join(sharedDir, 'workspace-registrations.json'), '{"version":1,"workspaces":[],"declines":[]}');
+    writeFileSync(join(legacyDir, 'workspace-registrations.json'), '{"version":1,"workspaces":[],"declines":[]}');
+
+    const shellPaths = { resolveUserPath: (...segments: string[]): string => join(home, '.goodvibes', ...segments) };
+    expect(resolveWorkspaceRegisterReadPath(shellPaths, existsSync))
+      .toBe(join(sharedDir, 'workspace-registrations.json'));
   });
 });

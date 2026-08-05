@@ -69,6 +69,7 @@ import { dirname, join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import { importLegacySessionStores } from './session-store-importer.js';
+import { foldLegacyWorkspaceRegister } from '../workspace/registration/fold-legacy-register.js';
 
 /** Directory-name prefix marking a quarantined pre-split control-plane store. */
 export const PRE_SPLIT_QUARANTINE_PREFIX = 'control-plane.pre-split-';
@@ -87,17 +88,17 @@ const MAX_QUARANTINE_DIRECTORIES = 5;
 const SESSION_STORE_FILE = 'sessions.json';
 
 /**
- * Stores that legitimately live at the unscoped path and must NOT be migrated.
+ * The register three products share, folded into the SHARED tier rather than
+ * under any surface root.
  *
- * `workspace-registrations.json` is read and written directly by more than one
- * product — the SDK's gateway, the daemon's checkpoint-eligibility reader, and
- * goodvibes-agent's own store — so it is cross-product state rather than any
- * one surface's. Moving it under a surface root would move it out from under
- * every product that did not agree on that root, and workspaces registered from
- * one would vanish from the other. It stays, and the receipt says so, until
- * where cross-product state belongs is actually ruled.
+ * It is read and written directly by the SDK's gateway, goodvibes-agent, and
+ * the daemon's checkpoint-eligibility reader, so surface-scoping it would give
+ * each product its own copy. `~/.goodvibes/shared/` is the platform's home for
+ * exactly this (the shared settings tier and canonical memory store live
+ * there), and it takes no surface root — one path, identical from everywhere.
+ * See workspace/registration/shared-register-path.ts.
  */
-const SHARED_UNSCOPED_STORES: ReadonlySet<string> = new Set(['workspace-registrations.json']);
+const WORKSPACE_REGISTER_FILE = 'workspace-registrations.json';
 
 export interface PreSplitControlPlaneSweepReport {
   /**
@@ -112,6 +113,8 @@ export interface PreSplitControlPlaneSweepReport {
   readonly scopedDirectory: string;
   /** Sessions the fold added to the broker's store that were not already in it. */
   readonly foldedSessions: number;
+  /** Workspace-register rows the fold added to or refreshed in the shared tier. */
+  readonly foldedWorkspaceRows: number;
   /** Files MOVED to the scoped directory because nothing was there — the migration. */
   readonly adoptedFiles: readonly string[];
   /** Files retired into quarantine because the scoped copy already says the same thing. */
@@ -156,6 +159,7 @@ function emptyReport(
     legacyDirectory,
     scopedDirectory,
     foldedSessions: 0,
+    foldedWorkspaceRows: 0,
     adoptedFiles: [],
     movedFiles: [],
     quarantineDirectory: null,
@@ -197,11 +201,17 @@ export async function sweepPreSplitControlPlaneStore(input: {
    * sessions.json is then treated like any other store.
    */
   readonly sessionStorePath?: string | null | undefined;
+  /**
+   * Where the shared workspace register lives — the shared tier, which takes no
+   * surface root. `null` leaves the legacy file alone and discloses it.
+   */
+  readonly workspaceRegisterPath?: string | null | undefined;
   readonly now?: number | undefined;
   readonly pid?: number | undefined;
 }): Promise<PreSplitControlPlaneSweepReport> {
   const { legacyDirectory, scopedDirectory } = input;
   const sessionStorePath = input.sessionStorePath ?? null;
+  const workspaceRegisterPath = input.workspaceRegisterPath ?? null;
   const now = input.now ?? Date.now();
   const pid = input.pid ?? process.pid;
 
@@ -225,6 +235,7 @@ export async function sweepPreSplitControlPlaneStore(input: {
   const skippedFiles: string[] = [];
   const sharedFiles: string[] = [];
   let foldedSessions = 0;
+  let foldedWorkspaceRows = 0;
   let quarantineDirectory: string | null = null;
 
   /** Opened lazily, so a run that retires nothing mints no empty directory. */
@@ -256,13 +267,29 @@ export async function sweepPreSplitControlPlaneStore(input: {
   };
 
   for (const name of legacyFiles) {
-    // Shared, deliberately unscoped: not this sweep's to move. Disclosed rather
-    // than silently skipped, so the directory that survives is explained.
-    if (SHARED_UNSCOPED_STORES.has(name)) {
-      sharedFiles.push(name);
+    const legacyPath = join(legacyDirectory, name);
+
+    // ── The shared workspace register: folded into the SHARED tier ────────
+    // Not adopted into the scoped directory like the stores around it — three
+    // products read this one, so it goes somewhere none of them has to know
+    // another's surface root. Merged by the store's own identity (root path,
+    // later timestamp wins) rather than moved, because an updated product may
+    // already have written the shared copy before this ran.
+    if (name === WORKSPACE_REGISTER_FILE) {
+      if (workspaceRegisterPath === null) {
+        sharedFiles.push(name);
+        continue;
+      }
+      try {
+        const merged = await foldLegacyWorkspaceRegister({ legacyPath, sharedPath: workspaceRegisterPath });
+        foldedWorkspaceRows += merged.added + merged.updated;
+      } catch (error) {
+        failures.push(`${name} could not be folded into the shared tier (${summarizeError(error)})`);
+        continue;
+      }
+      retire(name);
       continue;
     }
-    const legacyPath = join(legacyDirectory, name);
 
     // ── The session store: folded, never adopted ─────────────────────────
     // It is the one store here whose scoped home is decided by the broker
@@ -339,7 +366,7 @@ export async function sweepPreSplitControlPlaneStore(input: {
 
   reapQuarantineDirectories(dirname(legacyDirectory), now);
 
-  const changed = movedFiles.length > 0 || adoptedFiles.length > 0 || foldedSessions > 0;
+  const changed = movedFiles.length > 0 || adoptedFiles.length > 0 || foldedSessions > 0 || foldedWorkspaceRows > 0;
   const report: PreSplitControlPlaneSweepReport = {
     status: changed ? 'swept' : (conflictedFiles.length > 0 ? 'conflicted' : 'clean'),
     legacyDirectory,
@@ -351,6 +378,7 @@ export async function sweepPreSplitControlPlaneStore(input: {
     conflictedFiles,
     skippedFiles,
     sharedFiles,
+    foldedWorkspaceRows,
     legacyDirectoryRemoved,
     failures,
     receipt: null,
@@ -373,6 +401,11 @@ export function preSplitSweepReceipt(report: PreSplitControlPlaneSweepReport): s
   if (report.foldedSessions > 0) {
     parts.push(
       `${report.foldedSessions} session${report.foldedSessions === 1 ? '' : 's'} the pre-split store held and the live one did not were folded forward`,
+    );
+  }
+  if (report.foldedWorkspaceRows > 0) {
+    parts.push(
+      `${report.foldedWorkspaceRows} workspace-register row${report.foldedWorkspaceRows === 1 ? '' : 's'} were folded into the shared tier, where every product reads one register`,
     );
   }
   if (report.movedFiles.length > 0 && report.quarantineDirectory !== null) {
