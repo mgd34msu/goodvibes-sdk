@@ -19,17 +19,31 @@
  * A test that hands the factory a builder cannot catch that: it is exactly what
  * passed while production had none. So every case here starts at
  * `composeInboundMail` with the option the daemon passes — a Gmail READER
- * resolver over real adopted credentials on disk — and asserts a Gmail source
- * that is actually RUNNING, with a message actually delivered through it.
+ * resolver over a real adopted credential — and asserts a Gmail source that is
+ * actually RUNNING, with a message actually delivered through it.
+ *
+ * Where the credential lives, and why that changed
+ * ────────────────────────────────────────────────
+ * In the daemon's own config and secret stores, which is where adoption puts
+ * it. This file used to leave both stores empty and rely on the resolver
+ * scanning `~/.gmail-mcp` on every call; that scan is gone, because going
+ * through a home directory looking for another tool's credential files is not
+ * something to do unasked, and most machines have no such directory. Disk
+ * credentials are still fully supported and still adopt exactly as they did —
+ * only now because someone asked for it. The state under test is therefore the
+ * state AFTER adoption, which is the state a working machine is in.
+ *
+ * The `~/.gmail-mcp` files are still written into the temp home, unread, as a
+ * standing check that nothing reaches for them on its own: a resolver that
+ * quietly started scanning again would make the "no credential" case pass for
+ * the wrong reason, and that case now empties the store instead.
  *
  * Nothing is stubbed below the composition
  * ────────────────────────────────────────
- * The credentials are a real `~/.gmail-mcp` layout in a temp home, read by the
- * real `nodeGoogleFilePort` through the real `adoptGmailMcpCredentials`. The
- * client is a real `GoogleApiClient` over a real `GoogleTokenManager`. The only
- * substitution is `fetch`, which answers Google's four endpoints from a table —
- * the same seam `gateway-calendar-service.ts` already takes as
- * `GoogleCalendarGatewayServiceOptions.fetch`. Everything between the adopted
+ * The client is a real `GoogleApiClient` over a real `GoogleTokenManager`. The
+ * only substitution is `fetch`, which answers Google's four endpoints from a
+ * table — the same seam `gateway-calendar-service.ts` already takes as
+ * `GoogleCalendarGatewayServiceOptions.fetch`. Everything between the stored
  * credential and the delivered message is the shipped code.
  */
 
@@ -41,6 +55,10 @@ import { join } from 'node:path';
 import { composeInboundMail } from '../packages/sdk/src/platform/daemon/facade-inbound-mail.ts';
 import { createDaemonGmailInboundReader } from '../packages/sdk/src/platform/daemon/facade-gmail-reader.ts';
 import { MIN_VERIFICATION_WINDOW_MS } from '../packages/sdk/src/platform/google/verification-expectations.ts';
+import {
+  GOOGLE_CONFIG_KEYS,
+  GOOGLE_SECRET_KEYS,
+} from '../packages/sdk/src/platform/google/setup-plan.ts';
 import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
 import type { ExpectationExpiryReport } from '../packages/sdk/src/platform/email/inbound/expectation-registry.ts';
 import type { InboundMailSupervisor } from '../packages/sdk/src/platform/email/inbound/index.ts';
@@ -192,6 +210,8 @@ function composeOrNull(input: {
   readonly home?: string;
   readonly profileStatus?: number;
   readonly historyRecords?: unknown[];
+  /** Empties the encrypted store, which is what an unconnected machine looks like. */
+  readonly noStoredCredential?: boolean;
 } = {}): Rig | null {
   const root = mkdtempSync(join(tmpdir(), 'gv-gmail-inbound-'));
   tmpRoots.push(root);
@@ -232,12 +252,31 @@ function composeOrNull(input: {
     // Any fallback to IMAP therefore cannot even be constructed, so a Gmail
     // arm that quietly degraded would show up as an inactive supervisor here
     // rather than as a green test over the wrong source.
+    //
+    // The config half of an ADOPTED credential. It is here rather than being
+    // discovered because adoption is what puts it here: someone ran the adopt
+    // command, the files on disk were read, and both halves landed in the
+    // daemon's own stores. Nothing scans `~/.gmail-mcp` on its own any more —
+    // rummaging through a home directory for another tool's credential files
+    // is not something to do unasked — so the state under test is the state
+    // after adoption, which is the state a working machine is actually in.
+    ...(input.noStoredCredential === true ? {} : {
+      [GOOGLE_CONFIG_KEYS.oauthClientId]: 'client-id.apps.googleusercontent.com',
+      [GOOGLE_CONFIG_KEYS.oauthClientSecretRef]: GOOGLE_CONFIG_KEYS.oauthClientSecretRef,
+    }),
     ...input.config,
   };
 
+  /** The secret half of the same adopted credential. */
+  const secrets: Record<string, string> = input.noStoredCredential === true ? {} : {
+    [GOOGLE_SECRET_KEYS.oauthClientSecret]: 'client-secret',
+    [GOOGLE_SECRET_KEYS.oauthRefreshToken]: 'refresh-token',
+  };
+  const secretsManager = { get: async (key: string) => secrets[key] ?? null };
+
   const supervisor = composeInboundMail({
     configManager: { get: (key: string) => values[key] } as never,
-    secretsManager: { get: async () => null } as never,
+    secretsManager: secretsManager as never,
     shellPaths: { resolveUserPath: (_scope: string, name: string) => join(root, name) } as never,
     routeBindings: {
       listBindings: () => [{ id: 'binding-1', lastSeenAt: 1 }],
@@ -254,7 +293,7 @@ function composeOrNull(input: {
     },
     gmailReader: createDaemonGmailInboundReader({
       configManager: { get: (key: string) => values[key] } as never,
-      secretsManager: { get: async () => null } as never,
+      secretsManager: secretsManager as never,
       homeDirectory: home,
       fetch: googleFetch({
         scope,
@@ -435,9 +474,14 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
   });
 
   test('no Google credential on the machine is reported in the selection, not guessed at', async () => {
+    // "No credential" now means an empty STORE, which is what it means on a
+    // machine where nobody has connected an account. It used to mean an empty
+    // home directory, because the resolver scanned `~/.gmail-mcp` on every
+    // call — it no longer goes looking, so a bare home proves nothing either
+    // way. The temp home is still bare, so both halves of "nothing here" hold.
     const bareHome = mkdtempSync(join(tmpdir(), 'gv-gmail-nohome-'));
     tmpRoots.push(bareHome);
-    const rig = compose({ home: bareHome });
+    const rig = compose({ home: bareHome, noStoredCredential: true });
     const status = await rig.supervisor.start();
 
     expect(status.mode).toBe('inactive');

@@ -36,90 +36,25 @@ import {
   REQUIRED_SERVICES,
 } from './setup-plan.js';
 import type { GoogleStepRunner, GoogleStepRunnerResult } from './setup-flow.js';
-import type {
-  GoogleBrowserPort,
-  GoogleCommandPort,
-  GoogleConfigPort,
-  GoogleSecretPort,
-  GoogleSetupPath,
-  GoogleStepId,
-} from './types.js';
+import type { GoogleSecretPort, GoogleSetupPath, GoogleStepId } from './types.js';
+import type { GoogleClientIntakeChoice, GoogleSetupActionDeps } from './setup-action-deps.js';
+import { buildCloudProjectRunners } from './setup-actions-cloud-project.js';
 import { createAppPassword } from './app-password-flow.js';
-import { createDesktopOAuthClient, publishApp, readPublishingStatus } from './console-flow.js';
+import { createDesktopOAuthClient } from './console-flow.js';
 import {
   clientCredentialsFromInput,
   readClientCredentialsFromJson,
   type GoogleClientCredentials,
   type GoogleClientIntakeResult,
 } from './client-intake.js';
-import { collectDownloadedClientFile, type DownloadScanPort } from './client-download.js';
-import {
-  checkAuthenticated,
-  detectGcloud,
-  enableServices,
-  enabledServices,
-  installGcloud,
-  selectOrCreateProject,
-} from './gcloud.js';
+import { collectDownloadedClientFile } from './client-download.js';
 import {
   buildAuthorizationUrl,
   exchangeCodeForTokens,
   generatePkcePair,
-  type GoogleFetchPort,
-  type GoogleLoopbackListenerFactory,
 } from './oauth-loopback.js';
-import { adoptGmailMcpCredentials, type GoogleFilePort } from './credential-adoption.js';
 import { looksLikeGoogleSignIn } from './browser-elements.js';
 import { safeConfigGet, safeConfigString } from './config-access.js';
-
-/** How the OAuth client credentials should be obtained, when they are not already stored. */
-export type GoogleClientIntakeChoice =
-  /** Drive the Cloud console in a browser and read the client back out of the dialog. */
-  | { readonly kind: 'console-walkthrough' }
-  /** Read a client JSON the user already downloaded. */
-  | { readonly kind: 'client-json-file'; readonly path: string }
-  /** Use a client id and secret the user pasted. */
-  | { readonly kind: 'manual-entry'; readonly clientId: string; readonly clientSecret: string }
-  /** Look in a downloads directory for the JSON the console just saved. */
-  | { readonly kind: 'downloaded-file'; readonly directory: string; readonly since?: number };
-
-/** Everything the runners need, all of it injected. */
-export interface GoogleSetupActionDeps {
-  readonly config: GoogleConfigPort;
-  readonly secrets: GoogleSecretPort;
-  /**
-   * Opens a browser port. Called only by steps that genuinely need one, so
-   * building the runner map never launches a browser.
-   */
-  readonly browser: () => Promise<GoogleBrowserPort>;
-  readonly commands: GoogleCommandPort;
-  readonly fetchPort: GoogleFetchPort;
-  readonly files: GoogleFilePort;
-  /**
-   * Opens the local HTTP listener Google redirects back to after consent.
-   *
-   * Injected because binding a port is real machine I/O: the whole consent
-   * exchange — authorization URL, PKCE, state check, code-for-token — runs
-   * against a fake listener with no socket. The shipped bun/node
-   * implementation is `startLoopbackListener` in the `google/node` entry.
-   */
-  readonly loopback: GoogleLoopbackListenerFactory;
-  readonly homeDirectory: string;
-  /** How to obtain OAuth client credentials. Defaults to the console walkthrough. */
-  readonly clientIntake?: GoogleClientIntakeChoice;
-  /** Directory scanning, needed only by the `downloaded-file` intake route. */
-  readonly downloadScan?: DownloadScanPort;
-  /** Opens a URL for the human to complete consent in. */
-  readonly openUrl?: (url: string) => Promise<void>;
-  /** Real IMAP/SMTP connectivity check, so `gmail-verify` proves rather than assumes. */
-  readonly verifyMail?: () => Promise<{ readonly ok: boolean; readonly detail: string }>;
-  /** Real calendar feed read, so `calendar-verify` proves rather than assumes. */
-  readonly verifyCalendar?: () => Promise<{ readonly ok: boolean; readonly detail: string }>;
-  readonly now?: () => number;
-}
-
-/** Cloud project ids this flow will reuse. Keeps re-runs from piling up projects. */
-const GOOGLE_PROJECT_PREFIX = 'goodvibes-agent';
 
 /** How long to wait for the person to finish Google's consent screen. */
 const CONSENT_TIMEOUT_MS = 300_000;
@@ -291,7 +226,7 @@ function gmailVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       : failed(
         'Could not connect to Gmail.',
         outcome.detail,
-        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped — create a new one with /google setup and store it again.',
+        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped — create a new one with /google setup --path app-password and store it again.',
       );
   };
 }
@@ -333,135 +268,6 @@ function calendarVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
 // ---------------------------------------------------------------------------
 
 /** Remembered between the gcloud steps of a single run. */
-interface GcloudState {
-  path: string | null;
-}
-
-function gcloudInstalledRunner(deps: GoogleSetupActionDeps, state: GcloudState): GoogleStepRunner {
-  return async () => {
-    const detection = await detectGcloud(deps.commands, deps.homeDirectory);
-    if (detection.ok) {
-      state.path = detection.path;
-      return alreadyDone(`gcloud is already installed (${detection.version}).`);
-    }
-    const install = await installGcloud(deps.commands, { homeDirectory: deps.homeDirectory });
-    if (!install.ok) {
-      return failed('gcloud could not be installed.', install.problem, install.fix);
-    }
-    state.path = install.path;
-    return install.outcome === 'already-installed'
-      ? alreadyDone('gcloud is already installed.')
-      : done(`Installed gcloud into ${install.path}.`);
-  };
-}
-
-function gcloudPath(state: GcloudState): string {
-  return state.path ?? 'gcloud';
-}
-
-function gcloudAuthRunner(deps: GoogleSetupActionDeps, state: GcloudState): GoogleStepRunner {
-  return async () => {
-    const check = await checkAuthenticated(deps.commands, gcloudPath(state));
-    if (check.ok) {
-      return alreadyDone(`gcloud is signed in as ${check.account}.`);
-    }
-    return needsHuman(
-      'gcloud is not signed in.',
-      'gcloud needs its own sign-in before it can create a project or enable APIs, and it opens its own browser to do it.',
-      'Run: gcloud auth login — choose the Google account you want the agent to use, then re-run this flow.',
-    );
-  };
-}
-
-function gcloudProjectRunner(deps: GoogleSetupActionDeps, state: GcloudState): GoogleStepRunner {
-  return async () => {
-    // The prefix is what makes this idempotent: an existing goodvibes project
-    // is reused rather than a second one piling up on every re-run.
-    const result = await selectOrCreateProject(deps.commands, gcloudPath(state), {
-      preferredPrefix: GOOGLE_PROJECT_PREFIX,
-    });
-    if (!result.ok) {
-      return failed('No Cloud project could be selected.', result.problem, result.fix);
-    }
-    deps.config.set(GOOGLE_CONFIG_KEYS.oauthProjectId, result.projectId);
-    return result.outcome === 'reused'
-      ? alreadyDone(`Reusing the existing Cloud project ${result.projectId}.`)
-      : done(`Created the Cloud project ${result.projectId}.`);
-  };
-}
-
-function apisEnabledRunner(deps: GoogleSetupActionDeps, state: GcloudState): GoogleStepRunner {
-  return async () => {
-    const projectId = safeConfigString(deps.config, GOOGLE_CONFIG_KEYS.oauthProjectId);
-    if (projectId === null) {
-      return failed(
-        'No Cloud project is recorded.',
-        'The project step did not record a project id, so there is nothing to enable APIs on.',
-        'Re-run the flow so the project step runs first.',
-      );
-    }
-    const already = await enabledServices(deps.commands, gcloudPath(state), projectId);
-    if (already.ok && REQUIRED_SERVICES.every((service) => already.services.includes(service))) {
-      return alreadyDone(`Already enabled: ${REQUIRED_SERVICES.join(', ')}.`);
-    }
-    const result = await enableServices(deps.commands, gcloudPath(state), projectId, REQUIRED_SERVICES);
-    if (!result.ok) {
-      return failed('The required Google APIs could not be enabled.', result.problem, result.fix);
-    }
-    return result.enabled.length === 0
-      ? alreadyDone(`Already enabled: ${result.alreadyEnabled.join(', ')}.`)
-      : done(`Enabled ${result.enabled.join(', ')} on ${projectId}.`);
-  };
-}
-
-function brandingRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
-  return async (spec) => {
-    // Google exposes no API for the consent screen; this is one of the two
-    // places a person genuinely has to click.
-    const browser = await deps.browser();
-    if (spec.url !== undefined) await browser.navigate(spec.url);
-    return needsHuman(
-      'The OAuth consent screen needs filling in.',
-      'Google exposes no API for the consent screen, so it has to be completed in the browser once.',
-      `The browser is open at ${spec.url ?? 'the branding page'}. Fill in the app name and your support email, choose the "External" audience, then re-run.`,
-    );
-  };
-}
-
-/**
- * Publishing status. This is the step that decides whether the credential
- * survives a week, so it is read from the console rather than assumed, and a
- * `testing` status is carried out as a loud warning even when the run succeeds.
- */
-function audienceProductionRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
-  return async () => {
-    const browser = await deps.browser();
-    const status = await readPublishingStatus(browser);
-    if (status.kind === 'needs-human') {
-      return needsHuman('The publishing status could not be read.', status.problem, status.fix);
-    }
-    if (status.kind === 'failed') {
-      return failed('The publishing status could not be read.', status.problem, status.fix);
-    }
-    if (status.status === 'in-production') {
-      deps.config.set(GOOGLE_CONFIG_KEYS.oauthPublishingStatus, 'in-production');
-      return alreadyDone('The app is already published, so its refresh token does not expire.');
-    }
-
-    const published = await publishApp(browser);
-    if (published.kind === 'needs-human') {
-      deps.config.set(GOOGLE_CONFIG_KEYS.oauthPublishingStatus, 'testing');
-      return needsHuman('The app is still in Testing.', published.problem, published.fix);
-    }
-    if (published.kind === 'failed') {
-      deps.config.set(GOOGLE_CONFIG_KEYS.oauthPublishingStatus, 'testing');
-      return failed('The app could not be published.', published.problem, published.fix);
-    }
-    deps.config.set(GOOGLE_CONFIG_KEYS.oauthPublishingStatus, 'in-production');
-    return done('Published the app, so the refresh token it issues does not expire after seven days.');
-  };
-}
-
 /** Turn whichever intake route was chosen into client credentials. */
 async function obtainClientCredentials(deps: GoogleSetupActionDeps): Promise<GoogleClientIntakeResult> {
   const choice: GoogleClientIntakeChoice = deps.clientIntake ?? { kind: 'console-walkthrough' };
@@ -476,7 +282,7 @@ async function obtainClientCredentials(deps: GoogleSetupActionDeps): Promise<Goo
       return {
         ok: false,
         problem: `No readable file at ${choice.path}.`,
-        fix: 'Give the path to the client JSON the Google Cloud console downloaded, or run /google setup to walk through creating one.',
+        fix: 'Give the path to a client JSON you already have, or run /google connect to walk through creating a client.',
       };
     }
     return readClientCredentialsFromJson(raw);
@@ -548,7 +354,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client is configured.',
         'Authorization needs a client id and secret, and one or both are missing.',
-        'Run the client step first: /google setup --path oauth',
+        'Run the client step first: /google connect',
       );
     }
 
@@ -557,7 +363,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client secret is stored.',
         'Authorization needs the client secret and the encrypted store does not hold one.',
-        'Run the client step first: /google setup --path oauth',
+        'Run the client step first: /google connect',
       );
     }
 
@@ -570,12 +376,21 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       const url = buildAuthorizationUrl({
         clientId,
         redirectUri: listener.redirectUri,
+        // Every scope the platform's Google features need, in ONE consent.
+        // Asking for mail now and calendar later is what produced a stored
+        // credential that worked for mail and refused calendar.
         scopes: OAUTH_SCOPES,
         codeChallenge: pkce.codeChallenge,
         state,
+        ...(deps.loginHint === undefined ? {} : { loginHint: deps.loginHint }),
       });
 
-      if (deps.openUrl !== undefined) {
+      // Printing beats driving. Google's sign-in wall rejects automated
+      // browsers, so a printed link is both the most reliable route and the
+      // smallest ask — one click, which is the entire budget for this flow.
+      if (deps.announceConsentUrl !== undefined) {
+        deps.announceConsentUrl(url);
+      } else if (deps.openUrl !== undefined) {
         await deps.openUrl(url);
       } else {
         const browser = await deps.browser();
@@ -592,7 +407,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
         return needsHuman(
           'Consent was not completed.',
           `The browser did not return an authorization code: ${error instanceof Error ? error.message : String(error)}`,
-          'Re-run /google setup --path oauth and finish the Google consent screen in the browser window it opens.',
+          'Re-run /google connect and open the consent link it prints.',
         );
       }
 
@@ -616,7 +431,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
         return failed(
           'Google returned no refresh token.',
           'Google issues a refresh token only on a fresh consent, and this authorization reused an existing grant.',
-          'Remove the agent at https://myaccount.google.com/permissions, then re-run /google setup --path oauth.',
+          'Remove the agent at https://myaccount.google.com/permissions, then re-run /google reauthorize.',
         );
       }
 
@@ -631,71 +446,52 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
   };
 }
 
+/**
+ * The proving step.
+ *
+ * "A refresh token is stored" was the old answer and it is not evidence of
+ * anything a person cares about — the owner's credential was stored, reported
+ * connected, and refused the first calendar call it was asked to make. So this
+ * uses the credential: it reads the mailbox and reads the calendar, and says
+ * what it read. Both are reads; nothing is sent and nothing is changed.
+ */
 function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
   return async () => {
     if (!(await secretPresent(deps.secrets, GOOGLE_SECRET_KEYS.oauthRefreshToken))) {
       return failed(
         'There is no refresh token to check.',
         'Authorization did not store a refresh token, so there is nothing to verify.',
-        'Re-run: /google setup --path oauth',
+        'Re-run: /google connect',
       );
     }
+
     const status = safeConfigGet(deps.config, GOOGLE_CONFIG_KEYS.oauthPublishingStatus);
     const warnings = status === 'in-production'
       ? []
       : ['Publishing status is not "In production", so the stored credential expires seven days after it was issued.'];
-    return done('A refresh token is stored and the OAuth path is complete.', warnings);
+
+    const prove = deps.proveConnection;
+    if (prove === undefined) {
+      // Stored but unproven is stated as exactly that, never as success.
+      return needsHuman(
+        'The credential is stored but was not proven.',
+        'This run had no way to make a real Google call, so the credential is stored but nothing has confirmed it can actually read mail or calendar.',
+        'Prove it with: /google status',
+      );
+    }
+
+    const proof = await prove();
+    if (!proof.ok) {
+      return failed(
+        'The credential is stored but does not work yet.',
+        proof.problem ?? proof.detail,
+        proof.fix ?? 'Run /google reauthorize to approve a fresh consent covering mail and calendar together.',
+      );
+    }
+    return done(proof.detail, warnings);
   };
 }
 
-// ---------------------------------------------------------------------------
-// Adoption
-// ---------------------------------------------------------------------------
-
-/**
- * Credentials that already exist on this machine.
- *
- * A gmail-mcp install holds a complete OAuth client and a refresh token, and
- * the owner's incident was the agent denying it could send mail while exactly
- * that sat on disk. Adoption reads those files, never writes them, and never
- * returns a value to a caller that would display it.
- */
-export interface GoogleAdoptionOutcome {
-  readonly adopted: boolean;
-  /** Safe to display: provenance and scopes only, never a token. */
-  readonly detail: string;
-  readonly scopes: readonly string[];
-  readonly location: string | null;
-}
-
-export async function adoptExistingGoogleCredentials(deps: {
-  readonly files: GoogleFilePort;
-  readonly config: GoogleConfigPort;
-  readonly secrets: GoogleSecretPort;
-  readonly homeDirectory: string;
-}): Promise<GoogleAdoptionOutcome> {
-  const credentials = adoptGmailMcpCredentials(deps.files, deps.homeDirectory);
-  if (credentials === null) {
-    return {
-      adopted: false,
-      detail: `No adoptable Google credentials were found under ${deps.homeDirectory}/.gmail-mcp.`,
-      scopes: [],
-      location: null,
-    };
-  }
-
-  deps.config.set(GOOGLE_CONFIG_KEYS.oauthClientId, credentials.clientId);
-  deps.config.set(GOOGLE_CONFIG_KEYS.oauthClientSecretRef, GOOGLE_CONFIG_KEYS.oauthClientSecretRef);
-  await deps.secrets.set(GOOGLE_SECRET_KEYS.oauthClientSecret, credentials.clientSecret);
-  await deps.secrets.set(GOOGLE_SECRET_KEYS.oauthRefreshToken, credentials.refreshToken);
-
-  return {
-    adopted: true,
-    detail: `Adopted the Google credentials already on this machine (${credentials.location}) into the encrypted store. The original files were read and left untouched.`,
-    scopes: credentials.scopes,
-    location: credentials.location,
-  };
-}
 
 // ---------------------------------------------------------------------------
 // The runner map
@@ -725,13 +521,19 @@ export function buildGoogleSetupRunners(
     return runners;
   }
 
-  const state: GcloudState = { path: null };
-  runners.set('gcloud-installed', gcloudInstalledRunner(deps, state));
-  runners.set('gcloud-authenticated', gcloudAuthRunner(deps, state));
-  runners.set('gcloud-project', gcloudProjectRunner(deps, state));
-  runners.set('apis-enabled', apisEnabledRunner(deps, state));
-  runners.set('oauth-branding', brandingRunner(deps));
-  runners.set('oauth-audience-production', audienceProductionRunner(deps));
+  // The existing-client path is two steps and no gcloud state, because a
+  // stored client means the project, the APIs, the branding and the audience
+  // all already exist — that is what having a client id MEANS. Walking those
+  // steps again is exactly the defect this path was added to remove.
+  if (path === 'existing-client') {
+    runners.set('oauth-authorize', oauthAuthorizeRunner(deps));
+    runners.set('oauth-verify', oauthVerifyRunner(deps));
+    return runners;
+  }
+
+  // The six project-and-console steps live in setup-actions-cloud-project.ts;
+  // they share a gcloud detection between them, which that module owns.
+  for (const [id, runner] of buildCloudProjectRunners(deps)) runners.set(id, runner);
   runners.set('oauth-client', oauthClientRunner(deps));
   runners.set('oauth-authorize', oauthAuthorizeRunner(deps));
   runners.set('oauth-verify', oauthVerifyRunner(deps));
@@ -739,3 +541,12 @@ export function buildGoogleSetupRunners(
 }
 
 export type { GoogleClientCredentials };
+
+// The contracts and the adoption route moved to their own modules when this
+// file outgrew the line cap. Re-exported here so every existing importer — and
+// the package index — keeps resolving them from the same place.
+export type { GoogleClientIntakeChoice, GoogleSetupActionDeps } from './setup-action-deps.js';
+export {
+  adoptExistingGoogleCredentials,
+  type GoogleAdoptionOutcome,
+} from './setup-actions-adoption.js';

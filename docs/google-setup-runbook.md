@@ -5,7 +5,7 @@
 ## Just run this
 
 ```
-/google setup
+/google connect
 ```
 
 It reports what it is doing at every step, stops and names exactly what to click when it needs you, and picks up where it left off if you re-run it. Nothing is done twice.
@@ -13,7 +13,7 @@ It reports what it is doing at every step, stops and names exactly what to click
 For the full-API path:
 
 ```
-/google setup --path oauth
+/google connect
 ```
 
 To see what is already connected without changing anything:
@@ -123,7 +123,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 2. In the "App name" box type: goodvibes-agent
 3. Click "Create".
 4. Google shows a 16-character password in a yellow box. Copy it. You cannot see it again after closing the dialog.
-5. Store it with: goodvibes-agent secret set GOODVIBES_EMAIL_PASSWORD_REF
+5. Store it with: /email set password <the-16-characters>
 
 ### 5. Pointing the mail surface at Gmail
 
@@ -135,14 +135,9 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 **By hand:**
 
-1. goodvibes-agent config set email.imapHost imap.gmail.com
-2. goodvibes-agent config set email.imapPort 993
-3. goodvibes-agent config set email.smtpHost smtp.gmail.com
-4. goodvibes-agent config set email.smtpPort 587
-5. goodvibes-agent config set email.smtpSecurity starttls
-6. goodvibes-agent config set email.username <your-address@gmail.com>
-7. goodvibes-agent config set email.fromAddress <your-address@gmail.com>
-8. goodvibes-agent config set email.enabled true
+1. Name the account once with: /google account <your-address@gmail.com>
+2. Everything else is written for you: IMAP imap.gmail.com:993, SMTP smtp.gmail.com:587 with STARTTLS.
+3. To check or change any of it by hand: /email config
 
 ### 6. Connecting to Gmail over IMAP and SMTP
 
@@ -154,7 +149,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 **By hand:**
 
-1. goodvibes-agent email test
+1. /email check
 2. A successful run reports both the IMAP and the SMTP stage as connected.
 3. If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped — create a new one and store it again.
 
@@ -174,7 +169,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 2. In the left panel under "Settings for my calendars", click the calendar you want.
 3. Click "Integrate calendar".
 4. Under "Secret address in iCal format", click the copy button.
-5. Store it with: goodvibes-agent secret set GOODVIBES_CALENDAR_GOOGLE_ICS_URL
+5. Store it with: /google calendar-address <the-copied-url>
 6. Treat this URL as a password — anyone holding it can read your calendar.
 
 ### 8. Reading calendar events
@@ -187,8 +182,8 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 **By hand:**
 
-1. goodvibes-agent calendar refresh
-2. goodvibes-agent calendar list
+1. /calendar refresh
+2. /calendar list
 3. A successful run prints upcoming events from the subscribed feed.
 
 ## Path B — OAuth (full Gmail and Calendar APIs)
@@ -201,9 +196,9 @@ It is longer because Google exposes no API for two of the steps — the consent 
 
 The practical consequence: if you skip the publishing-status step, this integration will silently stop working one week later, and the failure looks like an unrelated auth error. Step 6 is the one that matters most.
 
-**Scopes requested:** `https://www.googleapis.com/auth/calendar.events`
+**Scopes requested:** `https://www.googleapis.com/auth/gmail.readonly`, `https://www.googleapis.com/auth/gmail.send`, `https://www.googleapis.com/auth/calendar.events`
 
-**APIs enabled:** `calendar-json.googleapis.com`
+**APIs enabled:** `gmail.googleapis.com`, `calendar-json.googleapis.com`
 
 **Time:** about fifteen minutes.
 
@@ -263,8 +258,8 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 **By hand:**
 
-1. gcloud services enable calendar-json.googleapis.com
-2. Confirm: gcloud services list --enabled --filter="calendar-json.googleapis.com"
+1. gcloud services enable gmail.googleapis.com calendar-json.googleapis.com
+2. Confirm: gcloud services list --enabled --filter="gmail.googleapis.com"
 
 ### 5. Filling in the OAuth consent screen
 
@@ -310,21 +305,20 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 **Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
 
-**Why:** The second thing Google exposes no API for. A Desktop app client is the right type: it permits the loopback redirect the agent uses and needs no hosted redirect URL.
+**Why:** The one thing in this whole flow that a person genuinely has to do in a browser. Google offers no API and no gcloud command for creating a Desktop app OAuth client — `gcloud iam oauth-clients create` exists but covers workforce identity federation only — so the Cloud console is the sole route. A Desktop app client is the right type: it permits the loopback redirect this product uses and needs no hosted redirect URL.
 
 **Page:** https://console.cloud.google.com/auth/clients
 
 **By hand:**
 
 1. Open https://console.cloud.google.com/auth/clients
-2. Click "CREATE CLIENT".
-3. Application type: choose "Desktop app".
-4. Name: goodvibes agent
-5. Click "Create".
-6. A dialog shows the Client ID and Client secret. Copy both.
-7. Store them with:
-8.   goodvibes-agent config set calendar.google.clientId <CLIENT_ID>
-9.   goodvibes-agent secret set GOODVIBES_CALENDAR_GOOGLE_CLIENT_SECRET_REF
+2. If it asks you to register your app before continuing, do that first — Google requires it before a client can be created.
+3. Click "Create client".
+4. Application type: choose "Desktop app".
+5. In the "Name" field type: goodvibes agent — this name is only ever shown in the Cloud console.
+6. Click "Create".
+7. The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy BOTH now: Google shows the full secret only at this moment and afterwards displays just its last four characters.
+8. Hand both values over with: /google client <client-id> <client-secret>
 
 ### 8. Authorizing the agent
 
@@ -332,30 +326,30 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 **Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
 
-**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. Before it opens: Google will show a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong — the app is one you just created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
+**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser: Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens: Google will show a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong — the app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
 
 **By hand:**
 
-1. /google setup --path oauth
-2. A browser opens on a Google consent screen.
-3. Expect a red warning screen saying "Google hasn't verified this app". This is normal for an app you created yourself and are the only user of — there is no third party for Google to have verified it on behalf of.
-4. Because the app is self-certified rather than Google-verified, you will see "Google hasn't verified this app". Click "Advanced", then "Go to goodvibes agent (unsafe)". This is expected for a personal install and only happens once.
-5. Tick the Gmail and Calendar permissions, then click "Continue".
+1. /google connect
+2. A consent link is printed. Open it.
+3. Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account" — approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.
+4. Expect a red warning screen saying "Google hasn't verified this app". This is normal for an app you created yourself and are the only user of — there is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".
+5. Leave every permission ticked — mail and calendar are requested together so one approval covers both — then click "Continue".
 6. The browser lands on a local page confirming the agent is connected.
 
-### 9. Checking the credential and its lifetime
+### 9. Reading mail and calendar to prove it works
 
 <a id="oauth-verify"></a>
 
 **Who does it:** Automated — the flow does this for you.
 
-**Why:** Confirms the refresh token works by making a real API call, and re-reads the publishing status so a seven-day-expiry credential is reported loudly instead of discovered a week later.
+**Why:** Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage — which is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.
 
 **By hand:**
 
 1. /google status
-2. A successful run reports the account it connected as and the publishing status.
-3. If publishing status reads "Testing", go back to the audience page and publish the app, then authorize again — the existing token still expires.
+2. A successful run reports the account it connected as, that mail and calendar both answered, and the publishing status.
+3. If publishing status reads "Testing", publish the app at the audience page and run /google reauthorize — the existing token still expires seven days after it was issued.
 
 ## If something goes wrong
 

@@ -32,7 +32,26 @@ import {
   type GoogleOAuthCredentials,
 } from './credential-adoption.js';
 import { GOOGLE_CONFIG_KEYS, GOOGLE_SECRET_KEYS } from './setup-plan.js';
-import { safeConfigGet } from './config-access.js';
+import { safeConfigGet, safeConfigString } from './config-access.js';
+import { diagnoseInvalidGrant } from './grant-diagnosis.js';
+
+/**
+ * What the diagnosis needs to tell an account mix-up from a revocation.
+ *
+ * Assembled from config at connection time so the answer is available at the
+ * moment a refresh fails, rather than requiring a second round of lookups
+ * inside an error path.
+ */
+interface GrantContext {
+  readonly intendedAccount: string | null;
+  readonly signedInAccount: string | null;
+  readonly publishingStatus: 'testing' | 'in-production' | 'unknown';
+  readonly credentialOrigin: 'secret-store' | 'gmail-mcp' | null;
+}
+
+function readPublishingStatus(value: unknown): GrantContext['publishingStatus'] {
+  return value === 'testing' || value === 'in-production' ? value : 'unknown';
+}
 
 /** The paths adoption reads. Exported so the capability index probes the same list. */
 export function googleCredentialPaths(homeDirectory: string): readonly string[] {
@@ -98,14 +117,38 @@ async function storeCredentials(sources: GoogleConnectionSources): Promise<Googl
 }
 
 /**
- * Resolve whatever Google credentials this machine has, native store first.
- * Returns null when there are none — never a partial or guessed set.
+ * Resolve the Google credentials this machine holds.
+ *
+ * The encrypted store, and by default nothing else. This used to fall through
+ * to a scan of `~/.gmail-mcp` on every resolve, which meant an ordinary
+ * capability check went looking through the home directory for another tool's
+ * credential files. That is not something to do unasked: most people have no
+ * such directory, and a connector that quietly picks up credentials it found
+ * lying around is doing something nobody requested.
+ *
+ * Adoption is still fully supported and still works exactly as it did — it is
+ * just user-directed now. Someone names a path (or runs the adopt command),
+ * the credentials are copied into the encrypted store, and the reply says what
+ * was taken up and where it now lives. `readDiskCredentials` exists for those
+ * explicit callers; nothing reaches it by default.
  */
 export async function resolveGoogleCredentials(
   sources: GoogleConnectionSources,
+  options: { readonly includeDiskCredentials?: boolean } = {},
 ): Promise<GoogleOAuthCredentials | null> {
   const owned = await storeCredentials(sources);
   if (owned !== null) return owned;
+  if (options.includeDiskCredentials !== true) return null;
+  return adoptGmailMcpCredentials(sources.files, sources.homeDirectory);
+}
+
+/**
+ * Read credentials from the known on-disk layout, for a caller that was
+ * explicitly told to look there. Never called from a default path.
+ */
+export function readDiskCredentials(
+  sources: Pick<GoogleConnectionSources, 'files' | 'homeDirectory'>,
+): GoogleOAuthCredentials | null {
   return adoptGmailMcpCredentials(sources.files, sources.homeDirectory);
 }
 
@@ -121,7 +164,7 @@ export async function describeGoogleConnection(
  * The refresh call, wrapped so the token manager's injected shape is satisfied
  * and so no token value can reach an error message.
  */
-function refreshFn(fetchPort: GoogleFetchPort) {
+function refreshFn(fetchPort: GoogleFetchPort, context: GrantContext) {
   return async (input: {
     readonly clientId: string;
     readonly clientSecret: string;
@@ -136,13 +179,29 @@ function refreshFn(fetchPort: GoogleFetchPort) {
       // Google answers a revoked or expired grant with invalid_grant; that
       // needs a person, whereas anything else is worth retrying.
       const invalid = /invalid_grant|expired|revoked/i.test(response.problem);
+      if (invalid) {
+        // A dead grant gets a stated cause rather than a generic "re-run
+        // setup". Six identical retries happened because nothing here ever
+        // said WHY, so there was nothing to act on except trying again.
+        const diagnosis = diagnoseInvalidGrant({
+          googleError: response.problem,
+          intendedAccount: context.intendedAccount,
+          signedInAccount: context.signedInAccount,
+          publishingStatus: context.publishingStatus,
+          credentialOrigin: context.credentialOrigin,
+        });
+        return {
+          ok: false,
+          failure: 'grant-invalid',
+          problem: diagnosis.problem,
+          fix: diagnosis.fix,
+        };
+      }
       return {
         ok: false,
-        failure: invalid ? 'grant-invalid' : 'transient',
+        failure: 'transient',
         problem: response.problem,
-        fix: invalid
-          ? 'Re-authorize the Google account with: /google setup --path oauth'
-          : response.fix,
+        fix: response.fix,
       };
     }
     return {
@@ -187,13 +246,28 @@ export interface GoogleConnection {
  */
 export async function openGoogleConnection(
   sources: GoogleConnectionSources,
-  ports: { readonly fetch: GoogleFetchPort & GoogleApiFetchPort },
+  ports: {
+    readonly fetch: GoogleFetchPort & GoogleApiFetchPort;
+    /**
+     * The account this machine is signed in as, when something knows it —
+     * normally gcloud's active account. Supplied so an `invalid_grant` can be
+     * diagnosed as an account mix-up instead of a shrug.
+     */
+    readonly signedInAccount?: string | null;
+  },
   now: number = Date.now(),
 ): Promise<GoogleConnection | null> {
   const credentials = await resolveGoogleCredentials(sources);
   if (credentials === null) return null;
 
-  const tokens = new GoogleTokenManager(credentials, { refresh: refreshFn(ports.fetch) });
+  const context: GrantContext = {
+    intendedAccount: safeConfigString({ get: sources.configGet }, GOOGLE_CONFIG_KEYS.emailUsername),
+    signedInAccount: ports.signedInAccount ?? null,
+    publishingStatus: readPublishingStatus(safeGet(sources, GOOGLE_CONFIG_KEYS.oauthPublishingStatus)),
+    credentialOrigin: credentials.origin,
+  };
+
+  const tokens = new GoogleTokenManager(credentials, { refresh: refreshFn(ports.fetch, context) });
   return {
     client: new GoogleApiClient(tokens, ports.fetch),
     tokens,
