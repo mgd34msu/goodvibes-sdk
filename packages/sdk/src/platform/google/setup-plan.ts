@@ -139,6 +139,27 @@ export const FORBIDDEN_OAUTH_SCOPES: readonly string[] = [
  * fails if any entry does not resolve to a registered command with that
  * subcommand actually handled. Neither side can drift without going red.
  */
+/**
+ * What a turn must do when the person answers the walkthrough with values.
+ *
+ * The guided path walks someone to a Google console dialog and asks them to
+ * copy two strings out of it. What happens next used to be "now go and type
+ * /google client <id> <secret>", which is a chore handed over at the exact
+ * moment the platform had everything it needed. The values ARE the answer to
+ * the question the flow just asked, and a turn that receives them and asks
+ * what to do with them has dropped the thread.
+ *
+ * Carried here, beside the step plan, so every surface that emits the
+ * walkthrough emits the same contract for finishing it.
+ */
+export const GOOGLE_WALKTHROUGH_CONTINUATION_PROMPT = [
+  'When the user pastes a Google OAuth client id and client secret, that is the continuation of this walkthrough, not a new request: register them and carry on.',
+  'When they name a path to a client JSON instead, read it and carry on the same way.',
+  'Registering is a local write of values they just handed over — store the secret encrypted, confirm by the client id\'s last characters only, and never echo the secret back.',
+  'Answer with the consent link in the same reply, so the only thing left for them is to open it and approve.',
+  'Never reply by telling them to run a command.',
+].join('\n');
+
 export const GOOGLE_REFERENCED_COMMANDS: readonly string[] = [
   '/google connect',
   '/google status',
@@ -293,7 +314,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       `In the "App name" box type: ${APP_PASSWORD_LABEL}`,
       'Click "Create".',
       'Google shows a 16-character password in a yellow box. Copy it. You cannot see it again after closing the dialog.',
-      'Store it with: /email set password <the-16-characters>',
+      'Paste it here and I will put it straight into the encrypted store — Google shows it only in this dialog.',
     ],
     requires: ['two-step-verification'],
   },
@@ -304,9 +325,9 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
     purpose: 'Writes the Gmail IMAP and SMTP endpoints into config so the mail surface knows where to connect.',
     actor: 'automated',
     manualSteps: [
-      'Name the account once with: /google account <your-address@gmail.com>',
+      'Tell me which Gmail address to connect as; everything else is written for you.',
       `Everything else is written for you: IMAP ${GMAIL_IMAP_HOST}:${GMAIL_IMAP_PORT}, SMTP ${GMAIL_SMTP_HOST}:${GMAIL_SMTP_PORT} with STARTTLS.`,
-      'To check or change any of it by hand: /email config',
+      'Ask what the mail settings are at any point and I will read them back.',
     ],
     requires: ['app-password'],
   },
@@ -318,7 +339,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       'Proves the credential actually works by opening a real IMAP session and a real authenticated SMTP session. Nothing is sent and nothing is marked read.',
     actor: 'automated',
     manualSteps: [
-      '/email check',
+      'I open a real IMAP session and a real authenticated SMTP session and report both.',
       'A successful run reports both the IMAP and the SMTP stage as connected.',
       'If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped — create a new one and store it again.',
     ],
@@ -337,7 +358,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       'In the left panel under "Settings for my calendars", click the calendar you want.',
       'Click "Integrate calendar".',
       'Under "Secret address in iCal format", click the copy button.',
-      'Store it with: /google calendar-address <the-copied-url>',
+      'Paste it here and I will put it in the encrypted store.',
       'Treat this URL as a password — anyone holding it can read your calendar.',
     ],
     requires: ['google-signed-in'],
@@ -349,9 +370,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
     purpose: 'Fetches and parses the calendar feed so the run ends having actually read real events, not just stored a URL.',
     actor: 'automated',
     manualSteps: [
-      '/calendar refresh',
-      '/calendar list',
-      'A successful run prints upcoming events from the subscribed feed.',
+      'I fetch the feed and read the events back, so the run ends having read real events rather than having stored a URL.',
     ],
     requires: ['calendar-ics-address'],
   },
@@ -491,7 +510,7 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
       'In the "Name" field type: goodvibes agent — this name is only ever shown in the Cloud console.',
       'Click "Create".',
       'The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy BOTH now: Google shows the full secret only at this moment and afterwards displays just its last four characters.',
-      'Hand both values over with: /google client <client-id> <client-secret>',
+      'Paste both values here and I will register them and continue — Google shows the full secret only in this dialog, so copy it before you close it.',
     ],
     requires: ['oauth-audience-production'],
   },
@@ -507,8 +526,7 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
       'Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser: Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens: Google will show a red "Google hasn\'t verified this app" warning. That is expected here and is not a sign anything is wrong — the app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.',
     actor: 'human-assisted',
     manualSteps: [
-      '/google connect',
-      'A consent link is printed. Open it.',
+      'I hand you a consent link. Open it.',
       'Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account" — approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.',
       'Expect a red warning screen saying "Google hasn\'t verified this app". This is normal for an app you created yourself and are the only user of — there is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".',
       'Leave every permission ticked — mail and calendar are requested together so one approval covers both — then click "Continue".',
@@ -525,9 +543,8 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
       'Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage — which is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.',
     actor: 'automated',
     manualSteps: [
-      '/google status',
-      'A successful run reports the account it connected as, that mail and calendar both answered, and the publishing status.',
-      'If publishing status reads "Testing", publish the app at the audience page and run /google reauthorize — the existing token still expires seven days after it was issued.',
+      'I read your mailbox and your calendar with the new credential and report the account it connected as, that both answered, and the publishing status.',
+      'If publishing status reads "Testing", publish the app at the audience page and tell me — I will start a fresh consent, because the existing token still expires seven days after it was issued.',
     ],
     requires: ['oauth-authorize'],
   },

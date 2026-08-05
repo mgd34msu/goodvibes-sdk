@@ -199,8 +199,11 @@ describe('the guided new-client instructions', () => {
     expect(text).toMatch(/last four characters|only at this moment|only ever shown once/i);
   });
 
-  test('sends the person to a command that takes the two values by hand', () => {
-    expect(text).toContain('/google client <client-id> <client-secret>');
+  test('asks for the two values to be pasted, rather than naming a command', () => {
+    // The ruling: never tell a user to type something. The platform has the
+    // values the moment they are pasted, and registering them is its job.
+    expect(text).toMatch(/paste both values here/i);
+    expect(text).not.toContain('/google client');
   });
 
   test('never tells anyone to download or hand over a credential file', () => {
@@ -340,8 +343,10 @@ describe('running a setup path', () => {
     expect(failed?.outcome).toBe('failed');
     expect(failed?.problem).toContain('the page layout changed');
     // The fallback route has to be something an installed binary can act on.
-    // A packaged install has no checkout, so a repo path is a dead end.
-    expect(failed?.fix).toContain('/google runbook');
+    // A packaged install has no checkout, so a repo path is a dead end — and
+    // naming a command is a dead end of its own now: the written steps are
+    // something the platform lays out when asked, not a chore.
+    expect(failed?.fix).toMatch(/say the word and I will lay out the written steps/i);
     expect(failed?.fix).not.toContain('docs/');
   });
 
@@ -386,7 +391,7 @@ describe('rendering a report', () => {
     const rendered = renderGoogleSetupReport(report);
     expect(rendered).toContain('IMAP rejected the credential.');
     expect(rendered).toContain('Do this: Create a new app password');
-    expect(rendered).toContain('Written instructions for every step: /google runbook');
+    expect(rendered).toMatch(/ask for the written steps at any point/i);
     expect(rendered).not.toContain('docs/google-setup-runbook.md');
   });
 });

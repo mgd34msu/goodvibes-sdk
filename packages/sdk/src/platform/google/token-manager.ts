@@ -261,7 +261,7 @@ export async function checkGoogleCredentialsAtBoot(
   if (manager === null) {
     return {
       usable: false,
-      detail: 'Google is not connected. Run: /google connect',
+      detail: 'Google is not connected. Say the word and I will connect an account.',
       needsReauthorization: false,
       scopes: [],
     };

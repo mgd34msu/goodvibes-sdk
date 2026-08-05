@@ -92,27 +92,31 @@ export function renderGoogleSetupRunbook(): string {
     '> This file is generated from the SDK\'s Google setup plan (`packages/sdk/src/platform/google/setup-plan.ts`). Do not edit it by hand — edit the plan and regenerate, or the test that compares the two will fail. It exists so that when the automation cannot finish a step, there is a written route through the same work that cannot have drifted out of date.',
   );
   lines.push('');
-  lines.push('## Just run this');
+  lines.push('## Just ask');
   lines.push('');
-  lines.push('```');
-  lines.push('/google connect');
-  lines.push('```');
+  lines.push('Say "connect my Google account". That is the whole of it.');
   lines.push('');
   lines.push(
-    'It reports what it is doing at every step, stops and names exactly what to click when it needs you, and picks up where it left off if you re-run it. Nothing is done twice.',
+    'The agent works out the shortest route on its own — a credential already stored, an OAuth client that only needs your consent, or the gcloud CLI for the project and APIs — and asks you for at most one thing: opening a consent link and approving it. It reports what it is doing at every step, hands you only the pages that must genuinely be yours, and finishes by reading your mail and your calendar to prove the connection works.',
   );
   lines.push('');
-  lines.push('For the full-API path:');
+  lines.push(
+    'If a step needs a value only you can see — the client id and secret Google shows once when you create the client, an app password, a private calendar address — paste it into the conversation and the agent stores it. You are never asked to type a command to hand a value over.',
+  );
+  lines.push('');
+  lines.push('<details><summary>Self-service equivalents</summary>');
+  lines.push('');
+  lines.push(
+    'These exist for anyone who prefers driving it themselves. They are not the intended route, and nothing in the flow will tell you to run one.',
+  );
   lines.push('');
   lines.push('```');
-  lines.push('/google connect');
+  lines.push('/google connect     # work out the route and connect');
+  lines.push('/google status      # what is connected, proven by use');
+  lines.push('/google reauthorize # a fresh consent covering every scope');
   lines.push('```');
   lines.push('');
-  lines.push('To see what is already connected without changing anything:');
-  lines.push('');
-  lines.push('```');
-  lines.push('/google status');
-  lines.push('```');
+  lines.push('</details>');
   lines.push('');
   lines.push('## Which path do I want?');
   lines.push('');

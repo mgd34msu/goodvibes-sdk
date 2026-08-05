@@ -69,7 +69,7 @@ function classify(
       problem:
         `The stored credential does not carry the ${capability === 'mail' ? 'Gmail' : 'Calendar'} scope. `
         + 'A grant carries exactly the scopes that were approved, so this consent was approved without it.',
-      fix: 'Run /google reauthorize — it asks for mail and calendar together in one consent, so this cannot happen again.',
+      fix: 'Say the word and I will re-authorize, asking for mail and calendar together in one consent so this cannot happen again.',
     };
   }
   if (isServiceDisabled(problem)) {
@@ -77,14 +77,14 @@ function classify(
       ok: false,
       detail: `${capability === 'mail' ? 'Mail' : 'Calendar'} is not enabled on the Cloud project.`,
       problem: `The credential is valid but the ${capability === 'mail' ? 'Gmail' : 'Calendar'} API is switched off on the project this client belongs to. ${problem}`,
-      fix: 'Run /google connect — it enables both APIs through gcloud when gcloud is signed in.',
+      fix: 'Say the word and I will enable both APIs through gcloud, which is signed in on this machine.',
     };
   }
   return {
     ok: false,
     detail: `${capability === 'mail' ? 'Mail' : 'Calendar'} could not be read.`,
     problem,
-    fix: 'Run /google status to see the stored credential, then /google reauthorize if it needs a fresh consent.',
+    fix: 'Ask me what is stored and I will read it back, then start a fresh consent if it needs one.',
   };
 }
 

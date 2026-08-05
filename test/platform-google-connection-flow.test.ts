@@ -16,6 +16,7 @@ import { join } from 'node:path';
 
 import { planGoogleConnection } from '../packages/sdk/src/platform/google/discovery.ts';
 import { diagnoseInvalidGrant } from '../packages/sdk/src/platform/google/grant-diagnosis.ts';
+import { mentionsUserTypedCommand } from '../packages/sdk/src/platform/runtime/setup-contract.ts';
 import { removeGoogleCredentials } from '../packages/sdk/src/platform/google/credential-removal.ts';
 import { adoptExistingGoogleCredentials } from '../packages/sdk/src/platform/google/setup-actions.ts';
 import { buildAuthorizationUrl } from '../packages/sdk/src/platform/google/oauth-loopback.ts';
@@ -24,6 +25,7 @@ import { proveGoogleConnection } from '../packages/sdk/src/platform/google/conne
 import {
   GOOGLE_CONFIG_KEYS,
   GOOGLE_REFERENCED_COMMANDS,
+  GOOGLE_SETUP_STEPS,
   GOOGLE_SECRET_KEYS,
   OAUTH_SCOPES,
 } from '../packages/sdk/src/platform/google/setup-plan.ts';
@@ -471,7 +473,7 @@ describe('a dead grant is diagnosed, not retried', () => {
     expect(diagnosis.problem).toContain('client id');
   });
 
-  test('every diagnosis names a command that exists', () => {
+  test('every diagnosis offers to do the work rather than naming a command', () => {
     const inputs = [
       { intendedAccount: 'a@x.com', signedInAccount: 'b@x.com', publishingStatus: 'unknown' as const },
       { intendedAccount: null, signedInAccount: null, publishingStatus: 'testing' as const },
@@ -483,13 +485,11 @@ describe('a dead grant is diagnosed, not retried', () => {
         credentialOrigin: 'secret-store',
         ...input,
       });
-      // URLs stripped first: the audience page is a link, not a command.
-      const withoutUrls = diagnosis.fix.replace(/https?:\/\/\S+/g, ' ');
-      const named = [...withoutUrls.matchAll(/(?<![\w/.:\\-])\/(google|email|calendar)\b[ ]*([a-z][a-z-]*)?/g)];
-      expect(named.length).toBeGreaterThan(0);
-      for (const match of named) {
-        expect(GOOGLE_REFERENCED_COMMANDS).toContain(`/${match[1]} ${match[2]}`);
-      }
+      // The old assertion here was that every fix NAMED a command that
+      // resolved. Naming one at all is now the defect: a dead credential is
+      // the platform's job to replace, not a chore to hand over.
+      expect(mentionsUserTypedCommand(diagnosis.fix)).toBe(false);
+      expect(diagnosis.fix.toLowerCase()).toContain('say the word');
     }
   });
 });
@@ -622,7 +622,8 @@ describe('a connection is proven by using it', () => {
     expect(proof.ok).toBe(false);
     expect(proof.summary).toContain('Mail works; calendar does not');
     expect(proof.calendar.problem).toContain('Calendar scope');
-    expect(proof.calendar.fix).toContain('/google reauthorize');
+    expect(proof.calendar.fix).toMatch(/re-authorize/i);
+    expect(mentionsUserTypedCommand(proof.calendar.fix ?? '')).toBe(false);
   });
 
   test('a disabled API is told apart from a missing scope', async () => {
@@ -633,7 +634,8 @@ describe('a connection is proven by using it', () => {
       ),
     );
     expect(proof.mail.detail).toContain('not enabled on the Cloud project');
-    expect(proof.mail.fix).toContain('/google connect');
+    expect(proof.mail.fix).toMatch(/enable both APIs/i);
+    expect(mentionsUserTypedCommand(proof.mail.fix ?? '')).toBe(false);
   });
 });
 
@@ -701,6 +703,93 @@ describe('a credential is never removed without an explicit yes', () => {
 // The error-string sweep
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// The flow never hands the user a chore
+// ---------------------------------------------------------------------------
+
+describe('no setup string tells the user to type anything', () => {
+  // The standing ruling: "we should NEVER tell a user to type something... if
+  // they say they want something done, it needs to get done." The guided path
+  // used to end at "Hand both values over with: /google client <id> <secret>",
+  // which is a chore handed over at the exact moment the platform had
+  // everything it needed to do the work itself. The gap underneath it was real
+  // — the google tool had no action that could register pasted values — so the
+  // string had no honest alternative until connect.client existed.
+  //
+  // `mentionsUserTypedCommand` is the platform's own predicate, the same one
+  // the voice setup round is held to. See runtime/setup-contract.ts.
+
+  test('no step in any path instructs a command', () => {
+    const offenders: string[] = [];
+    for (const step of GOOGLE_SETUP_STEPS) {
+      for (const instruction of step.manualSteps) {
+        if (mentionsUserTypedCommand(instruction)) offenders.push(`${step.id}: ${instruction}`);
+      }
+      if (mentionsUserTypedCommand(step.purpose)) offenders.push(`${step.id} purpose: ${step.purpose}`);
+      if (mentionsUserTypedCommand(step.title)) offenders.push(`${step.id} title: ${step.title}`);
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('the guided path asks for the two values to be pasted, not typed into a command', () => {
+    const step = GOOGLE_SETUP_STEPS.find((entry) => entry.id === 'oauth-client');
+    const last = step?.manualSteps.at(-1) ?? '';
+    expect(last).toMatch(/paste both values here/i);
+    // The reason the paste has to happen now rather than later, which is the
+    // part a person cannot recover from if they miss it.
+    expect(last).toMatch(/only in this dialog/i);
+    expect(mentionsUserTypedCommand(last)).toBe(false);
+  });
+
+  test('no runner fix string instructs a command', () => {
+    // Fix strings are what a person reads at the moment something went wrong,
+    // which is the worst possible moment to be handed a command to look up.
+    const source = readFileSync(
+      join(import.meta.dir, '..', 'packages/sdk/src/platform/google/setup-actions.ts'),
+      'utf8',
+    );
+    const offenders = [...source.matchAll(/(?:problem|fix|detail):\s*(?:'((?:[^'\\]|\\.)*)'|`((?:[^`\\]|\\.)*)`)/g)]
+      .map((match) => match[1] ?? match[2] ?? '')
+      .filter((text) => text.length > 0 && mentionsUserTypedCommand(text));
+    expect(offenders).toEqual([]);
+  });
+
+  test('the file-intake failure offers to read the path rather than naming a command', () => {
+    const source = readFileSync(
+      join(import.meta.dir, '..', 'packages/sdk/src/platform/google/setup-actions.ts'),
+      'utf8',
+    );
+    expect(source).toContain('Tell me where the client JSON is and I will read it from there.');
+    expect(source).not.toContain('/google client-file <path-to-client.json>');
+  });
+
+  test('a dead grant offers a fresh consent rather than naming a command', () => {
+    for (const status of ['testing', 'in-production', 'unknown'] as const) {
+      const diagnosis = diagnoseInvalidGrant({
+        googleError: 'invalid_grant',
+        intendedAccount: 'agent@example.com',
+        signedInAccount: 'personal@gmail.com',
+        publishingStatus: status,
+        credentialOrigin: 'secret-store',
+      });
+      expect(mentionsUserTypedCommand(diagnosis.fix)).toBe(false);
+      expect(diagnosis.fix).toMatch(/say the word/i);
+    }
+  });
+
+  test('a scope refusal offers to re-authorize rather than naming a command', async () => {
+    const { proveGoogleConnection: prove } = await import(
+      '../packages/sdk/src/platform/google/connection-proof.ts'
+    );
+    const proof = await prove({
+      getProfile: async () => ({ ok: true, value: { emailAddress: 'a@b.c', messagesTotal: 1, threadsTotal: 1, historyId: '1' } }),
+      listEvents: async () => ({ ok: false, status: 403, problem: 'Request had insufficient authentication scopes.', fix: '' }),
+    } as never);
+    expect(proof.calendar.fix).toBeDefined();
+    expect(mentionsUserTypedCommand(proof.calendar.fix ?? '')).toBe(false);
+  });
+});
+
 describe('every command named in Google-flow text exists', () => {
   // An error told the owner to run `/google setup --path oauth` and the
   // command surface answered "Unknown setup item google". A fix line naming a
@@ -721,9 +810,26 @@ describe('every command named in Google-flow text exists', () => {
    * A bare `/google` with no subcommand is normalised to `/google status`,
    * which is what the command does when run with no arguments.
    */
+  /**
+   * Comments and file paths stripped before the scan.
+   *
+   * A comment explaining what the owner ran when a defect was found is history,
+   * not an instruction, and a path like `$HOME/google-cloud-sdk/bin` is neither.
+   * The rule is about what a PERSON is shown, so only string literals count.
+   */
+  function userFacingText(source: string): string {
+    return source
+      .replace(/\/\*[\s\S]*?\*\//g, ' ')
+      .replace(/(^|[^:])\/\/[^\n]*/g, '$1 ')
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/\$\{[^}]*\}/g, ' ');
+  }
+
   function slashCommandsIn(source: string): readonly string[] {
-    const withoutUrls = source.replace(/https?:\/\/\S+/g, ' ');
-    const pattern = /(?<![\w/.:\\-])\/(google|email|calendar)\b[ ]*([a-z][a-z-]*)?/g;
+    const withoutUrls = userFacingText(source);
+    // `(?![-\w./])` keeps `/google-cloud-sdk/bin` and `/google-workspace-...json`
+    // out: a hyphenated path segment is a path, not a command.
+    const pattern = /(?<![\w/.:\\-])\/(google|email|calendar)(?![-\w./])[ ]*([a-z][a-z-]*)?/g;
     return [...withoutUrls.matchAll(pattern)].map((match) => {
       const command = match[1];
       const sub = match[2];
@@ -758,6 +864,17 @@ describe('every command named in Google-flow text exists', () => {
   test('the declared list is not empty, so the sweep cannot pass vacuously', () => {
     expect(GOOGLE_REFERENCED_COMMANDS.length).toBeGreaterThan(0);
     expect(namedCommands().size).toBeGreaterThan(0);
+  });
+
+  test('the only user-facing text naming a command is the declared list itself', () => {
+    // The commands still exist for self-service and the agent-side test still
+    // proves each one resolves. What changed is that no string a person reads
+    // reaches for one: setup-plan.ts holds the contract list and the runbook
+    // renders a clearly-labelled self-service section, and every other file
+    // talks about what the platform will do instead.
+    const files = new Set<string>();
+    for (const [, where] of namedCommands()) for (const file of where) files.add(file);
+    expect([...files].sort()).toEqual(['setup-plan.ts', 'setup-runbook.ts']);
   });
 
   test('no text still points at the setup subcommand that answered "Unknown setup item"', () => {

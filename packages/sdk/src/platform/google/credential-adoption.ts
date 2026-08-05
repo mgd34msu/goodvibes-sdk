@@ -259,7 +259,7 @@ export function summarizeCredentials(
       canReadMail: false,
       canReadCalendar: false,
       canWriteCalendar: false,
-      detail: 'No Google credentials found. Run: /google connect',
+      detail: 'No Google credentials found. Say the word and I will connect an account.',
     };
   }
 

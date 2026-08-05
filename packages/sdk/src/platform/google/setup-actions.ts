@@ -194,7 +194,7 @@ function gmailConfigRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return needsHuman(
         'The Gmail address is not known yet.',
         'Gmail needs the account address to connect over IMAP and SMTP, and nothing on this machine records which address to use.',
-        'Set it, then re-run: /google account <your-address@gmail.com>',
+        'Tell me which Gmail address to connect as and I will set it up.',
       );
     }
 
@@ -217,7 +217,7 @@ function gmailVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return needsHuman(
         'Mail connectivity was not checked.',
         'This run had no way to open a real IMAP and SMTP session, so the credential is stored but unproven.',
-        'Check it yourself with: /email check',
+        'Say the word and I will open a real IMAP and SMTP session to check it.',
       );
     }
     const outcome = await verify();
@@ -226,7 +226,7 @@ function gmailVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       : failed(
         'Could not connect to Gmail.',
         outcome.detail,
-        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped — create a new one with /google setup --path app-password and store it again.',
+        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped — say so and I will walk you through making a new one.',
       );
   };
 }
@@ -241,7 +241,7 @@ function calendarIcsRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
     return needsHuman(
       'The private calendar address has not been captured.',
       'Google exposes the private iCal address only in the calendar settings UI, and it is a credential — anyone holding it can read the calendar.',
-      `Open ${spec.url ?? 'Google Calendar settings'}, pick the calendar, click "Integrate calendar", copy the address under "Secret address in iCal format", then store it with: /google calendar-address <url>`,
+      `Open ${spec.url ?? 'Google Calendar settings'}, pick the calendar, click "Integrate calendar", copy the address under "Secret address in iCal format", and paste it here — I will store it in the encrypted store.`,
     );
   };
 }
@@ -253,13 +253,13 @@ function calendarVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return needsHuman(
         'The calendar feed was not read.',
         'This run had no way to fetch the calendar feed, so the address is stored but unproven.',
-        'Check it yourself with: /calendar refresh, then /calendar list',
+        'Say the word and I will fetch the feed and read the events back.',
       );
     }
     const outcome = await verify();
     return outcome.ok
       ? done(outcome.detail)
-      : failed('Could not read the calendar feed.', outcome.detail, 'Re-copy the private address and store it again with: /google calendar-address <url>');
+      : failed('Could not read the calendar feed.', outcome.detail, 'Copy the private address again and paste it here — I will store it.');
   };
 }
 
@@ -282,7 +282,7 @@ async function obtainClientCredentials(deps: GoogleSetupActionDeps): Promise<Goo
       return {
         ok: false,
         problem: `No readable file at ${choice.path}.`,
-        fix: 'Give the path to a client JSON you already have, or run /google connect to walk through creating a client.',
+        fix: 'Tell me the right path and I will read it, or say so and I will walk you through creating a client.',
       };
     }
     return readClientCredentialsFromJson(raw);
@@ -294,7 +294,7 @@ async function obtainClientCredentials(deps: GoogleSetupActionDeps): Promise<Goo
       return {
         ok: false,
         problem: 'This run cannot scan a downloads directory.',
-        fix: 'Re-run pointing straight at the file: /google client-file <path-to-client.json>',
+        fix: 'Tell me where the client JSON is and I will read it from there.',
       };
     }
     const collected = collectDownloadedClientFile(scan, choice.directory, {
@@ -354,7 +354,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client is configured.',
         'Authorization needs a client id and secret, and one or both are missing.',
-        'Run the client step first: /google connect',
+        'Nothing to authorize against yet — say the word and I will set the client up first.',
       );
     }
 
@@ -363,7 +363,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client secret is stored.',
         'Authorization needs the client secret and the encrypted store does not hold one.',
-        'Run the client step first: /google connect',
+        'Nothing to authorize against yet — say the word and I will set the client up first.',
       );
     }
 
@@ -407,7 +407,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
         return needsHuman(
           'Consent was not completed.',
           `The browser did not return an authorization code: ${error instanceof Error ? error.message : String(error)}`,
-          'Re-run /google connect and open the consent link it prints.',
+          'Say so and I will start a fresh consent and hand you the link.',
         );
       }
 
@@ -431,7 +431,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
         return failed(
           'Google returned no refresh token.',
           'Google issues a refresh token only on a fresh consent, and this authorization reused an existing grant.',
-          'Remove the agent at https://myaccount.google.com/permissions, then re-run /google reauthorize.',
+          'Remove the agent at https://myaccount.google.com/permissions, then tell me and I will start a fresh consent.',
         );
       }
 
@@ -461,7 +461,7 @@ function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'There is no refresh token to check.',
         'Authorization did not store a refresh token, so there is nothing to verify.',
-        'Re-run: /google connect',
+        'Say the word and I will start the consent again.',
       );
     }
 
@@ -476,7 +476,7 @@ function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return needsHuman(
         'The credential is stored but was not proven.',
         'This run had no way to make a real Google call, so the credential is stored but nothing has confirmed it can actually read mail or calendar.',
-        'Prove it with: /google status',
+        'Say the word and I will read your mail and calendar to prove it.',
       );
     }
 
@@ -485,7 +485,7 @@ function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'The credential is stored but does not work yet.',
         proof.problem ?? proof.detail,
-        proof.fix ?? 'Run /google reauthorize to approve a fresh consent covering mail and calendar together.',
+        proof.fix ?? 'Say the word and I will start a fresh consent covering mail and calendar together.',
       );
     }
     return done(proof.detail, warnings);

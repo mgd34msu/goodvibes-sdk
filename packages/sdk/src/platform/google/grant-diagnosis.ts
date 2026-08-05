@@ -58,7 +58,14 @@ export interface GrantDiagnosisInput {
 }
 
 /** The command that re-runs consent with the full scope set. Must exist. */
-const REAUTHORIZE_COMMAND = '/google reauthorize';
+/**
+ * What the platform OFFERS to do, rather than a command to type.
+ *
+ * A dead grant needs a fresh consent, and producing one is the platform's job.
+ * Naming a command here would hand the person a chore in the same breath as
+ * telling them their credential is broken.
+ */
+const REAUTHORIZE_OFFER = 'Say the word and I will start a fresh consent';
 
 function normalize(account: string | null): string | null {
   const trimmed = account?.trim().toLowerCase();
@@ -86,7 +93,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
         `This credential was granted by ${signedIn}, but this product is set up for ${intended}. `
         + 'A refresh token belongs to the account that approved it, so one account\'s token can never speak for another\'s mailbox or calendar.',
       fix:
-        `Run ${REAUTHORIZE_COMMAND} and, on the Google consent screen, sign in as ${intended} — `
+        `${REAUTHORIZE_OFFER}. On the Google consent screen, sign in as ${intended} — `
         + `not ${signedIn}. If the account picker is already showing ${signedIn}, choose "Use another account".`,
       needsReauthorization: true,
     };
@@ -99,7 +106,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
       problem:
         'Google reports this refresh token as expired or revoked. That happens when the account\'s access to the app was removed at '
         + 'https://myaccount.google.com/permissions, when the password was changed, or when a token issued under a Testing app aged out.',
-      fix: `Run ${REAUTHORIZE_COMMAND} to approve a fresh consent. Nothing is deleted until you say so.`,
+      fix: `${REAUTHORIZE_OFFER} for you to approve. Nothing is deleted until you say so.`,
       needsReauthorization: true,
     };
   }
@@ -111,7 +118,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
       problem:
         'The stored refresh token does not belong to the stored OAuth client id. A token is tied to the exact client that requested it, '
         + 'so this happens when one half of a credential was replaced without the other.',
-      fix: `Run ${REAUTHORIZE_COMMAND} to mint a token against the client that is actually stored.`,
+      fix: `${REAUTHORIZE_OFFER}, minting a token against the client that is actually stored.`,
       needsReauthorization: true,
     };
   }
@@ -126,7 +133,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
         + 'This credential has almost certainly hit that fuse.',
       fix:
         'Publish the app at https://console.cloud.google.com/auth/audience — set publishing status to "In production", which is self-certified and needs no review — '
-        + `then run ${REAUTHORIZE_COMMAND}.`,
+        + `then ${REAUTHORIZE_OFFER.toLowerCase()}.`,
       needsReauthorization: true,
     };
   }
@@ -143,7 +150,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
       + 'Google account than the one configured here, the grant was revoked at https://myaccount.google.com/permissions, or the token does not match the '
       + `stored client id.${adoptedNote}`,
     fix:
-      `Run ${REAUTHORIZE_COMMAND} and watch which account the consent screen offers — approving as the wrong account is the most common cause of this.`,
+      `${REAUTHORIZE_OFFER} — watch which account it offers, because approving as the wrong account is the most common cause of this.`,
     needsReauthorization: true,
   };
 }
