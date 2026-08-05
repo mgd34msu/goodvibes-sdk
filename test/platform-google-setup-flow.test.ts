@@ -10,8 +10,10 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  FORBIDDEN_OAUTH_SCOPES,
   GOOGLE_SETUP_STEPS,
   OAUTH_SCOPES,
+  REQUIRED_SERVICES,
   stepSpec,
   stepsForPath,
 } from '../packages/sdk/src/platform/google/setup-plan.ts';
@@ -111,20 +113,108 @@ describe('the Google setup step plan', () => {
     expect(() => stepSpec('not-a-real-step' as GoogleStepId)).toThrow();
   });
 
-  test('no restricted Gmail scope is requested, so no annual security assessment is triggered', () => {
-    // Google classifies gmail.readonly/modify/metadata/compose and
-    // https://mail.google.com/ as restricted, which forces a third-party
-    // security assessment repeated every 12 months. Requesting one by
-    // accident is an expensive, recurring mistake, so it is guarded here.
-    const restricted = [
+  test('one consent covers every Google feature this platform has', () => {
+    // The defect: a token was minted with Gmail scopes only and the first
+    // calendar call afterwards failed with "insufficient authentication
+    // scopes". A grant carries exactly what was approved, so anything missing
+    // here becomes a feature that reports connected and then refuses.
+    //
+    // Every entry below has a live caller. gmail.readonly serves
+    // api-client.listMessages and the history delta; gmail.send serves
+    // api-client.sendMessage; calendar.events serves listEvents/createEvent.
+    expect([...OAUTH_SCOPES].sort()).toEqual([
+      'https://www.googleapis.com/auth/calendar.events',
       'https://www.googleapis.com/auth/gmail.readonly',
-      'https://www.googleapis.com/auth/gmail.modify',
-      'https://www.googleapis.com/auth/gmail.metadata',
-      'https://www.googleapis.com/auth/gmail.compose',
-      'https://mail.google.com/',
-    ];
-    for (const scope of OAUTH_SCOPES) {
-      expect(restricted).not.toContain(scope);
+      'https://www.googleapis.com/auth/gmail.send',
+    ]);
+  });
+
+  test('no scope granting mailbox deletion or full control is ever requested', () => {
+    // The guard that survived the scope widening, and it is about WIDTH rather
+    // than Google's fee tiers. gmail.modify can delete messages and
+    // https://mail.google.com/ is full mailbox control; nothing in this
+    // product does either, so requesting one would enlarge what a leaked
+    // credential reaches in exchange for nothing.
+    for (const forbidden of FORBIDDEN_OAUTH_SCOPES) {
+      expect(OAUTH_SCOPES).not.toContain(forbidden);
+    }
+  });
+
+  test('the Gmail API is enabled, because the scopes are useless without it', () => {
+    // A scope whose API is switched off fails with a service-disabled error
+    // rather than an auth error, which is a genuinely confusing thing to
+    // debug. Requesting Gmail scopes while enabling only Calendar was exactly
+    // that trap.
+    expect(REQUIRED_SERVICES).toContain('gmail.googleapis.com');
+    expect(REQUIRED_SERVICES).toContain('calendar-json.googleapis.com');
+  });
+});
+
+describe('the existing-client path', () => {
+  // The headline defect: a machine that already held a client id and secret
+  // was walked through the new-project Branding workflow anyway.
+
+  test('goes straight to consent, never to project, branding or audience setup', () => {
+    const ids = stepsForPath('existing-client').map((step) => step.id);
+    expect(ids).toEqual(['oauth-authorize', 'oauth-verify']);
+    for (const forbidden of ['gcloud-project', 'oauth-branding', 'oauth-audience-production', 'oauth-client']) {
+      expect(ids).not.toContain(forbidden);
+    }
+  });
+
+  test('the authorize step does not sit waiting on a step this path omits', () => {
+    // oauth-authorize requires oauth-client on the full OAuth path. Left
+    // unpruned, the executor would see an unmet dependency and skip the only
+    // step that matters, so "go straight to consent" would quietly do nothing.
+    const authorize = stepsForPath('existing-client').find((step) => step.id === 'oauth-authorize');
+    expect(authorize?.requires ?? []).toEqual([]);
+  });
+
+  test('the full OAuth path still keeps its real dependency chain', () => {
+    const authorize = stepsForPath('oauth').find((step) => step.id === 'oauth-authorize');
+    expect(authorize?.requires).toContain('oauth-client');
+  });
+});
+
+describe('the guided new-client instructions', () => {
+  // Verified against Google's live documentation on 2026-08-05: the Gmail API
+  // quickstart's "Authorize credentials for a desktop application" and
+  // support.google.com/cloud/answer/15549257 (Manage OAuth Clients).
+
+  const clientStep = stepSpec('oauth-client');
+  const text = clientStep.manualSteps.join('\n');
+
+  test('names every concrete console step by its current label', () => {
+    expect(text).toContain('Create client');
+    expect(text).toContain('Desktop app');
+    expect(text).toContain('"Name" field');
+    expect(text).toContain('Client ID');
+    expect(text).toContain('Client secret');
+  });
+
+  test('warns that the client secret is shown exactly once', () => {
+    // support.google.com/cloud/answer/15549257: "you will only be able to view
+    // and download the full client secret once, at the time of its creation."
+    // Miss that moment and the client has to be recreated.
+    expect(text).toMatch(/last four characters|only at this moment|only ever shown once/i);
+  });
+
+  test('sends the person to a command that takes the two values by hand', () => {
+    expect(text).toContain('/google client <client-id> <client-secret>');
+  });
+
+  test('never tells anyone to download or hand over a credential file', () => {
+    // Google's current console pages document no "download the JSON" action
+    // for OAuth client IDs — the Manage OAuth Clients page has no such
+    // control, and the quickstart names neither the button nor where it
+    // appears. Those steps could not be verified against the live console, so
+    // the guided path does not send anyone looking for a file. Handing over a
+    // path still works; it is user-directed, never talked into.
+    for (const step of stepsForPath('oauth')) {
+      const instructions = step.manualSteps.join('\n').toLowerCase();
+      expect(instructions).not.toContain('download the json');
+      expect(instructions).not.toContain('credentials.json');
+      expect(instructions).not.toContain('.json file');
     }
   });
 });

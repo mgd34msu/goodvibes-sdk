@@ -81,11 +81,53 @@ export class GoogleTokenManager {
   private readonly now: () => number;
   /** In-flight refresh, shared by every caller that arrives during it. */
   private inFlight: Promise<GoogleAccessTokenOutcome> | null = null;
+  /**
+   * The dead-grant latch.
+   *
+   * Once Google has answered `invalid_grant` for this refresh token, the answer
+   * is final: the token is not going to start working again, and asking a
+   * second time cannot produce new information. The observed failure was six
+   * identical refresh attempts against a revoked grant, each one a round trip
+   * that told the person nothing.
+   *
+   * So the first `grant-invalid` is remembered and every later call returns it
+   * from here without touching the network. This is a latch rather than a
+   * counter because the correct number of repeat attempts is zero, not fewer.
+   * `clearGrantFailure()` lifts it, and only re-authorization should call that.
+   */
+  private deadGrant: { readonly problem: string; readonly fix: string } | null = null;
 
   constructor(credentials: GoogleOAuthCredentials, deps: GoogleTokenManagerDeps) {
     this.credentials = credentials;
     this.deps = deps;
     this.now = deps.now ?? ((): number => Date.now());
+  }
+
+  /**
+   * True when the grant is known dead and no further refresh will be attempted.
+   * Callers use this to explain rather than to retry.
+   */
+  grantIsDead(): boolean {
+    return this.deadGrant !== null;
+  }
+
+  /**
+   * Forget a recorded dead grant so refreshes are attempted again.
+   *
+   * Only meaningful after the credential itself has been replaced — a fresh
+   * consent produces a different refresh token, and holding the old verdict
+   * against it would make a successful re-authorization look like a failure.
+   */
+  clearGrantFailure(): void {
+    this.deadGrant = null;
+  }
+
+  /** The recorded verdict, so a caller can restate it without re-asking Google. */
+  private deadGrantOutcome(): GoogleAccessTokenOutcome {
+    const recorded = this.deadGrant;
+    return recorded === null
+      ? { ok: false, failure: 'transient', problem: 'No refresh has been attempted.', fix: 'Try again.' }
+      : { ok: false, failure: 'grant-invalid', problem: recorded.problem, fix: recorded.fix };
   }
 
   /** Scopes the current credential was granted. Safe to display. */
@@ -107,6 +149,11 @@ export class GoogleTokenManager {
    * Concurrent callers share a single refresh.
    */
   async accessToken(): Promise<GoogleAccessTokenOutcome> {
+    // A dead grant is answered from memory. Checked before the cache so the
+    // verdict is not hidden by a token that happens to still be within its
+    // expiry window.
+    if (this.deadGrant !== null) return this.deadGrantOutcome();
+
     if (this.cachedTokenUsable()) {
       const accessToken = this.credentials.accessToken;
       if (accessToken !== null) {
@@ -134,6 +181,10 @@ export class GoogleTokenManager {
    * which is specifically proving the refresh token still works.
    */
   async forceRefresh(): Promise<GoogleAccessTokenOutcome> {
+    // "Force" overrides the expiry cache, not the dead-grant verdict. Nothing
+    // is gained by re-asking Google about a token it has already rejected.
+    if (this.deadGrant !== null) return this.deadGrantOutcome();
+
     const existing = this.inFlight;
     if (existing !== null) return existing;
     const attempt = this.performRefresh();
@@ -154,6 +205,12 @@ export class GoogleTokenManager {
     });
 
     if (!outcome.ok) {
+      // Record a dead grant so this exact request is never sent again. A
+      // transient failure is deliberately NOT latched — retrying a network
+      // blip is reasonable, retrying a revoked token is not.
+      if (outcome.failure === 'grant-invalid') {
+        this.deadGrant = { problem: outcome.problem, fix: outcome.fix };
+      }
       return { ok: false, failure: outcome.failure, problem: outcome.problem, fix: outcome.fix };
     }
 
@@ -204,7 +261,7 @@ export async function checkGoogleCredentialsAtBoot(
   if (manager === null) {
     return {
       usable: false,
-      detail: 'Google is not connected. Run: /google setup',
+      detail: 'Google is not connected. Run: /google connect',
       needsReauthorization: false,
       scopes: [],
     };

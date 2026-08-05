@@ -16,8 +16,18 @@
  * network, or a Google account.
  */
 
-/** Which of the two setup paths a step belongs to. */
-export type GoogleSetupPath = 'app-password' | 'oauth';
+/**
+ * Which setup path a step belongs to.
+ *
+ * `existing-client` is the third one and it exists because of a real failure:
+ * a machine that already held an OAuth client id and secret was still walked
+ * through creating a Cloud project and filling in the consent screen, because
+ * the only OAuth path started at `gcloud-installed`. When the client already
+ * exists there is exactly one thing left to do — ask the person for consent —
+ * so this path is those two steps and nothing else. It never touches a
+ * project, a branding page or an audience setting.
+ */
+export type GoogleSetupPath = 'app-password' | 'oauth' | 'existing-client';
 
 /**
  * Who performs a step.
@@ -68,8 +78,21 @@ export interface GoogleSetupStepSpec {
   /**
    * Steps that must have completed first. Used to skip cleanly rather than
    * fail confusingly.
+   *
+   * Pruned by `stepsForPath` to the steps actually in the selected path, so a
+   * step reused on a shorter path does not sit waiting on a prerequisite that
+   * path deliberately does not contain.
    */
   readonly requires?: readonly GoogleStepId[];
+  /**
+   * Additional paths this step also belongs to.
+   *
+   * Exists so `existing-client` can reuse the authorize and verify steps
+   * without a second copy of them. One list of steps is what keeps the
+   * automation and the written runbook from drifting, and duplicating a step
+   * to give it a second path would break exactly that.
+   */
+  readonly alsoInPaths?: readonly GoogleSetupPath[];
 }
 
 /** Stable identifiers for every step in both paths. */
@@ -203,6 +226,21 @@ export interface GoogleConfigPort {
 export interface GoogleSecretPort {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
+  /**
+   * Removes a stored value.
+   *
+   * OPTIONAL, and optional on purpose: a store that cannot delete should make
+   * a removal impossible rather than appear to succeed. `credential-removal.ts`
+   * checks for this method and returns a typed refusal when it is absent, so
+   * "nothing happened" is never reported as "removed".
+   *
+   * Nothing in this connector calls it except the confirmation-gated removal
+   * path. A stored Google credential is the product of a person completing a
+   * consent screen; deleting one without an explicit yes destroys work the
+   * machine cannot recreate by itself, which is exactly what happened to the
+   * owner mid-flow.
+   */
+  delete?(key: string): Promise<void>;
 }
 
 /**

@@ -32,6 +32,20 @@ export interface AuthorizationUrlOptions {
   readonly scopes: readonly string[];
   readonly codeChallenge: string;
   readonly state: string;
+  /**
+   * The Google address this consent is meant to be granted by.
+   *
+   * Sent as `login_hint`, which pre-selects that account on Google's picker.
+   * This is the cheapest available defense against the most expensive mistake
+   * in the whole flow: approving the consent screen as a personal account by
+   * reflex, which mints a perfectly valid refresh token belonging to the wrong
+   * identity. Nothing then fails until a real call is made, and the error at
+   * that point says nothing about accounts. See grant-diagnosis.ts.
+   *
+   * A hint, not a constraint — Google still lets the person switch accounts,
+   * which is correct, because only they know which one they meant.
+   */
+  readonly loginHint?: string;
 }
 
 /**
@@ -50,6 +64,10 @@ export function buildAuthorizationUrl(options: AuthorizationUrlOptions): string 
   url.searchParams.set('state', options.state);
   url.searchParams.set('access_type', 'offline');
   url.searchParams.set('prompt', 'consent');
+  const hint = options.loginHint?.trim();
+  if (hint !== undefined && hint.length > 0) {
+    url.searchParams.set('login_hint', hint);
+  }
   return url.toString();
 }
 

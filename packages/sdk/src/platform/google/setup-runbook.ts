@@ -95,7 +95,7 @@ export function renderGoogleSetupRunbook(): string {
   lines.push('## Just run this');
   lines.push('');
   lines.push('```');
-  lines.push('/google setup');
+  lines.push('/google connect');
   lines.push('```');
   lines.push('');
   lines.push(
@@ -105,7 +105,7 @@ export function renderGoogleSetupRunbook(): string {
   lines.push('For the full-API path:');
   lines.push('');
   lines.push('```');
-  lines.push('/google setup --path oauth');
+  lines.push('/google connect');
   lines.push('```');
   lines.push('');
   lines.push('To see what is already connected without changing anything:');

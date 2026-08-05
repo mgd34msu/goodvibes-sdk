@@ -143,7 +143,7 @@ describe('summarising credentials for display', () => {
   test('with no credentials it says so and names the command that fixes it', () => {
     const summary = summarizeCredentials(null, Date.now());
     expect(summary.found).toBe(false);
-    expect(summary.detail).toContain('/google setup');
+    expect(summary.detail).toContain('/google connect');
   });
 });
 
@@ -249,7 +249,7 @@ describe('keeping an access token usable', () => {
         ok: false,
         failure: 'grant-invalid',
         problem: 'the refresh token was revoked',
-        fix: 'Re-authorize with: /google setup',
+        fix: 'Re-authorize with: /google reauthorize',
       }),
     });
 
@@ -279,7 +279,7 @@ describe('the boot-time credential check', () => {
     const result = await checkGoogleCredentialsAtBoot(null);
     expect(result.usable).toBe(false);
     expect(result.needsReauthorization).toBe(false);
-    expect(result.detail).toContain('/google setup');
+    expect(result.detail).toContain('/google connect');
   });
 
   test('a revoked credential is flagged as needing re-authorization at boot', async () => {

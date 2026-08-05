@@ -101,6 +101,8 @@ export {
   GMAIL_SMTP_PORT,
   APP_PASSWORD_LABEL,
   OAUTH_SCOPES,
+  FORBIDDEN_OAUTH_SCOPES,
+  GOOGLE_REFERENCED_COMMANDS,
   REQUIRED_SERVICES,
   GOOGLE_CONFIG_KEYS,
   GOOGLE_SECRET_KEYS,
@@ -241,11 +243,65 @@ export {
 export {
   googleCredentialPaths,
   resolveGoogleCredentials,
+  readDiskCredentials,
   describeGoogleConnection,
   openGoogleConnection,
   type GoogleConnection,
   type GoogleConnectionSources,
 } from './connection.js';
+
+// ---------------------------------------------------------------------------
+// Deciding how to connect, before doing anything about it
+// ---------------------------------------------------------------------------
+
+export {
+  planGoogleConnection,
+  describeGoogleConnectionPlan,
+  type GoogleConnectionRoute,
+  type GoogleConnectionPlan,
+  type GoogleDiscoverySources,
+} from './discovery.js';
+
+export {
+  describeGcloudPosture,
+  gcloudCannotDo,
+  type GcloudPosture,
+} from './gcloud-posture.js';
+
+// ---------------------------------------------------------------------------
+// Explaining a dead grant, and proving a live one
+// ---------------------------------------------------------------------------
+
+export {
+  diagnoseInvalidGrant,
+  describeGrantDiagnosis,
+  type GoogleGrantFailureCause,
+  type GoogleGrantDiagnosis,
+  type GrantDiagnosisInput,
+} from './grant-diagnosis.js';
+
+export {
+  proveGoogleConnection,
+  describeGoogleConnectionProof,
+  type GoogleProofResult,
+  type GoogleConnectionProof,
+} from './connection-proof.js';
+
+// ---------------------------------------------------------------------------
+// Removing a credential — never without an explicit yes
+// ---------------------------------------------------------------------------
+
+export {
+  removeGoogleCredentials,
+  type GoogleCredentialItem,
+  type GoogleRemovableSecretPort,
+  type GoogleRemovalPlan,
+  type GoogleRemovalDone,
+  type GoogleRemovalRefused,
+  type GoogleRemovalResult,
+  type GoogleRemovalRequest,
+  type GoogleRemovalDeps,
+} from './credential-removal.js';
 
 export {
   GMAIL_HISTORY_SCOPES,
