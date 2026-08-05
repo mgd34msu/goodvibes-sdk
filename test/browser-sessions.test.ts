@@ -239,6 +239,29 @@ describe('managed profile isolation', () => {
     expect(a.profileDirectory).toStartWith(PROFILE_ROOT);
     expect(b.profileDirectory).toStartWith(PROFILE_ROOT);
   });
+
+  test('a profile name of slashes cannot escape the profiles directory via a multi-segment path', async () => {
+    const manager = createManager([]);
+    const session = await manager.launch({ profileName: '../../../../etc/passwd' });
+    expect(session.profileDirectory).toStartWith(PROFILE_ROOT);
+  });
+
+  test('a profile name that sanitizes down to only dots cannot walk up to the profiles directory\'s parent', async () => {
+    const manager = createManager([]);
+    // Every character survives sanitizing (dots are allowed), so this is the
+    // one shape a slash-strip alone does not stop: `path.join(root, '..')`
+    // resolves to root's PARENT, not a literal folder named "..".
+    const session = await manager.launch({ profileName: '..' });
+    expect(session.profileDirectory).toStartWith(PROFILE_ROOT);
+    expect(session.profileDirectory).not.toBe(PROFILE_ROOT);
+  });
+
+  test('a single-dot profile name does not collapse onto the profiles directory itself', async () => {
+    const manager = createManager([]);
+    const session = await manager.launch({ profileName: '.' });
+    expect(session.profileDirectory).not.toBe(PROFILE_ROOT);
+    expect(session.profileDirectory).toStartWith(PROFILE_ROOT);
+  });
 });
 
 describe('single managed session, bounded retries', () => {

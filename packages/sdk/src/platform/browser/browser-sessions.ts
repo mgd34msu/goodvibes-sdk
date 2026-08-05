@@ -89,8 +89,24 @@ export function browserScreenshotRoot(homeDirectory: string, surfaceRoot: string
   return resolveSurfaceDirectory(homeDirectory, surfaceRoot, 'browser', 'screenshots');
 }
 
+/**
+ * Turns a caller-supplied profile name into the one path segment under
+ * `profileRoot` it is allowed to land in — never anywhere else, and never a
+ * real browser's own profile directory, which is a completely different part
+ * of the filesystem this function never touches.
+ *
+ * Every character outside `[A-Za-z0-9._-]` is replaced, which already removes
+ * every `/` and `\`, so no multi-segment path can survive. That alone still
+ * leaves one escape: a name that sanitizes down to nothing but dots — `"."`
+ * or `".."` — is a single segment with no separator in it, but `path.join`
+ * still reads it as "this directory" or "the parent directory" rather than
+ * as a literal folder name. Collapsing a dots-only result to `'default'`
+ * closes that, so the returned path is always `profileRoot/<segment>`, never
+ * `profileRoot` itself or anything above it.
+ */
 function profileDirectoryFor(profileRoot: string, profileName: string): string {
-  const safe = profileName.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 64) || 'default';
+  const sanitized = profileName.replace(/[^A-Za-z0-9._-]/g, '-').slice(0, 64) || 'default';
+  const safe = /^\.+$/.test(sanitized) ? 'default' : sanitized;
   return join(profileRoot, safe);
 }
 
