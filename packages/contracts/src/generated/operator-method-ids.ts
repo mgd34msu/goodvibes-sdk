@@ -301,6 +301,7 @@ export const OPERATOR_METHOD_IDS = [
   "multimodal.providers.list",
   "multimodal.status",
   "multimodal.writeback",
+  "occasions.acknowledge",
   "occasions.answer",
   "occasions.confirm",
   "occasions.conflict.resolve",

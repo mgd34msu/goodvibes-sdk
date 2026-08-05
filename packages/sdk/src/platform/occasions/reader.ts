@@ -18,6 +18,7 @@
 import type { ProfileLine } from '../owner-profile/types.js';
 import { renderOccasionDate, type IsoDate } from './dates.js';
 import { parseOccasionLine, parsePlanLine } from './grammar.js';
+import { resolveOccasionSubject } from './subject.js';
 import type {
   Occasion,
   OccasionConflict,
@@ -40,6 +41,19 @@ export interface OccasionProfileSource {
   plans(): readonly ProfileLine[];
   /** Profile lines mentioning one person, by name. Opens the interview. */
   person(name: string): readonly ProfileLine[];
+  /**
+   * What the owner calls HIMSELF: `identity.name` and `identity.goesBy`.
+   *
+   * The linkage that lets "Mike's birthday" be recognised as being about the
+   * person whose file this is, without any name literal living in the code.
+   * Values he has not declared are simply absent from the list.
+   *
+   * OPTIONAL, and absent means "no names known" rather than "no match". A
+   * narrow embed that does not supply it gets `unattributed` for everything,
+   * which is the ordinary cadence — the failure direction that costs him a
+   * nudge he did not need rather than one he did.
+   */
+  ownerNames?(): readonly string[];
 }
 
 /** Everything the dates section holds, including what did not parse. */
@@ -68,6 +82,10 @@ export function readOccasions(source: OccasionProfileSource): OccasionReadResult
   const occasions: Occasion[] = [];
   const unparsed: UnparsedOccasionLine[] = [];
   const byId = new Map<string, Occasion[]>();
+  // Read once for the whole document rather than per line: the answer is the
+  // same for every occasion, and a closed-tier field read per birthday would be
+  // a disclosure per birthday.
+  const declaredNames = source.ownerNames?.() ?? [];
 
   for (const line of source.importantDates()) {
     const result = parseOccasionLine(line.lineIndex, line.text);
@@ -75,7 +93,13 @@ export function readOccasions(source: OccasionProfileSource): OccasionReadResult
       unparsed.push(result.unparsed);
       continue;
     }
-    const occasion = result.occasion;
+    // Attribution is settled HERE because this is the first layer that has both
+    // the line and his declared names. The parser has only the line.
+    const parsed = result.occasion;
+    const occasion: Occasion = {
+      ...parsed,
+      subject: resolveOccasionSubject(parsed, declaredNames),
+    };
     const seen = byId.get(occasion.id);
     if (seen === undefined) {
       byId.set(occasion.id, [occasion]);

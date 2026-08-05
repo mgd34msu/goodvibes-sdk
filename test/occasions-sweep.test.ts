@@ -12,9 +12,11 @@
 import { describe, expect, test } from 'bun:test';
 import {
   adjustForAway,
+  boundaryOn,
+  dayOfBoundaryDate,
   interviewResumeDate,
   laterReturnDate,
-  nextNudgeDue,
+  reconcileRaiseLedger,
 } from '../packages/sdk/src/platform/occasions/cadence.ts';
 import { parseOccasionLine, parsePlanLine } from '../packages/sdk/src/platform/occasions/grammar.ts';
 import {
@@ -45,7 +47,6 @@ const POLICY: OccasionsPolicy = {
   activeHours: '08:00-22:00',
   nudgeChannel: 'telegram',
   cadenceDays: 3,
-  finalStretchDays: 2,
   awayAdjust: true,
   calendarMirror: false,
   suppressMirroredNudges: true,
@@ -233,7 +234,7 @@ describe('the sweep decision', () => {
     ).toHaveLength(1);
   });
 
-  test('an occasion raised today is not raised again until its item is due', () => {
+  test('an occasion whose lead boundary is served is not raised again before the day', () => {
     const item: OpenItem = {
       id: "nudge:sarah's birthday@2026-03-14",
       kind: 'nudge',
@@ -242,13 +243,18 @@ describe('the sweep decision', () => {
       openedAt: 0,
       lastRaisedAt: 0,
       raiseCount: 1,
-      dueOn: '2026-03-09',
+      servedBoundaries: ['lead'],
+      dueOn: '2026-03-14',
     };
     const occasions = [occasion("Sarah's birthday · 03-14 · annual · gift-giving")];
-    expect(decideSweep(context({ occasions, openItems: [item] })).due).toHaveLength(0);
-    const laterDay = decideSweep(context({ today: '2026-03-09', occasions, openItems: [item] }));
-    expect(laterDay.due).toHaveLength(1);
-    expect(laterDay.openItemWrites[0]!.raiseCount).toBe(2);
+    // Every day between the two boundaries is silent, not merely the same day.
+    for (const today of ['2026-03-06', '2026-03-09', '2026-03-13']) {
+      expect(decideSweep(context({ today, occasions, openItems: [item] })).due).toHaveLength(0);
+    }
+    const dayOf = decideSweep(context({ today: '2026-03-14', occasions, openItems: [item] }));
+    expect(dayOf.due).toHaveLength(1);
+    expect(dayOf.openItemWrites[0]!.raiseCount).toBe(2);
+    expect(dayOf.openItemWrites[0]!.servedBoundaries).toEqual(['lead', 'day-of']);
   });
 
   test('several occasions in one window batch into one message', () => {
@@ -289,15 +295,21 @@ describe('the sweep decision', () => {
 });
 
 describe('cadence', () => {
-  test('roughly every third day, then daily for the last two', () => {
-    expect(nextNudgeDue('2026-03-04', '2026-03-14', POLICY)).toBe('2026-03-07');
-    expect(nextNudgeDue('2026-03-12', '2026-03-14', POLICY)).toBe('2026-03-13');
-    expect(nextNudgeDue('2026-03-13', '2026-03-14', POLICY)).toBe('2026-03-14');
+  test('there are two boundaries and today is one of them', () => {
+    // Anywhere inside the window before the day itself is the lead boundary;
+    // the day and anything after it is day-of. There is no third answer.
+    expect(boundaryOn('2026-03-04', '2026-03-14')).toBe('lead');
+    expect(boundaryOn('2026-03-13', '2026-03-14')).toBe('lead');
+    expect(boundaryOn('2026-03-14', '2026-03-14')).toBe('day-of');
+    expect(boundaryOn('2026-03-15', '2026-03-14')).toBe('day-of');
   });
 
-  test('a gap never steps past the date itself', () => {
-    expect(nextNudgeDue('2026-03-13', '2026-03-14', { cadenceDays: 30, finalStretchDays: 0 }))
-      .toBe('2026-03-14');
+  test('the day-of boundary moves earlier when he will be away for it', () => {
+    const trip = [plan('Lisbon · 2026-03-12..2026-03-20 · away')];
+    expect(dayOfBoundaryDate('2026-03-14', '2026-03-06', trip, true)).toBe('2026-03-11');
+    // Off means off: the setting is a real toggle, not a preference.
+    expect(dayOfBoundaryDate('2026-03-14', '2026-03-06', trip, false)).toBe('2026-03-14');
+    expect(dayOfBoundaryDate('2026-03-14', '2026-03-06', [], true)).toBe('2026-03-14');
   });
 
   test('later comes back roughly halfway, never tomorrow and never past the day', () => {
@@ -354,7 +366,8 @@ describe('cadence', () => {
     const on = decideSweep(context({ occasions, plans }));
     expect(on.openItemWrites[0]!.dueOn).toBe('2026-03-08');
     const off = decideSweep(context({ occasions, plans, policy: { ...POLICY, awayAdjust: false } }));
-    expect(off.openItemWrites[0]!.dueOn).toBe('2026-03-09');
+    // With the adjustment off, the day-of boundary is the day itself.
+    expect(off.openItemWrites[0]!.dueOn).toBe('2026-03-14');
   });
 });
 

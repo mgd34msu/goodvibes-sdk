@@ -41,6 +41,29 @@ export function isOccasionKind(value: string): value is OccasionKind {
 }
 
 /**
+ * Who the occasion is ABOUT, as distinct from who declared it.
+ *
+ * The owner does not need to be told when his own birthday is, and being told
+ * hourly is worse than not being told at all. That rule needs a subject, so the
+ * subject is modelled rather than guessed:
+ *
+ *  - `owner`        — it is about him. Either the line says so (`for me`), or its
+ *                     attribution resolves to a name he declared for HIMSELF in
+ *                     `Identity` (`identity.name`, `identity.goesBy`).
+ *  - `other`        — it is about a named someone else.
+ *  - `unattributed` — the line names nobody resolvable. "Our anniversary", "Dad".
+ *                     Treated as normal, because guessing that an unattributed
+ *                     line is about him is how his wife's birthday goes quiet.
+ *
+ * There is no name literal anywhere in this module. The comparison is against
+ * what HIS FILE says his name is, so it is right on a machine belonging to
+ * anyone, and it stays right when he changes what he goes by.
+ */
+export type OccasionSubject = 'owner' | 'other' | 'unattributed';
+
+export const OCCASION_SUBJECTS: readonly OccasionSubject[] = ['owner', 'other', 'unattributed'];
+
+/**
  * One occasion, as declared in the profile.
  *
  * `id` is derived from the title rather than minted, so the same line reloaded
@@ -59,6 +82,23 @@ export interface Occasion {
   readonly kind: OccasionKind;
   /** The person it is about, as a plain label. Empty when the title carries it. */
   readonly person: string;
+  /**
+   * True when the LINE ITSELF says this one is about him — `for me`, `mine`.
+   *
+   * Separate from {@link subject} because the grammar can see this and cannot
+   * see his name: the parser reads one line and knows nothing about the
+   * `Identity` section. This is what the parser found; `subject` is what the
+   * reader concluded once it also had his declared names in hand.
+   */
+  readonly selfDeclared: boolean;
+  /**
+   * Who it is about, resolved. See {@link OccasionSubject}.
+   *
+   * `unattributed` until a reader with access to his declared names resolves
+   * it — the safe direction, because an unresolved subject gets the ordinary
+   * cadence rather than silence.
+   */
+  readonly subject: OccasionSubject;
   /** Per-occasion lead override in days, or `null` for the configured default. */
   readonly leadDays: number | null;
   /** True when this occasion has been mirrored out to a calendar. */
@@ -119,13 +159,44 @@ export interface OccasionConflict {
   readonly lineIndexes: readonly number[];
 }
 
-/** What the owner answered when asked about an occasion. */
-export type OccasionAnswer = 'yes' | 'no' | 'later';
+/**
+ * What the owner answered when asked about an occasion.
+ *
+ * `acknowledged` is not a fourth flavour of `no`. The other three END the
+ * question — a `no` and a `yes` resolve the open item and it is gone. This one
+ * says only *"heard you"*: the item STAYS OPEN and stays enumerable, and what
+ * changes is that nothing is pushed at him about this occurrence again. That
+ * distinction is the whole point of having it. He answered a nudge about his
+ * wife's birthday with "yeah I know, I'm on it" — that is not a decline, it is
+ * not a yes that should open a gift interview, and it is certainly not a reason
+ * to keep pinging him.
+ */
+export type OccasionAnswer = 'yes' | 'no' | 'later' | 'acknowledged';
 
-export const OCCASION_ANSWERS: readonly OccasionAnswer[] = ['yes', 'no', 'later'];
+export const OCCASION_ANSWERS: readonly OccasionAnswer[] = ['yes', 'no', 'later', 'acknowledged'];
 
 export function isOccasionAnswer(value: string): value is OccasionAnswer {
   return (OCCASION_ANSWERS as readonly string[]).includes(value);
+}
+
+/**
+ * How an acknowledgement came to be recorded.
+ *
+ * Kept because "why did this go quiet" is a question he will ask, and the three
+ * paths are genuinely different promises: one is a sentence in a conversation,
+ * one is a button, and one is inferred from him working on the gift. Recorded,
+ * never inferred after the fact.
+ */
+export type OccasionAckSource = 'conversation' | 'explicit' | 'gift-flow';
+
+export const OCCASION_ACK_SOURCES: readonly OccasionAckSource[] = [
+  'conversation',
+  'explicit',
+  'gift-flow',
+];
+
+export function isOccasionAckSource(value: string): value is OccasionAckSource {
+  return (OCCASION_ACK_SOURCES as readonly string[]).includes(value);
 }
 
 /**
@@ -145,6 +216,8 @@ export interface OccasionAcknowledgement {
   readonly occurrence: IsoDate;
   readonly answer: OccasionAnswer;
   readonly answeredAt: number;
+  /** Where the answer came from. Present on acknowledgements; absent elsewhere. */
+  readonly source?: OccasionAckSource | undefined;
   /** Absent ⇒ permanent. Present ⇒ reaped once this date has passed. */
   readonly expiresAfter?: IsoDate | undefined;
   /** For `later`: the date the question comes back. */
@@ -189,6 +262,38 @@ export interface OccasionMirrorRecord {
 export type OpenItemKind = 'nudge' | 'conflict' | 'interview';
 
 /**
+ * The two moments a nudge is allowed to SPEAK, and the whole ceiling.
+ *
+ *  - `lead`   — the day the occasion entered its lead window. The runway.
+ *  - `day-of` — the occasion itself.
+ *
+ * There is no third. "Nothing unresolved drops" was read for a while as "raise
+ * it again every pass until he answers", which on an hourly sweep meant the
+ * owner was told about his own birthday five times in a day and counting. It
+ * never meant that. It means the OPEN ITEM persists and stays enumerable until
+ * it is resolved or expires — that is a property of the record, not a licence
+ * to repeat the push. Between the two boundaries the item sits open and quiet:
+ * ask "anything coming up?" and it is there; say nothing and it says nothing.
+ *
+ * The ceiling is enforced by RECORDING WHICH BOUNDARY A RAISE SERVED rather
+ * than by counting raises or comparing timestamps. A boundary is served once,
+ * and a served boundary is not raisable again — so the ceiling holds no matter
+ * how often the sweep runs, whether the daemon restarts, or whether a clock
+ * moves backwards. A count could be reset by a bad write; a set of served
+ * boundaries has nothing to reset to.
+ */
+export type RaiseBoundary = 'lead' | 'day-of';
+
+export const RAISE_BOUNDARIES: readonly RaiseBoundary[] = ['lead', 'day-of'];
+
+export function isRaiseBoundary(value: string): value is RaiseBoundary {
+  return (RAISE_BOUNDARIES as readonly string[]).includes(value);
+}
+
+/** The most times one occurrence may be pushed. Two, and it is structural. */
+export const MAX_NUDGE_RAISES = RAISE_BOUNDARIES.length;
+
+/**
  * Something raised and not yet resolved.
  *
  * The governing principle is that nothing unresolved is ever dropped, and this
@@ -206,6 +311,17 @@ export interface OpenItem {
   readonly openedAt: number;
   readonly lastRaisedAt: number;
   readonly raiseCount: number;
+  /**
+   * The boundaries this item has already spoken at. Nudges only.
+   *
+   * The gate on a nudge, and the reason the two-raise ceiling cannot be lost:
+   * the sweep asks which boundary TODAY is, and raises only if that boundary is
+   * absent from this list. Empty for a conflict or an interview, which keep the
+   * older repeating cadence — a conflict is a fact about his FILE that stays
+   * wrong until he fixes it, and an interview is a conversation he walked out
+   * of, and neither is the class of thing that was drowning him.
+   */
+  readonly servedBoundaries: readonly RaiseBoundary[];
   /** The calendar day this may be raised again. */
   readonly dueOn: IsoDate;
   /** The occurrence this item dies with; absent ⇒ it lives until resolved. */
@@ -232,6 +348,16 @@ export interface NudgeSubject {
   readonly kind: OccasionKind;
   /** How close it is, as a word. Never a count of days and never a date. */
   readonly proximity: 'approaching' | 'soon' | 'imminent';
+  /** Who it is about. Drives whether it may be pushed at all. */
+  readonly subject: OccasionSubject;
+  /**
+   * True when he has already said he has this one in hand.
+   *
+   * Carried on the PULL and never on a push, because an acknowledged occurrence
+   * is not pushed. A surface listing what is coming up shows it and shows that
+   * he acknowledged it; nothing sends it to him again.
+   */
+  readonly acknowledged: boolean;
 }
 
 /**
@@ -290,6 +416,16 @@ export interface OccasionStateDisclosure {
   readonly mirrors: number;
   /** Records dropped by the last sweep, by reason. */
   readonly lastSweep: OccasionSweepReport | null;
+  /**
+   * Open items whose raise ledger was rebuilt when this file was loaded.
+   *
+   * The receipt for the migration off the old repeating cadence. A machine that
+   * had been raising one occurrence every hour loads with items carrying a
+   * raise count and no served boundaries; they are kept open, marked as having
+   * already spoken, and counted here — so the machine going quiet is a stated
+   * fact rather than a mystery.
+   */
+  readonly reconciledOpenItems: number;
   /** Non-null when the file existed and could not be read. */
   readonly corruption: string | null;
 }
@@ -317,7 +453,6 @@ export const OCCASIONS_CONFIG_KEYS = {
   activeHours: 'occasions.activeHours',
   nudgeChannel: 'occasions.nudgeChannel',
   cadenceDays: 'occasions.cadenceDays',
-  finalStretchDays: 'occasions.finalStretchDays',
   awayAdjust: 'occasions.awayAdjust',
   calendarMirror: 'occasions.calendarMirror',
   suppressMirroredNudges: 'occasions.suppressMirroredNudges',

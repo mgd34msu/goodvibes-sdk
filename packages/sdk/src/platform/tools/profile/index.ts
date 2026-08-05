@@ -138,6 +138,40 @@ function createInstance(
         };
       }
 
+      // Acknowledging sits ABOVE the capture gate on purpose. It writes to the
+      // machine's own occasions state and never to his profile document, and
+      // "stop reminding me about this" is the one instruction that must never
+      // be refused because profile capture happens to be off. A person telling
+      // the thing to be quiet and being told it cannot comply is the whole
+      // complaint in miniature.
+      if (action === 'acknowledge_occasion') {
+        const occasionId = text(input.occasionId);
+        if (occasionId.length === 0) {
+          return refused(
+            'Which occasion? Call `list` for the ids, then acknowledge the one he meant. Nothing '
+            + 'was changed.',
+          );
+        }
+        const outcome = await port.occasions.acknowledge({
+          occasionId,
+          source: 'conversation',
+          ...(ISO_DATE.test(text(input.occurrence)) ? { occurrence: text(input.occurrence) } : {}),
+        });
+        if (!outcome.ok) {
+          return refused(outcome.reason ?? 'That occasion was not acknowledged.');
+        }
+        return stored({
+          what: 'acknowledgement',
+          id: occasionId,
+          savedTo: 'your occasions state',
+          // Both halves, every time. Saying only "muted" is how he ends up
+          // unsure whether the rest of his dates went quiet too — which is
+          // exactly what happened the day the whole feature got switched off
+          // to stop one reminder.
+          tellHim: outcome.reply,
+        });
+      }
+
       // Everything below this line writes.
       const blocked = captureAllowed();
       if (blocked) return refused(blocked);
@@ -212,6 +246,7 @@ function createInstance(
           date,
           kind,
           ...(text(input.person).length > 0 ? { person: text(input.person) } : {}),
+          ...(input.self === true ? { self: true } : {}),
           ...(text(input.recurrence).length > 0 ? { recurrence: text(input.recurrence) } : {}),
           ...(typeof input.leadDays === 'number' ? { leadDays: input.leadDays } : {}),
           ...writeIdentity,

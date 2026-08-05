@@ -46,6 +46,63 @@ export const CONVERSATIONAL_TURN_TOOLS: readonly string[] = [
   'profile',
 ];
 
+/**
+ * What to do when he answers a reminder.
+ *
+ * The gap this closes: occasion nudges are pushed to Telegram and to the agent's
+ * own conversation, so the reply to one is a SENTENCE. Nothing ever turned a
+ * sentence into a record — the only thing that could write an acknowledgement
+ * was a CLI/webui verb — so the owner could answer a nudge, and answer it again,
+ * and from the sweep's side he had said nothing at all. It kept asking.
+ *
+ * Exported so a test can pin the wording. This is behaviour, not decoration.
+ */
+export const OCCASION_ACKNOWLEDGEMENT_INSTRUCTION: readonly string[] = [
+  'When he responds to a reminder about an upcoming date — or mentions one you reminded him',
+  'about — and what he says means he has it in hand, record that in the same turn with the',
+  '`profile` tool, action `acknowledge_occasion`. "I know", "I\'m on it", "already sorted",',
+  '"yeah, next week", "you\'ve told me" and "stop telling me about it" all mean the same thing:',
+  'he has heard you. Record it and he stops being pushed about that occurrence; say nothing',
+  'and he gets reminded again. Do not ask him whether to record it — asking permission to stop',
+  'interrupting him is another interruption.',
+  '',
+  'Acknowledging is not deleting. The date stays on his profile, it still comes back next year,',
+  'and it still answers when he asks what is coming up. Say that back to him in one clause so',
+  'he knows what he just did.',
+];
+
+/**
+ * The remedy ladder for "your reminders are bothering me".
+ *
+ * The defect this closes, in the owner's words: *"it turned off the entire
+ * fucking feature rather than stop telling me about my own fucking birthday
+ * every fucking hour."* He complained about ONE occasion and the turn set
+ * `occasions.enabled = false`, which also silenced his wife's birthday — a
+ * gift-giving occasion with a shopping runway — and he would not have found out
+ * until it was too late to matter.
+ *
+ * The general rule underneath it is worth more than the specific fix: the size
+ * of a remedy is matched to the size of a complaint, and turning a whole
+ * capability off is never how one noisy item gets quieter.
+ */
+export const OCCASION_COMPLAINT_LADDER: readonly string[] = [
+  'If he objects to being reminded about something, fix the SMALLEST thing that fixes it.',
+  'In order, and stop at the first rung that answers what he said:',
+  '',
+  '  1. Acknowledge that one occurrence, so it stops being raised. This is almost always the',
+  '     right rung, and it is one tool call.',
+  '  2. Change that one occasion — its kind, how far ahead it is raised, or removing it',
+  '     outright if that is what he asked for.',
+  '  3. Turn the whole occasions feature off. ONLY when he has said so explicitly and named',
+  '     the whole feature. "Stop reminding me about my birthday" is rung 1. It is never rung 3,',
+  '     and neither is a complaint with swearing in it — anger tells you how badly he wants the',
+  '     noise to stop, not how much of his life to switch off.',
+  '',
+  'Whatever you do, say which occasion you silenced AND that his other dates still run. He',
+  'cannot see the setting you changed, so an unnamed fix is indistinguishable from having',
+  'broken something he will notice in November.',
+];
+
 export interface ConversationalSpawnContextInput {
   /** The shared session this turn belongs to. */
   readonly sessionId: string;
@@ -108,6 +165,10 @@ export function buildConversationalTurnContext(
     'If a capture does not complete, say so plainly in the reply and say what stopped it.',
     'Never let a failed capture pass as a friendly acknowledgement. Nothing unresolved',
     'drops silently.',
+    '',
+    ...OCCASION_ACKNOWLEDGEMENT_INSTRUCTION,
+    '',
+    ...OCCASION_COMPLAINT_LADDER,
   ];
 
   if (input.surfaceKind) {

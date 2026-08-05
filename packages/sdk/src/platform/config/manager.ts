@@ -11,7 +11,7 @@ import { getManagedSettingLock } from '../runtime/settings/control-plane.js';
 import { requireSurfaceRoot, resolveSharedDirectory, resolveSurfaceDirectory, resolveSurfaceSharedFile } from '../runtime/surface-root.js';
 import { summarizeError } from '../utils/error-display.js';
 import { FeatureAnnouncementStore, featureAnnouncementsPath } from '../runtime/feature-announcements.js';
-import { applyPaymentsBudgetMigrationPass, runLoadMigrationPasses } from './manager-migration-passes.js';
+import { runDaemonTierMigrationPasses, runLoadMigrationPasses } from './manager-migration-passes.js';
 import {
   SHARED_CONFIG_KEYS,
   isSharedConfigKey,
@@ -608,14 +608,13 @@ export class ConfigManager {
     this.daemonKeysPresent.clear();
     if (!this.daemonTierPath) return;
     try {
-      // Daemon-owned keys live ONLY here, so a rename of one has to be applied
-      // here too. Only the rename pass runs: the other passes describe
-      // surface-file shapes this file does not have.
-      // DAEMON-OWNED, CLIENT-READ: a non-owner migrates its parsed copy only.
+      // Daemon-owned keys live ONLY here, so a rename or removal of one is
+      // applied here too. DAEMON-OWNED, CLIENT-READ: a non-owner migrates its
+      // parsed copy only. Order and ownership live with the passes.
       const stored = this.ingest(
         readDaemonTierFile(this.daemonTierPath),
         this.daemonTierPath,
-        (raw) => applyPaymentsBudgetMigrationPass(raw, this.daemonTierPath!,
+        (raw) => runDaemonTierMigrationPasses(raw, this.daemonTierPath!,
           (id, text) => this.migrationReceipt(id, text), { ownsFile: this.daemonTierOwner }),
       );
       const applied = overlayDaemonTierFrom(stored, (key, value) => {

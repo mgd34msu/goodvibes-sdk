@@ -39,13 +39,19 @@ export function proximityOf(daysUntil: number): NudgeSubject['proximity'] {
 }
 
 /** The structured subject for one occasion inside a nudge. */
-export function subjectFor(occasion: Occasion, daysUntil: number): NudgeSubject {
+export function subjectFor(
+  occasion: Occasion,
+  daysUntil: number,
+  acknowledged = false,
+): NudgeSubject {
   return {
     occasionId: occasion.id,
     title: occasion.title,
     person: occasion.person,
     kind: occasion.kind,
     proximity: proximityOf(daysUntil),
+    subject: occasion.subject,
+    acknowledged,
   };
 }
 
@@ -117,6 +123,58 @@ export function composeNudge(input: {
     // and offering an answer to a statement invites an answer that means nothing.
     answerable: input.subjects.some((subject) => subject.kind === 'gift-giving'),
   };
+}
+
+/** The label that opens every occasion notice landed in the agent's own conversation. */
+export const AGENT_NOTICE_HEADING = 'Occasion reminder';
+
+/**
+ * The same nudge, framed for delivery INTO the agent's own conversation.
+ *
+ * ## The defect this closes
+ *
+ * A push to the agent surface used to land `nudge.message` as a bare body, so
+ * the sentence *"Mike's birthday is very close now."* arrived unlabelled in the
+ * middle of a session about wake-word debugging — and the model, given a bare
+ * sentence with no frame, did the only thing a bare sentence permits: it said
+ * it out loud, twice, woven into troubleshooting that had nothing to do with
+ * it. Every other destination is a message channel where an arriving message is
+ * self-evidently a new message. The agent's conversation is not: text put into
+ * it is indistinguishable from the conversation itself unless it says what it
+ * is.
+ *
+ * So the notice is SELF-CONTAINED and says four things, in this order:
+ *
+ *  1. What it is — a scheduled reminder, named as one, not a remark.
+ *  2. What it is about — the occasion, by name, and never the date. The
+ *     closed-tier rule is unchanged and is the reason this composes from
+ *     {@link composeNudgeMessage} rather than writing its own sentence.
+ *  3. That it is unrelated to whatever is happening in the conversation.
+ *  4. How he makes it stop — one sentence from him, recorded as an
+ *     acknowledgement. An affordance he can use, not a fact he must act on.
+ *
+ * It does NOT tell the model to relay it verbatim. He may be mid-something; the
+ * turn decides when a reminder is worth raising, which is what the last line
+ * is for.
+ */
+export function composeAgentNotice(nudge: OccasionNudge): string {
+  const message = nudge.message.trim();
+  if (message.length === 0) return '';
+  return [
+    `[${AGENT_NOTICE_HEADING}]`,
+    message,
+    '',
+    'This is a scheduled reminder about a date recorded in the owner\'s profile. It is not',
+    'part of the conversation it arrived in and has nothing to do with it — do not weave it',
+    'into whatever is being discussed, and do not restate it as an observation of your own.',
+    'Raise it as its own point when there is a natural moment, or hold it until the current',
+    'thread finishes.',
+    '',
+    'If he says he already has this one in hand — in any words — record that with the',
+    '`profile` tool, action `acknowledge_occasion`, in the same turn. He will not be sent',
+    'this reminder again for this occurrence once you do. He will be sent it at most once',
+    'more regardless, on the day itself.',
+  ].join('\n');
 }
 
 /**

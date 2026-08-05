@@ -3,7 +3,7 @@
   "info": {
     "title": "GoodVibes Operator API",
     "version": "2.0.8",
-    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 506 cataloged methods: 434 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
+    "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 507 cataloged methods: 435 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
     {
@@ -71050,11 +71050,99 @@
         ]
       }
     },
+    "/api/occasions/acknowledge": {
+      "post": {
+        "operationId": "occasions.acknowledge",
+        "summary": "Acknowledge An Occasion",
+        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.",
+        "tags": [
+          "occasions"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "reason": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "reply": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "reason",
+                    "reply"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "x-typed-client-io": true,
+        "x-access": "authenticated",
+        "x-transport": [
+          "http",
+          "ws"
+        ],
+        "x-scopes": [
+          "write:occasions"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "conversation",
+                      "explicit",
+                      "gift-flow"
+                    ]
+                  },
+                  "occurrence": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "occasionId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/occasions/answer": {
       "post": {
         "operationId": "occasions.answer",
         "summary": "Answer An Occasion Nudge",
-        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question.",
+        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only \"I have this in hand\" without ending the question, use occasions.acknowledge instead.",
         "tags": [
           "occasions"
         ],
@@ -71212,7 +71300,8 @@
                     "enum": [
                       "yes",
                       "no",
-                      "later"
+                      "later",
+                      "acknowledged"
                     ]
                   },
                   "occurrence": {
@@ -72076,6 +72165,17 @@
                               "person": {
                                 "type": "string"
                               },
+                              "selfDeclared": {
+                                "type": "boolean"
+                              },
+                              "subject": {
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "other",
+                                  "unattributed"
+                                ]
+                              },
                               "leadDays": {
                                 "anyOf": [
                                   {
@@ -72109,6 +72209,8 @@
                               "recurrence",
                               "kind",
                               "person",
+                              "selfDeclared",
+                              "subject",
                               "leadDays",
                               "mirrored",
                               "extras",
@@ -72150,7 +72252,8 @@
                                 "enum": [
                                   "yes",
                                   "no",
-                                  "later"
+                                  "later",
+                                  "acknowledged"
                                 ]
                               },
                               {
@@ -72317,6 +72420,17 @@
                                       "soon",
                                       "imminent"
                                     ]
+                                  },
+                                  "subject": {
+                                    "type": "string",
+                                    "enum": [
+                                      "owner",
+                                      "other",
+                                      "unattributed"
+                                    ]
+                                  },
+                                  "acknowledged": {
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -72324,7 +72438,9 @@
                                   "title",
                                   "person",
                                   "kind",
-                                  "proximity"
+                                  "proximity",
+                                  "subject",
+                                  "acknowledged"
                                 ],
                                 "additionalProperties": false
                               }
@@ -72365,6 +72481,60 @@
                         "required": [
                           "occasionId",
                           "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "acknowledged": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "occasionId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "person": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "gift-giving",
+                              "remember-only",
+                              "neither"
+                            ]
+                          },
+                          "proximity": {
+                            "type": "string",
+                            "enum": [
+                              "approaching",
+                              "soon",
+                              "imminent"
+                            ]
+                          },
+                          "subject": {
+                            "type": "string",
+                            "enum": [
+                              "owner",
+                              "other",
+                              "unattributed"
+                            ]
+                          },
+                          "acknowledged": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "occasionId",
+                          "title",
+                          "person",
+                          "kind",
+                          "proximity",
+                          "subject",
+                          "acknowledged"
                         ],
                         "additionalProperties": false
                       }
@@ -72463,6 +72633,7 @@
                   "required": [
                     "today",
                     "nudge",
+                    "acknowledged",
                     "conflicts",
                     "interviews"
                   ],
@@ -73164,6 +73335,9 @@
                         }
                       ]
                     },
+                    "reconciledOpenItems": {
+                      "type": "number"
+                    },
                     "corruption": {
                       "anyOf": [
                         {
@@ -73183,6 +73357,7 @@
                     "interviews",
                     "mirrors",
                     "lastSweep",
+                    "reconciledOpenItems",
                     "corruption"
                   ],
                   "additionalProperties": false
@@ -73277,6 +73452,17 @@
                                       "soon",
                                       "imminent"
                                     ]
+                                  },
+                                  "subject": {
+                                    "type": "string",
+                                    "enum": [
+                                      "owner",
+                                      "other",
+                                      "unattributed"
+                                    ]
+                                  },
+                                  "acknowledged": {
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -73284,7 +73470,9 @@
                                   "title",
                                   "person",
                                   "kind",
-                                  "proximity"
+                                  "proximity",
+                                  "subject",
+                                  "acknowledged"
                                 ],
                                 "additionalProperties": false
                               }
@@ -104506,6 +104694,15 @@
       "category": "memory",
       "access": "authenticated",
       "rest": "GET /api/memory/vector",
+      "typedClientIo": true,
+      "inputSchemaCoverage": "typed",
+      "outputSchemaCoverage": "typed"
+    },
+    {
+      "id": "occasions.acknowledge",
+      "category": "occasions",
+      "access": "authenticated",
+      "rest": "POST /api/occasions/acknowledge",
       "typedClientIo": true,
       "inputSchemaCoverage": "typed",
       "outputSchemaCoverage": "typed"

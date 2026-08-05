@@ -72056,9 +72056,79 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
         "invokable": true
       },
       {
+        "id": "occasions.acknowledge",
+        "title": "Acknowledge An Occasion",
+        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.",
+        "category": "occasions",
+        "source": "builtin",
+        "access": "authenticated",
+        "transport": [
+          "http",
+          "ws"
+        ],
+        "scopes": [
+          "write:occasions"
+        ],
+        "http": {
+          "method": "POST",
+          "path": "/api/occasions/acknowledge"
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "occasionId": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "conversation",
+                "explicit",
+                "gift-flow"
+              ]
+            },
+            "occurrence": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "occasionId"
+          ],
+          "additionalProperties": false
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "ok": {
+              "type": "boolean"
+            },
+            "reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reply": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "ok",
+            "reason",
+            "reply"
+          ],
+          "additionalProperties": false
+        },
+        "invokable": true
+      },
+      {
         "id": "occasions.answer",
         "title": "Answer An Occasion Nudge",
-        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question.",
+        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only \"I have this in hand\" without ending the question, use occasions.acknowledge instead.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72084,7 +72154,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "enum": [
                 "yes",
                 "no",
-                "later"
+                "later",
+                "acknowledged"
               ]
             },
             "occurrence": {
@@ -72965,6 +73036,17 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "person": {
                         "type": "string"
                       },
+                      "selfDeclared": {
+                        "type": "boolean"
+                      },
+                      "subject": {
+                        "type": "string",
+                        "enum": [
+                          "owner",
+                          "other",
+                          "unattributed"
+                        ]
+                      },
                       "leadDays": {
                         "anyOf": [
                           {
@@ -72998,6 +73080,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                       "recurrence",
                       "kind",
                       "person",
+                      "selfDeclared",
+                      "subject",
                       "leadDays",
                       "mirrored",
                       "extras",
@@ -73039,7 +73123,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                         "enum": [
                           "yes",
                           "no",
-                          "later"
+                          "later",
+                          "acknowledged"
                         ]
                       },
                       {
@@ -73200,6 +73285,17 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "soon",
                               "imminent"
                             ]
+                          },
+                          "subject": {
+                            "type": "string",
+                            "enum": [
+                              "owner",
+                              "other",
+                              "unattributed"
+                            ]
+                          },
+                          "acknowledged": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -73207,7 +73303,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "title",
                           "person",
                           "kind",
-                          "proximity"
+                          "proximity",
+                          "subject",
+                          "acknowledged"
                         ],
                         "additionalProperties": false
                       }
@@ -73248,6 +73346,60 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "required": [
                   "occasionId",
                   "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "acknowledged": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "occasionId": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "person": {
+                    "type": "string"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "gift-giving",
+                      "remember-only",
+                      "neither"
+                    ]
+                  },
+                  "proximity": {
+                    "type": "string",
+                    "enum": [
+                      "approaching",
+                      "soon",
+                      "imminent"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "enum": [
+                      "owner",
+                      "other",
+                      "unattributed"
+                    ]
+                  },
+                  "acknowledged": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "occasionId",
+                  "title",
+                  "person",
+                  "kind",
+                  "proximity",
+                  "subject",
+                  "acknowledged"
                 ],
                 "additionalProperties": false
               }
@@ -73346,6 +73498,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
           "required": [
             "today",
             "nudge",
+            "acknowledged",
             "conflicts",
             "interviews"
           ],
@@ -73963,6 +74116,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 }
               ]
             },
+            "reconciledOpenItems": {
+              "type": "number"
+            },
             "corruption": {
               "anyOf": [
                 {
@@ -73982,6 +74138,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "interviews",
             "mirrors",
             "lastSweep",
+            "reconciledOpenItems",
             "corruption"
           ],
           "additionalProperties": false
@@ -74070,6 +74227,17 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                               "soon",
                               "imminent"
                             ]
+                          },
+                          "subject": {
+                            "type": "string",
+                            "enum": [
+                              "owner",
+                              "other",
+                              "unattributed"
+                            ]
+                          },
+                          "acknowledged": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -74077,7 +74245,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                           "title",
                           "person",
                           "kind",
-                          "proximity"
+                          "proximity",
+                          "subject",
+                          "acknowledged"
                         ],
                         "additionalProperties": false
                       }
@@ -105316,10 +105486,10 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       }
     ],
     "schemaCoverage": {
-      "methods": 506,
-      "typedInputs": 506,
+      "methods": 507,
+      "typedInputs": 507,
       "genericInputs": 0,
-      "typedOutputs": 506,
+      "typedOutputs": 507,
       "genericOutputs": 0
     },
     "eventCoverage": {
@@ -105328,8 +105498,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
       "withWireEvents": 35
     },
     "validationCoverage": {
-      "methods": 506,
-      "validated": 499,
+      "methods": 507,
+      "validated": 500,
       "skippedGeneric": 0,
       "skippedUntyped": 7
     }

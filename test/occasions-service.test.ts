@@ -19,9 +19,9 @@ import { OwnerProfileStore } from '../packages/sdk/src/platform/owner-profile/st
 import { OccasionStateStore } from '../packages/sdk/src/platform/occasions/state-store.ts';
 import {
   OccasionsService,
-  resolveNudgeDestinations,
   type OccasionNudgeDeliverer,
 } from '../packages/sdk/src/platform/occasions/service.ts';
+import { resolveNudgeDestinations } from '../packages/sdk/src/platform/occasions/destinations.ts';
 import { OCCASIONS_DEFAULTS } from '../packages/sdk/src/platform/occasions/policy.ts';
 import {
   occasionsConfigDefaults,

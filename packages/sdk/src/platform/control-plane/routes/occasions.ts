@@ -30,7 +30,12 @@ import { readInvocationParams } from './invocation-params.js';
 import { refuseNonUserRequest } from './explicit-user-request.js';
 import type { AuthoritySurface } from '../../security/untrusted-content.js';
 import { isProfileSurface, type ProfileSurface } from '../../owner-profile/index.js';
-import { isOccasionAnswer, type OccasionAnswer } from '../../occasions/types.js';
+import {
+  isOccasionAckSource,
+  isOccasionAnswer,
+  type OccasionAckSource,
+  type OccasionAnswer,
+} from '../../occasions/types.js';
 import type { OccasionsService } from '../../occasions/service.js';
 
 /** The surface of the service these verbs need. */
@@ -44,6 +49,7 @@ export type OccasionsGatewayService = Pick<
   | 'confirmPlan'
   | 'removeOccasion'
   | 'answer'
+  | 'acknowledge'
   | 'interview'
   | 'answerInterview'
   | 'recordGiftOutcome'
@@ -118,11 +124,32 @@ function readSurface(value: unknown): ProfileSurface {
  * else is refused rather than folded into `no`, because reading an unknown word
  * as a refusal would silence an occasion the owner never declined.
  */
+/**
+ * Where an acknowledgement came from, defaulting to `explicit`.
+ *
+ * A verb call with no source IS a surface offering the action, which is what
+ * `explicit` means — so this defaults rather than refusing. Refusing would make
+ * the provenance label, which only explains a mute, capable of preventing one.
+ */
+function readAckSource(value: unknown): OccasionAckSource {
+  const source = optionalString(value);
+  if (source === undefined) return 'explicit';
+  if (!isOccasionAckSource(source)) {
+    throw new GatewayVerbError(
+      'source must be one of conversation, explicit, gift-flow',
+      'INVALID_ARGUMENT',
+      400,
+      'source',
+    );
+  }
+  return source;
+}
+
 function readAnswer(value: unknown): OccasionAnswer {
   const answer = requireString(value, 'answer');
   if (!isOccasionAnswer(answer)) {
     throw new GatewayVerbError(
-      'answer must be one of yes, no, later',
+      'answer must be one of yes, no, later, acknowledged',
       'INVALID_ARGUMENT',
       400,
       'answer',
@@ -193,6 +220,18 @@ export function registerOccasionsGatewayMethods(
     return service.answer({
       occasionId: requireString(params.occasionId, 'occasionId'),
       answer: readAnswer(params.answer),
+      ...(optionalString(params.occurrence) === undefined
+        ? {}
+        : { occurrence: optionalString(params.occurrence) }),
+    });
+  });
+
+  attach('occasions.acknowledge', (invocation: GatewayMethodInvocation) => {
+    const params = readInvocationParams(invocation);
+    return service.acknowledge({
+      occasionId: requireString(params.occasionId, 'occasionId'),
+      // A verb call is a surface offering the action, unless it says otherwise.
+      source: readAckSource(params.source),
       ...(optionalString(params.occurrence) === undefined
         ? {}
         : { occurrence: optionalString(params.occurrence) }),

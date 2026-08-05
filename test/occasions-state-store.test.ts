@@ -65,6 +65,7 @@ function item(overrides: Partial<OpenItem> = {}): OpenItem {
     openedAt: 1,
     lastRaisedAt: 1,
     raiseCount: 1,
+    servedBoundaries: ['lead'],
     dueOn: '2026-03-09',
     expiresAfter: '2026-03-14',
     ...overrides,

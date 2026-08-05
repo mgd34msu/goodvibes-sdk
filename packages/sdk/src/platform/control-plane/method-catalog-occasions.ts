@@ -44,7 +44,9 @@ const NULLABLE_STRING_SCHEMA: Record<string, unknown> = { anyOf: [STRING_SCHEMA,
 const NULLABLE_NUMBER_SCHEMA: Record<string, unknown> = { anyOf: [NUMBER_SCHEMA, { type: 'null' }] };
 
 const OCCASION_KIND_SCHEMA = { type: 'string', enum: ['gift-giving', 'remember-only', 'neither'] } as const;
-const OCCASION_ANSWER_SCHEMA = { type: 'string', enum: ['yes', 'no', 'later'] } as const;
+const OCCASION_ANSWER_SCHEMA = { type: 'string', enum: ['yes', 'no', 'later', 'acknowledged'] } as const;
+const OCCASION_SUBJECT_SCHEMA = { type: 'string', enum: ['owner', 'other', 'unattributed'] } as const;
+const OCCASION_ACK_SOURCE_SCHEMA = { type: 'string', enum: ['conversation', 'explicit', 'gift-flow'] } as const;
 const RECURRENCE_SCHEMA = { type: 'string', enum: ['annual', 'once'] } as const;
 const PROXIMITY_SCHEMA = { type: 'string', enum: ['approaching', 'soon', 'imminent'] } as const;
 
@@ -63,12 +65,14 @@ export const OCCASION_SCHEMA = objectSchema({
   recurrence: RECURRENCE_SCHEMA,
   kind: OCCASION_KIND_SCHEMA,
   person: STRING_SCHEMA,
+  selfDeclared: BOOLEAN_SCHEMA,
+  subject: OCCASION_SUBJECT_SCHEMA,
   leadDays: NULLABLE_NUMBER_SCHEMA,
   mirrored: BOOLEAN_SCHEMA,
   extras: arraySchema(STRING_SCHEMA),
   lineIndex: NUMBER_SCHEMA,
   text: STRING_SCHEMA,
-}, ['id', 'title', 'date', 'recurrence', 'kind', 'person', 'leadDays', 'mirrored', 'extras', 'lineIndex', 'text']);
+}, ['id', 'title', 'date', 'recurrence', 'kind', 'person', 'selfDeclared', 'subject', 'leadDays', 'mirrored', 'extras', 'lineIndex', 'text']);
 
 export const OCCASION_VIEW_SCHEMA = objectSchema({
   occasion: OCCASION_SCHEMA,
@@ -113,7 +117,9 @@ export const NUDGE_SUBJECT_SCHEMA = objectSchema({
   person: STRING_SCHEMA,
   kind: OCCASION_KIND_SCHEMA,
   proximity: PROXIMITY_SCHEMA,
-}, ['occasionId', 'title', 'person', 'kind', 'proximity']);
+  subject: OCCASION_SUBJECT_SCHEMA,
+  acknowledged: BOOLEAN_SCHEMA,
+}, ['occasionId', 'title', 'person', 'kind', 'proximity', 'subject', 'acknowledged']);
 
 export const OCCASION_NUDGE_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
@@ -256,8 +262,9 @@ export const OCCASIONS_PENDING_OUTPUT_SCHEMA = objectSchema({
     occasionId: STRING_SCHEMA,
     message: STRING_SCHEMA,
   }, ['occasionId', 'message'])),
+  acknowledged: arraySchema(NUDGE_SUBJECT_SCHEMA),
   interviews: arraySchema(INTERVIEW_PROGRESS_SCHEMA),
-}, ['today', 'nudge', 'conflicts', 'interviews']);
+}, ['today', 'nudge', 'acknowledged', 'conflicts', 'interviews']);
 
 /**
  * One destination a nudge was pushed to, and what came of it.
@@ -338,8 +345,20 @@ export const OCCASIONS_STATE_OUTPUT_SCHEMA = objectSchema({
   interviews: NUMBER_SCHEMA,
   mirrors: NUMBER_SCHEMA,
   lastSweep: { anyOf: [OCCASION_SWEEP_REPORT_SCHEMA, { type: 'null' }] },
+  reconciledOpenItems: NUMBER_SCHEMA,
   corruption: NULLABLE_STRING_SCHEMA,
-}, ['path', 'acknowledgements', 'giftRecords', 'openItems', 'interviews', 'mirrors', 'lastSweep', 'corruption']);
+}, ['path', 'acknowledgements', 'giftRecords', 'openItems', 'interviews', 'mirrors', 'lastSweep', 'reconciledOpenItems', 'corruption']);
+
+export const OCCASIONS_ACKNOWLEDGE_INPUT_SCHEMA = objectSchema({
+  occasionId: STRING_SCHEMA,
+  source: OCCASION_ACK_SOURCE_SCHEMA,
+  occurrence: STRING_SCHEMA,
+}, ['occasionId']);
+export const OCCASIONS_ACKNOWLEDGE_OUTPUT_SCHEMA = objectSchema({
+  ok: BOOLEAN_SCHEMA,
+  reason: NULLABLE_STRING_SCHEMA,
+  reply: STRING_SCHEMA,
+}, ['ok', 'reason', 'reply']);
 
 export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDescriptor[] = [
   methodDescriptor({
@@ -386,12 +405,22 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.answer',
     title: 'Answer An Occasion Nudge',
-    description: 'Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question.',
+    description: 'Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/answer' },
     inputSchema: OCCASIONS_ANSWER_INPUT_SCHEMA,
     outputSchema: OCCASIONS_ANSWER_OUTPUT_SCHEMA,
+  }),
+  methodDescriptor({
+    id: 'occasions.acknowledge',
+    title: 'Acknowledge An Occasion',
+    description: 'Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.',
+    category: 'occasions',
+    scopes: ['write:occasions'],
+    http: { method: 'POST', path: '/api/occasions/acknowledge' },
+    inputSchema: OCCASIONS_ACKNOWLEDGE_INPUT_SCHEMA,
+    outputSchema: OCCASIONS_ACKNOWLEDGE_OUTPUT_SCHEMA,
   }),
   methodDescriptor({
     id: 'occasions.interview.get',

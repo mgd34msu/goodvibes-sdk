@@ -614,3 +614,67 @@ export function migratePaymentsBudgetAmounts(
 
   return { config, migrated: moves.length > 0, moves };
 }
+
+/** Outcome of dropping the retired occasions final-stretch key. */
+export interface OccasionsFinalStretchMigrationResult {
+  readonly config: Record<string, unknown>;
+  readonly migrated: boolean;
+  /** The value that was on disk, so the receipt can say what was set. */
+  readonly removedValue?: number | undefined;
+}
+
+/**
+ * The full dot-path of the retired key, for the ingestion screen.
+ *
+ * Exported for the same reason the payments rename list is: a key the platform
+ * is about to remove itself is not a key the platform does not understand, and
+ * a file being migrated must not also be reported as carrying unknown settings.
+ */
+export const RETIRED_OCCASIONS_FINAL_STRETCH_KEY = 'occasions.finalStretchDays';
+
+/**
+ * Remove the stored `occasions.finalStretchDays`.
+ *
+ * The key set how many days before a date the reminder rhythm went DAILY. That
+ * rhythm no longer exists. An occasion now speaks at two fixed moments — the day
+ * it enters its runway, and the day itself — and a count of two has nothing to
+ * tune. Keeping the key would leave a number in the settings UI that changed
+ * nothing, which is the inert-toggle failure the platform has a rule against.
+ *
+ * The rhythm it described is the one the owner ended: with an hourly sweep, "go
+ * daily near the date" plus a due date that could never move past the occurrence
+ * meant he was told about his own birthday every hour. Nothing unresolved was
+ * dropped in the fix — an occasion still gets its two touches and still answers
+ * when he asks what is coming up — so there is no behaviour left for this
+ * setting to govern and no value worth carrying to a new name.
+ *
+ * The value is not moved anywhere. There is no setting that means what it meant,
+ * and inventing one to receive it would recreate the thing that was removed. The
+ * receipt says what was set, what replaced the rhythm, and that nothing about
+ * his dates changed.
+ *
+ * Idempotent; a file with no such key is returned untouched.
+ */
+export function migrateOccasionsFinalStretchRemoval(
+  parsed: Record<string, unknown>,
+): OccasionsFinalStretchMigrationResult {
+  const occasions = parsed.occasions;
+  if (occasions === null || typeof occasions !== 'object' || Array.isArray(occasions)) {
+    return { config: parsed, migrated: false };
+  }
+  if (!('finalStretchDays' in (occasions as Record<string, unknown>))) {
+    return { config: parsed, migrated: false };
+  }
+  const legacy = (occasions as Record<string, unknown>).finalStretchDays;
+  const config = structuredClone(parsed);
+  const section = config.occasions as Record<string, unknown>;
+  delete section.finalStretchDays;
+  // A section that held nothing else goes too, so the file does not keep an
+  // empty `occasions: {}` as a monument to a setting that is gone.
+  if (Object.keys(section).length === 0) delete config.occasions;
+  return {
+    config,
+    migrated: true,
+    ...(typeof legacy === 'number' && Number.isFinite(legacy) ? { removedValue: legacy } : {}),
+  };
+}

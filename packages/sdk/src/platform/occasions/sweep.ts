@@ -18,39 +18,48 @@
  *  4. **Outside the lead window** → not yet. Ten days by default, overridable
  *     per occasion, because "order something and have it arrive" is not the
  *     same runway for everything.
- *  5. **Already answered for THIS occurrence** → a `no` is silent for the rest
- *     of this cycle, a `yes` has moved on to the interview, and a `later` comes
- *     back on its own date.
- *  6. **Mirrored to a calendar** → suppressed, when he has asked for that. The
+ *  5. **About HIM, and only to be remembered** → never pushed, ever. He knows
+ *     when his own birthday is. The item is opened anyway, already spent, so it
+ *     answers "anything coming up?" and can never speak. See subject.ts.
+ *  6. **Already answered for THIS occurrence** → a `no` is silent for the rest
+ *     of this cycle, a `yes` has moved on to the interview, a `later` comes
+ *     back on its own date, and an `acknowledged` is muted for good while
+ *     staying open and enumerable.
+ *  7. **Mirrored to a calendar** → suppressed, when he has asked for that. The
  *     calendar's own reminder plus ours is two pings for one occasion.
- *  7. **Raised too recently** → the open item's own due date governs. First at
- *     the top of the window, then roughly every third day, then daily for the
- *     last two.
+ *  8. **Its boundary is already spent** → a nudge speaks at the top of its lead
+ *     window and on the day itself. Twice, total, and the record of which
+ *     boundaries it has served is what makes that a fact rather than a hope.
  *
- * Everything that survives all seven is batched into ONE message.
+ * Everything that survives all eight is batched into ONE message.
  */
 import { parseQuietHours } from '../checkin/quiet-hours.js';
 import {
-  adjustForAway,
+  boundaryOn,
   conflictItemId,
+  dayOfBoundaryDate,
+  hasServed,
   interviewItemId,
   interviewResumeDate,
   isDue,
+  isSpent,
   laterReturnDate,
-  nextNudgeDue,
   nudgeItemId,
   openItemFor,
   raisedAgain,
+  raisedAtBoundary,
   type CadencePolicy,
 } from './cadence.js';
 import { addDays, daysBetween, nextOccurrence, type IsoDate } from './dates.js';
-import type {
-  Interview,
-  Occasion,
-  OccasionAcknowledgement,
-  OccasionConflict,
-  OpenItem,
-  Plan,
+import { pushableSubject } from './subject.js';
+import {
+  RAISE_BOUNDARIES,
+  type Interview,
+  type Occasion,
+  type OccasionAcknowledgement,
+  type OccasionConflict,
+  type OpenItem,
+  type Plan,
 } from './types.js';
 
 /** The occasions feature's effective policy, all of it operator-editable. */
@@ -183,16 +192,47 @@ export function decideSweep(context: SweepContext): SweepDecision {
     const daysUntil = daysBetween(today, occurrence);
     if (!Number.isFinite(daysUntil) || daysUntil > effectiveLead(occasion, policy)) continue;
 
+    const itemId = nudgeItemId(occasion.id, occurrence);
+    const existing = itemsById.get(itemId);
+
+    // Something he only has to REMEMBER about HIMSELF is never sent to him: he
+    // knows when his own birthday is. The item is still opened, and opened
+    // already spent, so it is there for anything that ASKS what is coming up
+    // and there is no state from which it could later decide to speak. Silence
+    // by construction rather than by a branch that has to be got right on every
+    // future pass through this loop.
+    if (!pushableSubject(occasion)) {
+      if (existing === undefined) {
+        writes.push(quietOpenItem({
+          id: itemId,
+          occasionId: occasion.id,
+          occurrence,
+          now,
+          expiresAfter: occurrence,
+        }));
+      } else if (!isSpent(existing)) {
+        writes.push({ ...existing, servedBoundaries: [...RAISE_BOUNDARIES] });
+      }
+      continue;
+    }
+
     const answer = answerFor(context.acknowledgements, occasion.id, occurrence);
     if (answer?.answer === 'no' || answer?.answer === 'yes') continue;
+    // He said he has this one. The item stays open and stays enumerable — the
+    // pull still shows it, and shows that he acknowledged it — and nothing is
+    // pushed at him about this occurrence again.
+    if (answer?.answer === 'acknowledged') continue;
     if (answer?.answer === 'later' && (answer.returnOn ?? occurrence) > today) continue;
     if (occasion.mirrored && policy.suppressMirroredNudges) continue;
 
-    const itemId = nudgeItemId(occasion.id, occurrence);
-    const existing = itemsById.get(itemId);
-    if (existing !== undefined && !isDue(existing, today)) continue;
+    // The two-raise ceiling, and the only gate on a nudge. Not "is its due date
+    // here" — a due date that cannot move past the occurrence is due forever on
+    // the day itself, which is precisely how an hourly sweep turned into an
+    // hourly reminder. A served boundary is spent, and there are two.
+    const dayOf = dayOfBoundaryDate(occurrence, today, context.plans, policy.awayAdjust);
+    const boundary = boundaryOn(today, dayOf);
+    if (existing !== undefined && hasServed(existing, boundary)) continue;
 
-    const nextDue = nextDueFor(today, occurrence, context.plans, policy);
     writes.push(existing === undefined
       ? openItemFor({
         kind: 'nudge',
@@ -200,10 +240,11 @@ export function decideSweep(context: SweepContext): SweepDecision {
         occasionId: occasion.id,
         occurrence,
         now,
-        dueOn: nextDue,
+        dueOn: dayOf,
         expiresAfter: occurrence,
+        boundary,
       })
-      : raisedAgain(existing, now, nextDue));
+      : raisedAtBoundary(existing, now, dayOf, boundary));
     due.push({ occasion, occurrence, daysUntil });
   }
 
@@ -253,15 +294,35 @@ export function decideSweep(context: SweepContext): SweepDecision {
   return { hold: null, due, conflicts, resumeInterviews, openItemWrites: writes };
 }
 
-/** The next day this occasion may be raised, after raising it today. */
-function nextDueFor(
-  today: IsoDate,
-  occurrence: IsoDate,
-  plans: readonly Plan[],
-  policy: OccasionsPolicy,
-): IsoDate {
-  const base = nextNudgeDue(today, occurrence, policy);
-  return policy.awayAdjust ? adjustForAway(base, today, plans) : base;
+/**
+ * An open nudge that exists to be FOUND, never to be sent.
+ *
+ * Both boundaries spent from the moment it is written. This is how an occasion
+ * about him that he only has to remember stays enumerable — "anything coming
+ * up?" answers with it — while having no reachable state in which it speaks.
+ */
+function quietOpenItem(input: {
+  readonly id: string;
+  readonly occasionId: string;
+  readonly occurrence: IsoDate;
+  readonly now: number;
+  readonly expiresAfter: IsoDate;
+}): OpenItem {
+  return {
+    id: input.id,
+    kind: 'nudge',
+    occasionId: input.occasionId,
+    occurrence: input.occurrence,
+    openedAt: input.now,
+    // It has never been raised, and the record says so. `lastRaisedAt` matches
+    // `openedAt` because there is no other honest value; the raise count is the
+    // number of times he was spoken to, which is none.
+    lastRaisedAt: input.now,
+    raiseCount: 0,
+    servedBoundaries: [...RAISE_BOUNDARIES],
+    dueOn: input.occurrence,
+    expiresAfter: input.expiresAfter,
+  };
 }
 
 function addDaysClamped(today: IsoDate, days: number, cap?: IsoDate): IsoDate {

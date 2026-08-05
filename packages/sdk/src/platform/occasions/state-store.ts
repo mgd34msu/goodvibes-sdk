@@ -42,9 +42,12 @@
 import { PersistentStore } from '../state/persistent-store.js';
 import { StoreWriteQueue } from '../state/store-write-queue.js';
 import { logger } from '../utils/logger.js';
+import { reconcileRaiseLedger } from './cadence.js';
 import { addDays, isIsoDate, type IsoDate } from './dates.js';
 import {
+  isOccasionAckSource,
   isOccasionAnswer,
+  isRaiseBoundary,
   type GiftRecord,
   type Interview,
   type InterviewAnswer,
@@ -55,6 +58,7 @@ import {
   type OccasionSweepReport,
   type OpenItem,
   type OpenItemKind,
+  type RaiseBoundary,
 } from './types.js';
 
 /** Caps. Generous against any real life, finite against an unbounded file. */
@@ -112,12 +116,17 @@ function validAcknowledgement(value: unknown): OccasionAcknowledgement | null {
   if (!isIsoDate(occurrence) || !isOccasionAnswer(answer)) return null;
   const expiresAfter = str(value['expiresAfter']);
   const returnOn = str(value['returnOn']);
+  const source = str(value['source']);
   return {
     id: str(value['id']) ?? `${occasionId}@${occurrence}`,
     occasionId,
     occurrence,
     answer,
     answeredAt,
+    // An unrecognised source is dropped and the ANSWER IS KEPT. The source
+    // explains a mute; the answer is the mute. Losing the whole record over a
+    // provenance label would start pushing at him again to punish a typo.
+    ...(source !== null && isOccasionAckSource(source) ? { source } : {}),
     ...(expiresAfter !== null && isIsoDate(expiresAfter) ? { expiresAfter } : {}),
     ...(returnOn !== null && isIsoDate(returnOn) ? { returnOn } : {}),
   };
@@ -151,6 +160,17 @@ function validOpenItem(value: unknown): OpenItem | null {
   if (!(OPEN_ITEM_KINDS as readonly string[]).includes(kind) || !isIsoDate(dueOn)) return null;
   const occurrence = typeof value['occurrence'] === 'string' ? value['occurrence'] : '';
   const expiresAfter = str(value['expiresAfter']);
+  // Absent on every item written before boundaries existed, and absent is read
+  // as EMPTY rather than as "unknown": an empty ledger plus a raise count is
+  // exactly the signature the reconciliation looks for, so a legacy item is
+  // recognised by its shape instead of by a version number nobody bumped.
+  const rawBoundaries = Array.isArray(value['servedBoundaries']) ? value['servedBoundaries'] : [];
+  const servedBoundaries = [
+    ...new Set(
+      rawBoundaries.filter((entry): entry is RaiseBoundary =>
+        typeof entry === 'string' && isRaiseBoundary(entry)),
+    ),
+  ];
   // A stamp that is not a date is dropped rather than believed: it governs
   // whether the pull stays quiet about this item, and a bad value would either
   // silence a nudge or repeat one.
@@ -163,6 +183,7 @@ function validOpenItem(value: unknown): OpenItem | null {
     openedAt,
     lastRaisedAt,
     raiseCount,
+    servedBoundaries,
     dueOn,
     ...(expiresAfter !== null && isIsoDate(expiresAfter) ? { expiresAfter } : {}),
     ...(agentPushedOn !== null && isIsoDate(agentPushedOn) ? { agentPushedOn } : {}),
@@ -249,8 +270,10 @@ function validSweepReport(value: unknown): OccasionSweepReport | null {
  * of it was well formed, and the count of what was not is logged — so a
  * half-corrupt file costs him the corrupt half, not the whole history.
  */
-export function validateOccasionState(raw: unknown): { snapshot: OccasionStateSnapshot; dropped: number } {
-  if (!isRecord(raw)) return { snapshot: emptySnapshot(), dropped: 0 };
+export function validateOccasionState(
+  raw: unknown,
+): { snapshot: OccasionStateSnapshot; dropped: number; reconciled: number } {
+  if (!isRecord(raw)) return { snapshot: emptySnapshot(), dropped: 0, reconciled: 0 };
   let dropped = 0;
   const take = <T>(key: string, validate: (value: unknown) => T | null): T[] => {
     const list = Array.isArray(raw[key]) ? (raw[key] as readonly unknown[]) : [];
@@ -262,17 +285,31 @@ export function validateOccasionState(raw: unknown): { snapshot: OccasionStateSn
     }
     return out;
   };
+  // Reconciliation runs at LOAD, before any caller can read an open item and
+  // before any sweep can act on one. A machine mid-way through the old
+  // repeating cadence therefore goes quiet the moment the fixed daemon boots,
+  // rather than one sweep later — which on an hourly sweep would have been one
+  // more push about his own birthday, and one more is the whole complaint.
+  let reconciled = 0;
+  const openItems = take('openItems', validOpenItem).map((item) => {
+    const settled = reconcileRaiseLedger(item);
+    if (settled === null) return item;
+    reconciled += 1;
+    return settled;
+  });
+
   return {
     snapshot: {
       version: 1,
       acknowledgements: take('acknowledgements', validAcknowledgement),
       gifts: take('gifts', validGift),
-      openItems: take('openItems', validOpenItem),
+      openItems,
       interviews: take('interviews', validInterview),
       mirrors: take('mirrors', validMirror),
       lastSweep: validSweepReport(raw['lastSweep']),
     },
     dropped,
+    reconciled,
   };
 }
 
@@ -290,6 +327,8 @@ export class OccasionStateStore {
   private readonly store: PersistentStore<OccasionStateSnapshot>;
   private snapshot: OccasionStateSnapshot | null = null;
   private corruption: string | null = null;
+  /** How many open nudges had their raise ledger rebuilt at load. Disclosed. */
+  private reconciledOpenItems = 0;
   /** Whole-file writes run one at a time, in call order. See StoreWriteQueue. */
   private readonly writes = new StoreWriteQueue();
 
@@ -321,7 +360,7 @@ export class OccasionStateStore {
       this.snapshot = emptySnapshot();
       return this.snapshot;
     }
-    const { snapshot, dropped } = validateOccasionState(read.data);
+    const { snapshot, dropped, reconciled } = validateOccasionState(read.data);
     if (dropped > 0) {
       logger.warn('occasions: dropped malformed records while loading state', {
         path: this.filePath,
@@ -329,6 +368,19 @@ export class OccasionStateStore {
       });
     }
     this.snapshot = snapshot;
+    if (reconciled > 0) {
+      this.reconciledOpenItems = reconciled;
+      logger.info(
+        'occasions: settled open nudges written under the old repeating cadence — '
+        + 'they stay open and stop being pushed',
+        { path: this.filePath, reconciled },
+      );
+      // Written back immediately rather than left to the next write. The
+      // rebuilt ledger IS the thing that keeps him from being pushed at again,
+      // and a correction that only exists in memory is one crash away from
+      // undoing itself.
+      await this.persist(snapshot);
+    }
     return this.snapshot;
   }
 
@@ -621,6 +673,7 @@ export class OccasionStateStore {
       interviews: snapshot.interviews.length,
       mirrors: snapshot.mirrors.length,
       lastSweep: snapshot.lastSweep,
+      reconciledOpenItems: this.reconciledOpenItems,
       corruption: this.corruption,
     };
   }

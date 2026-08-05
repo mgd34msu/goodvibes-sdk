@@ -26,13 +26,19 @@
  */
 
 export {
+  MAX_NUDGE_RAISES,
+  OCCASION_ACK_SOURCES,
   OCCASION_ANSWERS,
   OCCASION_KINDS,
+  OCCASION_SUBJECTS,
+  RAISE_BOUNDARIES,
   OCCASIONS_CONFIG_KEYS,
   OCCASIONS_SECTION,
   PLANS_SECTION,
+  isOccasionAckSource,
   isOccasionAnswer,
   isOccasionKind,
+  isRaiseBoundary,
   type GiftRecord,
   type Interview,
   type InterviewAnswer,
@@ -40,6 +46,7 @@ export {
   type IsoDate,
   type NudgeSubject,
   type Occasion,
+  type OccasionAckSource,
   type OccasionAcknowledgement,
   type OccasionAnswer,
   type OccasionConflict,
@@ -49,10 +56,12 @@ export {
   type OccasionNudge,
   type OccasionRecurrence,
   type OccasionStateDisclosure,
+  type OccasionSubject,
   type OccasionSweepReport,
   type OpenItem,
   type OpenItemKind,
   type Plan,
+  type RaiseBoundary,
   type UnparsedOccasionLine,
   type UnparsedPlanLine,
 } from './types.js';
@@ -86,6 +95,8 @@ export {
 } from './grammar.js';
 
 export {
+  AGENT_NOTICE_HEADING,
+  composeAgentNotice,
   composeConflictMessage,
   composeNudge,
   composeNudgeMessage,
@@ -93,6 +104,20 @@ export {
   proximityOf,
   subjectFor,
 } from './nudge.js';
+
+export {
+  isSelfAttribution,
+  ownerAliasSet,
+  possessiveSubject,
+  pushableSubject,
+  resolveOccasionSubject,
+  selfOccasionReason,
+} from './subject.js';
+
+export {
+  acknowledgementReply,
+  type AcknowledgeOutcome,
+} from './acknowledge.js';
 
 export {
   interestLine,
@@ -129,8 +154,21 @@ export {
 export {
   NUDGE_AGENT_SURFACE,
   NUDGE_FORBIDDEN_SURFACES,
+  nudgeDeliveryText,
   nudgeDestinationSurface,
   resolveNudgeDestinations,
+  type NudgeDeliveryText,
+} from './destinations.js';
+
+export {
+  boundaryOn,
+  dayOfBoundaryDate,
+  hasServed,
+  isSpent,
+  reconcileRaiseLedger,
+} from './cadence.js';
+
+export {
   type InterviewProgress,
   type NudgeDelivery,
   type OccasionListResult,

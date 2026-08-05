@@ -42,7 +42,6 @@ export const occasionsConfigDefaults: { occasions: OccasionsConfig } = {
     activeHours: '08:00-22:00',
     nudgeChannel: 'telegram',
     cadenceDays: 3,
-    finalStretchDays: 2,
     awayAdjust: true,
     calendarMirror: false,
     suppressMirroredNudges: true,
@@ -87,16 +86,8 @@ export const occasionsConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 3,
     description:
-      'How often an unanswered occasion is raised again, in days, until the final stretch. Three was my choice rather than yours and is a setting for that reason. Silence never ends a nudge — there is no give-up-after-one-retry anywhere in this feature — so this governs the rhythm, not whether it stops.',
+      'How often an unresolved CONFLICT in your dates — two different dates recorded for the same thing — is raised again, in days. It no longer governs birthday reminders: those speak twice, when the date enters its runway and on the day itself, and never repeat beyond that. A conflict is a fact about your file that stays wrong until you fix it, so it does keep coming back.',
     ...intRange(1, 60),
-  },
-  {
-    key: 'occasions.finalStretchDays',
-    type: 'number',
-    default: 2,
-    description:
-      'How many days before the date the rhythm goes daily. Two, so the last thing you heard about it is not four days old when it arrives. Also my choice rather than yours.',
-    ...intRange(0, 30),
   },
   {
     key: 'occasions.awayAdjust',
