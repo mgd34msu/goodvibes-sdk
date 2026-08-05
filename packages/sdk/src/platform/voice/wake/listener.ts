@@ -37,6 +37,17 @@ import {
   type AudioCaptureStream,
   type AudioCaptureWarn,
 } from '../capture/types.js';
+import { recorderBackendFromLabel } from '../capture/recorder-command.js';
+import {
+  FIRST_FRAME_TIMEOUT_MS,
+  FRAMES_FLOWING_STALE_MS,
+  START_TIMEOUT_MS,
+} from './capture-watchdogs.js';
+import {
+  resolveAudioInputBinding,
+  type AudioInputBinding,
+  type AudioInputDeviceEnumerator,
+} from '../capture/device-binding.js';
 import type { WakeWordEngine } from './engine.js';
 import { WakeSupervisor } from './supervisor.js';
 import type { WakeRuntimeSettings } from './settings.js';
@@ -67,6 +78,33 @@ export interface WakeListenerState {
   readonly lastWakeAt: number | null;
   /** The most recent capture failure's message, or null. */
   readonly lastError: string | null;
+  /**
+   * What `voice.wake.inputDevice` actually resolved to, and why.
+   *
+   * A status surface must show this rather than the configured value: a pin
+   * naming a device that is not connected reads as "listening on my headset"
+   * while the headset is in a drawer. Null before the first resolve.
+   */
+  readonly deviceBinding: AudioInputBinding | null;
+  /**
+   * A capture stream is OPEN. Not the same as listening: a stream can open and
+   * deliver nothing at all.
+   */
+  readonly captureOpen: boolean;
+  /**
+   * Frames have actually arrived recently. THE ONLY basis on which anything may
+   * claim to be listening.
+   *
+   * A surface showed "listening for the wake phrase" through an entire boot on a
+   * machine with zero capture streams, no recorder process, and not one line in
+   * the log — because the indicator was driven by the listener's INTENT (it had
+   * reached `starting`) rather than by audio. Intent is not evidence.
+   */
+  readonly framesFlowing: boolean;
+  /** Frames delivered since this listener started. */
+  readonly framesSeen: number;
+  /** When the last frame arrived, or null if none ever has. */
+  readonly lastFrameAt: number | null;
 }
 
 /** Why the listener would not start. */
@@ -79,6 +117,12 @@ export type WakeStartRefusal =
   | 'blocked'
   /** Capture could not be opened; `detail` carries the reason. */
   | 'capture-unavailable'
+  /**
+   * This host has no microphone — no input sources, or only output monitors.
+   * Distinct from `capture-unavailable` because nothing is broken and nothing
+   * will fix itself: showing a listening indicator here would be a lie.
+   */
+  | 'no-microphone'
   /** Already running. */
   | 'already-running';
 
@@ -106,6 +150,13 @@ export interface WakeListenerHandlers {
   readonly onUtterance?: ((utterance: CapturedUtterance, detection: WakeDetection) => void) | undefined;
   /** Capture failed or ended. `restarting` false means the supervisor latched. */
   readonly onFailure?: ((error: AudioCaptureError, restarting: boolean, detail: string) => void) | undefined;
+  /**
+   * The input device binding resolved or CHANGED — the pinned device was
+   * missing and capture fell back, or it came back and capture moved to it.
+   * One line, shown to the user: a device rollover that happens silently is
+   * indistinguishable from a detector that stopped working.
+   */
+  readonly onDeviceBinding?: ((binding: AudioInputBinding) => void) | undefined;
 }
 
 export interface WakeListenerOptions {
@@ -129,6 +180,34 @@ export interface WakeListenerOptions {
    */
   readonly createEngine: () => Promise<WakeWordEngine>;
   readonly handlers?: WakeListenerHandlers | undefined;
+  /**
+   * Lists this host's input devices, so `voice.wake.inputDevice` can be checked
+   * rather than believed. Omitted, the pin is used exactly as written and the
+   * binding reports itself unverified — the behaviour every surface had before
+   * this seam existed.
+   */
+  readonly enumerateInputDevices?: AudioInputDeviceEnumerator | undefined;
+  /**
+   * How often a fallback re-checks for the pinned device, ms. Only runs while
+   * capture is on the fallback, so a host with its device present pays nothing.
+   */
+  readonly deviceRecheckMs?: number | undefined;
+  /**
+   * How long a start may take before it is reported as stalled, ms.
+   *
+   * There was no such bound. Opening builds an inference engine and a capture
+   * stream, and an await that never settles left the listener in `starting`
+   * forever — silently, because nothing reports a start that neither succeeds
+   * nor fails. A stall is now a failure like any other.
+   */
+  readonly startTimeoutMs?: number | undefined;
+  /**
+   * How long an OPEN stream may deliver nothing before it is treated as failed,
+   * ms. A recorder that starts against a device it cannot read exits 0 or sits
+   * there producing no bytes; either way the audio never arrives and the only
+   * honest reading is that capture is not working.
+   */
+  readonly firstFrameTimeoutMs?: number | undefined;
   readonly now?: (() => number) | undefined;
   readonly setTimeout?: ((handler: () => void, ms: number) => unknown) | undefined;
   readonly clearTimeout?: ((handle: unknown) => void) | undefined;
@@ -148,6 +227,15 @@ const MAX_QUEUED_FRAMES = 4;
  * drop of a burst is always reported at once; this only bounds the repeats.
  */
 const DROPPED_FRAME_REPORT_INTERVAL_MS = 30_000;
+
+/**
+ * How often a fallback looks for the pinned device again.
+ *
+ * A Bluetooth headset comes back seconds after it is switched on, and the check
+ * is one device listing, so half a minute is responsive without polling the
+ * audio stack in a loop. Only armed while capture is on the fallback.
+ */
+const DEVICE_RECHECK_INTERVAL_MS = 30_000;
 
 /** Runs wake detection over one capture stream, per resolved settings. */
 export class WakeListener {
@@ -177,6 +265,23 @@ export class WakeListener {
   #dropBurstStartedAt: number | null = null;
   /** When a drop was last reported, so repeats stay on an interval. */
   #lastDropReportAt = 0;
+  /** What the device pin last resolved to, and why. */
+  #deviceBinding: AudioInputBinding | null = null;
+  /** Armed only while on a fallback, looking for the pin to return. */
+  #deviceRecheckTimer: unknown = null;
+  /** Bounds a start that neither succeeds nor fails, and an open stream that is silent. */
+  #startTimer: unknown = null;
+  #firstFrameTimer: unknown = null;
+  /** Which recorder the current stream is, parsed from its label. */
+  #openedBackend: Exclude<WakeRuntimeSettings['capture']['backend'], 'auto'> | null = null;
+  #framesSeen = 0;
+  #lastFrameAt: number | null = null;
+  /**
+   * Recorders that opened here and delivered no audio, so `auto` stops choosing
+   * them. Never populated for a PINNED backend — substituting one behind the
+   * user's back is what the pin prevents. Full reasoning: recorder-command.ts.
+   */
+  readonly #silentBackends = new Set<Exclude<WakeRuntimeSettings['capture']['backend'], 'auto'>>();
 
   constructor(options: WakeListenerOptions) {
     this.#options = options;
@@ -202,7 +307,23 @@ export class WakeListener {
       modelIds: this.#engine?.modelIds ?? [],
       lastWakeAt: this.#lastWakeAt,
       lastError: this.#lastError,
+      deviceBinding: this.#deviceBinding,
+      captureOpen: this.#stream !== null,
+      framesFlowing: this.#framesFlowing(),
+      framesSeen: this.#framesSeen,
+      lastFrameAt: this.#lastFrameAt,
     };
+  }
+
+  /** Audio arrived recently enough to still be true. */
+  #framesFlowing(): boolean {
+    if (this.#stream === null || this.#lastFrameAt === null) return false;
+    return this.#now() - this.#lastFrameAt <= FRAMES_FLOWING_STALE_MS;
+  }
+
+  /** The resolved input binding, for a status surface. Null before the first start. */
+  deviceBinding(): AudioInputBinding | null {
+    return this.#deviceBinding;
   }
 
   /**
@@ -250,6 +371,9 @@ export class WakeListener {
       this.#clearTimer(this.#restartTimer);
       this.#restartTimer = null;
     }
+    this.#disarmDeviceRecheck();
+    this.#clearStartWatchdog();
+    this.#clearFirstFrameWatchdog();
     const stream = this.#stream;
     this.#stream = null;
     this.#engine = null;
@@ -271,6 +395,21 @@ export class WakeListener {
 
   async #open(): Promise<WakeStartOutcome> {
     this.#setPhase('starting');
+    this.#framesSeen = 0;
+    this.#lastFrameAt = null;
+    this.#armStartWatchdog();
+
+    // THE PIN IS CHECKED BEFORE THE ENGINE IS BUILT. A host with no microphone
+    // gets an honest answer without paying for a model load, and a pin naming a
+    // device that is not connected is turned into a fallback here rather than
+    // handed to a recorder that will sit there producing nothing.
+    const binding = await this.#resolveDeviceBinding();
+    if (!binding.usable) {
+      this.#setPhase('idle');
+      this.#lastError = binding.message;
+      return { started: false, refusal: 'no-microphone', detail: binding.message };
+    }
+
     let engine: WakeWordEngine;
     try {
       engine = await this.#options.createEngine();
@@ -288,28 +427,201 @@ export class WakeListener {
       const stream = await this.#openCapture(
         {
           frameSamples: engine.chunkSamples,
-          device: this.#settings.capture.device,
+          // The RESOLVED device, not the configured one. This is the whole fix:
+          // an absent pin becomes the OS default here instead of becoming silence.
+          device: binding.device,
           backend: this.#settings.capture.backend,
+          ...(this.#silentBackends.size > 0 ? { excludeBackends: [...this.#silentBackends] } : {}),
           noiseSuppression: this.#settings.capture.noiseSuppression,
         },
         handlers,
       );
+      this.#clearStartWatchdog();
       this.#engine = engine;
       this.#stream = stream;
+      this.#openedBackend = recorderBackendFromLabel(stream.label);
       this.#supervisor.noteStarted();
       this.#setPhase('listening');
+      // Open is not listening. Nothing may claim to hear anything until audio
+      // actually arrives, and a stream that never delivers is a failure.
+      this.#armFirstFrameWatchdog();
+      // Running on a fallback: keep looking for the pinned device so it can come
+      // back on its own. Nothing is armed when the pin is present or unset.
+      this.#armDeviceRecheck();
       return { started: true, deviceLabel: stream.label };
     } catch (error) {
+      this.#clearStartWatchdog();
       const captureError = error instanceof AudioCaptureError
         ? error
         : new AudioCaptureError('unsupported', error instanceof Error ? error.message : String(error));
       this.#lastError = captureError.message;
       this.#setPhase('idle');
+      // Reported, not just returned: a boot-time start reaches nobody's return
+      // value, so a failure that only travelled that way was invisible.
+      this.#options.warn?.('wake capture could not start', {
+        reason: captureError.reason,
+        detail: captureError.message,
+        device: binding.device.length > 0 ? binding.device : 'system default',
+      });
+      this.#options.handlers?.onFailure?.(captureError, false, `wake capture could not start: ${captureError.message}`);
       return { started: false, refusal: 'capture-unavailable', detail: captureError.message };
     }
   }
 
+  /**
+   * Bound the start. A start that neither resolves nor rejects used to leave the
+   * listener in `starting` forever with nothing written anywhere — and, because
+   * surfaces drove their indicator off the phase, showing "listening".
+   */
+  #armStartWatchdog(): void {
+    this.#clearStartWatchdog();
+    const timeout = this.#options.startTimeoutMs ?? START_TIMEOUT_MS;
+    this.#startTimer = this.#setTimer(() => {
+      this.#startTimer = null;
+      if (this.#stopping || this.#stream !== null || this.#phase !== 'starting') return;
+      const detail = `wake capture did not finish starting within ${timeout} ms; nothing is listening`;
+      this.#lastError = detail;
+      this.#setPhase('idle');
+      this.#options.warn?.('wake capture start stalled', { timeoutMs: timeout });
+      this.#options.handlers?.onFailure?.(new AudioCaptureError('unsupported', detail), false, detail);
+    }, timeout);
+  }
+
+  #clearStartWatchdog(): void {
+    if (this.#startTimer === null) return;
+    this.#clearTimer(this.#startTimer);
+    this.#startTimer = null;
+  }
+
+  /**
+   * Bound the silence after an open. A recorder pointed at a device it cannot
+   * read starts cleanly and delivers nothing; treating that as a capture
+   * failure is what turns it into a restart and a line the user can see.
+   */
+  #armFirstFrameWatchdog(): void {
+    this.#clearFirstFrameWatchdog();
+    const timeout = this.#options.firstFrameTimeoutMs ?? FIRST_FRAME_TIMEOUT_MS;
+    this.#firstFrameTimer = this.#setTimer(() => {
+      this.#firstFrameTimer = null;
+      if (this.#stopping || this.#stream === null || this.#framesSeen > 0) return;
+      const using = this.#deviceBinding?.device;
+      const backend = this.#openedBackend;
+      // Only `auto` may move on. A pinned backend keeps failing honestly.
+      if (backend !== null && this.#settings.capture.backend === 'auto') this.#silentBackends.add(backend);
+      const detail = `the capture stream opened on ${using && using.length > 0 ? using : 'the system default input'} `
+        + `but delivered no audio within ${timeout} ms`
+        + (backend !== null && this.#settings.capture.backend === 'auto'
+          ? `; ${backend} cannot capture on this host, so it will not be chosen again`
+          : '');
+      this.#options.warn?.('wake capture opened but no audio arrived', {
+        timeoutMs: timeout,
+        backend: backend ?? 'unknown',
+      });
+      // Routed through the normal stream-failure path so the supervisor retries
+      // and the surface is told, exactly as for a recorder that exited.
+      this.#onStreamStopped('failed', new AudioCaptureError('device-unavailable', detail));
+    }, timeout);
+  }
+
+  #clearFirstFrameWatchdog(): void {
+    if (this.#firstFrameTimer === null) return;
+    this.#clearTimer(this.#firstFrameTimer);
+    this.#firstFrameTimer = null;
+  }
+
+  /**
+   * Resolve the device pin, announcing it when the answer CHANGED.
+   *
+   * Announced on change rather than on every resolve: the re-check runs on a
+   * timer, and repeating "still not connected" every thirty seconds is the log
+   * spam this codebase has already been bitten by. A rollover in either
+   * direction is one line.
+   */
+  async #resolveDeviceBinding(): Promise<AudioInputBinding> {
+    const binding = await resolveAudioInputBinding(
+      this.#settings.capture.device,
+      this.#options.enumerateInputDevices,
+    );
+    const previous = this.#deviceBinding;
+    this.#deviceBinding = binding;
+    const changed = previous === null
+      || previous.state !== binding.state
+      || previous.device !== binding.device;
+    if (changed) {
+      // Anything other than a plainly working device is worth the user's
+      // attention, and worth a diagnostic line on the host.
+      if (binding.state !== 'pinned' && binding.state !== 'default') {
+        this.#options.warn?.('wake input device binding', {
+          state: binding.state,
+          pinned: binding.pinned,
+          using: binding.device.length > 0 ? binding.device : 'system default',
+        });
+      }
+      this.#options.handlers?.onDeviceBinding?.(binding);
+    }
+    return binding;
+  }
+
+  /** Start looking for the pinned device, but only while running on a fallback. */
+  #armDeviceRecheck(): void {
+    this.#disarmDeviceRecheck();
+    if (this.#deviceBinding?.state !== 'fallback') return;
+    const interval = this.#options.deviceRecheckMs ?? DEVICE_RECHECK_INTERVAL_MS;
+    this.#deviceRecheckTimer = this.#setTimer(() => {
+      this.#deviceRecheckTimer = null;
+      void this.#recheckDevice();
+    }, interval);
+  }
+
+  #disarmDeviceRecheck(): void {
+    if (this.#deviceRecheckTimer === null) return;
+    this.#clearTimer(this.#deviceRecheckTimer);
+    this.#deviceRecheckTimer = null;
+  }
+
+  /**
+   * Look for the pinned device again and move capture back to it if it returned.
+   *
+   * Rebinding reopens the stream, which is a real interruption, so it happens
+   * ONLY when the pin has genuinely come back — never while it is still absent,
+   * and never in the middle of recording the utterance after a wake, which
+   * would truncate the sentence the user is in the middle of saying.
+   */
+  async #recheckDevice(): Promise<void> {
+    if (this.#stopping || this.#stream === null) return;
+    if (this.#recorder !== null) {
+      // Mid-utterance: try again on the next tick rather than cutting them off.
+      this.#armDeviceRecheck();
+      return;
+    }
+    const before = this.#deviceBinding;
+    const binding = await this.#resolveDeviceBinding();
+    if (this.#stopping || this.#stream === null) return;
+    if (binding.state === 'fallback' || binding.device === (before?.device ?? '')) {
+      this.#armDeviceRecheck();
+      return;
+    }
+    // The pin is back (or the host lost its microphone entirely). Reopen on the
+    // newly resolved device; #open re-resolves and re-announces.
+    const stream = this.#stream;
+    this.#stream = null;
+    this.#engine = null;
+    await stream.stop();
+    const outcome = await this.#open();
+    if (!outcome.started) {
+      this.#options.warn?.('wake could not reopen capture after a device change', {
+        detail: outcome.detail,
+      });
+    }
+  }
+
   #onFrame(frame: Float32Array): void {
+    // Audio arrived. This is the ONLY evidence that capture works, and it is
+    // recorded before anything else so a status surface can be honest even
+    // while an utterance is being recorded.
+    this.#framesSeen += 1;
+    this.#lastFrameAt = this.#now();
+    if (this.#firstFrameTimer !== null) this.#clearFirstFrameWatchdog();
     // While the utterance after a wake is being recorded, frames belong to it and
     // nothing is scored — the phrase just spoken must not be scored again.
     const recorder = this.#recorder;
@@ -439,6 +751,12 @@ export class WakeListener {
     if (this.#recorder !== null) this.#completeRecording('stream-ended');
     this.#stream = null;
     this.#engine = null;
+    // The stream this was watching for is gone; the restart below re-resolves
+    // the pin from scratch, which is where the device is re-validated after a
+    // capture failure — a device that vanished mid-session becomes a fallback
+    // on the next open rather than a restart loop against a dead target.
+    this.#disarmDeviceRecheck();
+    this.#clearFirstFrameWatchdog();
     const captureError = error ?? new AudioCaptureError('stream-ended', 'the capture stream ended');
     this.#lastError = captureError.message;
     const decision = this.#supervisor.noteCrashed(this.#now());

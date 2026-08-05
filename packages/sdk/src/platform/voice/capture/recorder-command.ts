@@ -62,6 +62,19 @@ export interface ResolvedRecorderCommand {
 export interface RecorderCommandOptions {
   /** Device identifier from `voice.wake.inputDevice`; empty means OS default. */
   readonly device?: string | undefined;
+  /**
+   * Backends already proven unable to capture on THIS host, skipped by `auto`.
+   *
+   * Being installed is not the same as working. On a host where pw-record is
+   * present but cannot read the audio graph, `auto` picked it every time —
+   * because it is first in the probe order and `isInstalled` said yes — and
+   * capture produced nothing at all, silently, forever. Measured on that host:
+   * `pw-record --target <a name pactl lists>` answers "no target node
+   * available" and exits 1, and with no target at all it yields zero bytes,
+   * while `parecord --device=<the same name>` captures happily. A probe that
+   * cannot learn from that is not a probe.
+   */
+  readonly exclude?: readonly RecorderBackend[] | undefined;
   /** Sample rate to request. Defaults to the capture rate the models need. */
   readonly sampleRate?: number | undefined;
   /** `process.platform`, which decides ffmpeg's input format. */
@@ -183,13 +196,47 @@ export function resolveRecorderCommand(
   backend: AudioCaptureBackend,
   options: RecorderResolutionOptions,
 ): ResolvedRecorderCommand | null {
+  const excluded = new Set(options.exclude ?? []);
   if (backend !== 'auto') {
+    // A PINNED backend is never skipped for having failed: the row exists to
+    // hold the choice, and silently substituting another one is what the pin
+    // was set to prevent. It fails honestly instead.
     const built = buildRecorderCommand(backend, options);
     return options.isInstalled(built.command) ? built : null;
   }
   for (const candidate of RECORDER_PROBE_ORDER) {
+    if (excluded.has(candidate)) continue;
     const built = buildRecorderCommand(candidate, options);
     if (options.isInstalled(built.command)) return { ...built, label: `${built.label} (auto)` };
   }
   return null;
+}
+
+/**
+ * Every installed candidate `auto` would consider, in probe order.
+ *
+ * Exposed so a host can tell how many recorders are left to try before capture
+ * is genuinely impossible, rather than discovering it one silent failure at a
+ * time.
+ */
+export function resolveRecorderCandidates(
+  options: RecorderResolutionOptions,
+): readonly RecorderBackend[] {
+  const excluded = new Set(options.exclude ?? []);
+  return RECORDER_PROBE_ORDER.filter((candidate) => {
+    if (excluded.has(candidate)) return false;
+    return options.isInstalled(buildRecorderCommand(candidate, options).command);
+  });
+}
+
+/**
+ * The recorder behind a stream label.
+ *
+ * Lives beside the code that WRITES those labels (`parecord`, or `parecord
+ * (auto)` when the probe chose it) so the two cannot drift apart. A caller
+ * needs this to say which recorder just failed to produce audio.
+ */
+export function recorderBackendFromLabel(label: string): RecorderBackend | null {
+  const head = label.split(' ')[0];
+  return RECORDER_PROBE_ORDER.find((candidate) => candidate === head) ?? null;
 }
