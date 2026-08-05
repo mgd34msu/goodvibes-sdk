@@ -362,6 +362,19 @@ export interface ExecCommandResult {
   /** Named host-access escalations granted to this sandboxed run (network, writable extras). */
   sandbox_escalations?: string[] | undefined;
   /**
+   * One dense line naming the isolation that applied to this run, so an absence
+   * observed inside the boundary is not read as an absence on the host.
+   *
+   * The boundary has a different world than the machine: a separate network
+   * namespace (host `localhost` services, the goodvibes daemon among them, are
+   * unreachable), a read-only filesystem outside the workspace, a masked /tmp
+   * and $HOME, and narrower device and process visibility. Without this line a
+   * missing `bluetoothctl` or an empty device list reads as fact about the
+   * user's computer, which is how a sandboxed probe came to report that a
+   * headset that was plugged in did not exist.
+   */
+  sandbox_note?: string | undefined;
+  /**
    * Whether this command ran under the PTY prompt-answer path. Present only on
    * interactive runs; the PTY merges stderr into stdout, so `stdout` carries
    * the full terminal transcript and `stderr` is empty.

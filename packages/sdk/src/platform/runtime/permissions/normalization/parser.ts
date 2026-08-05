@@ -116,10 +116,29 @@ function parseAtom(cur: TokenCursor): ShellNode {
     if (t.type === 'subshell') {
       const hasCommandContext = tokens.some((tok) => tok.type === 'command');
       if (!hasCommandContext && tokens.length === 0) {
-        const inner = parseSubshellContent(t.value);
-        return { kind: 'subshell', raw: t.value, inner };
+        // A subshell in command-NAME position is only a standalone subshell
+        // expression when nothing follows it in this atom. When arguments do
+        // follow (`` `which rm` -rf /tmp/x ``), the substitution is supplying
+        // the command NAME and the rest are its arguments — that is command
+        // assembly, the shape the classifier already denies for $().
+        //
+        // Returning a SubshellNode here dropped every remaining token: the atom
+        // ended at the subshell, `-rf /tmp/x` was never consumed by anything,
+        // and the only node the classifier ever saw was the benign INNER
+        // command (`which rm`, a read). The assembled command and its arguments
+        // vanished, so backtick name assembly evaded a check that catches the
+        // identical `$()` shape. Keep the subshell token in the command's token
+        // list instead, so `raw` retains the backticks in first position.
+        const next = peek(cur);
+        const standalone =
+          next === undefined || next.type === 'operator' || next.type === 'pipe';
+        if (standalone) {
+          const inner = parseSubshellContent(t.value);
+          return { kind: 'subshell', raw: t.value, inner };
+        }
       }
-      // Subshell used as argument to a command: include in token list
+      // Subshell used as an argument to a command, or supplying the command
+      // name with arguments after it: include in the token list either way.
       tokens.push(t);
       continue;
     }

@@ -504,8 +504,16 @@ describe('feature flag safe-default gates', () => {
     })).toThrow(/Unknown flag in config/);
   });
 
+  /**
+   * The property under test is that AST mode catches command substitution the
+   * flat baseline segmentation misses. The command used to be `echo $(whoami)`,
+   * which is a substitution supplying a VALUE — the same everyday shape as
+   * `curl -H "Bearer $(cat token)"`, which was refused during real debugging.
+   * The classifier now separates reading a value from assembling a command, so
+   * this pins the property with a substitution that decodes rather than reads.
+   */
   test('shell-ast-normalization denies command substitution that baseline allows', async () => {
-    const command = 'echo $(whoami)';
+    const command = 'echo "$(echo cm0K | base64 -d)"';
 
     const baseline = await guardExecCommand(command, undefined, flags([]));
     const ast = await guardExecCommand(command, undefined, flags(['shell-ast-normalization']));

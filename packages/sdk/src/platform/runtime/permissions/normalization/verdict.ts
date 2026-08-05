@@ -128,9 +128,203 @@ function isPercentEncoded(arg: string, command: string): boolean {
   return URI_SCHEME.test(arg) || ENCODED_PATH_SEPARATOR.test(arg);
 }
 
+// ── NUL: handling null-delimited data vs injecting a NUL into command text ────
+
+/**
+ * Tools with a documented NUL-delimited data mode. Feeding them `\0` is how
+ * null-separated records are read and written on Unix — `tr '\0' '\n'` over
+ * /proc/<pid>/environ, `tr -d '\0'`, `xargs -0`, `sort -z`, `grep -z`,
+ * `find -print0`. The check below used to match the two-character text `\0`
+ * anywhere in the command, so all of those read as an injection attempt and
+ * ordinary diagnostics were refused mid-debugging.
+ */
+const NULL_DELIMITED_TOOLS = new Set([
+  'tr', 'xargs', 'sort', 'grep', 'egrep', 'fgrep', 'rg', 'sed', 'find', 'fd',
+  'perl', 'awk', 'gawk', 'mawk', 'nawk', 'cut', 'uniq', 'comm', 'shuf', 'du',
+  'parallel', 'env', 'printenv', 'jq', 'xxd',
+]);
+
+/** Strips one layer of surrounding shell quotes from a token. */
+function unquote(arg: string): string {
+  const m = /^(['"])(.*)\1$/s.exec(arg);
+  return m?.[2] ?? arg;
+}
+
+/**
+ * Any textual spelling of a NUL escape: `\0`, `\00`, `\000`, `\x0`, `\x00`.
+ *
+ * Each form refuses to match when the escape actually continues into a
+ * different character — `\012` is a newline, not a NUL followed by `12` — but
+ * the octal form only excludes further OCTAL digits, so `\0evil` is still
+ * recognised as a NUL escape carrying a payload.
+ */
+const NUL_ESCAPE_TEXT = /\\(?:0{1,3}(?![0-7])|[xX]0{1,2}(?![0-9a-fA-F]))/;
+
+/** An argument that is nothing but NUL escapes — a delimiter, not a payload. */
+function isNulDelimiterArg(arg: string): boolean {
+  return /^(?:\\(?:0{1,3}|[xX]0{1,2}))+$/.test(unquote(arg));
+}
+
+/**
+ * Distinguishes NUL HANDLING from NUL INJECTION.
+ *
+ * Denied unconditionally: an actual NUL byte in the command text, and `%00`
+ * (an encoded NUL, which is the path-truncation trick this check exists for).
+ * Neither can appear benignly — `execve` cannot even carry an embedded NUL.
+ *
+ * The textual escape `\0` is different: the shell does not turn it into a NUL
+ * byte, it is just two characters handed to a program that understands them. It
+ * is treated as obfuscation only when the receiving command has no
+ * null-delimited mode, and even for a null-aware tool only when every NUL-
+ * bearing argument is a bare delimiter — `tr 'x' 'y\0evil'` smuggles the escape
+ * into a larger payload and stays denied.
+ */
+function nullByteObfuscation(raw: string, args: string[], command: string): boolean {
+  if (raw.includes('\u0000')) return true;
+  if (raw.includes('%00')) return true;
+  if (!NUL_ESCAPE_TEXT.test(raw)) return false;
+  if (!NULL_DELIMITED_TOOLS.has(command.toLowerCase())) return true;
+  return !args.every((a) => !NUL_ESCAPE_TEXT.test(a) || isNulDelimiterArg(a));
+}
+
+// ── Command substitution: reading a value vs assembling a command ─────────────
+
+/**
+ * Commands that run whatever command follows them. `sudo $(cat payload)` puts
+ * the substitution in command-name position even though the first word is not
+ * the substitution itself, so these are skipped when locating that position.
+ */
+const COMMAND_WRAPPERS = new Set([
+  'sudo', 'doas', 'timeout', 'nice', 'ionice', 'nohup', 'setsid', 'stdbuf',
+  'command', 'exec', 'time', 'watch', 'flock', 'script', 'chrt', 'taskset', 'env',
+]);
+
+/**
+ * Commands that interpret an ARGUMENT as command text. A substitution in their
+ * arguments is command assembly no matter how innocent the inner command looks:
+ * `sh -c "$(curl …)"` runs whatever came back.
+ */
+const ARGUMENT_INTERPRETERS = new Set([
+  'sh', 'bash', 'zsh', 'dash', 'ksh', 'csh', 'tcsh', 'fish', 'ash', 'busybox',
+  'eval', 'source', '.', 'xargs', 'parallel', 'ssh', 'su',
+]);
+
+/**
+ * Inner-substitution content that produces bytes rather than reading a value —
+ * the decode-then-run shape. `$(echo cm0gLXJm | base64 -d)` is not a value.
+ */
+const SUBSTITUTION_DECODERS =
+  /\b(?:base64|base32|b64decode|xxd|uudecode|openssl\s+(?:enc|base64)|gunzip|zcat|bunzip2|uncompress|iconv|eval)\b|\bgzip\s+-d|\bxz\s+-d/;
+
+/** One command substitution found in the raw text. */
+interface Substitution {
+  /** Text between the delimiters. */
+  readonly inner: string;
+  /** Offset of the opening delimiter in the raw string. */
+  readonly start: number;
+}
+
+/**
+ * Extract `$( … )` and backtick substitutions from raw command text, matching
+ * parentheses by depth so a nested substitution is not cut short.
+ *
+ * The tokenizer cannot be used for this: it splits on whitespace inside a
+ * substitution, so `$(cat payload)` arrives as the two tokens `$(cat` and
+ * `payload)` with the boundaries lost.
+ */
+function extractSubstitutions(raw: string): Substitution[] {
+  const found: Substitution[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i] === '\\') { i++; continue; }
+    if (raw[i] === '$' && raw[i + 1] === '(') {
+      let depth = 1;
+      let j = i + 2;
+      for (; j < raw.length && depth > 0; j++) {
+        if (raw[j] === '\\') { j++; continue; }
+        if (raw[j] === '(') depth++;
+        else if (raw[j] === ')') depth--;
+      }
+      found.push({ inner: raw.slice(i + 2, depth === 0 ? j - 1 : raw.length), start: i });
+      i = j - 1;
+    } else if (raw[i] === '`') {
+      const end = raw.indexOf('`', i + 1);
+      found.push({ inner: raw.slice(i + 1, end < 0 ? raw.length : end), start: i });
+      i = end < 0 ? raw.length : end;
+    }
+  }
+  return found;
+}
+
+/**
+ * Whether a substitution supplies the command NAME — the shape where the thing
+ * being run is itself assembled at runtime. Leading wrapper words, their flags
+ * and a numeric wrapper argument (`timeout 300 …`) are skipped first, so
+ * `sudo $(cat payload)` is caught while `timeout 300 git log $(cat ref)` is not.
+ */
+function substitutionInCommandNamePosition(raw: string, subs: Substitution[]): boolean {
+  const starts = new Set(subs.map((s) => s.start));
+  const word = /\S+/g;
+  let m: RegExpExecArray | null;
+  while ((m = word.exec(raw)) !== null) {
+    // A quoted substitution (`"$(cat payload)" --now`) starts one or more
+    // characters into the word, so skip the opening quotes before comparing.
+    const quotes = /^['"]*/.exec(m[0])?.[0].length ?? 0;
+    if (starts.has(m.index + quotes)) return true;
+    const text = m[0].slice(quotes);
+    if (text.startsWith('-') || /^\d+[a-z]?$/i.test(text)) continue;
+    if (COMMAND_WRAPPERS.has(text.replace(/^.*\//, '').toLowerCase())) continue;
+    return false;
+  }
+  return false;
+}
+
+/**
+ * Distinguishes a substitution that READS A VALUE from one that ASSEMBLES A
+ * COMMAND.
+ *
+ * `curl -H "Bearer $(cat token)"` is everyday shell: the substitution sits in
+ * an argument, the inner command is a plain reader, and the result is a header
+ * value. The previous check matched any `$(…)` or backtick anywhere in the
+ * command, so that — and every other read-a-file-into-an-argument idiom — was
+ * refused as obfuscation.
+ *
+ * Still obfuscation, and still denied:
+ *  - the substitution occupies the command-name position (`sudo $(cat payload)`);
+ *  - the inner text decodes or evaluates rather than reading
+ *    (`$(echo … | base64 -d)`), or nests a further substitution;
+ *  - the receiving command interprets its arguments as command text
+ *    (`sh -c "$(curl …)"`, `eval`, `xargs`).
+ */
+function commandSubstitutionObfuscation(
+  raw: string,
+  command: string,
+  firstTokenIsSubshell: boolean,
+): boolean {
+  // Structural signal, checked before any text scanning: when the node's FIRST
+  // token is a subshell there is no command name to resolve — the name is
+  // whatever the substitution prints. Such a node carries `command: ''`, so
+  // relying on the name alone would classify it as nothing at all. This does
+  // not depend on the raw text parsing back the way we expect.
+  if (firstTokenIsSubshell) return true;
+  const subs = extractSubstitutions(raw);
+  if (subs.length === 0) return false;
+  if (substitutionInCommandNamePosition(raw, subs)) return true;
+  for (const s of subs) {
+    if (SUBSTITUTION_DECODERS.test(s.inner)) return true;
+    if (s.inner.includes('$(') || s.inner.includes('`')) return true;
+  }
+  return ARGUMENT_INTERPRETERS.has(command.replace(/^.*\//, '').toLowerCase());
+}
+
 const OBFUSCATION_CHECKS: Array<{
   description: string;
-  test: (raw: string, args: string[], flags: string[], command: string) => boolean;
+  test: (
+    raw: string,
+    args: string[],
+    flags: string[],
+    command: string,
+    node: CommandNode,
+  ) => boolean;
 }> = [
   {
     /**
@@ -157,22 +351,28 @@ const OBFUSCATION_CHECKS: Array<{
     test: (raw) => /\$\{?[A-Z_]+\}?/.test(raw) && /rm|kill|dd|mkfs/.test(raw),
   },
   {
-    description: 'command substitution in argument (backtick or $())',
-    test: (raw) => /`[^`]+`/.test(raw) || /\$\([^)]+\)/.test(raw),
+    description: 'command substitution assembling a command (backtick or $())',
+    test: (raw, _args, _flags, command, node) =>
+      commandSubstitutionObfuscation(raw, command, node.tokens[0]?.type === 'subshell'),
   },
   {
     description: 'octal or unicode escape in path argument',
-    test: (_raw, args) =>
+    // A bare NUL escape handed to a null-delimited tool is that tool's
+    // delimiter argument, not an encoded path — `tr '\000' '\n'` is the same
+    // ordinary command as `tr '\0' '\n'` and is exempted the same way. Every
+    // other octal/hex/unicode escape still counts.
+    test: (_raw, args, _flags, command) =>
       args.some(
         (a) =>
-          /\\[0-7]{3}/.test(a) ||
-          /\\u[0-9a-fA-F]{4}/.test(a) ||
-          /\\x[0-9a-fA-F]{2}/.test(a),
+          (/\\[0-7]{3}/.test(a) ||
+            /\\u[0-9a-fA-F]{4}/.test(a) ||
+            /\\x[0-9a-fA-F]{2}/.test(a)) &&
+          !(NULL_DELIMITED_TOOLS.has(command.toLowerCase()) && isNulDelimiterArg(a)),
       ),
   },
   {
     description: 'null-byte injection attempt',
-    test: (raw) => raw.includes('\0') || raw.includes('%00') || raw.includes('\\0'),
+    test: (raw, args, _flags, command) => nullByteObfuscation(raw, args, command),
   },
   {
     description: 'eval command detected',
@@ -189,7 +389,7 @@ const OBFUSCATION_CHECKS: Array<{
 function detectObfuscation(node: CommandNode): string[] {
   const found: string[] = [];
   for (const check of OBFUSCATION_CHECKS) {
-    if (check.test(node.raw, node.args, node.flags, node.command)) {
+    if (check.test(node.raw, node.args, node.flags, node.command, node)) {
       found.push(check.description);
     }
   }
