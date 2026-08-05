@@ -103,6 +103,7 @@ export {
   OAUTH_SCOPES,
   FORBIDDEN_OAUTH_SCOPES,
   GOOGLE_REFERENCED_COMMANDS,
+  GOOGLE_WALKTHROUGH_CONTINUATION_PROMPT,
   REQUIRED_SERVICES,
   GOOGLE_CONFIG_KEYS,
   GOOGLE_SECRET_KEYS,
@@ -249,6 +250,24 @@ export {
   type GoogleConnection,
   type GoogleConnectionSources,
 } from './connection.js';
+
+// ---------------------------------------------------------------------------
+// Registering a client the owner handed over, and the consent that follows
+// ---------------------------------------------------------------------------
+
+export {
+  beginGoogleConsent,
+  registerGoogleClient,
+  storeClientCredentials,
+  clientIdTail,
+  CONSENT_WAIT_MS,
+  type GoogleClientRegistration,
+  type GoogleClientRegistrationFailed,
+  type GoogleClientRegistrationResult,
+  type GoogleConsentCompletion,
+  type GoogleConsentSession,
+  type BeginGoogleConsentDeps,
+} from './consent-session.js';
 
 // ---------------------------------------------------------------------------
 // Deciding how to connect, before doing anything about it

@@ -393,13 +393,13 @@ export class GoogleApiClient {
     if (status === 403 && /insufficient|scope/i.test(message)) {
       return {
         problem: `Google refused the request because the credential lacks the required permission: ${message}`,
-        fix: 'Re-authorize with every scope this product needs, in one consent: /google reauthorize',
+        fix: 'Say the word and I will re-authorize with every scope this product needs, in one consent.',
       };
     }
     if (status === 403 && /disabled|not been used/i.test(message)) {
       return {
         problem: `The required Google API is not enabled for this project: ${message}`,
-        fix: 'Enable it, then retry: /google connect',
+        fix: 'Say the word and I will enable it and retry.',
       };
     }
     if (status === 429) {
@@ -410,7 +410,7 @@ export class GoogleApiClient {
     }
     return {
       problem: message.length > 0 ? `Google returned ${status}: ${message}` : `Google returned HTTP ${status}.`,
-      fix: 'If this persists, re-authorize: /google reauthorize',
+      fix: 'If this persists, say so and I will re-authorize the account.',
     };
   }
 

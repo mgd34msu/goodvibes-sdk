@@ -105,7 +105,7 @@ export type GmailInboundReaderProvider = () => Promise<GmailInboundReaderResolut
 const NOT_CONNECTED: GmailInboundReaderUnavailable = {
   kind: 'unavailable',
   detail: 'No Google account is connected on this machine, so there is no Gmail mailbox to read.',
-  fix: 'Connect Google (/google connect), or configure surfaces.email.imap.host and '
+  fix: 'Say the word and I will connect a Google account, or set up IMAP with '
     + 'surfaces.email.user to read a mailbox over IMAP instead.',
 };
 
@@ -171,7 +171,7 @@ export async function resolveGmailInboundReader(
         + 'Whether it may read message bodies is therefore unknown, and this refuses to guess '
         + 'rather than start a reader that would report a working mailbox as unreadable.',
       fix: 'Re-authorize the Google account so the grant is recorded with its scopes: '
-        + '/google reauthorize',
+        + 'say the word and I will re-authorize the account so the grant records its scopes.',
     };
   }
 

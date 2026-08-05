@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { mentionsUserTypedCommand } from '../packages/sdk/src/platform/runtime/setup-contract.ts';
 import {
   adoptGmailMcpCredentials,
   gmailMcpLayout,
@@ -140,10 +141,13 @@ describe('summarising credentials for display', () => {
     expect(summarizeCredentials(adopted, Date.now()).detail).toContain('gmail-mcp');
   });
 
-  test('with no credentials it says so and names the command that fixes it', () => {
+  test('with no credentials it says so and offers to fix it', () => {
     const summary = summarizeCredentials(null, Date.now());
     expect(summary.found).toBe(false);
-    expect(summary.detail).toContain('/google connect');
+    // Offering, not instructing: naming a command here would hand the reader a
+    // chore in the same line that tells them nothing is set up.
+    expect(summary.detail).toMatch(/say the word and I will connect an account/i);
+    expect(mentionsUserTypedCommand(summary.detail)).toBe(false);
   });
 });
 
@@ -279,7 +283,8 @@ describe('the boot-time credential check', () => {
     const result = await checkGoogleCredentialsAtBoot(null);
     expect(result.usable).toBe(false);
     expect(result.needsReauthorization).toBe(false);
-    expect(result.detail).toContain('/google connect');
+    expect(result.detail).toMatch(/say the word and I will connect an account/i);
+    expect(mentionsUserTypedCommand(result.detail)).toBe(false);
   });
 
   test('a revoked credential is flagged as needing re-authorization at boot', async () => {
