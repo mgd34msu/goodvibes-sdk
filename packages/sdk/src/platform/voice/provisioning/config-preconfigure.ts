@@ -67,8 +67,12 @@ export interface VoicePreconfigDeps {
   readonly priorInstallWrites?: Record<string, string> | undefined;
   /**
    * The managed voice root. A path key already inside it is this installer's
-   * own; one outside it belongs to another install and is superseded. Omitted,
-   * nothing is superseded and the old skip-everything behaviour stands.
+   * own; one outside it belongs to another install and is superseded.
+   *
+   * Omitted, NOTHING is superseded: without a root there is no way to tell this
+   * install's paths from a user's, and treating every configured path as
+   * foreign would repoint all of them. A caller that wants the supersede rule
+   * has to say where its install lives.
    */
   readonly managedRoot?: string | undefined;
 }
@@ -86,9 +90,30 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
   const installWrites: Record<string, string> = {};
   const managedRoot = deps.managedRoot?.trim();
 
-  /** A path already inside the managed root belongs to this installer. */
-  const insideManagedRoot = (value: string): boolean =>
-    managedRoot !== undefined && managedRoot.length > 0 && value.startsWith(managedRoot);
+  /**
+   * Whether this call can tell its OWN install from anyone else's.
+   *
+   * Superseding means "that path belongs to an install this one replaces", and
+   * that judgement is only possible against a known managed root. Without one,
+   * every configured path looks foreign — which would supersede the lot, the
+   * exact opposite of the careful rule. So no root means no superseding.
+   */
+  const canSupersede = managedRoot !== undefined && managedRoot.length > 0;
+
+  /**
+   * A path already inside the managed root belongs to this installer.
+   *
+   * Compared on a path BOUNDARY, not as a bare string prefix: a managed root of
+   * `/m` is not a prefix of `/my/whisper`, and `/opt/voice` is not a prefix of
+   * `/opt/voice-old`. Getting that wrong silently classifies someone else's
+   * install as ours and declines to supersede it — the exact failure this rule
+   * exists to end, hidden behind a `startsWith`.
+   */
+  const insideManagedRoot = (value: string): boolean => {
+    if (!canSupersede) return false;
+    const root = (managedRoot as string).replace(/\/+$/, '');
+    return value === root || value.startsWith(`${root}/`);
+  };
 
   const apply = (key: string, value: string, kind: 'path' | 'engine', supersedeGroup: boolean): void => {
     const current = (deps.getConfig(key) ?? '').trim();
@@ -156,7 +181,8 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
     // Supersede when a configured path names an install that is not this one
     // and was not written by a previous run of this installer.
     const foreign = (key: string, current: string): boolean =>
-      current.length > 0
+      canSupersede
+      && current.length > 0
       && current !== prior[key]
       && !insideManagedRoot(current);
     const supersedes = foreign(binaryKey, currentBinary) || foreign(modelKey, currentModel);

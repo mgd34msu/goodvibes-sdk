@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  describeSupersededVoiceKeys,
   downloadVerifiedFile,
   localVoiceRuntimeStatus,
   preconfigureLocalVoiceKeys,
@@ -115,8 +116,59 @@ describe('managed path resolution + status', () => {
   });
 });
 
-describe('config pre-configuration preserves user keys', () => {
-  test('unset keys are set to the managed install; user-set keys are preserved', () => {
+describe('a managed install supersedes a manual one, and says which path it replaced', () => {
+  // THE RULE, precisely:
+  //   A path key is superseded only when (a) the managed root is KNOWN, (b) the
+  //   configured path lies OUTSIDE it, and (c) it was not written by a previous
+  //   run of this installer. The engine row follows its family's paths, so the
+  //   pair can never describe two different installs. A user-CLEARED key is
+  //   still never rewritten. Without a managed root nothing is superseded at
+  //   all — the installer cannot tell its own paths from anyone else's.
+  test('a user path pointing at another install is repointed, with the replaced path named', () => {
+    // The owner's machine: setup installed a complete managed runtime and left
+    // config pointing at a hand-built ~/.local/opt install it had just replaced,
+    // then reported "provisioned". Superseding loudly is the fix.
+    const store: Record<string, string> = { 'voice.local.ttsModelPath': '/home/mike/.local/opt/piper/voice.onnx' };
+    const receipt = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/piper',
+      ttsModelPath: '/managed/voice.onnx',
+    });
+    expect(store['voice.local.ttsEngine']).toBe('piper');
+    expect(store['voice.local.ttsBinary']).toBe('/managed/piper');
+    // Repointed at the runtime that was just installed and verified.
+    expect(store['voice.local.ttsModelPath']).toBe('/managed/voice.onnx');
+    // And the receipt NAMES what it replaced — the old implementation had no
+    // `superseded` channel at all, so this cannot pass against it.
+    const replaced = receipt.superseded.find((entry) => entry.key === 'voice.local.ttsModelPath');
+    expect(replaced?.previousValue).toBe('/home/mike/.local/opt/piper/voice.onnx');
+    expect(replaced?.value).toBe('/managed/voice.onnx');
+    expect(describeSupersededVoiceKeys(receipt).join(' ')).toContain('/home/mike/.local/opt/piper/voice.onnx');
+    expect(receipt.skipped.map((entry) => entry.key)).toEqual([]);
+  });
+
+  test('a path already inside the managed root is this installer\'s own and is left alone', () => {
+    const store: Record<string, string> = { 'voice.local.ttsModelPath': '/managed/voices/other.onnx' };
+    const receipt = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/piper',
+      ttsModelPath: '/managed/voice.onnx',
+    });
+    expect(store['voice.local.ttsModelPath']).toBe('/managed/voices/other.onnx');
+    expect(receipt.superseded).toEqual([]);
+    expect(receipt.skipped.map((entry) => entry.key)).toEqual(['voice.local.ttsModelPath']);
+  });
+
+  test('with NO managed root nothing is superseded — an unclassifiable path is left alone', () => {
+    // Not a softening: without a root every configured path looks foreign, so
+    // superseding here would repoint ALL of them. Refusing to judge is the
+    // careful branch, and it is pinned so it cannot drift into the other one.
     const store: Record<string, string> = { 'voice.local.ttsModelPath': '/my/custom/voice.onnx' };
     const receipt = preconfigureLocalVoiceKeys({
       getConfig: (k) => store[k] ?? '',
@@ -127,10 +179,10 @@ describe('config pre-configuration preserves user keys', () => {
     });
     expect(store['voice.local.ttsEngine']).toBe('piper');
     expect(store['voice.local.ttsBinary']).toBe('/managed/piper');
-    // User-set value wins — never overwritten.
     expect(store['voice.local.ttsModelPath']).toBe('/my/custom/voice.onnx');
-    expect(receipt.set.map((s) => s.key).sort()).toEqual(['voice.local.ttsBinary', 'voice.local.ttsEngine']);
-    expect(receipt.skipped.map((s) => s.key)).toEqual(['voice.local.ttsModelPath']);
+    expect(receipt.superseded).toEqual([]);
+    expect(receipt.set.map((entry) => entry.key).sort()).toEqual(['voice.local.ttsBinary', 'voice.local.ttsEngine']);
+    expect(receipt.skipped.map((entry) => entry.key)).toEqual(['voice.local.ttsModelPath']);
   });
 });
 
@@ -302,24 +354,27 @@ describe('fix-round hardening (reviewer scenarios)', () => {
 });
 
 describe('ownership-stamped preconfigure (reviewer scenario)', () => {
-  test('install-written values UPDATE on re-install; user-set values win; user-cleared stays cleared', () => {
+  test('install-written values UPDATE on re-install; a foreign path is superseded; user-cleared stays cleared', () => {
     const store: Record<string, string> = {};
     // First install writes all three.
     const first = preconfigureLocalVoiceKeys({
       getConfig: (k) => store[k] ?? '',
       setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
       ttsEngine: 'piper',
       ttsBinary: '/managed/v1/piper',
       ttsModelPath: '/managed/models/voice-a.onnx',
     });
     expect(first.set.length).toBe(3);
     // The manifest changes (new layout + new default voice); the user has ALSO
-    // customized the model path, and CLEARED the engine key (deliberate disable).
+    // pointed the model path at a DIFFERENT install, and CLEARED the engine key
+    // (a deliberate disable, which stays honoured).
     store['voice.local.ttsModelPath'] = '/my/voice.onnx';
     store['voice.local.ttsEngine'] = '';
     const second = preconfigureLocalVoiceKeys({
       getConfig: (k) => store[k] ?? '',
       setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
       ttsEngine: 'piper',
       ttsBinary: '/managed/v2/piper',
       ttsModelPath: '/managed/models/voice-b.onnx',
@@ -327,12 +382,41 @@ describe('ownership-stamped preconfigure (reviewer scenario)', () => {
     });
     // Installer-owned binary path updated to v2 (no longer frozen at v1):
     expect(store['voice.local.ttsBinary']).toBe('/managed/v2/piper');
-    // User-set model path wins:
-    expect(store['voice.local.ttsModelPath']).toBe('/my/voice.onnx');
-    // User-cleared engine key respected (NOT re-written):
+    // The model path names an install OUTSIDE the managed root, so the managed
+    // runtime supersedes it and the receipt names what it replaced. Under the
+    // old rule this was preserved silently while the product went on using an
+    // install the new one had just replaced.
+    expect(store['voice.local.ttsModelPath']).toBe('/managed/models/voice-b.onnx');
+    const replaced = second.superseded.find((entry) => entry.key === 'voice.local.ttsModelPath');
+    expect(replaced?.previousValue).toBe('/my/voice.onnx');
+    // User-cleared engine key is STILL respected — clearing is a deliberate
+    // disable, and superseding never resurrects one.
     expect(store['voice.local.ttsEngine']).toBe('');
-    expect(second.skipped.some((s) => s.reason.includes('cleared by the user'))).toBe(true);
-    expect(second.skipped.some((s) => s.reason.includes('user value'))).toBe(true);
+    expect(second.skipped.some((entry) => entry.reason.includes('cleared by the user'))).toBe(true);
+  });
+
+  test('an installer-owned value that has not changed is neither rewritten nor superseded', () => {
+    const store: Record<string, string> = {};
+    const first = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/piper',
+      ttsModelPath: '/managed/voice.onnx',
+    });
+    const second = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/managed',
+      ttsEngine: 'piper',
+      ttsBinary: '/managed/piper',
+      ttsModelPath: '/managed/voice.onnx',
+      priorInstallWrites: first.installWrites,
+    });
+    expect(second.superseded).toEqual([]);
+    expect(second.set).toEqual([]);
+    expect(second.skipped.every((entry) => entry.reason === 'already at the managed value')).toBe(true);
   });
 });
 
@@ -377,7 +461,13 @@ describe('breaker classification + reset (reviewer scenario)', () => {
     expect(calls).toBe(1); // tripped
     // The message names recovery acts that WORK on managed installs.
     await provider.synthesize!({ text: 'x', metadata: {} } as never).catch((e: unknown) => {
-      expect(String(e)).toMatch(/voice\.local\.install|restart the daemon/);
+      // The recovery acts the message names, in the words it actually uses.
+      // Every one of them is something the PLATFORM does or a config row that
+      // clears the state — it hands the user no command to type.
+      expect(String(e)).toMatch(/Reinstalling the managed voice runtime/);
+      expect(String(e)).toMatch(/daemon restart/);
+      expect(String(e)).toMatch(/voice\.local\.ttsBinary/);
+      expect(String(e)).not.toMatch(/\srun\s/i);
     });
     // voice.local.install fixed the engine and calls the reset act:
     healthy = true;
@@ -511,18 +601,38 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     rmSync(dir2, { recursive: true, force: true });
   });
 
-  test('STT preconfigure writes voice.local.stt* keys only when provisioned, with ownership rules', () => {
+  test('STT preconfigure writes voice.local.stt* keys only when provisioned, superseding a foreign binary', () => {
     const store: Record<string, string> = { 'voice.local.sttBinary': '/my/whisper' };
     const receipt = preconfigureLocalVoiceKeys({
       getConfig: (k) => store[k] ?? '',
       setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/m',
       ttsEngine: 'piper', ttsBinary: '/m/piper', ttsModelPath: '/m/v.onnx',
       sttEngine: 'whisper-cpp', sttBinary: '/m/whisper-cli', sttModelPath: '/m/ggml-base.en.bin',
     });
     expect(store['voice.local.sttEngine']).toBe('whisper-cpp');
     expect(store['voice.local.sttModelPath']).toBe('/m/ggml-base.en.bin');
-    expect(store['voice.local.sttBinary']).toBe('/my/whisper'); // user wins
-    expect(receipt.set.map((s) => s.key)).toContain('voice.local.sttEngine');
+    // A binary naming another whisper build is repointed at the one just
+    // installed, and the receipt names it. Leaving it meant the managed model
+    // was fed to a binary the installer knew nothing about.
+    expect(store['voice.local.sttBinary']).toBe('/m/whisper-cli');
+    expect(receipt.superseded.find((entry) => entry.key === 'voice.local.sttBinary')?.previousValue).toBe('/my/whisper');
+    expect(receipt.set.map((entry) => entry.key)).toContain('voice.local.sttEngine');
+  });
+
+  test('STT keys are left entirely alone when STT did not provision', () => {
+    const store: Record<string, string> = { 'voice.local.sttBinary': '/my/whisper' };
+    const receipt = preconfigureLocalVoiceKeys({
+      getConfig: (k) => store[k] ?? '',
+      setConfig: (k, v) => { store[k] = v; },
+      managedRoot: '/m',
+      ttsEngine: 'piper', ttsBinary: '/m/piper', ttsModelPath: '/m/v.onnx',
+    });
+    // Superseding is a claim that THIS install replaces what was there. With no
+    // managed STT installed there is nothing to replace it with.
+    expect(store['voice.local.sttBinary']).toBe('/my/whisper');
+    expect(receipt.superseded.some((entry) => entry.key.startsWith('voice.local.stt'))).toBe(false);
+    expect(receipt.set.some((entry) => entry.key.startsWith('voice.local.stt'))).toBe(false);
   });
 
   test('status reports the STT managed state honestly (unsupported only where no pinned bundle exists)', () => {

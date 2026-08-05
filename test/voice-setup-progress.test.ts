@@ -100,6 +100,19 @@ describe('voice.local.status carries live install progress (polling shape)', () 
           stt: { engine: 'whisper-cpp', supported: true, state: 'not-provisioned', binaryPresent: false, modelPresent: false, binaryPath: '', modelPath: '' },
           offerBytes: 1,
         }),
+        // Provisioning ENDS by speaking a phrase with the engine it installed
+        // and reading it back with the recogniser it installed. These fixtures
+        // are byte fakes, not runnable engines, so the proof is injected —
+        // without this seam the install would run the real binaries and, quite
+        // correctly, report itself unproven.
+        prove: async () => ({
+          proved: true,
+          stage: 'compare' as const,
+          phrase: 'the quick brown fox jumps over the lazy dog',
+          transcript: 'the quick brown fox jumps over the lazy dog',
+          wordOverlap: 1,
+          summary: 'Spoke the test phrase with piper and heard it back through whisper-cpp.',
+        }),
       });
 
       // Before any install: no section.
@@ -142,6 +155,11 @@ describe('voice.local.status carries live install progress (polling shape)', () 
       expect(a.provisioned).toBe(true);
       expect(a.stt.state).toBe('provisioned');
       expect(breakerResets).toBe(1);
+      // "Provisioned" is a PROVEN claim, not a count of downloaded bytes: the
+      // round trip is carried on the receipt and its text is what a surface
+      // shows. The old implementation had no proof to carry.
+      expect(a.proof?.proved).toBe(true);
+      expect(a.notes.join(' ')).toContain('heard it back');
 
       // After completion the section is DROPPED — absent, not stale.
       expect(service.status().installInProgress).toBeUndefined();
