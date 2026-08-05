@@ -32,11 +32,9 @@ import type { ConfigManager } from '../../config/manager.js';
 import { configKeyScope, describeConfigOwnership, isDaemonOwnedConfigKey } from '../../config/config-ownership.js';
 import {
   applyConfigWrite,
-  discoverDaemonEndpoint,
-  readDaemonConfig,
-  resolveConfigWriteRoute,
   type DaemonConfigRouterDeps,
 } from '../../config/daemon-config-route.js';
+import { loadDaemonConfigSnapshot } from '../../config/daemon-config-read.js';
 
 /**
  * Host-supplied routing facts.
@@ -234,8 +232,12 @@ export async function readRoutedConfigValue(
   }
 
   const deps = resolveRouterDeps(configManager, options);
-  const route = resolveConfigWriteRoute(key, deps);
-  if (route.mode === 'local') {
+  // ONE resolution, shared with writes: loadDaemonConfigSnapshot prefers a
+  // connection this process already holds, validates a running-daemon record
+  // before trusting it, and reaps a stale one. Re-deriving the endpoint here is
+  // what let reads and writes disagree about where the daemon was.
+  const snapshot = await loadDaemonConfigSnapshot(deps);
+  if (snapshot.endpoint === null) {
     // Either this process IS the daemon, or no daemon is running. Both make the
     // local daemon tier the owning store, and ConfigManager already overlays it.
     return {
@@ -249,30 +251,28 @@ export async function readRoutedConfigValue(
     };
   }
 
-  try {
-    const remote = await readDaemonConfig(route.endpoint, deps);
-    const found = readDotPath(remote, key);
-    return {
-      key,
-      value: found.present ? found.value : configManager.get(key),
-      available: true,
-      readFrom: 'daemon',
-      source: route.endpoint.baseUrl,
-      scope,
-      ownership,
-    };
-  } catch (error) {
+  if (snapshot.error !== null || snapshot.config === null) {
     return {
       key,
       available: false,
       scope,
       ownership,
-      source: route.endpoint.baseUrl,
-      reason: `${key} is daemon-owned and the daemon at ${route.endpoint.baseUrl} could not be read `
-        + `(${error instanceof Error ? error.message : String(error)}). `
+      source: snapshot.endpoint.baseUrl,
+      reason: `${key} is daemon-owned and the daemon at ${snapshot.endpoint.baseUrl} could not be read `
+        + `(${snapshot.error ?? 'no configuration was returned'}). `
         + 'No value is reported for it, because this host\'s copy would be a guess, not the setting.',
     };
   }
+  const found = readDotPath(snapshot.config, key);
+  return {
+    key,
+    value: found.present ? found.value : configManager.get(key),
+    available: true,
+    readFrom: 'daemon',
+    source: snapshot.endpoint.baseUrl,
+    scope,
+    ownership,
+  };
 }
 
 /**
@@ -291,16 +291,13 @@ export async function readRoutedConfigValues(
   }
 
   const deps = resolveRouterDeps(configManager, options);
-  const endpoint = deps.hostsDaemon ? null : discoverDaemonEndpoint(deps);
+  // Same single resolution the one-key read uses, for the same reason.
+  const snapshot = await loadDaemonConfigSnapshot(deps);
+  const endpoint = snapshot.endpoint;
   if (!endpoint) return keys.map((key) => localRead(configManager, key));
 
-  let remote: Record<string, unknown> | null = null;
-  let failure: string | null = null;
-  try {
-    remote = await readDaemonConfig(endpoint, deps);
-  } catch (error) {
-    failure = error instanceof Error ? error.message : String(error);
-  }
+  const remote = snapshot.config;
+  const failure = snapshot.error;
 
   return keys.map((key): ConfigReadResult => {
     if (!isDaemonOwnedConfigKey(key)) return localRead(configManager, key);

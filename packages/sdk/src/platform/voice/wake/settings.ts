@@ -208,6 +208,52 @@ export function wakeSurfaceKey(surface: WakeSurface): string {
   return `voice.wake.surfaces.${surface}`;
 }
 
+/** A second key that must move with the one just written, and why. */
+export interface WakeEnablementCompanion {
+  readonly key: string;
+  readonly value: boolean;
+  /** Plain words for the reply: what was also set, and what it would have done. */
+  readonly message: string;
+}
+
+/**
+ * The companion write that keeps `voice.wake.enabled` from configuring nothing.
+ *
+ * TWO FLAGS GATE ONE FEATURE, AND ONE OF THEM IS INVISIBLE.
+ *
+ * Turning `voice.wake.enabled` on while `voice.wake.surfaces.<surface>` is off
+ * is a silent no-op: the setting reports success, the value really is stored,
+ * and no microphone ever opens. That cost the owner an entire session — he
+ * enabled the feature, was told it was enabled, and nothing listened.
+ *
+ * A master switch whose delivery row is off is not a configuration the user
+ * meant. So enabling the master on an opted-out surface SAYS so and sets the
+ * surface row in the same act, rather than leaving a correct-looking setting
+ * that does nothing. Returns null when no companion is needed.
+ *
+ * The reverse is deliberately NOT symmetric: turning the master off is a
+ * complete instruction on its own, and enabling a single surface row while the
+ * feature is off is how someone stages a surface before switching it on.
+ */
+export function resolveWakeEnablementCompanion(
+  key: string,
+  value: unknown,
+  read: WakeSettingReader,
+  surface: WakeSurface,
+): WakeEnablementCompanion | null {
+  if (key !== 'voice.wake.enabled' || value !== true) return null;
+  const surfaceRow = wakeSurfaceKey(surface);
+  if (readBoolean(read, surfaceRow, DEFAULTS.surfaces[surface])) return null;
+  return {
+    key: surfaceRow,
+    value: true,
+    message:
+      `${surfaceRow} was off, which would have left wake detection enabled and nothing listening on the `
+      + `${surface} surface — the feature needs both rows. It has been turned on too, so this surface is `
+      + 'actually listening.',
+  };
+}
+
 /**
  * Resolve every `voice.wake.*` row for one surface.
  *

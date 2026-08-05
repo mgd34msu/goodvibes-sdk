@@ -15,16 +15,21 @@
  */
 import {
   createVoiceInstallProgressTracker,
+  describeSupersededVoiceKeys,
   localVoiceRuntimeStatus,
   preconfigureLocalVoiceKeys,
   provisionLocalVoiceRuntime,
+  proveVoiceRoundTrip,
   readVoiceInstallStamp,
   writeVoiceInstallStamp,
   type VoiceComponentOutcome,
+  type VoiceKeySupersede,
   type VoiceProvisionOptions,
   type VoiceProvisionResult,
+  type VoiceRoundTripProof,
   type VoiceRuntimeStatus,
 } from '../voice/provisioning/index.js';
+import { recordVoiceDiagnostic } from '../voice/diagnostics.js';
 import { singleFlight } from '../utils/single-flight.js';
 import {
   createWakeSetupService,
@@ -36,6 +41,11 @@ import type { WakeInstallProvisionOutcome } from '../voice/wake/install-provisio
 
 /** What voice.local.install resolves with (the wire receipt). */
 export interface VoiceInstallReceipt {
+  /**
+   * True only when the runtime was installed AND proved working by a live
+   * round trip. Bytes on disk are not the claim anyone cares about — see
+   * voice/provisioning/round-trip-proof.ts.
+   */
   readonly provisioned: boolean;
   readonly platform: VoiceProvisionResult['platform'];
   readonly tts: VoiceProvisionResult['tts'];
@@ -44,7 +54,17 @@ export interface VoiceInstallReceipt {
   readonly configured: {
     readonly set: readonly { key: string; value: string }[];
     readonly skipped: readonly { key: string; reason: string }[];
+    /** Keys taken over from an install this managed runtime replaces. */
+    readonly superseded: readonly VoiceKeySupersede[];
   };
+  /**
+   * The live proof: a phrase spoken by the managed TTS and read back by the
+   * managed STT. Absent only when STT was not provisioned at all, in which case
+   * there is nothing to prove a round trip with.
+   */
+  readonly proof?: VoiceRoundTripProof | undefined;
+  /** Plain-language lines a surface prints as-is: what was replaced, what was proven. */
+  readonly notes: readonly string[];
 }
 
 export interface VoiceSetupServiceDeps {
@@ -57,6 +77,18 @@ export interface VoiceSetupServiceDeps {
   readonly admitExpensiveWork: (label: string) => { allowed: boolean; reason?: string | undefined };
   /** Provisioner seam (tests inject fetch/extractor via a wrapper). */
   readonly provision?: ((options: VoiceProvisionOptions) => Promise<VoiceProvisionResult>) | undefined;
+  /**
+   * The live round-trip proof seam. Injected by tests so no real engine has to
+   * run; defaults to actually speaking a phrase and transcribing it back.
+   */
+  readonly prove?: ((options: {
+    readonly ttsEngine: string;
+    readonly ttsBinary: string;
+    readonly ttsModelPath: string;
+    readonly sttEngine: string;
+    readonly sttBinary: string;
+    readonly sttModelPath: string;
+  }) => Promise<VoiceRoundTripProof>) | undefined;
   /** Status-read seam (tests). */
   readonly readStatus?: ((options: { managedRoot: string }) => VoiceRuntimeStatus) | undefined;
 }
@@ -93,39 +125,82 @@ export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetup
         managedRoot: deps.managedVoiceRoot,
         onProgress: (event) => progress.onProgress(event),
       });
-      let configured: VoiceInstallReceipt['configured'] = { set: [], skipped: [] };
+      let configured: VoiceInstallReceipt['configured'] = { set: [], skipped: [], superseded: [] };
+      const notes: string[] = [];
+      let proof: VoiceRoundTripProof | undefined;
+      const sttProvisioned = result.stt.state === 'provisioned' && !!result.stt.binaryPath && !!result.stt.modelPath;
+
       if (result.tts.state === 'provisioned' && result.tts.binaryPath && result.tts.modelPath) {
         // Ownership-aware preconfigure: values THIS installer previously wrote
-        // (recorded in the install stamp) update to the new managed paths;
-        // genuinely user-set values still win; a user-cleared installer value
-        // is a deliberate disable and stays cleared.
+        // (recorded in the install stamp) update to the new managed paths; a
+        // path naming a DIFFERENT install is superseded by this managed one and
+        // the replaced path is named; a user-cleared installer value is a
+        // deliberate disable and stays cleared.
         const stamp = readVoiceInstallStamp(deps.managedVoiceRoot);
         const receipt = preconfigureLocalVoiceKeys({
           getConfig: deps.getConfig,
           setConfig: deps.setConfig,
+          managedRoot: deps.managedVoiceRoot,
           ttsEngine: result.tts.engine,
           ttsBinary: result.tts.binaryPath,
           ttsModelPath: result.tts.modelPath,
-          ...(result.stt.state === 'provisioned' && result.stt.binaryPath && result.stt.modelPath
+          ...(sttProvisioned
             ? { sttEngine: result.stt.engine, sttBinary: result.stt.binaryPath, sttModelPath: result.stt.modelPath }
             : {}),
           priorInstallWrites: stamp?.configWrites,
         });
-        configured = { set: [...receipt.set], skipped: [...receipt.skipped] };
+        configured = { set: [...receipt.set], skipped: [...receipt.skipped], superseded: [...receipt.superseded] };
+        notes.push(...describeSupersededVoiceKeys(receipt));
         if (stamp) {
           writeVoiceInstallStamp(deps.managedVoiceRoot, { ...stamp, configWrites: { ...stamp.configWrites, ...receipt.installWrites } });
         }
         // A successful (re-)install is the recovery act: clear any tripped
         // local-engine circuit breaker so the next call retries the fresh engine.
         deps.resetLocalEngineFailureState();
+
+        // THE LAST ACT IS PROOF. Speak a phrase with the engine just installed,
+        // read it back with the recogniser just installed, and report what came
+        // back. Without this, "provisioned" only ever meant "the bytes are
+        // there", which is exactly what was true on a machine where voice did
+        // not work.
+        if (sttProvisioned) {
+          proof = await (deps.prove ?? proveVoiceRoundTrip)({
+            ttsEngine: result.tts.engine,
+            ttsBinary: result.tts.binaryPath,
+            ttsModelPath: result.tts.modelPath,
+            sttEngine: result.stt.engine,
+            sttBinary: result.stt.binaryPath ?? '',
+            sttModelPath: result.stt.modelPath ?? '',
+          });
+          notes.push(proof.summary);
+          recordVoiceDiagnostic(deps.managedVoiceRoot, {
+            at: new Date().toISOString(),
+            operation: 'provision-proof',
+            route: 'in-process',
+            ok: proof.proved,
+            provider: `${result.tts.engine} + ${result.stt.engine}`,
+            configSource: 'the managed voice runtime just installed',
+            ...(proof.error !== undefined ? { error: proof.error } : {}),
+            detail: proof.summary,
+          });
+        } else {
+          notes.push(
+            'Text-to-speech is installed, but speech-to-text is not, so there was nothing to read the test phrase '
+            + 'back with and no round trip could be proven.',
+          );
+        }
       }
       return {
-        provisioned: result.tts.state === 'provisioned',
+        // Installed AND proven. A failed proof reports NOT provisioned, because
+        // a false "ready" costs a session and an honest failure costs a retry.
+        provisioned: result.tts.state === 'provisioned' && (proof === undefined ? !sttProvisioned : proof.proved),
         platform: result.platform,
         tts: result.tts,
         stt: result.stt,
         components: result.components,
         configured,
+        ...(proof !== undefined ? { proof } : {}),
+        notes,
       };
     } finally {
       progress.end();

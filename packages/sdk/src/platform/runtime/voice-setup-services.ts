@@ -34,11 +34,14 @@ import type { ShellPathService } from './shell-paths.js';
 export type { VoiceSetupService };
 
 /**
- * The recovery act this surface names when a boot provision degrades. The SDK
- * would otherwise name the control-plane verb, which is correct everywhere and
- * useless to someone sitting in a terminal.
+ * The recovery act this surface names when a boot provision degrades.
+ *
+ * Phrased as something the PLATFORM does. It used to be the literal string
+ * `/voice wake setup` — a command handed to the user for work the daemon
+ * already retries on its own at every start. Naming a chore that the product
+ * performs unprompted is how a self-healing system reads as a broken one.
  */
-export const WAKE_RECOVERY_COMMAND = '/voice wake setup';
+export const WAKE_RECOVERY_COMMAND = 'this surface fetches it automatically when it next starts';
 
 export interface VoiceSetupServicesDeps {
   readonly configManager: ConfigManager;
@@ -88,7 +91,7 @@ export function wireVoiceSetup(deps: VoiceSetupServicesDeps): VoiceSetupServices
   // Sweep the wake tree, then fetch whatever the install could not. The SDK owns
   // the policy — never throws, one plain message, reaps before it retries — and
   // routes the attempt through the setup service's single flight so a boot
-  // attempt and a user typing /voice wake setup are one download.
+  // attempt and an explicitly requested provision are one download.
   const boot = (deps.startBootProvisioning ?? startWakeBootProvisioning)({
     managedRoot: managedVoiceRoot,
     ensureProvisioned: () => voiceSetup.wakeEnsureProvisioned({ recoveryHint: WAKE_RECOVERY_COMMAND }),

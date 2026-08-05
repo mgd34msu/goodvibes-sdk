@@ -153,6 +153,17 @@ describe('export-map subpath resolution (committed manifest)', () => {
         stt: { engine: 'whisper-cpp', supported: true, state: 'provisioned', binaryPresent: true, modelPresent: true, binaryPath: '/managed/whisper', modelPath: '/managed/model.bin' },
         offerBytes: null,
       }),
+      // Injected proof: provisioning now ENDS by speaking a phrase and reading
+      // it back, so a composition test has to supply that seam or it would run
+      // the real binaries. The proof is what "provisioned" means.
+      prove: async () => ({
+        proved: true,
+        stage: 'compare' as const,
+        phrase: 'the quick brown fox jumps over the lazy dog',
+        transcript: 'the quick brown fox jumps over the lazy dog',
+        wordOverlap: 1,
+        summary: 'Spoke the test phrase with piper and heard it back through whisper-cpp.',
+      }),
     });
 
     // status() serves the injected snapshot (idle: no installInProgress).
@@ -171,6 +182,49 @@ describe('export-map subpath resolution (committed manifest)', () => {
     expect(receipt.configured.set.length).toBeGreaterThan(0);
     expect(config.size).toBeGreaterThan(0);
     expect(resetCalls).toBe(1);
+    // The live proof is carried on the receipt, and its text is what a surface
+    // shows: "provisioned" is a proven claim, not a count of downloaded bytes.
+    expect(receipt.proof?.proved).toBe(true);
+    expect(receipt.notes.join(' ')).toContain('heard it back');
+  });
+
+  test('./platform/runtime/voice-setup reports NOT provisioned when the round trip cannot be proven', async () => {
+    // The failure this encodes: an install where every byte landed and every
+    // checksum matched, reported as provisioned, on a machine where speech to
+    // text did not work. A proof that fails is an honest "not provisioned".
+    const { createVoiceSetupService } = await import('@pellux/goodvibes-sdk/platform/runtime/voice-setup');
+    const service = createVoiceSetupService({
+      managedVoiceRoot: join(import.meta.dir, '.test-tmp', `voice-setup-unproven-${process.pid}-${Date.now()}`),
+      getConfig: () => '',
+      setConfig: () => {},
+      resetLocalEngineFailureState: () => {},
+      admitExpensiveWork: () => ({ allowed: true }),
+      provision: async () => ({
+        platform: 'linux-x64',
+        tts: { engine: 'piper', state: 'provisioned', binaryPath: '/managed/piper', modelPath: '/managed/voice.onnx' },
+        stt: { engine: 'whisper-cpp', state: 'provisioned', binaryPath: '/managed/whisper', modelPath: '/managed/model.bin' },
+        components: [{ id: 'piper', state: 'installed', bytes: 1024 }],
+      }),
+      readStatus: () => ({
+        platform: 'linux-x64',
+        state: 'provisioned',
+        tts: { engine: 'piper', binaryPresent: true, voicePresent: true, binaryPath: '/managed/piper', modelPath: '/managed/voice.onnx' },
+        stt: { engine: 'whisper-cpp', supported: true, state: 'provisioned', binaryPresent: true, modelPresent: true, binaryPath: '/managed/whisper', modelPath: '/managed/model.bin' },
+        offerBytes: null,
+      }),
+      prove: async () => ({
+        proved: false,
+        stage: 'transcribe' as const,
+        phrase: 'the quick brown fox jumps over the lazy dog',
+        error: 'whisper-cli: No such file or directory',
+        summary: 'The managed speech-to-text engine (whisper-cpp) could not transcribe the spoken test phrase.',
+      }),
+    });
+
+    const receipt = await service.install();
+    expect(receipt.provisioned).toBe(false);
+    expect(receipt.proof?.proved).toBe(false);
+    expect(receipt.notes.join(' ')).toContain('could not transcribe');
   });
 
   test('./platform/runtime/voice-setup install() refuses honestly under critical memory pressure', async () => {

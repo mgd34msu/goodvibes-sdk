@@ -76,7 +76,16 @@ export const WAKE_INSTALL_SKIP_ENV = 'GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD';
  * surface-specific one. The control-plane verb, because it is the same on every
  * surface; a terminal passes `/voice wake setup` instead.
  */
-export const WAKE_INSTALL_DEFAULT_RECOVERY_HINT = 'the voice.wake.provision verb';
+/**
+ * What a degraded install names as the thing that will fix it.
+ *
+ * Phrased as something the PLATFORM does, not something the user types: the
+ * daemon retries this at every start, so an unfetched model recovers on its own
+ * and a message ordering someone to run a command describes work the product
+ * has already taken on. A surface may name its own equivalent, but the same
+ * rule applies to whatever it passes.
+ */
+export const WAKE_INSTALL_DEFAULT_RECOVERY_HINT = 'the next daemon start fetches it automatically';
 
 /**
  * How long one install-time provision may take before it is abandoned.
@@ -184,7 +193,7 @@ export async function provisionWakeWordModelsAtInstall(
       mobileFormatReady: false,
       message:
         `The wake-word model could not be checked (${summarizeError(error)}); installation continues. `
-        + `Wake-word detection reports not-provisioned until it is fetched — run ${hint} to retry.`,
+        + `Wake-word detection reports not-provisioned until it is fetched, and ${hint}.`,
       outcomes: [],
       modelVersion: null,
       reapedBeforeAttempt: 0,
@@ -210,7 +219,7 @@ export async function provisionWakeWordModelsAtInstall(
       mobileFormatReady: before.mobileClassifier.verified,
       message:
         `The wake-word model was not downloaded because ${WAKE_INSTALL_SKIP_ENV} is set. `
-        + `Wake-word detection reports not-provisioned until it is fetched — run ${hint} whenever you want it.`,
+        + `Wake-word detection reports not-provisioned until it is fetched; clear that variable and ${hint}.`,
       outcomes: [],
       modelVersion: before.modelVersion,
       reapedBeforeAttempt: 0,
@@ -250,8 +259,8 @@ export async function provisionWakeWordModelsAtInstall(
       mobileFormatReady: false,
       message:
         `The wake-word model could not be downloaded (${summarizeError(error)}); installation continues. `
-        + `Wake-word detection reports not-provisioned until it is fetched — run ${hint} to retry, `
-        + 'or leave it and the next daemon start tries again.',
+        + `Wake-word detection reports not-provisioned until it is fetched, and ${hint}. `
+        + 'Nothing needs doing by hand.',
       outcomes: [],
       modelVersion: before.modelVersion,
       reapedBeforeAttempt,
@@ -274,8 +283,8 @@ export async function provisionWakeWordModelsAtInstall(
       mobileFormatReady: after.mobileClassifier.verified,
       message:
         `The wake-word model could not be downloaded (${firstFailure(result.outcomes)}); installation continues. `
-        + `Wake-word detection reports not-provisioned until it is fetched — run ${hint} to retry, `
-        + 'or leave it and the next daemon start tries again.',
+        + `Wake-word detection reports not-provisioned until it is fetched, and ${hint}. `
+        + 'Nothing needs doing by hand.',
       outcomes: result.outcomes,
       modelVersion: result.modelVersion ?? before.modelVersion,
       reapedBeforeAttempt,

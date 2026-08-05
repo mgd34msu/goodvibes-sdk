@@ -63,6 +63,8 @@ export {
   WAKE_SETTING_KEYS,
   resolveWakeRuntimeSettings,
   wakeSurfaceKey,
+  resolveWakeEnablementCompanion,
+  type WakeEnablementCompanion,
   type WakeSurface,
   type WakeSurfaceCapabilities,
   type WakeSettingBlocker,

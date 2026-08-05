@@ -25,6 +25,7 @@ import type { ToolRegistry } from '../registry.js';
 import { CloudflareControlPlaneManager } from '../../cloudflare/manager.js';
 import type { CloudflareComponentSelection } from '../../cloudflare/types.js';
 import { summarizeError } from '../../utils/error-display.js';
+import { SETUP_INTENT_CONTRACT_PROMPT } from '../../runtime/setup-contract.js';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -42,6 +43,12 @@ export const GOODVIBES_RUNTIME_AWARENESS_PROMPT = [
   'A configuration value the user states — bot name, chat id, token, host, port, model, path — is a request to set it: call goodvibes_settings, then report the key and its persistedTo store. A value only repeated back in prose is not set.',
   'If the key or the intent is unclear, ask one short question; never write config the user did not ask for. Report settings from goodvibes_context with the store each came from; a value its owning runtime could not supply is unavailable, not unset.',
   'Never reveal raw secrets; report only redacted credential posture.',
+  // A setup request is the other half of the same failure: "set up the wake
+  // word" was answered literally, leaving a product that could hear its name
+  // and do nothing with what followed, because nobody asked what the request
+  // was FOR. The contract is stated generally, in runtime/setup-contract.ts, so
+  // a service nobody has named yet gets the same treatment.
+  SETUP_INTENT_CONTRACT_PROMPT,
 ].join('\n');
 
 export function appendGoodVibesRuntimeAwarenessPrompt(systemPrompt?: string | null): string {

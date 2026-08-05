@@ -252,6 +252,23 @@ export type { RemoteExecutionServices } from './remote-execution-composition.js'
 export { wireIdlePowerAndLiveTurn } from './idle-power-services.js';
 export type { IdlePowerServices, IdlePowerServicesDeps } from './idle-power-services.js';
 
+// The platform's setup contract: what ANY "set this up" request commits us to.
+// Voice is one instance of it; see runtime/setup-contract.ts.
+export {
+  SETUP_INTENT_CONTRACT_PROMPT,
+  SETUP_SOLUTION_SHAPES,
+  mentionsUserTypedCommand,
+  renderSetupPlan,
+  setupPlanStrings,
+  setupStepsOfKind,
+} from './setup-contract.js';
+export type {
+  SetupOption,
+  SetupPlan,
+  SetupSolutionShape,
+  SetupStep,
+  SetupStepKind,
+} from './setup-contract.js';
 export { WAKE_RECOVERY_COMMAND, wireVoiceSetup } from './voice-setup-services.js';
 export type { VoiceSetupServices, VoiceSetupServicesDeps } from './voice-setup-services.js';
 

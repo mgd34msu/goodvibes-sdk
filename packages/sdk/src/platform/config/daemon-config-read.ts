@@ -27,6 +27,7 @@ import {
   DaemonConfigUnreachableError,
   discoverDaemonEndpoint,
   readDaemonConfig,
+  reapUnansweringRuntimeRecord,
   type DaemonConfigEndpoint,
   type DaemonConfigRouterDeps,
 } from './daemon-config-route.js';
@@ -75,6 +76,22 @@ export function resolveConfigReadRoute(key: string, deps: DaemonConfigRouterDeps
       reason: `${key} is daemon-owned and this process hosts the daemon, so its own store is the daemon's store.`,
     };
   }
+  // A connection this process already holds IS the daemon route, and outranks
+  // discovery. Without this the route said "local" while the snapshot loader
+  // was quite happy to answer from the connected host — the two halves of one
+  // read disagreeing, which is the asymmetry this module exists to remove.
+  if (deps.readDaemonSnapshot) {
+    return {
+      mode: 'daemon',
+      scope: 'daemon',
+      endpoint: {
+        baseUrl: 'the connected host',
+        source: 'the connection this process already holds',
+        certain: true,
+      },
+      reason: describeConfigOwnership(key),
+    };
+  }
   const endpoint = discoverDaemonEndpoint(deps);
   if (endpoint) return { mode: 'daemon', scope: 'daemon', endpoint, reason: describeConfigOwnership(key) };
   return {
@@ -97,21 +114,71 @@ export interface DaemonConfigSnapshot {
   readonly error: string | null;
 }
 
-/** Fetch the daemon's config once. Never throws — the error is reported per key. */
+/**
+ * Fetch the daemon's config once. Never throws — the error is reported per key.
+ *
+ * A connection this process already holds is used FIRST when one was supplied
+ * (`readDaemonSnapshot`). That is what puts reads and writes on one resolution:
+ * writes go out over the connected host's `config.set`, so reads must come back
+ * from that same host, or a setting can be written successfully and then read
+ * as missing. Address discovery is the path for a process that holds no
+ * connection, not a second opinion for one that does.
+ */
 export async function loadDaemonConfigSnapshot(deps: DaemonConfigRouterDeps): Promise<DaemonConfigSnapshot> {
   if (deps.hostsDaemon) return { endpoint: null, config: null, error: null };
-  const endpoint = discoverDaemonEndpoint(deps);
-  if (!endpoint) return { endpoint: null, config: null, error: null };
-  try {
-    return { endpoint, config: await readDaemonConfig(endpoint, deps), error: null };
-  } catch (error) {
-    // An endpoint merely DERIVED from configuration describes where a daemon
-    // would listen. Nothing answering there means no daemon is running, so the
-    // local daemon store is the honest answer — not an error. A KNOWN daemon
-    // that does not answer is a genuine failure and stays one.
-    if (endpoint.certain === false) return { endpoint: null, config: null, error: null };
-    return { endpoint, config: null, error: error instanceof Error ? error.message : String(error) };
+  if (deps.readDaemonSnapshot) {
+    const connected: DaemonConfigEndpoint = {
+      baseUrl: 'the connected host',
+      source: 'the connection this process already holds',
+      certain: true,
+    };
+    try {
+      const config = await deps.readDaemonSnapshot();
+      // No snapshot means the connection could not answer. That is a genuine
+      // failure of a host we are connected to, not an absent daemon.
+      if (config === null) {
+        return { endpoint: connected, config: null, error: 'the connected host returned no configuration snapshot' };
+      }
+      return { endpoint: connected, config, error: null };
+    } catch (error) {
+      return { endpoint: connected, config: null, error: error instanceof Error ? error.message : String(error) };
+    }
   }
+  // A record that named a daemon which could not be found anywhere. Held so the
+  // answer below stays an honest `unavailable` rather than a local value
+  // presented as the daemon's: a record existing means a daemon was supposed to
+  // be running.
+  let reapedRecord: { endpoint: DaemonConfigEndpoint; error: string } | null = null;
+
+  // Two attempts at most, and the second only happens when the first was a
+  // runtime record that did not answer. Reaping that record makes the very next
+  // discovery return the DERIVED control-plane binding, which is where the live
+  // daemon usually is — falling back to the local store without looking there
+  // is what made a running daemon look absent for days.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const endpoint = discoverDaemonEndpoint(deps);
+    if (!endpoint) break;
+    try {
+      return { endpoint, config: await readDaemonConfig(endpoint, deps), error: null };
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      // An endpoint merely DERIVED from configuration describes where a daemon
+      // would listen. Nothing answering there means no daemon is running, so the
+      // local daemon store is the honest answer — not an error. A KNOWN daemon
+      // that does not answer is a genuine failure and stays one.
+      if (endpoint.certain !== false) return { endpoint, config: null, error: detail };
+      // A running-daemon record that got this far had a live pid and still did
+      // not answer — a recycled pid, or a daemon that died without cleaning up.
+      if (endpoint.source !== 'running-daemon record') break;
+      reapedRecord = { endpoint, error: detail };
+      reapUnansweringRuntimeRecord(deps, endpoint.baseUrl);
+    }
+  }
+  // Nothing answered anywhere, and a record said a daemon should be running:
+  // report it unreachable. A local value shown as the daemon's current setting
+  // is indistinguishable from a lie.
+  if (reapedRecord) return { endpoint: reapedRecord.endpoint, config: null, error: reapedRecord.error };
+  return { endpoint: null, config: null, error: null };
 }
 
 /**
@@ -131,9 +198,9 @@ export async function readConfigValue(
   const snapshot = await loadDaemonConfigSnapshot(deps);
   if (snapshot.endpoint === null) return localEntry(key, 'daemon', route.reason, local);
   if (snapshot.error !== null) {
-    throw new DaemonConfigUnreachableError(key, route.endpoint.baseUrl, snapshot.error);
+    throw new DaemonConfigUnreachableError(key, snapshot.endpoint.baseUrl, snapshot.error);
   }
-  return daemonEntry(key, route.endpoint, snapshot.config, route.reason);
+  return daemonEntry(key, snapshot.endpoint, snapshot.config, route.reason);
 }
 
 /**
@@ -152,27 +219,7 @@ export async function readEffectiveConfig(
     ? await loadDaemonConfigSnapshot(deps)
     : { endpoint: null, config: null, error: null } satisfies DaemonConfigSnapshot;
 
-  return keys.map((key) => {
-    const route = resolveConfigReadRoute(key, deps);
-    // No daemon answered at a merely-derived address: read locally, honestly.
-    if (route.mode === 'daemon' && snapshot.endpoint === null) {
-      return localEntry(key, 'daemon', route.reason, local);
-    }
-    if (route.mode === 'local') return localEntry(key, route.scope, route.reason, local);
-    if (snapshot.error !== null) {
-      return {
-        key,
-        scope: 'daemon' as const,
-        source: 'daemon' as const,
-        status: 'unavailable' as const,
-        store: route.endpoint.baseUrl,
-        reason: route.reason,
-        error: `The daemon at ${route.endpoint.baseUrl} could not be reached (${snapshot.error}), `
-          + 'so its current value for this key is unknown.',
-      };
-    }
-    return daemonEntry(key, route.endpoint, snapshot.config, route.reason);
-  });
+  return keys.map((key) => entryFromSnapshot(key, snapshot, local, deps));
 }
 
 /**
@@ -210,25 +257,9 @@ export async function createEffectiveConfigView(
   const unavailable = new Set<string>();
 
   const describe = (key: string): EffectiveConfigEntry => {
-    const route = resolveConfigReadRoute(key, deps);
-    if (route.mode === 'daemon' && snapshot.endpoint === null) {
-      return localEntry(key, 'daemon', route.reason, local);
-    }
-    if (route.mode === 'local') return localEntry(key, route.scope, route.reason, local);
-    if (snapshot.error !== null) {
-      unavailable.add(key);
-      return {
-        key,
-        scope: 'daemon',
-        source: 'daemon',
-        status: 'unavailable',
-        store: route.endpoint.baseUrl,
-        reason: route.reason,
-        error: `The daemon at ${route.endpoint.baseUrl} could not be reached (${snapshot.error}), `
-          + 'so its current value for this key is unknown.',
-      };
-    }
-    return daemonEntry(key, route.endpoint, snapshot.config, route.reason);
+    const entry = entryFromSnapshot(key, snapshot, local, deps);
+    if (entry.status === 'unavailable') unavailable.add(key);
+    return entry;
   };
 
   return {
@@ -238,6 +269,50 @@ export async function createEffectiveConfigView(
     daemonError: snapshot.error,
     daemonBaseUrl: snapshot.endpoint?.baseUrl ?? null,
   };
+}
+
+/**
+ * One key's entry, decided by the SNAPSHOT rather than by re-running discovery.
+ *
+ * Re-resolving the route per key was a real bug: loading the snapshot can REAP a
+ * stale runtime record, so a second resolution sees a different world from the
+ * one the snapshot was taken in — and a daemon that had just been proven
+ * unreachable came back as a local value marked `ok`. The snapshot is the
+ * verdict; the route only decides ownership.
+ */
+function entryFromSnapshot(
+  key: string,
+  snapshot: DaemonConfigSnapshot,
+  local: LocalConfigReader,
+  deps: DaemonConfigRouterDeps,
+): EffectiveConfigEntry {
+  const scope = configKeyScope(key);
+  if (scope !== 'daemon') return localEntry(key, scope, describeConfigOwnership(key), local);
+  if (deps.hostsDaemon) {
+    return localEntry(
+      key,
+      scope,
+      `${key} is daemon-owned and this process hosts the daemon, so its own store is the daemon's store.`,
+      local,
+    );
+  }
+  const reason = describeConfigOwnership(key);
+  // No daemon answered anywhere: the local daemon tier is the store the daemon
+  // reads at startup, which is the honest answer rather than an error.
+  if (snapshot.endpoint === null) return localEntry(key, 'daemon', reason, local);
+  if (snapshot.error !== null) {
+    return {
+      key,
+      scope: 'daemon',
+      source: 'daemon',
+      status: 'unavailable',
+      store: snapshot.endpoint.baseUrl,
+      reason,
+      error: `The daemon at ${snapshot.endpoint.baseUrl} could not be reached (${snapshot.error}), `
+        + 'so its current value for this key is unknown.',
+    };
+  }
+  return daemonEntry(key, snapshot.endpoint, snapshot.config, reason);
 }
 
 function localEntry(
