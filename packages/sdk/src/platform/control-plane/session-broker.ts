@@ -85,6 +85,8 @@ const SESSION_DELETION_RETENTION_MS = Number.POSITIVE_INFINITY;
 
 export class SharedSessionBroker {
   private readonly store: PersistentStore<SharedSessionStoreSnapshot>;
+  /** The file this broker serves from, or null for an injected store. Boot folds/sweeps must NAME it, never re-derive it — see daemon/daemon-session-store-boot.ts. */
+  readonly storePath: string | null;
   private readonly routeBindings: RouteBindingManager;
   private readonly agentStatusProvider: SharedSessionAgentStatusProvider;
   private readonly messageSender: SharedSessionMessageSender;
@@ -122,11 +124,9 @@ export class SharedSessionBroker {
     /** Reads `conversationGate.*` so an inbound channel message is not handed to a running agent behind the gate's back; absent falls back to the gate's defaults, which gate every channel surface. */
     readonly conversationGateConfig?: ConversationGateConfigReader | undefined;
   }) {
-    if (!config.store && !config.storePath) {
-      throw new Error('SharedSessionBroker requires an explicit store or storePath.');
-    }
-    const storePath = config.storePath;
-    this.store = config.store ?? new PersistentStore<SharedSessionStoreSnapshot>(storePath as string);
+    if (!config.store && !config.storePath) throw new Error('SharedSessionBroker requires an explicit store or storePath.');
+    this.store = config.store ?? new PersistentStore<SharedSessionStoreSnapshot>(config.storePath as string);
+    this.storePath = config.store ? null : (config.storePath ?? null); // null for an injected store: it has no file, and nothing may guess one for it
     this.routeBindings = config.routeBindings;
     this.agentStatusProvider = config.agentStatusProvider;
     this.messageSender = config.messageSender;

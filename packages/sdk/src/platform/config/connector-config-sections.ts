@@ -1,38 +1,36 @@
 /**
- * connector-config-sections.ts — the app-layer config sections the mail and
- * calendar connector lives in, seeded in one call for every product.
+ * connector-config-sections.ts — seeders for the mail and calendar
+ * connector's config sections, kept as a backstop now that the sections are
+ * schema-registered.
  *
- * `email`, `calendar` and `google` are not CONFIG_SCHEMA categories. They are
- * app-layer sections, and `ConfigManager.resolvePath` throws
- * "Invalid config path: section 'calendar' does not exist" for a section that
- * is not on the live config object — so every product has to seed them before
- * the connector reads or writes anything.
+ * `email`, `calendar` and `google` are real CONFIG_SCHEMA categories now
+ * (schema-domain-connectors.ts), with real defaults in `DEFAULT_CONFIG` — the
+ * defect this file used to exist to fix (a settings surface answering
+ * "Unknown setting calendar.google.clientId" for a key the daemon genuinely
+ * reads and writes, because the section lived nowhere CONFIG_SCHEMA could see
+ * it) is fixed there instead. `seedSection`'s own `if (section in config)
+ * return` therefore makes every seeder below a no-op against a ConfigManager
+ * built from `DEFAULT_CONFIG`, which every product-composed ConfigManager is.
  *
- * The defect this exists to fix. The three seeders were in three different
- * places, and one of them was not in the SDK at all:
+ * The functions stay because products still call them, and removing them is
+ * out of scope for the schema migration. What they are FOR now is a config
+ * object assembled some other way than through `DEFAULT_CONFIG` — a hand-built
+ * test fixture, an older cached snapshot from before this migration shipped —
+ * where `email`/`calendar`/`google` might still be genuinely absent. For that
+ * narrow case they still do what they always did: seed the section once,
+ * quietly, so `ConfigManager.resolvePath` does not throw "Invalid config path:
+ * section 'calendar' does not exist" on the connector's first read or write.
  *
- *   - `ensureEmailConfigDefaults`  — SDK, platform/email
- *   - `ensureGoogleConfigDefaults` — SDK, platform/google
- *   - `ensureCalendarConfigDefaults` — **goodvibes-agent only**
- *
- * The SDK's own connector writes `calendar.google.clientId` and
- * `calendar.google.clientSecretRef` (see `adoptExistingGoogleCredentials`). So
- * the connector could only run inside the one product that happened to carry
- * the third seeder. Anywhere else — the daemon, the TUI, the web UI, a fresh
- * node that took over after a handover — the first write threw, and a reader
- * asking whether an account was connected could not even reach the key to find
- * out. That is the same shape as the storage-tier defect it sits next to: a
- * connection that exists in one surface and does not exist anywhere else.
- *
- * The owner's rule is that a capability configured on any surface is the
- * daemon's to use afterwards. A seeder only one surface has makes that
- * impossible before scope routing is even consulted, so it lives here, beside
- * the ownership rules, and one call seeds all three.
+ * Originally three separate seeders in three different places — one of them
+ * (`ensureCalendarConfigDefaults`) not in the SDK at all, only in
+ * goodvibes-agent — folded into the one call here so a capability configured
+ * from any surface stays usable everywhere the daemon runs, not just the one
+ * product that happened to carry the third seeder.
  */
 
 /** The `calendar` section: one entry per OAuth calendar provider. */
 const CALENDAR_CONFIG_DEFAULTS = {
-  google: { clientId: '', clientSecretRef: '' },
+  google: { clientId: '', clientSecretRef: '', icsUrl: '' },
   microsoft: { clientId: '', clientSecretRef: '' },
 } as const;
 

@@ -35,7 +35,6 @@ import type { DaemonUpdateStatus } from './update-status.js';
 export type { DaemonUpdateStatus } from './update-status.js';
 import type { RouteBindingManager } from '../channels/route-manager.js';
 import type { DaemonSurfaceDeliveryHelper } from './surface-delivery.js';
-import { discoverLegacySessionSources, importLegacySessionStores } from '../control-plane/index.js';
 
 /**
  * The daemon's owner-alert callback: put one line in front of the owner over a
@@ -56,22 +55,7 @@ export function createDaemonOwnerAlerter(
   };
 }
 
-/**
- * Boot precondition: fold legacy session stores into the home store before
- * the broker serves (idempotent; failures are logged, never fatal).
- */
-export async function importLegacyDaemonSessionStores(shellPaths: {
-  workingDirectory: string;
-  resolveUserPath(...segments: string[]): string;
-}): Promise<void> {
-  await importLegacySessionStores({
-    homeStorePath: shellPaths.resolveUserPath('control-plane', 'sessions.json'),
-    sources: discoverLegacySessionSources({
-      projectRoot: shellPaths.workingDirectory,
-      companionSessionsDir: shellPaths.resolveUserPath('companion-chat', 'sessions'), // injected home
-    }),
-  }).catch((error: unknown) => logger.warn('DaemonServer: legacy session import failed', { error: summarizeError(error) }));
-}
+export { runDaemonSessionStoreBoot } from './daemon-session-store-boot.js';
 
 /**
  * The daemon heartbeat watcher: a polling watcher that stamps an ISO

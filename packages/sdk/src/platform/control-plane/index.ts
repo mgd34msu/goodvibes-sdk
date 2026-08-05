@@ -88,6 +88,15 @@ export type {
   LegacySessionSource,
   ImportLegacySessionsResult,
 } from './session-store-importer.js';
+export {
+  PRE_SPLIT_QUARANTINE_PREFIX,
+  isPreSplitQuarantineDirectory,
+  preSplitControlPlaneDirectory,
+  preSplitSweepReceipt,
+  reapQuarantineDirectories,
+  sweepPreSplitControlPlaneStore,
+} from './pre-split-control-plane-sweep.js';
+export type { PreSplitControlPlaneSweepReport } from './pre-split-control-plane-sweep.js';
 export type {
   SharedApprovalRecord,
   SharedApprovalAuditRecord,

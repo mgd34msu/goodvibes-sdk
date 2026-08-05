@@ -109,6 +109,21 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // left in that surface's silo would configure nothing while reporting
   // success — the same failure `profile.` is here for, one feature along.
   'occasions.',
+  // The mail and calendar connector: the account the daemon composes, sends
+  // and lists mail through, and the calendar client it authenticates with,
+  // set up once from any surface and used by the daemon with every surface
+  // closed. There are no other `email.`, `calendar.` or `google.` schema
+  // keys, so the prefix is safe: it cannot silently pick up an unrelated key
+  // added under one of these names later without a schema row of its own
+  // making it visible here first. Left client-owned, a Gmail app password
+  // reference or an OAuth client id set from one surface would strand in
+  // that surface's silo and the daemon — the process that actually reads
+  // mail and refreshes the calendar unattended — would keep reporting "not
+  // connected", the exact failure this migration exists to end. See
+  // schema-domain-connectors.ts for what changed and why.
+  'email.',
+  'calendar.',
+  'google.',
 ];
 
 /** Individual daemon-owned keys that do not sit under a daemon-owned domain. */
@@ -164,76 +179,26 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // node-local in config-replication-policy.ts, and for this key that ruling is
   // load-bearing rather than incidental. See the note there.
   'cluster.groupMaterial',
-  // The credentials the daemon needs to keep mail and calendar working.
-  //
-  // These are app-layer paths rather than CONFIG_SCHEMA keys, which is exactly
-  // why they need naming here: the derivation walks daemon-owned paths, and a
-  // path nothing declares is a credential nothing files in the daemon tier.
-  //
-  // Without this, a node that wins a handover comes up with no way to read or
-  // send mail, because the credential stayed in the silo of whichever client
-  // the operator happened to paste it into. The symptom is email going quiet
-  // after a failover with nothing in the logs to explain it.
-  'email.passwordRef',
-  // The SMTP password, when it differs from the IMAP one. Left off this list
-  // while `email.passwordRef` was on it, so a mailbox whose send and receive
-  // credentials differ had half its connection daemon-owned and half stranded —
-  // the daemon could read the inbox and not send a reply, which is the exact
-  // shape of "configured, reports success, does nothing".
-  'email.smtpPasswordRef',
-  'calendar.google.clientSecretRef',
-  'calendar.microsoft.clientSecretRef',
-  'google.oauth.refreshToken',
-  // The private calendar feed address. A URL rather than a password, but it
-  // grants read access to the operator's calendar to anyone holding it, so it
-  // is treated as a credential and follows the same handover rules.
-  'calendar.google.icsUrl',
-  // The rest of the mail and calendar connection — everything that is not
-  // itself a credential.
-  //
-  // The credentials above were daemon-owned before these were, and that split
-  // does not survive contact with how the connector actually works. Resolving
-  // a Google credential needs the client id as well as the client secret: with
-  // the refresh token filed in the daemon tier and the client id stranded in
-  // whichever surface the operator happened to run setup from, the daemon
-  // holds half a credential and reports "no Google account connected" the
-  // moment that surface is closed. Same for mail: the app password is useless
-  // without the host, port and username that say where to send it.
-  //
-  // So the whole connection is daemon-owned. Setup performed in any surface
-  // writes here, the daemon keeps working with no surface process running, and
-  // every surface reads the same answer back.
-  'email.enabled',
-  'email.imapHost',
-  'email.imapPort',
-  'email.smtpHost',
-  'email.smtpPort',
-  'email.smtpSecurity',
-  'email.username',
-  'email.fromAddress',
-  'calendar.google.clientId',
-  // Microsoft's client id, for the same reason and by the same argument. Its
-  // SECRET was already daemon-owned above while the id was not, which is the
-  // half-a-credential split the paragraph above describes: the daemon could hold
-  // the secret and still report no Microsoft account connected, because the id
-  // stayed in whichever surface ran setup.
-  'calendar.microsoft.clientId',
-  'google.oauth.projectId',
-  'google.oauth.publishingStatus',
-  'google.credentials.migratedFrom',
-  // NOTE: the daemon's own `surfaces.email.*` and `surfaces.calendar.*` keys
-  // were listed here for a while, because the derivation below walks the
-  // ENUMERATED daemon-owned paths rather than matching the `surfaces.` prefix,
-  // and nothing enumerated them — so no daemon-owned credential was derived
-  // from them and a stored mail password went to whichever client silo the
-  // operator happened to be in.
+  // NOTE: the mail and calendar connector's `email.*`, `calendar.google.*`,
+  // `calendar.microsoft.*` and `google.*` keys — nineteen of them — were
+  // listed here for a while, for the same reason `surfaces.email.*` and
+  // `surfaces.calendar.*` were listed above this note before they moved:
+  // they were app-layer paths seeded onto the live config object by a
+  // structural cast (`connector-config-sections.ts`), not CONFIG_SCHEMA
+  // keys, and the derivation below walks the ENUMERATED daemon-owned paths
+  // rather than matching an `email.`/`calendar.`/`google.` prefix that did
+  // not exist yet — so nothing enumerating them meant no daemon-owned
+  // credential name was derived from them, and a stored app password or
+  // OAuth client secret went to whichever client silo the operator happened
+  // to be in.
   //
   // They are gone from this list because they are now real CONFIG_SCHEMA
-  // entries (schema-domain-surfaces.ts), which is the better home: it makes
-  // them daemon-owned AND renders them in the settings modal, so the handler
-  // error messages that name them point somewhere an operator can actually
-  // reach. This list is for paths that are NOT scalar schema keys, and keeping
-  // them here as well double-counted them in every owned-set walk.
+  // entries (schema-domain-connectors.ts), which is the better home: it
+  // makes them daemon-owned AND renders them in the settings modal, so an
+  // operator can actually see and edit the connection the daemon is using.
+  // This list is for paths that are NOT scalar schema keys, and keeping them
+  // here as well would double-count them in every owned-set walk — the same
+  // reason the `surfaces.` pair is not repeated here either.
 ] as const;
 
 /** A daemon-owned path that has no scalar CONFIG_SCHEMA entry. */
@@ -278,10 +243,13 @@ const USER_LOCAL_OVERRIDE_SET = new Set<string>(USER_LOCAL_OVERRIDE_CONFIG_KEYS)
  * When that list held nothing but `conversationGate.gatedSurfaces` and
  * `cluster.peers` the distinction did not matter: both sit under a daemon-owned
  * PREFIX, so this predicate already answered yes and the list existed purely so
- * a walk over owned paths would not miss a non-scalar. Credential paths added
- * since — `email.passwordRef`, the calendar client secrets, the Google refresh
- * token — have no such prefix, and for those the two answers disagreed: the
+ * a walk over owned paths would not miss a non-scalar. `email.passwordRef`, the
+ * calendar client secrets and the Google refresh token went through exactly
+ * that gap for a while: they were on this list before `email.`/`calendar.`/
+ * `google.` were daemon-owned prefixes, so the two answers disagreed — the
  * walk called them daemon-owned while this predicate called them client-owned.
+ * They are schema keys under those prefixes now (schema-domain-connectors.ts),
+ * so the prefix match alone answers yes for all of them.
  *
  * A key nobody claims is not stored twice, it is stored NOWHERE. The manager
  * routes daemon-owned keys to the daemon tier and everything else to the
