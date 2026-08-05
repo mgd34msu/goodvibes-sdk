@@ -450,6 +450,74 @@ export function migrateDaemonEmbedInProcessRemoval(
 }
 
 
+/** Outcome of materializing the daemon adopt-vs-dial split into a settings file. */
+export interface DaemonConnectedHostSplitMigrationResult {
+  readonly config: Record<string, unknown>;
+  /** True when `daemon.connectedHost.enabled` was written in. */
+  readonly migrated: boolean;
+}
+
+/**
+ * Write `daemon.connectedHost.enabled: true` into a file that carries an
+ * explicit `daemon.enabled: false`.
+ *
+ * `daemon.enabled` used to mean two things at once: whether this surface adopts
+ * a session daemon of its own, AND whether it may dial a daemon it is already
+ * connected to. Turning it off to decline the first silently declined the
+ * second, so on such a machine the session-inputs poll, the rewind host
+ * registration, the approvals stream and the hosted-conversation handoff all
+ * refused, while the session spine, the memory spine and the operator tools —
+ * which never read the flag — dialed the same live host without trouble.
+ *
+ * The new key defaults to `true`, so the behaviour is already right the moment
+ * this build loads such a file, with or without this pass. What the pass adds
+ * is HONESTY: a user who wrote `daemon.enabled: false` gets the second half of
+ * that decision written down where they can see and change it, instead of
+ * discovering by inference that a flag they set no longer covers what it used
+ * to. Their file now states both answers.
+ *
+ * Deliberately narrow:
+ *  - Only files with an EXPLICIT `daemon.enabled: false` are touched. A file
+ *    that never mentioned the key was never affected by the conflation and gets
+ *    nothing added to it.
+ *  - The value written is `true`, NOT the old `false`. Carrying the old value
+ *    over would preserve the exact defect — the old `false` was never a
+ *    decision about dialing, because there was no way to make one.
+ *  - `daemon.enabled` itself is left exactly as the user wrote it. It still
+ *    means something, and this pass is a split, not a removal.
+ *
+ * Idempotent: a file that already states `daemon.connectedHost.enabled` — at
+ * either value — is returned untouched, so a user who turns dialing off keeps
+ * it off across every later load.
+ */
+export function migrateDaemonConnectedHostSplit(
+  parsed: Record<string, unknown>,
+): DaemonConnectedHostSplitMigrationResult {
+  const daemon = parsed.daemon;
+  if (daemon === null || typeof daemon !== 'object' || Array.isArray(daemon)) {
+    return { config: parsed, migrated: false };
+  }
+  const section = daemon as Record<string, unknown>;
+  if (section.enabled !== false) return { config: parsed, migrated: false };
+
+  const existing = section.connectedHost;
+  const hasStatedDialChoice = existing !== null
+    && typeof existing === 'object'
+    && !Array.isArray(existing)
+    && 'enabled' in (existing as Record<string, unknown>);
+  if (hasStatedDialChoice) return { config: parsed, migrated: false };
+
+  const config = structuredClone(parsed);
+  const migratedSection = config.daemon as Record<string, unknown>;
+  const connectedHost = migratedSection.connectedHost;
+  migratedSection.connectedHost = connectedHost !== null
+    && typeof connectedHost === 'object'
+    && !Array.isArray(connectedHost)
+    ? { ...(connectedHost as Record<string, unknown>), enabled: true }
+    : { enabled: true };
+  return { config, migrated: true };
+}
+
 /** One amount key carried across the payments budget rename. */
 export interface PaymentsBudgetKeyMove {
   /** The name that was on disk. */

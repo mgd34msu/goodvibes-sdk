@@ -105,15 +105,25 @@ export interface RuntimeConfig {
  * Empty means UTC. See docs/payments.md §4.
  */
 export interface DaemonProcessConfig {
-  enabled: boolean;         // default: true — run the local session daemon (loopback only)
+  enabled: boolean;         // default: true — ADOPT a session daemon of this surface's own (loopback only)
   timezone: string;         // default: '' — IANA name; empty means UTC
+  /**
+   * Whether this surface may DIAL the daemon it is connected to — a different
+   * decision from adopting one of its own, and its own setting since the two
+   * shared `enabled` and turning adoption off silently stopped inbound-message
+   * delivery, rewind registration, the approvals stream and daemon-routed turns
+   * on machines whose connected host was live.
+   */
+  connectedHost: { enabled: boolean };  // default: true
 }
 
 export type DaemonProcessConfigKey =
   | 'daemon.enabled'
+  | 'daemon.connectedHost.enabled'
   | 'daemon.timezone';
 
 export interface DaemonProcessConfigValueMap {
   'daemon.enabled': boolean;
+  'daemon.connectedHost.enabled': boolean;
   'daemon.timezone': string;
 }

@@ -213,6 +213,41 @@ export function resolveDaemonEnabled(config: DaemonEnabledReader): boolean {
   return typeof enabled === 'boolean' ? enabled : true;
 }
 
+/**
+ * Minimal reader shape for {@link resolveConnectedHostDialEnabled}.
+ */
+export interface ConnectedHostDialReader {
+  get(key: 'daemon.connectedHost.enabled'): boolean | string | number | undefined;
+}
+
+/**
+ * Resolve whether this surface may DIAL the daemon it is connected to.
+ *
+ * ── Why this is not `resolveDaemonEnabled` ────────────────────────────────
+ *
+ * `daemon.enabled` answers "does this surface adopt a session daemon of its
+ * own". Dialing a host that is already running and answering is a different
+ * question, and for a while one key answered both.
+ *
+ * On a machine with `daemon.enabled: false` and a live connected host that
+ * every other caller reached without trouble, the conflation silently killed
+ * the session-inputs poll (refused every two seconds, thousands of log lines an
+ * hour), the conversation-rewind host registration, the approvals update
+ * stream, and the hosted-conversation handoff — while the session spine, the
+ * memory spine and the operator tools dialed the SAME host successfully,
+ * because they never read the flag. The features that refused and the features
+ * that worked disagreed about whether the daemon existed.
+ *
+ * Defaults to `true`, and deliberately does NOT fall back to `daemon.enabled`:
+ * inheriting the old value would rebuild the exact conflation this exists to
+ * end. A surface that wants no daemon contact at all sets this to `false`,
+ * which is now a thing it can actually say.
+ */
+export function resolveConnectedHostDialEnabled(config: ConnectedHostDialReader): boolean {
+  const enabled = config.get('daemon.connectedHost.enabled');
+  return typeof enabled === 'boolean' ? enabled : true;
+}
+
 export function getWorkingDirectory(configManager: Pick<ConfigManager, 'getWorkingDirectory'>): string | null {
   return configManager.getWorkingDirectory();
 }
