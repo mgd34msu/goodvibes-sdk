@@ -15,6 +15,7 @@ export type {
   BrowserBinarySource,
   BrowserDriverResolution,
   BrowserElementRef,
+  BrowserLaunchResult,
   BrowserPageInfo,
   BrowserProvisionFailure,
   BrowserProvisionIo,
@@ -32,6 +33,7 @@ export type {
 
 export { BrowserEngine, UntrustedEffectError } from './browser-engine.js';
 export type { BrowserEngineOptions, BrowserExtractField, BrowserTarget } from './browser-engine.js';
+export { looksLikeCredentialPage } from './browser-engine-contract.js';
 
 export {
   BrowserSessionError,

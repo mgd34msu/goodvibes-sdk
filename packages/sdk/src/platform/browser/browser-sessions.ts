@@ -6,6 +6,7 @@ import { BrowserHostClient, remoteContext, type BrowserHostOptions } from './bro
 import { createBrowserProvisionIo, loadDriverModule } from './browser-provision-io.js';
 import { ensureBrowserBinary } from './browser-provisioning.js';
 import type {
+  BrowserLaunchResult,
   BrowserPageInfo,
   BrowserProvisionIo,
   BrowserProvisionReport,
@@ -156,6 +157,23 @@ export class BrowserSessionManager {
   private readonly hosts = new Map<string, BrowserHostClient>();
   private sessionCounter = 0;
   private lastProvision: BrowserProvisionReport | null = null;
+  /**
+   * A launch already in progress, so a second `launch()` call made while the
+   * first is still opening a browser waits on the SAME attempt instead of
+   * starting a second browser process against the same profile directory.
+   * This is what turned "the model called launch three times while the
+   * first was still opening" into three windows.
+   */
+  private launchInFlight: Promise<BrowserLaunchResult> | null = null;
+  /**
+   * Consecutive launch failures, reset to 0 on any success. Capped at
+   * `MAX_CONSECUTIVE_LAUNCH_FAILURES` — after that many failures in a row,
+   * `launch()` refuses to try again on its own rather than opening another
+   * window that will fail the same way. One value 2 means one real retry
+   * after the first failure, not open-ended retrying.
+   */
+  private consecutiveLaunchFailures = 0;
+  private static readonly MAX_CONSECUTIVE_LAUNCH_FAILURES = 2;
   private readonly io: BrowserProvisionIo;
   private readonly profileRoot: string;
   private readonly homeDirectory: string;
@@ -207,7 +225,86 @@ export class BrowserSessionManager {
     return driver;
   }
 
-  async launch(options: BrowserLaunchOptions = {}): Promise<BrowserSessionInfo> {
+  /**
+   * Whether this manager's own record still reflects a live browser.
+   *
+   * `isClosed` is read defensively rather than assumed: a driver double that
+   * does not implement it (every existing test fixture) is treated as alive
+   * rather than dead, because the failure mode of wrongly calling a live
+   * session dead is a second browser process fighting the first one over the
+   * same profile directory — the exact bug this method exists to prevent.
+   * Only an explicit `true` counts as dead.
+   */
+  private isSessionAlive(session: TrackedSession): boolean {
+    const candidate = session.context as unknown as { readonly isClosed?: () => boolean };
+    if (typeof candidate.isClosed !== 'function') return true;
+    try {
+      return candidate.isClosed() !== true;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * The live launched session to reuse, if any. A dead one found along the
+   * way is dropped from the registry first, so a stale entry never blocks a
+   * fresh launch from going ahead.
+   */
+  private liveLaunchedSession(): TrackedSession | null {
+    for (const session of this.sessions.values()) {
+      if (session.origin !== 'launched') continue;
+      if (this.isSessionAlive(session)) return session;
+      this.sessions.delete(session.sessionId);
+    }
+    return null;
+  }
+
+  /**
+   * Opens a managed browser, or hands back the one already open.
+   *
+   * Three rules live here, in order:
+   *   1. One live launched session at a time — a second call reuses it
+   *      instead of opening another window on the same profile directory.
+   *   2. A launch already in flight is awaited rather than duplicated, so
+   *      concurrent calls cannot start two browser processes at once.
+   *   3. Failures are counted; after MAX_CONSECUTIVE_LAUNCH_FAILURES in a row
+   *      launch refuses to try again on its own, and says so in plain words,
+   *      instead of opening one more window that will fail the same way.
+   */
+  async launch(options: BrowserLaunchOptions = {}): Promise<BrowserLaunchResult> {
+    const existing = this.liveLaunchedSession();
+    if (existing) {
+      return { ...this.describe(existing), reused: true };
+    }
+
+    if (this.launchInFlight) {
+      return this.launchInFlight;
+    }
+
+    if (this.consecutiveLaunchFailures >= BrowserSessionManager.MAX_CONSECUTIVE_LAUNCH_FAILURES) {
+      throw new BrowserSessionError(
+        `The browser failed to launch ${String(this.consecutiveLaunchFailures)} times in a row, so this agent stopped retrying automatically.`,
+        'Call action:"status" to see what went wrong, fix it, then call action:"launch" once more — automatic retries are capped at one.',
+      );
+    }
+
+    const attempt = this.performLaunch(options)
+      .then((info): BrowserLaunchResult => {
+        this.consecutiveLaunchFailures = 0;
+        return { ...info, reused: false };
+      })
+      .catch((error: unknown) => {
+        this.consecutiveLaunchFailures += 1;
+        throw error;
+      })
+      .finally(() => {
+        this.launchInFlight = null;
+      });
+    this.launchInFlight = attempt;
+    return attempt;
+  }
+
+  private async performLaunch(options: BrowserLaunchOptions): Promise<BrowserSessionInfo> {
     const provision = await this.provision();
     if (!provision.ok || !provision.executablePath) {
       throw new BrowserSessionError(provision.problem ?? 'No usable browser is available.', provision.fix);

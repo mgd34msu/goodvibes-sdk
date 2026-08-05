@@ -105,6 +105,92 @@ export class UntrustedEffectError extends Error {
   }
 }
 
+/**
+ * Identity-provider hosts whose own sign-in routes this engine refuses to
+ * click or type on, matched by hostname so a subdomain still counts.
+ *
+ * This is deliberately not specific to Google. The Google flows in
+ * `platform/google/` already carry their own sign-in check
+ * (`looksLikeGoogleSignIn` in `browser-elements.ts`) and bail out before this
+ * code ever runs. This list exists for the path those flows do not cover: the
+ * browser tool driven directly, one click/type call at a time, with no
+ * structured flow watching for a sign-in redirect at all.
+ */
+const KNOWN_IDENTITY_PROVIDER_HOSTS: readonly RegExp[] = [
+  /(^|\.)accounts\.google\.com$/i,
+  /(^|\.)login\.microsoftonline\.com$/i,
+  /(^|\.)login\.live\.com$/i,
+  /(^|\.)appleid\.apple\.com$/i,
+  /(^|\.)login\.yahoo\.com$/i,
+  /(^|\.)github\.com$/i,
+];
+
+/** Path or query shape that reads as a sign-in step rather than ordinary browsing. */
+const SIGN_IN_ROUTE_PATTERN = /(sign[\s_-]?in|log[\s_-]?in|authorize|oauth)/i;
+
+/**
+ * Whether the current page is a credential-entry page this engine should
+ * refuse to drive.
+ *
+ * Two independent signals, either sufficient on its own:
+ *   - a password-type field is present right now, which works for any site
+ *     and needs no provider list at all;
+ *   - the URL is on a known identity provider's own sign-in route, which
+ *     catches the page before a password field has necessarily rendered yet
+ *     (an email/identifier step, an account picker).
+ *
+ * `hasPasswordField` is supplied by the caller rather than computed here: the
+ * engine already has either a stored snapshot or a live page to ask, and
+ * which one it uses is a decision this pure function should not have to make.
+ */
+export function looksLikeCredentialPage(url: string, hasPasswordField: boolean): boolean {
+  if (hasPasswordField) return true;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (!KNOWN_IDENTITY_PROVIDER_HOSTS.some((pattern) => pattern.test(parsed.hostname))) return false;
+  return SIGN_IN_ROUTE_PATTERN.test(parsed.pathname) || SIGN_IN_ROUTE_PATTERN.test(parsed.search);
+}
+
+/**
+ * The message/fix pair for refusing an interactive action on a credential
+ * page, or null when the page is not one.
+ *
+ * `elements` is whatever the last snapshot recorded — a plain `{ role, name }`
+ * shape rather than the full `BrowserElementRef`, so this stays a pure
+ * function with no dependency on the snapshot module. The engine is the only
+ * caller, and it is the one place that knows whether a snapshot exists at all.
+ */
+export function credentialPageRefusal(
+  url: string,
+  elements: readonly { readonly role: string; readonly name: string }[],
+  action: string,
+): { readonly message: string; readonly fix: string } | null {
+  const hasPasswordField = elements.some((element) => element.role.toLowerCase() === 'textbox' && /password/i.test(element.name));
+  if (!looksLikeCredentialPage(url, hasPasswordField)) return null;
+  return {
+    message: `This page looks like a sign-in page (${url}), so the browser layer will not ${action} on it. Automated sign-ins are not supported here — only the account owner can complete one.`,
+    fix: `Give the owner this URL to open in their own browser and sign in there: ${url}`,
+  };
+}
+
+/**
+ * What `launch()` tells the caller happened. Reuse is called out explicitly —
+ * only one managed session runs at a time, so a second launch call getting
+ * the same session back is a normal outcome, not a silent no-op.
+ */
+export function launchNote(session: { readonly reused: boolean; readonly headless: boolean; readonly sessionId: string }): string {
+  if (session.reused) {
+    return `Reusing the browser session already open (${session.sessionId}). Only one managed session runs at a time; call action:"close" first if a different profile is needed.`;
+  }
+  return session.headless
+    ? 'Started headless. Pass headless:false to open a visible window for a sign-in.'
+    : 'Started a visible window. Sign in once here and the profile keeps the login for later runs.';
+}
+
 export function normalizeUrl(rawUrl: string): string {
   const trimmed = rawUrl.trim();
   if (!trimmed) {
