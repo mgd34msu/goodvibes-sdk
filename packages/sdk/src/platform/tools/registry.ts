@@ -105,10 +105,13 @@ export class ToolRegistry {
   ): Promise<ToolResult> {
     const tool = this.tools.get(name);
     if (!tool) {
+      const known = [...this.tools.keys()].sort();
       return {
         callId,
         success: false,
-        error: `Unknown tool: '${name}'`,
+        error: known.length > 0
+          ? `Unknown tool: '${name}'. Known tools: ${known.join(', ')}.`
+          : `Unknown tool: '${name}'. No tools are registered.`,
       };
     }
 

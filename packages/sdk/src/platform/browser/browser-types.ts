@@ -135,6 +135,19 @@ export interface BrowserSessionInfo {
   readonly closableByAgent: boolean;
 }
 
+/**
+ * What `launch()` returns: the ordinary session facts plus whether this call
+ * reused an already-open session instead of starting a new one.
+ *
+ * `reused: true` is the single-instance rule made visible to the caller — a
+ * second launch request while one managed session is still open gets that
+ * session back rather than a second browser process pointed at the same
+ * profile directory, which is what used to open a new window per retry.
+ */
+export interface BrowserLaunchResult extends BrowserSessionInfo {
+  readonly reused: boolean;
+}
+
 export interface BrowserPageInfo {
   readonly pageId: string;
   readonly url: string;

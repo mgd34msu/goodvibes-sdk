@@ -20,9 +20,11 @@ import type {
 // card-field guard together took this file past the 800-line cap. Re-exported
 // below so the platform/browser barrel's surface is unchanged.
 import {
+  credentialPageRefusal,
   DEFAULT_ACTION_TIMEOUT_MS,
   DEFAULT_NAVIGATION_TIMEOUT_MS,
   DEFAULT_TEXT_LIMIT,
+  launchNote,
   normalizeUrl,
   readElementData,
   UntrustedEffectError,
@@ -217,9 +219,7 @@ export class BrowserEngine {
       // Setup that actually ran is reported, never swallowed: a first call that
       // spent two minutes installing a driver and a browser has to say so.
       ...this.setupReceipt(),
-      note: session.headless
-        ? 'Started headless. Pass headless:false to open a visible window for a sign-in.'
-        : 'Started a visible window. Sign in once here and the profile keeps the login for later runs.',
+      note: launchNote(session),
     };
   }
 
@@ -351,11 +351,25 @@ export class BrowserEngine {
     return this.snapshots.get(sessionId, pageId);
   }
 
+  /**
+   * Refuses to drive a sign-in page. Called before every interactive action
+   * (click, type, press, select) — never before a read-only one, since
+   * reading is exactly what lets the caller notice a sign-in page and hand
+   * the URL back instead of clicking through it. See `credentialPageRefusal`
+   * in browser-engine-contract.ts for what counts as a sign-in page and why:
+   * this method is only the plumbing that gets it a URL and the last snapshot.
+   */
+  private refuseCredentialInteraction(sessionId: string, pageId: string, page: Page, action: string): void {
+    const refusal = credentialPageRefusal(page.url(), this.currentSnapshot(sessionId, pageId)?.elements ?? [], action);
+    if (refusal) throw new BrowserSessionError(refusal.message, refusal.fix);
+  }
+
   async click(
     target: BrowserTarget,
     args: { readonly ref: string; readonly button?: 'left' | 'right' | 'middle' | undefined; readonly clickCount?: number | undefined; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    this.refuseCredentialInteraction(sessionId, pageId, page, 'click');
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     if (element.submits) {
       // Submitting sends data to whoever runs the site. Whether this element
@@ -407,6 +421,7 @@ export class BrowserEngine {
     },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    this.refuseCredentialInteraction(sessionId, pageId, page, 'type');
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     const timeout = args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS;
     if (args.submit === true) {
@@ -487,6 +502,7 @@ export class BrowserEngine {
     args: { readonly ref: string; readonly values: readonly string[]; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    this.refuseCredentialInteraction(sessionId, pageId, page, 'select');
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     const selected = await locator.selectOption([...args.values], { timeout: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS });
     return { sessionId, pageId, selectedIn: { ref: args.ref, role: element.role, name: element.name }, selected };
@@ -497,6 +513,7 @@ export class BrowserEngine {
     args: { readonly ref: string; readonly key: string; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
+    this.refuseCredentialInteraction(sessionId, pageId, page, 'press');
     const { locator, element } = await resolveRef(page, this.currentSnapshot(sessionId, pageId), args.ref);
     if (args.key === 'Enter' || args.key === 'NumpadEnter') {
       await this.requireOutwardEffectAllowed(
