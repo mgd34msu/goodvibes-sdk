@@ -17063,6 +17063,7 @@ export const WEBUI_METHOD_SAMPLES: Readonly<Record<string, WebuiMethodSample>> =
         "label": "sample",
         "value": "sample",
         "valid": false,
+        "section": "sample",
         "invalidReason": "sample",
         "provenance": {
           "surface": "sample",

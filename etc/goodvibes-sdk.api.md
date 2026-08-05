@@ -17989,6 +17989,7 @@ export interface OperatorMethodOutputMap {
             label: string;
             value: string;
             valid: boolean;
+            section: string;
             invalidReason?: string;
             provenance?: {
                 surface: string;
@@ -18018,7 +18019,7 @@ export interface OperatorMethodOutputMap {
         fieldId: string;
         present: boolean;
         handEdited: boolean;
-        provenance?: {
+        provenance: null | {
             surface: string;
             date: string;
             said: string;

@@ -64,6 +64,30 @@ export const PROFILE_PROVENANCE_SCHEMA = objectSchema({
   said: STRING_SCHEMA,
 }, ['surface', 'date', 'said']);
 
+/**
+ * The same provenance, where the runtime answers an explicit `null`.
+ *
+ * `profile.provenance` returns `ProfileProvenanceReport`, whose `provenance` is
+ * `ProfileProvenance | null` — a hand-edited field carries `handEdited: true`
+ * and a null source. The schema declared a plain object, so a strict client
+ * validating that answer failed with `field "$.provenance" expected object but
+ * received null` on every hand-edited field, in exactly the way `profile.get`
+ * failed on `$.field.section`.
+ *
+ * Declared nullable rather than dropped from the payload, and nullable in the
+ * same shape `reason` already uses on the write result: the null is the store's
+ * own three-state answer (recorded / hand-edited / not present at all), and
+ * removing the property would change the bytes on the wire for every client
+ * that already handles it.
+ *
+ * Everywhere else provenance is OMITTED when there is none rather than sent as
+ * null — the field views, the prose lines, the superseded lines — so those keep
+ * the non-nullable schema and say exactly what they send.
+ */
+export const NULLABLE_PROFILE_PROVENANCE_SCHEMA: Record<string, unknown> = {
+  anyOf: [PROFILE_PROVENANCE_SCHEMA, { type: 'null' }],
+};
+
 /** One prose line, preserved as written. */
 export const PROFILE_LINE_SCHEMA = objectSchema({
   lineIndex: NUMBER_SCHEMA,
@@ -81,6 +105,34 @@ export const PROFILE_FIELD_SCHEMA = objectSchema({
   invalidReason: STRING_SCHEMA,
   provenance: PROFILE_PROVENANCE_SCHEMA,
 }, ['fieldId', 'label', 'value', 'valid']);
+
+/**
+ * One mechanical field as `profile.get` answers it: everything the read view
+ * carries, plus the heading it was found under.
+ *
+ * `section` is real data — it comes from the fields registry, and it is the
+ * answer to "whereabouts in my profile is that written". It is DECLARED here
+ * rather than stripped from the payload or waved through by loosening
+ * `additionalProperties`, because a client that cannot see the property is no
+ * better served than one that fails on it.
+ *
+ * Its own schema rather than an optional property on {@link
+ * PROFILE_FIELD_SCHEMA}, because that one is also `profile.read`'s, and
+ * `profile.read` does not send `section` — it groups fields under their
+ * heading, so repeating it on each field would be noise. Adding a property to
+ * THAT response would break every client still validating against the
+ * previously published contract: the same failure this schema exists to fix,
+ * pointed at a different verb.
+ */
+export const PROFILE_FIELD_DETAIL_SCHEMA = objectSchema({
+  fieldId: STRING_SCHEMA,
+  label: STRING_SCHEMA,
+  value: STRING_SCHEMA,
+  valid: BOOLEAN_SCHEMA,
+  section: STRING_SCHEMA,
+  invalidReason: STRING_SCHEMA,
+  provenance: PROFILE_PROVENANCE_SCHEMA,
+}, ['fieldId', 'label', 'value', 'valid', 'section']);
 
 /** One `## ` section, with its tier so a caller knows what it is holding. */
 export const PROFILE_SECTION_SCHEMA = objectSchema({
@@ -155,7 +207,7 @@ export const PROFILE_GET_INPUT_SCHEMA = objectSchema({ fieldId: STRING_SCHEMA },
 export const PROFILE_GET_OUTPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   present: BOOLEAN_SCHEMA,
-  field: PROFILE_FIELD_SCHEMA,
+  field: PROFILE_FIELD_DETAIL_SCHEMA,
   disclosure: STRING_SCHEMA,
 }, ['fieldId', 'present', 'disclosure']);
 
@@ -171,9 +223,9 @@ export const PROFILE_PROVENANCE_OUTPUT_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   present: BOOLEAN_SCHEMA,
   handEdited: BOOLEAN_SCHEMA,
-  provenance: PROFILE_PROVENANCE_SCHEMA,
+  provenance: NULLABLE_PROFILE_PROVENANCE_SCHEMA,
   superseded: arraySchema(PROFILE_SUPERSEDED_SCHEMA),
-}, ['fieldId', 'present', 'handEdited', 'superseded']);
+}, ['fieldId', 'present', 'handEdited', 'provenance', 'superseded']);
 
 /**
  * `authority` is REQUIRED on all four write verbs, and the required arrays below

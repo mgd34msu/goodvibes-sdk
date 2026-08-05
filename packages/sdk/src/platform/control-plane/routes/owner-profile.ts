@@ -62,6 +62,7 @@ import {
   profileFieldById,
   unknownProfileFieldMessage,
   type OwnerProfileStore,
+  type ProfileFieldValue,
   type ProfileSurface,
 } from '../../owner-profile/index.js';
 import {
@@ -161,6 +162,39 @@ function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethod
   return () => service.status();
 }
 
+/**
+ * The wire shape of the field `profile.get` answers with.
+ *
+ * This handler used to answer with the store's `ProfileFieldValue` spread
+ * as-is, and that object carries two properties the published contract never
+ * declared: `section` and `lineIndex`. Every operator method's output schema
+ * carries `additionalProperties: false` and the client validates against it, so
+ * the extras were not tolerated and ignored — they were a hard failure, and no
+ * profile field could be read from a strict client at all. It cost the owner
+ * his shipping address on a live agent turn.
+ *
+ * `section` is genuinely useful and is now DECLARED, in
+ * `method-catalog-owner-profile.ts`. `lineIndex` is not, and does not go on the
+ * wire: a field is addressed by its id and a prose line by its content, never
+ * by position, and §5.1 keeps the index describing the in-memory model rather
+ * than the reachable surface.
+ *
+ * Projecting explicitly, rather than spreading whatever the store holds, is
+ * what stops the next property added to `ProfileFieldValue` from repeating
+ * this. `profile.read` has always projected — see `OwnerProfileStore.viewOf`.
+ */
+function profileFieldPayload(field: ProfileFieldValue): Record<string, unknown> {
+  return {
+    fieldId: field.fieldId,
+    label: field.label,
+    value: field.value,
+    valid: field.valid,
+    section: field.section,
+    ...(field.invalidReason === undefined ? {} : { invalidReason: field.invalidReason }),
+    ...(field.provenance === undefined ? {} : { provenance: field.provenance }),
+  };
+}
+
 function createGetHandler(
   service: OwnerProfileGatewayService,
   policy: OwnerProfilePolicy,
@@ -179,7 +213,7 @@ function createGetHandler(
     return {
       fieldId,
       present: field !== undefined,
-      ...(field === undefined ? {} : { field }),
+      ...(field === undefined ? {} : { field: profileFieldPayload(field) }),
       disclosure: disclose ? describeProfileRead([fieldId]) : '',
     };
   };

@@ -77235,6 +77235,9 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "valid": {
                   "type": "boolean"
                 },
+                "section": {
+                  "type": "string"
+                },
                 "invalidReason": {
                   "type": "string"
                 },
@@ -77263,7 +77266,8 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
                 "fieldId",
                 "label",
                 "value",
-                "valid"
+                "valid",
+                "section"
               ],
               "additionalProperties": false
             },
@@ -77415,24 +77419,31 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
               "type": "boolean"
             },
             "provenance": {
-              "type": "object",
-              "properties": {
-                "surface": {
-                  "type": "string"
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "surface": {
+                      "type": "string"
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "said": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "surface",
+                    "date",
+                    "said"
+                  ],
+                  "additionalProperties": false
                 },
-                "date": {
-                  "type": "string"
-                },
-                "said": {
-                  "type": "string"
+                {
+                  "type": "null"
                 }
-              },
-              "required": [
-                "surface",
-                "date",
-                "said"
-              ],
-              "additionalProperties": false
+              ]
             },
             "superseded": {
               "type": "array",
@@ -77498,6 +77509,7 @@ export const OPERATOR_CONTRACT: OperatorContractManifest = {
             "fieldId",
             "present",
             "handEdited",
+            "provenance",
             "superseded"
           ],
           "additionalProperties": false
