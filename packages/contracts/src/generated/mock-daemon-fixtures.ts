@@ -14465,6 +14465,7 @@ export const MOCK_DAEMON_FIXTURES: MockDaemonFixtureMap = {
         "label": "sample",
         "value": "sample",
         "valid": false,
+        "section": "sample",
         "invalidReason": "sample",
         "provenance": {
           "surface": "sample",

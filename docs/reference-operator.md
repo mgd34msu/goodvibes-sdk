@@ -78653,6 +78653,9 @@ Return one mechanical field by id (e.g. commerce.shippingAddress). Answers prese
         "valid": {
           "type": "boolean"
         },
+        "section": {
+          "type": "string"
+        },
         "invalidReason": {
           "type": "string"
         },
@@ -78681,7 +78684,8 @@ Return one mechanical field by id (e.g. commerce.shippingAddress). Answers prese
         "fieldId",
         "label",
         "value",
-        "valid"
+        "valid",
+        "section"
       ],
       "additionalProperties": false
     },
@@ -78841,24 +78845,31 @@ Answer "where did you get that?" for one field: the surface, the date and the ow
       "type": "boolean"
     },
     "provenance": {
-      "type": "object",
-      "properties": {
-        "surface": {
-          "type": "string"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "surface": {
+              "type": "string"
+            },
+            "date": {
+              "type": "string"
+            },
+            "said": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "surface",
+            "date",
+            "said"
+          ],
+          "additionalProperties": false
         },
-        "date": {
-          "type": "string"
-        },
-        "said": {
-          "type": "string"
+        {
+          "type": "null"
         }
-      },
-      "required": [
-        "surface",
-        "date",
-        "said"
-      ],
-      "additionalProperties": false
+      ]
     },
     "superseded": {
       "type": "array",
@@ -78924,6 +78935,7 @@ Answer "where did you get that?" for one field: the surface, the date and the ow
     "fieldId",
     "present",
     "handEdited",
+    "provenance",
     "superseded"
   ],
   "additionalProperties": false
