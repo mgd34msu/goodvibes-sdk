@@ -43,19 +43,30 @@ export function isCurrentTurnEvent(domain: ConversationDomainState, turnId: stri
   return domain.currentTurnId !== undefined && domain.currentTurnId === turnId;
 }
 
+/**
+ * formatPartialToolPreview - The name of the tool call now in flight, or
+ * undefined when no tool call has been named yet.
+ *
+ * This value is a STATUS label: surfaces render it in an ambient "what is
+ * happening right now" region (the agent's activity sidebar, the thinking
+ * fragment). It is recomputed on every STREAM_DELTA, so it must depend only on
+ * facts that are stable across the deltas of a single tool call.
+ *
+ * A tool call's `arguments` string is NOT such a fact — it arrives a few
+ * characters at a time as the provider streams the call's JSON. Including it
+ * here made the status region redraw a longer fragment on every delta, which
+ * reads as the label flashing through the model's output character by
+ * character until the turn ends. Streamed characters belong to the transcript;
+ * the status region gets the stable phrase. The tool NAME is delivered whole
+ * before its arguments begin, so it holds still for the life of the call, and
+ * it is the useful part: it says which tool is running.
+ */
 export function formatPartialToolPreview(toolCalls?: PartialToolCall[]): string | undefined {
   if (!toolCalls || toolCalls.length === 0) return undefined;
-  const last = toolCalls[toolCalls.length - 1] as { name?: unknown; arguments?: unknown };
-  const name = typeof last.name === 'string' ? last.name : '';
-  const args =
-    typeof last.arguments === 'string'
-      ? last.arguments
-      : last.arguments !== undefined
-        ? JSON.stringify(last.arguments)
-        : '';
+  const last = toolCalls[toolCalls.length - 1] as { name?: unknown };
+  const name = typeof last.name === 'string' ? last.name.trim() : '';
   if (!name) return undefined;
-  const preview = args.length > 60 ? `${args.slice(0, 57)}...` : args;
-  return `${name}(${preview})`;
+  return name;
 }
 
 export function resetStreamState(): ConversationDomainState['stream'] {
