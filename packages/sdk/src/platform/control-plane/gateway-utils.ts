@@ -30,6 +30,77 @@ export const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
   'turn',
 ];
 
+/**
+ * What a client needs to RENDER a turn whose loop it is not running.
+ *
+ * `DEFAULT_DOMAINS` carries `turn` — the text deltas, the turn lifecycle, and
+ * the token usage on `LLM_RESPONSE_RECEIVED` — but it does NOT carry `tools`,
+ * which is where `TOOL_RECEIVED`, `TOOL_EXECUTING`, `TOOL_SUCCEEDED` and
+ * `TOOL_FAILED` are emitted. A subscriber on the defaults therefore receives
+ * everything the model SAID and nothing it DID: the turn renders with its tool
+ * calls missing entirely, which reads as an assistant that paused for no
+ * reason and then answered.
+ *
+ * This is `DEFAULT_DOMAINS` plus `tools`, deliberately ADDITIVE — a stream
+ * moved onto it keeps every domain it already delivered and gains the tool
+ * frames, so no existing consumer loses an event it was relying on.
+ */
+export const RENDER_GRADE_SESSION_DOMAINS: readonly RuntimeEventDomain[] = [...DEFAULT_DOMAINS, 'tools'];
+
+/** How a control-plane stream writes one event to its client. */
+type ScopedSend = (event: string, payload: unknown, id?: string) => void;
+
+/** Live delivery and replay, filtered to one session by the same rule. */
+export interface ScopedSessionDelivery {
+  /** Whether a frame stamped with `envelopeSessionId` belongs on this stream. */
+  mayDeliver(envelopeSessionId: string | undefined): boolean;
+  /** The same decision applied to replayed traffic, which is already serialized. */
+  wrapSend(send: ScopedSend): ScopedSend;
+}
+
+/**
+ * Restrict a stream to ONE session's frames.
+ *
+ * A stream opened at a per-session path must not render another session's turn
+ * into that session's transcript. The gateway's `sessionId` option alone has
+ * never filtered delivery — it records which session a client is ABOUT, and
+ * several streams set it while deliberately watching the whole daemon — so
+ * scoping is opted into explicitly and resolved here, in one place, rather than
+ * being written twice and drifting between live delivery and replay.
+ *
+ * Two rules:
+ *
+ *  - A frame carrying a DIFFERENT session's id is dropped.
+ *  - A frame carrying NO session id is delivered. It makes no claim about
+ *    another session, and dropping it would silently strip the daemon-wide
+ *    lifecycle traffic these streams have always carried.
+ *
+ * `scopedSessionId` of `undefined` means no scoping: everything is delivered,
+ * which is what a fleet-wide observer wants and what every stream did before.
+ */
+export function createScopedSessionDelivery(scopedSessionId: string | undefined): ScopedSessionDelivery {
+  const mayDeliver = (envelopeSessionId: string | undefined): boolean =>
+    scopedSessionId === undefined
+    || envelopeSessionId === undefined
+    || envelopeSessionId === scopedSessionId;
+  return {
+    mayDeliver,
+    // Replay goes through the SAME rule as live delivery: a reconnect that
+    // re-sent another session's frames would put back exactly what the live
+    // filter exists to keep out.
+    wrapSend: (send) => (scopedSessionId === undefined
+      ? send
+      : (event, payload, id): void => {
+        const serialized = payload as { sessionId?: unknown } | null;
+        const envelopeSessionId = serialized && typeof serialized.sessionId === 'string'
+          ? serialized.sessionId
+          : undefined;
+        if (!mayDeliver(envelopeSessionId)) return;
+        send(event, payload, id);
+      }),
+  };
+}
+
 export interface ControlPlaneEventReplayScope {
   readonly clientKind?: string | undefined;
   readonly clientId?: string | undefined;

@@ -12,12 +12,19 @@
  * parallel family for the same operations is how two spellings of one action
  * drift apart.
  *
- * There is also no token-stream verb. The hosted loop is the ordinary
- * Orchestrator, so it already emits STREAM_DELTA, tool starts/results and turn
- * transitions on the runtime bus stamped with the hosted session's id, and the
- * control-plane SSE stream already forwards the `turn` and `tools` domains to
- * any subscriber. A client attached to a hosted session watches exactly what it
- * watches locally and filters on the id `sessions.hosted.attach` handed it.
+ * There is also no token-stream verb, and there does not need to be. The hosted
+ * loop is the ordinary Orchestrator, so it emits STREAM_DELTA, tool
+ * starts/results and turn transitions on the runtime bus already stamped with
+ * the hosted session's id (`createEmitterContext(sessionId, turnId)`), and
+ * `GET /api/sessions/:id/events` streams them.
+ *
+ * That route did NOT always carry all of it. It subscribed on DEFAULT_DOMAINS,
+ * which includes `turn` but not `tools` — so a remote renderer received text
+ * deltas, turn lifecycle and usage, and no tool call or tool result at all. It
+ * also delivered every OTHER session's frames down a path that names one
+ * session. Both are fixed at the route (see `openSessionEventStream` in
+ * daemon/http/router.ts): it subscribes on RENDER_GRADE_SESSION_DOMAINS — the
+ * defaults plus `tools` — and scopes delivery to its own session id.
  *
  * What IS here is the lifecycle nobody could express: bring a hosted session
  * into being, join it, leave it (which is where the detach policy is applied),

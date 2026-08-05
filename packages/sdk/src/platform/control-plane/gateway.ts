@@ -20,12 +20,14 @@ import { CHANNEL_REQUIRED_SCOPE, clientMayReceiveEventDomain, clientMaySeeScoped
 import type {
   ControlPlaneClientDescriptor,
   ControlPlaneServerConfig,
+  ControlPlaneStreamClientKind,
   ControlPlaneSurfaceMessage,
 } from './types.js';
 import { type FeatureFlagReader, isFeatureGateEnabled, requireFeatureGate } from '../runtime/feature-flags/index.js';
 import {
   DEFAULT_DOMAINS,
   DEFAULT_SERVER_CONFIG,
+  createScopedSessionDelivery,
   hasReplayScope,
   normalizeRuntimeDomains,
   pruneDisconnectedClientRecords,
@@ -48,25 +50,7 @@ export interface ControlPlaneGatewayConfig {
 
 export interface ControlPlaneEventStreamOptions {
   readonly clientId?: string | undefined;
-  readonly clientKind?:
-    | 'tui'
-    | 'web'
-    | 'slack'
-    | 'discord'
-    | 'ntfy'
-    | 'webhook'
-    | 'homeassistant'
-    | 'telegram'
-    | 'google-chat'
-    | 'signal'
-    | 'whatsapp'
-    | 'telephony'
-    | 'imessage'
-    | 'msteams'
-    | 'bluebubbles'
-    | 'mattermost'
-    | 'matrix'
-    | 'daemon';
+  readonly clientKind?: ControlPlaneStreamClientKind;
   readonly transport?: 'local' | 'http' | 'sse' | 'ws' | 'webhook' | undefined;
   readonly label?: string | undefined;
   readonly domains?: readonly RuntimeEventDomain[] | undefined;
@@ -76,6 +60,8 @@ export interface ControlPlaneEventStreamOptions {
   /** Admin token — scopes collapse; sees all channels. */
   readonly admin?: boolean | undefined;
   readonly sessionId?: string | undefined;
+  /** Deliver only `sessionId`'s frames; see {@link createScopedSessionDelivery}. */
+  readonly sessionScopedDelivery?: boolean | undefined;
   readonly routeId?: string | undefined;
   readonly surfaceId?: string | undefined;
   readonly remoteAddress?: string | undefined;
@@ -86,25 +72,7 @@ export interface ControlPlaneEventStreamOptions {
 
 interface LiveControlPlaneClient {
   readonly clientId: string;
-  readonly kind:
-    | 'tui'
-    | 'web'
-    | 'slack'
-    | 'discord'
-    | 'ntfy'
-    | 'webhook'
-    | 'homeassistant'
-    | 'telegram'
-    | 'google-chat'
-    | 'signal'
-    | 'whatsapp'
-    | 'telephony'
-    | 'imessage'
-    | 'msteams'
-    | 'bluebubbles'
-    | 'mattermost'
-    | 'matrix'
-    | 'daemon';
+  readonly kind: ControlPlaneStreamClientKind;
   readonly surfaceId?: string | undefined;
   readonly routeId?: string | undefined;
   /** Principal scopes (SSE/WS); `admin` collapses scopes (sees every channel). */
@@ -655,6 +623,8 @@ export class ControlPlaneGateway {
       });
     }
 
+    // One predicate for live delivery AND replay, so they cannot drift apart.
+    const scoped = createScopedSessionDelivery(options.sessionScopedDelivery === true ? options.sessionId : undefined);
     let teardown = (): void => {};
     // HWM 256 (default 1 drops handshake/replay chunks before the consumer pulls).
     const stream = new ReadableStream<Uint8Array>({
@@ -665,6 +635,7 @@ export class ControlPlaneGateway {
           controller.enqueue(encoder.encode(`${id ? `id: ${id}\n` : ''}event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`));
         };
         const unsubs = selectedDomains.map((domain) => this.runtimeBus!.onDomain(domain, (envelope) => {
+          if (!scoped.mayDeliver(envelope.sessionId)) return;
           const updated: ControlPlaneClientRecord = {
             ...clientRecord,
             lastSeenAt: Date.now(),
@@ -745,7 +716,7 @@ export class ControlPlaneGateway {
           try { controller.close(); } catch { /* already closed by cancel */ }
         }, { once: true });
         send('ready', { clientId, domains: selectedDomains });
-        replayRecentTraffic(this.recentEvents, send, { ...options, clientId, domains: selectedDomains }, sseLiveDomains, lastEventId);
+        replayRecentTraffic(this.recentEvents, scoped.wrapSend(send), { ...options, clientId, domains: selectedDomains }, sseLiveDomains, lastEventId);
         // First keep-alive immediately on open (not one interval later), so the
         // window before the first interval can't strand a quiet stream.
         emitHeartbeat();

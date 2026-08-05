@@ -157,7 +157,7 @@ export interface GoodVibesConfig {
   service: ServiceConfig;
   network: NetworkConfig;
   relay: RelayConfig;
-  daemon: { enabled: boolean; timezone: string };
+  daemon: { enabled: boolean; timezone: string; connectedHost: { enabled: boolean } };
   payments: PaymentsConfig;
     // default: enabled true — run the local session daemon (loopback only); timezone '' — IANA name the daemon reckons calendar days in, empty means UTC
   danger: {
@@ -372,6 +372,7 @@ export type ConfigKey =
   | 'hostedSessions.detachPolicy' | 'hostedSessions.maxSessions' | 'hostedSessions.maxMessagesPerSession' | 'hostedSessions.terminatedRetentionMs'
   | 'hostedSessions.attachmentTtlMs'
   | 'hostedSessions.promoteInboundConversations'
+  | 'hostedSessions.routeConversationTurns'
   | 'controlPlane.streamMode'
   | 'controlPlane.allowRemote'
   | 'controlPlane.trustProxy'

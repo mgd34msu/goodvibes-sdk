@@ -18,6 +18,7 @@ import type { ApprovalBroker, ControlPlaneGateway, SharedSessionBroker } from '.
 import type { GatewayMethodCatalog } from '../../control-plane/index.js';
 import { buildOperatorContract } from '../../control-plane/operator-contract.js';
 import { CLIENT_COMPATIBILITY_FLOOR, CLIENT_COMPATIBILITY_FLOOR_HEADER } from '../../control-plane/client-compatibility.js';
+import { openScopedSessionEventStream } from './session-event-stream.js';
 import type { ProviderRegistry } from '../../providers/registry.js';
 import {
   getProviderRuntimeSnapshot,
@@ -445,18 +446,8 @@ export class DaemonHttpRouter {
         parseOptionalJsonBody: (request: Request) => this.parseOptionalJsonBody(request),
         resolveDefaultProviderModel: this.context.resolveDefaultProviderModel,
         openSessionEventStream: (request: Request, sessionId: string) => {
-          // Create a session-scoped SSE stream. Use the clientId as the isolation key.
-          const clientId = `companion-chat:${sessionId}`;
-          chatManager.registerSubscriber(sessionId, clientId);
-          return gateway.createEventStream(request, {
-            clientId,
-            // Companion chat sessions are isolated per-session via the clientId above;
-            // we reuse 'web' as the clientKind since the gateway's kind union does not
-            // yet include 'companion'. Client-side filtering uses clientId, not clientKind.
-            clientKind: 'web',
-            sessionId,
-            label: `companion-chat/${sessionId}`,
-          });
+          chatManager.registerSubscriber(sessionId, `companion-chat:${sessionId}`);
+          return openScopedSessionEventStream(gateway, request, { clientPrefix: 'companion-chat', sessionId });
         },
       });
       if (companionResponse) return companionResponse;
@@ -618,19 +609,12 @@ export class DaemonHttpRouter {
             { sessionId, ...envelope },
           );
         },
-        openSessionEventStream: (req, sessionId) => {
-          // Create a session-scoped SSE stream for the companion app to receive
-          // turn events (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events.
-          // The 'turn' domain is included in DEFAULT_DOMAINS so turn events
-          // automatically flow to all SSE subscribers without extra configuration.
-          const clientId = `shared-session:${sessionId}`;
-          return this.context.controlPlaneGateway.createEventStream(req, {
-            clientId,
-            clientKind: 'web',
-            sessionId,
-            label: `shared-session/${sessionId}`,
-          });
-        },
+        // `GET /api/sessions/:id/events` — see http/session-event-stream.ts.
+        openSessionEventStream: (req, sessionId) => openScopedSessionEventStream(
+          this.context.controlPlaneGateway,
+          req,
+          { clientPrefix: 'shared-session', sessionId },
+        ),
       }),
       ...createDaemonRemoteRouteHandlers({
         authToken: this.context.authToken(),

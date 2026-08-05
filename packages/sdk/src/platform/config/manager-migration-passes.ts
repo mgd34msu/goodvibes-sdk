@@ -8,6 +8,7 @@
 import { writeJsonFileAtomic } from '../utils/atomic-json-store.js';
 import {
   migrateControlPlaneBaseUrlRemoval,
+  migrateDaemonConnectedHostSplit,
   migrateDaemonEmbedInProcessRemoval,
   migrateDangerDaemonAlias,
   migrateFleetMaxSizeRename,
@@ -201,6 +202,59 @@ export function applyDaemonEmbedInProcessMigrationPass(
 }
 
 /**
+ * `daemon.enabled: false` gets the other half of its old meaning written down:
+ * `daemon.connectedHost.enabled: true`, with a receipt.
+ *
+ * The one key used to answer two questions — does this surface ADOPT a daemon
+ * of its own, and may it DIAL one it is already connected to. Declining the
+ * first silently declined the second, so a machine with `daemon.enabled: false`
+ * and a live connected host had its session-inputs poll, rewind registration,
+ * approvals stream and hosted-conversation handoff all refusing, while its
+ * session spine, memory spine and operator tools dialed the same host fine.
+ *
+ * The new key's default already fixes the behaviour. This pass exists so the
+ * user's file SAYS so: the decision they made is split in two on disk where
+ * they can see both halves, rather than one of them quietly changing meaning
+ * underneath a flag they set years ago.
+ *
+ * Ownership applies (see {@link MigrationOwnership}): a process that does not
+ * own the file migrates its in-memory view and writes neither bytes nor a
+ * receipt, because "your file now reads this way" would not be true.
+ */
+export function applyDaemonConnectedHostSplitMigrationPass(
+  parsed: Record<string, unknown>,
+  sourcePath: string,
+  receipt: MigrationReceiptSink,
+  ownership: MigrationOwnership = OWNS_FILE,
+): Record<string, unknown> {
+  const result = migrateDaemonConnectedHostSplit(parsed);
+  if (!result.migrated) return parsed;
+  if (!ownership.ownsFile) {
+    logger.debug(
+      `daemon connected-host split applied in memory only for ${sourcePath}: this process does not own the file.`,
+    );
+    return result.config;
+  }
+  persistMigratedFile(sourcePath, result.config, 'daemon connected-host split');
+  const receiptText =
+    `Setting added: daemon.connectedHost.enabled is now true in ${sourcePath}. `
+    + 'Your daemon.enabled is false and is unchanged — it still means this surface does not adopt a '
+    + 'session daemon of its own. It used to ALSO mean this surface may not talk to a daemon it is '
+    + 'already connected to, which is a different decision and is now its own setting. While they '
+    + 'were one key, turning adoption off also stopped inbound-message delivery, conversation rewind '
+    + 'registration, the live approvals stream and daemon-routed turns — on machines whose connected '
+    + 'host was running and answering everything else. Those now work. Set '
+    + 'daemon.connectedHost.enabled to false if you want no daemon contact at all.';
+  logger.info(receiptText);
+  try {
+    receipt(`settings-migration-daemon-connected-host-split:${sourcePath}`, receiptText);
+  } catch (err) {
+    logger.warn(`daemon connected-host split receipt could not be queued: ${summarizeError(err)}`);
+  }
+  return result.config;
+}
+
+/**
  * The payments budget amounts move onto their new names, with their numbers
  * converted, and a receipt naming every key and both values.
  *
@@ -296,6 +350,9 @@ export function runLoadMigrationPasses(
   config = applyFleetMaxSizeMigrationPass(config, sourcePath, receipt);
   config = applyControlPlaneBaseUrlMigrationPass(config, sourcePath, receipt);
   config = applyDaemonEmbedInProcessMigrationPass(config, sourcePath, receipt);
+  // After the danger.daemon alias pass above, so a file whose only statement of
+  // `daemon.enabled: false` arrived via that alias is split too.
+  config = applyDaemonConnectedHostSplitMigrationPass(config, sourcePath, receipt);
   config = applyPaymentsBudgetMigrationPass(config, sourcePath, receipt);
   return applyDefaultStripMigrationPass(config, sourcePath, receipt);
 }

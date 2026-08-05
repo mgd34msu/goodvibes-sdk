@@ -7,6 +7,7 @@ export type {
 } from './types.js';
 export type { ControlPlaneGatewayConfig, ControlPlaneEventStreamOptions, ControlPlaneRecentEvent } from './gateway.js';
 export { ControlPlaneGateway } from './gateway.js';
+export { DEFAULT_DOMAINS, RENDER_GRADE_SESSION_DOMAINS } from './gateway-utils.js';
 export { SSE_HEARTBEAT_INTERVAL_MS, sseIdleTimeoutSeconds } from './sse-timing.js';
 export {
   CLIENT_COMPATIBILITY_FLOOR,
