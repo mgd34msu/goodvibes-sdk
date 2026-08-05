@@ -295,7 +295,17 @@ function substitutionInCommandNamePosition(raw: string, subs: Substitution[]): b
  *  - the receiving command interprets its arguments as command text
  *    (`sh -c "$(curl …)"`, `eval`, `xargs`).
  */
-function commandSubstitutionObfuscation(raw: string, command: string): boolean {
+function commandSubstitutionObfuscation(
+  raw: string,
+  command: string,
+  firstTokenIsSubshell: boolean,
+): boolean {
+  // Structural signal, checked before any text scanning: when the node's FIRST
+  // token is a subshell there is no command name to resolve — the name is
+  // whatever the substitution prints. Such a node carries `command: ''`, so
+  // relying on the name alone would classify it as nothing at all. This does
+  // not depend on the raw text parsing back the way we expect.
+  if (firstTokenIsSubshell) return true;
   const subs = extractSubstitutions(raw);
   if (subs.length === 0) return false;
   if (substitutionInCommandNamePosition(raw, subs)) return true;
@@ -308,7 +318,13 @@ function commandSubstitutionObfuscation(raw: string, command: string): boolean {
 
 const OBFUSCATION_CHECKS: Array<{
   description: string;
-  test: (raw: string, args: string[], flags: string[], command: string) => boolean;
+  test: (
+    raw: string,
+    args: string[],
+    flags: string[],
+    command: string,
+    node: CommandNode,
+  ) => boolean;
 }> = [
   {
     /**
@@ -336,7 +352,8 @@ const OBFUSCATION_CHECKS: Array<{
   },
   {
     description: 'command substitution assembling a command (backtick or $())',
-    test: (raw, _args, _flags, command) => commandSubstitutionObfuscation(raw, command),
+    test: (raw, _args, _flags, command, node) =>
+      commandSubstitutionObfuscation(raw, command, node.tokens[0]?.type === 'subshell'),
   },
   {
     description: 'octal or unicode escape in path argument',
@@ -372,7 +389,7 @@ const OBFUSCATION_CHECKS: Array<{
 function detectObfuscation(node: CommandNode): string[] {
   const found: string[] = [];
   for (const check of OBFUSCATION_CHECKS) {
-    if (check.test(node.raw, node.args, node.flags, node.command)) {
+    if (check.test(node.raw, node.args, node.flags, node.command, node)) {
       found.push(check.description);
     }
   }

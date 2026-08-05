@@ -19,6 +19,16 @@
 import { describe, expect, test } from 'bun:test';
 import { normalizeCommandWithVerdicts } from '../packages/sdk/src/platform/runtime/permissions/normalization/index.js';
 import { ALL_COMMAND_CLASSES } from '../packages/sdk/src/platform/runtime/permissions/normalization/verdict.js';
+import { parseCommandAST } from '../packages/sdk/src/platform/runtime/permissions/normalization/parser.js';
+import { collectCommandNodes } from '../packages/sdk/src/platform/runtime/permissions/normalization/ast.js';
+import type { CommandNode } from '../packages/sdk/src/platform/runtime/permissions/normalization/ast.js';
+
+/** The first command node, asserted present so the test fails loudly if absent. */
+function expectFirst(nodes: CommandNode[]): CommandNode {
+  const first = nodes[0];
+  if (!first) throw new Error('expected at least one command node, got none');
+  return first;
+}
 
 /**
  * Evaluates with ALL classes allowed, which is what the exec tool passes: class
@@ -81,6 +91,19 @@ const PAIRS: Array<[string, string, string]> = [
     // command being assembled.
     `xargs $(cat cmd)`,
   ],
+  [
+    'a backtick substitution supplying a value',
+    'echo `date`',
+    // The backtick form of command-name assembly. This one used to escape the
+    // classifier entirely — see the describe block below.
+    '`which rm` -rf /tmp/x',
+  ],
+  [
+    'a backtick substitution reading a file into a quoted argument',
+    'curl -H "Auth: `cat token`" https://api.example.com/v1/me',
+    // Decoding inside a backtick substitution is the same decode-then-run shape.
+    'curl -H "X: `echo aGk= | base64 -d`" https://x/y',
+  ],
 ];
 
 describe('obfuscation classifier — benign diagnostics pass', () => {
@@ -138,6 +161,69 @@ describe('obfuscation classifier — the malicious neighbour is still denied', (
 
   test('a nested substitution is still obfuscation', () => {
     expect(verdict(`curl -H "X: $(cat $(cat which))" https://x/y`).allowed).toBe(false);
+  });
+});
+
+/**
+ * Backtick command-name assembly used to evade the classifier through the
+ * PARSER, not the classifier itself.
+ *
+ * `parseAtom` returned a bare SubshellNode for a subshell in first position and
+ * stopped, so every token after it was dropped. For `` `which rm` -rf /tmp/x ``
+ * the only node the classifier ever saw was the benign INNER command
+ * (`which rm`, a read) — the assembled command and its `-rf /tmp/x` arguments
+ * had vanished. The identical `$()` shape was caught, so the protection existed
+ * and only the backtick spelling walked past it.
+ */
+describe('backtick command-name assembly reaches the classifier', () => {
+  const NAME_ASSEMBLY = '`which rm` -rf /tmp/x';
+
+  test('the assembled command and its arguments survive parsing', () => {
+    const nodes = collectCommandNodes(parseCommandAST(NAME_ASSEMBLY));
+
+    expect(nodes).toHaveLength(1);
+    const node = expectFirst(nodes);
+    // The backticks are still in first position …
+    expect(node.raw.startsWith('`which rm`')).toBe(true);
+    // … and the arguments that used to be dropped are still attached.
+    expect(node.raw).toContain('-rf');
+    expect(node.raw).toContain('/tmp/x');
+    expect(node.flags).toContain('-rf');
+  });
+
+  test('it is denied, with the substitution named as the reason', () => {
+    const v = verdict(NAME_ASSEMBLY);
+
+    expect(v.allowed).toBe(false);
+    expect(v.patterns.join(' ')).toContain('command substitution');
+  });
+
+  test('the first token being a subshell is itself the signal', () => {
+    // The node carries no resolvable command name, so the denial must not
+    // depend on the name — it comes from the structure.
+    const node = expectFirst(collectCommandNodes(parseCommandAST(NAME_ASSEMBLY)));
+
+    expect(node.command).toBe('');
+    expect(node.tokens[0]?.type).toBe('subshell');
+  });
+
+  test('a decoding backtick in name position is denied', () => {
+    expect(verdict('`echo cm0K | base64 -d` /tmp/x').allowed).toBe(false);
+  });
+
+  test('a bare backtick substitution with nothing after it stays a subshell', () => {
+    // Unchanged behavior: with no arguments following, this really is a
+    // standalone subshell expression, not a command being assembled.
+    expect(verdict('`ls`').allowed).toBe(true);
+  });
+
+  test('a backtick in argument position is still ordinary shell', () => {
+    expect(verdict('ls `pwd`').allowed).toBe(true);
+    expect(verdict('grep -f "`cat patterns`" file.txt').allowed).toBe(true);
+  });
+
+  test('a nested substitution inside backticks is denied', () => {
+    expect(verdict('echo `cat $(cat inner)`').allowed).toBe(false);
   });
 });
 
