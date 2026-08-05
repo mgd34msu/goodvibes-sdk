@@ -6,6 +6,15 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Fixed
 
+- **Two writers of one store no longer destroy each other's work, and a store
+  that cannot be written no longer kills the process.** Every atomic write now
+  uses a temp file named per write instead of per process, and the sweep of
+  leftovers only reclaims files old enough to be crash debris — a temp file
+  still being written by another process, or by this one on another thread, is
+  left alone. Periodic snapshots that rebuild themselves (the watcher store
+  first among them) write through a variant that logs the path and errno and
+  returns the failure, so a save that fails inside a background tick is a log
+  line rather than the end of the process.
 - **A dead runtime record can no longer make the platform unreachable.** The
   daemon endpoint record is a hint now: liveness-checked before trust, reaped
   with a receipt when stale, and discovery falls through to the live daemon.

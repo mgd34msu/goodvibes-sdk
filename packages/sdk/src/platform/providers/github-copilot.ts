@@ -1,4 +1,4 @@
-import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { readJsonFileOrQuarantine, writeJsonFileAtomicSafe } from '../utils/atomic-json-store.js';
 import { join } from 'node:path';
 import type { ChatRequest, ChatResponse, LLMProvider, ProviderModelSource, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';
 import { OpenAICompatProvider } from './openai-compat.js';
@@ -202,7 +202,14 @@ async function resolveCopilotToken(options: GitHubCopilotProviderOptions): Promi
     expiresAt: parsed.expiresAt,
     updatedAt: Date.now(),
   };
-  writeJsonFileAtomic(cachePath, cachePayload, { trailingNewline: false });
+  // The token in hand is already valid; caching it only saves the next call an
+  // exchange. A cache the filesystem refused must not turn a successful token
+  // exchange into a failed provider call, so the failure is logged with its
+  // path and errno and the token is returned regardless.
+  writeJsonFileAtomicSafe(cachePath, cachePayload, {
+    trailingNewline: false,
+    label: 'providers/github-copilot-token-cache',
+  });
   return {
     token: parsed.token,
     baseUrl: deriveCopilotApiBaseUrlFromToken(parsed.token) ?? DEFAULT_COPILOT_API_BASE_URL,

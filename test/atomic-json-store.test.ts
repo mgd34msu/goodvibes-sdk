@@ -8,13 +8,14 @@
  * but before the bytes landed) and JSON cut off partway (a crash mid-write).
  */
 import { describe, expect, test } from 'bun:test';
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { makeProjectTempDir } from './_helpers/project-temp.ts';
 import {
   CORRUPT_QUARANTINE_MAX_FILES,
   quarantineCorruptFile,
   readJsonFileOrQuarantine,
+  STALE_TEMP_FILE_MIN_AGE_MS,
   writeFileAtomic,
   writeJsonFileAtomic,
 } from '../packages/sdk/src/platform/utils/atomic-json-store.ts';
@@ -89,6 +90,11 @@ describe('atomic write', () => {
     mkdirSync(dir, { recursive: true });
     const stale = `${path}.tmp-999999`;
     writeFileSync(stale, 'half a write from a process that died', 'utf-8');
+    // Aged past the safety window, because age is what tells a crash leftover
+    // apart from another writer's file still being written — see
+    // atomic-write-concurrency.test.ts for the crash that taught this.
+    const longAgo = new Date(Date.now() - (STALE_TEMP_FILE_MIN_AGE_MS + 60_000));
+    utimesSync(stale, longAgo, longAgo);
 
     writeJsonFileAtomic(path, { version: 1, items: ['fresh'] });
 

@@ -1,5 +1,10 @@
 import { resolveSharedDirectory } from '../runtime/surface-root.js';
-import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import {
+  readJsonFileOrQuarantine,
+  writeJsonFileAtomic,
+  writeJsonFileAtomicSafe,
+} from '../utils/atomic-json-store.js';
+import type { AtomicWriteOutcome } from '../utils/atomic-json-store.js';
 import type { WatcherRecord } from '../runtime/store/domains/watchers.js';
 
 export interface WatcherStoreSnapshot {
@@ -71,9 +76,29 @@ export function saveWatcherSnapshot(watchers: readonly WatcherRecord[], storePat
  * or a process that dies mid-write — only ever sees a complete snapshot.
  */
 export function saveWatcherSnapshotToPath(watchers: readonly WatcherRecord[], storePath: string): void {
-  const snapshot: WatcherStoreSnapshot = {
-    version: 1,
-    watchers: sortWatchers(watchers),
-  };
-  writeJsonFileAtomic(storePath, snapshot);
+  writeJsonFileAtomic(storePath, buildSnapshot(watchers));
+}
+
+/**
+ * Save a watcher snapshot the way a background tick needs it saved: a write
+ * that fails is logged at error level with the store path and the errno, and
+ * reported in the returned outcome — never thrown.
+ *
+ * The registry persists on every list refresh, and the fleet registry's
+ * coalesced tick calls that list on a timer. An exception raised there has no
+ * caller above it to catch anything, so it reaches the top as an uncaught
+ * exception and takes the process with it — which is precisely what happened
+ * on a live machine when a concurrent writer's sweep removed this store's temp
+ * file mid-write and the `chmod` came back ENOENT. Watcher state costs nothing
+ * to lose (see {@link WATCHER_STORE_RECOVERY}); the host process does not.
+ */
+export function saveWatcherSnapshotToPathSafe(
+  watchers: readonly WatcherRecord[],
+  storePath: string,
+): AtomicWriteOutcome {
+  return writeJsonFileAtomicSafe(storePath, buildSnapshot(watchers), { label: 'watchers/store' });
+}
+
+function buildSnapshot(watchers: readonly WatcherRecord[]): WatcherStoreSnapshot {
+  return { version: 1, watchers: sortWatchers(watchers) };
 }
