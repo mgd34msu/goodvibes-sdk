@@ -2,6 +2,58 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.9] - 2026-08-05
+
+### Fixed
+
+- **A dead runtime record can no longer make the platform unreachable.** The
+  daemon endpoint record is a hint now: liveness-checked before trust, reaped
+  with a receipt when stale, and discovery falls through to the live daemon.
+  Reads and writes of daemon-owned settings share one resolution, so a
+  successful write is immediately readable.
+- **Wake-word transcription is daemon-first.** A surface ships captured audio
+  to the connected daemon's speech-to-text and falls back to its own process
+  with a stated reason — which process owns the engine stops mattering.
+  Failures leave evidence (provider, config source, exception) in diagnostics
+  instead of vanishing with the notification.
+- **Reminders respect being heard.** An occasion nudge raises once at the
+  lead boundary and at most once on the day; between those it stays open and
+  enumerable but quiet. Replying to a reminder records an acknowledgment in
+  the same turn and mutes that occurrence; a remember-only occasion about the
+  owner himself never pushes at all. Machines already over-nudged reconcile
+  on first boot, receipted. The complaint remedy ladder is contract: mute the
+  occurrence, adjust the occasion, and whole-feature-off only on an explicit
+  feature-naming yes.
+- **Exec output never lies by omission.** Truncation carries a counted marker
+  at every verbosity for both streams; the sandbox states its own isolation
+  in results; and the permission guard's classifier no longer denies ordinary
+  diagnostics (null-delimited reads, file-reading substitutions) while
+  backtick command-name assembly — previously invisible to the parser — is
+  now caught structurally. The frozen catastrophic list is untouched.
+- The tool-activity label holds still: it names the tool instead of streaming
+  its argument characters.
+
+### Changed
+
+- **Provisioning proves itself.** The managed voice installer repoints paths
+  that belong to superseded manual installs (naming each replaced path in the
+  receipt), only when a managed root is known and only across a path
+  boundary, and ends with a spoken-and-transcribed round trip — "provisioned"
+  is only ever reported after the proof passes.
+- **Setup completes the inferred intent.** A general setup contract ships:
+  complete the ask, propose inferred extensions with a one-line approval,
+  ask short questions at genuine forks, and never hand the user a command —
+  with the four solution shapes (guided walkthrough, managed browser
+  automation, official CLI, question-driven up to an outcome interview)
+  stated generally. Wake-word setup implies speech-to-text as its first
+  instance; the Google walkthrough ends with paste-the-values-here and a
+  same-reply consent link via the new non-blocking consent session.
+- Clipboard image paste is platform machinery (Wayland and X11), with an
+  honest named-package message when no reader exists.
+- `occasions.finalStretchDays` is retired — under the two-touch cadence it
+  governed nothing. Files carrying it migrate with a receipt (owner-only on
+  disk, in-memory for readers) and load clean.
+
 ## [2.0.8] - 2026-08-05
 
 ### Fixed

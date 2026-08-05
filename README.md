@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/mgd34msu/goodvibes-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/mgd34msu/goodvibes-sdk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/version-2.0.8-blue.svg)](https://github.com/mgd34msu/goodvibes-sdk)
+[![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)](https://github.com/mgd34msu/goodvibes-sdk)
 
 GoodVibes SDK is the typed TypeScript platform layer behind the GoodVibes products: sessions, provider/model routing, in-process agents, a knowledge and memory store, a control-plane HTTP and realtime API, and the transports that carry it all. The daemon is its own product, built on this SDK. Full-surface consumers — the GoodVibes terminal app and the GoodVibes agent — embed this runtime directly in a Bun process and connect to the daemon as clients; companion consumers — the web UI, mobile clients, and the Home Assistant integration — connect to that same daemon as thin remote clients over HTTP, SSE, and WebSocket. One published package covers both: `@pellux/goodvibes-sdk` is a facade over a set of source-of-truth sibling packages, so consumers install one package and import only the entry points they need.
 
