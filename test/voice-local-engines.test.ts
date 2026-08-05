@@ -44,17 +44,26 @@ function makeFixtureEngines() {
   return { tts, stt, model };
 }
 
-describe('honest not-configured (nothing auto-downloads)', () => {
+describe('honest not-configured, and the managed runtime is what fills it in', () => {
   test('a machine without engines reports unconfigured — never an error', async () => {
     const provider = createLocalVoiceProvider({ readConfig: configReader({}) });
     const status = await provider.status!();
     expect(status.state).toBe('unconfigured');
     expect(status.configured).toBe(false);
-    expect(status.detail).toContain('nothing auto-downloads');
+    // The copy used to say "nothing auto-downloads", written when setting local
+    // voice up by hand was the only path. The managed installer IS the
+    // downloader, so the status names it rather than describing a product that
+    // no longer exists — and it never tells the user to go and fetch a model.
+    expect(status.detail).toContain('managed voice runtime provisions');
+    expect(status.detail).not.toContain('auto-downloads');
     expect(status.metadata.billing).toBe('none');
-    // Using it unconfigured is a clear configuration message, not a crash.
+    // Using it unconfigured is a clear configuration message, not a crash: it
+    // names the exact keys that are unset and what installs them.
     await expect(provider.transcribe!({ audio: { mimeType: 'audio/wav', format: 'wav', dataBase64: 'AA==', metadata: {} }, metadata: {} }))
-      .rejects.toThrow(/not configured.*nothing auto-downloads/s);
+      .rejects.toThrow(/not configured on this host.*sttEngine.*managed voice runtime/s);
+    // And it does not hand over a command to type.
+    await expect(provider.transcribe!({ audio: { mimeType: 'audio/wav', format: 'wav', dataBase64: 'AA==', metadata: {} }, metadata: {} }))
+      .rejects.toThrow(/^(?!.*\/voice).*$/s);
   });
 
   test('configured-but-missing binaries degrade honestly', async () => {
