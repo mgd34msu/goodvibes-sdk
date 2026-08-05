@@ -28,6 +28,7 @@
 import { spawnSync } from 'node:child_process';
 import { normalizeCommand } from '../../runtime/permissions/normalization/index.js';
 import { decideSandboxedExec } from '../../runtime/permissions/sandbox-policy.js';
+import { DEFAULT_CONTROL_PLANE_PORT } from '../../config/control-plane-base-url.js';
 import type { ExecCommandResult } from './schema.js';
 
 /** Operator-facing per-command exec sandbox configuration (`sandbox.*`). */
@@ -195,6 +196,15 @@ export interface ExecSandboxPlan {
   readonly network: SandboxNetworkState;
   /** Named host-access grants applied to this run (network, writable extras). */
   readonly escalationsGranted: string[];
+  /**
+   * Whether $HOME was masked with a tmpfs for this run. Recorded so the context
+   * note claims the mask only when it actually applied — a note that overstates
+   * the boundary is the same defect as one that hides it.
+   *
+   * Optional so adding it does not break a consumer that builds a plan itself;
+   * absent is read as "not masked", which is the claim-nothing default.
+   */
+  readonly homeMasked?: boolean | undefined;
   /** Present when the sandbox was requested but the host cannot provide it. */
   readonly unavailableReason?: string | undefined;
 }
@@ -244,6 +254,7 @@ export function resolveExecSandboxPlan(input: ResolveSandboxPlanInput): ExecSand
       boundary: 'no sandbox: per-command exec sandbox is not enabled',
       network: 'enabled',
       escalationsGranted: [],
+      homeMasked: false,
     };
   }
   if (!input.availability.available || !input.availability.bwrapPath) {
@@ -253,6 +264,7 @@ export function resolveExecSandboxPlan(input: ResolveSandboxPlanInput): ExecSand
       boundary: `no sandbox: ${input.availability.reason}`,
       network: 'enabled',
       escalationsGranted: [],
+      homeMasked: false,
       unavailableReason: input.availability.reason,
     };
   }
@@ -295,7 +307,7 @@ export function resolveExecSandboxPlan(input: ResolveSandboxPlanInput): ExecSand
   const boundary =
     `bubblewrap: workspace ${input.workspaceDir} writable, system read-only, /tmp isolated, ${networkSummary}`;
 
-  return { sandboxed: true, argvPrefix, boundary, network, escalationsGranted };
+  return { sandboxed: true, argvPrefix, boundary, network, escalationsGranted, homeMasked: input.homeDir !== undefined };
 }
 
 /**
@@ -397,6 +409,44 @@ export async function brokerSandboxEscalation(
 }
 
 /**
+ * Build the standing one-line context note for a run inside the boundary.
+ *
+ * The note exists because the boundary's world differs from the host's in ways
+ * that look identical to fact when you only see the output: a fresh network
+ * namespace whose `127.0.0.1` is its own, not the host's; a read-only
+ * filesystem outside the workspace; a masked /tmp and $HOME; and narrower
+ * device and process visibility. A probe that found no Bluetooth adapter and no
+ * daemon on `127.0.0.1:3421` was read as the user's machine lacking both.
+ *
+ * It names the isolation and the one action that changes it, and stops. It is
+ * not a lecture and it is not repeated per line — one field, once per result.
+ */
+export function buildSandboxNote(plan: ExecSandboxPlan): string {
+  if (!plan.sandboxed) {
+    return `not sandboxed: ${plan.unavailableReason ?? 'no boundary applied'} — this ran directly on the host.`;
+  }
+  const parts: string[] = ['sandboxed: this ran inside a boundary, not on the host'];
+  if (plan.network === 'enabled') {
+    parts.push('host network shared (localhost services reachable)');
+  } else if (plan.network === 'unknown') {
+    parts.push(
+      'network isolation requested but unconfirmed on this host, so localhost reachability here is not something to reason from',
+    );
+  } else {
+    parts.push(
+      `separate network namespace, so host localhost services are unreachable from here — the goodvibes daemon on 127.0.0.1:${DEFAULT_CONTROL_PLANE_PORT} refuses connections inside the boundary even while it is running on the host (add the command to sandbox.egressAllowlist to share the host network)`,
+    );
+  }
+  parts.push(
+    `filesystem read-only outside the workspace, /tmp isolated${plan.homeMasked ? ' and $HOME masked' : ''}, credential-bearing environment variables removed, and partial device and process visibility`,
+  );
+  parts.push(
+    'absence observed here is not absence on the host — re-check on the host before concluding something is missing',
+  );
+  return `${parts.join('; ')}.`;
+}
+
+/**
  * Attach sandbox metadata to an exec result. Stays quiet (returns the result
  * unchanged) when there is no plan, or when the sandbox is off entirely and the
  * command simply ran unsandboxed — metadata appears only when the sandbox was
@@ -409,6 +459,7 @@ export function attachSandboxMeta(result: ExecCommandResult, plan: ExecSandboxPl
     ...result,
     sandboxed: plan.sandboxed,
     sandbox_boundary: plan.boundary,
+    sandbox_note: buildSandboxNote(plan),
     ...(plan.sandboxed ? { sandbox_network: plan.network } : {}),
     ...(plan.escalationsGranted.length > 0 ? { sandbox_escalations: plan.escalationsGranted } : {}),
   };
