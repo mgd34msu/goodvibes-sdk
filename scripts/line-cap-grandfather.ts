@@ -89,10 +89,10 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 996,
     justification: 'home-graph page template builder, pre-split, shrink-only',
   },
-  // runtime-events.ts ~0.97k — realtime runtime-event surface, pre-split, shrink-only
+  // runtime-events.ts ~0.81k — realtime runtime-event surface, pre-split, shrink-only
   'packages/transport-realtime/src/runtime-events.ts': {
-    ceiling: 969,
-    justification: 'realtime runtime-event surface, pre-split, shrink-only',
+    ceiling: 816,
+    justification: 'realtime runtime-event surface, pre-split, shrink-only; ratcheted 969 -> 816 by the split that gave the SSE connector its own file (event-source-connector.ts) and the shared connector option types theirs (connector-options.ts), so stream resumption and the turn-lifecycle gate had somewhere to live; this file is now the WebSocket connector plus re-exports',
   },
   // method-catalog-knowledge.ts ~0.96k — control-plane knowledge method catalog, pre-split, shrink-only
   'packages/sdk/src/platform/control-plane/method-catalog-knowledge.ts': {

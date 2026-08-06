@@ -13,6 +13,11 @@
  * — fails it on the spine and puts the incident in front of the owner. And the
  * tick itself never throws out of its own interval, which used to be an
  * unhandled rejection on a read that would have succeeded a moment later.
+ *
+ * tick() no longer waits for a delivery (a delivery is the whole turn, and
+ * waiting for one froze every other session's heartbeat), so these tests ask
+ * for the outcome with drainDeliveries(). The behaviour being asserted is
+ * unchanged; only the moment it is observable moved.
  */
 import { describe, expect, test } from 'bun:test';
 import { HostedSessionSpineIntake, type HostedSessionSpine } from '../packages/sdk/src/platform/hosted-sessions/spine-intake.ts';
@@ -81,12 +86,14 @@ describe('a delivery that failed is not a delivery that happened', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(attempts).toBe(1);
     // The one thing that must not happen: the record saying it was answered.
     expect(spine.log.consumed).toEqual([]);
     expect(spine.log.failed).toEqual([]);
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(attempts).toBe(2);
     expect(spine.log.consumed).toEqual(['input-1']);
     expect(spine.log.failed).toEqual([]);
@@ -110,11 +117,14 @@ describe('a delivery that failed is not a delivery that happened', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     await intake.tick();
+    await intake.drainDeliveries();
     expect(spine.log.failed).toEqual([]);
     expect(alerts).toEqual([]);
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(attempts).toBe(3);
     expect(spine.log.consumed).toEqual([]);
     expect(spine.log.failed).toHaveLength(1);
@@ -126,6 +136,7 @@ describe('a delivery that failed is not a delivery that happened', () => {
 
     // Spent, not retried forever.
     await intake.tick();
+    await intake.drainDeliveries();
     expect(attempts).toBe(3);
   });
 
@@ -142,6 +153,7 @@ describe('a delivery that failed is not a delivery that happened', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(spine.log.delivered).toEqual(['input-1']);
     expect(spine.log.consumed).toEqual([]);
   });
@@ -159,6 +171,7 @@ describe('a delivery that failed is not a delivery that happened', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(spine.log.failed).toHaveLength(1);
   });
 
@@ -174,6 +187,7 @@ describe('a delivery that failed is not a delivery that happened', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(submitted).toEqual(['answer me']);
     expect(spine.log.delivered).toEqual(['input-1']);
     expect(spine.log.consumed).toEqual(['input-1']);
@@ -197,10 +211,12 @@ describe('the tick never rejects into its own interval', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(submitted).toEqual([]);
 
     broken = false;
     await intake.tick();
+    await intake.drainDeliveries();
     expect(submitted).toEqual(['answer me']);
   });
 
@@ -218,6 +234,7 @@ describe('the tick never rejects into its own interval', () => {
     });
 
     await intake.tick();
+    await intake.drainDeliveries();
     expect(true).toBe(true);
   });
 });

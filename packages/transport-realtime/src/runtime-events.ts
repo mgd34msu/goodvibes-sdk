@@ -11,13 +11,10 @@ import {
 } from '@pellux/goodvibes-errors';
 import {
   normalizeAuthToken,
-  type AuthTokenResolver,
-  type StreamReconnectPolicy,
-  openRawServerSentEventStream as openServerSentEventStream,
   normalizeStreamReconnectPolicy,
   getStreamReconnectDelay,
 } from '@pellux/goodvibes-transport-http';
-import { buildUrl, normalizeBaseUrl } from '@pellux/goodvibes-transport-http';
+import { normalizeBaseUrl } from '@pellux/goodvibes-transport-http';
 import {
   describeUnknownTransportError,
   injectTraceparentAsync,
@@ -32,20 +29,6 @@ import {
   type RemoteDomainEventsOptions,
   type SerializedEventEnvelope,
 } from './domain-events.js';
-
-/**
- * Typed transport observability events emitted by the WebSocket connector.
- *
- * A structural subset of the SDK-level `TransportEvent` union — the SDK
- * (`@pellux/goodvibes-sdk`) extends this with additional server-side event
- * types. Client code that holds a reference to the full `TransportEvent` union
- * can use this type without narrowing since the shapes are structurally
- * compatible.
- */
-export type ConnectorTransportEvent =
-  | { type: 'TRANSPORT_CONNECTION_STATE'; transportId: string; state: 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed' }
-  | { type: 'TRANSPORT_RECONNECT_ATTEMPT'; transportId: string; attempt: number; maxAttempts: number; delayMs: number; reason: string }
-  | { type: 'TRANSPORT_BACKPRESSURE'; transportId: string; droppedCount: number; queueLength: number; queueBytes: number; reason: 'message_too_large' | 'queue_full' };
 
 export type SerializedRuntimeEnvelope<TEvent extends RuntimeEventRecord = RuntimeEventRecord> =
   SerializedEventEnvelope<TEvent>;
@@ -86,79 +69,22 @@ export interface RemoteRuntimeEventsOptions {
  */
 export { forSession as forSessionRuntime } from './domain-events.js';
 
-/**
- * Connection state for a realtime transport.
- *
- * - `connecting`    — the socket is being established (or re-connecting after a clean stop).
- * - `connected`     — the connection is authenticated and open; outbound messages may be sent.
- * - `reconnecting`  — the connection was lost and the connector is waiting before the next attempt.
- * - `disconnected`  — the connector was stopped cleanly (no further reconnects will occur).
- * - `failed`        — the maximum reconnect attempts were exhausted; the connection is permanently closed.
- */
-export type ConnectionState = 'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed';
+import type {
+  AuthTokenSource,
+  ConnectionState,
+  RuntimeEventConnectorOptions,
+} from './connector-options.js';
 
-/** Metadata emitted on every reconnect attempt. */
-export interface ReconnectAttemptInfo {
-  /** 1-based reconnect attempt index. */
-  readonly attempt: number;
-  /** Maximum attempts configured; `Infinity` means unlimited. */
-  readonly maxAttempts: number;
-  /** Milliseconds the connector will wait before the attempt. */
-  readonly delayMs: number;
-  /** Human-readable reason for the reconnect (e.g. the error message or WS close code). */
-  readonly reason: string;
-}
-
-/** Metadata emitted when the outbound queue saturates. */
-export interface BackpressureInfo {
-  /** Number of messages dropped since the last successful flush. */
-  readonly droppedCount: number;
-  /** Current number of messages in the outbound queue. */
-  readonly queueLength: number;
-  /** Current byte footprint of the outbound queue. */
-  readonly queueBytes: number;
-  /** The overflow reason: 'message_too_large' or 'queue_full'. */
-  readonly reason: 'message_too_large' | 'queue_full';
-}
-
-export interface RuntimeEventConnectorOptions {
-  readonly reconnect?: StreamReconnectPolicy | undefined;
-  readonly onError?: ((error: unknown) => void) | undefined;
-  readonly onOpen?: (() => void) | undefined;
-  /** @deprecated Use `onReconnectAttempt` for richer metadata. This callback is still fired for backward compatibility. */
-  readonly onReconnect?: ((attempt: number, delayMs: number) => void) | undefined;
-  /** Called on every reconnect attempt with structured metadata. */
-  readonly onReconnectAttempt?: ((info: ReconnectAttemptInfo) => void) | undefined;
-  /** Called when the connection state changes. Subscribe to drive connection-state UI badges. */
-  readonly onConnectionStateChange?: ((state: ConnectionState) => void) | undefined;
-  /**
-   * Called when the outbound queue saturates or a single message is too large to queue.
-   *
-   * **Throttling:** callbacks are emitted on the 1st overflow and every 10th overflow
-   * thereafter to avoid flooding callers during sustained disconnections. `droppedCount`
-   * in {@link BackpressureInfo} is always the cumulative total — use it as the source of
-   * truth for exact drop counts; do not count callback invocations.
-   */
-  readonly onBackpressure?: ((info: BackpressureInfo) => void) | undefined;
-  /**
-   * Called when a typed {@link TransportEvent} is dispatched by the connector.
-   *
-   * Fires for `TRANSPORT_CONNECTION_STATE`, `TRANSPORT_RECONNECT_ATTEMPT`, and
-   * `TRANSPORT_BACKPRESSURE` events in addition to the dedicated callbacks above.
-   * Subscribe to this to receive a single unified stream of observability events
-   * suitable for forwarding to an event bus or UI state store.
-   */
-  readonly onTransportEvent?: ((event: ConnectorTransportEvent) => void) | undefined;
-  readonly observer?: TransportObserver | undefined;
-  /**
-   * Called once the WebSocket connector is set up, providing an `emitLocal`
-   * function the caller can use to send messages over this connection.
-   * Primarily for tests and local harnesses that need to inject outbound frames.
-   */
-  readonly onEmitter?: ((emitLocal: (data: string) => void) => void) | undefined;
-}
-
-export type AuthTokenSource = string | null | undefined | AuthTokenResolver;
+export type {
+  BackpressureInfo,
+  ConnectionState,
+  ConnectorTransportEvent,
+  ReconnectAttemptInfo,
+  RuntimeEventConnectorOptions,
+  RuntimeEventTurnScope,
+  AuthTokenSource,
+} from './connector-options.js';
+export { buildEventSourceUrl, createEventSourceConnector } from './event-source-connector.js';
 type TimeoutHandle = ReturnType<typeof setTimeout> & { unref?: () => void };
 
 /** Default max reconnect attempts for WebSocket connections (finite to prevent infinite auth loops). */
@@ -355,15 +281,6 @@ export function createRemoteRuntimeEvents<TEvent extends RuntimeEventRecord = Ru
   );
 }
 
-export function buildEventSourceUrl(
-  baseUrl: string,
-  domain: RuntimeEventDomain,
-): string {
-  const url = new URL(buildUrl(baseUrl, '/api/control-plane/events'));
-  url.searchParams.set('domains', domain);
-  return url.toString();
-}
-
 export function buildWebSocketUrl(
   baseUrl: string,
   domains: readonly RuntimeEventDomain[],
@@ -403,76 +320,6 @@ function assertWebSocketAuthTransportIsSafe(url: URL): void {
       hint: 'Use https:// or wss:// for non-loopback WebSocket runtime event connections.',
     });
   }
-}
-
-export function createEventSourceConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(
-  baseUrl: string,
-  token: AuthTokenSource,
-  fetchImpl: typeof fetch,
-  options: RuntimeEventConnectorOptions = {},
-): DomainEventConnector<RuntimeEventDomain, TEvent> {
-  const { observer } = options;
-  const handleError = options.onError;
-  return async (domain, onEnvelope) => {
-    const url = buildEventSourceUrl(baseUrl, domain);
-    const getAuthToken = normalizeAuthToken(token ?? undefined);
-    // Inject W3C traceparent if OTel is active (async probe for SSE cold-start).
-    const sseHeaders: Record<string, string> = {};
-    await injectTraceparentAsync(sseHeaders);
-    // Notify observer of outbound SSE connection attempt.
-    invokeTransportObserver(() => observer?.onTransportActivity?.({ direction: 'send', url, kind: 'sse' }), observer?.onObserverError);
-    try {
-      return await openServerSentEventStream(fetchImpl, url, {
-        onEvent: (eventName, payload) => {
-          if (eventName !== domain) return;
-          if (!payload || typeof payload !== 'object') return;
-          // Validate the inbound envelope STRUCTURE at the transport boundary, mirroring
-          // the WebSocket connector. Use the base envelope schema (payload: unknown): the
-          // discriminant lives on the OUTER `type`, and the `payload` carries event-specific
-          // data with NO inner `type` field, so the typed-payload schema would reject every
-          // real frame. Event-specific payload validation happens at each domain boundary.
-          // Unlike the WS path we must NOT throw here (the SSE flush loop has no try/catch
-          // around onEvent), so route validation failures through the error channels and
-          // drop the frame instead of delivering an unvalidated envelope to typed consumers.
-          const parsed = SerializedEventEnvelopeSchema.safeParse(payload);
-          if (!parsed.success) {
-            const validationError = new GoodVibesSdkError('SSE runtime event payload failed schema validation.', {
-              category: 'protocol',
-              source: 'transport',
-              recoverable: true,
-              cause: parsed.error,
-            });
-            invokeTransportObserver(() => observer?.onError?.(validationError), observer?.onObserverError);
-            handleError?.(validationError);
-            return;
-          }
-          const envelope = parsed.data as SerializedRuntimeEnvelope<TEvent>;
-          onEnvelope(envelope);
-          // Notify observer of inbound event.
-          invokeTransportObserver(() => {
-            observer?.onTransportActivity?.({ direction: 'recv', url, kind: 'sse' });
-            if (envelope.payload) {
-              (observer as { onEvent?: (e: unknown) => void } | undefined)?.onEvent?.(envelope.payload);
-            }
-          }, observer?.onObserverError);
-        },
-        onError: (err) => {
-          const streamError = transportErrorFromUnknown(err, 'SSE runtime event stream error');
-          invokeTransportObserver(() => observer?.onError?.(streamError), observer?.onObserverError);
-          handleError?.(streamError);
-        },
-      }, {
-        reconnect: options.reconnect,
-        getAuthToken,
-        headers: Object.keys(sseHeaders).length > 0 ? sseHeaders : undefined,
-      });
-    } catch (error) {
-      const connectionError = transportErrorFromUnknown(error, 'SSE runtime event connection failed');
-      invokeTransportObserver(() => observer?.onError?.(connectionError), observer?.onObserverError);
-      handleError?.(connectionError);
-      throw connectionError;
-    }
-  };
 }
 
 export function createWebSocketConnector<TEvent extends RuntimeEventRecord = RuntimeEventRecord>(

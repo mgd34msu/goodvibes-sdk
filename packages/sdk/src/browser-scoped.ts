@@ -15,6 +15,10 @@ import {
   createHttpTransport,
   openRawServerSentEventStream,
 } from './transport-http.js';
+import {
+  createTurnLifecycleGate,
+  readTurnLifecycleFrame,
+} from './transport-realtime.js';
 import type {
   GoodVibesAuthClient,
   GoodVibesTokenStore,
@@ -319,6 +323,14 @@ function createScopedRealtime<TDomain extends string>(
         closed: boolean;
         disconnect?: (() => void) | undefined;
       }>();
+      // A domain's stream is torn down when its last listener goes and opened
+      // again when a listener returns, so the position must outlive the stream:
+      // without it the new stream claims to have seen nothing and is replayed
+      // the tail of the last turn, terminal frames included.
+      const resumePositions = new Map<TDomain, string>();
+      // One gate for this realtime client: a terminal frame addressed to a turn
+      // this client is not rendering never reaches a listener.
+      const turnGate = createTurnLifecycleGate();
 
       const ensureDomain = (domain: TDomain) => {
         let active = activeByDomain.get(domain);
@@ -329,10 +341,13 @@ function createScopedRealtime<TDomain extends string>(
           fetchImpl,
           buildEventUrl(baseUrl, domain),
           {
+            onEventId: (id) => { resumePositions.set(domain, id); },
             onEvent: (eventName, payload) => {
               if (eventName !== domain) return;
               const envelope = normalizeEnvelope(payload);
               if (!envelope) return;
+              const frame = readTurnLifecycleFrame(envelope.sessionId, envelope.payload);
+              if (frame && !turnGate.accepts(frame)) return;
               for (const listener of [...(active!.listenersByType.get(envelope.payload.type) ?? [])]) {
                 listener(envelope);
               }
@@ -342,6 +357,7 @@ function createScopedRealtime<TDomain extends string>(
           {
             reconnect: options.realtime?.sseReconnect,
             getAuthToken,
+            lastEventId: resumePositions.get(domain) ?? null,
           },
         ).then((disconnect) => {
           if (active!.closed || activeByDomain.get(domain) !== active) {

@@ -953,6 +953,9 @@ export function createRuntimeEventFeeds<TDomain extends string, TEvent extends E
 export function createTransportPaths(baseUrl: string): TransportPaths;
 
 // @public (undocumented)
+export function createTurnLifecycleGate(options?: TurnLifecycleGateOptions): TurnLifecycleGate;
+
+// @public (undocumented)
 export function createUuidV4(): string;
 
 // @public
@@ -2182,10 +2185,10 @@ export type OmitNamed<T, TKey extends PropertyKey> = T extends unknown ? Omit<Na
 export function openContractRouteStream(transport: HttpTransport, route: ContractRouteDefinition, input: Record<string, unknown> | undefined, options: ContractStreamOptions): Promise<() => void>;
 
 // @public (undocumented)
-export function openRawServerSentEventStream(fetchImpl: typeof fetch, url: string, handlers: ServerSentEventHandlers, options?: RawServerSentEventOptions): Promise<() => void>;
+export function openRawServerSentEventStream(fetchImpl: typeof fetch, url: string, handlers: ServerSentEventHandlers, options?: RawServerSentEventOptions): Promise<ServerSentEventStreamHandle>;
 
 // @public (undocumented)
-export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: string, handlers: ServerSentEventHandlers, options?: ServerSentEventOptions): Promise<() => void>;
+export function openServerSentEventStream(transport: HttpTransport, pathOrUrl: string, handlers: ServerSentEventHandlers, options?: ServerSentEventOptions): Promise<ServerSentEventStreamHandle>;
 
 // @public (undocumented)
 export const OPERATOR_CONTRACT: OperatorContractManifest;
@@ -25770,6 +25773,9 @@ export interface ReactNativeGoodVibesSdkOptions extends GoodVibesSdkOptions {
 export function readJsonBody(response: Response): Promise<unknown>;
 
 // @public
+export function readTurnLifecycleFrame(envelopeSessionId: string | undefined, payload: unknown): TurnLifecycleFrame | null;
+
+// @public
 export interface ReconnectAttemptInfo {
     readonly attempt: number;
     readonly delayMs: number;
@@ -26129,6 +26135,7 @@ export interface RuntimeEventConnectorOptions {
     readonly onTransportEvent?: ((event: ConnectorTransportEvent) => void) | undefined;
     // (undocumented)
     readonly reconnect?: StreamReconnectPolicy | undefined;
+    readonly turnScope?: RuntimeEventTurnScope | undefined;
 }
 
 // @public (undocumented)
@@ -26164,6 +26171,11 @@ export type RuntimeEventRecord = {
 export const RuntimeEventRecordSchema: z.ZodObject<{
     type: z.ZodString;
 }, z.core.$catchall<z.ZodUnknown>>;
+
+// @public
+export type RuntimeEventTurnScope = 'session-current' | 'off' | {
+    readonly turnId: string;
+};
 
 // @public (undocumented)
 export type RuntimeEventTypedDomain = keyof RuntimeDomainEventPayloadMap & string;
@@ -26328,6 +26340,7 @@ interface ServerSentEventHandlers {
     readonly onError?: ((error: unknown) => void) | undefined;
     // (undocumented)
     readonly onEvent?: ((eventName: string, payload: unknown) => void) | undefined;
+    readonly onEventId?: ((id: string) => void) | undefined;
     // (undocumented)
     readonly onReady?: ((payload: unknown) => void) | undefined;
     // (undocumented)
@@ -26346,6 +26359,13 @@ export { ServerSentEventHandlers }
 
 // @public (undocumented)
 export interface ServerSentEventOptions extends Omit<RawServerSentEventOptions, 'authToken'> {
+}
+
+// @public
+export interface ServerSentEventStreamHandle {
+    // (undocumented)
+    (): void;
+    readonly lastEventId: string | null;
 }
 
 // @public
@@ -26629,6 +26649,9 @@ export type TaskEvent =
 
 // @public
 export type TaskEventType = TaskEvent['type'];
+
+// @public
+export const TERMINAL_TURN_EVENT_TYPES: readonly string[];
 
 // @public (undocumented)
 export class TokenStore {
@@ -27028,6 +27051,9 @@ export interface TransportPaths {
     readonly telemetryUrl: string;
 }
 
+// @public
+export const TURN_START_EVENT_TYPE = "TURN_SUBMITTED";
+
 // @public (undocumented)
 export type TurnEvent =
 /** User prompt has been submitted for processing. */
@@ -27205,6 +27231,29 @@ export interface TurnInputOrigin {
     readonly surface?: string | undefined;
     // (undocumented)
     readonly topic?: string | undefined;
+}
+
+// @public
+export interface TurnLifecycleFrame {
+    // (undocumented)
+    readonly sessionId?: string | undefined;
+    // (undocumented)
+    readonly turnId?: string | undefined;
+    // (undocumented)
+    readonly type: string;
+}
+
+// @public (undocumented)
+export interface TurnLifecycleGate {
+    accepts(frame: TurnLifecycleFrame): boolean;
+    boundTurnId(sessionId?: string | undefined): string | undefined;
+    reset(): void;
+}
+
+// @public (undocumented)
+export interface TurnLifecycleGateOptions {
+    readonly maxTrackedSessions?: number | undefined;
+    readonly turnId?: string | undefined;
 }
 
 // @public (undocumented)

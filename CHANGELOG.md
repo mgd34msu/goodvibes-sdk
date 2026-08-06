@@ -6,6 +6,49 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Fixed
 
+- **A new turn is no longer finished by the previous turn's ending.** A client
+  opened a fresh event stream per turn and presented no `Last-Event-ID`, so the
+  gateway's catch-up replay handed the new stream the tail of the previous turn
+  — that turn's `TURN_COMPLETED` included. The frame appended the previous
+  turn's final assistant message a second time (the store-boundary dedupe
+  already covered that symptom and stays; an honest crash-replay produces it
+  too) and, worse, marked the new turn's renderer finished, so every real frame
+  of the turn actually running was dropped as post-terminal noise. That turn had
+  already been billed for. Fixed at the cause on both sides: an SSE stream now
+  surfaces the position it reached (`onEventId`, and `lastEventId` on the
+  handle it returns), the runtime-event connector remembers that position per
+  URL across stream LIFETIMES rather than only across one stream's own
+  reconnects, and the gateway — which did honour the header — no longer falls
+  back to the full catch-up window when it cannot resolve the position it was
+  handed. Event ids are random per record, so an id that has aged out of the
+  ring cannot be compared against one that has not; a client stating a position
+  now gets silence and a stated `resume` outcome on the `ready` frame instead of
+  a guess that costs a turn.
+- **A terminal frame can only finish the turn its consumer is rendering.**
+  Defence in depth for the replays resumption cannot prevent. Turn frames carry
+  a `turnId`, and the new turn-lifecycle gate (`createTurnLifecycleGate`) binds
+  per session to the turn that session was last seen to START: a frame for any
+  other turn is ignored, and a terminal frame for a turn the consumer never saw
+  run is refused outright rather than allowed to bind. A client attaching
+  mid-turn still renders the turn in flight, and frames carrying no `turnId` are
+  never withheld. On by default in the SDK's own SSE clients — a consumer that
+  passes nothing is protected; `turnScope: { turnId }` pins a connection to a
+  turn it submitted, `turnScope: 'off'` opts out.
+- **One hosted turn no longer starves every session's heartbeat.**
+  `HostedSessionSpineIntake.tick()` awaited delivery — the whole turn — inside
+  its own re-entrancy guard, so while any ONE hosted session was answering, no
+  other session was heartbeated on the shared spine. A hosted session whose
+  spine participant goes stale stops receiving its own steers and starts getting
+  background agents instead: the conversation keeps answering, from the wrong
+  thing. The stale clocks also read as idle to the session reaper, which is how
+  a session with a turn plainly still running was closed "idle-reaped" (the
+  liveness probe covers the reaper's symptom; this is the starvation under it).
+  The guard now covers SCHEDULING only, and delivery is detached into a
+  per-session lane: a session's own turns stay serial and in order, other
+  sessions do not wait behind them, a tick that fires mid-turn never hands the
+  same message over twice, and an error out of a detached delivery is reported
+  exactly where `tick()` used to report it. `drainDeliveries()` is there for a
+  caller that needs the outcome rather than the scheduling.
 - **A turn nobody is watching no longer falls back to the host.** The exec
   sandbox always answered "is there a boundary for this command", and when the
   answer was no — the gate off, `sandbox.enabled` off, or the host unable to
