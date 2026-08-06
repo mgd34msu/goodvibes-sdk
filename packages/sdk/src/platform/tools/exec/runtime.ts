@@ -271,25 +271,9 @@ async function runCommand(
 ): Promise<ExecCommandResult> {
   const sandbox = policy.sandbox;
   const interaction = policy.interaction;
-  // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
-  // was already approved before this runtime runs — never re-deny by class.
-  // ALL_COMMAND_CLASSES leaves only the frozen catastrophic block active — and
-  // it stays in force identically inside the sandbox boundary below.
-  const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
-  if (!guardResult.allowed) {
-    const denial = formatDenialResponse(guardResult, cmdStr);
-    return {
-      cmd: cmdStr,
-      exit_code: null,
-      stdout: '',
-      stderr: denial.denial_reason as string ?? 'Command denied by policy',
-      success: false,
-      denied: true,
-      denial_detail: denial,
-    };
-  }
-
-  checkDangerous(cmdStr);
+  // The frozen catastrophic block ran in executeResolvedCommand, ahead of every
+  // path including the detached one. It is NOT repeated here: one call site for
+  // an unconditional block is the point, and a second would let the two drift.
   const cwd = resolveCwd(cmdInput.cwd, workingDirectory);
   const timeoutMs = cmdInput.timeout_ms ?? globalTimeout;
   // Per-command sandbox plan: when active, argvPrefix wraps the spawn in a bwrap
@@ -790,11 +774,41 @@ async function executeResolvedCommand(
   policy: ExecRunPolicy,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
-  // The owner's terminal is judged HERE rather than inside runCommand, because
-  // this is the one point every path goes through — foreground, retried,
-  // interactive AND background. A `tmux send-keys` submitted with
-  // `background: true` would otherwise reach the detached-spawn path below,
-  // which has no boundary and no guard at all.
+  // ── Everything below is judged HERE, and not inside runCommand ───────────
+  //
+  // This is the one point EVERY path goes through: foreground, retried,
+  // interactive, and — the one that mattered — detached. The background branch
+  // below returns before `runWithRetry`, so anything checked inside runCommand
+  // is simply not checked for a `background: true` command.
+  //
+  // Measured on a real host under the daemon's own service environment: one
+  // witness command reported 5 processes and a masked $HOME in the foreground
+  // (the boundary) and 581 with $HOME readable in the background (the host).
+  // The boundary never failed — this path never entered it.
+  //
+  // The frozen catastrophic block had the same hole: the exec docs call it
+  // unconditional, and on the detached path it did not run at all. Moving the
+  // call here makes that sentence true. The LIST is untouched — this changes
+  // where the existing block runs, never what is on it.
+  //
+  // Class risk (kill/rm/docker/sudo…) remains the permission layer's decision
+  // and was already approved before this runtime runs; ALL_COMMAND_CLASSES
+  // leaves only the catastrophic block active.
+  const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
+  if (!guardResult.allowed) {
+    const denial = formatDenialResponse(guardResult, cmdStr);
+    return {
+      cmd: cmdStr,
+      exit_code: null,
+      stdout: '',
+      stderr: denial.denial_reason as string ?? 'Command denied by policy',
+      success: false,
+      denied: true,
+      denial_detail: denial,
+    };
+  }
+  checkDangerous(cmdStr);
+
   const terminalRefusal = ownerTerminalRefusal(policy, cmdStr);
   if (terminalRefusal) return terminalRefusal;
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
@@ -803,8 +817,12 @@ async function executeResolvedCommand(
     // Background processes intentionally outlive this tool call — cancelling
     // the caller's item/agent must not kill a process the user asked to
     // detach, so `signal` is deliberately not threaded here. They are also NOT
-    // sandboxed, which is why a composition requiring containment has no
-    // contained background path at all (see policy.ts).
+    // sandboxed — a bwrap boundary is --die-with-parent, so wrapping one would
+    // kill the very process the caller asked to detach. That exemption is real
+    // and stays; what does NOT stay is it being silent. The frozen catastrophic
+    // block and the owner-terminal guard both ran above, and a composition that
+    // requires containment has no contained background path at all, so it is
+    // refused here rather than handed the exemption (see policy.ts).
     const uncontainable = backgroundContainmentRefusal(policy, cmdStr);
     if (uncontainable) return uncontainable;
     return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env, scrub);

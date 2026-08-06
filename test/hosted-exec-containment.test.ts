@@ -336,3 +336,68 @@ describe('exec tool under a hosted conversational posture', () => {
     expect(roots).toHaveLength(0);
   });
 });
+
+// ── 4. The detached path is a path, not an exemption ────────────────────────
+
+/**
+ * The background branch returns before `runWithRetry`, so anything checked
+ * inside `runCommand` was not checked for a `background: true` command. That
+ * was measured on a real host under the daemon's own service environment: one
+ * witness command reported 5 processes and a masked $HOME in the foreground,
+ * and 581 processes with $HOME readable in the background. The boundary never
+ * failed — this path never entered it.
+ *
+ * The boundary exemption is legitimate and stays (a bwrap boundary is
+ * --die-with-parent; wrapping a detached command would kill it). What must not
+ * be exempt is the FROZEN CATASTROPHIC BLOCK, which the exec docs describe as
+ * unconditional and which this path skipped entirely.
+ *
+ * Nothing catastrophic is ever executed here: every assertion is that the
+ * command was DENIED, which is the guard refusing to run it.
+ */
+describe('the frozen catastrophic block reaches every path', () => {
+  const roots: string[] = [];
+  const tool = () => {
+    const root = mkdtempSync(join(tmpdir(), 'gv-frozen-path-'));
+    roots.push(root);
+    return createExecTool(new ProcessManager(), {
+      overflowHandler: new OverflowHandler({ baseDir: root }),
+      defaultWorkingDirectory: root,
+    });
+  };
+  const denial = async (cmd: string, extra: Record<string, unknown> = {}) => {
+    const result = await tool().execute({ commands: [{ cmd, ...extra }] });
+    const payload = JSON.parse(String(result.output ?? '{}')) as Record<string, unknown>;
+    return { success: result.success, stderr: String(payload['stderr'] ?? '') };
+  };
+
+  test('foreground: a catastrophic command is denied (unchanged)', async () => {
+    const outcome = await denial('rm -rf /');
+    expect(outcome.success).toBe(false);
+    expect(outcome.stderr).toContain('safety block');
+  });
+
+  test('BACKGROUND: the same command is denied too — the detach is not a way round', async () => {
+    const outcome = await denial('rm -rf /', { background: true });
+    expect(outcome.success).toBe(false);
+    expect(outcome.stderr).toContain('safety block');
+  });
+
+  test('background: the other frozen shapes are denied as well', async () => {
+    for (const cmd of ['dd if=/dev/zero of=/dev/sda', 'mkfs.ext4 /dev/sda1']) {
+      const outcome = await denial(cmd, { background: true });
+      expect(outcome.success).toBe(false);
+      expect(outcome.stderr).toContain('safety block');
+    }
+  });
+
+  test('an ordinary background command still detaches — the block is catastrophic-only', async () => {
+    const result = await tool().execute({ commands: [{ cmd: 'sleep 0.1', background: true }] });
+    expect(result.success).toBe(true);
+  });
+
+  test('cleanup', () => {
+    for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+    expect(roots).toHaveLength(0);
+  });
+});

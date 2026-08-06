@@ -18,6 +18,17 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   detached command cannot be contained at all. Hosted sessions are `required`
   by default, and a `workstream` spawn is granted the host per spawn by the
   product composing it — never by the model, the wire, or a tool argument.
+- **The frozen catastrophic block now runs on the detached path too.** A
+  `background: true` command returned before `runCommand`, so everything checked
+  there was not checked for it — including the unconditional block the exec docs
+  describe as always in force. Measured on a real host under the daemon's own
+  service environment: an identical witness command reported 5 processes and a
+  masked `$HOME` in the foreground and 581 with `$HOME` readable in the
+  background. The boundary itself never failed; this path never entered it. The
+  guard call moved to the one point every path goes through. The boundary
+  exemption for detached commands is legitimate and stays — a bwrap boundary is
+  `--die-with-parent` — but it is no longer silent, and the LIST is untouched:
+  this changes where the existing block runs, never what is on it.
 - **The owner's terminal is untouchable.** A new exec guard refuses a command
   that drives an existing tmux session, window or pane this platform did not
   create — send-keys, kill, resize, attach, respawn, rename — with a refusal
