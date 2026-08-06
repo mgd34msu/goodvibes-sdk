@@ -32,6 +32,7 @@ import {
   normalizeRuntimeDomains,
   pruneDisconnectedClientRecords,
   replayRecentTraffic,
+  resolveReplayResume,
   serializeEnvelope,
   stripReplayScope,
   toClientDescriptor,
@@ -715,7 +716,14 @@ export class ControlPlaneGateway {
           // cancel may have already closed the controller; closing twice throws.
           try { controller.close(); } catch { /* already closed by cancel */ }
         }, { once: true });
-        send('ready', { clientId, domains: selectedDomains });
+        // A resuming client is told what its position turned into BEFORE any
+        // replay lands, so "I asked to resume and received nothing" is a stated
+        // outcome rather than something it has to infer from silence.
+        send('ready', {
+          clientId,
+          domains: selectedDomains,
+          resume: resolveReplayResume(this.recentEvents, lastEventId),
+        });
         replayRecentTraffic(this.recentEvents, scoped.wrapSend(send), { ...options, clientId, domains: selectedDomains }, sseLiveDomains, lastEventId);
         // First keep-alive immediately on open (not one interval later), so the
         // window before the first interval can't strand a quiet stream.

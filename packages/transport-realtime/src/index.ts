@@ -25,5 +25,17 @@ export type {
   RuntimeEventConnectorOptions,
 } from './runtime-events.js';
 export { createWebSocketRemoteError } from './runtime-events.js';
+export type { RuntimeEventTurnScope } from './connector-options.js';
+export {
+  createTurnLifecycleGate,
+  readTurnLifecycleFrame,
+  TERMINAL_TURN_EVENT_TYPES,
+  TURN_START_EVENT_TYPE,
+} from './turn-lifecycle-gate.js';
+export type {
+  TurnLifecycleFrame,
+  TurnLifecycleGate,
+  TurnLifecycleGateOptions,
+} from './turn-lifecycle-gate.js';
 export { createRelayClient } from './relay-transport.js';
 export type { RelayClient, RelayClientOptions, RelayWebSocketLike } from './relay-transport.js';

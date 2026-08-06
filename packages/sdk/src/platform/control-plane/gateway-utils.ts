@@ -233,14 +233,64 @@ export function replayRecentTraffic(
   options: ControlPlaneReplayClientOptions,
   replayDomains: ReadonlySet<RuntimeEventDomain> | null,
   sinceId?: string,
-): void {
-  const sinceIndex = sinceId ? recentEvents.findIndex((event) => event.id === sinceId) : -1;
-  const window = sinceIndex >= 0
-    ? recentEvents.slice(0, sinceIndex).reverse()
-    : recentEvents.slice(0, 20).reverse();
-  for (const recentEvent of window) {
+): ControlPlaneReplayOutcome {
+  const resolution = resolveReplayWindow(recentEvents, sinceId);
+  for (const recentEvent of resolution.window) {
     if (!canReplayEventToClient(recentEvent, options)) continue;
     if (!clientMayReceiveEventDomain(replayDomains, recentEvent.event)) continue;
     send(recentEvent.event, recentEvent.payload, recentEvent.id);
   }
+  return resolution.outcome;
+}
+
+/** What a client's stated stream position turned into. */
+export type ControlPlaneReplayOutcome =
+  /** No position was presented — the client is new, so it gets the catch-up window. */
+  | { readonly resume: 'none' }
+  /**
+   * The position was found. `replayed` counts the records that sat after it —
+   * the replay CANDIDATES. The kind/route/surface/domain filters still apply on
+   * top, so a narrowed client may be sent fewer than this; the number says how
+   * much history was there, not how much this particular client was owed.
+   */
+  | { readonly resume: 'resumed'; readonly sinceId: string; readonly replayed: number }
+  /** The position was presented but is no longer in the ring; nothing was replayed. */
+  | { readonly resume: 'unresolved'; readonly sinceId: string };
+
+/**
+ * Turn a presented `Last-Event-ID` into the slice of history to re-send.
+ *
+ * `recentEvents` is NEWEST-FIRST, so everything recorded after `sinceId` is
+ * what sits in front of it, replayed oldest-first.
+ *
+ * The case worth being explicit about is an id we cannot find. Event ids are
+ * random per record, not ordered, so an id that is not in the ring cannot be
+ * compared against one that is — there is no "everything after" to compute.
+ * Treating that as "the client has no position" and re-sending the whole
+ * catch-up window is what poisons a live turn: the window still holds the
+ * previous turn's `TURN_COMPLETED`, and a consumer that has never seen that
+ * frame finishes the turn now running and drops the rest of it. A client that
+ * states a position is claiming to have seen history; we either know what came
+ * after it or we do not, and guessing costs a turn that was already paid for.
+ * So an unresolvable position replays NOTHING, and the outcome is returned so
+ * the caller can say so on the wire rather than leave the gap silent.
+ */
+export function resolveReplayResume(
+  recentEvents: readonly ScopedControlPlaneRecentEvent[],
+  sinceId: string | undefined,
+): ControlPlaneReplayOutcome {
+  if (!sinceId) return { resume: 'none' };
+  const sinceIndex = recentEvents.findIndex((event) => event.id === sinceId);
+  if (sinceIndex < 0) return { resume: 'unresolved', sinceId };
+  return { resume: 'resumed', sinceId, replayed: sinceIndex };
+}
+
+function resolveReplayWindow(
+  recentEvents: readonly ScopedControlPlaneRecentEvent[],
+  sinceId: string | undefined,
+): { readonly window: ScopedControlPlaneRecentEvent[]; readonly outcome: ControlPlaneReplayOutcome } {
+  const outcome = resolveReplayResume(recentEvents, sinceId);
+  if (outcome.resume === 'none') return { window: recentEvents.slice(0, 20).reverse(), outcome };
+  if (outcome.resume === 'unresolved') return { window: [], outcome };
+  return { window: recentEvents.slice(0, outcome.replayed).reverse(), outcome };
 }

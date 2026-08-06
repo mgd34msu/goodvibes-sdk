@@ -1,8 +1,8 @@
 import { assertSameOriginAbsoluteUrl } from './paths.js';
-import { openRawServerSentEventStream, type ServerSentEventHandlers, type ServerSentEventOptions as CoreServerSentEventOptions } from './sse-stream.js';
+import { openRawServerSentEventStream, type ServerSentEventHandlers, type ServerSentEventStreamHandle, type ServerSentEventOptions as CoreServerSentEventOptions } from './sse-stream.js';
 import type { HttpTransport } from './http.js';
 
-export type { ServerSentEventHandlers };
+export type { ServerSentEventHandlers, ServerSentEventStreamHandle };
 export interface ServerSentEventOptions extends Omit<CoreServerSentEventOptions, 'authToken'> {}
 
 export async function openServerSentEventStream(
@@ -10,7 +10,7 @@ export async function openServerSentEventStream(
   pathOrUrl: string,
   handlers: ServerSentEventHandlers,
   options: ServerSentEventOptions = {},
-): Promise<() => void> {
+): Promise<ServerSentEventStreamHandle> {
   const url = pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')
     ? assertSameOriginAbsoluteUrl(pathOrUrl, transport.buildUrl('/'))
     : transport.buildUrl(pathOrUrl);

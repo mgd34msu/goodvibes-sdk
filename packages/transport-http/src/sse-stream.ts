@@ -16,6 +16,32 @@ export interface ServerSentEventHandlers {
   readonly onReconnect?: (input: { readonly attempt: number; readonly delayMs: number }) => void;
   readonly onClose?: (() => void) | undefined;
   readonly onTerminate?: (input: { readonly error: unknown; readonly reconnectAttempts: number }) => void;
+  /**
+   * Every `id:` this stream reads, as it reads it.
+   *
+   * The stream already remembers its position so its OWN reconnects resume,
+   * but a caller that closes this stream and opens a NEW one for the next
+   * turn starts from nothing — and a server that replays "recent traffic" to
+   * a client claiming no position hands that new stream the tail of the
+   * previous turn, terminal frames included. Recording the id here (or
+   * reading {@link ServerSentEventStreamHandle.lastEventId} at close) is what
+   * lets the next stream present `Last-Event-ID` and be replayed nothing it
+   * has already seen.
+   */
+  readonly onEventId?: ((id: string) => void) | undefined;
+}
+
+/**
+ * The stream's closer, plus the position it has reached.
+ *
+ * A plain `() => void` is still what callers store and call; `lastEventId`
+ * is additive so an existing caller keeps compiling and a resuming caller can
+ * read the position without holding an `onEventId` callback of its own.
+ */
+export interface ServerSentEventStreamHandle {
+  (): void;
+  /** The `id:` of the most recent frame delivered, or null if none carried one. */
+  readonly lastEventId: string | null;
 }
 
 export interface ServerSentEventOptions {
@@ -87,7 +113,7 @@ export async function openRawServerSentEventStream(
   url: string,
   handlers: ServerSentEventHandlers,
   options: ServerSentEventOptions = {},
-): Promise<() => void> {
+): Promise<ServerSentEventStreamHandle> {
   const outerController = new AbortController();
   const reconnectPolicy = normalizeStreamReconnectPolicy(options.reconnect);
   let lastEventId = options.lastEventId ?? null;
@@ -184,6 +210,7 @@ export async function openRawServerSentEventStream(
           const candidate = line.slice(3).replace(/^ /, '');
           if (candidate) {
             lastEventId = candidate;
+            handlers.onEventId?.(candidate);
           }
           return;
         }
@@ -271,9 +298,13 @@ export async function openRawServerSentEventStream(
   });
   await readyPromise;
 
-  return () => {
+  const close = (): void => {
     stopped = true;
     activeController?.abort();
     outerController.abort();
   };
+  return Object.defineProperty(close, 'lastEventId', {
+    get: () => lastEventId,
+    enumerable: true,
+  }) as ServerSentEventStreamHandle;
 }
