@@ -35,6 +35,8 @@ import {
   type DaemonConfigRouterDeps,
 } from '../../config/daemon-config-route.js';
 import { loadDaemonConfigSnapshot } from '../../config/daemon-config-read.js';
+import { DEFAULT_CONFIG_SNAPSHOT } from '../../config/manager-bootstrap.js';
+import { persistSharedKey } from '../../config/shared-config-tier.js';
 
 /**
  * Host-supplied routing facts.
@@ -48,7 +50,36 @@ import { loadDaemonConfigSnapshot } from '../../config/daemon-config-read.js';
  * it is a daemon that looks absent while it is running.
  */
 export type ConfigRoutingOptions =
-  Omit<DaemonConfigRouterDeps, 'hostsDaemon'> & { readonly hostsDaemon?: boolean | undefined };
+  Omit<DaemonConfigRouterDeps, 'hostsDaemon'>
+  & {
+    readonly hostsDaemon?: boolean | undefined;
+    /**
+     * The surface whose store owns CLIENT-owned keys for this turn, when that is
+     * not the host's own surface.
+     *
+     * A daemon-hosted session runs inside the host process but belongs to the
+     * surface that asked for it. Client-owned keys — rendering, transcript
+     * display, wake-word selection — are that surface's, and they live in that
+     * surface's file. Without this the host's own ConfigManager answered, and a
+     * hosted AGENT conversation read and wrote `~/.goodvibes/tui/settings.json`
+     * for its whole life: asked to enable the wake word, it wrote the TUI's
+     * store, read the value back out of the same store, and reported success,
+     * while the live agent process went on reading a file nobody had touched.
+     *
+     * Only the FILE is redirected, never a whole ConfigManager: constructing one
+     * for another surface runs that surface's migrations and shared-config
+     * bootstrap, which is a non-owner rewriting a store it does not own.
+     */
+    readonly clientOwnedStore?: ClientOwnedStore | undefined;
+  };
+
+/** The originating surface's own settings file, for client-owned keys. */
+export interface ClientOwnedStore {
+  /** Surface root — `agent`, `tui`, `webui`. Reported so a value names its owner. */
+  readonly surface: string;
+  /** Absolute path to that surface's `settings.json`. */
+  readonly settingsPath: string;
+}
 
 /** Where a reported value actually came from. */
 export interface ConfigValueOrigin {
@@ -122,11 +153,34 @@ export function resolveRouterDeps(
 export function localStorePathForKey(
   configManager: Pick<ConfigManager, 'getConfigPath' | 'getDaemonTierPath' | 'getSharedTierPath'>,
   key: string,
+  options: ConfigRoutingOptions = {},
 ): string {
   const scope = configKeyScope(key);
   if (scope === 'daemon') return configManager.getDaemonTierPath() ?? configManager.getConfigPath();
   if (scope === 'user') return configManager.getSharedTierPath() ?? configManager.getConfigPath();
-  return configManager.getConfigPath();
+  // A client-owned key belongs to the surface this turn is FOR, which is not
+  // always the surface this process is.
+  return options.clientOwnedStore?.settingsPath ?? configManager.getConfigPath();
+}
+
+/**
+ * A client-owned key's value from the originating surface's own file.
+ *
+ * Absent means absent: the answer falls back to the SCHEMA DEFAULT, never to the
+ * host's stored value. The host is a different surface with its own explicit
+ * settings, and reporting one surface's choice as another's is the whole defect
+ * — it is how a hosted agent turn was told the TUI's wake-word setting was its
+ * own.
+ */
+function readClientOwnedValue(store: ClientOwnedStore, key: string): unknown {
+  const onDisk = readKeyFromFile(store.settingsPath, key);
+  if (onDisk.present) return onDisk.value;
+  return readDotPath(DEFAULT_CONFIG_SNAPSHOT, key).value;
+}
+
+/** True when this key's owner is the originating surface's file, not the host's. */
+function usesClientOwnedStore(key: string, options: ConfigRoutingOptions): boolean {
+  return options.clientOwnedStore !== undefined && configKeyScope(key) === 'client';
 }
 
 /**
@@ -148,6 +202,35 @@ export async function applyRoutedConfigWrite(
   value: unknown,
   options: ConfigRoutingOptions = {},
 ): Promise<RoutedConfigWrite> {
+  // A client-owned key for a turn that belongs to ANOTHER surface is written to
+  // that surface's own file, and to nothing else. The host's ConfigManager is
+  // not consulted and not mutated: it describes a different surface, and its
+  // in-memory object answering this write is what made a hosted agent turn
+  // believe it had changed the agent when it had changed the TUI.
+  //
+  // Only the one key is persisted (persistSharedKey merges), so nothing else in
+  // the originating surface's file is disturbed, no migration runs, and the live
+  // surface picks the change up through the config file watcher it already has.
+  if (usesClientOwnedStore(key, options)) {
+    const store = options.clientOwnedStore!;
+    persistSharedKey(store.settingsPath, key, value);
+    const onDisk = readKeyFromFile(store.settingsPath, key);
+    if (!onDisk.present || !valuesMatch(onDisk.value, value)) {
+      throw new Error(
+        `${key} was written to ${store.settingsPath}, the ${store.surface} surface's own store, but reading it `
+        + 'back does not show the requested value. The setting is NOT applied.',
+      );
+    }
+    return {
+      key,
+      scope: 'client',
+      ownership: describeConfigOwnership(key),
+      appliedBy: 'local',
+      persistedTo: store.settingsPath,
+      value: onDisk.value,
+    };
+  }
+
   const deps = resolveRouterDeps(configManager, options);
   const outcome = await applyConfigWrite(key, value, {
     setDynamic: (k, v) => { configManager.setDynamic(k as ConfigKey, v); },
@@ -222,10 +305,12 @@ export async function readRoutedConfigValue(
   if (scope !== 'daemon') {
     return {
       key,
-      value: configManager.get(key),
+      value: usesClientOwnedStore(key, options)
+        ? readClientOwnedValue(options.clientOwnedStore!, key)
+        : configManager.get(key),
       available: true,
       readFrom: 'file',
-      source: localStorePathForKey(configManager, key),
+      source: localStorePathForKey(configManager, key, options),
       scope,
       ownership,
     };
@@ -287,20 +372,20 @@ export async function readRoutedConfigValues(
 ): Promise<ConfigReadResult[]> {
   const daemonKeys = keys.filter((key) => isDaemonOwnedConfigKey(key));
   if (daemonKeys.length === 0) {
-    return keys.map((key) => localRead(configManager, key));
+    return keys.map((key) => localRead(configManager, key, options));
   }
 
   const deps = resolveRouterDeps(configManager, options);
   // Same single resolution the one-key read uses, for the same reason.
   const snapshot = await loadDaemonConfigSnapshot(deps);
   const endpoint = snapshot.endpoint;
-  if (!endpoint) return keys.map((key) => localRead(configManager, key));
+  if (!endpoint) return keys.map((key) => localRead(configManager, key, options));
 
   const remote = snapshot.config;
   const failure = snapshot.error;
 
   return keys.map((key): ConfigReadResult => {
-    if (!isDaemonOwnedConfigKey(key)) return localRead(configManager, key);
+    if (!isDaemonOwnedConfigKey(key)) return localRead(configManager, key, options);
     const ownership = describeConfigOwnership(key);
     if (!remote) {
       return {
@@ -326,13 +411,19 @@ export async function readRoutedConfigValues(
   });
 }
 
-function localRead(configManager: ConfigManager, key: ConfigKey): RoutedConfigRead {
+function localRead(
+  configManager: ConfigManager,
+  key: ConfigKey,
+  options: ConfigRoutingOptions = {},
+): RoutedConfigRead {
   return {
     key,
-    value: configManager.get(key),
+    value: usesClientOwnedStore(key, options)
+      ? readClientOwnedValue(options.clientOwnedStore!, key)
+      : configManager.get(key),
     available: true,
     readFrom: 'file',
-    source: localStorePathForKey(configManager, key),
+    source: localStorePathForKey(configManager, key, options),
     scope: configKeyScope(key),
     ownership: describeConfigOwnership(key),
   };

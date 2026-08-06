@@ -94,6 +94,13 @@ export interface HostedSessionRecord {
    * the first attach or turn.
    */
   readonly restoredFromDisk: boolean;
+  /**
+   * The surface this session was created for. Persisted so a session restored
+   * after a daemon restart keeps the identity it was created with — rebuilding
+   * it as the host's own surface would move its client-owned settings to a
+   * different file halfway through its life.
+   */
+  readonly originSurface?: string | undefined;
 }
 
 /** One message of a hosted session's history, as a client renders it. */
@@ -140,4 +147,23 @@ export interface CreateHostedSessionInput {
   readonly detachPolicy?: HostedDetachPolicy | undefined;
   /** The client creating it, attached immediately when given. */
   readonly clientId?: string | undefined;
+  /**
+   * The surface this session was created FOR — `agent`, `tui`, `webui`.
+   *
+   * A hosted session is composed inside the host, but it does not BELONG to the
+   * host. Its client-owned settings (rendering, transcript display, wake-word
+   * selection) are the originating surface's, and they live in that surface's
+   * own store. Without this the session silently inherited whatever identity the
+   * workspace floor happened to carry, and an agent conversation ran the whole
+   * way through as `tui`: every client-owned read and write it performed
+   * resolved against `~/.goodvibes/tui/settings.json` while the live agent
+   * process was reading `~/.goodvibes/agent/settings.json`. The model was asked
+   * to turn the wake word on, wrote `voice.wake.enabled` to the TUI's store,
+   * read it back as `true`, and reported success. Nothing about the agent had
+   * changed.
+   *
+   * Omitted ⇒ the host's own surface, which is correct only for a session the
+   * host created for itself.
+   */
+  readonly originSurface?: string | undefined;
 }

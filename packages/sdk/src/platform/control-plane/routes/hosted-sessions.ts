@@ -120,6 +120,13 @@ export function createHostedSessionCreateHandler(service: HostedSessionVerbServi
     const modelId = optionalString(params, 'modelId');
     const initialPrompt = optionalString(params, 'initialPrompt');
     const clientId = optionalString(params, 'clientId');
+    // The surface the caller is creating this session FOR. It travels with the
+    // create call because the host cannot infer it: every client reaches the
+    // daemon the same way, so a session created by the agent and a session
+    // created by the TUI are indistinguishable at this seam. Without it the
+    // session took the HOST's identity and resolved the wrong surface's
+    // client-owned settings for its whole life.
+    const originSurface = optionalString(params, 'originSurface');
     try {
       const session = await service.create({
         workspaceRoot: requireString(params, 'workspaceRoot'),
@@ -128,6 +135,7 @@ export function createHostedSessionCreateHandler(service: HostedSessionVerbServi
         ...(initialPrompt === undefined ? {} : { initialPrompt }),
         ...(detachPolicy === undefined ? {} : { detachPolicy }),
         ...(clientId === undefined ? {} : { clientId }),
+        ...(originSurface === undefined ? {} : { originSurface }),
       });
       return { session };
     } catch (error) {
