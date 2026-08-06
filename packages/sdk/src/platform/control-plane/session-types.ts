@@ -93,7 +93,7 @@ export type SharedSessionKind =
  * an open record). Absent means the session is open, or was closed by a build
  * that predates this field.
  */
-export type SharedSessionCloseReason = 'idle-reaped' | 'user' | 'surface';
+export type SharedSessionCloseReason = 'idle-reaped' | 'boot-orphaned' | 'user' | 'surface';
 
 export interface SharedSessionRecord {
   readonly id: string;

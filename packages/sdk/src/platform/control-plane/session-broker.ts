@@ -68,7 +68,7 @@ import {
   registerSharedSession,
   reopenSharedSessionRecord,
 } from './session-broker-sessions.js';
-import { sweepSharedSessions } from './session-broker-gc.js';
+import { applyBootOrphanSweep, sweepSharedSessions } from './session-broker-gc.js';
 import { SharedSessionRuntimeBusBridge } from './session-broker-runtime-bus.js';
 import { handleSharedSessionIntent } from './session-broker-intent.js';
 
@@ -102,6 +102,7 @@ export class SharedSessionBroker {
   private surfaceNoticeSender: ((routeId: string, text: string) => void) | null = null;
   private loaded = false;
   private _gcInterval: ReturnType<typeof setInterval> | null = null;
+  private externalLivenessProbe: ((session: SharedSessionRecord) => boolean) | null = null; // see setExternalLivenessProbe
 
   /** Default idle threshold for zero-message sessions (ms). */
   private readonly _idleEmptyMs: number;
@@ -134,6 +135,11 @@ export class SharedSessionBroker {
     this._idleLongMs  = config.idleLongMs  ?? 24 * 60 * 60 * 1000; // 24 h
     this._deletionRetentionMs = config.deletionRetentionMs ?? SESSION_DELETION_RETENTION_MS;
     this.conversationGateConfig = config.conversationGateConfig;
+  }
+
+  /** Liveness for turns running outside this broker (see session-broker-gc.ts's isExternallyLive). Set post-construction: the answering subsystem takes this broker as its spine. */
+  setExternalLivenessProbe(probe: ((session: SharedSessionRecord) => boolean) | null): void {
+    this.externalLivenessProbe = probe;
   }
 
   setEventPublisher(publisher: SharedSessionEventPublisher | null): void {
@@ -253,6 +259,8 @@ export class SharedSessionBroker {
     for (const sessionId of reconcileSessionBrokerBoot(this.sessions, this.inputs)) {
       this.refreshPendingInputCount(sessionId);
     }
+    // Close (with the reason, never silently) sessions a dead process left active; see applyBootOrphanSweep for why "active at boot" alone is not the test.
+    applyBootOrphanSweep(this.sessions, { idleEmptyMs: this._idleEmptyMs, idleLongMs: this._idleLongMs }, (event, payload) => this.publishUpdate(event, payload));
     await this.persist();
     if (!this._gcInterval) {
       // .unref() so the GC interval does not keep the process alive past shutdown.
@@ -866,6 +874,7 @@ export class SharedSessionBroker {
         idleLongMs: this._idleLongMs,
         deletionRetentionMs: this._deletionRetentionMs,
         publishUpdate: (event, payload) => this.publishUpdate(event, payload),
+        isExternallyLive: (session) => this.externalLivenessProbe?.(session) === true,
       },
     );
     if (anyChanged) {

@@ -25,6 +25,7 @@ import {
   type RetentionOutcome,
 } from '../at-rest-persistence.js';
 import { resolveScopedDirectory, resolveSharedDirectory } from '../surface-root.js';
+import { CRASH_LOG_FILENAME } from '../crash-capture.js';
 import { isLegacyAgentJournalFile } from './legacy-agent-journal-patterns.js';
 import { logger } from '../../utils/logger.js';
 import { join } from 'node:path';
@@ -37,6 +38,7 @@ export type AppendOnlyStoreId =
   | 'telemetry-local-ledger'
   | 'session-recovery-snapshots'
   | 'session-conversations'
+  | 'surface-crash-log'
   | 'legacy-event-store';
 
 /**
@@ -48,10 +50,12 @@ export interface AppendOnlyRetentionRoots {
   readonly workingDirectory?: string | undefined;
   readonly surfaceRoot?: string | undefined;
   /**
-   * The user home root. Not consumed by any store registered here today (the
-   * recovery-snapshot store moved to workingDirectory-scoping — see
-   * `session-recovery-snapshots` below); kept on the roots shape for callers
-   * that already pass it and for a future home-anchored store.
+   * The user home root. Consumed by `surface-crash-log`, which is deliberately
+   * home-anchored rather than workingDirectory-anchored: a process that dies on
+   * an uncaught fault may not have a usable working directory, and a crash is a
+   * property of the surface install, not of the project it happened in. (The
+   * recovery-snapshot store went the other way — see `session-recovery-snapshots`
+   * below — because a recovery snapshot IS project state.)
    */
   readonly homeDirectory?: string | undefined;
   /** Directory holding the shared activity.md log, when the caller configured one. */
@@ -237,6 +241,21 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
       if (!roots.workingDirectory) return EMPTY_TARGETS;
       const sessionsDir = resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'sessions');
       return { journalDirs: [], files: listReclaimableAutoSessionFiles(sessionsDir) };
+    },
+  },
+  {
+    id: 'surface-crash-log',
+    owner: 'process-fault crash capture (runtime/crash-capture.ts)',
+    description: 'the home-anchored crashes.jsonl a surface writes from its uncaughtException/unhandledRejection exit boundary; the writer already caps it by record count, and this entry adds the age and total-size caps every other append-only store gets',
+    policy: DEFAULT_AT_REST_POLICY,
+    resolve(roots) {
+      // Home-anchored, matching where crash-capture.ts writes: a faulting
+      // process may have no usable working directory, and the operator looks
+      // for "why did my agent die" in one place per install, not one per
+      // project.
+      if (!roots.homeDirectory) return EMPTY_TARGETS;
+      const surfaceDir = resolveScopedDirectory(roots.homeDirectory, roots.surfaceRoot);
+      return { journalDirs: [], files: [join(surfaceDir, CRASH_LOG_FILENAME)] };
     },
   },
   {

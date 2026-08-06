@@ -39,7 +39,23 @@ export const SESSION_CLOSE_REASON_METADATA_KEY = 'closeReason';
 /** Read the close reason off a record's metadata, or undefined when unset/unknown. */
 export function readSessionCloseReason(session: SharedSessionRecord): SharedSessionCloseReason | undefined {
   const raw = session.metadata?.[SESSION_CLOSE_REASON_METADATA_KEY];
-  return raw === 'idle-reaped' || raw === 'user' || raw === 'surface' ? raw : undefined;
+  return raw === 'idle-reaped' || raw === 'boot-orphaned' || raw === 'user' || raw === 'surface' ? raw : undefined;
+}
+
+/**
+ * True when the SYSTEM closed this session rather than a user or a surface —
+ * the reaper ('idle-reaped') or the boot orphan sweep ('boot-orphaned').
+ *
+ * Both mean "nobody asked for this to close, we inferred it", so both reopen
+ * automatically on the next participant heartbeat. That is what makes the boot
+ * sweep safe to run against every still-active record: a surface that outlived
+ * the daemon restart and is genuinely still there re-registers on its next
+ * heartbeat and gets its session back, while a session whose process really is
+ * gone stays closed with the reason on the record.
+ */
+export function isSystemClosedSession(session: SharedSessionRecord): boolean {
+  const reason = readSessionCloseReason(session);
+  return reason === 'idle-reaped' || reason === 'boot-orphaned';
 }
 
 /** Stamp a close reason onto a metadata bag (returns a new object). */
@@ -195,11 +211,12 @@ export async function registerSharedSession(
   }
   const attach = participantToAttachInput(input.participant, input.title);
   if (existing.status === 'closed') {
-    // Reopen honesty: a session the SYSTEM reaper closed ('idle-reaped') reopens
-    // automatically on the next participant heartbeat — the surface never
+    // Reopen honesty: a session the SYSTEM closed — the idle reaper
+    // ('idle-reaped') or the boot orphan sweep ('boot-orphaned') — reopens
+    // automatically on the next participant heartbeat. The surface never
     // deliberately closed it, so re-registering is not a conflict. An explicit
     // 'user'/'surface' close stays closed (honest conflict) unless reopen:true.
-    const systemReaped = readSessionCloseReason(existing) === 'idle-reaped';
+    const systemReaped = isSystemClosedSession(existing);
     if (input.reopen === true || systemReaped) {
       const reopened = (await ops.reopenSession(existing.id)) ?? existing;
       return { record: await ops.attachParticipant(reopened, attach), reopened: true };

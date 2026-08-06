@@ -35,6 +35,7 @@ import {
 } from '../control-plane/routes/hosted-sessions.js';
 import type { GatewayMethodCatalog } from '../control-plane/method-catalog.js';
 import {
+  createHostedSessionLivenessProbe,
   HostedSessionManager,
   HostedSessionStore,
   type HostedSessionEventPublisher,
@@ -148,7 +149,7 @@ export function composeHostedSessionsForFacade(
     refuseHostedSessionGatewayMethods(runtimeServices.gatewayMethods);
     return null;
   }
-  return composeHostedSessions({
+  const manager = composeHostedSessions({
     options,
     configManager,
     runtimeBus,
@@ -158,6 +159,12 @@ export function composeHostedSessionsForFacade(
     eventPublisher,
     spine: runtimeServices.sessionBroker,
   });
+  // Hand the broker's idle reaper a way to ask this engine whether a hosted
+  // session is mid-turn. Without it the reaper judges a hosted session only by
+  // signals a hosted turn never emits, and closes it 'idle-reaped' while its
+  // turn is still running.
+  runtimeServices.sessionBroker.setExternalLivenessProbe(createHostedSessionLivenessProbe(manager));
+  return manager;
 }
 
 /**

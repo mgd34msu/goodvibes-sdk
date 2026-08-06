@@ -15,6 +15,7 @@ import {
   restoreBranchMap,
 } from './conversation-utils.js';
 import { applyDiffContent, parseDiffForApply } from './conversation-diff.js';
+import { logger } from '../utils/logger.js';
 
 export type TokenUsage = {
   inputTokens: number;
@@ -49,6 +50,73 @@ export interface BlockMeta {
   filePath?: string | undefined;
   diffOriginal?: string | undefined;
   diffUpdated?: string | undefined;
+}
+
+function sameTokenUsage(a: TokenUsage | undefined, b: TokenUsage | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  return (
+    a.inputTokens === b.inputTokens &&
+    a.outputTokens === b.outputTokens &&
+    a.cacheReadTokens === b.cacheReadTokens &&
+    a.cacheWriteTokens === b.cacheWriteTokens
+  );
+}
+
+function sameToolCalls(a: ToolCall[] | undefined, b: ToolCall[] | undefined): boolean {
+  if (a === undefined || b === undefined) return a === b;
+  if (a.length !== b.length) return false;
+  return a.every((call, index) => {
+    const other = b[index];
+    return other !== undefined && call.id === other.id && call.name === other.name
+      && JSON.stringify(call.arguments) === JSON.stringify(other.arguments);
+  });
+}
+
+/**
+ * True when `candidate` is the SAME assistant message the store already holds
+ * at its tail — a re-delivery, not a new turn.
+ *
+ * The defect this closes: a hosted conversation opens a fresh event stream per
+ * turn and never sends `Last-Event-ID`, so the gateway's catch-up replay
+ * re-sends the tail of the previous turn's events — including its
+ * `TURN_COMPLETED` — into the next turn's renderer. That renderer has never
+ * seen the event, so it appends the previous turn's final assistant message a
+ * second time, byte-identical and carrying the identical usage numbers. The
+ * observed recovery journal held exactly that: one turn's final message twice,
+ * same content, same usage.
+ *
+ * Why matching on content is safe here rather than merely plausible: this only
+ * compares against the IMMEDIATELY PRECEDING message. Two identical assistant
+ * messages with nothing between them do not occur in an honest turn — a real
+ * repeat is separated by the user message that prompted it, or by the tool
+ * messages that answer the tool calls, and either one moves the tail. Requiring
+ * the usage counters to match as well means a genuine second call (which bills
+ * its own tokens) is not mistaken for a replay.
+ *
+ * This is the store boundary on purpose. Every durable writer — the recovery
+ * snapshot, the session store, the transcript journal — serializes this
+ * message array, so one guard here covers all of them, and none of them needs
+ * its own idea of what a duplicate is.
+ *
+ * Note this suppresses the SYMPTOM at the boundary where correctness is
+ * cheapest to guarantee. The upstream cause (the client not resuming its stream
+ * position) is worth fixing on its own, because the same replayed frame also
+ * marks the new turn's renderer finished.
+ */
+function isRedeliveredAssistantMessage(
+  previous: Message | undefined,
+  candidate: AssistantMessage,
+): boolean {
+  if (previous === undefined || previous.role !== 'assistant') return false;
+  return (
+    previous.content === candidate.content &&
+    previous.model === candidate.model &&
+    previous.provider === candidate.provider &&
+    previous.reasoningContent === candidate.reasoningContent &&
+    previous.reasoningSummary === candidate.reasoningSummary &&
+    sameTokenUsage(previous.usage, candidate.usage) &&
+    sameToolCalls(previous.toolCalls, candidate.toolCalls)
+  );
 }
 
 export class ConversationManager {
@@ -153,7 +221,7 @@ export class ConversationManager {
       provider?: string | undefined;
     },
   ): void {
-    this.messages.push({
+    const candidate: AssistantMessage = {
       role: 'assistant',
       content,
       toolCalls: opts?.toolCalls,
@@ -162,7 +230,17 @@ export class ConversationManager {
       usage: opts?.usage,
       model: opts?.model,
       provider: opts?.provider,
-    });
+    };
+    if (isRedeliveredAssistantMessage(this.messages[this.messages.length - 1], candidate)) {
+      // Dropped on purpose — see isRedeliveredAssistantMessage. Recorded rather
+      // than swallowed: a message that does not land must be explainable later.
+      logger.debug('[conversation] dropped a re-delivered assistant message', {
+        contentLength: content.length,
+        ...(opts?.usage ? { outputTokens: opts.usage.outputTokens } : {}),
+      });
+      return;
+    }
+    this.messages.push(candidate);
     this._messagesRevision++;
   }
 

@@ -70,6 +70,16 @@ export type {
 
 export { resolveHostedModelDefinition, withHostedSessionModel } from './model-route.js';
 
+export {
+  createHostedSessionLivenessProbe,
+  DEFAULT_HOSTED_LIVENESS_FRESHNESS_MS,
+} from './liveness-probe.js';
+export type {
+  HostedSessionLivenessLookup,
+  HostedSessionLivenessProbeOptions,
+  ProbedSession,
+} from './liveness-probe.js';
+
 export type {
   CreateHostedSessionInput,
   HostedDetachPolicy,

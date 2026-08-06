@@ -113,6 +113,7 @@ export {
   reachableFrom,
 } from './lifecycle-facade.js';
 export type { RuntimeTransitionResult } from './lifecycle-facade.js';
+export * from './crash-capture.js';
 export * from './session-maintenance.js';
 export * from './session-persistence.js';
 export * from './session-surface.js';
