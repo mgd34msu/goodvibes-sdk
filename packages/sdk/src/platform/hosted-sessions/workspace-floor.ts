@@ -43,12 +43,18 @@
  * workspace W must therefore be built with W's gate, which only the product can
  * supply. The engine owns the CACHING and the lifetime; the product owns what a
  * floor is made of.
+ *
+ * The exec POSTURE ({@link HostedWorkspaceFloor.execPosture}) is here for the
+ * same reason and no other: it is a statement about how much authority a run on
+ * this floor carries, which is the product's to make. The engine's own default
+ * — stated when a floor says nothing — is the contained one.
  */
 
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 import type { ClientRuntimeServices } from '../runtime/client-services.js';
 import type { WrfcController } from '../agents/wrfc-controller.js';
+import type { HostedExecPostureDecider } from './exec-posture.js';
 
 /**
  * A composed floor for one workspace, plus whatever the product wired around
@@ -64,6 +70,20 @@ export interface HostedWorkspaceFloor {
    * missing dependency.
    */
   readonly wrfcController?: Pick<WrfcController, 'listChains'> | undefined;
+  /**
+   * What a session on this floor may do with exec, decided per session.
+   *
+   * Omitted ⇒ `conversational`: the exec boundary is REQUIRED, so a command
+   * that cannot be contained refuses rather than running on the host, and the
+   * owner's terminal is denied. That is the posture every session created over
+   * `sessions.hosted.*` runs under.
+   *
+   * A product returns `workstream` only for a spawn it composed itself, for a
+   * work chain the owner authorized. It is a function on the FLOOR and not a
+   * field on `CreateHostedSessionInput` deliberately: a caller over the wire
+   * must have no spelling that reaches the host.
+   */
+  readonly execPosture?: HostedExecPostureDecider | undefined;
   /** Release everything this floor started. Called when its last session goes. */
   dispose(): void | Promise<void>;
 }

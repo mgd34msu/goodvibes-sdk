@@ -107,6 +107,7 @@ import type { ProviderRegistry } from '../providers/registry.js';
 import { createWorkflowServices, type WorkflowServices } from '../tools/workflow/index.js';
 import { SandboxSessionRegistry } from './sandbox/session-registry.js';
 import { createShellPathService, type ShellPathService } from './shell-paths.js';
+import { claimSurfaceHome } from './home-single-writer.js';
 import { requireSurfaceRoot } from './surface-root.js';
 import { createDisposalScope } from './disposal.js';
 import { createDomainDispatch, type DomainDispatch, type RuntimeStore } from './store/index.js';
@@ -360,6 +361,28 @@ export interface ClientRuntimeServicesOptions {
    * wiring bug to the next person, a named `withhold` reads as the decision it is.
    */
   readonly hookAgentManager?: 'attach' | 'withhold' | undefined;
+  /**
+   * Whether this composition claims its surface home as the single live writer.
+   * Default: `off`.
+   *
+   * `claim` refuses to compose when another LIVE process already owns
+   * `<homeDirectory>/.goodvibes/<surfaceRoot>/` — throwing
+   * `SurfaceHomeInUseError`, whose message names the holding pid
+   * (runtime/home-single-writer.ts). It is the boot-time answer to a second
+   * copy of a singleton product being started onto a home that is already in
+   * use: two writers over one session store is what leaves torn files and
+   * ghost "active" sessions behind.
+   *
+   * It is OFF by default because it is not true of every surface. A terminal is
+   * legitimately run twice over one project — refusing the second window would
+   * break a shape people use every day. A product that IS a singleton (the
+   * agent: one per machine, holding one home) passes `claim`.
+   *
+   * Several graphs in ONE process over one home are always fine: the claim is
+   * per-pid and counted, so a daemon building a floor per hosted workspace
+   * never refuses itself.
+   */
+  readonly homeSingleWriter?: 'claim' | 'off' | undefined;
 }
 
 /**
@@ -376,6 +399,15 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
   const workingDirectory = options.workingDir;
   const homeDirectory = options.homeDirectory;
   const surfaceRoot = requireSurfaceRoot(options.surfaceRoot, 'ClientRuntimeServicesOptions surfaceRoot');
+
+  // Single-writer claim FIRST, before anything opens a file under the home: a
+  // refusal has to happen before this process has started writing, not after.
+  // Throws SurfaceHomeInUseError, whose message names the holding pid.
+  if (options.homeSingleWriter === 'claim') {
+    const claim = claimSurfaceHome({ homeDirectory, surfaceRoot });
+    disposalScope.registry.add('surface home claim', () => claim.release());
+  }
+
   const configManager = options.configManager;
   const shellPaths = createShellPathService({ workingDirectory, homeDirectory });
   const featureFlags = resolveRuntimeFeatureFlags({ configManager, featureFlags: options.featureFlags });

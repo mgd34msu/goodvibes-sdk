@@ -43,6 +43,7 @@ import {
   type HostedWorkspaceFloorFactory,
 } from '../hosted-sessions/index.js';
 import type { RuntimeServices } from '../runtime/services.js';
+import { CONVERSATIONAL_DIAGNOSIS_SECTION } from '../agents/conversational-contract.js';
 
 /** What a product states to turn hosted sessions on. */
 export interface DaemonHostedSessionsOptions {
@@ -78,10 +79,16 @@ export interface HostedSessionCompositionInput {
 /** The default prompt: what this session is, stated plainly. */
 function defaultHostedSystemPrompt(input: { readonly workspaceRoot: string }): string {
   return [
-    'You are running as a GoodVibes session hosted by the daemon rather than by a terminal.',
-    `Your working directory is ${input.workspaceRoot}.`,
-    'A person may be attached and watching, or may have detached and be reading this later — write as if both are true.',
-  ].join(' ');
+    [
+      'You are running as a GoodVibes session hosted by the daemon rather than by a terminal.',
+      `Your working directory is ${input.workspaceRoot}.`,
+      'A person may be attached and watching, or may have detached and be reading this later — write as if both are true.',
+    ].join(' '),
+    // A hosted turn answers a person, so it is held to the same contract every
+    // other conversational turn is held to — one text, not a second one that
+    // drifts (agents/conversational-contract.ts).
+    CONVERSATIONAL_DIAGNOSIS_SECTION,
+  ].join('\n\n');
 }
 
 /** An existing directory, checked without throwing on a permission error. */

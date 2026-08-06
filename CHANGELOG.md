@@ -2,6 +2,47 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [Unreleased]
+
+### Fixed
+
+- **A turn nobody is watching no longer falls back to the host.** The exec
+  sandbox always answered "is there a boundary for this command", and when the
+  answer was no — the gate off, `sandbox.enabled` off, or the host unable to
+  provide one — the command ran directly on the host with an honest note. For a
+  terminal that is right; for a daemon-hosted conversational turn it was how one
+  reached the whole process table, the owner's `/proc`, and his terminal. A
+  composition now states a CONTAINMENT POSTURE: `host-allowed` is the unchanged
+  default, and `required` refuses the command instead, naming why the boundary
+  was absent. `background: true` is refused under `required` too, since a
+  detached command cannot be contained at all. Hosted sessions are `required`
+  by default, and a `workstream` spawn is granted the host per spawn by the
+  product composing it — never by the model, the wire, or a tool argument.
+- **The owner's terminal is untouchable.** A new exec guard refuses a command
+  that drives an existing tmux session, window or pane this platform did not
+  create — send-keys, kill, resize, attach, respawn, rename — with a refusal
+  naming the rule. Ownership is by name (`goodvibes-…`, plus names a
+  composition registers), because a pane id proves nothing about who made it.
+  Creating and driving the platform's own sessions stays allowed, and so does
+  reading tmux state. Off unless a composition enforces it; hosted sessions
+  enforce it in every posture. The frozen catastrophic block is untouched.
+- **A surface home can refuse a second live writer.** `claimSurfaceHome`
+  records the owning pid at `<home>/.goodvibes/<surface>/owner.json` and a
+  second LIVE process claiming the same home is refused by name, so a second
+  agent forked onto a live home stops at boot instead of racing the first over
+  its session store. Every uncertainty resolves toward letting the boot proceed:
+  a dead pid, a recycled pid now running something else, and an unreadable
+  record all read as "nothing holds this home". Opt-in per composition
+  (`homeSingleWriter: 'claim'`), because a terminal is legitimately run twice.
+
+### Added
+
+- `CONVERSATIONAL_DIAGNOSIS_SECTION` — the DO half of the conversational
+  contract, issued to conversational spawns and to a hosted session's base
+  prompt: report the state and propose the fix rather than performing it
+  uninvited, never restart the owner's applications or type into his terminal,
+  and back a "fixed" claim with the live evidence it rests on.
+
 ## [2.0.9] - 2026-08-05
 
 ### Fixed

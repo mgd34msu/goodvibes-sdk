@@ -2,6 +2,10 @@ export * from './archetypes.js';
 export * from './communication-policy.js';
 export * from './conversation-gate.js';
 export * from './conversation-continuation.js';
+// The DO half of the conversational contract: proportionality when diagnosing,
+// and evidence behind a "fixed" claim. One text, so a product composing its own
+// conversational prompt states the same thing rather than a near-miss.
+export * from './conversational-contract.js';
 export * from './work-proposal-store.js';
 export * from './completion-answer.js';
 export * from './completion-report.js';

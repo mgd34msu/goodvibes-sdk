@@ -219,8 +219,8 @@
     "rationale": "new public package export budget; measured 387 B gzip @ v0.33.0 release verification; headroom max(ceil(387*1.2)=465, 387+50=437) -> 465 (1.2x dominates)"
   },
   "./platform/agents": {
-    "gzip_bytes": 305,
-    "rationale": "re-anchored when conversation-continuation joined the barrel; measured 254 B gzip @ 1.15.0 release preparation; headroom max(ceil(254*1.2)=305, 254+50=304) -> 305 (1.2x dominates by 1 B)"
+    "gzip_bytes": 480,
+    "rationale": "re-anchored when conversational-contract joined the barrel (the diagnosis contract a conversational turn is held to: proportionality when diagnosing, evidence behind a \"fixed\" claim); measured 400 B gzip on fix/hosted-exec-containment; headroom max(ceil(400*1.2)=480, 400+50=450) -> 480 (1.2x dominates)"
   },
   "./platform/artifacts": {
     "gzip_bytes": 205,
@@ -331,8 +331,8 @@
     "rationale": "public facade; measured 408 B gzip @ commit 4e5a5e2; headroom max(ceil(408*1.2)=490, 408+50=458) \u2192 490 (1.2x dominates by 32 B)"
   },
   "./platform/hosted-sessions": {
-    "gzip_bytes": 807,
-    "rationale": "new public package export budget; the daemon-hosted session engine \u2014 lifecycle manager with the detach policy, the per-workspace floor cache, the per-session loop composition, the bounded/validated disk store and the per-session model route; measured 672 B gzip at the engine's initial landing; headroom max(ceil(672*1.2)=807, 672+50=722) -> 807 (1.2x dominates)"
+    "gzip_bytes": 1132,
+    "rationale": "re-anchored when exec-posture joined the barrel (how much authority a hosted run's exec carries: the contained conversational default, the explicitly-granted workstream posture, and the owner-terminal guard that holds in both); measured 943 B gzip on fix/hosted-exec-containment; headroom max(ceil(943*1.2)=1132, 943+50=993) -> 1132 (1.2x dominates)"
   },
   "./platform/knowledge": {
     "gzip_bytes": 1204,
