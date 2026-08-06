@@ -32,6 +32,7 @@ const KNOWN_APPEND_ONLY_STORES: readonly AppendOnlyStoreId[] = [
   'telemetry-local-ledger',
   'session-recovery-snapshots',
   'session-conversations',
+  'surface-crash-log',
   'legacy-event-store',
 ];
 
