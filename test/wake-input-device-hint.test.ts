@@ -26,6 +26,7 @@ import {
   resolveRecorderCandidates,
   resolveRecorderCommand,
 } from '../packages/sdk/src/platform/voice/capture/recorder-command.ts';
+import { createRecorderCaptureOpener } from '../packages/sdk/src/platform/voice/capture/recorder-source.ts';
 import type { AudioCaptureHandlers, AudioCaptureRequest } from '../packages/sdk/src/platform/voice/capture/types.ts';
 import { resolveWakeRuntimeSettings } from '../packages/sdk/src/platform/voice/wake/settings.ts';
 
@@ -570,5 +571,36 @@ describe('auto means a recorder that captures, not the first one installed', () 
     expect(requests).toHaveLength(2);
     expect(requests[1]?.exclude).toEqual(['pw-record']);
     await listener.stop();
+  });
+});
+
+
+describe('the exclusion actually reaches the recorder', () => {
+  test('an opener honours excludeBackends when resolving auto', async () => {
+    // Threading the exclusion from the listener is pointless if the opener
+    // drops it: `auto` then re-picks the recorder that was just proven silent,
+    // forever. This is the seam where that happened.
+    const spawned: string[] = [];
+    const opener = createRecorderCaptureOpener({
+      isInstalled: (command) => command === 'pw-record' || command === 'parecord',
+      platform: 'linux',
+      spawn: (command) => {
+        spawned.push(command);
+        return {
+          stdout: { on: () => {} } as never,
+          stderr: { on: () => {} } as never,
+          on: () => undefined,
+          kill: () => {},
+        };
+      },
+    });
+
+    const stream = await opener(
+      { frameSamples: 1280, device: '', backend: 'auto', noiseSuppression: 'none', excludeBackends: ['pw-record'] },
+      { onFrame: () => {}, onStopped: () => {} },
+    );
+    expect(spawned).toEqual(['parecord']);
+    expect(stream.label).toContain('parecord');
+    await stream.stop();
   });
 });

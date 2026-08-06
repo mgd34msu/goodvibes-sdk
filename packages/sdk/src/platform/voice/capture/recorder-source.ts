@@ -121,6 +121,11 @@ export function createRecorderCaptureOpener(options: RecorderCaptureOptions): Au
       isInstalled: options.isInstalled,
       device: request.device,
       sampleRate: options.sampleRate ?? CAPTURE_SAMPLE_RATE,
+      // Recorders already proven silent on this host. Dropping these here is
+      // what made the exclusion dead: the listener worked out which recorder
+      // could not capture, put it on the request, and the opener resolved
+      // `auto` as if it had never been told.
+      ...(request.excludeBackends !== undefined ? { exclude: request.excludeBackends } : {}),
       ...(options.platform !== undefined ? { platform: options.platform } : {}),
     });
     if (resolved === null) {
