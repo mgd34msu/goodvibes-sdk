@@ -6,6 +6,7 @@ import {
   loadWatcherSnapshotFromPath,
   saveWatcherSnapshotToPath,
 } from '../packages/sdk/src/platform/watchers/store.ts';
+import { STALE_TEMP_FILE_MIN_AGE_MS } from '../packages/sdk/src/platform/utils/atomic-json-store.ts';
 import type { WatcherRecord } from '../packages/sdk/src/platform/runtime/store/domains/watchers.ts';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
@@ -107,9 +108,13 @@ describe('watcher store: atomic save', () => {
     mkdirSync(dir, { recursive: true });
 
     // Simulate a crash: a temp file from some earlier (now-dead) pid survives,
-    // with no corresponding rename ever having happened.
+    // with no corresponding rename ever having happened. Backdated past the
+    // sweep's safety age, which is what separates a crash leftover from a
+    // concurrent writer's file still being written.
     const staleTemp = `${storePath}.tmp-999999`;
     writeFileSync(staleTemp, 'garbage-from-a-torn-write', 'utf-8');
+    const longAgo = new Date(Date.now() - (STALE_TEMP_FILE_MIN_AGE_MS + 60_000));
+    utimesSync(staleTemp, longAgo, longAgo);
     expect(existsSync(staleTemp)).toBe(true);
 
     saveWatcherSnapshotToPath([makeWatcherRecord('fresh')], storePath);

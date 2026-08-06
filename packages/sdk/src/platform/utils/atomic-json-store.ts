@@ -12,14 +12,44 @@
  * The two mechanics:
  *
  *   1. {@link writeFileAtomic} / {@link writeJsonFileAtomic} — write to a
- *      sibling `.tmp-<pid>` file in the same directory as the target (so the
- *      later rename stays on one filesystem), fsync the descriptor before
- *      closing it, chmod it to the exact requested mode (so the result does
- *      not depend on the process umask), then `renameSync` it over the target.
+ *      sibling temp file in the same directory as the target (so the later
+ *      rename stays on one filesystem), fsync the descriptor before closing
+ *      it, chmod it to the exact requested mode (so the result does not depend
+ *      on the process umask), then `renameSync` it over the target.
  *      `rename(2)` is atomic on POSIX: a concurrent reader — and a process
  *      that dies mid-write — can only ever observe the previous complete file
- *      or the new complete one, never a torn write. Before writing, any stale
- *      `<name>.tmp-*` left by a previous crash is swept.
+ *      or the new complete one, never a torn write.
+ *
+ *      The temp name is unique per WRITE, not per process
+ *      ({@link createAtomicTempPath}: `<name>.tmp-<pid>-<seq>-<random>`), and
+ *      the pre-write sweep of leftovers only reaps temp files older than
+ *      {@link STALE_TEMP_FILE_MIN_AGE_MS}. Both halves fix one crash: this
+ *      module used to name the temp file `<name>.tmp-<pid>` and sweep every
+ *      `<name>.tmp-*` it found, on the reasoning that a temp file for this
+ *      store could only be a dead process's leftover. It could also be a
+ *      SECOND LIVE WRITER's file — another process writing the same shared
+ *      store, or the same process writing the same store from a worker
+ *      thread. Writer B's sweep (or, with a shared name, writer B's rename)
+ *      then deleted writer A's temp file out from under it, and writer A's
+ *      next `chmodSync` died with
+ *      `ENOENT: no such file or directory, chmod '…/watchers.json.tmp-905081'`
+ *      — a real crash that killed a running agent. With a per-write name,
+ *      writer A and writer B never share a path; with an age-gated sweep, a
+ *      temp file young enough to belong to a write still in progress is left
+ *      alone and only genuine crash leftovers are reclaimed.
+ *
+ *      There is deliberately NO in-process write lock. Every step above is a
+ *      synchronous `node:fs` call with no await between them, so two writes of
+ *      one store cannot interleave on one thread — and a JavaScript lock
+ *      cannot span worker threads or separate processes, which is where the
+ *      real concurrency lives. Ordering is settled by `rename(2)` instead:
+ *      whichever writer renames last wins, whole.
+ *
+ *      A write that fails still throws, because most stores must not report a
+ *      save that did not happen. Callers whose failure policy is genuinely
+ *      log-and-continue — periodic snapshots that rebuild themselves — use
+ *      {@link writeJsonFileAtomicSafe}, which logs the path and errno loudly
+ *      and returns an {@link AtomicWriteOutcome} instead of throwing.
  *
  *   2. {@link readJsonFileOrQuarantine} — a file this reader cannot trust
  *      (unparseable JSON, a torn or zero-tailed write, the wrong shape) is
@@ -58,8 +88,45 @@ import { logger } from './logger.js';
  */
 export const CORRUPT_QUARANTINE_MAX_FILES = 5;
 
+/**
+ * How old a `<name>.tmp-*` file must be before the pre-write sweep will delete
+ * it.
+ *
+ * The sweep cannot tell a crash leftover from another writer's work in
+ * progress by name alone, so it uses age: a temp file written within the last
+ * minute may still belong to a live write (another process, or this one on a
+ * worker thread) and is left strictly alone. One minute is far longer than any
+ * store here takes to serialize, open, write, fsync, chmod and rename — a few
+ * hundred kilobytes of JSON at most — so a leftover from a process that really
+ * did die becomes eligible on the next write a minute later, while a live
+ * writer is never robbed of its temp file.
+ */
+export const STALE_TEMP_FILE_MIN_AGE_MS = 60_000;
+
 /** Default mode for a store file: owner read/write only. */
 const DEFAULT_STORE_FILE_MODE = 0o600;
+
+/**
+ * Per-process counter that makes each temp name unique within this process
+ * even when two writes land in the same millisecond.
+ */
+let atomicTempSequence = 0;
+
+/**
+ * Build the temp path for one atomic write of `filePath`.
+ *
+ * Unique per call, never per process: `<name>.tmp-<pid>-<seq>-<random>`. The
+ * pid and sequence are there so a leftover file names the process and the
+ * write that produced it when someone goes looking; the random suffix is what
+ * guarantees two writers never collide even across pid reuse.
+ *
+ * Exported so a test can hold a second writer's temp file the way a real
+ * concurrent writer does, and assert the sweep leaves it alone.
+ */
+export function createAtomicTempPath(filePath: string): string {
+  atomicTempSequence += 1;
+  return `${filePath}.tmp-${process.pid}-${atomicTempSequence.toString(36)}-${randomUUID().slice(0, 8)}`;
+}
 
 export interface AtomicWriteOptions {
   /**
@@ -88,7 +155,7 @@ export function writeFileAtomic(filePath: string, contents: string, options: Ato
 
   cleanupStaleTempFiles(dir, filePath);
 
-  const tmpPath = `${filePath}.tmp-${process.pid}`;
+  const tmpPath = createAtomicTempPath(filePath);
 
   try {
     const fd = openSync(tmpPath, 'w', mode);
@@ -122,6 +189,80 @@ export function writeJsonFileAtomic(filePath: string, value: unknown, options: A
   const trailingNewline = options.trailingNewline ?? true;
   const serialized = indent === null ? JSON.stringify(value) : JSON.stringify(value, null, indent);
   writeFileAtomic(filePath, trailingNewline ? `${serialized}\n` : serialized, options);
+}
+
+export interface AtomicJsonSafeWriteOptions extends AtomicJsonWriteOptions {
+  /**
+   * Short store name for the failure log, e.g. `'watchers/store'`. Rendered as
+   * `[<label>]`. Defaults to `'atomic-json-store'`.
+   */
+  readonly label?: string;
+}
+
+/** What {@link writeJsonFileAtomicSafe} reports back instead of throwing. */
+export interface AtomicWriteOutcome {
+  /** True when the bytes are on disk under `filePath`. */
+  readonly ok: boolean;
+  /** The store file the write targeted. */
+  readonly filePath: string;
+  /** The failure, when `ok` is false. */
+  readonly error?: Error;
+  /** The errno string when the failure carried one, e.g. `'ENOENT'`, `'ENOSPC'`. */
+  readonly code?: string;
+  /** The failing syscall when the failure named one, e.g. `'chmod'`, `'rename'`. */
+  readonly syscall?: string;
+}
+
+/** Pull the errno fields off a thrown filesystem error without asserting a shape it may not have. */
+function describeWriteFailure(error: unknown): { code?: string; syscall?: string } {
+  if (typeof error !== 'object' || error === null) return {};
+  const fields = error as { code?: unknown; syscall?: unknown };
+  return {
+    ...(typeof fields.code === 'string' ? { code: fields.code } : {}),
+    ...(typeof fields.syscall === 'string' ? { syscall: fields.syscall } : {}),
+  };
+}
+
+/**
+ * {@link writeJsonFileAtomic} for callers whose failure policy is
+ * log-and-continue: the failure is logged at error level with the store path,
+ * the errno and the failing syscall, and returned as an
+ * {@link AtomicWriteOutcome} rather than thrown.
+ *
+ * This exists because a periodic snapshot must never be able to kill its host.
+ * A watcher-store write that failed inside a fleet tick propagated out of a
+ * timer callback with nothing above it to catch it, and the whole agent
+ * process died — from a store whose entire recovery story is "it rebuilds from
+ * live registrations on the next load". Stores where a silent failure would be
+ * a lie (settings, secrets, pairing tokens, anything a user just asked to
+ * save) keep using {@link writeJsonFileAtomic} and keep throwing.
+ */
+export function writeJsonFileAtomicSafe(
+  filePath: string,
+  value: unknown,
+  options: AtomicJsonSafeWriteOptions = {},
+): AtomicWriteOutcome {
+  const { label = 'atomic-json-store', ...writeOptions } = options;
+  try {
+    writeJsonFileAtomic(filePath, value, writeOptions);
+    return { ok: true, filePath };
+  } catch (error) {
+    const failure = error instanceof Error ? error : new Error(String(error));
+    const { code, syscall } = describeWriteFailure(error);
+    logger.error(`[${label}] could not persist the store file; the in-memory state stands and the next write retries`, {
+      filePath,
+      ...(code !== undefined ? { code } : {}),
+      ...(syscall !== undefined ? { syscall } : {}),
+      error: failure.message,
+    });
+    return {
+      ok: false,
+      filePath,
+      error: failure,
+      ...(code !== undefined ? { code } : {}),
+      ...(syscall !== undefined ? { syscall } : {}),
+    };
+  }
 }
 
 export interface QuarantineLoadOptions<T> {
@@ -245,12 +386,21 @@ export function quarantineCorruptFile(filePath: string, options: QuarantineOptio
 }
 
 /**
- * Remove any `<basename>.tmp-*` file already sitting beside `filePath`.
+ * Remove `<basename>.tmp-*` files beside `filePath` that are old enough to be
+ * crash leftovers, and only those.
  *
- * The temp file this module writes is named with the CURRENT process's pid, so
- * a file matching this pattern found here was necessarily left by an earlier
- * process that died between writing its temp file and renaming it into place —
- * it can never be live work in progress for this call.
+ * Age is the only signal available: the name says which process and which
+ * write produced a temp file, but not whether that write is still running. A
+ * temp file modified within {@link STALE_TEMP_FILE_MIN_AGE_MS} may belong to a
+ * write in progress in another process — or in this one, on a worker thread —
+ * and deleting it makes that writer's own `chmod` or `rename` fail with
+ * ENOENT. That is exactly how a live agent process died, so the young ones are
+ * left strictly alone here; the next write a minute later reclaims anything
+ * that really was abandoned.
+ *
+ * A temp file whose age cannot be read at all (it vanished between the
+ * directory listing and the stat, or its metadata is unreadable) is skipped
+ * for the same reason: an unknown age is not evidence of abandonment.
  */
 function cleanupStaleTempFiles(dir: string, filePath: string): void {
   const prefix = `${basename(filePath)}.tmp-`;
@@ -260,12 +410,24 @@ function cleanupStaleTempFiles(dir: string, filePath: string): void {
   } catch {
     return;
   }
+  const staleBefore = Date.now() - STALE_TEMP_FILE_MIN_AGE_MS;
   for (const name of names) {
     if (!name.startsWith(prefix)) continue;
     const stalePath = join(dir, name);
+    let modifiedAtMs: number;
+    try {
+      modifiedAtMs = statSync(stalePath).mtimeMs;
+    } catch {
+      continue;
+    }
+    if (modifiedAtMs > staleBefore) continue;
     try {
       unlinkSync(stalePath);
-      logger.warn('[atomic-json-store] removed a stale temp file left by a previous crash', { filePath, stalePath });
+      logger.warn('[atomic-json-store] removed a stale temp file left by a previous crash', {
+        filePath,
+        stalePath,
+        ageMs: Math.max(0, Date.now() - modifiedAtMs),
+      });
     } catch {
       // Best-effort — a concurrent writer or a permissions issue must not
       // block this save.

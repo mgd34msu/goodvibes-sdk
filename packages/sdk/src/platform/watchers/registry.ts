@@ -16,7 +16,7 @@ import {
 import {
   loadWatcherSnapshotFromPath,
   resolveWatcherStorePath,
-  saveWatcherSnapshotToPath,
+  saveWatcherSnapshotToPathSafe,
 } from './store.js';
 import { instrumentedFetch } from '../utils/fetch-with-timeout.js';
 import type { FeatureFlagReader } from '../runtime/feature-flags/index.js';
@@ -638,8 +638,20 @@ export class WatcherRegistry {
     return () => `${record.id}:${record.kind}:${Date.now()}`;
   }
 
+  /**
+   * Write the snapshot and refresh the runtime store's copy of every record.
+   *
+   * Every mutation here persists, and `list()` persists too — which the fleet
+   * registry's coalesced tick calls on a timer, from a callback with nothing
+   * above it. So this must not be able to throw: a failed snapshot write is
+   * logged loudly with the path and errno by the store and then dropped, the
+   * in-memory registry carries on as the source of truth, and the next persist
+   * retries. Watcher state rebuilds from live registrations on any load, so
+   * losing a snapshot costs nothing that killing the process would not cost a
+   * great deal more.
+   */
   private persist(): void {
-    saveWatcherSnapshotToPath(
+    saveWatcherSnapshotToPathSafe(
       sortWatchers([...this.watchers.values()].map((entry) => entry.record)),
       this.storePath,
     );
