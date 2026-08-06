@@ -1,6 +1,6 @@
 {
   "name": "@pellux/goodvibes-transport-realtime",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "engines": {
     "bun": "1.3.14",
     "node": ">=22.0.0"
