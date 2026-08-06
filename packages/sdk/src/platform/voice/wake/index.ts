@@ -86,6 +86,9 @@ export {
   type WakeTriggered,
 } from './listener.js';
 
+// What a surface may claim about listening, derived from capture truth.
+export { describeWakeListening, type WakeListeningClaim } from './listening-claim.js';
+
 export {
   WakeSupervisor,
   WAKE_SUPERVISOR_DEFAULTS,

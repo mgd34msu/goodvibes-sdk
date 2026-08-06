@@ -89,3 +89,18 @@ export {
   type PushToTalkPhase,
   type PushToTalkOptions,
 } from './push-to-talk.js';
+
+// A configured input device is a HINT, validated rather than believed: an
+// absent pin falls back to the OS default and says so, and a host whose only
+// sources are output monitors is reported as having no microphone.
+export {
+  parseArecordCaptureDevices,
+  parsePactlSources,
+  resolveAudioInputBinding,
+} from './device-binding.js';
+export type {
+  AudioInputBinding,
+  AudioInputBindingState,
+  AudioInputDevice,
+  AudioInputDeviceEnumerator,
+} from './device-binding.js';

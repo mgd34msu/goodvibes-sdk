@@ -64,6 +64,14 @@ export interface AudioCaptureRequest {
   /** Recorder to use on a host surface. Ignored by a browser surface. */
   readonly backend: AudioCaptureBackend;
   /**
+   * Recorders already proven unable to capture on this host, which `auto` must
+   * skip. A host resolving `auto` passes these to `resolveRecorderCommand`.
+   *
+   * Being installed is not the same as working, and the difference was silence:
+   * see the note on RecorderCommandOptions.exclude.
+   */
+  readonly excludeBackends?: readonly Exclude<AudioCaptureBackend, 'auto'>[] | undefined;
+  /**
    * Noise suppression to apply. `speex` is refused when the runtime cannot run
    * the filter, never skipped.
    */
