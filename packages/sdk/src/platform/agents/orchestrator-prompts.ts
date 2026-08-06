@@ -6,6 +6,7 @@ import type { MemoryRegistry } from '../state/index.js';
 import type { AgentRecord } from '../tools/agent/index.js';
 import { logger } from '../utils/logger.js';
 import { openTierContextBlock } from '../owner-profile/context-block.js';
+import { CONVERSATIONAL_DIAGNOSIS_SECTION } from './conversational-contract.js';
 
 type PromptContextDeps = {
   readonly workingDirectory: string;
@@ -271,7 +272,7 @@ If repeated attempts fail, report the failure clearly and move on. Do not loop i
 ## Logging
 Use the state tool (mode: memory) to record decisions and failures to .goodvibes/memory/ when you make significant choices or encounter errors worth preventing in future runs.
 
-${conversational ? CONVERSATIONAL_OUTPUT_SECTION : REPORT_OUTPUT_SECTION}`);
+${conversational ? `${CONVERSATIONAL_OUTPUT_SECTION}\n\n${CONVERSATIONAL_DIAGNOSIS_SECTION}` : REPORT_OUTPUT_SECTION}`);
 
   // --- Layer 2: Archetype overlay ---
   const archetype = deps?.archetypeLoader?.loadArchetype(record.template) ?? null;

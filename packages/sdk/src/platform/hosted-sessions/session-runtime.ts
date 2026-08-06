@@ -26,6 +26,30 @@
  * localhost-fetch one-tap) are rebuilt from that same `requestApproval` seam,
  * because the floor exposes the seam rather than the handlers. Same seam, same
  * gate, so a hosted run asks exactly like a terminal run.
+ *
+ * ── The exec posture, and why it is not the terminal's ──────────────────────
+ *
+ * A hosted turn's exec tool is composed by the same `registerAllTools` a
+ * terminal calls, from the same `sandbox.*` config and the same `exec-sandbox`
+ * gate, so the boundary a hosted command runs inside is the boundary a local
+ * command runs inside — network, PID and filesystem namespacing, the
+ * `sandbox.egressAllowlist` escape hatch, and the self-labelling note on the
+ * result. That much is sameness.
+ *
+ * The difference is what happens when there is NO boundary. A terminal falls
+ * back to the host and says so, because a person asked for the command and is
+ * reading the answer. A hosted CONVERSATIONAL turn has nobody in that chair, so
+ * it refuses instead ({@link HostedSessionExecPosture} `conversational`): a
+ * turn that cannot be contained does not run uncontained. That is the defect
+ * this closes — a hosted conversational turn reached the whole host, forked a
+ * second agent onto a live home, and typed into the owner's terminal, and every
+ * one of those was a command the composition never said it minded.
+ *
+ * `workstream` is the other posture, and it is granted PER SPAWN by the product
+ * composing that spawn — a real work chain the owner authorized, which may
+ * legitimately need the machine itself. It is never reachable from a
+ * conversational turn, from the wire, or from a tool argument, because nothing
+ * on those paths can set it.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -43,6 +67,12 @@ import type { ModelDefinition } from '../providers/registry.js';
 import { withHostedSessionModel } from './model-route.js';
 import type { HostedWorkspaceFloor } from './workspace-floor.js';
 import { resolveSurfaceDirectory } from '../runtime/surface-root.js';
+import {
+  containmentFor,
+  resolveHostedExecPosture,
+  HOSTED_OWNER_TERMINAL_GUARD,
+  type HostedSessionExecPosture,
+} from './exec-posture.js';
 
 /**
  * Where a hosted session's client-owned settings live, when the session belongs
@@ -103,6 +133,12 @@ export interface HostedSessionRuntimeOptions {
    * the session for itself.
    */
   readonly originSurface?: string | undefined;
+  /**
+   * What this run's exec tool may do, when the caller decides per session
+   * rather than per floor. Omitted ⇒ the floor's own decider, and
+   * `conversational` when the floor states nothing either (exec-posture.ts).
+   */
+  readonly execPosture?: HostedSessionExecPosture | undefined;
 }
 
 /**
@@ -201,6 +237,13 @@ export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions)
     execPromptAnswerHandler: approvalHandlers.execPromptAnswerHandler,
     localhostFetchApproval: approvalHandlers.localhostFetchApproval,
     onSandboxedRun: approvalHandlers.onSandboxedRun,
+    // The posture this file's header states: the caller's when it named one,
+    // else the floor's, else contained. Nothing here reads the wire.
+    execContainment: containmentFor(options.execPosture ?? resolveHostedExecPosture(
+      options.floor.execPosture,
+      { sessionId, workspaceRoot: options.workspaceRoot },
+    )),
+    ownerTerminalGuard: HOSTED_OWNER_TERMINAL_GUARD,
   });
 
   const orchestrator = new Orchestrator({

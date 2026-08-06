@@ -30,6 +30,14 @@ import {
   runInteractiveCommand,
   type ExecInteractionRuntime,
 } from './interactive.js';
+import type { ExecContainmentRequirement } from './containment.js';
+import type { OwnerTerminalGuard } from './owner-terminal-guard.js';
+import {
+  backgroundContainmentRefusal,
+  containmentRefusal,
+  ownerTerminalRefusal,
+  type ExecRunPolicy,
+} from './policy.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const PROGRESS_AUTO_THRESHOLD_MS = 30_000;
@@ -258,35 +266,25 @@ async function runCommand(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
-  sandbox: ExecSandboxRuntime | null,
-  interaction: ExecInteractionRuntime | null,
+  policy: ExecRunPolicy,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
-  // Class risk (kill/rm/docker/sudo…) is the permission layer's decision and
-  // was already approved before this runtime runs — never re-deny by class.
-  // ALL_COMMAND_CLASSES leaves only the frozen catastrophic block active — and
-  // it stays in force identically inside the sandbox boundary below.
-  const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
-  if (!guardResult.allowed) {
-    const denial = formatDenialResponse(guardResult, cmdStr);
-    return {
-      cmd: cmdStr,
-      exit_code: null,
-      stdout: '',
-      stderr: denial.denial_reason as string ?? 'Command denied by policy',
-      success: false,
-      denied: true,
-      denial_detail: denial,
-    };
-  }
-
-  checkDangerous(cmdStr);
+  const sandbox = policy.sandbox;
+  const interaction = policy.interaction;
+  // The frozen catastrophic block ran in executeResolvedCommand, ahead of every
+  // path including the detached one. It is NOT repeated here: one call site for
+  // an unconditional block is the point, and a second would let the two drift.
   const cwd = resolveCwd(cmdInput.cwd, workingDirectory);
   const timeoutMs = cmdInput.timeout_ms ?? globalTimeout;
   // Per-command sandbox plan: when active, argvPrefix wraps the spawn in a bwrap
   // boundary and the result carries honest sandboxed/boundary/network/escalation
   // metadata; null or not-sandboxed leaves the argv (and result) untouched.
   const sandboxPlan = resolveRuntimeSandboxPlan(sandbox, cmdStr, workingDirectory, cwd);
+  // Containment posture: a composition that REQUIRES the boundary gets a
+  // refusal when no boundary was applied, instead of the silent host fallback
+  // (policy.ts). `host-allowed` — every existing caller — is unchanged.
+  const uncontained = containmentRefusal(policy, cmdStr, sandboxPlan);
+  if (uncontained) return attachSandboxMeta(uncontained, sandboxPlan);
   const sandboxArgv = sandboxPlan?.sandboxed ? sandboxPlan.argvPrefix : [];
   // Sandbox boundary escalation: a command that runs inside the boundary but
   // needs host access (network, host-privilege escalation) rides the SAME
@@ -730,12 +728,11 @@ async function runWithRetry(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
-  sandbox: ExecSandboxRuntime | null,
-  interaction: ExecInteractionRuntime | null,
+  policy: ExecRunPolicy,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
   if (!cmdInput.retry) {
-    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
+    return runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, policy, signal);
   }
 
   const maxRetries = Math.min(cmdInput.retry.max ?? 3, 10);
@@ -746,7 +743,7 @@ async function runWithRetry(
   let lastResult: ExecCommandResult | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
+    lastResult = await runCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, policy, signal);
     if (lastResult.success) {
       return { ...lastResult, retries: attempt };
     }
@@ -774,21 +771,63 @@ async function executeResolvedCommand(
   workingDirectory: string,
   globalTimeout: number,
   scrub: ResolvedCredentialEnvScrub,
-  sandbox: ExecSandboxRuntime | null,
-  interaction: ExecInteractionRuntime | null,
+  policy: ExecRunPolicy,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult> {
+  // ── Everything below is judged HERE, and not inside runCommand ───────────
+  //
+  // This is the one point EVERY path goes through: foreground, retried,
+  // interactive, and — the one that mattered — detached. The background branch
+  // below returns before `runWithRetry`, so anything checked inside runCommand
+  // is simply not checked for a `background: true` command.
+  //
+  // Measured on a real host under the daemon's own service environment: one
+  // witness command reported 5 processes and a masked $HOME in the foreground
+  // (the boundary) and 581 with $HOME readable in the background (the host).
+  // The boundary never failed — this path never entered it.
+  //
+  // The frozen catastrophic block had the same hole: the exec docs call it
+  // unconditional, and on the detached path it did not run at all. Moving the
+  // call here makes that sentence true. The LIST is untouched — this changes
+  // where the existing block runs, never what is on it.
+  //
+  // Class risk (kill/rm/docker/sudo…) remains the permission layer's decision
+  // and was already approved before this runtime runs; ALL_COMMAND_CLASSES
+  // leaves only the catastrophic block active.
+  const guardResult = await guardExecCommand(cmdStr, ALL_COMMAND_CLASSES, featureFlags);
+  if (!guardResult.allowed) {
+    const denial = formatDenialResponse(guardResult, cmdStr);
+    return {
+      cmd: cmdStr,
+      exit_code: null,
+      stdout: '',
+      stderr: denial.denial_reason as string ?? 'Command denied by policy',
+      success: false,
+      denied: true,
+      denial_detail: denial,
+    };
+  }
+  checkDangerous(cmdStr);
+
+  const terminalRefusal = ownerTerminalRefusal(policy, cmdStr);
+  if (terminalRefusal) return terminalRefusal;
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
   if (bgSpecial) return bgSpecial;
   if (cmdInput.background) {
     // Background processes intentionally outlive this tool call — cancelling
     // the caller's item/agent must not kill a process the user asked to
     // detach, so `signal` is deliberately not threaded here. They are also NOT
-    // sandboxed: a bwrap boundary is --die-with-parent, which would kill the
-    // detached process when this tool call ends, defeating the detach.
+    // sandboxed — a bwrap boundary is --die-with-parent, so wrapping one would
+    // kill the very process the caller asked to detach. That exemption is real
+    // and stays; what does NOT stay is it being silent. The frozen catastrophic
+    // block and the owner-terminal guard both ran above, and a composition that
+    // requires containment has no contained background path at all, so it is
+    // refused here rather than handed the exemption (see policy.ts).
+    const uncontainable = backgroundContainmentRefusal(policy, cmdStr);
+    if (uncontainable) return uncontainable;
     return spawnBackground(processManager, cmdStr, resolveCwd(cmdInput.cwd, workingDirectory), cmdInput.env, scrub);
   }
-  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
+  return runWithRetry(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, policy, signal);
 }
 
 async function executeResolvedCommands(
@@ -801,8 +840,7 @@ async function executeResolvedCommands(
   globalTimeout: number,
   failFast: boolean,
   scrub: ResolvedCredentialEnvScrub,
-  sandbox: ExecSandboxRuntime | null,
-  interaction: ExecInteractionRuntime | null,
+  policy: ExecRunPolicy,
   signal?: AbortSignal,
 ): Promise<ExecCommandResult[]> {
   if (parallel) {
@@ -810,7 +848,7 @@ async function executeResolvedCommands(
       resolvedCmds,
       MAX_PARALLEL_EXEC_COMMANDS,
       ({ cmdStr, cmdInput }) =>
-        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal),
+        executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, policy, signal),
     );
   }
 
@@ -822,7 +860,7 @@ async function executeResolvedCommands(
       continue;
     }
 
-    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, sandbox, interaction, signal);
+    const result = await executeResolvedCommand(processManager, overflowHandler, featureFlags, cmdStr, cmdInput, workingDirectory, globalTimeout, scrub, policy, signal);
     results.push(result);
     if (failFast && !result.success) {
       stopped = true;
@@ -868,6 +906,19 @@ export function createExecTool(
      * or unavailable → every command runs the unchanged pipe-based path.
      */
     readonly interaction?: ExecInteractionRuntime | null | undefined;
+    /**
+     * Whether this composition REQUIRES the exec boundary (containment.ts).
+     * Omitted ⇒ `host-allowed`: no boundary means the command runs on the host
+     * with the self-labelling note, exactly as before. A hosted conversational
+     * turn passes `required`, so an absent boundary refuses instead.
+     */
+    readonly containment?: ExecContainmentRequirement | null | undefined;
+    /**
+     * Whether commands that drive an existing tmux session the platform did not
+     * create are refused (owner-terminal-guard.ts). Omitted ⇒ `off`, so every
+     * existing caller is unchanged.
+     */
+    readonly ownerTerminal?: OwnerTerminalGuard | null | undefined;
   } = {},
 ): Tool {
   if (!options.overflowHandler) {
@@ -876,8 +927,12 @@ export function createExecTool(
   const overflowHandler = options.overflowHandler;
   const featureFlags = options.featureFlags ?? null;
   const credentialEnvScrub = resolveCredentialEnvScrub(options.credentialEnvScrub);
-  const sandbox = options.sandbox ?? null;
-  const interaction = options.interaction ?? null;
+  const policy: ExecRunPolicy = {
+    sandbox: options.sandbox ?? null,
+    interaction: options.interaction ?? null,
+    containment: options.containment ?? null,
+    ownerTerminal: options.ownerTerminal ?? null,
+  };
 
   return {
     definition: {
@@ -938,8 +993,7 @@ export function createExecTool(
           globalTimeout,
           failFast,
           credentialEnvScrub,
-          sandbox,
-          interaction,
+          policy,
           opts?.signal,
         );
         const formatted = results.map((r) => formatResult(r, verbosity));

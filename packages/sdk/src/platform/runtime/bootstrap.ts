@@ -90,6 +90,26 @@ export type {
   ApprovalRaiser,
   UserPermissionRuleAccess,
 } from './client-services.js';
+// The process-level boot guard for a surface home: one live writer per
+// `<home>/.goodvibes/<surface>/`, refused by name at boot rather than
+// discovered later as a torn session file. Exported alongside the composition
+// so an entry point can claim its home BEFORE it composes anything.
+export {
+  claimSurfaceHome,
+  currentProcessIdentity,
+  decideHomeClaim,
+  homeClaimRefusalMessage,
+  readProcessIdentity,
+  surfaceHomeClaimPath,
+  SurfaceHomeInUseError,
+} from './home-single-writer.js';
+export type {
+  ClaimSurfaceHomeOptions,
+  HomeClaimDecision,
+  HomeClaimInput,
+  HomeOwnerClaim,
+  SurfaceHomeClaim,
+} from './home-single-writer.js';
 // The free functions both compositions share, so a product that hand-composes
 // a graph builds each piece the one way rather than a fourth way.
 export { resolveRuntimeFeatureFlags } from './feature-flag-composition.js';

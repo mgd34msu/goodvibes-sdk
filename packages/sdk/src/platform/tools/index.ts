@@ -31,6 +31,8 @@ import {
   type ExecPromptAsk,
   type ExecPromptAnswer,
 } from './exec/interactive.js';
+import type { ExecContainmentRequirement } from './exec/containment.js';
+import type { OwnerTerminalGuard } from './exec/owner-terminal-guard.js';
 import { createAnalyzeTool } from './analyze/index.js';
 import { InspectTool } from './inspect/index.js';
 import { createAgentTool } from './agent/index.js';
@@ -173,6 +175,27 @@ export type {
   PtyAvailability,
   PtyHostProbe,
 } from './exec/interactive.js';
+// The two composition-stated exec postures: whether the boundary is REQUIRED
+// (containment) and whether the owner's terminal is off limits. Both default to
+// the historical behaviour when a composition says nothing, so naming them here
+// is what lets a composition say something.
+export {
+  decideExecContainment,
+} from './exec/containment.js';
+export type {
+  ExecContainmentPosture,
+  ExecContainmentRequirement,
+  ExecContainmentDecision,
+} from './exec/containment.js';
+export {
+  decideOwnerTerminalAccess,
+  PLATFORM_TMUX_SESSION_PREFIX,
+} from './exec/owner-terminal-guard.js';
+export type {
+  OwnerTerminalGuard,
+  OwnerTerminalGuardPosture,
+  OwnerTerminalDecision,
+} from './exec/owner-terminal-guard.js';
 export { formatDenialResponse, guardExecCommand } from './exec/ast-guard.js';
 export { createAnalyzeTool } from './analyze/index.js';
 export { InspectTool } from './inspect/index.js';
@@ -361,6 +384,24 @@ export function registerAllTools(
      * not engaged and every command runs the unchanged pipe-based path.
      */
     execPromptAnswerHandler?: ((ask: ExecPromptAsk) => Promise<ExecPromptAnswer>) | undefined;
+    /**
+     * Whether this composition REQUIRES the exec boundary. Omitted →
+     * `host-allowed`: when no boundary is available a command runs on the host
+     * with the self-labelling note, exactly as before.
+     *
+     * A hosted CONVERSATIONAL turn states `required`, and then an absent
+     * boundary is a refusal rather than a silent fallback. A hosted WORKSTREAM
+     * that genuinely needs the host is granted `host-allowed` per spawn by the
+     * product composing it — the posture never arrives from the model, the
+     * wire, or a tool argument. See exec/containment.ts.
+     */
+    execContainment?: ExecContainmentRequirement | undefined;
+    /**
+     * Whether commands that drive an existing tmux session this platform did
+     * not create are refused. Omitted → `off`, so every existing caller is
+     * unchanged. See exec/owner-terminal-guard.ts.
+     */
+    ownerTerminalGuard?: OwnerTerminalGuard | undefined;
   },
 ): { fileCache: FileStateCache; projectIndex: ProjectIndex } {
   const fileCache = deps?.fileCache ?? new FileStateCache();
@@ -502,6 +543,8 @@ export function registerAllTools(
     ...(deps.credentialEnvScrub ? { credentialEnvScrub: deps.credentialEnvScrub } : {}),
     ...(execSandbox ? { sandbox: execSandbox } : {}),
     ...(execInteraction ? { interaction: execInteraction } : {}),
+    ...(deps.execContainment ? { containment: deps.execContainment } : {}),
+    ...(deps.ownerTerminalGuard ? { ownerTerminal: deps.ownerTerminalGuard } : {}),
   }));
   registerTool(createAnalyzeTool(deps.toolLLM, deps.featureFlags, workingDirectory));
   registerTool(new InspectTool(deps.featureFlags, workingDirectory));

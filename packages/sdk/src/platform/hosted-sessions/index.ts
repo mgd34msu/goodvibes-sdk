@@ -35,6 +35,18 @@ export type {
 export { createHostedSessionRuntime, newHostedSessionId } from './session-runtime.js';
 export type { HostedSessionRuntime, HostedSessionRuntimeOptions } from './session-runtime.js';
 
+// How much authority a hosted run's exec tool carries — the contained default,
+// the explicitly-granted workstream posture, and the pieces a product needs to
+// state one on the floor it builds.
+export {
+  containmentFor,
+  resolveHostedExecPosture,
+  CONVERSATIONAL_CONTAINMENT,
+  WORKSTREAM_CONTAINMENT,
+  HOSTED_OWNER_TERMINAL_GUARD,
+} from './exec-posture.js';
+export type { HostedExecPostureDecider, HostedSessionExecPosture } from './exec-posture.js';
+
 export {
   HOSTED_ATTACHMENT_DEFAULT_LEASE_MS,
   HOSTED_ATTACHMENT_MAX_LEASE_MS,
