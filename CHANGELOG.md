@@ -2,6 +2,53 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [Unreleased]
+
+### Fixed
+
+- **Post-wake capture now ends when you stop talking, in a room that is not
+  silent.** The level at which a frame counted as silence was a fixed constant
+  (180 on the int16 magnitude scale, about -45 dBFS). In any room whose steady
+  background sits above it — a fan, a compressor, traffic through a window — no
+  frame was ever silent, so `voice.wake.silenceStopMs` never accumulated and
+  EVERY capture ran the full `voice.wake.captureMaxSeconds` however long ago the
+  speaker had finished. The floor is now measured per utterance from the audio
+  captured just before the wake fired, and placed 12 dB above the room's own
+  noise. That window is mostly the wake phrase itself, so the measurement reads
+  the quiet frames inside it — inter-word gaps and stop closures, where only the
+  room is left — rather than its average level, which would measure the speaker
+  and put the floor over their head. The measurement is clamped into [180,
+  1440]: it can never fall below the old constant, so a genuinely quiet room
+  behaves exactly as before and no sentence starts getting clipped, and it can
+  never rise past the point where the next thing above the floor would be the
+  speaker. With no pre-roll to measure, the constant stands unchanged.
+
+### Added
+
+- **`voice.wake.silenceFloorRms`** pins the silence floor instead of measuring
+  it. 0, the default, measures. A number is used exactly as given, including
+  below the built-in 180 — raise it if capture keeps running after you stop,
+  lower it if capture cuts off while you are still speaking. It reaches both
+  capture paths, post-wake and push-to-talk.
+- **`voice.wake.captureMaxSeconds: 0` removes the ceiling.** Speech-to-text
+  imposes no length limit of its own, so the ceiling was always policy rather
+  than a technical bound, and a long dictated thought is a real thing to want.
+  The default stays at 10: the ceiling is the backstop for the OTHER stop
+  condition failing, and silence-stop is only dependable now that the floor is
+  measured — which is why these two ship together. With the ceiling off, silence
+  (post-wake) or the key release (push-to-talk) is the only thing that closes
+  the microphone.
+
+- **The exec sandbox note now names the way through the boundary, not only the
+  boundary.** A network-isolated run already said host `localhost` services were
+  unreachable and that the daemon on 127.0.0.1 would refuse connections from
+  inside. Being told only what does not work left the next move unstated, and a
+  turn that wanted daemon or settings state kept reaching for it anyway — a
+  second `curl`, then `systemctl`, then a port check. The note now names the
+  built-in tools that answer those questions from outside the boundary:
+  `goodvibes_context` (`summary` for runtime and daemon state, `config_get` for
+  a setting) and `goodvibes_settings` for changing one. Still one line.
+
 ## [2.0.11] - 2026-08-06
 
 ### Fixed

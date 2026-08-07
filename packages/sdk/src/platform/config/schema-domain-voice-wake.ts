@@ -78,6 +78,7 @@ export interface VoiceWakeConfig {
     preRollMs: number;
     captureMaxSeconds: number;
     silenceStopMs: number;
+    silenceFloorRms: number;
     autoSubmit: boolean;
     retainAudio: 'none' | 'session-temp';
     customModelDir: string;
@@ -118,6 +119,7 @@ export const voiceWakeConfigDefaults: { voice: VoiceWakeConfig } = {
       preRollMs: 500,
       captureMaxSeconds: 10,
       silenceStopMs: 1200,
+      silenceFloorRms: 0,
       autoSubmit: false,
       retainAudio: 'none',
       customModelDir: '',
@@ -348,11 +350,18 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     key: 'voice.wake.captureMaxSeconds',
     type: 'number',
     default: 10,
-    ...intRange(1, 120),
+    ...intRange(0, 120),
     description:
       'Hard ceiling on how long capture runs before it stops on its own. Bounds memory and guarantees a stuck or silent stream '
       + 'cannot hold the microphone open indefinitely. Applies to post-wake capture AND to push-to-talk, where a key-release '
-      + 'event that never arrives would otherwise leave the device open.',
+      + 'event that never arrives would otherwise leave the device open. '
+      + '0 REMOVES THE CEILING: speech-to-text imposes no length limit of its own, so the ceiling is policy rather than a '
+      + 'technical bound, and a long dictated thought is a real thing to want. It still defaults to 10 because the ceiling is '
+      + 'the backstop for the OTHER stop condition failing. Post-wake capture normally ends about voice.wake.silenceStopMs '
+      + 'after you stop talking, which depends on frames reading as silence — with the ceiling off, a stream that goes stuck '
+      + 'or a room the silence floor cannot resolve holds the microphone open with nothing left to close it. Turn it off '
+      + 'alongside a silence-stop you have seen work in your room; voice.wake.silenceFloorRms is the row that makes that '
+      + 'reliable.',
   },
   {
     key: 'voice.wake.silenceStopMs',
@@ -364,6 +373,22 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'the voice.wake.captureMaxSeconds ceiling. Raise it if capture cuts off mid-sentence during natural pauses. '
       + 'Post-wake only: push-to-talk ends when the key is released, because someone holding it through a pause has not '
       + 'finished talking.',
+  },
+  {
+    key: 'voice.wake.silenceFloorRms',
+    type: 'number',
+    default: 0,
+    ...intRange(0, 8000),
+    description:
+      'The audio level at or below which a frame counts as silence, on the int16 magnitude scale the capture path uses '
+      + '(full scale 32768, so 180 is about -45 dBFS). 0 — the default — MEASURES IT PER UTTERANCE from the audio captured '
+      + 'just before the wake fired, and places the floor 12 dB above the room\'s own noise. '
+      + 'That measurement is what makes voice.wake.silenceStopMs work at all in a room that is not quiet: with a fixed floor, '
+      + 'steady background noise above it means no frame is ever silent, silence never accumulates, and every capture runs to '
+      + 'the voice.wake.captureMaxSeconds ceiling however long ago you stopped talking. '
+      + 'Set a number to pin the floor instead, which is worth doing if the measurement guesses wrong in your room: raise it '
+      + 'if capture keeps running after you stop, lower it if capture cuts off while you are still speaking. The measured '
+      + 'value is never allowed below 180 or above 1440, but a number you set here is used exactly as given.',
   },
   {
     key: 'voice.wake.autoSubmit',

@@ -129,6 +129,8 @@ export interface WakeRuntimeSettings {
   readonly preRollMs: number;
   readonly captureMaxSeconds: number;
   readonly silenceStopMs: number;
+  /** `voice.wake.silenceFloorRms`. 0 means measure the room per utterance. */
+  readonly silenceFloorRms: number;
   readonly autoSubmit: boolean;
   readonly retainAudio: 'none' | 'session-temp';
   readonly customModelDir: string;
@@ -165,6 +167,7 @@ export const WAKE_SETTING_KEYS: readonly string[] = [
   'voice.wake.preRollMs',
   'voice.wake.captureMaxSeconds',
   'voice.wake.silenceStopMs',
+  'voice.wake.silenceFloorRms',
   'voice.wake.autoSubmit',
   'voice.wake.retainAudio',
   'voice.wake.customModelDir',
@@ -371,6 +374,7 @@ export function resolveWakeRuntimeSettings(
     preRollMs: readNumber(read, 'voice.wake.preRollMs', DEFAULTS.preRollMs),
     captureMaxSeconds: readNumber(read, 'voice.wake.captureMaxSeconds', DEFAULTS.captureMaxSeconds),
     silenceStopMs: readNumber(read, 'voice.wake.silenceStopMs', DEFAULTS.silenceStopMs),
+    silenceFloorRms: readNumber(read, 'voice.wake.silenceFloorRms', DEFAULTS.silenceFloorRms),
     autoSubmit: readBoolean(read, 'voice.wake.autoSubmit', DEFAULTS.autoSubmit),
     retainAudio: retainAudio === 'session-temp' && capabilities.canRetainAudio !== true ? 'none' : retainAudio,
     customModelDir: readString(read, 'voice.wake.customModelDir', DEFAULTS.customModelDir),

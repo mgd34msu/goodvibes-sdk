@@ -25,7 +25,8 @@
  * Clock and timers are injected; capture and the engine come from the host. No
  * `node:` imports, so a browser tab runs this unchanged.
  */
-import { VoiceInputRecorder, type CapturedUtterance } from '../capture/voice-input.js';
+import { VoiceInputRecorder, resolveSilenceFloorRms, type CapturedUtterance } from '../capture/voice-input.js';
+import { WAKE_SAMPLE_RATE } from './melspectrogram.js';
 import {
   createNoiseSuppressingOpener,
   type NoiseSuppressionFactory,
@@ -711,9 +712,18 @@ export class WakeListener {
     // confirmed. Only the first one starts a recording.
     if (this.#recorder !== null) return;
     this.#lastWakeAt = detection.at;
+    // The pre-roll is the only audio from before the user started talking that
+    // anything here holds, so it is what the room gets measured from. It is
+    // mostly the wake phrase itself; resolveSilenceFloorRms is built for that and
+    // reads the quiet frames inside it rather than its average level.
     const recorder = new VoiceInputRecorder({
       captureMaxSeconds: this.#settings.captureMaxSeconds,
       silenceStopMs: this.#settings.silenceStopMs,
+      silenceRms: resolveSilenceFloorRms({
+        override: this.#settings.silenceFloorRms,
+        ambient: detection.preRoll,
+        sampleRate: WAKE_SAMPLE_RATE,
+      }),
     });
     if (detection.preRoll.length > 0) recorder.seedPreRoll(detection.preRoll);
     this.#recorder = recorder;

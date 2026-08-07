@@ -76,7 +76,14 @@ export {
 
 export {
   VOICE_INPUT_SILENCE_RMS,
+  VOICE_INPUT_ADAPTIVE_FLOOR_MAX,
+  VOICE_INPUT_ADAPTIVE_MARGIN,
+  VOICE_INPUT_AMBIENT_FRAME_MS,
+  VOICE_INPUT_AMBIENT_MIN_FRAMES,
+  VOICE_INPUT_AMBIENT_PERCENTILE,
   VoiceInputRecorder,
+  estimateAmbientRms,
+  resolveSilenceFloorRms,
   utteranceToAudioArtifact,
   type VoiceInputStopReason,
   type VoiceInputPolicy,

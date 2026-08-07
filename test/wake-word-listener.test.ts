@@ -273,6 +273,94 @@ describe('recorder bytes reach the engine and a measured positive fires', () => 
   });
 });
 
+describe('the silence floor is measured from the room the wake was heard in', () => {
+  /** Drive the trace until the wake fires, with the room at `roomMagnitude`. */
+  async function wakeInRoom(h: Harness, roomMagnitude: number): Promise<void> {
+    await h.listener.start();
+    for (let i = 0; i < POSITIVE.length + WAKE_CLASSIFIER_FRAMES && h.wakes.length === 0; i += 1) {
+      h.child.emit(frameBytes(roomMagnitude));
+      await settle();
+    }
+    expect(h.wakes).toHaveLength(1);
+  }
+
+  test('a room at 300 RMS still ends on silence, where a fixed 180 floor rode to the ceiling', async () => {
+    // 300 is above the fixed VOICE_INPUT_SILENCE_RMS of 180, so under the old
+    // fixed floor no frame in this room was ever silent and every capture ran
+    // the full captureMaxSeconds. The pre-wake frames are what the floor is now
+    // measured from, and they are this same room.
+    const h = harness({
+      'voice.wake.enabled': true,
+      'voice.wake.silenceStopMs': 400,
+      'voice.wake.captureMaxSeconds': 3,
+    });
+    await wakeInRoom(h, 300);
+
+    // Speak over the room, then stop talking — the room noise continues.
+    for (let i = 0; i < 5; i += 1) { h.child.emit(frameBytes(6000)); await settle(); }
+    for (let i = 0; i < 10 && h.utterances.length === 0; i += 1) {
+      h.child.emit(frameBytes(300));
+      await settle();
+    }
+
+    expect(h.utterances).toHaveLength(1);
+    const utterance = h.utterances[0]!;
+    // The point of the whole change: silence, not max-duration.
+    expect(utterance.stopReason).toBe('silence');
+    expect(utterance.silent).toBe(false);
+    // And it stopped near when the speaker did, not at the 3s ceiling.
+    expect(utterance.durationMs).toBeLessThan(3000);
+  });
+
+  test('voice.wake.silenceFloorRms is really read: a floor set under the room brings the ceiling back', async () => {
+    // Same room, same speech. Pinning the floor at 100 puts it BELOW the room's
+    // 300, so nothing is silent again and only the ceiling ends it. That is the
+    // setting proving it reaches the recorder — the adaptive path would have
+    // ended this capture on silence, as the test above does.
+    const h = harness({
+      'voice.wake.enabled': true,
+      'voice.wake.silenceStopMs': 400,
+      'voice.wake.captureMaxSeconds': 3,
+      'voice.wake.silenceFloorRms': 100,
+    });
+    await wakeInRoom(h, 300);
+
+    for (let i = 0; i < 5; i += 1) { h.child.emit(frameBytes(6000)); await settle(); }
+    for (let i = 0; i < 60 && h.utterances.length === 0; i += 1) {
+      h.child.emit(frameBytes(300));
+      await settle();
+    }
+
+    expect(h.utterances).toHaveLength(1);
+    expect(h.utterances[0]!.stopReason).toBe('max-duration');
+  });
+
+  test('captureMaxSeconds 0 leaves silence as the only thing that ends a capture', async () => {
+    const h = harness({
+      'voice.wake.enabled': true,
+      'voice.wake.silenceStopMs': 400,
+      'voice.wake.captureMaxSeconds': 0,
+    });
+    await wakeInRoom(h, 300);
+
+    // Far past the 3s that used to be a ceiling, and past the 120s schema
+    // maximum too: nothing cuts it while the speaker is still going.
+    for (let i = 0; i < 200; i += 1) { h.child.emit(frameBytes(6000)); await settle(); }
+    expect(h.utterances).toHaveLength(0);
+    expect(h.listener.state().phase).toBe('capturing-utterance');
+
+    // Then they stop, and the measured floor closes it — which is what makes
+    // turning the ceiling off safe in the first place.
+    for (let i = 0; i < 10 && h.utterances.length === 0; i += 1) {
+      h.child.emit(frameBytes(300));
+      await settle();
+    }
+    expect(h.utterances).toHaveLength(1);
+    expect(h.utterances[0]!.stopReason).toBe('silence');
+    expect(h.utterances[0]!.durationMs).toBeGreaterThan(16_000);
+  });
+});
+
 describe('a stream that dies is a restart decision, not a silent stop', () => {
   test('a recorder that exits is restarted after the configured backoff', async () => {
     const first = fakeProcess();

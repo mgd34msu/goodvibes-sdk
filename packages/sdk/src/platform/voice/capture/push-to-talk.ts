@@ -27,7 +27,12 @@ import {
   type AudioCaptureOpener,
   type AudioCaptureStream,
 } from './types.js';
-import { VoiceInputRecorder, type CapturedUtterance, type VoiceInputStopReason } from './voice-input.js';
+import {
+  VoiceInputRecorder,
+  resolveSilenceFloorRms,
+  type CapturedUtterance,
+  type VoiceInputStopReason,
+} from './voice-input.js';
 
 /** Where a voice-input session is. Mirrors what a surface renders. */
 export type PushToTalkPhase = 'idle' | 'requesting' | 'recording' | 'stopping' | 'error';
@@ -54,9 +59,17 @@ export interface PushToTalkOptions {
   /**
    * Hard ceiling, from `voice.wake.captureMaxSeconds`. It applies to held-key
    * capture too: a key event that never arrives (a lost focus, a dropped
-   * terminal) must not hold the microphone open indefinitely.
+   * terminal) must not hold the microphone open indefinitely. 0 removes it, and
+   * a held key becomes the only thing that ends the capture.
    */
   readonly captureMaxSeconds: number;
+  /**
+   * Silence floor, from `voice.wake.silenceFloorRms`. Unset or 0 uses the fixed
+   * {@link VOICE_INPUT_SILENCE_RMS}: push-to-talk has no pre-wake audio to
+   * measure a room from, so there is nothing to adapt to here. It still decides
+   * whether an utterance is reported as silent.
+   */
+  readonly silenceFloorRms?: number | undefined;
   /**
    * Silence that ends capture on its own. 0 — the push-to-talk default — leaves
    * stopping to the user, because someone holding a key through a pause has not
@@ -112,6 +125,7 @@ export class PushToTalkSession {
     const recorder = new VoiceInputRecorder({
       captureMaxSeconds: this.#options.captureMaxSeconds,
       silenceStopMs: this.#options.silenceStopMs ?? 0,
+      silenceRms: resolveSilenceFloorRms({ override: this.#options.silenceFloorRms }),
     });
     try {
       const stream = await this.#openCapture(
@@ -175,6 +189,7 @@ export class PushToTalkSession {
     const utterance = (recorder ?? new VoiceInputRecorder({
       captureMaxSeconds: this.#options.captureMaxSeconds,
       silenceStopMs: 0,
+      silenceRms: resolveSilenceFloorRms({ override: this.#options.silenceFloorRms }),
     })).finish(reason);
     this.#setPhase('idle');
     // An auto-stop has nobody awaiting the return value, so it is announced.

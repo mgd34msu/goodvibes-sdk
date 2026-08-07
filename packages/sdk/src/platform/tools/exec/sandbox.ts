@@ -418,8 +418,16 @@ export async function brokerSandboxEscalation(
  * device and process visibility. A probe that found no Bluetooth adapter and no
  * daemon on `127.0.0.1:3421` was read as the user's machine lacking both.
  *
- * It names the isolation and the one action that changes it, and stops. It is
- * not a lecture and it is not repeated per line — one field, once per result.
+ * Naming the isolation is only half of it. A model told the daemon is
+ * unreachable and nothing else will keep reaching for it — a second curl, then
+ * systemctl, then a port check — because the note ruled out the route it had
+ * without naming another. So the note names the tools that DO answer the
+ * question from outside the boundary, `goodvibes_context` and
+ * `goodvibes_settings`, which is what turns a dead end into a next step.
+ *
+ * It names the isolation, the way through it, and the one action that changes
+ * it, and stops. It is not a lecture and it is not repeated per line — one
+ * field, once per result.
  */
 export function buildSandboxNote(plan: ExecSandboxPlan): string {
   if (!plan.sandboxed) {
@@ -434,7 +442,7 @@ export function buildSandboxNote(plan: ExecSandboxPlan): string {
     );
   } else {
     parts.push(
-      `separate network namespace, so host localhost services are unreachable from here — the goodvibes daemon on 127.0.0.1:${DEFAULT_CONTROL_PLANE_PORT} refuses connections inside the boundary even while it is running on the host (add the command to sandbox.egressAllowlist to share the host network)`,
+      `separate network namespace, so host localhost services are unreachable from here — the goodvibes daemon on 127.0.0.1:${DEFAULT_CONTROL_PLANE_PORT} refuses connections inside the boundary even while it is running on the host, so read daemon and settings state with the built-in goodvibes_context tool (mode "summary" for runtime and daemon state, "config_get" for a setting) and change settings with the built-in goodvibes_settings tool, both of which run outside this boundary, rather than retrying curl or systemctl in here (add the command to sandbox.egressAllowlist to share the host network instead)`,
     );
   }
   parts.push(

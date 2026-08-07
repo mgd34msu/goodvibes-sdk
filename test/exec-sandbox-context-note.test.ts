@@ -78,6 +78,29 @@ describe('buildSandboxNote — names the isolation that actually applies', () =>
     expect(note).toContain('egressAllowlist');
   });
 
+  test('it names the built-in tools that answer daemon and settings questions', () => {
+    // Naming only the isolation leaves the next move unstated, and a model that
+    // has just been told the daemon is unreachable keeps reaching for it — curl,
+    // then systemctl, then a port check — because nothing named a route that
+    // works. These two tool names are the route, and they are the registry's
+    // real names (packages/sdk/src/platform/tools/goodvibes-runtime/index.ts),
+    // not a description of one: a near-miss name spends the same turns.
+    const note = buildSandboxNote(isolatedPlan());
+
+    expect(note).toContain('goodvibes_context');
+    expect(note).toContain('goodvibes_settings');
+    // The modes matter as much as the tool: 'summary' is the daemon/runtime read
+    // and 'config_get' is the settings read.
+    expect(note).toContain('summary');
+    expect(note).toContain('config_get');
+    // And it says plainly which attempts are the dead end, so the guidance
+    // replaces the retry loop rather than sitting beside it.
+    expect(note).toContain('curl');
+    expect(note).toContain('systemctl');
+    // Still one line, still not a lecture.
+    expect(note.split('\n')).toHaveLength(1);
+  });
+
   test('it warns that absence inside the boundary is not absence on the host', () => {
     expect(buildSandboxNote(isolatedPlan())).toContain('not absence on the host');
   });
