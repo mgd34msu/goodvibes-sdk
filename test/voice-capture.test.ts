@@ -33,6 +33,12 @@ import {
   utteranceToAudioArtifact,
   VoiceInputRecorder,
   VOICE_INPUT_SILENCE_RMS,
+  VOICE_INPUT_ADAPTIVE_FLOOR_MAX,
+  VOICE_INPUT_ADAPTIVE_MARGIN,
+  VOICE_INPUT_AMBIENT_FRAME_MS,
+  VOICE_INPUT_AMBIENT_MIN_FRAMES,
+  estimateAmbientRms,
+  resolveSilenceFloorRms,
   type AudioCaptureHandlers,
   type CaptureChildProcess,
 } from '../packages/sdk/src/platform/voice/capture/index.js';
@@ -231,6 +237,189 @@ describe('the utterance policy', () => {
     const recorder = new VoiceInputRecorder({ captureMaxSeconds: 10, silenceStopMs: 0 });
     for (let i = 0; i < 5; i += 1) recorder.push(new Float32Array(1280));
     expect(recorder.finish('requested').silent).toBe(true);
+  });
+});
+
+/**
+ * Deterministic pseudo-random noise at a target RMS, on the int16 magnitude
+ * scale. A constant fill would give every analysis frame an identical level and
+ * hide exactly the frame-to-frame scatter the margin exists to clear, so the
+ * noise is real noise — just reproducible.
+ */
+function noise(samples: number, rms: number, seed = 1): Float32Array {
+  const out = new Float32Array(samples);
+  let state = seed >>> 0;
+  for (let i = 0; i < samples; i += 1) {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    // Uniform on [-1, 1), whose RMS is 1/sqrt(3) — scaled up to land on `rms`.
+    out[i] = ((state / 0x1_0000_0000) * 2 - 1) * rms * Math.SQRT2 * Math.sqrt(1.5);
+  }
+  return out;
+}
+
+/** A wake pre-roll: room noise, then the wake phrase over the top of it. */
+function preRollWithPhrase(ambientRms: number, speechRms: number): Float32Array {
+  const window = noise(8000, ambientRms, 7); // 500ms at 16kHz
+  const phrase = noise(4800, speechRms, 9); // the last 300ms is the phrase
+  window.set(phrase, window.length - phrase.length);
+  return window;
+}
+
+describe('the silence floor measures the room instead of assuming it', () => {
+  test('THE DEFECT: steady room noise above the fixed floor rides every capture to the ceiling', () => {
+    // A fan, a compressor, traffic — anything holding the room at 300 RMS, above
+    // the fixed 180. No frame is ever silent, so silenceStopMs never accumulates
+    // and the capture runs the full ceiling however long ago the speaker stopped.
+    const roomRms = 300;
+    expect(roomRms).toBeGreaterThan(VOICE_INPUT_SILENCE_RMS);
+    const speech = noise(1280, 4000, 3);
+    const room = noise(1280, roomRms, 5);
+
+    const fixed = new VoiceInputRecorder({
+      captureMaxSeconds: 10,
+      silenceStopMs: 1200,
+      silenceRms: VOICE_INPUT_SILENCE_RMS,
+    });
+    for (let i = 0; i < 5; i += 1) expect(fixed.push(speech)).toBeNull();
+    // 1200ms of silence is 15 frames of 80ms. Push far past that: none of it
+    // reads as silence, so the only thing that ever stops it is the ceiling.
+    let fixedStop: string | null = null;
+    let fixedFrames = 5;
+    while (fixedStop === null && fixedFrames < 200) {
+      fixedStop = fixed.push(room);
+      fixedFrames += 1;
+    }
+    expect(fixedStop).toBe('max-duration');
+    // 10s / 80ms = 125 frames, not the 20 a working silence-stop would have used.
+    expect(fixedFrames).toBe(125);
+
+    // THE FIX: the same room, with the floor measured from the pre-wake audio.
+    const floor = resolveSilenceFloorRms({
+      ambient: preRollWithPhrase(roomRms, 4000),
+      sampleRate: 16_000,
+    });
+    expect(floor).toBeGreaterThan(roomRms);
+    expect(floor).toBeLessThan(4000); // still well under the speaker
+    const adaptive = new VoiceInputRecorder({
+      captureMaxSeconds: 10,
+      silenceStopMs: 1200,
+      silenceRms: floor,
+    });
+    for (let i = 0; i < 5; i += 1) expect(adaptive.push(speech)).toBeNull();
+    for (let i = 0; i < 14; i += 1) expect(adaptive.push(room)).toBeNull();
+    expect(adaptive.push(room)).toBe('silence');
+    // 15 frames after speech stopped = the 1200ms asked for, not 10 seconds.
+    expect(adaptive.finish('silence').stopReason).toBe('silence');
+  });
+
+  test('a quiet room is left exactly as it was — the floor never drops below the constant', () => {
+    // Measuring near-silence could only ever push the floor DOWN, which would
+    // start clipping sentences. The lower clamp is what makes adapting safe.
+    for (const quiet of [1, 10, 30, 44]) {
+      const floor = resolveSilenceFloorRms({
+        ambient: noise(8000, quiet, 11),
+        sampleRate: 16_000,
+      });
+      expect(floor).toBe(VOICE_INPUT_SILENCE_RMS);
+    }
+    // A silent pre-roll is the extreme of the same case.
+    expect(resolveSilenceFloorRms({ ambient: new Float32Array(8000), sampleRate: 16_000 }))
+      .toBe(VOICE_INPUT_SILENCE_RMS);
+  });
+
+  test('an explicitly set floor wins over the measurement, exactly as given', () => {
+    const loudRoom = preRollWithPhrase(400, 4000);
+    // Above what the room would have produced.
+    expect(resolveSilenceFloorRms({ override: 2500, ambient: loudRoom, sampleRate: 16_000 })).toBe(2500);
+    // And BELOW it, including below the constant: someone who set a level meant
+    // that level, and the clamps that guard the measurement do not apply to it.
+    expect(resolveSilenceFloorRms({ override: 40, ambient: loudRoom, sampleRate: 16_000 })).toBe(40);
+    expect(40).toBeLessThan(VOICE_INPUT_SILENCE_RMS);
+    // 0 is "unset", which is what the schema default carries — it must adapt,
+    // not pin the floor at zero and call every frame speech.
+    const adapted = resolveSilenceFloorRms({ override: 0, ambient: loudRoom, sampleRate: 16_000 });
+    expect(adapted).toBeGreaterThan(VOICE_INPUT_SILENCE_RMS);
+  });
+
+  test('with no pre-roll to measure, the constant stands', () => {
+    expect(resolveSilenceFloorRms({})).toBe(VOICE_INPUT_SILENCE_RMS);
+    expect(resolveSilenceFloorRms({ ambient: new Float32Array(0) })).toBe(VOICE_INPUT_SILENCE_RMS);
+    // Too short to be a statistic rather than a coin flip: under 8 frames of
+    // 20ms, no estimate is reported at all.
+    expect(estimateAmbientRms(noise(2000, 400, 13), 16_000)).toBeNull();
+    expect(resolveSilenceFloorRms({ ambient: noise(2000, 400, 13), sampleRate: 16_000 }))
+      .toBe(VOICE_INPUT_SILENCE_RMS);
+    // At exactly the minimum it does report one.
+    const enough = VOICE_INPUT_AMBIENT_MIN_FRAMES * (VOICE_INPUT_AMBIENT_FRAME_MS / 1000) * 16_000;
+    expect(estimateAmbientRms(noise(enough, 400, 13), 16_000)).not.toBeNull();
+  });
+
+  test('the measurement reads the room inside the phrase, not the speaker', () => {
+    // The pre-roll is mostly the wake phrase. A mean would measure the SPEAKER
+    // and put the floor over their head; the order statistic finds the room.
+    const measured = estimateAmbientRms(preRollWithPhrase(250, 5000), 16_000);
+    expect(measured).not.toBeNull();
+    expect(measured as number).toBeLessThan(600);
+    expect(measured as number).toBeGreaterThan(100);
+  });
+
+  test('a room too loud to separate by level is capped rather than set over the speaker', () => {
+    // Past the cap the next thing above the floor is the speaker. Clamping keeps
+    // the old behaviour (the ceiling ends it) instead of never hearing speech.
+    const floor = resolveSilenceFloorRms({ ambient: noise(8000, 3000, 17), sampleRate: 16_000 });
+    expect(floor).toBe(VOICE_INPUT_ADAPTIVE_FLOOR_MAX);
+    expect(floor).toBe(VOICE_INPUT_SILENCE_RMS * 8);
+    // Speech is still heard at the cap, which is the whole point of having one.
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 10, silenceStopMs: 1200, silenceRms: floor });
+    recorder.push(noise(1280, 4000, 19));
+    expect(recorder.heardSpeech).toBe(true);
+  });
+
+  test('the margin is the documented +12 dB over what was measured', () => {
+    // Pinning the rule itself: a mid-range room lands on ambient * 4, untouched
+    // by either clamp.
+    const ambient = noise(16_000, 250, 23);
+    const measured = estimateAmbientRms(ambient, 16_000) as number;
+    const floor = resolveSilenceFloorRms({ ambient, sampleRate: 16_000 });
+    expect(floor).toBeCloseTo(measured * VOICE_INPUT_ADAPTIVE_MARGIN, 6);
+    expect(VOICE_INPUT_ADAPTIVE_MARGIN).toBe(4);
+    expect(20 * Math.log10(VOICE_INPUT_ADAPTIVE_MARGIN)).toBeCloseTo(12.04, 1);
+  });
+});
+
+describe('captureMaxSeconds 0 means no ceiling', () => {
+  test('a long capture is never cut, and 0 is not read as "stop immediately"', () => {
+    // 0 seconds is 0 samples, and a length-vs-0 comparison is true on the very
+    // first frame — the failure this has to not have.
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 0, silenceStopMs: 0 });
+    const frame = new Float32Array(1280).fill(2000);
+    expect(recorder.push(frame)).toBeNull();
+    // Four minutes of audio, well past the 120s the schema's own maximum allows.
+    for (let i = 0; i < 3000; i += 1) expect(recorder.push(frame)).toBeNull();
+    expect(recorder.durationMs).toBeGreaterThan(240_000);
+    expect(recorder.finish('requested').stopReason).toBe('requested');
+  });
+
+  test('silence still ends an unlimited capture, which is what keeps the mic from staying open', () => {
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 0, silenceStopMs: 400 });
+    const loud = new Float32Array(1280).fill(4000);
+    const silent = new Float32Array(1280);
+    expect(recorder.push(loud)).toBeNull();
+    for (let i = 0; i < 4; i += 1) expect(recorder.push(silent)).toBeNull();
+    expect(recorder.push(silent)).toBe('silence');
+  });
+
+  test('a positive ceiling is unchanged by the 0 handling', () => {
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 1, silenceStopMs: 0 });
+    const frame = new Float32Array(1280).fill(500);
+    let stop: string | null = null;
+    let pushed = 0;
+    while (stop === null && pushed < 100) {
+      stop = recorder.push(frame);
+      pushed += 1;
+    }
+    expect(stop).toBe('max-duration');
+    expect(pushed).toBe(13);
   });
 });
 

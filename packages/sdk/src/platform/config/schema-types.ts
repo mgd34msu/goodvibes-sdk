@@ -737,6 +737,7 @@ export type ConfigKey =
   | 'voice.wake.preRollMs'
   | 'voice.wake.captureMaxSeconds'
   | 'voice.wake.silenceStopMs'
+  | 'voice.wake.silenceFloorRms'
   | 'voice.wake.autoSubmit'
   | 'voice.wake.retainAudio'
   | 'voice.wake.customModelDir'
