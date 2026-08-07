@@ -23,9 +23,12 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     # The whole-workspace validate lane grew past 10 minutes with the memory-
-    # governance and managed-voice suites; 20 keeps honest headroom without
-    # masking a hang (individual bun tests carry their own timeouts).
-    timeout-minutes: 20
+    # governance and managed-voice suites, then past 20 as pack:check came to
+    # dominate (~16 minutes packing every workspace package at 2.0.13 — two
+    # runs in a row died at exactly 20:00 mid-install:smoke while progressing
+    # honestly). 30 keeps headroom without masking a hang (individual bun
+    # tests carry their own timeouts).
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
