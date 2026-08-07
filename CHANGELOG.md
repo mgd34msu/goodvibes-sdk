@@ -2,6 +2,26 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [Unreleased]
+
+### Fixed
+
+- **An unnamed voice request now goes to the provider the user actually
+  configured.** When a transcription or synthesis request named no provider,
+  the registry returned the FIRST registered provider with the capability —
+  a cloud provider, by builtin registration order — even when that provider
+  had no key and the host carried a fully provisioned local engine. On a
+  machine set up for local voice, every wake-word transcription died with
+  "OpenAI API key missing" while the user's working whisper was never asked,
+  and no settings key could override the pick. Unnamed requests now prefer
+  providers that report themselves configured, with a configured local
+  engine first (free, offline, no key — provisioned precisely so unnamed
+  requests use it), then any other configured provider in registration
+  order. When nothing is configured the old first-registered pick remains,
+  so the resulting error still names one concrete provider. A named
+  provider keeps exactly its previous semantics, for all four capabilities
+  (speech-to-text, synthesis, streaming synthesis, realtime).
+
 ## [2.0.10] - 2026-08-05
 
 ### Fixed

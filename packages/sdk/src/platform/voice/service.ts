@@ -69,7 +69,7 @@ export class VoiceService {
   }
 
   async synthesize(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisResult> {
-    const provider = this.registry.findProvider('tts', providerId);
+    const provider = await this.registry.resolveProvider('tts', providerId);
     if (!provider?.synthesize) {
       throw providerNotConfiguredError(providerId, 'Voice TTS provider');
     }
@@ -79,7 +79,7 @@ export class VoiceService {
   }
 
   async synthesizeStream(providerId: string | undefined, request: VoiceSynthesisRequest): Promise<VoiceSynthesisStreamResult> {
-    const provider = this.registry.findProvider('tts-stream', providerId);
+    const provider = await this.registry.resolveProvider('tts-stream', providerId);
     if (!provider?.synthesizeStream) {
       throw providerNotConfiguredError(providerId, 'Voice streaming TTS provider');
     }
@@ -91,7 +91,7 @@ export class VoiceService {
   }
 
   async transcribe(providerId: string | undefined, request: VoiceTranscriptionRequest): Promise<VoiceTranscriptionResult> {
-    const provider = this.registry.findProvider('stt', providerId);
+    const provider = await this.registry.resolveProvider('stt', providerId);
     if (!provider?.transcribe) {
       throw providerNotConfiguredError(providerId, 'Voice STT provider');
     }
@@ -104,7 +104,7 @@ export class VoiceService {
   }
 
   async openRealtimeSession(providerId: string | undefined, request: VoiceRealtimeSessionRequest): Promise<VoiceRealtimeSession> {
-    const provider = this.registry.findProvider('realtime', providerId);
+    const provider = await this.registry.resolveProvider('realtime', providerId);
     if (!provider?.openRealtimeSession) {
       throw providerNotConfiguredError(providerId, 'Voice realtime provider');
     }
