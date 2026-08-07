@@ -2,6 +2,34 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.13] - 2026-08-07
+
+### Added
+
+- **`platform/runtime/bootstrap`, `platform/runtime/security`,
+  `platform/runtime/shell`, and `platform/runtime/transport` are now published
+  subpaths.** Products that alias names out of these runtime surfaces had only
+  the grouped namespace objects to reach them through, which forced eager
+  module-scope reads (`export const X = bootstrap.X`) in their own barrels.
+  Bun's single-file compiler emits module bodies in an order that varies
+  build-to-build, and an eager read can land before the module that defines the
+  binding — the compiled binary then dies at load with a ReferenceError on SOME
+  builds of identical source (observed live: the same agent commit failed CI's
+  binary smoke, passed it on rerun, and failed the darwin-arm64 release leg).
+  With registered subpaths, a product barrel can use grouped live re-exports
+  (`export { X } from '<subpath>'`) — resolved by the module system, not read
+  at module scope — exactly how `platform/runtime/operations` already fixed
+  this same class once. All four barrels were already public API through the
+  runtime namespace; this changes how they can be reached, not what they
+  expose.
+- **The toolchain `post-build-smoke` now scans the artifact for that pattern.**
+  After the banner check, the smoke reads the compiled artifact and fails if
+  the embedded bundle contains any top-level `var X = exports_Y.Z` eager
+  namespace read — even when this particular build booted, because the next
+  rebuild of the same source can reorder and die. A booted binary is safe
+  forever (order is baked at build time); the sentinel exists so the lottery
+  itself cannot ship.
+
 ## [2.0.12] - 2026-08-06
 
 ### Fixed
