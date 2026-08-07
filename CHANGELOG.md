@@ -2,7 +2,7 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
-## [Unreleased]
+## [2.0.12] - 2026-08-06
 
 ### Fixed
 
