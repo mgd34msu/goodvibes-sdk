@@ -434,6 +434,22 @@
     "gzip_bytes": 2199,
     "rationale": "the runtime operations namespace published on its own import path so a consumer names the symbol it wants instead of reaching through the platform/runtime namespace object; measured 1832 B gzip; headroom max(ceil(1832*1.2)=2199, 1832+50=1882) -> 2199 (1.2x dominates)"
   },
+  "./platform/runtime/bootstrap": {
+    "gzip_bytes": 1306,
+    "rationale": "the runtime bootstrap barrel published on its own import path so product barrels use grouped live re-exports instead of eager module-scope reads off the namespace object (the compiled-binary build-order lottery, fixed at 2.0.13); measured 1088 B gzip @ commit 5a9e9026; headroom max(ceil(1088*1.2)=1306, 1088+50=1138) -> 1306 (1.2x dominates)"
+  },
+  "./platform/runtime/security": {
+    "gzip_bytes": 540,
+    "rationale": "the runtime security barrel published on its own import path, same subpath family and reason as ./platform/runtime/bootstrap; measured 450 B gzip @ commit 5a9e9026; headroom max(ceil(450*1.2)=540, 450+50=500) -> 540 (1.2x dominates)"
+  },
+  "./platform/runtime/shell": {
+    "gzip_bytes": 232,
+    "rationale": "the runtime shell barrel published on its own import path, same subpath family and reason as ./platform/runtime/bootstrap; measured 182 B gzip @ commit 5a9e9026; headroom max(ceil(182*1.2)=219, 182+50=232) -> 232 (+50 B floor dominates by 13 B)"
+  },
+  "./platform/runtime/transport": {
+    "gzip_bytes": 503,
+    "rationale": "the runtime transport barrel published on its own import path, same subpath family and reason as ./platform/runtime/bootstrap; measured 419 B gzip @ commit 5a9e9026; headroom max(ceil(419*1.2)=503, 419+50=469) -> 503 (1.2x dominates)"
+  },
   "./platform/runtime": {
     "gzip_bytes": 192,
     "rationale": "platform runtime re-export entry; measured 142 B gzip @ commit 4e5a5e2; headroom max(ceil(142*1.2)=171, 142+50=192) \u2192 192 (+50 B floor dominates by 21 B)"
