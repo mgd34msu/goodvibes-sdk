@@ -12,11 +12,12 @@ declare module 'pdfjs-dist/build/pdf.mjs' {
   export interface PdfDocumentProxy {
     readonly numPages: number;
     getPage(pageNumber: number): Promise<PdfPageProxy>;
-    destroy(): Promise<void>;
   }
 
   export interface PdfLoadingTask {
     readonly promise: Promise<PdfDocumentProxy>;
+    /** Owns teardown of the document and worker; 6.x removed destroy() from the document proxy. */
+    destroy(): Promise<void>;
   }
 
   export function getDocument(input: {

@@ -103,7 +103,11 @@ async function extractPdfWithPdfJs(buffer: Buffer): Promise<PdfJsExtractionAttem
       if (lines.length > 0) pageTexts.push(lines.join('\n'));
       page.cleanup();
     }
-    await document.destroy();
+    // pdfjs-dist 6.x removed destroy() from the document proxy; the loading
+    // task owns teardown in both 5.x and 6.x. Destroying through the document
+    // threw AFTER a successful extraction, and the catch below discarded the
+    // good result into the raw-stream fallback.
+    await loadingTask.destroy();
     const text = cleanText(pageTexts.join('\n\n'));
     if (!text) return {};
     const searchText = searchTextPayload(text);
