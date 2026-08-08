@@ -2,6 +2,40 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.14] - 2026-08-08
+
+### Fixed
+
+- **Post-wake capture ends when the speaker stops, on real microphones.** Two
+  things defeated the room-measured silence floor in live use. A headset's
+  automatic gain control ramps its gain back up after speech stops, so the
+  noise floor RISES above the level measured before the wake word — no frame
+  ever reads as silent again. And a close microphone hears breath: each short
+  burst reset the consecutive-silence clock to zero. The floor now follows the
+  room during capture — a rolling minimum over the last 1.5 seconds tracks the
+  quiet dips between words, and the effective floor rises with it, guarded so
+  it can never climb into actual speech (capped at a third of the tracked
+  speech level). And a loud burst shorter than `voice.wake.speechRetriggerMs`
+  (new setting, default 150 ms; 0 restores the strict old rule) counts as part
+  of the silence instead of restarting the clock — breath and mouse clicks no
+  longer hold the microphone open. An explicit `voice.wake.silenceFloorRms`
+  still freezes the floor completely: a pinned value is pinned.
+- **Every completed wake capture now leaves a receipt** in the voice
+  diagnostics: the floor it started with, where the rolling floor ended, why
+  the capture stopped (silence, ceiling, requested), how long it ran, and how
+  many sub-threshold bursts were absorbed. "It kept listening" is a number now.
+
+### Added
+
+- **Spoken output reads prose, not markdown.** The shared spoken-turn pipeline
+  strips formatting before synthesis: heading marks, bold/italic/strikethrough
+  markers, link and image syntax (the text survives, the URL does not), list
+  bullets, blockquote marks, table plumbing (cells read as a list), horizontal
+  rules, and raw HTML tags. Fenced code blocks are not read at all — the voice
+  says "Code block omitted." once, even when the fence opens and closes across
+  separate streaming deltas. Identifiers like snake_case and math like 2*3
+  survive untouched.
+
 ## [2.0.13] - 2026-08-07
 
 ### Added
