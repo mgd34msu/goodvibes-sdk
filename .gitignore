@@ -36,3 +36,4 @@ __pycache__/
 *-review-*.md
 *-verification.md
 .claude/scheduled_tasks.lock
+.claude/worktrees/
