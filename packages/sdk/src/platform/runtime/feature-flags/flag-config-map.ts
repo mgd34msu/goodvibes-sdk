@@ -162,6 +162,7 @@ export const FEATURE_FLAG_CONFIG: Readonly<Record<string, FeatureFlagConfigAssoc
       'voice.wake.captureMaxSeconds',
       'voice.wake.silenceStopMs',
       'voice.wake.silenceFloorRms',
+      'voice.wake.speechRetriggerMs',
       'voice.wake.autoSubmit',
       'voice.wake.retainAudio',
       'voice.wake.customModelDir',

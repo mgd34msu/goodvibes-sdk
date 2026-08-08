@@ -29,6 +29,26 @@
  * the listener already holds, and the constant becomes the fallback for when
  * there is no sample to measure. The derivation is written out on that function.
  *
+ * ONE MEASUREMENT IS NOT ENOUGH, AND ONE LOUD FRAME IS NOT SPEECH
+ *
+ * A floor measured once, before the utterance, assumes the scale does not move
+ * while the utterance runs. On a bluetooth headset it moves: automatic gain
+ * control ramps the input up once the speaker stops, and the room the pre-roll
+ * measured comes back louder than the floor derived from it. Every frame reads
+ * as speech from then on and the capture rides the ceiling again — the same
+ * defect the measurement was added to fix, arriving from the other direction.
+ * So the floor also FOLLOWS: {@link VoiceInputRecorder} keeps a windowed minimum
+ * of the recent frame levels and raises the floor with it, bounded under the
+ * speech it is hearing at the same time so it can never rise over the speaker.
+ *
+ * And a close-worn microphone hears things that are loud without being speech —
+ * a breath, a lip tick, a chair. Each is one or two frames. Treating every loud
+ * frame as speech means each one resets the trailing-silence count to zero, so a
+ * tick every half second holds the microphone open indefinitely with nobody
+ * talking. Silence is therefore ended by a loud RUN of at least
+ * `voice.wake.speechRetriggerMs`, and a shorter run counts toward silence rather
+ * than against it.
+ *
  * Pure and clock-injected: no timers, no device, no I/O. `push` is called with
  * frames and returns the reason to stop, or null to keep going.
  */
@@ -106,6 +126,81 @@ export const VOICE_INPUT_ADAPTIVE_MARGIN = 4;
 export const VOICE_INPUT_ADAPTIVE_FLOOR_MAX = VOICE_INPUT_SILENCE_RMS * 8;
 
 /**
+ * How far back the rolling ambient estimate looks, in milliseconds.
+ *
+ * The estimate is a windowed MINIMUM, so the window has to be long enough to
+ * contain at least one quiet moment or it reads the speaker instead of the room.
+ * 1.5 s covers a stop closure or an inter-word gap several times over, and is
+ * still short enough to have forgotten a gain change about a second after it
+ * happens. It sits just above the default `voice.wake.silenceStopMs` on purpose:
+ * the window that decides a stop is then measured against audio from the same
+ * pause, not from the room as it was before the speaker started.
+ */
+export const VOICE_INPUT_ROLLING_WINDOW_MS = 1500;
+
+/**
+ * The floor is never raised above this fraction of the speech level tracked over
+ * the same capture — 3 is about 9.5 dB of clearance under the speaker.
+ *
+ * This is the guard that makes raising the floor DURING a capture safe at all. A
+ * floor that walks up with the room and is not held under something has exactly
+ * one catastrophic failure: it passes the speaker's own level, every frame reads
+ * as silence, and the utterance ends the instant it begins. Bounding it against
+ * the loudest thing this capture has heard means the failure cannot happen —
+ * whatever else is true, there is always most of a factor of three between the
+ * floor and the voice it has to stay under.
+ */
+export const VOICE_INPUT_SPEECH_FLOOR_RATIO = 3;
+
+/**
+ * Half-life of the tracked speech level, in milliseconds.
+ *
+ * Deliberately long — comparable to a whole capture rather than to a pause. The
+ * tracker is a running maximum that decays, and the decay is only there so a
+ * speaker who genuinely gets quieter across a long dictation is not measured
+ * against how loud they were at the start.
+ *
+ * A FAST decay breaks the guard in the exact case it exists for. Once the tracked
+ * level falls to the risen noise floor, the noise becomes the "speech" the guard
+ * is protecting, the cap collapses to a third of the noise, and the floor is
+ * pinned below the thing it was supposed to rise over. Eight seconds keeps the
+ * loudest speech of this utterance in force for the length of the default
+ * ceiling, which is the span any one stop decision is made in.
+ */
+export const VOICE_INPUT_SPEECH_LEVEL_HALF_LIFE_MS = 8000;
+
+/**
+ * The highest the ROLLING floor may go, on the int16 magnitude scale. 32x the
+ * fixed constant, four times {@link VOICE_INPUT_ADAPTIVE_FLOOR_MAX}.
+ *
+ * The 8x cap on the one-shot path is a statement about a MEASUREMENT: that floor
+ * comes from the pre-roll and nothing else, and a pre-roll reading that high is
+ * likelier to be a bad measurement than a genuinely loud room, so it is refused
+ * and the old behaviour stands.
+ *
+ * The rolling path is not one reading. It is re-derived every frame and held
+ * under {@link VOICE_INPUT_SPEECH_FLOOR_RATIO} of the speech heard alongside it,
+ * so the danger the 8x cap approximates — a floor set over the speaker — is
+ * checked directly instead. Applying 8x here would break the case this path
+ * exists for: automatic gain control moves ambient AND speech up together, so a
+ * ceiling fixed at 1440 pins the floor under a raised noise floor while the
+ * speaker sits far above both. 32x remains only as a bound on runaway input.
+ */
+export const VOICE_INPUT_ROLLING_FLOOR_MAX = VOICE_INPUT_SILENCE_RMS * 32;
+
+/**
+ * Default `voice.wake.speechRetriggerMs`: how long a run of loud frames must
+ * last before it counts as speech resuming.
+ *
+ * 150 ms is under the shortest syllable anyone ends a sentence on and over the
+ * longest breath, lip tick or chair creak a close-worn microphone picks up.
+ * Below it, a run counts toward silence rather than resetting it; at or above
+ * it, the speaker is talking again and the trailing-silence count starts over.
+ * 0 restores the pre-existing rule where every loud frame resets.
+ */
+export const VOICE_INPUT_SPEECH_RETRIGGER_MS = 150;
+
+/**
  * Measure the room's noise floor from a window of audio, on the int16 magnitude
  * scale. Returns null when the window is too short to measure.
  *
@@ -131,6 +226,16 @@ export function estimateAmbientRms(
 }
 
 /**
+ * Whether `voice.wake.silenceFloorRms` names a level, as opposed to being unset
+ * or 0. The single predicate behind BOTH consequences of setting that row: the
+ * value wins over the measurement, and the floor is then frozen for the whole
+ * utterance rather than following the room. A pinned value is pinned.
+ */
+export function isSilenceFloorPinned(override: number | undefined): override is number {
+  return typeof override === 'number' && Number.isFinite(override) && override > 0;
+}
+
+/**
  * Decide the silence floor for one utterance. The single place the rule lives.
  *
  * In order:
@@ -152,7 +257,7 @@ export function resolveSilenceFloorRms(options: {
   readonly sampleRate?: number | undefined;
 }): number {
   const { override } = options;
-  if (typeof override === 'number' && Number.isFinite(override) && override > 0) return override;
+  if (isSilenceFloorPinned(override)) return override;
   const { ambient } = options;
   if (ambient === undefined || ambient.length === 0) return VOICE_INPUT_SILENCE_RMS;
   const measured = estimateAmbientRms(ambient, options.sampleRate);
@@ -194,8 +299,58 @@ export interface VoiceInputPolicy {
    * decided by {@link resolveSilenceFloorRms}. Unset falls back to the fixed
    * {@link VOICE_INPUT_SILENCE_RMS}, which is what a caller with no ambient
    * sample to measure gets anyway.
+   *
+   * This is the STARTING floor. Unless {@link silenceFloorPinned} says
+   * otherwise the recorder may raise it during the capture, and never lowers it
+   * below this value.
    */
   readonly silenceRms?: number | undefined;
+  /**
+   * True when {@link silenceRms} came from an explicit
+   * `voice.wake.silenceFloorRms`. Freezes the floor for the whole utterance: no
+   * rolling adjustment at all. Callers derive it from the same row with
+   * {@link isSilenceFloorPinned} rather than deciding it separately.
+   */
+  readonly silenceFloorPinned?: boolean | undefined;
+  /**
+   * How long a run of loud frames must last to count as speech, from
+   * `voice.wake.speechRetriggerMs`. Defaults to
+   * {@link VOICE_INPUT_SPEECH_RETRIGGER_MS}; 0 restores the rule where every
+   * loud frame arms the capture and resets trailing silence.
+   */
+  readonly speechRetriggerMs?: number | undefined;
+}
+
+/**
+ * What the endpointing actually did, in the numbers it decided from.
+ *
+ * Every one of these is a question that was unanswerable after a capture that
+ * behaved wrongly: the room was loud, or it was not; the floor moved, or it was
+ * pinned; the capture ended on silence, or it never found any. A stop reason
+ * alone says which branch ran, not why it was the one that ran.
+ */
+export interface VoiceInputEndpointing {
+  /** The floor the utterance started with, before any rolling adjustment. */
+  readonly initialFloorRms: number;
+  /** The floor in force on the last frame. Equal to the initial one when pinned. */
+  readonly finalFloorRms: number;
+  /**
+   * The rolling ambient estimate at the stop — the windowed minimum of recent
+   * frame levels. Null when no frame was ever pushed.
+   */
+  readonly ambientRms: number | null;
+  /** The tracked speech level at the stop, which is what bounded the floor. */
+  readonly speechLevelRms: number;
+  /** True when `voice.wake.silenceFloorRms` froze the floor. */
+  readonly floorPinned: boolean;
+  readonly stopReason: VoiceInputStopReason;
+  readonly durationMs: number;
+  /** Trailing silence accumulated at the stop, absorbed short bursts included. */
+  readonly trailingSilenceMs: number;
+  /** Loud runs shorter than the retrigger that were counted as silence. */
+  readonly absorbedBurstCount: number;
+  /** The retrigger length in force, in milliseconds. */
+  readonly speechRetriggerMs: number;
 }
 
 /** A finished utterance, ready to become a speech-to-text request. */
@@ -209,6 +364,8 @@ export interface CapturedUtterance {
   readonly stopReason: VoiceInputStopReason;
   /** True when nothing above the silence floor was ever heard. */
   readonly silent: boolean;
+  /** What the endpointing decided from, for the capture-end receipt. */
+  readonly endpointing: VoiceInputEndpointing;
 }
 
 /**
@@ -234,10 +391,31 @@ export class VoiceInputRecorder {
    * have to run for centuries.
    */
   readonly #maxSamples: number;
+  /** Floor frozen for the whole utterance, because someone set the row. */
+  readonly #floorPinned: boolean;
+  /** A loud run this long or longer is speech resuming, in samples. */
+  readonly #retriggerSamples: number;
+  readonly #rollingWindowSamples: number;
   readonly #chunks: Float32Array[] = [];
+  /**
+   * Sliding-window minimum of frame level, as a deque of (level, end position)
+   * kept monotonically increasing: the front is the minimum over the window.
+   *
+   * Bounded by the window in frames — nineteen at the detector's 80 ms, about
+   * seventy-five at 20 ms — so the operations at both ends are on a handful of
+   * elements and the spelling that reads clearly is also the cheap one.
+   */
+  readonly #ambientWindow: Array<{ rms: number; endedAt: number }> = [];
   #samples = 0;
   #preRollSamples = 0;
   #trailingSilenceSamples = 0;
+  /** Consecutive loud samples so far, reset by the first silent frame after them. */
+  #loudRunSamples = 0;
+  /** Loud runs shorter than the retrigger that were counted toward silence. */
+  #absorbedBursts = 0;
+  /** Running maximum of frame level, decayed. Bounds how high the floor may go. */
+  #speechLevel = 0;
+  #effectiveSilenceRms: number;
   #heardSpeech = false;
   #finished = false;
 
@@ -245,6 +423,11 @@ export class VoiceInputRecorder {
     this.#policy = policy;
     this.#sampleRate = policy.sampleRate ?? CAPTURE_SAMPLE_RATE;
     this.#silenceRms = policy.silenceRms ?? VOICE_INPUT_SILENCE_RMS;
+    this.#effectiveSilenceRms = this.#silenceRms;
+    this.#floorPinned = policy.silenceFloorPinned === true;
+    const retriggerMs = policy.speechRetriggerMs ?? VOICE_INPUT_SPEECH_RETRIGGER_MS;
+    this.#retriggerSamples = Math.max(0, Math.round((retriggerMs / 1000) * this.#sampleRate));
+    this.#rollingWindowSamples = Math.round((VOICE_INPUT_ROLLING_WINDOW_MS / 1000) * this.#sampleRate);
     this.#maxSamples = policy.captureMaxSeconds > 0
       ? policy.captureMaxSeconds * this.#sampleRate
       : Number.POSITIVE_INFINITY;
@@ -255,9 +438,39 @@ export class VoiceInputRecorder {
     return (this.#samples / this.#sampleRate) * 1000;
   }
 
-  /** True once a frame above the silence floor has been seen. */
+  /**
+   * True once a run of loud frames at least `speechRetriggerMs` long has been
+   * seen. Room ticks before the speaker starts must NOT arm this: arming is what
+   * makes silence-stop live, and a capture armed by a chair creak ends
+   * `silenceStopMs` later with nothing in it.
+   */
   get heardSpeech(): boolean {
     return this.#heardSpeech;
+  }
+
+  /** The floor in force right now, after any rolling adjustment. */
+  get effectiveSilenceRms(): number {
+    return this.#effectiveSilenceRms;
+  }
+
+  /** Trailing silence accumulated so far, absorbed short bursts included. */
+  get trailingSilenceMs(): number {
+    return (this.#trailingSilenceSamples / this.#sampleRate) * 1000;
+  }
+
+  /** What the endpointing has decided from so far. Safe to read at any point. */
+  get endpointing(): Omit<VoiceInputEndpointing, 'stopReason'> {
+    return {
+      initialFloorRms: this.#silenceRms,
+      finalFloorRms: this.#effectiveSilenceRms,
+      ambientRms: this.#ambientWindow[0]?.rms ?? null,
+      speechLevelRms: this.#speechLevel,
+      floorPinned: this.#floorPinned,
+      durationMs: this.durationMs,
+      trailingSilenceMs: this.trailingSilenceMs,
+      absorbedBurstCount: this.#absorbedBursts,
+      speechRetriggerMs: (this.#retriggerSamples / this.#sampleRate) * 1000,
+    };
   }
 
   /**
@@ -284,16 +497,19 @@ export class VoiceInputRecorder {
     if (this.#finished) return null;
     this.#chunks.push(frame.slice());
     this.#samples += frame.length;
-    if (frameRms(frame) > this.#silenceRms) {
-      this.#heardSpeech = true;
-      this.#trailingSilenceSamples = 0;
-    } else {
-      this.#trailingSilenceSamples += frame.length;
-    }
+    const rms = frameRms(frame);
+    // Both estimates take EVERY frame, including the loud ones. The ambient one
+    // is a minimum, which speech cannot pull upward; the speech one is a maximum,
+    // which the room cannot pull downward. Each is blind to the other's audio by
+    // construction rather than by a classification that could be wrong.
+    this.#trackAmbient(rms);
+    this.#trackSpeechLevel(rms, frame.length);
+    this.#effectiveSilenceRms = this.#resolveEffectiveFloor();
+    if (rms > this.#effectiveSilenceRms) this.#onLoudFrame(frame.length);
+    else this.#onSilentFrame(frame.length);
     if (this.#samples >= this.#maxSamples) return 'max-duration';
     if (this.#policy.silenceStopMs > 0 && this.#heardSpeech) {
-      const silenceMs = (this.#trailingSilenceSamples / this.#sampleRate) * 1000;
-      if (silenceMs >= this.#policy.silenceStopMs) return 'silence';
+      if (this.trailingSilenceMs >= this.#policy.silenceStopMs) return 'silence';
     }
     return null;
   }
@@ -309,7 +525,83 @@ export class VoiceInputRecorder {
       preRollMs: (this.#preRollSamples / this.#sampleRate) * 1000,
       stopReason,
       silent: !this.#heardSpeech,
+      endpointing: { ...this.endpointing, stopReason },
     };
+  }
+
+  /**
+   * Fold one frame into the windowed minimum.
+   *
+   * A frame at or above one already in the deque can never be the minimum while
+   * that one is still in the window, so it displaces them from the back on the
+   * way in. The window is then trimmed from the front by AGE, and the last entry
+   * is never trimmed: there is always an estimate once a frame has arrived.
+   */
+  #trackAmbient(rms: number): void {
+    const window = this.#ambientWindow;
+    while (window.length > 0 && (window[window.length - 1]?.rms ?? 0) >= rms) window.pop();
+    window.push({ rms, endedAt: this.#samples });
+    const cutoff = this.#samples - this.#rollingWindowSamples;
+    while (window.length > 1 && (window[0]?.endedAt ?? 0) <= cutoff) window.shift();
+  }
+
+  /** Running maximum with a half-life, per {@link VOICE_INPUT_SPEECH_LEVEL_HALF_LIFE_MS}. */
+  #trackSpeechLevel(rms: number, frameSamples: number): void {
+    const elapsedMs = (frameSamples / this.#sampleRate) * 1000;
+    const decay = 0.5 ** (elapsedMs / VOICE_INPUT_SPEECH_LEVEL_HALF_LIFE_MS);
+    this.#speechLevel = Math.max(rms, this.#speechLevel * decay);
+  }
+
+  /**
+   * The floor for this frame.
+   *
+   * Raised toward the room by the same margin the one-shot measurement uses, and
+   * held under three bounds: the speech level, so it can never rise over the
+   * speaker; {@link VOICE_INPUT_ROLLING_FLOOR_MAX}, so runaway input cannot walk
+   * it anywhere; and the starting floor as a LOWER bound, so the rolling path can
+   * only ever raise, never lower — lowering is what clips sentences, and nothing
+   * measured mid-capture is worth that risk.
+   */
+  #resolveEffectiveFloor(): number {
+    if (this.#floorPinned) return this.#silenceRms;
+    const ambient = this.#ambientWindow[0];
+    if (ambient === undefined) return this.#silenceRms;
+    const speechCap = this.#speechLevel > 0
+      ? this.#speechLevel / VOICE_INPUT_SPEECH_FLOOR_RATIO
+      : Number.POSITIVE_INFINITY;
+    const raised = Math.min(
+      ambient.rms * VOICE_INPUT_ADAPTIVE_MARGIN,
+      speechCap,
+      VOICE_INPUT_ROLLING_FLOOR_MAX,
+    );
+    return Math.max(this.#silenceRms, raised);
+  }
+
+  /**
+   * A frame above the floor. Only a run at least `speechRetriggerMs` long counts
+   * as speech; while a shorter run is in progress the trailing silence is PAUSED
+   * at what it had reached, not reset — the run may yet turn out to be a tick.
+   */
+  #onLoudFrame(frameSamples: number): void {
+    this.#loudRunSamples += frameSamples;
+    if (this.#loudRunSamples < this.#retriggerSamples) return;
+    this.#heardSpeech = true;
+    this.#trailingSilenceSamples = 0;
+  }
+
+  /**
+   * A frame at or below the floor. It also ENDS any loud run in progress, and a
+   * run that ended short of the retrigger was a breath or a tick: its duration is
+   * added to the silence it interrupted, so a tick every half second no longer
+   * holds the microphone open forever.
+   */
+  #onSilentFrame(frameSamples: number): void {
+    if (this.#loudRunSamples > 0 && this.#loudRunSamples < this.#retriggerSamples) {
+      this.#trailingSilenceSamples += this.#loudRunSamples;
+      this.#absorbedBursts += 1;
+    }
+    this.#loudRunSamples = 0;
+    this.#trailingSilenceSamples += frameSamples;
   }
 }
 

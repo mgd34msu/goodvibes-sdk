@@ -37,10 +37,15 @@ import {
   VOICE_INPUT_ADAPTIVE_MARGIN,
   VOICE_INPUT_AMBIENT_FRAME_MS,
   VOICE_INPUT_AMBIENT_MIN_FRAMES,
+  VOICE_INPUT_ROLLING_FLOOR_MAX,
+  VOICE_INPUT_SPEECH_FLOOR_RATIO,
+  VOICE_INPUT_SPEECH_RETRIGGER_MS,
   estimateAmbientRms,
+  isSilenceFloorPinned,
   resolveSilenceFloorRms,
   type AudioCaptureHandlers,
   type CaptureChildProcess,
+  type VoiceInputStopReason,
 } from '../packages/sdk/src/platform/voice/capture/index.js';
 
 /** A recorder subprocess stand-in the test drives byte by byte. */
@@ -192,6 +197,11 @@ describe('the utterance policy', () => {
     // 1.6s of leading silence must NOT stop it: nobody has spoken yet.
     for (let i = 0; i < 20; i += 1) expect(recorder.push(silent)).toBeNull();
     expect(recorder.heardSpeech).toBe(false);
+    // Two frames of 80ms to clear the 150ms retrigger. One is not enough on
+    // purpose — a single loud frame is as likely a breath as a syllable, and
+    // arming on it is what lets a room tick start the silence-stop clock.
+    expect(recorder.push(loud)).toBeNull();
+    expect(recorder.heardSpeech).toBe(false);
     expect(recorder.push(loud)).toBeNull();
     expect(recorder.heardSpeech).toBe(true);
     // 400ms of silence = 5 frames of 80ms; the fifth trips it.
@@ -275,10 +285,15 @@ describe('the silence floor measures the room instead of assuming it', () => {
     const speech = noise(1280, 4000, 3);
     const room = noise(1280, roomRms, 5);
 
+    // Pinned and with the retrigger off, which is what the shipped behaviour was
+    // before either measurement existed: one fixed level, every loud frame
+    // treated as speech. The defect only reproduces under those rules.
     const fixed = new VoiceInputRecorder({
       captureMaxSeconds: 10,
       silenceStopMs: 1200,
       silenceRms: VOICE_INPUT_SILENCE_RMS,
+      silenceFloorPinned: true,
+      speechRetriggerMs: 0,
     });
     for (let i = 0; i < 5; i += 1) expect(fixed.push(speech)).toBeNull();
     // 1200ms of silence is 15 frames of 80ms. Push far past that: none of it
@@ -372,6 +387,7 @@ describe('the silence floor measures the room instead of assuming it', () => {
     // Speech is still heard at the cap, which is the whole point of having one.
     const recorder = new VoiceInputRecorder({ captureMaxSeconds: 10, silenceStopMs: 1200, silenceRms: floor });
     recorder.push(noise(1280, 4000, 19));
+    recorder.push(noise(1280, 4000, 21));
     expect(recorder.heardSpeech).toBe(true);
   });
 
@@ -384,6 +400,246 @@ describe('the silence floor measures the room instead of assuming it', () => {
     expect(floor).toBeCloseTo(measured * VOICE_INPUT_ADAPTIVE_MARGIN, 6);
     expect(VOICE_INPUT_ADAPTIVE_MARGIN).toBe(4);
     expect(20 * Math.log10(VOICE_INPUT_ADAPTIVE_MARGIN)).toBeCloseTo(12.04, 1);
+  });
+});
+
+/*
+ * The scenarios below are written in 20 ms frames rather than the detector's
+ * 80 ms, because the things they are about are shorter than 80 ms: a breath tick
+ * is one 80 ms frame and nothing can be said about a run length that has only
+ * one possible value. At 20 ms a 100 ms burst and a 200 ms one are different
+ * shapes, which is what the retrigger rule has to tell apart.
+ */
+const SCENARIO_FRAME_SAMPLES = 320;
+const SCENARIO_FRAME_MS = 20;
+
+/** Drive a recorder to its stop, or to the end of the audio. */
+function run(
+  recorder: VoiceInputRecorder,
+  frames: readonly Float32Array[],
+): { readonly stop: VoiceInputStopReason | null; readonly frames: number } {
+  for (let i = 0; i < frames.length; i += 1) {
+    const stop = recorder.push(frames[i]!);
+    if (stop !== null) return { stop, frames: i + 1 };
+  }
+  return { stop: null, frames: frames.length };
+}
+
+/** `count` frames of noise at `rms`, each with its own seed. */
+function frames(count: number, rms: number, seed: number): Float32Array[] {
+  const out: Float32Array[] = [];
+  for (let i = 0; i < count; i += 1) out.push(noise(SCENARIO_FRAME_SAMPLES, rms, seed + i));
+  return out;
+}
+
+/**
+ * A bluetooth headset's automatic gain control: speech, then room noise climbing
+ * from under the pre-roll's floor to well over it once the speaker stops.
+ */
+function agcDriftFrames(): Float32Array[] {
+  const out = frames(50, 5000, 100); // 1s of speech
+  for (let i = 0; i < 200; i += 1) { // 4s of room after it
+    // 300 -> 900 over the first 2s, then held. 400 is the floor the pre-roll
+    // would have produced for a 300-RMS room, so the ramp crosses it at ~340ms.
+    const ramp = Math.min(1, i / 100);
+    out.push(noise(SCENARIO_FRAME_SAMPLES, 300 + 600 * ramp, 500 + i));
+  }
+  return out;
+}
+
+/**
+ * A close-worn microphone after the speaker stops: a quiet room with an 80 ms
+ * breath tick in it every half second. Each tick is loud; none is speech.
+ */
+function breathTickFrames(): Float32Array[] {
+  const out = frames(50, 4000, 200); // 1s of speech
+  for (let cycle = 0; cycle < 8; cycle += 1) {
+    out.push(...frames(21, 50, 900 + cycle * 40)); // 420ms of quiet room
+    out.push(...frames(4, 3000, 960 + cycle * 40)); // an 80ms tick
+  }
+  return out;
+}
+
+/** The shipped rules before either fix: one frozen level, every loud frame speech. */
+const STRICT_LEGACY = { silenceFloorPinned: true, speechRetriggerMs: 0 } as const;
+
+describe('the floor follows the room, because the room does not hold still', () => {
+  test('THE DEFECT: gain control raises the room over the measured floor and capture rides the ceiling', () => {
+    const audio = agcDriftFrames();
+    // 5s ceiling: exactly the length of the audio, so a capture that never finds
+    // silence ends at the ceiling rather than running out of frames.
+    const policy = { captureMaxSeconds: 5, silenceStopMs: 1200, silenceRms: 400 } as const;
+
+    const legacy = run(new VoiceInputRecorder({ ...policy, ...STRICT_LEGACY }), audio);
+    expect(legacy.stop).toBe('max-duration');
+    // The speaker stopped at 1s. The capture ran four seconds past that.
+    expect(legacy.frames * SCENARIO_FRAME_MS).toBe(5000);
+
+    const recorder = new VoiceInputRecorder(policy);
+    const followed = run(recorder, audio);
+    expect(followed.stop).toBe('silence');
+    // Speech ended at 1000ms; silenceStopMs is 1200. One frame of tolerance.
+    expect(followed.frames * SCENARIO_FRAME_MS).toBeLessThanOrEqual(1000 + 1200 + SCENARIO_FRAME_MS);
+    expect(followed.frames * SCENARIO_FRAME_MS).toBeGreaterThanOrEqual(1000 + 1200);
+
+    const end = recorder.finish('silence').endpointing;
+    expect(end.initialFloorRms).toBe(400);
+    expect(end.finalFloorRms).toBeGreaterThan(400);
+    expect(end.floorPinned).toBe(false);
+    // The ambient estimate found the room inside the drift, not the speaker.
+    expect(end.ambientRms as number).toBeLessThan(600);
+    expect(end.trailingSilenceMs).toBeGreaterThanOrEqual(1200);
+  });
+
+  test('the following floor may pass the one-shot cap, because gain moves the whole scale', () => {
+    // A room at 2000 with speech at 12000 is a perfectly separable 15 dB, and the
+    // 8x cap the pre-roll measurement uses would pin the floor at 1440 — under
+    // the room, so nothing is ever silent. The rolling path is bounded by the
+    // SPEECH it hears instead, which is the bound that actually matters.
+    const audio = [...frames(50, 12_000, 300), ...frames(150, 2000, 400)];
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 5, silenceStopMs: 1200, silenceRms: 400 });
+    const result = run(recorder, audio);
+    expect(result.stop).toBe('silence');
+    const end = recorder.finish('silence').endpointing;
+    expect(end.finalFloorRms).toBeGreaterThan(VOICE_INPUT_ADAPTIVE_FLOOR_MAX);
+    expect(end.finalFloorRms).toBeLessThanOrEqual(VOICE_INPUT_ROLLING_FLOOR_MAX);
+  });
+
+  test('the floor is never raised over a third of the speech, whatever the room does', () => {
+    // 2000 of room under 4000 of speech is 6 dB, which level alone cannot
+    // separate. Unbounded, the floor would land on the room * 4 = 8000 — over the
+    // speaker, so nothing would ever be heard at all. The guard holds it under
+    // the voice and the capture ends at the ceiling, which is the old failure and
+    // a far better one.
+    const audio: Float32Array[] = [];
+    for (let cycle = 0; cycle < 5; cycle += 1) {
+      audio.push(...frames(25, 2000, 600 + cycle * 60));
+      audio.push(...frames(25, 4000, 630 + cycle * 60));
+    }
+    const recorder = new VoiceInputRecorder({ captureMaxSeconds: 5, silenceStopMs: 1200, silenceRms: 400 });
+    for (const frame of audio) {
+      recorder.push(frame);
+      const { speechLevelRms } = recorder.endpointing;
+      // The invariant, checked on every frame rather than at the end: the floor
+      // is at most a third of the tracked speech, or the starting floor, whichever
+      // is higher — the rolling path may only ever RAISE, never lower.
+      expect(recorder.effectiveSilenceRms)
+        .toBeLessThanOrEqual(Math.max(400, speechLevelRms / VOICE_INPUT_SPEECH_FLOOR_RATIO) + 1e-6);
+    }
+    expect(recorder.heardSpeech).toBe(true);
+    const end = recorder.finish('max-duration').endpointing;
+    expect(end.finalFloorRms).toBeLessThan(4000);
+  });
+
+  test('an explicitly set floor is FROZEN, not a starting point the room walks away from', () => {
+    // Both consequences of setting the row come from the one predicate.
+    expect(isSilenceFloorPinned(400)).toBe(true);
+    expect(isSilenceFloorPinned(0)).toBe(false);
+    expect(isSilenceFloorPinned(undefined)).toBe(false);
+    expect(resolveSilenceFloorRms({ override: 400, ambient: preRollWithPhrase(300, 4000) })).toBe(400);
+
+    const audio = agcDriftFrames();
+    const recorder = new VoiceInputRecorder({
+      captureMaxSeconds: 5,
+      silenceStopMs: 1200,
+      silenceRms: 400,
+      silenceFloorPinned: true,
+    });
+    for (const frame of audio) {
+      recorder.push(frame);
+      expect(recorder.effectiveSilenceRms).toBe(400);
+    }
+    const end = recorder.finish('max-duration').endpointing;
+    expect(end.floorPinned).toBe(true);
+    expect(end.finalFloorRms).toBe(end.initialFloorRms);
+    // And the consequence the user asked for: a pinned floor cannot follow the
+    // gain, so this capture rides the ceiling. That is their number, used as given.
+    expect(run(new VoiceInputRecorder({
+      captureMaxSeconds: 5,
+      silenceStopMs: 1200,
+      silenceRms: 400,
+      silenceFloorPinned: true,
+    }), audio).stop).toBe('max-duration');
+  });
+});
+
+describe('a breath is loud without being speech', () => {
+  test('THE DEFECT: a tick every half second resets the silence wait forever', () => {
+    const audio = breathTickFrames();
+    const policy = { captureMaxSeconds: 5, silenceStopMs: 1200, silenceRms: 400 } as const;
+
+    // Every tick resets a wait that needs 1200ms, and the gaps are 420ms.
+    const legacy = run(new VoiceInputRecorder({ ...policy, ...STRICT_LEGACY }), audio);
+    expect(legacy.stop).toBe('max-duration');
+
+    const recorder = new VoiceInputRecorder(policy);
+    const result = run(recorder, audio);
+    expect(result.stop).toBe('silence');
+    // 80ms ticks are counted as part of the silence they interrupted, so the
+    // capture ends 1200ms of wall clock after the speaker stopped.
+    expect(result.frames * SCENARIO_FRAME_MS).toBe(1000 + 1200);
+    const end = recorder.finish('silence').endpointing;
+    expect(end.absorbedBurstCount).toBeGreaterThanOrEqual(2);
+    expect(end.speechRetriggerMs).toBe(VOICE_INPUT_SPEECH_RETRIGGER_MS);
+  });
+
+  test('a run at the retrigger IS speech resuming, and the wait starts over', () => {
+    const recorder = new VoiceInputRecorder({
+      captureMaxSeconds: 30,
+      silenceStopMs: 1200,
+      silenceRms: 400,
+    });
+    for (const frame of frames(50, 4000, 700)) recorder.push(frame);
+    for (const frame of frames(30, 50, 750)) recorder.push(frame);
+    expect(recorder.trailingSilenceMs).toBe(600);
+
+    // 100ms — under the 150ms retrigger. The wait PAUSES rather than resetting:
+    // the run may still turn out to be a tick, and it does.
+    for (const frame of frames(5, 3000, 780)) expect(recorder.push(frame)).toBeNull();
+    expect(recorder.trailingSilenceMs).toBe(600);
+    recorder.push(frames(1, 50, 790)[0]!);
+    expect(recorder.trailingSilenceMs).toBe(600 + 100 + 20);
+
+    // 200ms — past the retrigger. The speaker is talking again.
+    for (const frame of frames(10, 3000, 800)) expect(recorder.push(frame)).toBeNull();
+    expect(recorder.trailingSilenceMs).toBe(0);
+
+    // And the full wait has to elapse again from there.
+    for (const frame of frames(59, 50, 820)) expect(recorder.push(frame)).toBeNull();
+    expect(recorder.push(frames(1, 50, 890)[0]!)).toBe('silence');
+    expect(recorder.finish('silence').endpointing.absorbedBurstCount).toBe(1);
+  });
+
+  test('room ticks before anyone speaks do not arm the silence-stop', () => {
+    // Arming on a chair creak means the capture ends silenceStopMs later holding
+    // nothing but room, and reports it as an utterance.
+    const recorder = new VoiceInputRecorder({
+      captureMaxSeconds: 30,
+      silenceStopMs: 1200,
+      silenceRms: 400,
+    });
+    for (let cycle = 0; cycle < 6; cycle += 1) {
+      for (const frame of frames(21, 50, 1000 + cycle * 40)) expect(recorder.push(frame)).toBeNull();
+      for (const frame of frames(4, 3000, 1060 + cycle * 40)) expect(recorder.push(frame)).toBeNull();
+    }
+    expect(recorder.heardSpeech).toBe(false);
+    expect(recorder.finish('requested').silent).toBe(true);
+  });
+
+  test('speechRetriggerMs 0 restores the rule where every loud frame resets', () => {
+    const recorder = new VoiceInputRecorder({
+      captureMaxSeconds: 30,
+      silenceStopMs: 1200,
+      silenceRms: 400,
+      speechRetriggerMs: 0,
+    });
+    expect(recorder.push(frames(1, 4000, 1300)[0]!)).toBeNull();
+    expect(recorder.heardSpeech).toBe(true);
+    for (const frame of frames(30, 50, 1310)) recorder.push(frame);
+    expect(recorder.trailingSilenceMs).toBe(600);
+    recorder.push(frames(1, 4000, 1350)[0]!);
+    expect(recorder.trailingSilenceMs).toBe(0);
+    expect(recorder.finish('requested').endpointing.absorbedBurstCount).toBe(0);
   });
 });
 
@@ -404,7 +660,8 @@ describe('captureMaxSeconds 0 means no ceiling', () => {
     const recorder = new VoiceInputRecorder({ captureMaxSeconds: 0, silenceStopMs: 400 });
     const loud = new Float32Array(1280).fill(4000);
     const silent = new Float32Array(1280);
-    expect(recorder.push(loud)).toBeNull();
+    // Two frames: 160ms of speech, past the retrigger that arms silence-stop.
+    for (let i = 0; i < 2; i += 1) expect(recorder.push(loud)).toBeNull();
     for (let i = 0; i < 4; i += 1) expect(recorder.push(silent)).toBeNull();
     expect(recorder.push(silent)).toBe('silence');
   });

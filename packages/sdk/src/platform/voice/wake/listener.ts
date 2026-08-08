@@ -25,7 +25,16 @@
  * Clock and timers are injected; capture and the engine come from the host. No
  * `node:` imports, so a browser tab runs this unchanged.
  */
-import { VoiceInputRecorder, resolveSilenceFloorRms, type CapturedUtterance } from '../capture/voice-input.js';
+import {
+  VoiceInputRecorder,
+  isSilenceFloorPinned,
+  resolveSilenceFloorRms,
+  type CapturedUtterance,
+} from '../capture/voice-input.js';
+// Type-only: diagnostics.ts writes files, and this module must stay runnable in
+// a browser tab. The listener HANDS an entry to a recorder the host supplies; it
+// never opens the store itself.
+import type { VoiceDiagnosticEntry } from '../diagnostics.js';
 import { WAKE_SAMPLE_RATE } from './melspectrogram.js';
 import {
   createNoiseSuppressingOpener,
@@ -209,6 +218,17 @@ export interface WakeListenerOptions {
    * honest reading is that capture is not working.
    */
   readonly firstFrameTimeoutMs?: number | undefined;
+  /**
+   * Where a capture-end receipt goes. One entry per completed capture, carrying
+   * the numbers the endpointing actually decided from.
+   *
+   * A capture that ran to the ceiling and one that ended on silence are the same
+   * event from outside: an utterance arrived. Which of them happened, and what
+   * the floor was doing when it did, is the whole diagnosis of "it kept
+   * listening after I stopped talking" — and it was not written down anywhere.
+   * Omitted, nothing is recorded and the listener behaves exactly as before.
+   */
+  readonly recordDiagnostic?: ((entry: VoiceDiagnosticEntry) => void) | undefined;
   readonly now?: (() => number) | undefined;
   readonly setTimeout?: ((handler: () => void, ms: number) => unknown) | undefined;
   readonly clearTimeout?: ((handle: unknown) => void) | undefined;
@@ -724,6 +744,11 @@ export class WakeListener {
         ambient: detection.preRoll,
         sampleRate: WAKE_SAMPLE_RATE,
       }),
+      // A pinned row pins the floor for the whole utterance: the same predicate
+      // that made the value win over the measurement also stops the recorder
+      // moving it afterwards.
+      silenceFloorPinned: isSilenceFloorPinned(this.#settings.silenceFloorRms),
+      speechRetriggerMs: this.#settings.speechRetriggerMs,
     });
     if (detection.preRoll.length > 0) recorder.seedPreRoll(detection.preRoll);
     this.#recorder = recorder;
@@ -742,11 +767,49 @@ export class WakeListener {
     this.#recordingFor = null;
     if (recorder === null || detection === null) return;
     const utterance = recorder.finish(stopReason);
+    this.#recordCaptureEnd(utterance);
     // The engine carries a rolling window of the audio it just heard, including
     // the command. Reset so the next phrase is scored on its own.
     this.#engine?.reset();
     if (this.#stream !== null) this.#setPhase('listening');
     this.#options.handlers?.onUtterance?.(utterance, detection);
+  }
+
+  /**
+   * The receipt for one capture. Written from #completeRecording only, so a
+   * capture produces exactly one entry however it ended — including the
+   * stream-died path, which completes through the same call.
+   *
+   * `provider` is the recorder that captured it rather than a transcription
+   * provider: nothing has been transcribed yet, and WHICH device produced the
+   * audio is the fact that separates "this room is hard" from "this headset is".
+   */
+  #recordCaptureEnd(utterance: CapturedUtterance): void {
+    const record = this.#options.recordDiagnostic;
+    if (record === undefined) return;
+    const e = utterance.endpointing;
+    const round = (value: number): number => Math.round(value);
+    record({
+      at: new Date(this.#now()).toISOString(),
+      operation: 'wake-capture-end',
+      route: 'none',
+      ok: true,
+      provider: this.#stream?.label ?? this.#openedBackend ?? 'unknown',
+      configSource: [
+        `voice.wake.captureMaxSeconds=${this.#settings.captureMaxSeconds}`,
+        `voice.wake.silenceStopMs=${this.#settings.silenceStopMs}`,
+        `voice.wake.silenceFloorRms=${this.#settings.silenceFloorRms}`,
+        `voice.wake.speechRetriggerMs=${this.#settings.speechRetriggerMs}`,
+      ].join(' '),
+      detail: [
+        `stopped on ${e.stopReason} after ${round(e.durationMs)} ms`,
+        `floor ${round(e.initialFloorRms)} -> ${round(e.finalFloorRms)}${e.floorPinned ? ' (pinned)' : ''}`,
+        `ambient ${e.ambientRms === null ? 'unmeasured' : round(e.ambientRms)}`,
+        `speech level ${round(e.speechLevelRms)}`,
+        `trailing silence ${round(e.trailingSilenceMs)} ms`,
+        `${e.absorbedBurstCount} short burst(s) absorbed`,
+      ].join(', '),
+    });
   }
 
   #discardRecording(): void {

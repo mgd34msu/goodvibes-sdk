@@ -524,6 +524,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'voice.wake.captureMaxSeconds' ? number :
   K extends 'voice.wake.silenceStopMs' ? number :
   K extends 'voice.wake.silenceFloorRms' ? number :
+  K extends 'voice.wake.speechRetriggerMs' ? number :
   K extends 'voice.wake.autoSubmit' ? boolean :
   K extends 'voice.wake.retainAudio' ? 'none' | 'session-temp' :
   K extends 'voice.wake.customModelDir' ? string :

@@ -37,13 +37,15 @@ import { deriveFeatureState, FEATURE_SETTINGS_BINDINGS } from '../packages/sdk/s
 const WAKE = voiceWakeConfigDefaults.voice.wake;
 
 describe('the wake-word settings rows', () => {
-  test('all 26 built rows are present, and the unbuilt Wyoming row is not', () => {
+  test('all 27 built rows are present, and the unbuilt Wyoming row is not', () => {
     // The design listed 26 rows. Row 26, voice.wake.wyomingServer, is the
     // Tier-B Wyoming wake-server, ruled "NOT built; needs its own explicit
     // owner go". Shipping its key would be a switch wired to nothing.
-    // 26 built rows now: the 25 from that design plus voice.wake.silenceFloorRms,
-    // which is what makes silenceStopMs work in a room that is not quiet.
-    expect(voiceWakeConfigSettings.length).toBe(26);
+    // 27 built rows now: the 25 from that design, plus voice.wake.silenceFloorRms
+    // (what makes silenceStopMs work in a room that is not quiet) and
+    // voice.wake.speechRetriggerMs (what makes it work on a close-worn
+    // microphone, where a breath is loud enough to restart the wait).
+    expect(voiceWakeConfigSettings.length).toBe(27);
     expect(voiceWakeConfigSettings.some((s) => s.key === 'voice.wake.wyomingServer')).toBe(false);
   });
 
@@ -152,7 +154,8 @@ describe('the wake-word feature registry row', () => {
     expect(association.configCategories).toContain('voice');
     expect(association.configKeys).toContain('voice.wake.threshold');
     expect(association.configKeys).toContain('voice.wake.silenceFloorRms');
-    expect(association.configKeys.length).toBe(25);
+    expect(association.configKeys).toContain('voice.wake.speechRetriggerMs');
+    expect(association.configKeys.length).toBe(26);
   });
 });
 
