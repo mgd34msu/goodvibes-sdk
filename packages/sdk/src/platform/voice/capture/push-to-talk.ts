@@ -29,8 +29,10 @@ import {
 } from './types.js';
 import {
   VoiceInputRecorder,
+  isSilenceFloorPinned,
   resolveSilenceFloorRms,
   type CapturedUtterance,
+  type VoiceInputPolicy,
   type VoiceInputStopReason,
 } from './voice-input.js';
 
@@ -70,6 +72,13 @@ export interface PushToTalkOptions {
    * whether an utterance is reported as silent.
    */
   readonly silenceFloorRms?: number | undefined;
+  /**
+   * How long a run above the floor must last to count as speech, from
+   * `voice.wake.speechRetriggerMs`. The same row as post-wake capture, because
+   * the microphone and the noises it picks up are the same ones; here it decides
+   * whether a capture is reported as silent rather than when it ends.
+   */
+  readonly speechRetriggerMs?: number | undefined;
   /**
    * Silence that ends capture on its own. 0 — the push-to-talk default — leaves
    * stopping to the user, because someone holding a key through a pause has not
@@ -115,6 +124,24 @@ export class PushToTalkSession {
   }
 
   /**
+   * The recorder policy for this session. In one place because `stop` builds a
+   * second recorder for the case where the first one is already gone, and the
+   * two drifting apart would mean a capture judged by rules the session never
+   * ran under.
+   */
+  #recorderPolicy(silenceStopMs: number): VoiceInputPolicy {
+    return {
+      captureMaxSeconds: this.#options.captureMaxSeconds,
+      silenceStopMs,
+      silenceRms: resolveSilenceFloorRms({ override: this.#options.silenceFloorRms }),
+      silenceFloorPinned: isSilenceFloorPinned(this.#options.silenceFloorRms),
+      ...(this.#options.speechRetriggerMs !== undefined
+        ? { speechRetriggerMs: this.#options.speechRetriggerMs }
+        : {}),
+    };
+  }
+
+  /**
    * Open the device and start recording. Rejects with an
    * {@link AudioCaptureError} so a surface can render the specific reason — no
    * recorder installed, permission refused, plain-http origin.
@@ -122,11 +149,7 @@ export class PushToTalkSession {
   async start(): Promise<void> {
     if (this.#stream !== null) return;
     this.#setPhase('requesting');
-    const recorder = new VoiceInputRecorder({
-      captureMaxSeconds: this.#options.captureMaxSeconds,
-      silenceStopMs: this.#options.silenceStopMs ?? 0,
-      silenceRms: resolveSilenceFloorRms({ override: this.#options.silenceFloorRms }),
-    });
+    const recorder = new VoiceInputRecorder(this.#recorderPolicy(this.#options.silenceStopMs ?? 0));
     try {
       const stream = await this.#openCapture(
         {
@@ -186,11 +209,7 @@ export class PushToTalkSession {
     this.#stream = null;
     this.#setPhase('stopping');
     if (stream !== null) await stream.stop();
-    const utterance = (recorder ?? new VoiceInputRecorder({
-      captureMaxSeconds: this.#options.captureMaxSeconds,
-      silenceStopMs: 0,
-      silenceRms: resolveSilenceFloorRms({ override: this.#options.silenceFloorRms }),
-    })).finish(reason);
+    const utterance = (recorder ?? new VoiceInputRecorder(this.#recorderPolicy(0))).finish(reason);
     this.#setPhase('idle');
     // An auto-stop has nobody awaiting the return value, so it is announced.
     if (reason !== 'requested') this.#options.onAutoStop?.(utterance);

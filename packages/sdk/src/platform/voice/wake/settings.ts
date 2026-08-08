@@ -129,8 +129,16 @@ export interface WakeRuntimeSettings {
   readonly preRollMs: number;
   readonly captureMaxSeconds: number;
   readonly silenceStopMs: number;
-  /** `voice.wake.silenceFloorRms`. 0 means measure the room per utterance. */
+  /**
+   * `voice.wake.silenceFloorRms`. 0 means measure the room per utterance and
+   * keep following it; any other value pins the floor and freezes it.
+   */
   readonly silenceFloorRms: number;
+  /**
+   * `voice.wake.speechRetriggerMs`. How long a loud run must last to count as
+   * speech, so a breath or a lip tick does not restart the silence wait.
+   */
+  readonly speechRetriggerMs: number;
   readonly autoSubmit: boolean;
   readonly retainAudio: 'none' | 'session-temp';
   readonly customModelDir: string;
@@ -168,6 +176,7 @@ export const WAKE_SETTING_KEYS: readonly string[] = [
   'voice.wake.captureMaxSeconds',
   'voice.wake.silenceStopMs',
   'voice.wake.silenceFloorRms',
+  'voice.wake.speechRetriggerMs',
   'voice.wake.autoSubmit',
   'voice.wake.retainAudio',
   'voice.wake.customModelDir',
@@ -375,6 +384,7 @@ export function resolveWakeRuntimeSettings(
     captureMaxSeconds: readNumber(read, 'voice.wake.captureMaxSeconds', DEFAULTS.captureMaxSeconds),
     silenceStopMs: readNumber(read, 'voice.wake.silenceStopMs', DEFAULTS.silenceStopMs),
     silenceFloorRms: readNumber(read, 'voice.wake.silenceFloorRms', DEFAULTS.silenceFloorRms),
+    speechRetriggerMs: readNumber(read, 'voice.wake.speechRetriggerMs', DEFAULTS.speechRetriggerMs),
     autoSubmit: readBoolean(read, 'voice.wake.autoSubmit', DEFAULTS.autoSubmit),
     retainAudio: retainAudio === 'session-temp' && capabilities.canRetainAudio !== true ? 'none' : retainAudio,
     customModelDir: readString(read, 'voice.wake.customModelDir', DEFAULTS.customModelDir),

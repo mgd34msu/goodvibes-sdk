@@ -30,6 +30,7 @@ import {
   type CaptureChildProcess,
 } from '../packages/sdk/src/platform/voice/capture/index.js';
 import type { WakeInferenceSession, WakeTensor } from '../packages/sdk/src/platform/voice/wake/types.js';
+import type { VoiceDiagnosticEntry } from '../packages/sdk/src/platform/voice/diagnostics.js';
 
 const POSITIVE: readonly number[] = fixture.scoreTraces.positive.scores;
 
@@ -108,6 +109,7 @@ interface Harness {
   readonly wakes: number[];
   readonly utterances: CapturedUtterance[];
   readonly failures: Array<{ reason: string; restarting: boolean; detail: string }>;
+  readonly diagnostics: VoiceDiagnosticEntry[];
   readonly engine: () => WakeWordEngine | null;
   readonly classifierCalls: () => number;
   readonly timers: Array<{ handler: () => void; ms: number }>;
@@ -130,6 +132,7 @@ function harness(
   const utterances: CapturedUtterance[] = [];
   const failures: Array<{ reason: string; restarting: boolean; detail: string }> = [];
   const timers: Array<{ handler: () => void; ms: number }> = [];
+  const diagnostics: VoiceDiagnosticEntry[] = [];
   const listener = new WakeListener({
     settings,
     openCapture: createRecorderCaptureOpener({
@@ -155,11 +158,12 @@ function harness(
       onUtterance: (utterance) => utterances.push(utterance),
       onFailure: (error, restarting, detail) => failures.push({ reason: error.reason, restarting, detail }),
     },
+    recordDiagnostic: (entry) => diagnostics.push(entry),
     setTimeout: (handler, ms) => { timers.push({ handler, ms }); return timers.length; },
     clearTimeout: () => {},
   });
   return {
-    listener, child, spawns, wakes, utterances, failures, timers,
+    listener, child, spawns, wakes, utterances, failures, timers, diagnostics,
     engine: () => engine,
     classifierCalls: () => classifier.calls,
   };
@@ -439,5 +443,84 @@ describe('a stream that dies is a restart decision, not a silent stop', () => {
     expect(h.failures).toHaveLength(0);
     expect(h.listener.state().phase).toBe('stopped');
     expect(h.listener.state().restarts).toBe(0);
+  });
+});
+
+describe('a capture writes down what its endpointing decided from', () => {
+  /** Wake, speak, stop. Returns the harness once the utterance has landed. */
+  async function captureOnce(overrides: Readonly<Record<string, unknown>>): Promise<Harness> {
+    const h = harness({ 'voice.wake.enabled': true, ...overrides });
+    await h.listener.start();
+    for (let i = 0; i < POSITIVE.length + WAKE_CLASSIFIER_FRAMES && h.wakes.length === 0; i += 1) {
+      h.child.emit(frameBytes(1200));
+      await settle();
+    }
+    expect(h.wakes).toHaveLength(1);
+    // 400ms of speech clears the 150ms retrigger, then silence ends it.
+    for (let i = 0; i < 5; i += 1) { h.child.emit(frameBytes(6000)); await settle(); }
+    for (let i = 0; i < 20 && h.utterances.length === 0; i += 1) { h.child.emit(frameBytes(0)); await settle(); }
+    expect(h.utterances).toHaveLength(1);
+    return h;
+  }
+
+  test('exactly one wake-capture-end entry, carrying the numbers', async () => {
+    const h = await captureOnce({ 'voice.wake.silenceStopMs': 400, 'voice.wake.captureMaxSeconds': 3 });
+    const ends = h.diagnostics.filter((entry) => entry.operation === 'wake-capture-end');
+    // One capture, one receipt. Not one per frame and not one per stop path.
+    expect(ends).toHaveLength(1);
+    const entry = ends[0]!;
+    expect(entry.ok).toBe(true);
+    expect(Number.isNaN(Date.parse(entry.at))).toBe(false);
+    // The recorder that produced the audio, which is what separates "this room is
+    // hard" from "this headset is".
+    expect(entry.provider).toBe('pw-record (auto)');
+    // The rows in force, so a reading is against the settings it was made under.
+    expect(entry.configSource).toContain('voice.wake.silenceStopMs=400');
+    expect(entry.configSource).toContain('voice.wake.captureMaxSeconds=3');
+    expect(entry.configSource).toContain('voice.wake.silenceFloorRms=0');
+    expect(entry.configSource).toContain('voice.wake.speechRetriggerMs=150');
+    // And what the endpointing actually did.
+    const detail = entry.detail ?? '';
+    expect(detail).toContain('stopped on silence');
+    expect(detail).toMatch(/floor \d+ -> \d+/);
+    expect(detail).toMatch(/ambient (\d+|unmeasured)/);
+    expect(detail).toMatch(/speech level \d+/);
+    expect(detail).toMatch(/trailing silence \d+ ms/);
+    expect(detail).toMatch(/\d+ short burst\(s\) absorbed/);
+    expect(detail).not.toContain('(pinned)');
+  });
+
+  test('a pinned floor says so in the receipt, and the row reaches the recorder', async () => {
+    const h = await captureOnce({
+      'voice.wake.silenceStopMs': 400,
+      'voice.wake.silenceFloorRms': 900,
+      'voice.wake.speechRetriggerMs': 0,
+    });
+    const entry = h.diagnostics.find((candidate) => candidate.operation === 'wake-capture-end');
+    expect(entry?.configSource).toContain('voice.wake.silenceFloorRms=900');
+    expect(entry?.configSource).toContain('voice.wake.speechRetriggerMs=0');
+    expect(entry?.detail).toContain('(pinned)');
+    // A pinned floor does not move: the two numbers are the same one.
+    const end = h.utterances[0]!.endpointing;
+    expect(end.floorPinned).toBe(true);
+    expect(end.finalFloorRms).toBe(900);
+    expect(end.initialFloorRms).toBe(900);
+    expect(end.speechRetriggerMs).toBe(0);
+  });
+
+  test('a capture cut short by a dead stream still leaves one receipt', async () => {
+    const h = harness({ 'voice.wake.enabled': true, 'voice.wake.silenceStopMs': 0 });
+    await h.listener.start();
+    for (let i = 0; i < POSITIVE.length + WAKE_CLASSIFIER_FRAMES && h.wakes.length === 0; i += 1) {
+      h.child.emit(frameBytes(1200));
+      await settle();
+    }
+    h.child.emit(frameBytes(6000));
+    await settle();
+    h.child.close(1);
+    await settle();
+    const ends = h.diagnostics.filter((entry) => entry.operation === 'wake-capture-end');
+    expect(ends).toHaveLength(1);
+    expect(ends[0]?.detail).toContain('stopped on stream-ended');
   });
 });
