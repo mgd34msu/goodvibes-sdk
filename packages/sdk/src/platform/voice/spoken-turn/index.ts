@@ -12,4 +12,5 @@ export { SpokenTurnController } from './controller.js';
 export type { SpokenTurnControllerOptions } from './controller.js';
 export { TtsTextChunker, normalizeSpeechText } from './text-chunker.js';
 export type { TtsTextChunkerOptions } from './text-chunker.js';
+export { StreamingCodeFenceFilter, stripMarkdownForSpeech } from './speech-markdown.js';
 export type { AudioSink, AudioSinkPlaybackOptions } from './audio-sink.js';
