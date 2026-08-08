@@ -64,7 +64,7 @@ export type { VoiceBillableUsage } from './service.js';
 
 // Spoken-turn (live TTS) policy engine — shared behavioral contract; consumers
 // inject an AudioSink for I/O. See ./spoken-turn.
-export { SpokenTurnController, TtsTextChunker, normalizeSpeechText } from './spoken-turn/index.js';
+export { SpokenTurnController, TtsTextChunker, normalizeSpeechText, StreamingCodeFenceFilter, stripMarkdownForSpeech } from './spoken-turn/index.js';
 export type {
   SpokenTurnControllerOptions,
   TtsTextChunkerOptions,
