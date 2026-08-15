@@ -378,11 +378,13 @@ export type {
 } from './secrets.js';
 export { ServiceRegistry } from './service-registry.js';
 export type * from './service-registry.js';
-export { SubscriptionManager } from './subscriptions.js';
+export { SubscriptionManager, sharedSubscriptionsPath } from './subscriptions.js';
 export type {
   OAuthProviderConfig,
   PendingSubscriptionLogin,
   ProviderSubscription,
+  SubscriptionManagerOptions,
+  SubscriptionShellPaths,
 } from './subscriptions.js';
 export * from './subscription-auth.js';
 export * from './subscription-providers.js';

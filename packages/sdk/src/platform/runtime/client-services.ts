@@ -70,7 +70,7 @@
 import type { ConfigManager } from '../config/manager.js';
 import type { SecretsManager } from '../config/secrets.js';
 import { ServiceRegistry } from '../config/service-registry.js';
-import { SubscriptionManager } from '../config/subscriptions.js';
+import { SubscriptionManager, sharedSubscriptionsPath } from '../config/subscriptions.js';
 import type { ToolLLM } from '../config/tool-llm.js';
 import { createRuntimeSecretsManager } from './secrets-composition.js';
 import { ArtifactStore } from '../artifacts/index.js';
@@ -420,7 +420,16 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
     configManager,
     ...(options.daemonHome === undefined ? {} : { daemonHome: options.daemonHome }),
   });
-  const subscriptionManager = new SubscriptionManager(shellPaths.resolveUserPath(surfaceRoot, 'subscriptions.json'));
+  // Provider subscriptions (OAuth sessions like the 'openai-subscriber' login)
+  // live in the platform's SHARED tier, not this surface's own root: the
+  // daemon hosts every conversational turn, and a login completed on another
+  // surface (the TUI, the agent) must be visible to it. `legacyPath` is the
+  // pre-shared-tier per-surface store this surface used to own; the manager
+  // folds any newer records it finds there into the shared store once, at
+  // construction, and never writes to or deletes it.
+  const subscriptionManager = new SubscriptionManager(sharedSubscriptionsPath(shellPaths), {
+    legacyPath: shellPaths.resolveUserPath(surfaceRoot, 'subscriptions.json'),
+  });
   const serviceRegistry = new ServiceRegistry(shellPaths.resolveProjectPath(surfaceRoot, 'services.json'), {
     secretsManager,
     subscriptionManager,

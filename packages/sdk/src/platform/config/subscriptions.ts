@@ -1,4 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
+import { logger } from '../utils/logger.js';
 import {
   buildOAuthAuthorizationStart,
   createOAuthState,
@@ -7,6 +9,40 @@ import {
   parseOAuthScopes,
   refreshOAuthAccessToken,
 } from '../runtime/auth/oauth-core.js';
+
+/**
+ * The shared tier's directory name under `~/.goodvibes/` — the same
+ * surface-root-independent convention used by the config shared tier
+ * (shared-config-tier.ts), the canonical memory store (canonical-memory.ts),
+ * and the workspace register (shared-register-path.ts). Kept as a local
+ * literal rather than an import from any of those: it is a stable, one-word
+ * directory name, not a coupling any of those modules were built to share.
+ */
+const SUBSCRIPTIONS_SHARED_TIER_DIRECTORY = 'shared';
+const SUBSCRIPTIONS_FILE_NAME = 'subscriptions.json';
+
+/** The slice of ShellPathService {@link sharedSubscriptionsPath} needs. */
+export interface SubscriptionShellPaths {
+  resolveUserPath(...segments: string[]): string;
+}
+
+/**
+ * Where provider subscriptions (OAuth sessions for providers like
+ * 'openai-subscriber') live: `~/.goodvibes/shared/subscriptions.json`, one
+ * file read and written by every surface on the machine — the daemon, the
+ * TUI, the agent.
+ *
+ * A login is one event; every surface that later needs the token must see
+ * it. Before this, each surface constructed its own `SubscriptionManager`
+ * against `~/.goodvibes/<surfaceRoot>/subscriptions.json`, so a login
+ * completed in the TUI was invisible to the daemon that actually hosts
+ * conversation turns — the daemon kept refreshing whatever it already had
+ * (or nothing), and a successful login changed nothing from its point of
+ * view.
+ */
+export function sharedSubscriptionsPath(shellPaths: SubscriptionShellPaths): string {
+  return shellPaths.resolveUserPath(SUBSCRIPTIONS_SHARED_TIER_DIRECTORY, SUBSCRIPTIONS_FILE_NAME);
+}
 
 export interface OAuthProviderConfig {
   readonly authUrl: string;
@@ -78,11 +114,94 @@ function isSubscriptionExpired(expiresAt?: number, bufferMs = 60_000): boolean {
  *
  * @see OAuthClient — OAuth flows for daemon authentication.
  */
+export interface SubscriptionManagerOptions {
+  /**
+   * A surface-scoped store this manager used to own before subscriptions
+   * moved to the shared tier (e.g. the old `~/.goodvibes/<surfaceRoot>/subscriptions.json`).
+   * Folded in once, synchronously, at construction: see {@link SubscriptionManager.foldLegacyStore}.
+   * Omit when there is no legacy surface store to migrate from (a brand-new
+   * install, or a caller that never had a surface-scoped store to begin with).
+   */
+  readonly legacyPath?: string;
+}
+
 export class SubscriptionManager {
   private readonly path: string;
 
-  public constructor(path: string) {
+  public constructor(path: string, options: SubscriptionManagerOptions = {}) {
     this.path = path;
+    if (options.legacyPath && options.legacyPath !== path) {
+      this.foldLegacyStore(options.legacyPath);
+    }
+  }
+
+  /**
+   * Best-effort, READ-ONLY parse of a legacy store for migration. Never
+   * throws and never quarantines: quarantining renames the file, and a
+   * legacy path is not this manager's file to touch — an older build still
+   * pointed at it must find it exactly as it left it, corrupt or not. Any
+   * parse failure just yields nothing to fold, which is the same outcome as
+   * "no legacy store existed".
+   */
+  private readLegacyStoreReadOnly(path: string): SubscriptionStore {
+    const empty: SubscriptionStore = { version: 1, subscriptions: {}, pending: {} };
+    try {
+      if (!existsSync(path)) return empty;
+      const parsed = JSON.parse(readFileSync(path, 'utf-8')) as unknown;
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return empty;
+      const store = parsed as Partial<SubscriptionStore>;
+      return {
+        version: 1,
+        subscriptions: (store.subscriptions && typeof store.subscriptions === 'object') ? store.subscriptions : {},
+        pending: (store.pending && typeof store.pending === 'object') ? store.pending : {},
+      };
+    } catch {
+      return empty;
+    }
+  }
+
+  /**
+   * One-time fold of a legacy per-surface store into this (now shared)
+   * store, run synchronously at construction so every code path that reads
+   * `get()`/`resolveAccessToken()` right after construction already sees the
+   * folded result.
+   *
+   * Per provider, the newer `updatedAt` wins; a provider already in the
+   * shared store with an equal-or-newer record is left untouched. That
+   * strict `>` comparison is what makes a second boot a no-op instead of a
+   * re-fold or a downgrade: once the shared record's `updatedAt` is at least
+   * as new as the legacy one (which it is, immediately after the first
+   * fold), the same legacy file folds in nothing on every later boot. Only
+   * `subscriptions` are folded — `pending` OAuth logins carry a verifier tied
+   * to one in-flight browser round trip and are meaningless to resume across
+   * processes or after a restart.
+   *
+   * Never writes to or deletes the legacy file. Writes the shared store, and
+   * logs one info line naming what was adopted, only when something actually
+   * changed.
+   */
+  private foldLegacyStore(legacyPath: string): void {
+    const legacy = this.readLegacyStoreReadOnly(legacyPath);
+    const legacyEntries = Object.entries(legacy.subscriptions);
+    if (legacyEntries.length === 0) return;
+
+    const shared = this.read();
+    const adopted: string[] = [];
+    for (const [provider, legacyRecord] of legacyEntries) {
+      const sharedRecord = shared.subscriptions[provider];
+      if (!sharedRecord || legacyRecord.updatedAt > sharedRecord.updatedAt) {
+        shared.subscriptions[provider] = legacyRecord;
+        adopted.push(provider);
+      }
+    }
+    if (adopted.length === 0) return;
+
+    this.write(shared);
+    logger.info('SubscriptionManager: folded legacy provider subscriptions into the shared store', {
+      sharedPath: this.path,
+      legacyPath,
+      adopted,
+    });
   }
 
   /**
