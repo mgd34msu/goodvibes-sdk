@@ -2,6 +2,25 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.15] - 2026-08-08
+
+### Fixed
+
+- **The keep-awake inhibitor can no longer paint an authentication prompt over
+  a running terminal UI.** When the platform holds a sleep inhibitor during
+  real work (`power.inhibitWhileWorking`), a host whose polkit rules require
+  authentication for that inhibit class — typical for tmux or SSH sessions
+  that logind does not count as an active seat — got systemd's interactive
+  auth agent registered on the controlling terminal: "authentication is
+  required to inhibit system sleep", written straight over the fullscreen UI
+  on every submitted turn. The inhibitor is now requested with
+  `--no-ask-password`, so a polkit refusal is an immediate silent exit that
+  lands in the already-handled denied-classes path: the platform simply runs
+  without the inhibitor there, exactly as it does on hosts with no logind at
+  all. Pinned by a test on the inhibitor argv. Setting
+  `power.inhibitWhileWorking: false` remains the way to opt out of keep-awake
+  entirely.
+
 ## [2.0.14] - 2026-08-08
 
 ### Fixed

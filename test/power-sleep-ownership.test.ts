@@ -18,7 +18,7 @@ import { execFileSync, spawn, spawnSync, type ChildProcess } from 'node:child_pr
 import { EventEmitter } from 'node:events';
 import { PowerManager, LID_SWITCH_HONEST_SPLIT } from '../packages/sdk/src/platform/power/manager.ts';
 import { bindPowerWorkSignals } from '../packages/sdk/src/platform/power/work-signals.ts';
-import { createLinuxLogindSeam, reapOrphanedInhibitors } from '../packages/sdk/src/platform/power/linux-logind.ts';
+import { createLinuxLogindSeam, inhibitChildArgs, reapOrphanedInhibitors } from '../packages/sdk/src/platform/power/linux-logind.ts';
 import type { PowerInhibitClass, PowerPlatformSeam } from '../packages/sdk/src/platform/power/types.ts';
 import type { EventEnvelope } from '@pellux/goodvibes-transport-core';
 
@@ -445,4 +445,23 @@ describe('live sleep-edge watcher on this host (proves the leak fix)', () => {
       spawnSync('pkill', ['-f', stamp]);
     }
   }, 20_000);
+});
+
+describe('an inhibitor child may never prompt on the user\'s terminal', () => {
+  test('every inhibit argv carries --no-ask-password, before the command word', () => {
+    // A polkit denial without this flag registers an interactive auth agent on
+    // the CONTROLLING TERMINAL (/dev/tty — stdio \'ignore\' cannot suppress it),
+    // which painted "authentication is required to inhibit system sleep" over
+    // the fullscreen UI on every submitted turn. Denial must be a silent exit.
+    for (const cls of ['sleep', 'idle', 'handle-lid-switch'] as const) {
+      const args = inhibitChildArgs(cls, 'goodvibes [owner-pid 1]', 'work');
+      const flagAt = args.indexOf('--no-ask-password');
+      expect(flagAt).toBeGreaterThan(-1);
+      // Flags must precede the trailing `sleep infinity` command words, or
+      // systemd-inhibit hands them to the child instead of parsing them.
+      expect(flagAt).toBeLessThan(args.indexOf('sleep'));
+      expect(args[args.length - 2]).toBe('sleep');
+      expect(args[args.length - 1]).toBe('infinity');
+    }
+  });
 });

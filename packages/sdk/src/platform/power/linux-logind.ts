@@ -195,11 +195,24 @@ export async function reapOrphanedInhibitors(who: string, deps: OrphanReaperDeps
   return reaped;
 }
 
+/**
+ * The exact argv for one inhibitor child. `--no-ask-password` is load-bearing:
+ * when polkit requires authentication for an inhibit class (a tmux/SSH session
+ * logind does not count as an active seat), systemd-inhibit would otherwise
+ * register an interactive auth agent on the CONTROLLING TERMINAL — /dev/tty
+ * writes that stdio 'ignore' cannot suppress, painted straight over a
+ * fullscreen UI. With the flag, denial is an immediate silent non-zero exit,
+ * which lands in the deniedClasses path like any other refusal.
+ */
+export function inhibitChildArgs(cls: PowerInhibitClass, who: string, why: string): string[] {
+  return [`--what=${cls}`, `--who=${who}`, `--why=${why}`, '--mode=block', '--no-ask-password', 'sleep', 'infinity'];
+}
+
 function spawnInhibitChild(cls: PowerInhibitClass, who: string, why: string): Promise<ChildProcess | null> {
   return new Promise((resolve) => {
     const child = spawn(
       'systemd-inhibit',
-      [`--what=${cls}`, `--who=${who}`, `--why=${why}`, '--mode=block', 'sleep', 'infinity'],
+      inhibitChildArgs(cls, who, why),
       { stdio: 'ignore', detached: false },
     );
     let settled = false;
@@ -228,7 +241,9 @@ export function createLinuxLogindSeam(
     platform: 'linux-logind',
     async isAvailable(): Promise<boolean> {
       return new Promise((resolve) => {
-        execFile('systemd-inhibit', ['--list', '--no-legend'], { timeout: 5_000 }, (error) => {
+        // --no-ask-password for the same reason as the inhibit spawn: no
+        // systemd tool this platform runs may ever prompt on the user's tty.
+        execFile('systemd-inhibit', ['--list', '--no-legend', '--no-ask-password'], { timeout: 5_000 }, (error) => {
           resolve(!error);
         });
       });
