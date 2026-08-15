@@ -36,7 +36,12 @@ export const editSchema = {
             description: 'Optional identifier for this edit, used in result tracking',
           },
           occurrence: {
-            oneOf: [
+            // anyOf, not oneOf: strict OpenAI-compatible request validators
+            // (RouteLLM among them) forbid the oneOf keyword inside tool
+            // parameter schemas and 400 the whole chat request. The branches
+            // are disjoint types, so anyOf validates identically — and it is
+            // the keyword OpenAI's own function-calling schemas use.
+            anyOf: [
               {
                 type: 'string',
                 enum: ['first', 'last', 'all'],

@@ -2,6 +2,22 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.16] - 2026-08-15
+
+### Fixed
+
+- **One tool schema no longer breaks every turn through strict
+  OpenAI-compatible gateways.** The edit tool's `occurrence` parameter
+  declared its string-or-integer union with the JSON-Schema keyword `oneOf`.
+  Some OpenAI-compatible request validators — abacus RouteLLM among them, as
+  of a recent server-side tightening — forbid `oneOf` inside tool parameter
+  schemas and reject the ENTIRE chat request with "Extra inputs are not
+  permitted", so every conversational turn through such a provider failed no
+  matter what was asked. The union is now `anyOf`, which validates
+  identically for these disjoint branches and is the keyword OpenAI's own
+  function-calling schemas use. A wire-compatibility test walks every tool
+  schema module and keeps `oneOf` from coming back.
+
 ## [2.0.15] - 2026-08-08
 
 ### Fixed
