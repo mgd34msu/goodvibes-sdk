@@ -2,6 +2,26 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
 
+## [2.0.17] - 2026-08-15
+
+### Fixed
+
+- **Signing in to a provider subscription now works platform-wide, not just on
+  the surface where the browser opened.** Subscription sessions (the
+  ChatGPT/Codex OAuth tokens behind `openai-subscriber`) were stored per
+  surface, while every conversational turn runs in the daemon — so a login
+  completed in the terminal wrote a file the daemon never reads, and the
+  daemon kept refreshing whatever stale session it had. Measured live: a
+  fresh sign-in, followed by every turn failing "OAuth token exchange failed
+  (401)" against a revoked ten-day-old token. A successful login that changes
+  nothing is indistinguishable from the login being lost. Subscriptions now
+  live in the shared tier (`~/.goodvibes/shared/subscriptions.json`): a login
+  from any surface is immediately visible to the daemon and every other
+  surface. Existing per-surface records fold in automatically on first read —
+  newest record per provider wins, legacy files are never modified, and the
+  fold happens once. `sharedSubscriptionsPath()` is exported for products
+  that construct their own subscription manager.
+
 ## [2.0.16] - 2026-08-15
 
 ### Fixed
