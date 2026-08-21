@@ -1,5 +1,31 @@
 [
   {
+    "title": "Browser-checkout seam: batch secret fill defers snapshot-clear to failure-or-click; submit failure classified by error name",
+    "date": "2026-08-21",
+    "rationale": "Refutation review found BrowserEngine.fillSecret cleared the ref-resolution snapshot after EVERY field, so the checkout driver's per-field loop (fill-card.ts) died on card field two of four against a real engine, with the place-order ref also dead by submit time. Fix: CheckoutPageDriver.fillSecret(target,value,kind) became fillSecrets(fields[]) -> {filledTargets, failedTarget}, backed by BrowserEngine.fillSecretBatch (browser-engine.ts) which resolves every ref against the CURRENT snapshot before typing any of them (browser-secret-fill.ts's fillSecretsIntoPage), and clears the snapshot ONLY on a failure; a full success leaves it in place because the submit click that always follows a filled card clears it itself, exactly as every other browsing click already does. This is safe because confidentiality is enforced independently by CardMaterialRedactor's value-based scrub (guard.redact), which every content-read path (extract/readText/snapshot) already applies regardless of snapshot-store state; the snapshot-clear was a staleness/correctness mechanism, not the confidentiality boundary itself, though the header still frames it conservatively since the review named it 'a deliberate security property'. Second: submitOrder's click failures are classified pre-click vs post-click by the THROWN ERROR'S .name string ('BrowserSessionError'|'StaleElementError'|'UntrustedEffectError' => CheckoutSubmitRefused, a new class in checkout-page.ts) rather than importing those classes, preserving payments/ importing nothing from browser/ (browser-checkout-driver.ts's stated invariant); checkout-flow.ts's catch then releases the reservation and closes the journal for CheckoutSubmitRefused, and only holds the reservation (existing 'possibly submitted' behavior) for genuine post-click ambiguity. Third: submission.verified (false when no describeSubmission is wired) drives PurchaseRecord.outcome ('purchased' vs 'submitted-unverified', a plain string field, no schema enum to update) and renderPurchaseReport's wording, so the honest default is 'submitted, not confirmed' rather than an unverifiable claim of 'purchased'. Fourth: BrowserCheckoutSeam gained armSubmitApproval(OwnerApproval|null), a composition-only path onto engine.setOwnerApproval, wired in composeDaemonBrowser; CheckoutBrowserEngine (the structural interface platform/payments/ types against) has no such member, so payments code has no import path to an OwnerApproval minter. In practice the untrusted-effect guard clears today because payments.checkout.begin runs as an owner-direct call that resets the untrusted-content ledger's turn watermark (startTurnForOwnerRequest) before any click, not because of an approval; the old driver header claimed setOwnerApproval was the enforcement mechanism, which was false (zero production callers) and is corrected.",
+    "alternatives": [
+      "keep field-by-field CheckoutPageDriver.fillSecret and add a poison-flag on the snapshot store instead of batching (rejected: still needs a batch-shaped resolution to avoid re-resolving field 2 against field 1's post-type DOM state)",
+      "resolve the submit control during the fill batch and cache a Playwright Locator handle across the fill/submit boundary (rejected as unnecessary complexity once confidentiality was shown to be independent of snapshot lifetime)",
+      "import StaleElementError/UntrustedEffectError/BrowserSessionError into browser-checkout-driver.ts for exact instanceof classification (rejected: violates the module's stated platform/payments-imports-nothing-from-platform/browser invariant; classes' .name strings are already the public contract other tests assert on)"
+    ],
+    "agent": "engineer",
+    "files": [
+      "packages/sdk/src/platform/browser/browser-secret-fill.ts",
+      "packages/sdk/src/platform/browser/browser-engine.ts",
+      "packages/sdk/src/platform/payments/checkout-page.ts",
+      "packages/sdk/src/platform/payments/browser-checkout-driver.ts",
+      "packages/sdk/src/platform/payments/fill-card.ts",
+      "packages/sdk/src/platform/payments/checkout-flow.ts",
+      "packages/sdk/src/platform/payments/budget.ts",
+      "packages/sdk/src/platform/payments/message.ts",
+      "packages/sdk/src/platform/payments/payments-gateway-service.ts",
+      "packages/sdk/src/platform/control-plane/routes/browser-composition.ts",
+      "packages/sdk/src/platform/control-plane/routes/register-gateway-verb-groups.ts",
+      "test/payments-browser-checkout-seam.test.ts",
+      "test/helpers/fixture-checkout-driver.ts"
+    ]
+  },
+  {
     "id": "otlp-no-post-ingest",
     "date": "2026-04-19",
     "finding": "F7",

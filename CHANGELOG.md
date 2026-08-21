@@ -4,6 +4,46 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ## [2.0.19] - 2026-08-21
 
+### Added
+
+- **The browser-checkout seam: a daemon composition can now wire the
+  payments checkout verbs to a real browser.** `composeDaemonBrowser`
+  (exported from `platform/control-plane`) accepts an `onBrowserCheckout`
+  callback and hands the composition a `BrowserCheckoutSeam`: the
+  `cardFieldGuard` the engine scrubs against, a `driverFor` factory whose
+  drivers refuse to type card material unless that same guard instance is
+  armed for the session and page, an `armSubmitApproval` path for the
+  place-order click that payments code cannot reach on its own, and a
+  `describeSubmission` hook so a composition that reads the merchant's
+  response can report an order id, a challenge, or a confirmation.
+  Passing both `browserGateway` and `onBrowserCheckout` is a configuration
+  error and now fails loudly instead of silently dropping the seam.
+  `PaymentsServiceDeps` gains an optional `cardFieldGuard` so the payments
+  service binds to the seam's guard instead of minting its own.
+
+### Changed
+
+- **`CheckoutPageDriver.fillSecret` is removed in favor of `fillSecrets`.**
+  The single-field method resolved its target against a snapshot that its own
+  typing could invalidate, so a driver calling it once per card field lost
+  every field after the first against a real browser. `fillSecrets` takes the
+  whole batch and resolves every target before typing any of them. Every
+  implementation of the port (the daemon's browser driver, the fixture used in
+  tests) must supply `fillSecrets`.
+- **`BrowserEngine.fillSecret` is renamed to `fillSecretBatch`** and takes a
+  `fills` array instead of one ref/value pair, for the same reason. A resolve
+  failure anywhere in the batch is now reported as `failedRef` on the return
+  value rather than thrown, so a caller can always name which target stopped
+  it; see `checkout-page.ts`'s `fillSecrets` doc comment for the port's full
+  throw contract.
+- **`CheckoutPageDriver.submitOrder` gains `verified: boolean`.** `false`
+  means the click was issued and the reservation is committed as a
+  conservative default against a double-spend, but nothing confirmed the
+  merchant actually accepted the order; `PurchaseRecord.outcome` now records
+  `'submitted-unverified'` rather than `'purchased'` in that case, and the
+  owner report says so plainly instead of claiming a confirmed purchase
+  nothing here watched complete.
+
 ### Fixed
 
 - **Execution plans round-trip through their own markdown again.** 2.0.18's
@@ -16,6 +56,67 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   round-trips a plan whose descriptions contain commas. Files written by
   2.0.18's emitter parse as description-only, exactly as they did before this
   fix; their statuses cannot be recovered unambiguously and are not guessed.
+- **The card-material redactor no longer disarms while the typed digits may
+  still be on the page.** `checkout-flow.ts`'s pre-click refusal, genuine
+  post-click ambiguity, and 3-D Secure challenge exits all used to disarm the
+  guard unconditionally, the challenge exit worst of all, since the owner is
+  sent back to that very page to finish verification. Disarming is now bound
+  to the page's actual state (`BrowserEngine`: on navigate, on a navigating
+  click, on tab close, on session close) instead of to the flow's own guess
+  about whether the digits are gone, and `CardMaterialRedactor.disarmSession`
+  is wired into session teardown so material cannot outlive its session.
+- **A submitted order is `verified` only when `describeSubmission` actually
+  found evidence.** Being wired was previously enough on its own to mark a
+  submission `verified: true`; a composition that looked and found nothing (a
+  declined card, an error page, a spinner) produced outcome `'purchased'` and
+  a "Bought it." report regardless. `CheckoutSubmissionDescription` gains an
+  optional `confirmed` flag, and `verified` now requires an order id, a
+  challenge, or an explicit `confirmed: true`.
+- **Mail correlation now recognises `submitted-unverified` purchases, not
+  only `purchased` ones.** `correlatePurchaseMail` excluded every outcome but
+  `'purchased'`, so a default composition with no `describeSubmission` wired,
+  whose purchases are always `submitted-unverified`, could never recognise
+  its own confirmation mail arriving, the exact case whose report tells the
+  owner to check the merchant's order history. A correlation match still never rewrites
+  the stored record; it recognises the mail, it does not re-verify the
+  purchase.
+- **Card-number redaction now catches every separator a checkout mask
+  plausibly uses**, not only a plain space, a non-breaking space, and a
+  hyphen. A dot mask, an en dash mask, a newline mask, and an underscore mask
+  all left the PAN readable in page-derived text while the redactor was
+  armed.
+- **A submit refusal no longer forwards page-authored text into the
+  owner-facing reason.** A stale-ref or untrusted-effect refusal's underlying
+  message can name the element it was trying to click, which a hostile page
+  controls; `checkout-flow.ts`'s reason string now comes from a fixed, safe
+  description per refusal kind instead of the driver's raw message.
+- **A card-fill failure now names the field that actually failed.**
+  `fill-card.ts` used to blame `request.targets[0]` for any thrown fill
+  error, regardless of which target in the batch actually stopped it, since
+  the port's per-field failures are now reported structurally by target name
+  rather than by array position.
+- **`armSubmitApproval` is one-shot.** The composition-only approval path
+  used to sit on the engine unconsumed for its whole TTL, blessing every
+  submit issued in that window; it is now consumed on the first submit check
+  it clears, whatever that check decided.
+- **`voice.wake.model.get` works over REST for the first time.** The handler
+  read its parameters off the top of the invocation envelope, where a REST
+  GET never puts them, so every request failed with `component must be one
+  of … (got "")` on every daemon build since the verb shipped; the webui's
+  wake-word feature was broken by it. The handler now reads parameters
+  through `readInvocationParams` like the rest of the route modules, and a
+  regression test invokes it with the real REST envelope shape.
+- **`payments.purchases.list` honors a `limit` that arrives as a query
+  string.** A GET's query values are always strings, and the handler
+  accepted `limit` only as a number, so real REST callers silently got the
+  default of 100 no matter what they asked for. Numeric strings now parse;
+  junk still falls back to the default exactly as a wrong-typed value did.
+- **`payments.cards.create` validation failures are field-named 400s, not a
+  blanket 500.** Field reading and validation used to run inside the same
+  catch as the storage write, so a bad expiry month surfaced as "Storing the
+  card failed. Nothing was saved." Validation now runs before the storage
+  try/catch and names the offending field; only a genuine storage failure
+  keeps the 500.
 
 ## [2.0.18] - 2026-08-21
 
