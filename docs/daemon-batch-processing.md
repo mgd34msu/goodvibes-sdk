@@ -217,7 +217,7 @@ All Cloudflare routes require daemon authentication and admin privileges.
 
 Provisioning is idempotent for SDK-managed Cloudflare resources. The SDK checks for existing resources before creating Queues, queue consumers, KV namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, Access service tokens/apps, DNS CNAMEs, account workers.dev subdomains, workers.dev script routes, and the `GoodVibesCoordinator` Durable Object namespace. Worker cron provisioning reads the current schedule before rewriting it, and disable flows check current schedule/subdomain state before removing settings. Hostname-bound DNS and Access operations are preflighted against the selected zone before Cloudflare receives create/update calls.
 
-Saved ids such as `cloudflare.kvNamespaceId`, `cloudflare.secretsStoreId`, `cloudflare.tunnelId`, `cloudflare.accessAppId`, and `cloudflare.accessServiceTokenId` are reused on later onboarding runs. This lets clients rerun provisioning after enabling extra Cloudflare features without recreating resources that already exist.
+Saved ids such as `cloudflare.kvNamespaceId`, `cloudflare.secretsStoreId`, `cloudflare.tunnelId`, `cloudflare.accessAppId`, and `cloudflare.accessServiceTokenId` are reused on later onboarding runs; every `cloudflare.*` key is documented in the [configuration defaults table](./defaults.md). This lets clients rerun provisioning after enabling extra Cloudflare features without recreating resources that already exist.
 
 If Cloudflare returns an exists/quota-style create error after discovery, the SDK performs a second discovery pass and reuses a matching resource when it can:
 

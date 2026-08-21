@@ -161,14 +161,22 @@ is a policy function with injectable I/O plus a thin CLI (`bin`) entry. Repos
 keep only their repo-specific values in a `toolchain.config.json` at the repo
 root; the behavior lives in the package.
 
-Tools: `sdk-pin-gate`, `build-binaries`, `release-cut`, `coverage-gate`,
-`verification-ledger`, `post-build-smoke`, `package-install-check`,
-`publish-package`, `per-job-green`, `changelog-gate`, `sha256sums`, and
-`train-status`. `train-status` is read-only: given a `train-manifest.json`
-listing the family's repos, it reports each one's release-train cycle state
-across their local checkouts without pushing, tagging, or installing
-anything. It takes its own `--manifest` flag rather than reading
-`toolchain.config.json`.
+Twelve tools cover the release path from gate to publish.
+
+| Tool | What it does |
+| --- | --- |
+| `sdk-pin-gate` | Verifies pin, lockfile, and installed SDK versions tri-agree, sweeps for non-npm imports, and optionally checks the exports map |
+| `build-binaries` | Runs `bun build --compile` across a target matrix with optional daemon leg and native-addon handling |
+| `release-cut` | Prepares, bumps, updates the changelog, and tags, without re-running gates; CI owns validation |
+| `coverage-gate` | Aggregates coverage and enforces a per-repo floor that only increases |
+| `verification-ledger` | Totals and renders a repo-collected verification inventory as JSON and Markdown |
+| `post-build-smoke` | Boots a compiled binary and checks its version banner |
+| `package-install-check` | Statically checks the `npm pack` tarball and bin-shim policy |
+| `publish-package` | Publishes to npm idempotently and polls for propagation |
+| `per-job-green` | Verifies a commit's push-CI run concluded with every job green; the by-reference validation check |
+| `changelog-gate` | Asserts the changelog carries a section for the version being released |
+| `sha256sums` | Generates or verifies a `SHA256SUMS` manifest over release assets |
+| `train-status` | Read-only release-train report across the family's local checkouts, driven by its own `--manifest` flag rather than `toolchain.config.json` |
 
 ### `toolchain.config.json` contract
 

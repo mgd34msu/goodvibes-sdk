@@ -121,11 +121,21 @@ The WRFC controller tracks:
 - subtasks and per-subtask review state for compound chains
 - claim-verification status (`claimsVerified`)
 
-For large tasks, the owner can run a **compound chain**: it decomposes the work
-into `WrfcSubtask` records, each with its own engineer, reviewer, and fixer cycle and
-`WrfcSubtaskState` (`pending`, `engineering`, `reviewing`, `fixing`, `passed`,
-`failed`), then spawns an **integrator** to merge the passed subtasks before the
-chain's final full-scope review. A separate **verifier** role checks
+For large tasks, the owner can run a **compound chain**. It decomposes the
+work into `WrfcSubtask` records, each with its own engineer, reviewer, and
+fixer cycle, then spawns an **integrator** to merge the passed subtasks before
+the chain's final full-scope review. Each subtask's `WrfcSubtaskState` tracks
+where it sits in that cycle; this is the authoritative state table, and other
+docs link here.
+
+| Subtask state | What it means |
+| --- | --- |
+| `pending` | Created but no engineer has been spawned for it yet |
+| `engineering` | An engineer agent is implementing the subtask |
+| `reviewing` | A reviewer agent is evaluating the engineer's result |
+| `fixing` | A fixer agent is addressing confirmed review findings |
+| `passed` | The subtask cleared review and waits for the integrator |
+| `failed` | The subtask exhausted its cycle without clearing review | A separate **verifier** role checks
 engineer and fixer self-reports against the actual on-disk changes. The
 `claimsVerified` flag records whether those work claims were confirmed (`false`
 flags phantom work, claimed changes that are not present). The full `WORKFLOW_*`
@@ -139,11 +149,21 @@ Constraint propagation is documented in
 
 `@pellux/goodvibes-sdk/platform/orchestration` is a separate phase/work-item
 pipeline layered over the WRFC chain controller described above, not a
-replacement for it. A workstream holds one or more ordered phases (`plan`,
-`engineer`, `review`, `fix`, `gate`, `integrate`, or a custom kind); a work
-item advances to its next phase the instant that phase's gate passes, claimed
-by whichever capacity slot is free next, rather than being bound to one
-reviewer for its whole history the way a WRFC chain is.
+replacement for it. A workstream holds one or more ordered phases, each with a
+`PhaseKind` that determines the role of the agent serving it. A work item
+advances to its next phase the instant that phase's gate passes, claimed by
+whichever capacity slot is free next, rather than being bound to one reviewer
+for its whole history the way a WRFC chain is.
+
+| Phase kind | What the phase does |
+| --- | --- |
+| `plan` | Decompose or design before implementation begins |
+| `engineer` | Implement the work item |
+| `review` | Evaluate the implementation; served by a general-role agent rather than an engineer |
+| `fix` | Address findings from a review phase |
+| `gate` | Apply a pass/fail quality check; served by a general-role agent |
+| `integrate` | Merge finished work items into the combined result |
+| `custom` | A host-defined phase that fits none of the built-in kinds |
 
 Today the engine's live integration point is the WRFC fix phase. When a
 reviewer finds issues, `planFixWorkstream` turns those findings into a task
@@ -231,23 +251,30 @@ Hooks attach host-defined behavior to runtime events. Hook paths use:
 <phase>:<category>:<specific>
 ```
 
-Supported phases:
+The phase says when a hook fires relative to the event it names, and what its
+result may do.
 
-- `Pre`
-- `Post`
-- `Fail`
-- `Change`
-- `Lifecycle`
+| Phase | When it fires and what it can do |
+| --- | --- |
+| `Pre` | Before the action; its result can allow, deny, or ask, and can modify the tool input |
+| `Post` | After the action completes |
+| `Fail` | When the action errors |
+| `Change` | When observed state changes |
+| `Lifecycle` | On lifecycle transitions such as startup and shutdown |
 
-Supported categories include tool, file, git, agent, compact, LLM, MCP, config,
+Supported categories are tool, file, git, agent, compact, llm, mcp, config,
 budget, session, workflow, permission, transport, orchestration, and
-communication.
+communication; each is the event namespace its name says.
 
-Hook runner types:
+Five runner types execute hooks, differing in where the handler logic lives.
 
-- command
-- prompt
-- agent
+| Runner | How it executes |
+| --- | --- |
+| `command` | Runs a user-authored shell command with the event available to it; commands execute with full process privileges by design |
+| `prompt` | Sends the event JSON into an LLM prompt template and parses the response as the hook result; a non-JSON response means fire-and-forget success |
+| `agent` | Spawns a subagent whose task is the prompt template with the event substituted in, waiting up to the hook's timeout |
+| `http` | POSTs the event JSON to a configured URL and parses the response as the hook result |
+| `ts` | Loads a TypeScript module whose default export handles the event in-process |
 - HTTP
 - TypeScript
 

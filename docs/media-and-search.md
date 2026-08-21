@@ -12,12 +12,15 @@ operator methods documented below.
 The artifact store persists typed blobs and file attachments for later delivery,
 analysis, transformation, or knowledge ingest.
 
-Operator methods:
+Four operator methods cover the artifact lifecycle, from upload through
+metadata reads to raw content retrieval.
 
-- `artifacts.list`
-- `artifacts.create`
-- `artifacts.get`
-- `artifacts.content.get`
+| Method | What it does |
+| --- | --- |
+| `artifacts.create` | Store a file or attachment artifact for later delivery, analysis, or knowledge ingest; accepts JSON control bodies, multipart, or raw binary as described below |
+| `artifacts.list` | Return stored artifact metadata for files and attachments |
+| `artifacts.get` | Return metadata for one stored artifact |
+| `artifacts.content.get` | Return the raw content bytes for a stored artifact |
 
 Artifacts are used by knowledge extraction, multimodal writeback, media
 providers, session export, and channel delivery.
@@ -30,12 +33,24 @@ full operator contract.
 
 - JSON control bodies for small inline `text`/`dataBase64` payloads, daemon-local
   `path` references, or remote `uri` fetches.
-- `multipart/form-data` with a `file` field plus optional text fields such as
-  `filename`, `mimeType`, `kind`, `sourceUri`, `retentionMs`, `tags`, and
-  JSON-encoded `metadata`.
+- `multipart/form-data` with a `file` field plus optional text fields
+  described in the table below.
 - Raw binary bodies for large uploads. Use the request `Content-Type` as the
   artifact MIME type and pass metadata through query parameters, for example
   `?filename=manual.pdf&metadata=%7B%22source%22%3A%22homeassistant%22%7D`.
+
+The optional multipart text fields each carry one piece of artifact metadata.
+
+| Field | What it sets |
+| --- | --- |
+| `filename` | The stored artifact's file name |
+| `mimeType` | The artifact MIME type, overriding the uploaded part's own type |
+| `kind` | The artifact kind classification used by downstream consumers |
+| `sourceUri` | Where the content originally came from, kept as provenance |
+| `retentionMs` | How long the artifact lives before expiry sweeps remove it |
+| `tags` | Labels for lookup; accepts a JSON array or a comma-separated string |
+| `metadata` | Arbitrary JSON object attached to the artifact record |
+| `allowPrivateHosts` | Boolean opt-in for URI fetches that resolve to private hosts |
 
 Small JSON control bodies are intended for inline text, daemon-local paths, and
 remote URI references. PDFs, photos, website snapshots, and other large
@@ -52,24 +67,28 @@ same artifact cap.
 
 ## Media providers
 
-Media providers expose normalized capabilities for:
+Every media provider declares which of five normalized capabilities it
+implements, and each media operator method selects a provider by the
+capability it needs.
 
-- image understanding
-- local/built-in image inspection
-- provider-backed image analysis
-- media transformation
-- media generation
+| Capability | What a provider with it can do |
+| --- | --- |
+| `understand` | Analyze an image and return structured findings; serves `media.analyze` |
+| `transform` | Convert or edit media content; serves `media.transform` |
+| `generate` | Produce new media from a prompt; serves `media.generate` |
+| `metadata` | Read or derive artifact metadata without full analysis |
+| `attachment-store` | Hold attachment content on behalf of the runtime |
 
 Built-in media registration wires OpenAI, Gemini, Anthropic, local image
 understanding, built-in image understanding, and generation providers into a
 single registry.
 
-Operator methods:
-
-- `media.providers.list`
-- `media.analyze`
-- `media.transform`
-- `media.generate`
+| Method | What it does |
+| --- | --- |
+| `media.providers.list` | Return registered media provider capabilities |
+| `media.analyze` | Analyze an artifact through a registered media provider |
+| `media.transform` | Transform an artifact through a registered media provider |
+| `media.generate` | Generate a media artifact through a registered media provider |
 
 ## Multimodal service
 
@@ -77,23 +96,26 @@ The multimodal service provides a higher-level interface over image, audio,
 video, and document analysis. It can build token-efficient packets from
 analysis results and persist analysis back into artifacts and knowledge.
 
-Operator methods:
-
-- `multimodal.status`
-- `multimodal.providers.list`
-- `multimodal.analyze`
-- `multimodal.packet`
-- `multimodal.writeback`
+| Method | What it does |
+| --- | --- |
+| `multimodal.status` | Return the unified multimodal runtime status across image, audio, video, and document analysis |
+| `multimodal.providers.list` | Return the normalized multimodal provider catalog spanning media understanding, speech-to-text, and extractors |
+| `multimodal.analyze` | Analyze an image, audio file, video artifact, or document through the unified service |
+| `multimodal.packet` | Build a token-efficient packet from an existing analysis result |
+| `multimodal.writeback` | Persist an analysis result as an artifact and ingest it into the structured knowledge store |
 
 ## Voice providers
 
-Voice providers support provider-specific combinations of:
+Each voice provider declares which of five capabilities it implements, and
+the voice routes pick providers by the capability a request needs.
 
-- `tts`
-- `tts-stream`
-- `stt`
-- `realtime`
-- `voice-list`
+| Capability | What a provider with it can do |
+| --- | --- |
+| `tts` | Synthesize complete audio from text |
+| `tts-stream` | Synthesize audio as streamed bytes for low-latency spoken output |
+| `stt` | Transcribe an audio artifact to text |
+| `realtime` | Open a bidirectional realtime voice session |
+| `voice-list` | Enumerate the voices the provider offers |
 
 Built-in providers:
 
@@ -105,15 +127,15 @@ Built-in providers:
 - Vydra
 - `local` (fully offline speech-to-text and text-to-speech; see [Local voice engines](./voice-local.md))
 
-Operator methods:
-
-- `voice.status`
-- `voice.providers.list`
-- `voice.voices.list`
-- `voice.tts`
-- `voice.tts.stream`
-- `voice.stt`
-- `voice.realtime.session`
+| Method | What it does |
+| --- | --- |
+| `voice.status` | Return configured voice provider posture and capabilities |
+| `voice.providers.list` | Return registered voice providers |
+| `voice.voices.list` | Return registered voices for a voice provider |
+| `voice.tts` | Synthesize audio through a registered voice provider |
+| `voice.tts.stream` | Synthesize audio as streamed bytes through a streaming provider |
+| `voice.stt` | Transcribe an audio artifact through a registered voice provider |
+| `voice.realtime.session` | Open a realtime voice session through a registered voice provider |
 
 See [Voice and streaming TTS](./voice.md) for the spoken-output contract.
 
@@ -132,10 +154,10 @@ Built-in providers:
 - Tavily
 - Perplexity
 
-Operator methods:
-
-- `web_search.providers.list`
-- `web_search.query`
+| Method | What it does |
+| --- | --- |
+| `web_search.providers.list` | Return registered web search provider capabilities |
+| `web_search.query` | Execute a provider-backed web search and return normalized ranked results |
 
 The `web_search` tool exposes search to agents when a `WebSearchService` is
 registered with the tool runtime.

@@ -477,12 +477,29 @@ complete file. Same pattern as `PersistentStore.persist()`
 
 ## 6. Sections
 
-`Identity`, `Contact`, `Location`, `Commerce`, `Preferences`, `Contacting me`,
-`Style`, `Defaults`, `People`, `Places`, `Work`, `Important dates`, `Plans`,
-`Notes`.
+The document carries fourteen canonical sections in a fixed order. Seven are
+record-shaped, meaning the field registry maps a section-plus-label pair to
+exactly one validated value; the other seven hold prose bullets that nothing
+ever turns into records.
 
-`People`, `Places`, `Work`, `Important dates`, `Plans`, `Notes` and `Style` are
-prose-only. Autonomous writes into them append a bullet with a provenance
+| Section | What it holds | Handling |
+| --- | --- | --- |
+| `Identity` | Name, what the owner goes by, pronouns | Field-mapped records |
+| `Contact` | Email, phone, agent alias | Field-mapped records |
+| `Location` | Timezone, city, home address | Field-mapped records |
+| `Commerce` | Shipping and billing addresses, currency, shipping tier | Field-mapped records |
+| `Preferences` | Units, date format, locale | Field-mapped records |
+| `Contacting me` | Preferred channel and quiet hours | Field-mapped records |
+| `Defaults` | Operational defaults such as the approval window | Field-mapped records |
+| `Style` | How the owner wants replies written, with registered verbosity and formality fields read from it | Prose-only in the parser |
+| `People` | Facts about people in the owner's life | Prose bullets |
+| `Places` | Places the owner mentions | Prose bullets |
+| `Work` | Work context | Prose bullets |
+| `Important dates` | Birthdays and other recurring dates | Prose bullets, typed by the occasions reader layered on top |
+| `Plans` | Plans the owner has stated | Prose bullets, typed the same way |
+| `Notes` | Everything else worth keeping | Prose bullets |
+
+Autonomous writes into a prose-only section append a bullet with a provenance
 suffix. Nothing turns them into records.
 
 `Important dates` and `Plans` are prose-only for a reason worth stating, because
@@ -1080,8 +1097,8 @@ than mine and its header reasoning should be carried across.
 
 Worth recording: both implementations independently found the **same six**
 daemon-owned modules as legitimately internal (`channel-profiles`,
-`channel-sync`, `checkin`, `ci-watch`, `principals`, `push`, one more has
-joined the list since this was first written). Two people reaching the same
+`channel-sync`, `checkin`, `ci-watch`, `principals`, `push`, still exactly
+that list today). Two people reaching the same
 allowlist without conferring is the strongest evidence available that the
 allowlist is right and not just convenient.
 

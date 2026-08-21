@@ -26,23 +26,25 @@ daemon build.
 Automation records split into jobs, runs, sources, routes, schedules, and
 deliveries, each covering one piece of "what runs, when, and what happened."
 
-Operator methods:
+The operator methods cover the job lifecycle, run history and intervention,
+heartbeat processing, and scheduler capacity.
 
-- `automation.integration.snapshot`
-- `automation.jobs.list`
-- `automation.jobs.create`
-- `automation.jobs.update`
-- `automation.jobs.delete`
-- `automation.jobs.enable`
-- `automation.jobs.disable`
-- `automation.jobs.run`
-- `automation.runs.list`
-- `automation.runs.get`
-- `automation.runs.cancel`
-- `automation.runs.retry`
-- `automation.heartbeat.list`
-- `automation.heartbeat.run`
-- `scheduler.capacity`
+| Method | What it does |
+| --- | --- |
+| `automation.integration.snapshot` | Return the automation integration snapshot |
+| `automation.jobs.list` | Return automation jobs and recent runs, optionally paginated with `limit`/`cursor` |
+| `automation.jobs.create` | Create a durable automation job |
+| `automation.jobs.update` | Update a durable automation job |
+| `automation.jobs.delete` | Delete a durable automation job |
+| `automation.jobs.enable` / `automation.jobs.disable` | Turn a job on or off without deleting it |
+| `automation.jobs.run` | Trigger a job immediately |
+| `automation.runs.list` | Return run history, optionally paginated and filterable with `since` for away-digest reads |
+| `automation.runs.get` | Return a single run record |
+| `automation.runs.cancel` | Cancel an active run |
+| `automation.runs.retry` | Retry a completed or failed run |
+| `automation.heartbeat.list` | Return jobs queued for the next heartbeat |
+| `automation.heartbeat.run` | Process jobs queued for the next heartbeat |
+| `scheduler.capacity` | Return the scheduler capacity snapshot: total slots, in-use slots, queue depth, and oldest queued run age |
 
 `automation.jobs.create` accepts a `kind` of `cron`, `every`, or `at`, and the
 schedule field required alongside it depends on which kind is chosen. It is a cron
@@ -84,14 +86,15 @@ runs at once, and how long its history is kept:
 ## Schedules
 
 A schedule is a host-owned record of a recurring or one-off trigger,
-independent of the job it fires. The schedule endpoints manage those records:
+independent of the job it fires. The schedule endpoints manage those records.
 
-- `automation.schedules.list`
-- `automation.schedules.create`
-- `automation.schedules.delete`
-- `automation.schedules.enable`
-- `automation.schedules.disable`
-- `automation.schedules.run`
+| Method | What it does |
+| --- | --- |
+| `automation.schedules.list` | Return schedule records |
+| `automation.schedules.create` | Create a schedule record |
+| `automation.schedules.delete` | Delete a schedule record |
+| `automation.schedules.enable` / `automation.schedules.disable` | Turn a schedule on or off without deleting it |
+| `automation.schedules.run` | Trigger a schedule immediately |
 
 > **Core-verb rename (see CHANGELOG 1.0.0):** this family was renamed from the bare
 > `schedules.*` (no namespace prefix) to `automation.schedules.*`. The bare
@@ -126,14 +129,14 @@ callback, a companion-app chat session. Automation delivery, channel replies,
 and other daemon-hosted work read and write these bindings so a reply lands
 back in the same place the original message came from.
 
-Operator methods:
-
-- `routes.snapshot`
-- `surfaces.list`
-- `routes.bindings.list`
-- `routes.bindings.create`
-- `routes.bindings.update`
-- `routes.bindings.delete`
+| Method | What it does |
+| --- | --- |
+| `routes.snapshot` | Return the route and binding integration snapshot |
+| `surfaces.list` | Return registered channel and control surfaces |
+| `routes.bindings.list` | Return configured route bindings |
+| `routes.bindings.create` | Create or upsert a route binding |
+| `routes.bindings.update` | Update an existing route binding |
+| `routes.bindings.delete` | Delete an existing route binding |
 
 > **Core-verb rename (see CHANGELOG 1.0.0):** `routes.bindings.patch` was renamed to
 > `routes.bindings.update`, the same rename applied to `automation.jobs.patch`
@@ -175,15 +178,14 @@ the automation jobs above. A job runs a prompt on a schedule, while a watcher
 tracks the state of something external between polls and recovers a missed
 window rather than re-running from scratch.
 
-Operator methods:
-
-- `watchers.list`
-- `watchers.create`
-- `watchers.update`
-- `watchers.delete`
-- `watchers.start`
-- `watchers.stop`
-- `watchers.run`
+| Method | What it does |
+| --- | --- |
+| `watchers.list` | Return configured watchers and their runtime posture |
+| `watchers.create` | Register a new watcher |
+| `watchers.update` | Update an existing watcher |
+| `watchers.delete` | Delete an existing watcher |
+| `watchers.start` / `watchers.stop` | Start or stop a watcher instance |
+| `watchers.run` | Trigger a watcher immediately |
 
 > **Core-verb rename (see CHANGELOG 1.0.0):** `watchers.patch` was renamed to
 > `watchers.update`, the same rename applied to `automation.jobs.patch` and
@@ -216,14 +218,11 @@ The service-management methods expose installation and runtime control for a
 daemonized GoodVibes host, the platform service itself, not a job or a
 watcher.
 
-Operator methods:
-
-- `services.status`
-- `services.install`
-- `services.start`
-- `services.stop`
-- `services.restart`
-- `services.uninstall`
+| Method | What it does |
+| --- | --- |
+| `services.status` | Return platform service installation and runtime posture |
+| `services.install` / `services.uninstall` | Install or uninstall the GoodVibes platform service |
+| `services.start` / `services.stop` / `services.restart` | Control the running platform service |
 
 ## Next reads
 

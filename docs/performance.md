@@ -353,7 +353,16 @@ const health = selectSystemHealth(state);
 // health.domains: Record<HealthDomain, CompositeHealthStatus>
 ```
 
-Health domains tracked by `selectSystemHealth`: `providerHealth`, `mcp`, `daemon`, `acp`, `integrations`.
+`selectSystemHealth` composes one health status per tracked subsystem, then
+rolls them up into the overall status with critical outranking degraded.
+
+| Health domain | What it tracks |
+| --- | --- |
+| `providerHealth` | LLM provider availability and failover state |
+| `mcp` | Connected MCP servers |
+| `daemon` | The daemon connection itself |
+| `acp` | The ACP editor-agent bridge |
+| `integrations` | Channel and integration adapters |
 
 ### Read model pattern
 

@@ -447,7 +447,7 @@ Four built-in strategies:
 `PluginManager` (`plugins/manager.ts`) manages the full plugin lifecycle:
 1. **Registration.** Plugin manifests are registered with their capabilities and dependencies
 2. **Activation.** On startup, plugins are activated in dependency order
-3. **Hook dispatch.** The `HookDispatcher` fires lifecycle hooks (`pre-tool-use`, `post-tool-use`, `pre-turn`, `post-turn`, etc.) and collects results; hooks can block, modify, or annotate tool calls
+3. **Hook dispatch.** The `HookDispatcher` fires hooks on `Phase:Category:Specific` event paths, such as `Pre:tool` and `Post:tool` events around tool calls, and collects results; `Pre` hooks can block, modify, or annotate the call. The phase and runner tables live in [Runtime orchestration](./runtime-orchestration.md)
 4. **Deactivation.** Graceful shutdown calls each plugin's deactivation hook
 
 `PluginApi` (`plugins/api.ts`) is the interface that plugins receive on activation: access to config, secrets, tool registration, hook registration, and event subscription.

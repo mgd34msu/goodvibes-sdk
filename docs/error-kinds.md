@@ -205,7 +205,36 @@ try {
 }
 ```
 
-The full set of canonical codes, available as `SDKErrorCodes.*`, is `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, `PAYMENT_REQUIRED`, `RATE_LIMITED`, `NETWORK_UNREACHABLE`, `TIMEOUT`, `CANCELLED`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`, `AGENT_TIMEOUT`, `AGENT_FAILED`, `TOOL_EXEC_FAILED`, `SERVICE_UNAVAILABLE`, `CONTRACT_MISMATCH`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`, `SDK_CONFIGURATION_ERROR`, `SDK_CONTRACT_ERROR`, `SDK_HTTP_STATUS_ERROR`, and `UNKNOWN`.
+The full set of canonical codes, available as `SDKErrorCodes.*`, is twenty
+five values grouped by the failure family they name.
+
+| Code | What it signals |
+| --- | --- |
+| `AUTH_REQUIRED` | The call needs authentication that was not presented |
+| `TOKEN_EXPIRED` | The presented token is no longer valid; refresh and retry |
+| `PERMISSION_DENIED` | The authenticated principal lacks the required scope or permission |
+| `PAYMENT_REQUIRED` | The account's billing state blocks the call |
+| `RATE_LIMITED` | Too many requests; honor `retryAfterMs` before retrying |
+| `NETWORK_UNREACHABLE` | The transport could not reach the daemon at all |
+| `TIMEOUT` | The call started but did not finish in time |
+| `CANCELLED` | The caller or runtime cancelled the call |
+| `NOT_FOUND` | The addressed resource does not exist |
+| `CONFLICT` | The mutation conflicts with current resource state |
+| `SESSION_CLOSED` | The target session has already been closed |
+| `NOT_INVOKABLE` | The gateway method exists but cannot be invoked over this path |
+| `METHOD_NOT_FOUND` | No gateway method with that id exists |
+| `VALIDATION_FAILED` | The input failed schema or contract validation |
+| `AGENT_TIMEOUT` | A spawned agent exceeded its time budget |
+| `AGENT_FAILED` | A spawned agent ended in failure |
+| `TOOL_EXEC_FAILED` | A tool execution errored |
+| `SERVICE_UNAVAILABLE` | A dependent service is down or refusing work |
+| `CONTRACT_MISMATCH` | Client and daemon disagree about the contract shape |
+| `PROTOCOL_ERROR` | The wire exchange itself violated the protocol |
+| `INTERNAL_ERROR` | An unexpected internal failure with no more specific code |
+| `SDK_CONFIGURATION_ERROR` | The SDK was constructed or configured incorrectly |
+| `SDK_CONTRACT_ERROR` | The SDK detected a contract violation on its own side |
+| `SDK_HTTP_STATUS_ERROR` | An HTTP status error carried no more specific mapping |
+| `UNKNOWN` | Nothing more specific could be inferred |
 
 ### Kind → representative code
 

@@ -6,7 +6,16 @@ Auth is split between client token handling and daemon route enforcement.
 
 Client-facing code uses token stores and transport middleware. Two public subpaths are available:
 - `@pellux/goodvibes-sdk/auth`: token storage helpers, auth flows, and the `GoodVibesTokenStore` interface. Use this for most application code. It also re-exports the OAuth payload types (`OAuthStartState`, `OAuthTokenPayload`) for typing acquired tokens.
-- `@pellux/goodvibes-sdk/client-auth`: low-level authentication primitives (`AutoRefreshCoordinator`, `PermissionResolver`, `SessionManager`, `TokenStore`, auto-refresh options). Use this only when you need fine-grained control over refresh timing, permission resolution, or session handling. Platform-specific secure token stores are not exposed here. They are available via `@pellux/goodvibes-sdk/expo` (`createExpoSecureTokenStore`) and `@pellux/goodvibes-sdk/react-native` (`createIOSKeychainTokenStore`, `createAndroidKeystoreTokenStore`).
+- `@pellux/goodvibes-sdk/client-auth`: low-level authentication primitives. Use this only when you need fine-grained control over refresh timing, permission resolution, or session handling. Platform-specific secure token stores are not exposed here. They are available via `@pellux/goodvibes-sdk/expo` (`createExpoSecureTokenStore`) and `@pellux/goodvibes-sdk/react-native` (`createIOSKeychainTokenStore`, `createAndroidKeystoreTokenStore`).
+
+The client-auth primitives each own one slice of the auth lifecycle.
+
+| Primitive | What it does |
+| --- | --- |
+| `TokenStore` | The persistence contract for tokens: `getToken`, `setToken`, `clearToken` |
+| `SessionManager` | Login, current-principal reads, and logout against the daemon auth routes |
+| `PermissionResolver` | Resolves the control-plane auth snapshot, including the principal id and granted scopes |
+| `AutoRefreshCoordinator` | Schedules token refresh ahead of expiry, with configurable leeway, and feeds the refresh middleware |
 
 Daemon-facing code resolves principals, scopes, sessions, and admin requirements. Transport
 helpers do not read process-wide config or environment state implicitly; callers

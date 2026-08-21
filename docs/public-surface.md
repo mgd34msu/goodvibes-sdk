@@ -132,7 +132,9 @@ Supported event domain subpaths are: `agents`, `automation`, `communication`,
 `ops`, `orchestration`, `permissions`, `planner`, `plugins`, `providers`,
 `routes`, `security`, `session`, `surfaces`, `tasks`, `tools`, `transport`,
 `turn`, `ui`, `watchers`, `workflows`, and `workspace`. Event implementation
-modules are not exported as deep package subpaths.
+modules are not exported as deep package subpaths. What each domain carries is
+documented per event in the generated
+[runtime events reference](./reference-runtime-events.md).
 
 ### `./transport-core`: `@pellux/goodvibes-sdk/transport-core`
 

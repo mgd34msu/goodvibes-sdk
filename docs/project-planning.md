@@ -60,24 +60,38 @@ when a client needs project-scoped work tracking that survives process restarts
 and is visible across surfaces.
 
 Work-plan task records include a stable task id, title, notes, owner, status,
-priority/order, timestamps, source, tags, optional parent task id, and
-correlation fields for WRFC/planning/agent integration such as `chainId`,
-`phaseId`, `agentId`, `turnId`, `decisionId`, `sourceMessageId`, linked
-artifact/source/node ids, and origin surface.
+priority/order, timestamps, source, tags, an optional parent task id, linked
+artifact/source/node ids, and the origin surface. A set of correlation fields
+ties each visible task back to the machinery that produced or worked it, so
+WRFC children and planning decisions never appear as unrelated work.
 
-The SDK validates the work-plan status vocabulary (`ProjectWorkPlanTaskStatus`):
+| Correlation field | What it links the task to |
+| --- | --- |
+| `chainId` | The WRFC owner chain the task belongs to |
+| `phaseId` | The specific phase within that chain |
+| `agentId` | The agent currently or last working the task |
+| `turnId` | The conversation turn that produced the task |
+| `decisionId` | The recorded planning decision behind the task |
+| `sourceMessageId` | The message the task originated from |
 
-- `pending`
-- `in_progress`
-- `blocked`
-- `done`
-- `failed`
-- `cancelled`
+The SDK validates the work-plan status vocabulary
+(`ProjectWorkPlanTaskStatus`), and status transitions go through the dedicated
+status route rather than free-form patches.
+
+| Status | What it means |
+| --- | --- |
+| `pending` | Created and waiting to be picked up |
+| `in_progress` | Actively being worked |
+| `blocked` | Cannot proceed until something else resolves |
+| `done` | Completed successfully |
+| `failed` | Ended without completing |
+| `cancelled` | Deliberately abandoned |
 
 Do not confuse this with `ProjectPlanningTaskStatus`, the separate enum used by
-the planning-state `tasks` field (`ProjectPlanningTask`), whose members are
-`pending`, `in-progress`, `blocked`, `completed`, and `deferred`, hyphenated,
-and with `completed` rather than `done`, `failed`, or `cancelled`.
+the planning-state `tasks` field (`ProjectPlanningTask`). Its members are
+hyphenated (`in-progress` rather than `in_progress`), it says `completed`
+rather than `done`, it has no `failed` or `cancelled`, and it adds `deferred`
+for work postponed by a planning decision.
 
 Operator methods are exposed under `projectPlanning.workPlan.*` and daemon
 routes under `/api/projects/planning/work-plan`. Clients should use those
@@ -86,13 +100,15 @@ used as a migration/fallback cache, but the SDK store is the shared product
 model.
 
 Task changes emit planner-domain events so clients can refresh snapshots or
-apply deltas instead of polling:
+apply deltas instead of polling.
 
-- `WORK_PLAN_TASK_CREATED`
-- `WORK_PLAN_TASK_UPDATED`
-- `WORK_PLAN_TASK_STATUS_CHANGED`
-- `WORK_PLAN_TASK_DELETED`
-- `WORK_PLAN_SNAPSHOT_INVALIDATED`
+| Event | When it fires |
+| --- | --- |
+| `WORK_PLAN_TASK_CREATED` | A new task was created |
+| `WORK_PLAN_TASK_UPDATED` | A task's fields were patched |
+| `WORK_PLAN_TASK_STATUS_CHANGED` | A task moved through the status route |
+| `WORK_PLAN_TASK_DELETED` | A task was removed |
+| `WORK_PLAN_SNAPSHOT_INVALIDATED` | A bulk change made cached snapshots stale, such as a reorder or clear-completed |
 
 WRFC and planning integrations should link visible tasks to owner chains and
 phase children through the correlation fields rather than presenting child
@@ -271,23 +287,29 @@ Example:
 | `/api/projects/planning/work-plan/tasks/:taskId` | `DELETE` | yes | Delete a work-plan task |
 | `/api/projects/planning/work-plan/tasks/:taskId/status` | `POST` | yes | Set a work-plan task status |
 
-Operator method ids:
+Each operator method mirrors one of the routes above; the planning methods
+manage the interview and decision artifacts, and the work-plan methods manage
+durable tasks.
 
-- `projectPlanning.status`
-- `projectPlanning.state.get`
-- `projectPlanning.state.upsert`
-- `projectPlanning.evaluate`
-- `projectPlanning.decisions.list`
-- `projectPlanning.decisions.record`
-- `projectPlanning.language.get`
-- `projectPlanning.language.upsert`
-- `projectPlanning.workPlan.snapshot`
-- `projectPlanning.workPlan.tasks.list`
-- `projectPlanning.workPlan.task.create`
-- `projectPlanning.workPlan.task.get`
-- `projectPlanning.workPlan.task.update`
-- `projectPlanning.workPlan.task.delete`
-- `projectPlanning.workPlan.task.status`
+| Method | What it does |
+| --- | --- |
+| `projectPlanning.status` | Return passive planning artifact counts and capabilities without starting a planning loop |
+| `projectPlanning.state.get` | Return the current project-scoped planning state artifact |
+| `projectPlanning.state.upsert` | Persist planning state from the interview loop and evaluate readiness |
+| `projectPlanning.evaluate` | Validate planning state and return gaps and next-question hints without mutating anything |
+| `projectPlanning.decisions.list` | Return durable decision records from the project planning space |
+| `projectPlanning.decisions.record` | Persist a meaningful project decision for future context |
+| `projectPlanning.language.get` | Return canonical project vocabulary and resolved ambiguity records |
+| `projectPlanning.language.upsert` | Persist vocabulary and ambiguity resolutions without touching live sessions |
+| `projectPlanning.workPlan.snapshot` | Return the durable work-plan snapshot with tasks and status counts |
+| `projectPlanning.workPlan.tasks.list` | List tasks with optional status, owner, parent, or WRFC-chain filters |
+| `projectPlanning.workPlan.task.create` | Create a durable work-plan task |
+| `projectPlanning.workPlan.task.get` | Fetch one task by id |
+| `projectPlanning.workPlan.task.update` | Patch a task |
+| `projectPlanning.workPlan.task.status` | Validate and apply a status transition |
+| `projectPlanning.workPlan.task.delete` | Delete a task |
+| `projectPlanning.workPlan.tasks.reorder` | Replace the work plan's task ordering |
+| `projectPlanning.workPlan.clearCompleted` | Remove completed tasks, clearing `done` only by default |
 - `projectPlanning.workPlan.tasks.reorder`
 - `projectPlanning.workPlan.clearCompleted`
 

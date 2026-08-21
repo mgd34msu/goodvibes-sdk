@@ -103,10 +103,15 @@ Do not parse `message` strings when the structured fields are available.
 
 ## Core error classes
 
-- `GoodVibesSdkError`
-- `ConfigurationError`
-- `ContractError`
-- `HttpStatusError`
+Four classes cover everything the SDK throws; the three specialized classes
+extend the base, so an `instanceof GoodVibesSdkError` check catches them all.
+
+| Class | When you get it |
+| --- | --- |
+| `GoodVibesSdkError` | The base class for every SDK error; carries the structured fields above |
+| `ConfigurationError` | The SDK was constructed or configured incorrectly (`SDK_CONFIGURATION_ERROR`, kind `config`) |
+| `ContractError` | Client and daemon disagree about the contract (`SDK_CONTRACT_ERROR`, kind `contract`) |
+| `HttpStatusError` | An HTTP failure with no more specific mapping (`SDK_HTTP_STATUS_ERROR`, source `transport`) |
 
 ## Category guidance
 

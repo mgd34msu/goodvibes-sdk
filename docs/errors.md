@@ -34,7 +34,7 @@ which file defines it.
 ## Important rules
 
 - Retryable status codes are defined once, in `RETRYABLE_STATUS_CODES` (`[408, 429, 500, 502, 503, 504]`). `GoodVibesSdkError` derives `recoverable` from this set when the caller does not pass `recoverable` explicitly. The SDK platform layer (`AppError` and its subclasses) and the `transport-http` retry policy both import this same constant instead of redeclaring the list; an error-contract CI check fails the build if any other file inlines the literal array.
-- Transport failures preserve `url`, `method`, `status`, `retryAfterMs`, and the provider context fields `provider` / `operation` / `phase` / `requestId` / `providerCode` / `providerType`. There is no `event` field.
+- Transport failures preserve `url`, `method`, `status`, `retryAfterMs`, and the provider context fields `provider` / `operation` / `phase` / `requestId` / `providerCode` / `providerType`. There is no `event` field. The authoritative per-field table lives in [Error kinds](./error-kinds.md#useful-fields-on-every-goodvibessdkerror).
 - Contract violations are `ContractError` (code `SDK_CONTRACT_ERROR`, kind/category `contract`).
 - Configuration failures are `ConfigurationError` (code `SDK_CONFIGURATION_ERROR`, kind/category `config`).
 - HTTP failures are `HttpStatusError` (code defaults to `SDK_HTTP_STATUS_ERROR`, source `transport`).

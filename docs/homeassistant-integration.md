@@ -133,14 +133,20 @@ remain queryable without reuploading or migrating data.
 
 #### Snapshot sync and wire format
 
-Snapshot sync accepts Home Assistant-native object fields at the HTTP boundary.
-The integration can send registry objects with snake_case identifiers such as
-`entity_id`, `device_id`, `area_id`, `integration_id`, `unique_id`, and
-`friendly_name`; the daemon normalizes them into the SDK's internal graph
-shape before creating nodes and relations. This keeps Home Assistant-specific
-wire format handling in the SDK route/service layer while preserving the
-canonical graph metadata fields (`entityId`, `deviceId`, `areaId`,
-`integrationId`) for stored Home Graph records.
+Snapshot sync accepts Home Assistant-native object fields at the HTTP boundary
+and normalizes them into the SDK's internal graph shape before creating nodes
+and relations. This keeps Home Assistant-specific wire handling in the SDK
+route/service layer while stored Home Graph records carry the canonical
+camelCase metadata fields.
+
+| Wire field | Comes from | Stored as |
+| --- | --- | --- |
+| `entity_id` | The entity registry id | `entityId` |
+| `device_id` | The device registry id | `deviceId` |
+| `area_id` | The area registry id | `areaId` |
+| `integration_id` | The integration/config entry id | `integrationId` |
+| `unique_id` | The registry's unique id for the object | Folded into id resolution and aliases |
+| `friendly_name` | The display name, including `attributes.friendly_name` | Folded into the node title and aliases |
 
 Snapshot sync also refreshes living Home Graph pages by default, but the default
 sync path is intentionally bounded. The SDK prioritizes likely real-world
@@ -337,14 +343,22 @@ normal changed-only run, source auto-linking is limited to sources reparsed in
 that run; a forced reindex can still perform a broader stored-source link
 audit.
 
-The response reports:
+The response reports one counter per outcome a run can have, so panels can
+show honestly what a reindex did and why it stopped.
 
-- `scanned`, `reparsed`, `skipped`, `failed`, `truncated`, `budgetExhausted`
-- `changedSourceCount`, `forcedSourceCount`
-- `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
-  `generatedPagePolicyVersion`, `coalesced`
-- repaired `sources`, auto-link `linked` summaries, semantic enrichment
-  counts, regenerated page `generated` counts, and per-source `failures`
+| Field | What it reports |
+| --- | --- |
+| `scanned` | Sources examined by the run |
+| `reparsed` | Sources whose content was re-extracted |
+| `skipped` | Sources examined but left untouched |
+| `failed` | Sources whose reprocessing errored |
+| `truncated` | Whether the candidate set was cut off before every source was examined |
+| `budgetExhausted` | Whether the run stopped on its processing budget |
+| `changedSourceCount` / `forcedSourceCount` | How many sources entered as changed versus explicitly forced |
+| `skippedGeneratedPageArtifactCount` | Generated-page artifacts excluded from reprocessing as source material |
+| `refreshedGeneratedPageCount` / `generatedPagePolicyVersion` | Living pages refreshed, and the policy version that governed the refresh |
+| `coalesced` | Whether this call yielded to an already-running reindex instead of starting another |
+| `sources`, `linked`, enrichment counts, `generated`, `failures` | Repaired-source, auto-link, semantic enrichment, regenerated-page, and per-source failure summaries |
 
 If another Home Graph reindex is already running, the SDK returns
 `coalesced: true` quickly and leaves the active run in charge instead of
@@ -510,10 +524,18 @@ for review. The Home Graph wrappers are:
 - `POST /api/homeassistant/home-graph/refinement/tasks/{id}/cancel`
 
 The base knowledge API exposes the same task model under
-`/api/knowledge/refinement/*`. Home Graph status includes readiness signals for
-`ready`, `repairing`, `needs_review`, `needs_sources`, and `empty`, plus open
-issue and active refinement task counts. Panels should display those fields
-instead of inferring refinement progress from reindex duration or issue totals.
+`/api/knowledge/refinement/*`. Home Graph status reports one readiness state,
+computed in a fixed precedence order, plus open issue and active refinement
+task counts. Panels should display these fields instead of inferring
+refinement progress from reindex duration or issue totals.
+
+| Readiness state | When it is reported |
+| --- | --- |
+| `empty` | The space has no sources and no nodes yet |
+| `repairing` | At least one refinement task is actively running |
+| `needs_review` | No task is running but at least one task waits on human review |
+| `needs_sources` | No tasks are pending but open issues remain, typically missing manuals or sources |
+| `ready` | Nothing is running, waiting, or open |
 
 The refinement run response includes `candidateGaps`, `processedGaps`,
 `requestedLimit`, `effectiveLimit`, `truncated`, and `budgetExhausted`; Home
@@ -564,15 +586,24 @@ at write time for snapshot object links and at render time for maps, so objects
 such as integrations do not produce `connected_via` edges pointing back to
 themselves.
 
-The Home Graph map supports all generic knowledge map filters plus
-Home Assistant-specific filters. Generic filters include `recordKinds`,
-`nodeKinds`, `sourceTypes`, `sourceStatuses`, `nodeStatuses`, `issueCodes`,
-`issueStatuses`, `issueSeverities`, `edgeRelations`, `tags`, `ids`,
-`linkedToIds`, `query`, and `minConfidence`. Home Assistant filters live under
-`ha` for JSON requests and include `objectKinds`, `entityIds`, `deviceIds`,
-`areaIds`, `integrationIds`, `integrationDomains`, `domains`, `deviceClasses`,
-and `labels`. The same HA filter names are also accepted as top-level aliases
-for simpler clients.
+The Home Graph map supports all generic knowledge map filters, documented in
+the authoritative filter table under
+[Knowledge maps](./knowledge.md), plus Home Assistant-specific filters. The HA
+filters live under `ha` for JSON requests, and the same names are accepted as
+top-level aliases for simpler clients. Each narrows the map by one Home
+Assistant registry dimension.
+
+| HA filter | What it narrows |
+| --- | --- |
+| `objectKinds` | Nodes by their Home Assistant object kind (entity, device, area, ...) |
+| `entityIds` | Nodes tied to the given entity ids |
+| `deviceIds` | Nodes tied to the given device registry ids |
+| `areaIds` | Nodes located in the given areas or rooms |
+| `integrationIds` | Nodes connected through the given config entries |
+| `integrationDomains` | Nodes whose integration belongs to the given domains |
+| `domains` | Entities by their entity domain, such as `light` or `sensor` |
+| `deviceClasses` | Entities by their device class, such as `door` or `temperature` |
+| `labels` | Nodes carrying the given Home Assistant labels |
 
 Each field is multi-select: values inside one field are ORed
 together, and different fields are ANDed together. When a Home Assistant filter
@@ -657,38 +688,42 @@ namespace-filtered search.
 
 #### Operator methods
 
-Home Graph operator methods match the HTTP routes:
+Every Home Graph operator method matches an HTTP route one to one. The core
+methods cover sync, ingest, linking, ask, generation, and review.
 
-- `homeassistant.homeGraph.syncHomeGraph`
-- `homeassistant.homeGraph.ingestHomeGraphUrl`
-- `homeassistant.homeGraph.ingestHomeGraphNote`
-- `homeassistant.homeGraph.ingestHomeGraphArtifact`
-- `homeassistant.homeGraph.linkHomeGraphKnowledge`
-- `homeassistant.homeGraph.unlinkHomeGraphKnowledge`
-- `homeassistant.homeGraph.askHomeGraph`
-- `homeassistant.homeGraph.refreshDevicePassport`
-- `homeassistant.homeGraph.generateRoomPage`
-- `homeassistant.homeGraph.generateHomeGraphPacket`
-- `homeassistant.homeGraph.listHomeGraphIssues`
-- `homeassistant.homeGraph.reviewHomeGraphFact`
-- `homeassistant.homeGraph.map`
-- `homeassistant.homeGraph.pages.list`
+| Method | What it does |
+| --- | --- |
+| `homeassistant.homeGraph.syncHomeGraph` | Ingest a Home Assistant registry snapshot into the isolated Home Graph space |
+| `homeassistant.homeGraph.ingestHomeGraphUrl` | Fetch and index a URL as a Home Graph source without touching the default knowledge space |
+| `homeassistant.homeGraph.ingestHomeGraphNote` | Store a note or remember-this fact as a Home Graph source |
+| `homeassistant.homeGraph.ingestHomeGraphArtifact` | Index an artifact reference, path/URI reference, multipart upload, or raw binary upload as a document, receipt, warranty, manual, or photo |
+| `homeassistant.homeGraph.linkHomeGraphKnowledge` | Attach a source or node to a Home Assistant object |
+| `homeassistant.homeGraph.unlinkHomeGraphKnowledge` | Remove an active source/object link without deleting source history |
+| `homeassistant.homeGraph.askHomeGraph` | Search the space and return a source-backed answer |
+| `homeassistant.homeGraph.refreshDevicePassport` | Generate or refresh the living passport page for one device |
+| `homeassistant.homeGraph.generateRoomPage` | Render a room/area page and materialize it as markdown |
+| `homeassistant.homeGraph.generateHomeGraphPacket` | Render a scoped packet with inclusion/exclusion profile rules |
+| `homeassistant.homeGraph.listHomeGraphIssues` | Return data quality, review, and maintenance issues |
+| `homeassistant.homeGraph.reviewHomeGraphFact` | Accept, reject, resolve, edit, or forget an issue, source, or node |
+| `homeassistant.homeGraph.map` | Return the visual node/edge map with layout data and SVG |
+| `homeassistant.homeGraph.pages.list` | Return generated wiki pages with optional markdown content |
 
-Additional browse/export methods are available for source inventory and
-knowledge UIs: `homeassistant.homeGraph.sources.list`,
-`homeassistant.homeGraph.browse`, `homeassistant.homeGraph.export`, and
-`homeassistant.homeGraph.import`.
+Browse and transfer methods serve source inventory and knowledge UIs, and the
+refinement and maintenance methods cover repair, reindex, reset, and status.
 
-Refinement and maintenance methods cover the repair, reindex, reset, and
-status routes:
-
-- `homeassistant.homeGraph.refinement.run`
-- `homeassistant.homeGraph.refinement.tasks.list`
-- `homeassistant.homeGraph.refinement.task.get`
-- `homeassistant.homeGraph.refinement.task.cancel`
-- `homeassistant.homeGraph.reindex`
-- `homeassistant.homeGraph.reset`
-- `homeassistant.homeGraph.status`
+| Method | What it does |
+| --- | --- |
+| `homeassistant.homeGraph.sources.list` | Return the source inventory for a space |
+| `homeassistant.homeGraph.browse` | Return namespace-filtered sources, nodes, edges, and issues |
+| `homeassistant.homeGraph.export` | Export a complete Home Graph knowledge space |
+| `homeassistant.homeGraph.import` | Restore a space export into the current daemon knowledge store |
+| `homeassistant.homeGraph.refinement.run` | Run source-backed self-improvement for a space, source list, or specific gaps |
+| `homeassistant.homeGraph.refinement.tasks.list` | Return durable refinement tasks with states, traces, and blocked reasons |
+| `homeassistant.homeGraph.refinement.task.get` | Return one refinement task and its trace |
+| `homeassistant.homeGraph.refinement.task.cancel` | Mark a queued or active refinement task as cancelled |
+| `homeassistant.homeGraph.reindex` | Re-extract stored artifacts with missing or sparse extraction records |
+| `homeassistant.homeGraph.reset` | Clear one Home Graph space after callers export any backup they need |
+| `homeassistant.homeGraph.status` | Return space status including the readiness state described above |
 
 Home Assistant prompt ingress uses isolated remote-chat sessions backed by the
 same daemon chat manager used by companion-app remote chat. It does not use a

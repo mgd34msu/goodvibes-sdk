@@ -207,10 +207,27 @@ so the graph can explain why automatic source evidence was trusted.
 Self-improvement is a durable workflow, not just a side effect. Each detected
 repair opportunity is represented by a `KnowledgeRefinementTask` with a stable
 id, knowledge space, subject, gap id, state, trigger, retry budget, attempt
-count, blocked reason, metadata, and trace. Task states include `detected`,
-`queued`, `searching`, `evaluating`, `extracting`, `applying`, `closed`,
-`blocked`, `suppressed`, `needs_review`, `cancelled`, and `failed`. Trace
-entries record why a gap was considered repairable or not, which source
+count, blocked reason, metadata, and trace. The task moves through a thirteen
+state lifecycle; the active states mirror the repair pipeline's phases and the
+terminal states record exactly why a task stopped.
+
+| State | What it means |
+| --- | --- |
+| `detected` | A repairable gap was found and a task now represents it |
+| `queued` | The gap classified as repairable and waits for a background refinement run |
+| `searching` | The run is querying for source-backed repair evidence; each entry into this state counts an attempt |
+| `evaluating` | Candidate sources are being graded for confidence and relevance |
+| `extracting` | Accepted sources are being ingested and extracted |
+| `applying` | Accepted repair sources are being linked into the graph |
+| `verified` | The accepted sources were semantically enriched after apply |
+| `closed` | Repair finished; sources were accepted and linked to the gap |
+| `blocked` | Repair cannot proceed and the reason is recorded, such as no repairer configured or the run budget exhausted; recovery sweeps revisit blocked tasks |
+| `suppressed` | Classification judged the gap not applicable, so the pipeline will not retry it |
+| `needs_review` | The outcome awaits a human review decision |
+| `cancelled` | A client cancelled the task through the cancel route |
+| `failed` | An attempt ended in an error, with the reason stored on the task |
+
+Trace entries record why a gap was considered repairable or not, which source
 candidates were accepted or rejected, what was ingested, and what graph changes
 were applied. Clients can inspect and run this pipeline through:
 
@@ -752,13 +769,25 @@ of the base structured knowledge graph. The response includes:
 - counts, dimensions, and generation metadata
 
 Query options are `limit`, `includeSources`, `includeIssues`, and
-`includeGenerated`. The map also accepts shared multi-select filters:
+`includeGenerated`. The map also accepts shared multi-select filters, each
+narrowing one axis of the rendered record set before layout.
 
-- `recordKinds`: `source`, `node`, `issue`
-- `nodeKinds`, `sourceTypes`, `sourceStatuses`, `nodeStatuses`
-- `issueCodes`, `issueStatuses`, `issueSeverities`
-- `edgeRelations`, `tags`, `ids`, `linkedToIds`
-- `query` and `minConfidence`
+| Filter | What it narrows |
+| --- | --- |
+| `recordKinds` | Which record families render at all: `source`, `node`, `issue` |
+| `nodeKinds` | Nodes by kind, such as `fact` or the Home Graph `ha_*` kinds |
+| `sourceTypes` | Sources by ingest type |
+| `sourceStatuses` | Sources by lifecycle status |
+| `nodeStatuses` | Nodes by lifecycle status |
+| `issueCodes` | Issues by their machine code |
+| `issueStatuses` | Issues by open/resolved state |
+| `issueSeverities` | Issues by severity |
+| `edgeRelations` | Edges by relation name; the node set follows the surviving edges |
+| `tags` | Records carrying any of the given tags |
+| `ids` | Records with the given record ids |
+| `linkedToIds` | Records connected by an edge to any of the given ids |
+| `query` | Records whose text matches a case-insensitive substring |
+| `minConfidence` | Nodes at or above the given confidence score |
 
 Values may be provided as repeated query parameters, comma-separated query
 values, or JSON arrays where the caller uses a JSON bridge. Values inside one
@@ -794,20 +823,21 @@ usage records, candidates, reports, jobs, runs, and schedules.
 
 ## Maintenance jobs
 
-Built-in job kinds:
+Ten built-in job kinds keep the store healthy. Each is a `KnowledgeJobKind`
+value and maps to one concrete maintenance routine.
 
-- `lint`
-- `reindex`
-- `refresh-stale`
-- `refresh-bookmarks`
-- `sync-browser-history`
-- `rebuild-projections`
-- `semantic-enrichment`
-- `semantic-self-improvement`
-- `light-consolidation`
-- `deep-consolidation`
-
-These are `KnowledgeJobKind` values. Each job and schedule has an id of the form
+| Job kind | What it does |
+| --- | --- |
+| `lint` | Scan the store for integrity issues and report them |
+| `reindex` | Rebuild the search index over sources, nodes, and edges |
+| `refresh-stale` | Re-fetch sources whose content has gone stale |
+| `refresh-bookmarks` | Re-fetch bookmark-backed sources |
+| `sync-browser-history` | Pull new browser-history entries into the store |
+| `rebuild-projections` | Re-materialize the overview and bundle projections |
+| `semantic-enrichment` | Re-run semantic extraction over sources to refresh derived facts |
+| `semantic-self-improvement` | Run the gap-repair pipeline over detected knowledge gaps on a scheduled trigger |
+| `light-consolidation` | Run consolidation without auto-promoting results, producing a report |
+| `deep-consolidation` | Run consolidation with auto-promotion enabled, producing a report | Each job and schedule has an id of the form
 `knowledge-<kind>` (for example kind `sync-browser-history` has id
 `knowledge-sync-browser-history`), and `knowledge.jobs.run()` takes that id, not
 the bare kind.

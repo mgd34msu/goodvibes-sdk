@@ -21,17 +21,19 @@ are ignored by the knowledge ingest path.
 
 Browser entries are folded by canonical URL. If a page appears in both history
 and bookmarks, the SDK writes one source with both provenance kinds instead of
-creating duplicate records. The resulting source metadata includes:
+creating duplicate records. The resulting source metadata carries the folded
+provenance so later reads can tell exactly where a URL was seen.
 
-- `browserSourceKinds`
-- `browserKinds`
-- `browserProfiles`
-- `browserFolders`
-- `browserObservationCount`
-- `browserVisitCount`
-- `browserFirstRecordedAt`
-- `browserLastRecordedAt`
-- `browserObservations`
+| Metadata field | What it records |
+| --- | --- |
+| `browserSourceKinds` | Whether the URL came from history, bookmarks, or both |
+| `browserKinds` | Which browsers contributed entries |
+| `browserProfiles` | Which browser profiles the entries came from |
+| `browserFolders` | Bookmark folders the URL was filed under |
+| `browserObservationCount` | How many raw entries folded into this source |
+| `browserVisitCount` | Total visit count across the folded entries |
+| `browserFirstRecordedAt` / `browserLastRecordedAt` | The earliest and latest times the URL was recorded |
+| `browserObservations` | Up to 32 per-entry records with source kind, browser, family, profile, and title |
 
 For new browser-only records, the SDK creates a synthetic `browser-history`
 extraction with title, summary, sections, and links. If the same canonical URL

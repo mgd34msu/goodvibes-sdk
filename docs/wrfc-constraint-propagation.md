@@ -249,8 +249,8 @@ constraint can no longer fail a review it was never going to be able to pass.
 
 A large WRFC ask can be decomposed into a **compound chain**: the owner splits
 the work into `WrfcSubtask` records and runs each through its own
-engineer/reviewer/fixer cycle, tracked by `WrfcSubtaskState` (`pending`,
-`engineering`, `reviewing`, `fixing`, `passed`, `failed`). Each subtask
+engineer/reviewer/fixer cycle, tracked by `WrfcSubtaskState`. The state table
+lives in [Runtime orchestration](./runtime-orchestration.md). Each subtask
 enumerates and verifies its **own** constraint list, `WrfcSubtask` carries the
 same `constraints` and `constraintsEnumerated` fields as the parent chain, so
 the propagation rules above apply per subtask exactly as they do for a single

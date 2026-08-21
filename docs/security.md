@@ -220,7 +220,23 @@ SDK hosts can expose a user-facing explanation of security-relevant settings wit
 
 Each report entry includes the setting key, default state, current state, what the setting does, why the disabled state is less restrictive, what enabling it changes, and any operational requirements. This is intended for TUI/onboarding flows so users see exactly which security-relevant settings are on, off, and why.
 
-The current report covers the security-sensitive settings `fetch.sanitizeMode`, `permissions.engine`, `permissions.simulation`, `permissions.divergenceDashboard`, `policy.registryEnabled`, `policy.requireSignedBundles`, `runtime.toolBudget.enforced`, `permissions.commandParser`, `security.tokenAudit.enabled`, and `tools.contractVerification`.
+The current report covers ten security-sensitive settings, each guarding one
+enforcement mechanism. Their enablement shapes and defaults are in the
+[feature settings catalog](./feature-settings.md); the security angle of each
+is what it guards.
+
+| Setting | What it guards |
+| --- | --- |
+| `fetch.sanitizeMode` | How untrusted web content is sanitized before the model sees it |
+| `permissions.engine` | Whether the layered policy engine evaluates tool/path/parameter rules |
+| `permissions.simulation` | Shadow dual-evaluation that records permission divergences without blocking |
+| `permissions.divergenceDashboard` | The divergence aggregation that gates enforce-mode transitions |
+| `policy.registryEnabled` | The policy bundle promote/rollback registry |
+| `policy.requireSignedBundles` | HMAC validation of policy bundles in managed mode |
+| `runtime.toolBudget.enforced` | Hard wall-clock, token, and cost limits on tool execution |
+| `permissions.commandParser` | Per-segment AST evaluation of shell commands before execution |
+| `security.tokenAudit.enabled` | Advisory auditing of token scopes and rotation |
+| `tools.contractVerification` | Registration-time verification that keeps malformed tools out of the registry |
 
 ### TLS
 
