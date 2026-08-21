@@ -32,7 +32,7 @@ type MessageOptions = {
    * Caller-supplied message id. Lets a caller (e.g. ProcessRegistry.steer())
    * learn the id synchronously from its own return value instead of from
    * send()'s boolean result. Defaults to a fresh crypto.randomUUID() when
-   * omitted — existing callers are unaffected.
+   * omitted, existing callers are unaffected.
    */
   id?: string | undefined;
   ttlMs?: number | undefined;
@@ -285,8 +285,8 @@ export class AgentMessageBus {
    * Extract optional routing fields from options + sender/receiver metadata.
    *
    * Coalescing rules (intentionally asymmetric):
-   *   cohort, wrfcId   — options ?? fromMeta ?? toMeta
-   *   parentAgentId    — options ?? fromMeta ONLY (toMeta excluded to avoid
+   *   cohort, wrfcId  , options ?? fromMeta ?? toMeta
+   *   parentAgentId   , options ?? fromMeta ONLY (toMeta excluded to avoid
    *                      leaking the recipient's parent onto unrelated messages).
    */
   private pickRoutingFields(

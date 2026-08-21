@@ -1,5 +1,5 @@
 /**
- * ci-watch-auto-mint.test.ts — CI watches mint and retire themselves.
+ * ci-watch-auto-mint.test.ts, CI watches mint and retire themselves.
  *
  * Work done through the platform that pushes a branch (a successful exec
  * containing `git push`, or a GitService push) creates its own watch with no
@@ -100,7 +100,7 @@ describe('the full self-minting lifecycle', () => {
       resolveCurrentBranch: async () => 'main',
     });
 
-    // 1. Work through the platform pushes a branch — the exec observer seam.
+    // 1. Work through the platform pushes a branch, the exec observer seam.
     minter.onToolExecuted('exec', { commands: [{ cmd: 'git push -u origin feature-ci' }] }, true);
     await settle();
 
@@ -123,7 +123,7 @@ describe('the full self-minting lifecycle', () => {
     expect(offers.length).toBe(1);
     expect(offers[0]!.failingJobs).toEqual(['build']);
 
-    // 4. The terminal verdict was delivered — the watch retired itself.
+    // 4. The terminal verdict was delivered, the watch retired itself.
     expect((await service.listWatches()).length).toBe(0);
     expect(pollSummary).toContain('1 retired');
   });

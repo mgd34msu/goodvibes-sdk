@@ -115,7 +115,7 @@ interface DaemonHttpRouterContext {
   readonly channelPolicy: ChannelPolicyManager;
   readonly channelPlugins: ChannelPluginRegistry;
   readonly surfaceRegistry: SurfaceRegistry;
-  /** Inbound mail's health. Absent means no mailbox — NOT a healthy one. */
+  /** Inbound mail's health. Absent means no mailbox, NOT a healthy one. */
   readonly inboundMailHealth?: (() => InboundMailHealthLike | null) | undefined;
   readonly distributedRuntime: DistributedRuntimeManager;
   readonly watcherRegistry: WatcherRegistry;
@@ -222,7 +222,7 @@ export class DaemonHttpRouter {
     this.statusProviders = { ...this.statusProviders, ...providers };
   }
 
-  /** Wire the LAN group verbs (`/api/cluster/*`) — see cluster-group-routes.ts. */
+  /** Wire the LAN group verbs (`/api/cluster/*`), see cluster-group-routes.ts. */
   setClusterGroupVerbs(verbs: ClusterGroupVerbs): void { this.clusterGroupVerbs = verbs; }
 
   constructor(private readonly context: DaemonHttpRouterContext) {
@@ -422,7 +422,7 @@ export class DaemonHttpRouter {
       if (projectPlanningResponse) return projectPlanningResponse;
     }
 
-    // Companion chat routes — scoped to /api/companion/chat/..., session-isolated.
+    // Companion chat routes, scoped to /api/companion/chat/..., session-isolated.
     // Handled before the main API router so they never touch the global control-plane feed.
     // Model catalog + model-switching routes. Provider runtime metadata is owned
     // by the operator contract under /api/providers.
@@ -609,7 +609,7 @@ export class DaemonHttpRouter {
             { sessionId, ...envelope },
           );
         },
-        // `GET /api/sessions/:id/events` — see http/session-event-stream.ts.
+        // `GET /api/sessions/:id/events`, see http/session-event-stream.ts.
         openSessionEventStream: (req, sessionId) => openScopedSessionEventStream(
           this.context.controlPlaneGateway,
           req,
@@ -656,7 +656,7 @@ export class DaemonHttpRouter {
     ]);
   }
 
-  /** Knowledge route context for one surface — see router-knowledge-context.ts. */
+  /** Knowledge route context for one surface, see router-knowledge-context.ts. */
   private knowledgeRouteContext(
     knowledgeService: Parameters<typeof buildRouterKnowledgeContext>[2],
     knowledgeGraphqlService: Parameters<typeof buildRouterKnowledgeContext>[3],

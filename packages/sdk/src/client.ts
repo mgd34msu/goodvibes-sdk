@@ -41,7 +41,7 @@ import type { SDKObserver } from './observer/index.js';
  * Discriminated union of all runtime events emitted by the GoodVibes daemon.
  *
  * TypeScript narrows the full event shape (including all payload fields) when
- * matching on the `type` discriminant — no `as` casts required.
+ * matching on the `type` discriminant, no `as` casts required.
  *
  * Each domain's events are accessible via the per-domain feed:
  * ```ts
@@ -61,11 +61,11 @@ export type { RuntimeEventRecord } from './events/index.js';
  * Options for constructing a GoodVibes SDK instance.
  *
  * ### Auth token precedence (highest → lowest)
- * 1. **`tokenStore`** — when present, `getToken()` is called on every request.
+ * 1. **`tokenStore`**, when present, `getToken()` is called on every request.
  *    Mutations (`login`, `setToken`, `clearToken`) persist back to the store.
- * 2. **`getAuthToken`** — a read-only async resolver. No persistence; mutations
+ * 2. **`getAuthToken`**, a read-only async resolver. No persistence; mutations
  *    throw `ConfigurationError`.
- * 3. **`authToken`** — a static string (or `null`). Wrapped in a
+ * 3. **`authToken`**, a static string (or `null`). Wrapped in a
  *    `createMemoryTokenStore` internally so mutations work in-process.
  *
  * Only provide one of the three. If none are supplied the SDK operates without
@@ -82,7 +82,7 @@ export interface GoodVibesSdkOptions {
    * Static auth token string. Wrapped in an in-memory token store,
    * so `sdk.auth.setToken()` / `sdk.auth.clearToken()` work.
    *
-   * Lowest-precedence auth option — ignored when `tokenStore` or `getAuthToken`
+   * Lowest-precedence auth option, ignored when `tokenStore` or `getAuthToken`
    * is also provided.
    *
    * @see https://github.com/mgd34msu/goodvibes-sdk/blob/main/docs/authentication.md
@@ -94,7 +94,7 @@ export interface GoodVibesSdkOptions {
    * Use this when your token lives outside the SDK (e.g. retrieved from a
    * framework session or an external secret store).
    *
-   * When this option is set, `sdk.auth.writable` is `false` — calling
+   * When this option is set, `sdk.auth.writable` is `false`, calling
    * `setToken` / `clearToken` throws a `ConfigurationError`.
    *
    * Takes precedence over `authToken`; ignored when `tokenStore` is provided.
@@ -108,7 +108,7 @@ export interface GoodVibesSdkOptions {
    * The SDK calls `getToken()` before every request and writes back via
    * `setToken()` after a successful `sdk.auth.login()`.
    *
-   * Highest-precedence auth option — overrides both `getAuthToken` and
+   * Highest-precedence auth option, overrides both `getAuthToken` and
    * `authToken`. Use `createBrowserTokenStore()` (localStorage) or
    * `createMemoryTokenStore()` for common cases.
    *
@@ -160,7 +160,7 @@ export interface GoodVibesSdkOptions {
    * like `createConsoleObserver` / `createOpenTelemetryObserver`) to receive
    * callbacks for auth transitions, transport activity, events, and errors.
    *
-   * All observer methods are wrapped in a silent try/catch — observer
+   * All observer methods are wrapped in a silent try/catch, observer
    * exceptions never propagate into SDK logic.
    */
   readonly observer?: SDKObserver | undefined;
@@ -168,7 +168,7 @@ export interface GoodVibesSdkOptions {
   /**
    * Initial middleware chain applied to every HTTP request/response cycle on
    * BOTH the operator and peer transports. Middleware added here is pushed into
-   * each transport's chain independently — it runs twice per SDK call (once for
+   * each transport's chain independently, it runs twice per SDK call (once for
    * operator, once for peer) if both are used. To target a single transport,
    * append directly via `sdk.operator.transport.use(mw)` or
    * `sdk.peer.transport.use(mw)` after construction.
@@ -194,11 +194,11 @@ export interface GoodVibesSdkOptions {
   /**
    * Options for token auto-refresh.
    *
-   * - `autoRefresh` — when `false`, disables automatic refresh entirely and lets
+   * - `autoRefresh`, when `false`, disables automatic refresh entirely and lets
    *   401 responses propagate to the caller immediately. Default: `true`.
-   * - `refreshLeewayMs` — milliseconds before token expiry to trigger a
+   * - `refreshLeewayMs`, milliseconds before token expiry to trigger a
    *   pre-flight refresh. Default: 60_000 (1 minute).
-   * - `refresh` — optional callback invoked to obtain a new token on pre-flight
+   * - `refresh`, optional callback invoked to obtain a new token on pre-flight
    *   leeway trigger or reactive 401. When absent, pre-flight is a no-op and
    *   401 retry re-reads the token store (useful when an external party updates
    *   it). See `AutoRefreshOptions.refresh` for a full example.
@@ -271,12 +271,12 @@ export interface GoodVibesRealtime {
  * runtime-specific wrappers).
  *
  * Three primary namespaces:
- * - **`operator`** — full control-plane API (daemon admin, agent management,
+ * - **`operator`**, full control-plane API (daemon admin, agent management,
  *   session lifecycle, config). Requires an operator-level auth token.
- * - **`peer`** — peer-to-peer and collaboration APIs (pairing, channels,
+ * - **`peer`**, peer-to-peer and collaboration APIs (pairing, channels,
  *   shared sessions). May be used with peer-scoped tokens.
- * - **`realtime`** — subscribe to live daemon events via SSE or WebSocket.
- * - **`auth`** — login, logout, and token management helpers.
+ * - **`realtime`**, subscribe to live daemon events via SSE or WebSocket.
+ * - **`auth`**, login, logout, and token management helpers.
  */
 export interface GoodVibesSdk {
   /**
@@ -309,7 +309,7 @@ export interface GoodVibesSdk {
    * Append a middleware to the SDK's HTTP transport chain.
    *
    * Multiple `use()` calls compose in order (outer-first). The method is
-   * idempotent in the sense that each call simply appends — call it once per
+   * idempotent in the sense that each call simply appends, call it once per
    * middleware to avoid double-registration.
    *
    * @example
@@ -429,7 +429,7 @@ export function createGoodVibesSdk(
   //
   // Lazy transport proxy: populated immediately after createOperatorSdk /
   // createPeerSdk returns. The middleware only invokes requestJson on a reactive
-  // 401 — never at construction time — so the holder is always populated before
+  // 401, never at construction time, so the holder is always populated before
   // it is accessed. `let` is required here because the reference is reassigned
   // after the SDK instance is created (not const-initializable at declaration).
   let operatorRequestJson: ((url: string, opts?: unknown) => Promise<unknown>) | null = null;

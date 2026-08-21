@@ -637,7 +637,7 @@ export class TelemetryApiService {
   }
 
   /**
-   * Implement TelemetryIngestSink.ingestLogs — delegates to ingestExternalLogs.
+   * Implement TelemetryIngestSink.ingestLogs, delegates to ingestExternalLogs.
    * Satisfies the interface expected by DaemonHttpRouterContext.ingestSink.
    */
   ingestLogs(payload: Record<string, unknown>): void {
@@ -645,14 +645,14 @@ export class TelemetryApiService {
   }
 
   /**
-   * Implement TelemetryIngestSink.ingestTraces — delegates to ingestExternalTraces.
+   * Implement TelemetryIngestSink.ingestTraces, delegates to ingestExternalTraces.
    */
   ingestTraces(payload: Record<string, unknown>): void {
     this.ingestExternalTraces(payload);
   }
 
   /**
-   * Implement TelemetryIngestSink.ingestMetrics — delegates to ingestExternalMetrics.
+   * Implement TelemetryIngestSink.ingestMetrics, delegates to ingestExternalMetrics.
    */
   ingestMetrics(payload: Record<string, unknown>): void {
     this.ingestExternalMetrics(payload);

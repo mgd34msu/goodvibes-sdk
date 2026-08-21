@@ -1,5 +1,5 @@
 /**
- * nudge.ts — what a nudge says, and what it must never say.
+ * nudge.ts, what a nudge says, and what it must never say.
  *
  * ## The date is not in the message. Not in any form.
  *
@@ -9,8 +9,8 @@
  *
  * That is stronger than "do not print the date string", and the difference is
  * the whole reason this module exists rather than a template inline in the
- * sweep. "In 10 days" is the date, arithmetic applied. So proximity is a WORD —
- * approaching, soon, imminent — chosen from a day count that never leaves this
+ * sweep. "In 10 days" is the date, arithmetic applied. So proximity is a WORD,
+ * approaching, soon, imminent, chosen from a day count that never leaves this
  * file. There is no code path from an occurrence date to a rendered nudge, so a
  * later edit cannot reintroduce one by being helpful.
  *
@@ -58,7 +58,7 @@ export function subjectFor(
 /**
  * How one subject is named.
  *
- * The person is appended only when the title does not already carry them —
+ * The person is appended only when the title does not already carry them,
  * "Sarah's birthday (Sarah)" reads like a machine, and "Dad" with `for Dad`
  * would too. The plan keeps the person as a plain label rather than
  * restructuring the People section, which is prose by design, so this is the
@@ -88,7 +88,7 @@ function urgencyPhrase(subjects: readonly NudgeSubject[]): string {
  * Compose one message for a whole batch.
  *
  * Several occasions inside one window batch into a single message rather than
- * one ping each — my decision, stated so it can be overridden. The alternative
+ * one ping each, my decision, stated so it can be overridden. The alternative
  * is that a week holding three birthdays produces three separate interruptions
  * on the same day, which is how a useful feature becomes one he mutes.
  */
@@ -135,7 +135,7 @@ export const AGENT_NOTICE_HEADING = 'Occasion reminder';
  *
  * A push to the agent surface used to land `nudge.message` as a bare body, so
  * the sentence *"Mike's birthday is very close now."* arrived unlabelled in the
- * middle of a session about wake-word debugging — and the model, given a bare
+ * middle of a session about wake-word debugging, and the model, given a bare
  * sentence with no frame, did the only thing a bare sentence permits: it said
  * it out loud, twice, woven into troubleshooting that had nothing to do with
  * it. Every other destination is a message channel where an arriving message is
@@ -145,12 +145,12 @@ export const AGENT_NOTICE_HEADING = 'Occasion reminder';
  *
  * So the notice is SELF-CONTAINED and says four things, in this order:
  *
- *  1. What it is — a scheduled reminder, named as one, not a remark.
- *  2. What it is about — the occasion, by name, and never the date. The
+ *  1. What it is, a scheduled reminder, named as one, not a remark.
+ *  2. What it is about, the occasion, by name, and never the date. The
  *     closed-tier rule is unchanged and is the reason this composes from
  *     {@link composeNudgeMessage} rather than writing its own sentence.
  *  3. That it is unrelated to whatever is happening in the conversation.
- *  4. How he makes it stop — one sentence from him, recorded as an
+ *  4. How he makes it stop, one sentence from him, recorded as an
  *     acknowledgement. An affordance he can use, not a fact he must act on.
  *
  * It does NOT tell the model to relay it verbatim. He may be mid-something; the
@@ -165,12 +165,12 @@ export function composeAgentNotice(nudge: OccasionNudge): string {
     message,
     '',
     'This is a scheduled reminder about a date recorded in the owner\'s profile. It is not',
-    'part of the conversation it arrived in and has nothing to do with it — do not weave it',
+    'part of the conversation it arrived in and has nothing to do with it, do not weave it',
     'into whatever is being discussed, and do not restate it as an observation of your own.',
     'Raise it as its own point when there is a natural moment, or hold it until the current',
     'thread finishes.',
     '',
-    'If he says he already has this one in hand — in any words — record that with the',
+    'If he says he already has this one in hand, in any words, record that with the',
     '`profile` tool, action `acknowledge_occasion`, in the same turn. He will not be sent',
     'this reminder again for this occurrence once you do. He will be sent it at most once',
     'more regardless, on the day itself.',
@@ -183,7 +183,7 @@ export function composeAgentNotice(nudge: OccasionNudge): string {
  * The dates are NOT printed, and that is deliberate rather than an oversight of
  * a message whose subject is dates. This goes to the same channels a nudge does,
  * and the closed-tier rule is about the channel, not about the message's
- * purpose. He can answer it by saying which date is right — that is one
+ * purpose. He can answer it by saying which date is right, that is one
  * sentence, and it is also the explicit ask that unlocks reading them back to
  * him if he would rather see both first.
  *
@@ -193,5 +193,5 @@ export function composeAgentNotice(nudge: OccasionNudge): string {
  */
 export function composeConflictMessage(title: string, dates: readonly string[]): string {
   return `Your profile has ${dates.length} different dates recorded for ${title}. `
-    + 'Nothing has been changed — which one is right?';
+    + 'Nothing has been changed, which one is right?';
 }

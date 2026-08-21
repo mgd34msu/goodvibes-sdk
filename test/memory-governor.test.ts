@@ -106,7 +106,7 @@ function makeGovernor(over: Partial<{ budgetMb: number; rssMb: number; hardLimit
       sampler: (): MemorySample => ({ rssBytes, heapUsedBytes: rssBytes / 2, heapTotalBytes: rssBytes }),
       now: () => clock,
       gc: () => { gcCount += 1; },
-      // Host-independent kill ceiling (default 1TB — far above every tier/
+      // Host-independent kill ceiling (default 1TB, far above every tier/
       // tripwire fixture), so no test's outcome depends on the CI host's RAM.
       resolveSystemRamMb: () => over.systemRamMb ?? 1024 * 1024,
       emitOps: (e) => opsEvents.push(e),
@@ -183,7 +183,7 @@ describe('MemoryGovernor leak tripwire', () => {
       h.gov.sampleOnce();
       if (h.receipts.length > 0) break;
     }
-    // The exit is GRACEFUL (shutdown hook + flush beat before exit) — await it.
+    // The exit is GRACEFUL (shutdown hook + flush beat before exit), await it.
     for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
     const receipt = h.exitReceipt();
     expect(receipt).not.toBeNull();
@@ -219,7 +219,7 @@ describe('MemoryGovernor leak tripwire', () => {
       h.gov.sampleOnce();
     }
     for (let i = 0; i < 50 && !h.exitReceipt(); i++) await new Promise((r) => setTimeout(r, 10));
-    // Receipt persisted first, THEN the shutdown hook ran, THEN exit — so a hook
+    // Receipt persisted first, THEN the shutdown hook ran, THEN exit, so a hook
     // that wedges on a stalled disk can never lose the one forensic artifact.
     expect(h.sequence).toEqual(['receipt', 'shutdown', 'exit']);
   });
@@ -229,7 +229,7 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
   test('a stable large working set above the budget NEVER exits: critical tier forever, no restart loop (64GB host, 5GB RSS)', () => {
     // The regression this pins: auto budget caps at 4096MB, so a healthy daemon
     // legitimately sitting at 5GB on a 64GB host (mmap'd sqlite pages + a big
-    // heap graph — not registered caches, not reclaimable by flush) is ABOVE
+    // heap graph, not registered caches, not reclaimable by flush) is ABOVE
     // budget×anything but ~59GB below the kernel kill line. That is the
     // critical tier's stay-alive job (refuse expensive work), never an exit.
     const h = makeGovernor({ budgetMb: 0, systemRamMb: 64 * 1024 }); // auto budget -> 4096MB
@@ -250,7 +250,7 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
 
   test('a slow sub-tripwire leak toward the kill ceiling exits with a hard-limit receipt (not a kernel OOM)', async () => {
     // 8GB host: auto budget 2048MB, hard limit 90% of 8192 = 7372.8MB. Arm the
-    // tripwire at high tier, then leak at 5MB/s — WELL under the 25MB/s rate
+    // tripwire at high tier, then leak at 5MB/s, WELL under the 25MB/s rate
     // tripwire, so ONLY the ceiling-anchored backstop can end it. Without the
     // backstop this rides to the kernel/cgroup OOM kill with no receipt.
     const h = makeGovernor({ budgetMb: 0, systemRamMb: 8 * 1024 });
@@ -267,7 +267,7 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
     const receipt = h.exitReceipt();
     expect(receipt).not.toBeNull();
     expect(receipt!.trigger).toBe('hard-limit');
-    // Exited just above 90% of the 8192MB ceiling — before the kernel line.
+    // Exited just above 90% of the 8192MB ceiling, before the kernel line.
     expect(receipt!.rssMb).toBeGreaterThanOrEqual(7372);
     expect(receipt!.rssMb).toBeLessThan(8192);
     // The growth rate never reached the tripwire threshold: this is the SLOW path.
@@ -283,8 +283,8 @@ describe('MemoryGovernor absolute-RSS backstop (anchored to the effective kill c
 
   test('a cgroup-limited daemon anchors the backstop to ITS limit, not host RAM', async () => {
     // resolveSystemRamMb already returns min(cgroup limit, physical), so a
-    // daemon under MemoryMax=2G fires at 90% of 2048 = 1843.2MB — before the
-    // cgroup killer at 2048 — even though the host has plenty of RAM.
+    // daemon under MemoryMax=2G fires at 90% of 2048 = 1843.2MB, before the
+    // cgroup killer at 2048, even though the host has plenty of RAM.
     const h = makeGovernor({ budgetMb: 512, systemRamMb: 2048 });
     h.setRssMb(1900); // above 90% of the 2048MB cgroup ceiling, stable
     h.gov.sampleOnce();
@@ -339,7 +339,7 @@ describe('MemoryGovernor budget resolution + snapshot', () => {
     });
     expect(cacheRegistry.registeredIds().sort()).toEqual([...KNOWN_MEMORY_CACHES].sort());
     expect(pauseController.states().map((s) => s.id).sort()).toEqual(['code-index-reindex', 'knowledge-self-improvement', 'memory-consolidation']);
-    // High pressure pauses every deferrable job — the seam scheduler gates read.
+    // High pressure pauses every deferrable job, the seam scheduler gates read.
     rss = 85 * MB;
     memoryGovernor.sampleOnce();
     expect(pauseController.isPaused('knowledge-self-improvement')).toBe(true);
@@ -387,7 +387,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
     expect(() => new MemoryGovernor({ ...baseConfig, hardLimitPct: 120 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling }))
       .toThrow(/memory\.hardLimitPct/);
     // A budget so close to the ceiling that the hard limit sits at/below the
-    // critical tier would exit before the stay-alive posture — refused loudly.
+    // critical tier would exit before the stay-alive posture, refused loudly.
     expect(() => new MemoryGovernor({ ...baseConfig, budgetMb: 8 * 1024, hardLimitPct: 90 }, { caches: reg, pauses: pc, ...noopDeps, ...ceiling }))
       .toThrow(/sits at\/below the critical tier/);
     // Omitted → defaults to 90% of the ceiling, far above a small budget: fine.
@@ -414,7 +414,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
   test('cgroup walk finds a systemd MemoryMax= limit on the OWN cgroup path (root is unlimited)', async () => {
     const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
     // The failure the fix closes: a daemon under `systemd MemoryMax=2G` has its
-    // limit at /sys/fs/cgroup/system.slice/<unit>.service/memory.max — the root
+    // limit at /sys/fs/cgroup/system.slice/<unit>.service/memory.max, the root
     // memory.max is 'max' (unlimited). A root-only read misses it and budgets
     // off physical RAM, so every tier sits above the kernel kill line.
     const files: Record<string, string> = {
@@ -432,7 +432,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
 
   test('cgroup walk takes the MINIMUM limit along the ancestor chain', async () => {
     const { resolveEffectiveSystemRamMb } = await import('../packages/sdk/src/platform/runtime/memory/index.ts');
-    // A parent slice caps at 4G, the leaf unit caps at 1G — the effective limit
+    // A parent slice caps at 4G, the leaf unit caps at 1G, the effective limit
     // is the tighter (leaf) one.
     const files: Record<string, string> = {
       '/proc/self/cgroup': '0::/system.slice/app.slice/leaf.service\n',

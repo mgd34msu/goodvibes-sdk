@@ -1,5 +1,5 @@
 /**
- * session-recovery-supersession.test.ts — a crash snapshot is judged against
+ * session-recovery-supersession.test.ts, a crash snapshot is judged against
  * ITS OWN session's durable store file, never against the global last-session
  * pointer.
  *
@@ -103,7 +103,7 @@ describe('recovery offer: supersession is per-session, not the global pointer', 
     // pointer moves to it, both strictly newer than the kept snapshot.
     persistConversation('sess-other', snapshotOf('a message in a new session'), 'm', 'p', 'Other', { surface });
 
-    // The pointer really did advance — this is exactly the state that used to
+    // The pointer really did advance, this is exactly the state that used to
     // bury the kept snapshot.
     expect(readLastSessionPointer({ surface })).toBe('sess-other');
     expect(statSync(surface.lastSessionPointer).mtimeMs).toBeGreaterThan(statSync(keptSnapshot).mtimeMs);
@@ -288,7 +288,7 @@ describe('checkRecoveryForSession: the --continue probe', () => {
     setMtime(storePath(surface, 'sess-quiet'), new Date());
     setMtime(surface.recoveryFile('sess-noisy'), new Date(Date.now() + 60_000));
 
-    // A newer, unrelated snapshot exists — the probe still answers "no unsaved
+    // A newer, unrelated snapshot exists, the probe still answers "no unsaved
     // crash data" for the session actually being resumed.
     expect(checkRecoveryForSession(surface, 'sess-quiet')).toBeNull();
     expect(checkRecoveryForSession(surface, 'sess-noisy')?.sessionId).toBe('sess-noisy');
@@ -317,7 +317,7 @@ describe('checkRecoveryForSession: the --continue probe', () => {
  * (markers are a later feature). A marker-based liveness check therefore reads
  * that live file as an orphaned crash and offers it at every launch; removing
  * it only makes the still-running writer recreate it a minute later. The rule
- * under test is freshness — mtime, which every version has always written.
+ * under test is freshness, mtime, which every version has always written.
  */
 describe('an actively-refreshed snapshot is not an orphaned crash', () => {
   /** Age a snapshot well past the live-refresh window, so it reads as abandoned. */
@@ -329,7 +329,7 @@ describe('an actively-refreshed snapshot is not an orphaned crash', () => {
     const { surface } = tempSurface();
     // A live writer rewrites its snapshot on a fixed cadence; the file is
     // seconds old. No marker file exists (the writer may be an older build,
-    // or another product entirely) — freshness alone must suppress the offer.
+    // or another product entirely), freshness alone must suppress the offer.
     writeRecoveryFile(snapshotOf('still running'), 'sess-live', 'Still Running', { surface });
 
     expect(checkRecoveryFile({ surface })).toBeNull();
@@ -342,7 +342,7 @@ describe('an actively-refreshed snapshot is not an orphaned crash', () => {
     writeRecoveryFile(snapshotOf('crashed'), 'sess-crashed', 'Crashed', { surface });
     ageOut(surface.recoveryFile('sess-crashed'));
 
-    // Suppression is temporary, not a tombstone — the writer stopped, so this
+    // Suppression is temporary, not a tombstone, the writer stopped, so this
     // really is a crash now.
     expect(checkRecoveryFile({ surface })?.sessionId).toBe('sess-crashed');
     expect(checkRecoveryFile({ surface })?.title).toBe('Crashed');
@@ -352,7 +352,7 @@ describe('an actively-refreshed snapshot is not an orphaned crash', () => {
     const { surface } = tempSurface();
     writeRecoveryFile(snapshotOf('orphan'), 'sess-orphan', 'Orphan', { surface });
     ageOut(surface.recoveryFile('sess-orphan'));
-    // Newer, actively refreshed, and therefore skipped rather than returned —
+    // Newer, actively refreshed, and therefore skipped rather than returned,
     // a scan that stopped at the newest file would report nothing at all here.
     writeRecoveryFile(snapshotOf('live'), 'sess-live', 'Live', { surface });
 

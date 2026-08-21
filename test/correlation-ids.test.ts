@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Correlation IDs — verifies AsyncLocalStorage-based correlation context
+ * Correlation IDs, verifies AsyncLocalStorage-based correlation context
  * propagation using the production seam (correlationCtx.run) across sync/async
  * boundaries. The convenience wrappers (withCorrelation/withCorrelationAsync)
  * are not exercised here because no production code calls them.

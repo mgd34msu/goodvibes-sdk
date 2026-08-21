@@ -1,5 +1,5 @@
 /**
- * cli-parser-engine.test.ts — the generic engine's own contract, independent
+ * cli-parser-engine.test.ts, the generic engine's own contract, independent
  * of any one product's vocabulary.
  *
  * Two things are pinned here that `cli-parser.test.ts` (the TUI vocabulary's
@@ -7,9 +7,9 @@
  * opts OUT of both to preserve its exact current behavior:
  *
  *   1. a catalog CAN make an unmatched first token a hard refusal
- *      (`unmatchedFirstToken: 'reject'`) — the capability a daemon-shaped
+ *      (`unmatchedFirstToken: 'reject'`), the capability a daemon-shaped
  *      vocabulary needs and the TUI vocabulary declines.
- *   2. a catalog's own flag-token arity is self-consistent — the same check
+ *   2. a catalog's own flag-token arity is self-consistent, the same check
  *      the daemon's `findCatalogFlagArityConflicts` runs against its own
  *      data, run here against the real GOODVIBES_CLI_CATALOG.
  */

@@ -4,15 +4,15 @@
  *
  * Split out of `imap-client.ts` so that file stays well inside the repository's
  * per-file line cap now that the client speaks four more commands. Nothing here
- * knows what a mailbox or a message is — it moves tagged commands and literal
+ * knows what a mailbox or a message is, it moves tagged commands and literal
  * payloads across a socket and hands back lines.
  *
  * One reader owns the socket for the connection's lifetime
  * ────────────────────────────────────────────────────────
  * An earlier shape attached `data`/`error`/`close` listeners for the duration
  * of one command and removed them when it completed. Between commands nothing
- * was listening, so anything the server sent on its own initiative — which is
- * every interesting thing a server says, `* n EXISTS` above all — landed in a
+ * was listening, so anything the server sent on its own initiative, which is
+ * every interesting thing a server says, `* n EXISTS` above all, landed in a
  * buffer that the next command discarded. Worse, the leftover bytes of a
  * response that arrived in the same TCP segment as the previous one went with
  * it.
@@ -36,7 +36,7 @@
  * Reads have a deadline by default and none on request
  * ────────────────────────────────────────────────────
  * Ordinary commands keep the per-operation timeout they always had. A caller
- * that must wait in silence for half an hour — again, IDLE — passes
+ * that must wait in silence for half an hour, again, IDLE, passes
  * `timeoutMs: null` and bounds the wait with an `AbortSignal` instead. There is
  * no path where a wait is unbounded in both.
  *
@@ -46,7 +46,7 @@
  * `setEncoding('utf8')`, so the string this class accumulates has FEWER
  * characters than the server's byte count whenever the payload is not pure
  * ASCII. Taking `n` characters would swallow the bytes that follow the literal
- * — the closing `)` and, after it, the tagged completion line — and the read
+ *, the closing `)` and, after it, the tagged completion line, and the read
  * would hang until it timed out. `takeUtf8Bytes` walks code points and counts
  * their UTF-8 width instead, which is what makes reading a message body with
  * an accented character in it work at all.
@@ -63,8 +63,8 @@ const CRLF = '\r\n';
  * How many completed-but-never-awaited commands are remembered.
  *
  * Every `sendCommand` registers a slot that `awaitTag` consumes. A caller that
- * issues a command and never awaits it would otherwise leave that slot — and
- * the response lines in it — retained for the life of the connection.
+ * issues a command and never awaits it would otherwise leave that slot, and
+ * the response lines in it, retained for the life of the connection.
  */
 const MAX_UNCONSUMED_COMPLETIONS = 32;
 
@@ -91,8 +91,8 @@ const MAX_COMMAND_LINES = 100_000;
  *
  * A surrogate pair is taken whole or not at all, so the returned prefix is
  * always valid text. If the very first character is already wider than the
- * budget — which means the server's byte count fell inside a multi-byte
- * sequence and cannot be honoured exactly — the character is taken anyway and
+ * budget, which means the server's byte count fell inside a multi-byte
+ * sequence and cannot be honoured exactly, the character is taken anyway and
  * the whole remaining budget is reported as consumed, so a read always makes
  * progress rather than looping on a boundary it can never hit.
  */
@@ -165,7 +165,7 @@ export interface ImapReadOptions {
   /**
    * Deadline in milliseconds. Omitted means the session's per-operation
    * timeout. `null` means NO deadline: the wait ends when the awaited response
-   * arrives, when the socket fails, or when `signal` aborts — and nothing else.
+   * arrives, when the socket fails, or when `signal` aborts, and nothing else.
    */
   readonly timeoutMs?: number | null;
   /** Cancels the wait. Required in practice whenever `timeoutMs` is null. */
@@ -177,8 +177,8 @@ export interface ImapReadOptions {
  *
  * This exists for IDLE, which cannot be expressed as "send a command, read its
  * response": it sends `IDLE`, waits for a `+`, then reads untagged responses
- * for up to twenty-seven minutes, then sends the bare line `DONE` — which is
- * not a tagged command — and only then collects the completion of the tag it
+ * for up to twenty-seven minutes, then sends the bare line `DONE`, which is
+ * not a tagged command, and only then collects the completion of the tag it
  * issued at the start.
  *
  * It is deliberately NOT reachable from `ImapClient`'s own method surface and
@@ -219,7 +219,7 @@ interface PendingCommand {
    * Whether untagged lines are collected for this command at all.
    *
    * False for a command that stays in flight indefinitely and reads the
-   * stream through subscribers — the untagged traffic is consumed there, and
+   * stream through subscribers, the untagged traffic is consumed there, and
    * retaining a second copy for a response nobody will read is pure growth.
    */
   readonly retainUntagged: boolean;
@@ -304,7 +304,7 @@ export class ImapSession implements ImapConnection {
     for (;;) {
       if (this.literalBytesRemaining > 0) {
         if (this.buffer.length === 0) return;
-        // Byte-counted, not character-counted — see the file header.
+        // Byte-counted, not character-counted, see the file header.
         const { taken, bytes } = takeUtf8Bytes(this.buffer, this.literalBytesRemaining);
         if (taken.length === 0) return; // need more data to complete a character
         this.literalAccum += taken;
@@ -341,12 +341,12 @@ export class ImapSession implements ImapConnection {
         }
         const ownerLine = line.slice(0, line.lastIndexOf('{')) + ' ';
         if (requested === 0) {
-          // `{0}` is legal and means an empty payload — a server answering
+          // `{0}` is legal and means an empty payload, a server answering
           // BODY[HEADER.FIELDS ...] for a message carrying none of the fields
           // asked for sends exactly this. There are no bytes to wait for, so
           // the owner line is routed now. Falling through to the literal branch
-          // would leave `literalBytesRemaining` at zero, and the owner line —
-          // the `* n FETCH (...` line itself — would be dropped and the whole
+          // would leave `literalBytesRemaining` at zero, and the owner line,
+          // the `* n FETCH (...` line itself, would be dropped and the whole
           // response lost.
           this.route(ownerLine);
           if (this.failure !== null) return;
@@ -484,7 +484,7 @@ export class ImapSession implements ImapConnection {
   }
 
   /**
-   * The byte stream can no longer be parsed — an oversized literal means we do
+   * The byte stream can no longer be parsed, an oversized literal means we do
    * not know where the payload ends, so nothing after it can be trusted to be
    * a response. The connection ends with it.
    */

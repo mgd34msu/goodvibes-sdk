@@ -4,10 +4,10 @@
  * ONE model pricing resolver (manual -> registration -> provider-served ->
  * catalog -> honest unknown):
  *
- * - `priceUsage` — honest-unpriced dollars: unknown/subscription yields null
+ * - `priceUsage`, honest-unpriced dollars: unknown/subscription yields null
  *   (costState 'unpriced'), never $0. SHARED by fleet + orchestration so
  *   totals never double-count.
- * - `priceProvenance` — provenance for the SAME resolution priceUsage prices
+ * - `priceProvenance`, provenance for the SAME resolution priceUsage prices
  *   with, stamped at pricing time so every priced value can say where its
  *   rates came from (costSource) and how fresh dated sources are (as-of).
  */

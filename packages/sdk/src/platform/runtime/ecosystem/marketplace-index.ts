@@ -3,7 +3,7 @@
  *
  * A static, self-hostable JSON index of capability bundles. The governance is
  * STRUCTURAL, not policy: an index entry that lacks a SHA-256 pin or a
- * capability summary cannot be represented — `PinnedMarketplaceIndexEntry`
+ * capability summary cannot be represented, `PinnedMarketplaceIndexEntry`
  * makes `source.sha256` and `capabilities` required, and `parseMarketplaceIndex`
  * rejects any entry missing them. A registry built from this type therefore
  * cannot list an unpinned or capability-opaque bundle; there is no field to omit
@@ -25,9 +25,9 @@ export interface PinnedMarketplaceIndexEntry {
   readonly version: string;
   readonly kind: CapabilityBundleManifest['kind'];
   readonly summary: string;
-  /** The pinned source — `source.sha256` is required by the type. */
+  /** The pinned source, `source.sha256` is required by the type. */
   readonly source: PinnedBundleSource;
-  /** The bundle's declared capability summary — required, never omitted. */
+  /** The bundle's declared capability summary, required, never omitted. */
   readonly capabilities: BundleCapabilitySummary;
   readonly author?: string | undefined;
 }

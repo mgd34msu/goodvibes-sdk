@@ -24,7 +24,7 @@ import type { ProviderMessage } from '../packages/sdk/src/platform/providers/int
 const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
-// Mock provider — returns deterministic chunks
+// Mock provider, returns deterministic chunks
 // ---------------------------------------------------------------------------
 
 function makeMockProvider(reply = 'Hello from assistant'): CompanionLLMProvider {
@@ -463,7 +463,7 @@ describe('companion-chat-routes: post message and events', () => {
     // Register a subscriber so events are routed
     manager.registerSubscriber(session.id, `client:${session.id}`);
 
-    // Post message — turn runs async; we wait for turn.completed event
+    // Post message, turn runs async; we wait for turn.completed event
     await manager.postMessage(session.id, 'Hello');
 
     // Give the async turn a tick to complete
@@ -534,7 +534,7 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
     const body = await res!.json();
     expect(body.status).toBe('closed');
 
-    // The record is preserved — still gettable, just closed.
+    // The record is preserved, still gettable, just closed.
     const getRes = await dispatchCompanionChatRoutes(
       makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}`),
       ctx,
@@ -598,7 +598,7 @@ describe('companion-chat-routes: close vs delete (delete-means-delete)', () => {
     const body = await res!.json();
     expect(body).toEqual({ sessionId: session.id, deleted: true });
 
-    // GONE — not merely filtered by includeClosed:false; it is absent outright.
+    // GONE, not merely filtered by includeClosed:false; it is absent outright.
     const getRes = await dispatchCompanionChatRoutes(
       makeRequest('GET', `http://localhost/api/companion/chat/sessions/${session.id}`),
       ctx,

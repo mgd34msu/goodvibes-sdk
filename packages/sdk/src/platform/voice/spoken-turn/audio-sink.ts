@@ -1,12 +1,12 @@
 import type { VoiceAudioChunk } from '../types.js';
 
 /**
- * AudioSink — the injectable I/O boundary the spoken-turn policy engine plays
+ * AudioSink, the injectable I/O boundary the spoken-turn policy engine plays
  * through. The SDK owns POLICY (chunking, the bounded synthesis window, merge
  * coalescing, retry/backoff, the turn state machine); a sink owns I/O (turning
  * an ordered stream of audio bytes into sound and reporting when it has stopped
  * making sound). The controller never spawns a process, opens a device, or
- * touches Web Audio — it only talks to this interface, so the same policy runs
+ * touches Web Audio, it only talks to this interface, so the same policy runs
  * unchanged behind a terminal subprocess player, a browser Web Audio sink, or a
  * test fake.
  *
@@ -19,17 +19,17 @@ import type { VoiceAudioChunk } from '../types.js';
  *    sink holds the first byte until the player has actually exec'd (its spawn
  *    event); a browser sink holds until the MediaSource `sourceopen` /
  *    SourceBuffer is ready. The controller writes the whole stream and trusts
- *    the sink to have played the head — it does not re-send or pre-buffer.
+ *    the sink to have played the head, it does not re-send or pre-buffer.
  *    `available` is the coarse, synchronous readiness signal (is any output
  *    device usable at all); per-call readiness is internal to `play()`.
  *
  * 2. **Natural drain plays everything.** When the input stream ends without an
  *    abort, `play()` resolves only after the last buffered sample has been
- *    heard — never at end-of-input. Truncating the tail of a response is the
+ *    heard, never at end-of-input. Truncating the tail of a response is the
  *    bug this contract exists to prevent.
  *
  * 3. **Abort cuts immediately.** When `options.signal` aborts (a deliberate
- *    interrupt — new turn, Ctrl+C, /tts stop, turn cancel), `play()` stops
+ *    interrupt, new turn, Ctrl+C, /tts stop, turn cancel), `play()` stops
  *    emitting sound and resolves promptly; it must NOT wait on a graceful
  *    drain. `stop()` is the same instant cut driven imperatively rather than by
  *    a signal.
@@ -49,7 +49,7 @@ import type { VoiceAudioChunk } from '../types.js';
  *   (fall back to Web Audio `decodeAudioData` where MSE is absent).
  * - `play(chunks, { format, signal })` ->
  *     - create a `MediaSource`, attach it to an `HTMLAudioElement` via
- *       `URL.createObjectURL`, and `await` its `sourceopen` event — this is the
+ *       `URL.createObjectURL`, and `await` its `sourceopen` event, this is the
  *       readiness gate (contract 1);
  *     - `addSourceBuffer(mimeFor(format))` where `mimeFor('mp3') === 'audio/mpeg'`
  *       (the same `format` string the controller forwards from the synthesis
@@ -68,7 +68,7 @@ import type { VoiceAudioChunk } from '../types.js';
  * `VoiceAudioChunk.data` is a `Uint8Array`, which `appendBuffer` accepts
  * directly, and the `format` string maps 1:1 to a MediaSource MIME type, so the
  * byte-and-format shape the controller emits is exactly what a browser sink
- * consumes. (The subprocess sink — mpv/ffplay over stdin — stays consumer-side
+ * consumes. (The subprocess sink, mpv/ffplay over stdin, stays consumer-side
  * and is not part of the SDK.)
  */
 export interface AudioSink {
@@ -91,7 +91,7 @@ export interface AudioSink {
   /**
    * Resolves once the currently playing sound has finished naturally or after
    * `timeoutMs`, whichever comes first; resolves immediately when nothing is
-   * playing. The bounded exit drain — see contract 4.
+   * playing. The bounded exit drain, see contract 4.
    */
   waitForDrain(timeoutMs: number): Promise<void>;
 }

@@ -199,7 +199,7 @@ describe('createIOSKeychainTokenStore (real factory + mock module)', () => {
 
 describe('createIOSKeychainTokenStore — missing peer dep', () => {
   it('throws SDKError with kind=config and install hint when module absent', async () => {
-    // No __loadModule provided — factory will try real dynamic import('react-native-keychain')
+    // No __loadModule provided, factory will try real dynamic import('react-native-keychain')
     // which fails because react-native-keychain is not installed in this test environment
     const ts = createIOSKeychainTokenStore({ service: 'com.test.absent' });
 

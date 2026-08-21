@@ -1,26 +1,26 @@
-# GoodVibes SDK — Architecture Overview
+# GoodVibes SDK architecture overview
 
-> **Surface scope:** The SDK exposes two consumer-visible surfaces — the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Published Surface Matrix](./surfaces.md) and [Public Surface Reference](./public-surface.md).
+> **Surface scope:** The SDK exposes two consumer-visible surfaces: the full surface (Bun runtime) and the companion surface (Hermes/browser/React Native). This document describes the **internal source organization** that backs the full surface. For the distinction between surfaces and their public barrel exports, see [Published surface matrix](./surfaces.md) and [Public surface reference](./public-surface.md).
 >
 > Consumers import via explicit public entrypoints such as `@pellux/goodvibes-sdk/platform/runtime`, `@pellux/goodvibes-sdk/platform/knowledge`, and `@pellux/goodvibes-sdk/platform/tools`. Source paths described here are implementation layout, not import paths.
 
 This document describes the internal architecture of the GoodVibes SDK: how its packages, subsystems, and runtime components relate to each other, and how you use them to build AI agent products.
 
-## What the SDK Enables
+## What the SDK enables
 
 The GoodVibes SDK is the shared substrate for every surface that hosts a GoodVibes AI agent. A single daemon process can serve multiple client surfaces simultaneously:
 
-- **TUI applications** — terminal-resident coding and chat agents (e.g. goodvibes-tui)
-- **Web UIs** — browser-based operator dashboards and companion interfaces
-- **Mobile apps** — iOS, Android, and React Native companion apps
-- **Automation** — headless background agents, scheduled jobs, webhook-driven tasks
-- **Embedded** — third-party apps that embed the daemon via the operator or peer SDKs
+- **TUI applications.** Terminal-resident coding and chat agents (e.g. goodvibes-tui)
+- **Web UIs.** Browser-based operator dashboards and companion interfaces
+- **Mobile apps.** iOS, Android, and React Native companion apps
+- **Automation.** Headless background agents, scheduled jobs, webhook-driven tasks
+- **Embedded.** Third-party apps that embed the daemon via the operator or peer SDKs
 
 All of these share the same orchestration core, permission system, knowledge store, and transport layer. Client surfaces connect via typed contracts; the daemon handles everything else.
 
 ---
 
-## Layer Diagram
+## Layer diagram
 
 ```
 ┌───────────────────────────────────────────────────────────────────────┐
@@ -64,7 +64,7 @@ All of these share the same orchestration core, permission system, knowledge sto
 
 ---
 
-## Monorepo Package Structure
+## Monorepo package structure
 
 | Package | Role |
 |---|---|
@@ -80,13 +80,13 @@ All of these share the same orchestration core, permission system, knowledge sto
 
 ---
 
-## Orchestrator Core
+## Orchestrator core
 
 **Source:** `packages/sdk/src/platform/core/`
 
 The `Orchestrator` class is the central engine of every agent session. It owns the turn loop: receiving user input, sending it to the LLM via `ProviderRegistry`, streaming responses back, executing tool calls, and looping until the model stops requesting tools.
 
-### Key Classes
+### Key classes
 
 **`Orchestrator`** (`core/orchestrator.ts`)
 - Owns the `ConversationManager` reference and the `ToolRegistry`
@@ -114,7 +114,7 @@ The `Orchestrator` class is the central engine of every agent session. It owns t
 
 ---
 
-## Daemon Architecture
+## Daemon architecture
 
 **Source:** The full route set and the `DaemonServer` host live in `packages/sdk/src/platform/daemon/` (route-group files under `platform/daemon/http/`). `packages/daemon-sdk/src/` provides the embeddable dispatch subset (`dispatchDaemonApiRoutes`), re-exported through `packages/sdk/src/daemon.ts`
 
@@ -122,12 +122,12 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 
 ### Components
 
-**`api-router.ts`** — Central route dispatcher. All incoming requests are matched to a route group and dispatched with an `AuthenticatedPrincipal` context.
+**`api-router.ts`.** Central route dispatcher. All incoming requests are matched to a route group and dispatched with an `AuthenticatedPrincipal` context.
 
-**`http-policy.ts`** — Authentication and scope enforcement utilities:
-- `resolveAuthenticatedPrincipal()` — extracts and validates the bearer token or session cookie from the request
-- `buildMissingScopeBody()` — scope enforcement; returns a structured error when required scopes are absent
-- `resolvePrivateHostFetchOptions()` — controls whether a remote fetch is allowed to target private/internal hosts
+**`http-policy.ts`.** Authentication and scope enforcement utilities:
+- `resolveAuthenticatedPrincipal()`: extracts and validates the bearer token or session cookie from the request
+- `buildMissingScopeBody()`: scope enforcement; returns a structured error when required scopes are absent
+- `resolvePrivateHostFetchOptions()`: controls whether a remote fetch is allowed to target private/internal hosts
 - Principal kinds: `user` | `bot` | `service` | `token`; each carries `admin: boolean` and a `scopes` array
 
 **Route Groups:**
@@ -136,7 +136,7 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 |---|---|
 | `runtime-routes.ts` | Agent runtime state, model selection, capability gates |
 | `runtime-session-routes.ts` | Session creation, branching, history, compaction |
-| `control-routes.ts` | Control plane gateway — admin/operator-level operations |
+| `control-routes.ts` | Control plane gateway: admin/operator-level operations |
 | `channel-routes.ts` | Channel surface management and message delivery |
 | `knowledge-routes.ts` | Knowledge graph queries, ingestion, memory sync |
 | `system-routes.ts` | Daemon health, capability advertisement, version info |
@@ -158,20 +158,20 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 
 ---
 
-## Agent System
+## Agent system
 
 **Source:** `packages/sdk/src/platform/agents/`
 
 The agent system enables the orchestrator to spawn parallel sub-agents and coordinate multi-agent workflows.
 
-### ACP Protocol
+### ACP protocol
 
 **Source:** `platform/acp/`
 
 The Agent Control Protocol (ACP) governs how the orchestrator and sub-agents exchange messages and handshakes. Key files:
-- `protocol.ts` — message envelope types and handshake state machine
-- `connection.ts` — per-agent connection lifecycle
-- `manager.ts` — `AcpManager` tracks all active ACP connections; the orchestrator registers the delegate tool through it
+- `protocol.ts`: message envelope types and handshake state machine
+- `connection.ts`: per-agent connection lifecycle
+- `manager.ts`: `AcpManager` tracks all active ACP connections; the orchestrator registers the delegate tool through it
 
 ### AgentOrchestrator
 
@@ -181,7 +181,7 @@ The Agent Control Protocol (ACP) governs how the orchestrator and sub-agents exc
 - Resolves the correct LLM provider via `resolveProviderForRecord()`, with optional fallback routes
 - Emits structured events on the `RuntimeEventBus` throughout the lifecycle (started, progress, stream delta, completed, failed, cancelled)
 
-### WRFC Workflow
+### WRFC workflow
 
 The Work-Review-Fix-Commit (WRFC) controller (`agents/wrfc-controller.ts`) orchestrates multi-agent quality loops:
 
@@ -208,13 +208,13 @@ pending → engineering → reviewing → fixing → awaiting_gates → gating �
 
 ---
 
-## Channel System
+## Channel system
 
 **Source:** `packages/sdk/src/platform/channels/`
 
 The channel system lets agents send and receive messages through external communication platforms.
 
-### Surface Registry
+### Surface registry
 
 `SurfaceRegistry` is the central registry of configured channel surfaces. Each surface maps a named identifier to a platform adapter and its configuration. On `syncConfiguredSurfaces()`, the registry reads the config, instantiates adapters, and returns a list of active `SurfaceRecord` entries.
 
@@ -241,7 +241,7 @@ Adapters bridge GoodVibes messages to platform-specific APIs:
 | `ntfy` | ntfy push notifications |
 | `webhook` | Generic outbound webhook |
 
-### Slack Credential Resolution
+### Slack credential resolution
 
 Slack supports signed webhooks, Socket Mode ingress, and Web API reply delivery. The SDK resolves Slack credentials from the service registry, config, GoodVibes secret refs, and environment variables:
 
@@ -254,16 +254,16 @@ Slack supports signed webhooks, Socket Mode ingress, and Web API reply delivery.
 
 Direct Slack setup stores provided secret values in the GoodVibes secret store and writes config references such as `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN`, so the runtime does not persist raw Slack tokens in config.
 
-### Delivery Strategies
+### Delivery strategies
 
 `platform/channels/delivery/` contains three strategy tiers:
-- `strategies-core.ts` — basic delivery: direct send, reply-in-thread
-- `strategies-bridge.ts` — bridge delivery: fan-out across surfaces
-- `strategies-enterprise.ts` — enterprise delivery: approval gates, audit trails, conditional routing
+- `strategies-core.ts`: basic delivery: direct send, reply-in-thread
+- `strategies-bridge.ts`: bridge delivery: fan-out across surfaces
+- `strategies-enterprise.ts`: enterprise delivery: approval gates, audit trails, conditional routing
 
 `DeliveryRouter` selects the appropriate strategy based on the surface configuration and message type. The `ReplyPipeline` handles reply routing for inbound messages.
 
-### ntfy Runtime Topics
+### ntfy runtime topics
 
 When `surfaces.ntfy.enabled` is true, the daemon subscribes to three inbound ntfy route topics. The SDK ships defaults, but clients can override each route with `surfaces.ntfy.chatTopic`, `surfaces.ntfy.agentTopic`, and `surfaces.ntfy.remoteTopic`.
 
@@ -286,7 +286,7 @@ For `goodvibes-chat`, the SDK owns ntfy reply publication. Inbound chat messages
 
 ---
 
-## Knowledge System
+## Knowledge system
 
 **Source:** `packages/sdk/src/platform/knowledge/`
 
@@ -294,18 +294,18 @@ The knowledge system provides persistent, queryable memory that agents can read 
 
 ### Components
 
-- **Store** (`store.ts`, `store-schema.ts`, `store-read.ts`, `store-load.ts`) — SQLite-backed storage layer; manages the graph schema, reads, and loads
-- **Ingestion** (`ingest.ts`, `ingest-compile.ts`, `ingest-inputs.ts`, `ingest-context.ts`, `browser-history/`) — pipelines for ingesting new knowledge from files, URLs, browser-local history/bookmark metadata, and agent outputs
-- **GraphQL** (`graphql.ts`, `graphql-schema.ts`) — query interface for knowledge retrieval; exposes the knowledge graph over a GraphQL API consumed by route handlers
-- **Memory Sync** (`memory-sync.ts`) — keeps the in-memory projection synchronized with persisted store state
-- **Projections** (`projections.ts`) — derived views of the knowledge graph (e.g. context-window projections for injection into prompts)
-- **Consolidation** (`consolidation.ts`) — deduplication and merging of overlapping knowledge records
-- **Scheduling** (`scheduling.ts`) — periodic background ingestion and refresh jobs
-- **Service** (`service.ts`) — the top-level `KnowledgeService` that wires all components together and exposes the public API
+- **Store** (`store.ts`, `store-schema.ts`, `store-read.ts`, `store-load.ts`): SQLite-backed storage layer; manages the graph schema, reads, and loads
+- **Ingestion** (`ingest.ts`, `ingest-compile.ts`, `ingest-inputs.ts`, `ingest-context.ts`, `browser-history/`): pipelines for ingesting new knowledge from files, URLs, browser-local history/bookmark metadata, and agent outputs
+- **GraphQL** (`graphql.ts`, `graphql-schema.ts`): query interface for knowledge retrieval; exposes the knowledge graph over a GraphQL API consumed by route handlers
+- **Memory Sync** (`memory-sync.ts`): keeps the in-memory projection synchronized with persisted store state
+- **Projections** (`projections.ts`): derived views of the knowledge graph (e.g. context-window projections for injection into prompts)
+- **Consolidation** (`consolidation.ts`): deduplication and merging of overlapping knowledge records
+- **Scheduling** (`scheduling.ts`): periodic background ingestion and refresh jobs
+- **Service** (`service.ts`): the top-level `KnowledgeService` that wires all components together and exposes the public API
 
 ---
 
-## Config System
+## Config system
 
 **Source:** `packages/sdk/src/platform/config/`
 
@@ -315,7 +315,7 @@ The knowledge system provides persistent, queryable memory that agents can read 
 - Reads from layered sources: project config, user config, environment variables, and defaults
 - Exposes `get(key)` for typed config access and `getRaw()` for unresolved values
 - Provides `getWorkingDirectory()` for path resolution
-- Tracks `surfaceRoot` — the `.goodvibes/<surface>/` directory scoped to the active surface
+- Tracks `surfaceRoot`: the `.goodvibes/<surface>/` directory scoped to the active surface
 
 ### Secrets
 
@@ -329,7 +329,7 @@ The knowledge system provides persistent, queryable memory that agents can read 
 
 Secrets are stored across four candidate stores: project-secure, project-plaintext, user-secure, user-plaintext. The read order follows scope (project takes precedence over user) and medium (secure before plaintext).
 
-### Secret Refs
+### Secret refs
 
 `secret-refs.ts` implements the secret reference resolution system. A secret value in config may be a direct value or a reference to an external source:
 
@@ -338,20 +338,20 @@ Secrets are stored across four candidate stores: project-secure, project-plainte
 | `env` | Environment variable (`$VAR_NAME`) |
 | `goodvibes` | Internal GoodVibes secret store |
 | `file` | File path with optional JSON selector |
-| `exec` | Command execution — stdout is the secret |
+| `exec` | Command execution: stdout is the secret |
 | `1password` / `onepassword` | 1Password CLI (`op`) |
 | `bitwarden` / `vaultwarden` | Bitwarden CLI (`bw`) |
 | `bitwarden-secrets-manager` / `bws` | Bitwarden Secrets Manager CLI |
 
 References are expressed as `goodvibes://secrets/source/...` URIs or `secretref:` JSON objects. `resolveSecretRef()` dispatches to the appropriate resolver at runtime.
 
-### Service Registry
+### Service registry
 
 `service-registry.ts` registers named external services (API endpoints, auth schemes) that tools and adapters can look up by name.
 
 ---
 
-## State Management
+## State management
 
 **Source:** `packages/sdk/src/platform/runtime/store/`
 
@@ -390,11 +390,11 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 
 ### RuntimeEventBus
 
-The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport — it is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 27 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
+The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport. It is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 27 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
 
 ---
 
-## Session System
+## Session system
 
 **Source:** `packages/sdk/src/platform/runtime/compaction/` and `platform/core/session-*.ts`
 
@@ -414,44 +414,44 @@ Five built-in strategies:
 
 `compaction/quality-score.ts` scores the output of each compaction pass to ensure critical information is not lost. `resume-repair.ts` handles recovery when a compacted session cannot be cleanly resumed.
 
-### Session Lineage
+### Session lineage
 
 `SessionLineageTracker` (`core/session-lineage.ts`) records the parent-child relationships between sessions created by branching. This enables:
 - Navigating back to a parent session after a branch
 - Attributing an agent session to the orchestrator session that spawned it
 - Building a lineage tree for session history views
 
-### Session Memory
+### Session memory
 
 `session-memory.ts` handles ephemeral in-session memory: facts injected into the system prompt for the duration of a session without being persisted to the knowledge store.
 
 ---
 
-## Plugin System
+## Plugin system
 
 **Source:** `packages/sdk/src/platform/plugins/`
 
-### Discovery and Loading
+### Discovery and loading
 
 `PluginLoader` (`plugins/loader.ts`) discovers plugins by scanning the configured plugin directories. It reads each plugin's manifest (a `package.json`-adjacent JSON file) and validates it against the plugin manifest schema before loading.
 
 ### Lifecycle
 
 `PluginManager` (`plugins/manager.ts`) manages the full plugin lifecycle:
-1. **Registration** — plugin manifests are registered with their capabilities and dependencies
-2. **Activation** — on startup, plugins are activated in dependency order
-3. **Hook Dispatch** — the `HookDispatcher` fires lifecycle hooks (`pre-tool-use`, `post-tool-use`, `pre-turn`, `post-turn`, etc.) and collects results; hooks can block, modify, or annotate tool calls
-4. **Deactivation** — graceful shutdown calls each plugin's deactivation hook
+1. **Registration.** Plugin manifests are registered with their capabilities and dependencies
+2. **Activation.** On startup, plugins are activated in dependency order
+3. **Hook dispatch.** The `HookDispatcher` fires lifecycle hooks (`pre-tool-use`, `post-tool-use`, `pre-turn`, `post-turn`, etc.) and collects results; hooks can block, modify, or annotate tool calls
+4. **Deactivation.** Graceful shutdown calls each plugin's deactivation hook
 
 `PluginApi` (`plugins/api.ts`) is the interface that plugins receive on activation: access to config, secrets, tool registration, hook registration, and event subscription.
 
-## Platform Layer Map
+## Platform layer map
 
-For a directory-by-directory breakdown of every subdirectory under `packages/sdk/src/platform/` — including one-line purpose descriptions, dependency hints, the sync-from-packages pattern, and extraction candidates — see [architecture-platform.md](./architecture-platform.md).
+For a directory-by-directory breakdown of every subdirectory under `packages/sdk/src/platform/`, including one-line purpose descriptions, dependency hints, the sync-from-packages pattern, and extraction candidates, see [architecture-platform.md](./architecture-platform.md).
 
 ---
 
-## Pairing System
+## Pairing system
 
 Public daemon-embedder subpath: `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders only).
 
@@ -459,15 +459,15 @@ The pairing system lets companion apps (mobile, web) establish an authenticated 
 
 ### Flow
 
-1. **Token generation** — `getOrCreateCompanionToken({ daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The token path is global for a daemon home directory.
+1. **Token generation.** `getOrCreateCompanionToken({ daemonHomeDir })` generates a `gv_`-prefixed token using `randomBytes(24)` and persists it to `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`) at mode `0600`. Tokens are stable across restarts and regenerated only on explicit request. The token path is global for a daemon home directory.
 
-2. **Connection info encoding** — `buildCompanionConnectionInfo()` assembles the `CompanionConnectionInfo` payload: daemon URL, token, username, version, and surface name. `encodeConnectionPayload()` serializes it to JSON.
+2. **Connection info encoding.** `buildCompanionConnectionInfo()` assembles the `CompanionConnectionInfo` payload: daemon URL, token, username, version, and surface name. `encodeConnectionPayload()` serializes it to JSON.
 
-3. **QR generation** — `generateQrMatrix()` encodes the JSON payload into a QR code matrix using a bundled pure-TypeScript QR library (no native dependencies). `renderQrToString()` renders it as an ASCII block string for display in terminal or web UI.
+3. **QR generation.** `generateQrMatrix()` encodes the JSON payload into a QR code matrix using a bundled pure-TypeScript QR library (no native dependencies). `renderQrToString()` renders it as an ASCII block string for display in terminal or web UI.
 
-4. **Connection** — the companion app decodes the QR payload, extracts the URL and token, and connects using `transport-http` with the token as a bearer credential.
+4. **Connection.** The companion app decodes the QR payload, extracts the URL and token, and connects using `transport-http` with the token as a bearer credential.
 
-5. **Revocation** — `regenerateCompanionToken({ daemonHomeDir })` replaces the stored token, invalidating all existing companion/operator connections on that host.
+5. **Revocation.** `regenerateCompanionToken({ daemonHomeDir })` replaces the stored token, invalidating all existing companion/operator connections on that host.
 
 ### CompanionConnectionInfo
 

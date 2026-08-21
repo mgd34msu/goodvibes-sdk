@@ -1,8 +1,8 @@
 /**
- * method-catalog-memory.ts — the MemoryGovernor observability verb.
+ * method-catalog-memory.ts, the MemoryGovernor observability verb.
  *
  * `ops.memory.get` serves the governor snapshot: current tier, budget, RSS/heap,
- * per-cache footprints, paused jobs, and tripwire state — so operators can see
+ * per-cache footprints, paused jobs, and tripwire state, so operators can see
  * the daemon defending its own footprint.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';

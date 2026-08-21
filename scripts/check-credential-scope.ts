@@ -5,7 +5,7 @@
 //
 // The defect this gate exists to stop recurring. Three times now a credential
 // captured on one surface has been unreadable to the daemon that actually uses
-// it — Google mail, payment card fields, the Telegram bot username. Each time
+// it, Google mail, payment card fields, the Telegram bot username. Each time
 // the immediate cause was different (a wrong default, a forced scope, a bare
 // key name nothing derived) and each time the underlying cause was the same:
 // nothing anywhere in the codebase stated whether the daemon needed that
@@ -20,7 +20,7 @@
 // What counts as covered:
 //   - a key the registry declares (exact name or declared prefix), OR
 //   - a key derived from a daemon-owned config path (daemonSecretKeyFor), OR
-//   - a call site that passes an explicit `scope:` — the author said where it
+//   - a call site that passes an explicit `scope:`, the author said where it
 //     goes, on purpose, in code a reviewer can see. This is the escape hatch
 //     for names only an operator can choose (a custom provider's key, a
 //     `/secrets set` argument), and it is deliberately the LOUD one.
@@ -30,8 +30,8 @@
 // that produced the per-subscription calendar keys nobody classified.
 //
 // Test-harness overrides:
-//   CREDENTIAL_SCOPE_ROOT      — override the repo root directory
-//   CREDENTIAL_SCOPE_DIRS_JSON — JSON array of dirs to scan, repo-relative
+//   CREDENTIAL_SCOPE_ROOT     , override the repo root directory
+//   CREDENTIAL_SCOPE_DIRS_JSON, JSON array of dirs to scan, repo-relative
 //
 // Usage:
 //   bun run credential-scope:check
@@ -108,8 +108,8 @@ function callArguments(source: string, openParenIndex: number): string {
 /**
  * Blank out comments so prose describing a write is never mistaken for one.
  *
- * Replaced with spaces rather than removed, so every byte offset — and
- * therefore every reported line number — still points at the real source.
+ * Replaced with spaces rather than removed, so every byte offset, and
+ * therefore every reported line number, still points at the real source.
  */
 function withoutComments(source: string): string {
   return source
@@ -120,13 +120,13 @@ function withoutComments(source: string): string {
 /**
  * Every `const NAME = 'LITERAL'` in the scanned source.
  *
- * A write almost never spells its key inline — it names a constant
+ * A write almost never spells its key inline, it names a constant
  * (`CLOUDFLARE_API_TOKEN_KEY`). Resolving those is the difference between a
  * gate that checks the real key set and one that shouts at every call site.
  */
 function buildConstantTable(files: readonly string[]): ReadonlyMap<string, string> {
   const table = new Map<string, string>();
-  // `const NAME = <expr>;` — the expression is evaluated by
+  // `const NAME = <expr>;`, the expression is evaluated by
   // `evaluateKeyExpression`, so `daemonSecretKeyFor('cluster.groupMaterial')`
   // resolves the same way the routing resolves it.
   // The optional type annotation must not cross a line or a statement: `[^=]`
@@ -134,7 +134,7 @@ function buildConstantTable(files: readonly string[]): ReadonlyMap<string, strin
   // NEXT declaration's name and the real constant never entered the table.
   const declaration = /(?:export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::\s*[^=;\n]+?)?=\s*([^;\n]+);/g;
   // `GOOGLE_SECRET_KEYS = { appPassword: daemonSecretKeyFor('email.passwordRef') }`
-  // — a member of an object literal, which is how the derived key sets are
+  //, a member of an object literal, which is how the derived key sets are
   // written. Resolved to `OBJECT.member` entries so a call that names one is
   // checked rather than written off as computed.
   const objectLiteral = /(?:export\s+)?const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*(?::\s*[^=]+)?=\s*\{([\s\S]*?)\n\}/g;
@@ -175,7 +175,7 @@ function buildConstantTable(files: readonly string[]): ReadonlyMap<string, strin
  * Evaluate a key expression the way the platform actually writes them.
  *
  * Three shapes and no more: a string literal, a name already in the table, and
- * `daemonSecretKeyFor(<one of those>)` — the platform-wide derivation. Calling
+ * `daemonSecretKeyFor(<one of those>)`, the platform-wide derivation. Calling
  * the real function rather than reimplementing it means this gate cannot
  * disagree with the routing about what a key is called.
  */
@@ -256,7 +256,7 @@ function calledFunction(args: string): string | null {
 /**
  * True when the key is a plain identifier this walk could not resolve.
  *
- * That is a PASSTHROUGH — `storeSecret(key, value)` inside a wrapper, or a
+ * That is a PASSTHROUGH, `storeSecret(key, value)` inside a wrapper, or a
  * local `const secretKey` two lines above. The value arrived from somewhere,
  * and the site that MINTED the name is the site that has to classify it. This
  * check sees that site too, so reporting the passthrough as well would be one
@@ -282,7 +282,7 @@ function checkFile(path: string, constants: ReadonlyMap<string, string>): Findin
   const source = withoutComments(readFileSync(path, 'utf-8'));
   // A `Map` called `store` also has `.set(`. The alias is kept because real
   // secret writes use it (push/vapid.ts), but only in a file that is about
-  // secrets at all — otherwise every cache in the codebase is a finding.
+  // secrets at all, otherwise every cache in the codebase is a finding.
   const aboutSecrets = /secret/i.test(source);
   const findings: Finding[] = [];
   const lineStarts: number[] = [0];
@@ -319,14 +319,14 @@ function checkFile(path: string, constants: ReadonlyMap<string, string>): Findin
       // nobody did.
       findings.push({
         file: path, line, snippet,
-        reason: 'writes a computed secret key and states no scope — declare the key family in credential-scope-registry.ts (a prefix declaration), or pass an explicit scope',
+        reason: 'writes a computed secret key and states no scope, declare the key family in credential-scope-registry.ts (a prefix declaration), or pass an explicit scope',
       });
       continue;
     }
     if (!isClassified(key)) {
       findings.push({
         file: path, line, snippet,
-        reason: `"${key}" is not classified — add it to CREDENTIAL_SCOPE_DECLARATIONS in credential-scope-registry.ts as daemon-needed or surface-local, with the reason`,
+        reason: `"${key}" is not classified, add it to CREDENTIAL_SCOPE_DECLARATIONS in credential-scope-registry.ts as daemon-needed or surface-local, with the reason`,
       });
     }
   }
@@ -340,7 +340,7 @@ function checkFile(path: string, constants: ReadonlyMap<string, string>): Findin
  * so an undeclared credential is masked rather than printed. That is the right
  * default and the wrong place to stop: a backstop that silently covers for a
  * missing declaration is how a rule ends up enforced by convention and declared
- * nowhere — the same shape as a method catalog that requires a field it never
+ * nowhere, the same shape as a method catalog that requires a field it never
  * lists in `required`.
  *
  * So the pattern is turned around and used as a DETECTOR: any schema key it
@@ -359,7 +359,7 @@ function checkDeclarationsCoverConvention(): Finding[] {
       snippet: key,
       reason:
         `"${key}" reads as a credential but is not declared in SECRET_BEARING_CONFIG_PATHS. `
-        + 'It is currently masked by the name-pattern backstop only, which is not a declaration — add it to the list.',
+        + 'It is currently masked by the name-pattern backstop only, which is not a declaration, add it to the list.',
     });
   }
   return findings;
@@ -369,9 +369,9 @@ function checkDeclarationsCoverConvention(): Finding[] {
  * Every bare credential name the channel account surface declares must be
  * classified.
  *
- * These are the names an operator's credential is actually stored under —
+ * These are the names an operator's credential is actually stored under,
  * `TELEGRAM_BOT_TOKEN`, not the derived `GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN`
- * — and nothing derives them, so nothing could notice one going undeclared.
+ *, and nothing derives them, so nothing could notice one going undeclared.
  * TELEGRAM_BOT_TOKEN was: the derived spelling migrated and the bare one, the
  * spelling the config reference points at and the one on the owner's disk,
  * never moved from any surface because the registry did not recognise it.
@@ -405,7 +405,7 @@ function checkChannelSecretNamesAreClassified(): Finding[] {
         snippet: name,
         reason:
           `"${name}" is a credential the channel account surface stores under, and nothing classifies it. `
-          + 'Nothing derives a bare name, so it will never migrate off a surface silo — declare it in CREDENTIAL_SCOPE_DECLARATIONS.',
+          + 'Nothing derives a bare name, so it will never migrate off a surface silo, declare it in CREDENTIAL_SCOPE_DECLARATIONS.',
       });
     }
   }
@@ -424,7 +424,7 @@ function main(): void {
     ...checkChannelSecretNamesAreClassified(),
   ];
   if (findings.length === 0) {
-    console.log(`credential-scope-check: OK — every secret write in ${files.length} file(s) names a classified credential or states its scope.`);
+    console.log(`credential-scope-check: OK, every secret write in ${files.length} file(s) names a classified credential or states its scope.`);
     return;
   }
 

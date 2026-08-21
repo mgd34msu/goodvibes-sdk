@@ -1,5 +1,5 @@
 /**
- * Plugin emitters — typed emission wrappers for PluginEvent domain.
+ * Plugin emitters, typed emission wrappers for PluginEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

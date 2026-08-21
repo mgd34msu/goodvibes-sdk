@@ -61,7 +61,7 @@ describe('edit tool', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Single edit — exact match
+  // Single edit, exact match
   // -------------------------------------------------------------------------
 
   describe('single edit exact match', () => {
@@ -289,7 +289,7 @@ describe('edit tool', () => {
       const file = writeFile(tmpDir, 'fuzz_ws.ts', 'function hello(x: number) {\n  return x + 1;\n}\n');
       const result = await tool.execute({
         edits: [{ path: relPath(file), find: 'function  hello(x:  number) {', replace: 'function hello(x: number, y: number) {' }],
-        // No mode specified — default exact falls back automatically
+        // No mode specified, default exact falls back automatically
       });
       expect(result.success).toBe(true);
       expect(readFileSync(file, 'utf-8')).toContain('y: number');
@@ -326,12 +326,12 @@ describe('edit tool', () => {
     test('fuzzy-line match below threshold returns error with candidate info', async () => {
       const content = 'const x = 1;\nconst y = 2;\nconst z = 3;\n';
       const file = writeFile(tmpDir, 'fuzz_warn.ts', content);
-      // 2 exact lines + 1 typo = 2/3 similarity ≈ 67% — below threshold
+      // 2 exact lines + 1 typo = 2/3 similarity ≈ 67%, below threshold
       // Use 3 lines where 2 match and 1 has a minor diff that still passes after normalization
       const result = await tool.execute({
         edits: [{ path: relPath(file), find: 'const x = 1;\nconst y = 2;\nconst z = TYPO;', replace: 'const x = 1;\nconst y = 2;\nconst z = 99;' }],
       });
-      // 2/3 lines match = 67% — just below 70% threshold, should fail
+      // 2/3 lines match = 67%, just below 70% threshold, should fail
       expect(result.success).toBe(false);
       expect(JSON.stringify(result)).toMatch(/threshold|similarity/i);
     });
@@ -575,7 +575,7 @@ describe('edit tool', () => {
       fileCache.update(file, 'original');
       // Externally modify the file
       writeFileSync(file, 'modified externally', 'utf-8');
-      // Now attempt to edit — cache should detect the conflict
+      // Now attempt to edit, cache should detect the conflict
       const result = await tool.execute({
         edits: [{ path: relPath(file), find: 'original', replace: 'new' }],
         transaction: { mode: 'atomic' },
@@ -912,7 +912,7 @@ describe('edit tool', () => {
         dry_run: true,
       });
 
-      // dry_run skips validate.before — file remains unchanged
+      // dry_run skips validate.before, file remains unchanged
       expect(readFileSync(editFile, 'utf-8')).toBe('original');
       // result may succeed (dry_run returns diff) or fail for other reasons, but NOT validator failure
       if (!result.success) {
@@ -971,7 +971,7 @@ describe('edit tool', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toMatch(/Post-edit validation failed/i);
-      // No rollback in partial mode — file stays changed
+      // No rollback in partial mode, file stays changed
       expect(result.error).not.toMatch(/rolled back/i);
       expect(readFileSync(editFile, 'utf-8')).toBe('changed');
     });

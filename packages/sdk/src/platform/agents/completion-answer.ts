@@ -1,5 +1,5 @@
 /**
- * completion-answer.ts — what a finished agent SAYS, as opposed to what it did.
+ * completion-answer.ts, what a finished agent SAYS, as opposed to what it did.
  *
  * One rule, in one place, because two processes now need it. The daemon renders
  * it when its own completion poll finds a finished run (daemon/surface-delivery.ts).
@@ -22,7 +22,7 @@ export interface AgentCompletionRecordView {
 /**
  * The answer to send for a finished run.
  *
- * A completed run says what it produced. Nothing produced is silence — the
+ * A completed run says what it produced. Nothing produced is silence, the
  * owner ruling is that work with nothing to report says nothing, and an empty
  * body closes the run out without notifying anyone. The one exception is a
  * write-review-fix-confirm chain still in flight, which is a fact the reader is

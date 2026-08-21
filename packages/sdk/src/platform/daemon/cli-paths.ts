@@ -1,5 +1,5 @@
 /**
- * cli-paths.ts — where a daemon process reads and writes, resolved once.
+ * cli-paths.ts, where a daemon process reads and writes, resolved once.
  *
  * Split out of daemon/cli.ts so it can be TESTED. cli.ts ends in a top-level
  * `void main()`, so importing it to check its path math would start a daemon;
@@ -8,7 +8,7 @@
  *
  * ── What `--daemon-home` means ────────────────────────────────────────────
  *
- * The daemon's own STATE directory — `~/.goodvibes/daemon` by default — holding
+ * The daemon's own STATE directory, `~/.goodvibes/daemon` by default, holding
  * operator-tokens.json, daemon-settings.json, the owner profile, the daemon
  * config tier, and the daemon-scoped secret store. Four modules already resolve
  * it that way (workspace/daemon-home.ts, config/daemon-config-tier.ts,
@@ -66,7 +66,7 @@ export function parseCliFlag(args: readonly string[], flagPrefix: string): strin
 
 /**
  * Resolve every path the daemon runs on, from flags, environment, and the
- * persisted daemon settings — in that precedence.
+ * persisted daemon settings, in that precedence.
  */
 export function resolveDaemonCliPaths(input: DaemonCliPathInput = {}): DaemonCliPaths {
   const argv = input.argv ?? process.argv;

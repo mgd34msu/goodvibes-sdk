@@ -7,7 +7,7 @@
  *
  * What a real server actually sends
  * ─────────────────────────────────
- * A `BODY[...]` section arrives as a `{N}` literal — RFC 3501 §4.3 — which is a
+ * A `BODY[...]` section arrives as a `{N}` literal, RFC 3501 §4.3, which is a
  * byte count on the end of the line followed by exactly that many bytes:
  *
  *     * 3 FETCH (UID 307 BODY[HEADER.FIELDS (FROM SUBJECT)] {58}
@@ -18,7 +18,7 @@
  *
  * `ImapSession` reads the count, takes the bytes, and hands the response up as
  * ONE string with the payload welded onto the line that announced it. That is
- * the correct thing to do — the payload is not lines, it is bytes, and it may
+ * the correct thing to do, the payload is not lines, it is bytes, and it may
  * contain anything including a line that looks like a response. But it means
  * every reader downstream sees a `* 3 FETCH (` line with a whole header block
  * hanging off the end of it, and a reader that expected the payload on lines of
@@ -26,7 +26,7 @@
  *
  * The old `parseFetchHeaders` did worse than find nothing: it tested whether
  * the text after `* n FETCH ` started with `(` and discarded it if so. Against
- * a folded literal that text is `(UID 307 BODY[...] From: a@b.test…` — so the
+ * a folded literal that text is `(UID 307 BODY[...] From: a@b.test…`, so the
  * whole header block went out with the data items it was welded to, and the
  * client built envelopes with every field empty while reporting success.
  *
@@ -40,7 +40,7 @@
  *     * 3 FETCH (BODY[HEADER.FIELDS (…)] {58}… UID 307)
  *
  * In the second, the `UID` lands AFTER the literal, which means it is not on
- * the `* n FETCH` line at all — it is on the line that closes the response. The
+ * the `* n FETCH` line at all, it is on the line that closes the response. The
  * old `parseFetchUids` searched `line.slice(0, line.indexOf('BODY'))` of the
  * start line only, found nothing, and returned an empty map; the client then
  * produced no envelopes and the caller could not tell that from an empty
@@ -51,7 +51,7 @@
  * One pass over the lines, tracking parenthesis depth, quoted strings and
  * `[section]` brackets, collecting the data items at depth 1 as structural text
  * and every `BODY[...]` payload as opaque bytes. A `UID` is then read from the
- * structural text, from wherever in the response it appeared — and never from
+ * structural text, from wherever in the response it appeared, and never from
  * inside a payload, because payload text is never structural text.
  *
  * A response that cannot be read says so
@@ -68,7 +68,7 @@ export interface ImapFetchResponse {
   /**
    * The response's own sequence number.
    *
-   * NOT a UID, even under `UID FETCH` — the prefix is a sequence number in both
+   * NOT a UID, even under `UID FETCH`, the prefix is a sequence number in both
    * commands, which is exactly why `uid` is read separately and joined rather
    * than assumed equal.
    */
@@ -91,7 +91,7 @@ export interface ImapFetchResponse {
   readonly parseError: string | null;
 }
 
-/** `* 3 FETCH ` — the sequence number and the start of the data-item list. */
+/** `* 3 FETCH `, the sequence number and the start of the data-item list. */
 const FETCH_START = /^\* (\d+) FETCH /;
 
 /** A tagged completion, which ends any response still open before it. */
@@ -108,7 +108,7 @@ const CONTINUATION_END = /^\s*(?:UID (\d+)\s*)?\)\s*$/;
  *
  * Payloads are already bounded by the session's literal cap. This bounds the
  * data-item list itself, and hitting it is reported as a parse failure rather
- * than quietly truncated — a truncated data-item list is where the `UID` would
+ * than quietly truncated, a truncated data-item list is where the `UID` would
  * have been.
  */
 const MAX_STRUCTURAL_CHARS = 64_000;
@@ -187,13 +187,13 @@ function readQuotedString(text: string, from: number): { value: string; next: nu
  *
  *   - a `{n}` literal, which the session has already folded onto this line, so
  *     it runs to the end of the chunk and every later data item is on the next
- *     line — this is what essentially every server sends for a header block;
+ *     line, this is what essentially every server sends for a header block;
  *   - a quoted string, which some servers use for very short sections;
  *   - `NIL`, meaning the section is absent, which is not the same as unreadable.
  *
  * A marker with nothing after it on the line is the fourth case: the payload is
  * on the lines that follow. That shape does not come off a real socket, because
- * the session folds literals — but it is what a scripted response looks like,
+ * the session folds literals, but it is what a scripted response looks like,
  * and reading it costs nothing.
  */
 function readSectionValue(open: OpenResponse, chunk: string, from: number): number {
@@ -333,7 +333,7 @@ function seal(open: OpenResponse): ImapFetchResponse {
  * Read every `* n FETCH (...)` response in a command's collected lines.
  *
  * Responses come back in the order the server sent them. Anything that is not
- * part of a FETCH response — the tagged completion, other untagged data — is
+ * part of a FETCH response, the tagged completion, other untagged data, is
  * ignored rather than guessed at.
  */
 export function parseFetchResponses(lines: readonly string[]): ImapFetchResponse[] {
@@ -352,7 +352,7 @@ export function parseFetchResponses(lines: readonly string[]): ImapFetchResponse
 
     if (open !== null) {
       // A new response, or the command's completion, ends whatever came before
-      // it — and ends it as UNREAD, because a response that never closed is a
+      // it, and ends it as UNREAD, because a response that never closed is a
       // response we do not have.
       if (start !== null) {
         close(`the FETCH response for sequence number ${open.seq} was cut short by the next one`);

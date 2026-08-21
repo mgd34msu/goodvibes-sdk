@@ -20,7 +20,7 @@ import { emitPermissionModeChanged } from '../runtime/emitters/permissions.js';
  * function (mirrors {@link ConfigManager.subscribe} / the feature-flag binding
  * pattern in runtime services).
  *
- * @param sessionId — session/runtime id stamped on the emitted event.
+ * @param sessionId, session/runtime id stamped on the emitted event.
  */
 export function bindPermissionModeChangeEvent(
   configManager: Pick<ConfigManager, 'subscribe'>,

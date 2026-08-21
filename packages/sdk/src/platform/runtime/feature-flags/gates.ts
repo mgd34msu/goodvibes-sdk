@@ -19,13 +19,13 @@ export function isFeatureGateEnabled(
   flagId: string,
 ): boolean {
   // Membership first, even with no manager wired: a gate id absent from
-  // FEATURE_SETTINGS could never be enabled by any setting — fail loudly at
+  // FEATURE_SETTINGS could never be enabled by any setting, fail loudly at
   // the composition site instead of shipping the capability dead.
   assertFeatureGateIdRegistered(flagId, 'isFeatureGateEnabled');
   // A capability that cannot operate is OFF, whatever its settings key says
   // and even with no manager wired (the branch below defaults to permissive).
   // Without this, a user flips the switch, the config accepts it, and nothing
-  // happens — which is the exact failure this field exists to prevent.
+  // happens, which is the exact failure this field exists to prevent.
   if (featureInoperability(flagId) !== null) return false;
   if (!featureFlags) return true;
   return featureFlags.isEnabled(flagId);

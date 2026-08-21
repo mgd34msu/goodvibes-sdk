@@ -1,4 +1,4 @@
-# ACP agent — drive GoodVibes from ACP-capable editors
+# ACP agent: drive GoodVibes from ACP-capable editors
 
 GoodVibes ships an **agent-side** adapter for the Agent Client Protocol (ACP),
 the editor-agnostic protocol used by Zed and other clients. An editor spawns the
@@ -26,7 +26,7 @@ const { connection, dispose } = serveAcpAgent({ homeDirectory: process.env.HOME!
 
 ## What it maps
 
-The substrate is the SDK Embedding API (`@pellux/goodvibes-sdk/embed`) — each
+The base is the SDK Embedding API (`@pellux/goodvibes-sdk/embed`). Each
 ACP `session/new` boots an embedded GoodVibes session against the request's
 `cwd`, and the adapter is a protocol mapping over that surface:
 
@@ -47,13 +47,13 @@ max_turn_requests`, other turn errors → `refusal`.
 
 ## Honest capability surface
 
-Anything the platform does not support is reported `false` — never stubbed:
+Anything the platform does not support is reported `false`, never stubbed:
 
-- `loadSession: false` — no session restore over ACP.
-- `promptCapabilities.image / audio / embeddedContext: false` — prompt input is
+- `loadSession: false`: no session restore over ACP.
+- `promptCapabilities.image`, `audio`, and `embeddedContext` are all `false`: prompt input is
   text (text blocks plus `resource_link` URIs folded in as text references).
-- `mcpCapabilities.http / sse: false` — the adapter does not wire the client's
-  MCP servers into the embedded session; `mcpServers` entries in `session/new`
+- `mcpCapabilities.http` and `sse` are both `false`: the adapter does not wire the client's
+  MCP servers into the embedded session. `mcpServers` entries in `session/new`
   are ignored.
 - Cancellation is best-effort: a queued input is cancelled via the broker; an
   already-executing provider call is not aborted mid-flight.
@@ -62,5 +62,5 @@ Anything the platform does not support is reported `false` — never stubbed:
 
 Runtime envelopes are matched to an ACP session by runtime session id (the
 shared-session record id and, when present, the active agent id). When exactly
-one ACP session is active — the common editor case — all turn/tool events are
+one ACP session is active, the common editor case, all turn/tool events are
 forwarded to it.

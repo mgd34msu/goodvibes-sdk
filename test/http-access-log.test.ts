@@ -6,7 +6,7 @@ import {
 } from '../packages/sdk/src/platform/utils/fetch-with-timeout.js';
 
 /**
- * HTTP access log — verifies that instrumentedFetch records request/response
+ * HTTP access log, verifies that instrumentedFetch records request/response
  * details and that the fetch-with-timeout module exports the correct surface.
  */
 
@@ -75,7 +75,7 @@ describe('http access log', () => {
   });
 
   test('fetchWithTimeout propagates AbortError when aborted mid-call', async () => {
-    // real mid-call abort — signal fires AFTER fetch starts, not before.
+    // real mid-call abort, signal fires AFTER fetch starts, not before.
     globalThis.fetch = stubFetch(async (_url, init) => {
       return new Promise<Response>((_resolve, reject) => {
         const sig = init?.signal;

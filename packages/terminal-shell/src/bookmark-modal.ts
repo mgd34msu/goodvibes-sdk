@@ -1,15 +1,11 @@
 /**
- * BookmarkModal — state management for the /bookmarks command modal.
+ * BookmarkModal, state management for the /bookmarks command modal.
  *
  * Lists bookmarks from BookmarkManager and tracks UI state:
  * selected index, scroll offset, and pending action.
  */
 
 import type { BookmarkEntry, BookmarkManager } from '@pellux/goodvibes-sdk/platform/bookmarks';
-
-// ---------------------------------------------------------------------------
-// BookmarkModal
-// ---------------------------------------------------------------------------
 
 export class BookmarkModal {
   public static readonly DEFAULT_VISIBLE_ROWS = 8;

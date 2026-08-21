@@ -4,14 +4,14 @@
  * Platform/surface classification for exports in this module:
  *
  * PLATFORM (safe for all surfaces):
- *   - getDisplayWidth — Unicode display-width calculation. Used by any surface
+ *   - getDisplayWidth, Unicode display-width calculation. Used by any surface
  *     that needs to measure text for layout purposes.
  *
  * SURFACE (terminal/TUI-specific):
- *   - center, truncateDisplay, padDisplayEnd, fitDisplay — Terminal column
+ *   - center, truncateDisplay, padDisplayEnd, fitDisplay, Terminal column
  *     layout helpers that operate in cell widths. Not useful outside a terminal.
- *   - wrapText — Word-wrapping to a fixed column width.
- *   - interpolateColor — RGB hex interpolation for ANSI colour gradients.
+ *   - wrapText, Word-wrapping to a fixed column width.
+ *   - interpolateColor, RGB hex interpolation for ANSI colour gradients.
  */
 
 /**
@@ -31,7 +31,7 @@ export function getDisplayWidth(text: string): number {
       continue;
     }
 
-    // Zero-width joiners, variation selectors, combining marks — 0 width
+    // Zero-width joiners, variation selectors, combining marks, 0 width
     if (
       code === 0x200D || // ZWJ
       code === 0xFE0F || // emoji variation selector
@@ -54,7 +54,7 @@ export function getDisplayWidth(text: string): number {
       code === 0x2717 || // ✗ ballot x
       code === 0x2714 || // ✔ heavy check mark
       code === 0x2718 || // ✘ heavy ballot x
-      // ✕ (0x2715) and ✖ (0x2716) — the multiplication-X cross family. GLYPHS
+      // ✕ (0x2715) and ✖ (0x2716), the multiplication-X cross family. GLYPHS
       // .status.failure is ✕, so this is the character every failed row's
       // marker uses. Terminals draw them one cell wide, but they sit inside the
       // 0x2600–0x27bf emoji block below and would otherwise be counted as width
@@ -71,7 +71,7 @@ export function getDisplayWidth(text: string): number {
       continue;
     }
 
-    // Emoji and pictographic — double width in most terminals
+    // Emoji and pictographic, double width in most terminals
     // Note: 💭 (U+1F4AD) and 🧠 (U+1F9E0) are both in the 0x1F300–0x1F9FF range,
     // so they are correctly handled as width 2 here.
     if (
@@ -94,7 +94,7 @@ export function getDisplayWidth(text: string): number {
       continue;
     }
 
-    // CJK and fullwidth — double width
+    // CJK and fullwidth, double width
     if (
       (code >= 0x1100 && code <= 0x115F) ||   // Hangul Jamo
       (code >= 0x2E80 && code <= 0xA4CF && code !== 0x303F) || // CJK
@@ -109,7 +109,7 @@ export function getDisplayWidth(text: string): number {
       continue;
     }
 
-    // Everything else — single width
+    // Everything else, single width
     width += 1;
     i += charLen;
   }

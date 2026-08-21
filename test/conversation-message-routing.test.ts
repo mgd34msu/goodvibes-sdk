@@ -293,7 +293,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
-    // kind='message' short-circuits BEFORE submitMessage — no bindAgent spawn
+    // kind='message' short-circuits BEFORE submitMessage, no bindAgent spawn
     expect(bindAgentCallCount.value).toBe(0);
     // appendCompanionMessage must be called to persist the message
     expect(appendCompanionCallCount.value).toBe(1);
@@ -311,7 +311,7 @@ describe('message routing: kind=message persists and emits runtime bus event (no
     const res = await handlers.postSharedSessionMessage(sessionId, req);
     expect(res.status).toBe(202);
     const body = await res.json() as { messageId: string; routedTo: string; sessionId: string };
-    // Short-circuit response: no session/mode/agentId — just messageId, routedTo, sessionId
+    // Short-circuit response: no session/mode/agentId, just messageId, routedTo, sessionId
     expect(typeof body.messageId).toBe('string');
     expect(body.messageId).toMatch(/^companion-/);
     expect(body.routedTo).toBe('conversation');
@@ -468,7 +468,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
    *
    * The load-bearing test below constructs that exact call path in miniature:
    * a fake gateway with two registered clients (TUI + companion) and applies
-   * the clientKind filter — directly proving the filter excludes non-TUI clients.
+   * the clientKind filter, directly proving the filter excludes non-TUI clients.
    *
    * The cross-session-isolation test is kept below: it proves independent contexts
    * never share envelope state (a separate, still-valid invariant).
@@ -479,7 +479,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
   // ---------------------------------------------------------------------------
 
   test('gateway filter clientKind:tui delivers followup to TUI subscriber, not companion subscriber', async () => {
-    // Minimal fake gateway: two clients — one TUI, one companion.
+    // Minimal fake gateway: two clients, one TUI, one companion.
     // Replicates the ControlPlaneGateway.publishEvent clientKind filter logic
     // exactly as it exists in production (gateway.ts ~line 276).
     type FakeClient = { kind: string; received: Array<{ event: string; payload: unknown }> };
@@ -523,7 +523,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
     expect(tuiClient.received).toHaveLength(1);
     expect(tuiClient.received[0]!.event).toBe('conversation.followup.companion');
 
-    // Non-TUI (companion) subscriber received NOTHING — filter excluded it
+    // Non-TUI (companion) subscriber received NOTHING, filter excluded it
     expect(companionClient.received).toHaveLength(0);
   });
 
@@ -584,7 +584,7 @@ describe('gateway scoping: only TUI clients receive followup events', () => {
 describe('body size handling', () => {
   /**
    * Minor 2: Oversized body test.
-   * The route currently has no explicit size limit — it accepts any body size
+   * The route currently has no explicit size limit, it accepts any body size
    * that the HTTP server allows. We document this behavior explicitly:
    * large bodies are accepted by the route handler (no 413 at this layer).
    * Size enforcement, if needed, belongs in the HTTP server middleware layer.
@@ -604,7 +604,7 @@ describe('body size handling', () => {
       { body: oversizedBody, kind: 'message' },
     );
     const res = await handlers.postSharedSessionMessage(sessionId, req);
-    // Route handler accepts it — no size limit enforced at this layer
+    // Route handler accepts it, no size limit enforced at this layer
     expect(res.status).toBe(202);
     expect(followupEvents).toHaveLength(1);
     expect(followupEvents[0]!.envelope.body).toBe(oversizedBody);
@@ -667,7 +667,7 @@ describe('envelope shape consistency: chat-mode vs Problem-2', () => {
   });
 
   test('Problem-2 follow-up envelope is structurally identical to chat-mode envelope', () => {
-    // Both must satisfy ConversationMessageEnvelope — confirmed by TypeScript.
+    // Both must satisfy ConversationMessageEnvelope, confirmed by TypeScript.
     // At runtime: verify that a Problem-2 envelope and a chat-mode envelope
     // have exactly the same required keys.
     const chatEnvelope: ConversationMessageEnvelope = {

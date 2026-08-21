@@ -61,7 +61,7 @@ export type SyntheticModelMap = Record<string, SyntheticBackend[]>;
 export interface CanonicalModel {
   /** Canonical model ID exposed to callers (e.g. 'kimi-k2.5'). */
   id: string;
-  /** Pricing tier — determines which backend pool is used for failover. */
+  /** Pricing tier, determines which backend pool is used for failover. */
   tier: SyntheticTier;
   /** Ordered list of backends to try within this tier. */
   backends: SyntheticBackend[];
@@ -161,7 +161,6 @@ function resolveBestFree(
   let bestScore = -Infinity;
 
   for (const model of freeModels) {
-    // Check if any backend for this model has a key
     const hasAnyKey = model.backends.some(hasKey);
     if (!hasAnyKey) continue;
 
@@ -228,7 +227,7 @@ export class SyntheticProvider implements LLMProvider {
   readonly name = 'synthetic';
   readonly credentialAuthority = 'anonymous' as const;
   /**
-   * The `models` getter below is intentionally secondary — this provider's
+   * The `models` getter below is intentionally secondary, this provider's
    * real selectable models are sourced from the shared, independently
    * refreshed model catalog (`getCatalogModels`) plus the `best-free` alias,
    * exactly the `catalog-backed` case the model-source contract
@@ -366,13 +365,13 @@ export class SyntheticProvider implements LLMProvider {
           model: backend.modelId,
         });
 
-        // Success — update active backend
+        // Success, update active backend
         this.activeBackend.set(syntheticId, idx);
         logger.info(`[Synthetic] ${syntheticId} served by ${backend.providerName} (${backend.modelId})`);
         return response;
       } catch (err) {
         // Rotating to the next backend is the right response to BOTH a rate
-        // limit and a spent account — a different key may well have credit —
+        // limit and a spent account, a different key may well have credit,
         // so they share this branch. They are still named apart in the log,
         // and billing is tested first so a credit failure that arrives as a
         // 400 (Anthropic's shape) rotates here instead of falling into the
@@ -391,7 +390,7 @@ export class SyntheticProvider implements LLMProvider {
           errors.push({ backend, error: err as Error });
           continue;
         }
-        // 400 Bad Request — the request itself is malformed, no point trying other backends
+        // 400 Bad Request, the request itself is malformed, no point trying other backends
         const isBadRequest = err instanceof ProviderError
           && err.statusCode === 400;
 
@@ -400,7 +399,7 @@ export class SyntheticProvider implements LLMProvider {
         }
 
         // Other client errors (401 auth, 403 billing/forbidden, 404 model not found, etc.)
-        // are provider-specific — failover to next backend with long cooldown
+        // are provider-specific, failover to next backend with long cooldown
         const isProviderClientError = err instanceof ProviderError
           && err.statusCode !== undefined
           && err.statusCode > 400
@@ -415,7 +414,7 @@ export class SyntheticProvider implements LLMProvider {
           continue;
         }
 
-        // Transient/server error — short cooldown, failover to next backend
+        // Transient/server error, short cooldown, failover to next backend
         cooldownArr[idx]! = now + TRANSIENT_COOLDOWN_MS;
         this.cooldowns.set(syntheticId, cooldownArr);
         if (TRANSIENT_COOLDOWN_MS < shortestCooldown) shortestCooldown = TRANSIENT_COOLDOWN_MS;
@@ -425,7 +424,7 @@ export class SyntheticProvider implements LLMProvider {
       }
     }
 
-    // All backends exhausted — auto-wait if the shortest cooldown is within threshold
+    // All backends exhausted, auto-wait if the shortest cooldown is within threshold
     if (shortestCooldown !== Infinity && shortestCooldown <= MAX_AUTO_WAIT_MS) {
       // Find the backend index with the shortest remaining cooldown
       const nowForWait = Date.now();
@@ -490,7 +489,7 @@ export class SyntheticProvider implements LLMProvider {
         );
         return response;
       } catch (retryErr) {
-        // Retry failed — fall through to throw below
+        // Retry failed, fall through to throw below
         logger.debug(
           `[Synthetic] Auto-wait retry failed for ${syntheticId} via ${
             waitBackend.providerName

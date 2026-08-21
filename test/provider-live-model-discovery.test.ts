@@ -1,6 +1,6 @@
 /**
  * Anthropic/OpenAI/Gemini's own refreshModels(): the model list currency
- * requirement — "model lists can never be stale" — proven for the two
+ * requirement, "model lists can never be stale", proven for the two
  * providers named in the done-when criteria plus Gemini (same empty-array
  * pattern), with a mocked API standing in for the live provider endpoint.
  */
@@ -20,7 +20,7 @@ async function withMockedFetch<T>(
   fn: () => Promise<T> | T,
 ): Promise<T> {
   const original = globalThis.fetch;
-  // @ts-expect-error — test double, narrower than the full fetch overload set
+  // @ts-expect-error, test double, narrower than the full fetch overload set
   globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => handler(String(url), init);
   try {
     return await fn();

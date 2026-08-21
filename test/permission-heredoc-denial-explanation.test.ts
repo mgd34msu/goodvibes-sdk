@@ -1,5 +1,5 @@
 /**
- * A denial always names what was denied and why — heredocs included.
+ * A denial always names what was denied and why, heredocs included.
  *
  * Two defects met here. The denial header interpolated the raw command, so a
  * multi-line command put its own newline inside what reads as line one and

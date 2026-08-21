@@ -2,12 +2,12 @@
  * acp-host.test.ts
  *
  * Hosting third-party coding agents over ACP, proven against a REAL scripted
- * ACP agent binary (test/fixtures/fake-acp-agent.ts — a subprocess speaking
+ * ACP agent binary (test/fixtures/fake-acp-agent.ts, a subprocess speaking
  * the actual protocol over stdio via @agentclientprotocol/sdk):
  *
  *  - read-only discovery (PATH + known dirs; quiet absence);
  *  - discovery → spawn → prompt → attention → steer → stop round-trip;
- *  - handshake-failure honesty (a binary that exits, and one that hangs) —
+ *  - handshake-failure honesty (a binary that exits, and one that hangs),
  *    structured error naming binary + stage, never a hung row;
  *  - the fleet snapshot carries the row (kind 'acp-agent') with working
  *    steer/kill dispatch and the awaiting-approval attention classification;
@@ -183,12 +183,12 @@ describe('fleet integration — the hosted row is a first-class fleet row', () =
       expect(node.capabilities.killable).toBe(true);
       expect(node.sessionRef?.sessionId).toBe(hosted.sessionId);
 
-      // Steer through the REGISTRY — the panel affordance.
+      // Steer through the REGISTRY, the panel affordance.
       const steer = registry.steer(node.id, 'do something');
       expect(steer.queued).toBe(true);
       await waitUntil(() => host.get(hosted.id)?.promptCount === 1 && host.get(hosted.id)?.state === 'idle');
 
-      // Kill through the registry — the row terminalizes as 'killed'.
+      // Kill through the registry, the row terminalizes as 'killed'.
       const killed = registry.kill(node.id);
       expect(killed).toEqual([node.id]);
       await waitUntil(() => host.get(hosted.id)?.state === 'stopped');
@@ -235,7 +235,7 @@ describe('acp.* verbs over the catalog', () => {
     const listed = await catalog.invoke('acp.agents.list', { ...ctx, body: {} }) as { agents: Array<{ id: string }> };
     expect(listed.agents.map((a) => a.id)).toEqual(['fake-good', 'fake-bad']);
 
-    // One-act spawn — a live steerable/stoppable hosted session.
+    // One-act spawn, a live steerable/stoppable hosted session.
     const created = await catalog.invoke('acp.sessions.create', { ...ctx, body: { agentId: 'fake-good', cwd: import.meta.dir } }) as {
       hosted: { id: string; state: string; sessionId?: string }; started: boolean;
     };

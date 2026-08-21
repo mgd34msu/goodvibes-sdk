@@ -4,8 +4,8 @@
  * Google's pages carry no stable test ids, so every browser-driven step in
  * this module matches controls by accessible role and name. This is the single
  * most brittle part of the whole integration, so a miss is designed to fail
- * loudly and specifically — "looked for a button named X, the page showed
- * these N controls instead" — rather than silently clicking the wrong thing.
+ * loudly and specifically, "looked for a button named X, the page showed
+ * these N controls instead", rather than silently clicking the wrong thing.
  *
  * Nothing here drives a browser. The flows are written against
  * `GoogleBrowserPort` (see `types.ts`), a six-method surface a product
@@ -96,7 +96,7 @@ export type GoogleElementLookup = GoogleElementFound | GoogleElementNotFound;
 
 /**
  * Like `findElement`, but the miss carries a typed, descriptive result instead
- * of `null` — the failure mode this module exists to make impossible to get
+ * of `null`, the failure mode this module exists to make impossible to get
  * wrong silently.
  */
 export function requireElement(
@@ -120,7 +120,7 @@ export function requireElement(
  *
  * The password-field check is deliberately scoped to `role: 'textbox'`
  * (a real input) rather than matching "password" anywhere in any element's
- * name — Google's own pages routinely use the word in headings and buttons
+ * name, Google's own pages routinely use the word in headings and buttons
  * ("App passwords", "Create app password"), and matching those would
  * misreport a normal page as a sign-in redirect.
  */
@@ -150,7 +150,7 @@ const ROLE_TAG_HINTS: Readonly<Record<string, string>> = {
  * The shared role-to-tag guess.
  *
  * Exported because every `GoogleBrowserPort` implementation faces the same
- * problem — an accessibility snapshot reports a role, not a tag — and the
+ * problem, an accessibility snapshot reports a role, not a tag, and the
  * guess should be one shared answer rather than re-invented per surface.
  * Returns `'div'` for any role with no better guess.
  */

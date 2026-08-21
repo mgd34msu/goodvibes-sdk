@@ -1,14 +1,14 @@
 /**
- * types.ts — the declarative trigger DSL and its record shapes.
+ * types.ts, the declarative trigger DSL and its record shapes.
  *
  * Three watcher kinds share one supervision spine (backoff ladder, strike
  * breaker, persisted state ring buffer):
  *
- *   stream    — a long-lived command whose output is regex-filtered, batched
+ *   stream   , a long-lived command whose output is regex-filtered, batched
  *               and de-duplicated; an agent is invoked only after a match.
- *   condition — a model-free check: probe -> extract -> rule, no LLM in the
+ *   condition, a model-free check: probe -> extract -> rule, no LLM in the
  *               loop, structured state persisted between checks.
- *   on-exit   — a one-shot payload fired exactly once when a supervised child
+ *   on-exit  , a one-shot payload fired exactly once when a supervised child
  *               process terminates, owned by the daemon so it outlives the
  *               turn that created it.
  *
@@ -19,7 +19,7 @@
 
 export type TriggerKind = 'stream' | 'condition' | 'on-exit';
 
-/** A value a probe can yield. Deliberately JSON-shaped — no functions. */
+/** A value a probe can yield. Deliberately JSON-shaped, no functions. */
 export type TriggerValue =
   | string
   | number
@@ -30,7 +30,7 @@ export type TriggerValue =
 
 // ─── Probe ────────────────────────────────────────────────────────────────────
 
-/** HTTP probe. Static url/headers/body only — nothing is interpolated at run time. */
+/** HTTP probe. Static url/headers/body only, nothing is interpolated at run time. */
 export interface HttpProbe {
   readonly kind: 'http';
   readonly url: string;
@@ -42,7 +42,7 @@ export interface HttpProbe {
   readonly capture?: 'body' | 'status' | 'envelope' | undefined;
 }
 
-/** File probe — reads a path, or reports its stat signature when `stat` is set. */
+/** File probe, reads a path, or reports its stat signature when `stat` is set. */
 export interface FileProbe {
   readonly kind: 'file';
   readonly path: string;
@@ -85,7 +85,7 @@ export interface JsonPathExtract {
 export interface RegexExtract {
   readonly kind: 'regex';
   readonly pattern: string;
-  /** Only `i`, `m`, `s` and `u` are accepted — `g`/`y` carry lastIndex state. */
+  /** Only `i`, `m`, `s` and `u` are accepted, `g`/`y` carry lastIndex state. */
   readonly flags?: string | undefined;
   readonly group?: number | undefined;
 }
@@ -229,7 +229,7 @@ export interface AgentTurnAction {
  * Runs a pre-registered action grant. The grant was written down and confirmed
  * while a person was present; the digest is recomputed at fire time and must
  * match byte for byte. There is deliberately no "compose a shell command now"
- * action — that is the one path with no person in the loop.
+ * action, that is the one path with no person in the loop.
  */
 export interface ActionGrantAction {
   readonly kind: 'action-grant';
@@ -295,10 +295,10 @@ export interface OnExitTriggerSpec {
 export type TriggerSpec = StreamTriggerSpec | ConditionTriggerSpec | OnExitTriggerSpec;
 
 /**
- * The trigger FAMILY's definition — one stream watcher, condition check, or
+ * The trigger FAMILY's definition, one stream watcher, condition check, or
  * on-exit process trigger, supervised by platform/triggers/manager.ts.
  *
- * NOTE — there is a second, unrelated `TriggerDefinition` in
+ * NOTE, there is a second, unrelated `TriggerDefinition` in
  * platform/tools/workflow/index.ts: the workflow tool's `on <event> do <action>`
  * rule inside a workflow FSM. The two live in separate export subpaths and
  * never meet in one import, but BOTH publish fleet nodes under the 'trigger'
@@ -418,7 +418,7 @@ export interface TriggerRecord {
 
 /**
  * A process this daemon launched. A trigger binds only to one of these records,
- * never to an arbitrary existing PID — a stale PID belongs to somebody else's
+ * never to an arbitrary existing PID, a stale PID belongs to somebody else's
  * process by the time we come back.
  */
 export interface TrackedProcessRef {

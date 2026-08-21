@@ -1,20 +1,20 @@
 /**
- * sandbox-escalation.ts — sandbox boundary escalations → the ONE approval broker.
+ * sandbox-escalation.ts, sandbox boundary escalations → the ONE approval broker.
  *
  * STANDING RULE: when the per-command exec sandbox is active and a command needs
  * host access a boundary-safe command would not (network, a host-privilege
  * escalation, a package install that reaches the network), that escalation must
  * reach the human through the SAME approval broker as a permission ask and an
- * MCP elicitation — not a separate, unrendered path and not a silent grant. This
+ * MCP elicitation, not a separate, unrendered path and not a silent grant. This
  * module is the translation seam: it turns a sandbox escalation into a
  * `PermissionPromptRequest` (attributed to the sandbox + the specific
  * escalation) and turns the broker's approve/deny decision back into a boolean.
  * Every surface's existing approval UI then renders it and background bubbling
- * applies — one learned pattern, not five.
+ * applies, one learned pattern, not five.
  *
  * The optional model-judgment tier (see sandbox-judgment.ts) rides here: when
- * enabled it annotates the ask with a proposed verdict, or — only in opt-in
- * auto-approve mode, and only for a `looks-safe` verdict — auto-approves it. It
+ * enabled it annotates the ask with a proposed verdict, or, only in opt-in
+ * auto-approve mode, and only for a `looks-safe` verdict, auto-approves it. It
  * NEVER converts the standing ask into a deny and NEVER touches the frozen
  * catastrophic block.
  */
@@ -112,7 +112,7 @@ export function createSandboxEscalationApprovalHandler(
 
       if (applied.autoApprove) {
         // Opt-in auto-approve of a `looks-safe` verdict. The tier only ever
-        // relaxes a standing ask to an allow — never allow→deny.
+        // relaxes a standing ask to an allow, never allow→deny.
         return { approved: true, judgmentReceipt };
       }
       reasons.push(...applied.annotations);

@@ -71,6 +71,38 @@ function reportUnexpectedConnectionError<TDomain extends string>(
   options.onConnectionError?.(normalizeConnectionError(error, domain), domain);
 }
 
+function listenerFailure(error: unknown, domain: string): Error {
+  const cause = error instanceof Error ? error : new Error(String(error));
+  return new Error(`Domain event listener for "${domain}" threw: ${cause.message}`, { cause });
+}
+
+/**
+ * Invoke one subscriber callback with its exceptions contained.
+ *
+ * The SSE read loop (transport-http's sse-stream.ts) has no catch around its
+ * onEvent call, so an exception escaping here unwinds the read loop and, with
+ * reconnect disabled by default, terminates the feed permanently for every
+ * other subscriber. The WebSocket path contains listener errors the same way in
+ * runtime-events.ts's onMessage. Catching per listener also keeps one bad
+ * subscriber from starving the ones dispatched after it.
+ */
+function dispatchToListener<TValue, TDomain extends string>(
+  listener: (value: TValue) => void,
+  value: TValue,
+  domain: TDomain,
+  options: RemoteDomainEventsOptions<TDomain>,
+): void {
+  try {
+    listener(value);
+  } catch (error) {
+    try {
+      options.onConnectionError?.(listenerFailure(error, domain), domain);
+    } catch {
+      // An onConnectionError that itself throws must not reach the read loop either.
+    }
+  }
+}
+
 function toEventEnvelope<TEvent extends EventLike>(
   envelope: SerializedEventEnvelope<TEvent>,
 ): EventEnvelope<string, TEvent> {
@@ -113,10 +145,10 @@ function createRemoteDomainEventFeed<
       // snapshot Sets before iterating to prevent skipped listeners
       // from concurrent subscribe/unsubscribe during dispatch (project pattern: event-bus-snapshot).
       for (const listener of [...(payloadListeners.get(eventType) ?? [])]) {
-        listener(payload);
+        dispatchToListener(listener, payload, domain, options);
       }
       for (const listener of [...(envelopeListeners.get(eventType) ?? [])]) {
-        listener(typedEnvelope);
+        dispatchToListener(listener, typedEnvelope, domain, options);
       }
     })).then((cleanup) => {
       // when connect() returns a non-function cleanup (void), we have no
@@ -222,8 +254,24 @@ function createFilteredFeed<TEvent extends EventLike>(
     const envelopeListeners = new Set<(envelope: EventEnvelope<string, TEvent>) => void>();
     const unsub = feed.onEnvelope(type as TEvent['type'], (envelope) => {
       if (envelope.sessionId !== sessionId) return;
-      for (const pl of payloadListeners) pl(envelope.payload as TEvent);
-      for (const el of envelopeListeners) el(envelope as EventEnvelope<string, TEvent>);
+      // One throwing subscriber must not skip the siblings sharing this slot.
+      // The first failure is re-thrown so the underlying feed still reports it
+      // (the remote feed contains and routes it via onConnectionError).
+      let failure: unknown;
+      let failed = false;
+      const call = (run: () => void): void => {
+        try {
+          run();
+        } catch (error) {
+          if (!failed) {
+            failed = true;
+            failure = error;
+          }
+        }
+      };
+      for (const pl of payloadListeners) call(() => pl(envelope.payload as TEvent));
+      for (const el of envelopeListeners) call(() => el(envelope as EventEnvelope<string, TEvent>));
+      if (failed) throw failure;
     });
     const shared = { unsub, payloadListeners, envelopeListeners };
     sharedByType.set(type, shared);
@@ -280,13 +328,13 @@ function createFilteredFeed<TEvent extends EventLike>(
  *
  * @example
  * const events = sdk.realtime.viaSse();
- * // Without forSession — manual filter:
+ * // Without forSession, manual filter:
  * events.turn.onEnvelope('STREAM_DELTA', (e) => {
  *   if (e.sessionId !== mySessionId) return;
  *   process.stdout.write(e.payload.content);
  * });
  *
- * // With forSession — no filter needed:
+ * // With forSession, no filter needed:
  * const sessionEvents = forSession(events, mySessionId);
  * sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
  *   process.stdout.write(e.payload.content);

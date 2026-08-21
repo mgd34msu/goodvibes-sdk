@@ -1,5 +1,5 @@
 /**
- * Diagnostics action system — action dispatch bindings for diagnostic entries.
+ * Diagnostics action system, action dispatch bindings for diagnostic entries.
  *
  * Defines the action types, permission model, and dispatcher that allow
  * one-click remediation from the diagnostics UI. Actions are attached to
@@ -40,9 +40,9 @@ export type DiagnosticActionType =
 /**
  * Permission tier required to dispatch an action.
  *
- * - `read` — read-only navigation; no state mutation.
- * - `operator` — state-mutating actions available to operators.
- * - `admin` — destructive or sensitive actions requiring elevated access.
+ * - `read`, read-only navigation; no state mutation.
+ * - `operator`, state-mutating actions available to operators.
+ * - `admin`, destructive or sensitive actions requiring elevated access.
  */
 export type DiagnosticActionPermission = 'read' | 'operator' | 'admin';
 
@@ -191,7 +191,7 @@ export interface HighSeverityDiagnostic {
   readonly summary: string;
   /** Domain this diagnostic originates from. */
   readonly domain: string;
-  /** Severity — always 'error' or 'warn' for high-severity entries. */
+  /** Severity, always 'error' or 'warn' for high-severity entries. */
   readonly severity: 'error' | 'warn';
   /** Epoch ms when this diagnostic was produced. */
   readonly ts: number;
@@ -289,7 +289,7 @@ const DEFAULT_PERMISSION_CHECKER: PermissionChecker = (required) => {
 // ── Dispatcher ────────────────────────────────────────────────────────────────
 
 /**
- * DiagnosticActionDispatcher — executes diagnostic entry actions.
+ * DiagnosticActionDispatcher, executes diagnostic entry actions.
  *
  * Routes incoming DiagnosticAction values to the appropriate handler,
  * performing a permission check before dispatch. All errors are caught
@@ -394,7 +394,7 @@ export class DiagnosticActionDispatcher {
         return this._handleCancelAgent(action.payload);
 
       default: {
-        // Exhaustiveness guard — TypeScript will error if a case is missing.
+        // Exhaustiveness guard, TypeScript will error if a case is missing.
         const exhaustive: never = action;
         return {
           success: false,
@@ -698,7 +698,7 @@ export function diagnosticFromTaskFailure(opts: {
 }): HighSeverityDiagnostic {
   return {
     id: `task-failure:${opts.taskId}`,
-    summary: `Task failed: ${opts.description} — ${opts.error}`,
+    summary: `Task failed: ${opts.description}, ${opts.error}`,
     domain: 'tasks',
     severity: 'error',
     ts: opts.ts,
@@ -726,7 +726,7 @@ export function diagnosticFromAgentFailure(opts: {
 }): HighSeverityDiagnostic {
   return {
     id: `agent-failure:${opts.agentId}`,
-    summary: `Agent failed: ${opts.task} — ${opts.error}`,
+    summary: `Agent failed: ${opts.task}, ${opts.error}`,
     domain: 'agents',
     severity: 'error',
     ts: opts.ts,
@@ -762,7 +762,7 @@ export function diagnosticFromToolContractViolation(opts: {
 
   return {
     id: `tool-contract:${opts.toolName}:${opts.ts}`,
-    summary: `Tool contract violation: ${opts.toolName} — ${opts.message}`,
+    summary: `Tool contract violation: ${opts.toolName}, ${opts.message}`,
     domain: 'tool-contracts',
     severity: 'error',
     ts: opts.ts,

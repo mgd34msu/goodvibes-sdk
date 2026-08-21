@@ -1,5 +1,5 @@
 /**
- * group-membership.ts — the datagrams that get a machine into the group, and
+ * group-membership.ts, the datagrams that get a machine into the group, and
  * the rule that decides whether it may come in.
  *
  * There are exactly two ways in, and they are not variations of each other:
@@ -63,7 +63,7 @@ export const GROUP_MESSAGE_TYPES = {
    * Signed with the REFUSER'S identity key, not the group key. A machine that
    * was away across a removal cannot verify the current group key by
    * definition, but it can verify any member that was on the roster it stored
-   * before it left — which is exactly who is answering. Without this message a
+   * before it left, which is exactly who is answering. Without this message a
    * refused return is simply silence, and the returning machine waits out its
    * whole timeout only to be told, wrongly, that nobody answered.
    */
@@ -127,7 +127,7 @@ export interface AdmissionRequest {
   /** True when the request carried a valid proof of the CURRENT join key. */
   readonly provedCurrentJoinKey: boolean;
   /**
-   * True when the request carried a valid proof of a HISTORICAL key — the
+   * True when the request carried a valid proof of a HISTORICAL key, the
    * node's own long-lived identity key, or a group key from an earlier
    * generation. Both mean the same thing: "this machine was in this group
    * before".
@@ -154,15 +154,15 @@ export interface AdmissionRequest {
  *     a machine that was sold. If an old key ALONE were sufficient, then every
  *     key the group has ever used would remain a permanent way in and rotating
  *     would accomplish nothing. Requiring roster presence means an old key can
- *     only ever re-admit a machine the operator ALREADY decided belongs — it
+ *     only ever re-admit a machine the operator ALREADY decided belongs, it
  *     grants no new membership, so its leak grants no access.
  *
  *     Why it is worth having at all: it is what makes a machine that has been
- *     off for six months — through dozens of group-key rotations and a join-key
- *     change — come back by itself, with the operator doing nothing. Without
+ *     off for six months, through dozens of group-key rotations and a join-key
+ *     change, come back by itself, with the operator doing nothing. Without
  *     it, every power cut on a homelab node ends in an SSH session.
  *
- *  3. A REMOVED node — one with a tombstone — is refused on the historical-key
+ *  3. A REMOVED node, one with a tombstone, is refused on the historical-key
  *     path, always. That is the path a partitioned peer or an old disk takes,
  *     and neither may bring back a machine the operator ejected.
  *
@@ -198,7 +198,7 @@ export function decideAdmission(
   if (!request.provedHistoricalKey) {
     return { admit: false, reason: 'identity-did-not-match' };
   }
-  // Rule 2. The roster check is the whole safety property — see above.
+  // Rule 2. The roster check is the whole safety property, see above.
   if (!isCurrentMember(state, request.nodeId)) {
     return { admit: false, reason: 'not-on-the-roster' };
   }
@@ -209,17 +209,17 @@ export function decideAdmission(
 export function describeRefusal(reason: AdmissionRefusal): string {
   switch (reason) {
     case 'join-key-did-not-match':
-      return 'that join key does not match this group — check it with `cluster key` on a machine already in the group';
+      return 'that join key does not match this group, check it with `cluster key` on a machine already in the group';
     case 'identity-did-not-match':
       return 'this machine could not prove it is the node id it claims';
     case 'not-on-the-roster':
-      return 'this machine is not a member of the group — join it with the current join key';
+      return 'this machine is not a member of the group, join it with the current join key';
     case 'removed-from-the-group':
-      return 'this machine was removed from the group — join it again with the current join key to undo that';
+      return 'this machine was removed from the group, join it again with the current join key to undo that';
     case 'request-is-stale':
-      return 'the request was too old to accept — check that the clocks on both machines are roughly right';
+      return 'the request was too old to accept, check that the clocks on both machines are roughly right';
     case 'group-is-full':
-      return 'the group is at its member limit — remove a machine first with `cluster forget`';
+      return 'the group is at its member limit, remove a machine first with `cluster forget`';
   }
 }
 
@@ -355,7 +355,7 @@ export interface OutOfBandCheck {
  * Returns null when the datagram is not a join-class message at all. A
  * join-class datagram whose signature does not match comes back with
  * `joinKeyProved: false`, and the caller refuses it out loud rather than
- * silently — a mistyped join key is the single most likely thing to go wrong
+ * silently, a mistyped join key is the single most likely thing to go wrong
  * here, and silence would leave the operator with no idea why nothing happened.
  */
 export function checkJoinClassMessage(raw: string, joinVerifier: string): OutOfBandCheck | null {

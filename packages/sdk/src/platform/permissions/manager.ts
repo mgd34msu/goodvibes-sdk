@@ -38,7 +38,7 @@ export type {
 } from './types.js';
 
 /**
- * The slice of config the permission layer reads — `.permissions` and nothing
+ * The slice of config the permission layer reads, `.permissions` and nothing
  * else.
  *
  * `getConfigSnapshot` returns the whole `GoodVibesConfig`, and this alias used
@@ -102,13 +102,13 @@ const TOOL_CATEGORIES: Record<string, PermissionCategory> = {
   goodvibes_context: 'read',
   repo_map: 'read',
   context_accounting: 'read',
-  // write — new tool names
+  // write, new tool names
   write: 'write',
   edit: 'write',
   goodvibes_settings: 'write',
-  // execute — new tool name
+  // execute, new tool name
   exec: 'execute',
-  // delegate — new tool names
+  // delegate, new tool names
   agent: 'delegate',
   delegate: 'delegate',
   workflow: 'delegate',
@@ -258,7 +258,7 @@ export class PermissionManager {
         // Fall through to cache + prompt
       }
     } else {
-      // 4. prompt mode: auto-approve read operations — EXCEPT reads of a
+      // 4. prompt mode: auto-approve read operations, EXCEPT reads of a
       // well-known credential store, which fall through to the ask/prompt path
       // (a shipped default the user can override by approving once).
       if (category === 'read' && !this.isGatedCredentialRead(category, args)) {
@@ -279,7 +279,7 @@ export class PermissionManager {
       ));
     }
 
-    // 5a. Durable user-origin rules — remembered decisions that survive
+    // 5a. Durable user-origin rules, remembered decisions that survive
     // restart. Consulted with the policy-engine flag on OR off, so the tenth
     // `git commit` never re-asks once "git commands" was granted.
     const durable = this.userRuleStore
@@ -350,7 +350,7 @@ export class PermissionManager {
   }
 
   /**
-   * previewReadAccess — non-interactive answer to "would a `read` of `path` be
+   * previewReadAccess, non-interactive answer to "would a `read` of `path` be
    * auto-allowed right now, WITHOUT prompting?" Returns 'allow' when it would be
    * auto-allowed and 'restricted' otherwise (a would-prompt/ask path or an
    * outright deny). Search / list / map tools call this per candidate file so
@@ -358,8 +358,8 @@ export class PermissionManager {
    * an ask/deny (e.g. the shipped credential-read defaults).
    *
    * It runs the SAME layered decision as {@link checkDetailed} up to the ask
-   * boundary — the same mode logic, the same isGatedCredentialRead check (→
-   * matchesShippedCredentialReadPath), and the same policy evaluator + mapping —
+   * boundary, the same mode logic, the same isGatedCredentialRead check (→
+   * matchesShippedCredentialReadPath), and the same policy evaluator + mapping,
    * so it can never drift from a parallel path matcher. It never prompts, caches,
    * records, or fires hooks; it is a pure read of current config + rules.
    */
@@ -393,7 +393,7 @@ export class PermissionManager {
         if (action === 'deny') return 'restricted';
       }
       // No per-tool allow: a read would prompt, which a mid-search filter cannot
-      // do — treat as restricted so no unvetted content is surfaced.
+      // do, treat as restricted so no unvetted content is surfaced.
       return 'restricted';
     }
 
@@ -403,7 +403,7 @@ export class PermissionManager {
   }
 
   /**
-   * getMode — Returns the active session permission mode from config.
+   * getMode, Returns the active session permission mode from config.
    * Surfaces (mode pill) and the orchestrator's standing plan-mode instruction
    * read this to reflect the current mode. Defaults to 'prompt' ("normal").
    */
@@ -412,7 +412,7 @@ export class PermissionManager {
   }
 
   /**
-   * getBackgroundAgentsMode — how background/subagent tool calls consult this
+   * getBackgroundAgentsMode, how background/subagent tool calls consult this
    * manager. 'inherit' (default): apply the session mode exactly like foreground.
    * 'allow-all': background agents are exempt (auto-approve). Read by the agent
    * runner before it gates a background tool call.
@@ -529,8 +529,8 @@ export class PermissionManager {
   /**
    * Hand this evaluation's decision-log records to the OTLP exporter.
    *
-   * `runtime/permissions/decision-otlp.ts` was fully built — attribute mapping,
-   * both record shapes, the POST, the off-by-default guards — and called from
+   * `runtime/permissions/decision-otlp.ts` was fully built, attribute mapping,
+   * both record shapes, the POST, the off-by-default guards, and called from
    * nowhere, so `telemetry.decisionOtlpEnabled` promised an export that could
    * not happen. This is the seam where a decision comes into existence: the
    * evaluator is constructed per evaluation, so its log holds exactly the
@@ -563,9 +563,12 @@ export class PermissionManager {
       if (decision.sourceLayer === 'policy') {
         return this.result(true, false, 'managed_policy', 'managed_policy_allow', analysis);
       }
-      if (decision.sourceLayer === 'safety') {
-        return this.result(false, false, 'safety_check', 'safety_guardrail', analysis);
-      }
+      // No 'safety' case here on purpose: the safety layer only ever produces
+      // `allowed: false` (evaluator.ts returns sourceLayer 'safety' solely from
+      // its `safety.blocked` branch). Mapping an allowed safety decision to a
+      // denial asserted the opposite of what the decision says, so a safety
+      // layer that ever learns to allow falls through to `null` (no opinion,
+      // the caller keeps evaluating) rather than being silently inverted.
       if (decision.sourceLayer === 'mode') {
         return this.result(true, false, 'runtime_mode', 'mode_allow_all', analysis);
       }

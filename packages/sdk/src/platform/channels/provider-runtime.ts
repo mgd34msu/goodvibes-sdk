@@ -39,7 +39,7 @@ export interface ProviderRuntimeStatus {
 /** Options that apply when a surface is (re)started. */
 export interface ProviderRuntimeStartOptions {
   /**
-   * Wall-clock ms to replay ntfy from — the last moment the previous
+   * Wall-clock ms to replay ntfy from, the last moment the previous
    * responsible node was heard from. Null or absent subscribes live.
    */
   readonly replayFromMs?: number | null | undefined;
@@ -90,7 +90,7 @@ export class ChannelProviderRuntimeManager {
    * One live subscription per TOPIC, not one stream carrying all of them.
    *
    * ntfy will happily serve `topic-a,topic-b` down a single connection, and
-   * that is what this used to do — but it makes the three topics one
+   * that is what this used to do, but it makes the three topics one
    * indivisible consumer. Under per-surface leadership each topic is its own
    * surface with its own election, so this node can hold the agent topic while
    * a second machine holds the chat topic, and starting or stopping either has
@@ -112,8 +112,8 @@ export class ChannelProviderRuntimeManager {
    * them out loud.
    *
    * The previous shape skipped a surface whose precondition was unmet by simply
-   * not entering the branch — an enabled Slack with no app token, an enabled
-   * ntfy with no topic — and returned a result array the caller discards. The
+   * not entering the branch, an enabled Slack with no app token, an enabled
+   * ntfy with no topic, and returned a result array the caller discards. The
    * operator's config said "on", the runtime did nothing, and no line anywhere
    * said why. An enabled surface that does not come up is now an ERROR naming
    * the surface, the reason, and the setting to change.
@@ -150,8 +150,8 @@ export class ChannelProviderRuntimeManager {
 
   /**
    * One inbound surface the operator enabled is not up. This is the single most
-   * expensive state the daemon can be in — the config reads correct, the
-   * process is healthy, and messages disappear — so it is stated at ERROR with
+   * expensive state the daemon can be in, the config reads correct, the
+   * process is healthy, and messages disappear, so it is stated at ERROR with
    * the operator's next action in it, not left to a status endpoint nobody
    * queries.
    */
@@ -251,8 +251,8 @@ export class ChannelProviderRuntimeManager {
   /**
    * Drop ONE topic's subscription.
    *
-   * Synchronous underneath — aborting the controller closes the stream before
-   * this returns — which is what lets the RESIGN that follows a handoff be an
+   * Synchronous underneath, aborting the controller closes the stream before
+   * this returns, which is what lets the RESIGN that follows a handoff be an
    * honest claim that this node has stopped reading the topic.
    */
   stopNtfyTopic(topic: string): ProviderRuntimeActionResult {
@@ -360,7 +360,7 @@ export class ChannelProviderRuntimeManager {
   /**
    * Subscribe to every configured topic, each as its own stream.
    *
-   * This is the path taken when leadership is switched off — the node reads
+   * This is the path taken when leadership is switched off, the node reads
    * everything it is configured for. Under leadership the facade registers one
    * gate per topic instead, and each gate calls `startNtfyTopic` for the single
    * topic it won.
@@ -405,7 +405,7 @@ export class ChannelProviderRuntimeManager {
     // On a network where the same install runs on several machines, exactly
     // one of them should emit this line per message id. Two machines emitting
     // it for one id means both were reading the topic, which is the precise
-    // failure leadership exists to prevent — and without this line there is no
+    // failure leadership exists to prevent, and without this line there is no
     // way to tell that from the outside, because the surface pipeline that
     // runs afterwards leaves no per-message trace of the node that fed it.
     // The id and topic are recorded; the message body deliberately is not.
@@ -465,19 +465,19 @@ export class ChannelProviderRuntimeManager {
   }
 
   /**
-   * Which Slack WORKSPACE this node reads — its team id — or null when that
+   * Which Slack WORKSPACE this node reads, its team id, or null when that
    * cannot be established.
    *
    * The identity has to be real. Contesting Slack under a fixed placeholder
    * would make two nodes configured for two DIFFERENT workspaces fight over
    * one election, and the loser's workspace would go unanswered with nothing
-   * to say why — the exact silent starvation per-surface elections exist to
+   * to say why, the exact silent starvation per-surface elections exist to
    * remove.
    *
    * `auth.test` is a plain authenticated REST call: it opens no socket and
    * consumes no events, so the identity is settled BEFORE anything is
    * contested and there is never a window in which this node is reading
-   * without having won. It doubles as the credential check — a token that
+   * without having won. It doubles as the credential check, a token that
    * cannot identify its own workspace cannot read it either.
    */
   async resolveSlackWorkspaceId(): Promise<string | null> {
@@ -497,7 +497,7 @@ export class ChannelProviderRuntimeManager {
   }
 
   /**
-   * Which Discord APPLICATION this node reads — its bot user id — or null when
+   * Which Discord APPLICATION this node reads, its bot user id, or null when
    * that cannot be established. Same argument as the Slack workspace above;
    * `/users/@me` opens no gateway and consumes no events.
    */

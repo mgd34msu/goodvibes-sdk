@@ -5,8 +5,8 @@
  * that are not already registered in the active config.
  *
  * Scan locations (in order):
- *   1. Project .mcp/ directory — looks for mcp.json or index.js/index.ts scripts
- *   2. ~/.goodvibes/<surface>/mcp/ — user-global MCP server definitions
+ *   1. Project .mcp/ directory, looks for mcp.json or index.js/index.ts scripts
+ *   2. ~/.goodvibes/<surface>/mcp/, user-global MCP server definitions
  *   3. Locally installed npx MCP packages (node_modules/.bin/@modelcontextprotocol/*)
  *
  * Returns suggested McpServerConfig[] for servers not already in the registry.
@@ -67,7 +67,6 @@ function deriveServerName(nameOrPath: string): string {
  * Returns the bin path if found, null otherwise.
  */
 async function findLocalNpxBin(cwd: string, packageName: string): Promise<string | null> {
-  // Check project-local node_modules/.bin
   const binName = packageName.replace(/^@[^/]+\//, '');
   const localBin = join(cwd, 'node_modules', '.bin', binName);
   if (await stat(localBin).then(() => true).catch(() => false)) return localBin;
@@ -94,7 +93,7 @@ async function scanProjectMcpDir(roots: McpDiscoveryRoots, knownNames: Set<strin
   try {
     const entries = await readdir(mcpDir);
     for (const entry of entries) {
-      // Skip mcp.json — already read by loadMcpConfig
+      // Skip mcp.json, already read by loadMcpConfig
       if (entry === 'mcp.json') continue;
 
       const entryPath = join(mcpDir, entry);
@@ -225,7 +224,7 @@ export async function scanMcpServers(
     }
   };
 
-  // Run all three scanners in parallel — they are independent
+  // Run all three scanners in parallel, they are independent
   const [projectResults, goodvibesResults, npxResults] = await Promise.all([
     scanProjectMcpDir(roots, registeredNames),
     scanGoodvibesMcpDir(roots, registeredNames),

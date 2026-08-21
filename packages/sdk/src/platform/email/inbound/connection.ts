@@ -2,15 +2,15 @@
  * The real `MailboxConnectionPort`: an `ImapClient` behind the narrow shape
  * the watcher was written against.
  *
- * The watcher deals in `MailboxConnection` — a report, a reader, a wire and a
- * close — because that is everything a listener needs and because a test can
+ * The watcher deals in `MailboxConnection`, a report, a reader, a wire and a
+ * close, because that is everything a listener needs and because a test can
  * build one by hand. This file is the one place that knows those come from an
  * `ImapClient`, `imapConnection()` and `logout()`.
  *
  * It is also where "authenticated" stops standing in for "can read the mail".
  * IMAP publishes no scope list, so before a connection is handed over it reads
  * one existing message and checks what came back against what the server's own
- * BODYSTRUCTURE declared — see `imap-body-probe.ts`. A connection that cannot
+ * BODYSTRUCTURE declared, see `imap-body-probe.ts`. A connection that cannot
  * produce message content raises here instead of becoming a watcher that
  * reports a mailbox as permanently quiet.
  *
@@ -18,7 +18,7 @@
  * socket: a reconnect needs a NEW one, because a destroyed socket cannot be
  * re-opened and handing the same instance to a second `ImapClient` would give
  * it a session whose stream had already failed. The factory is also what keeps
- * `node:tls` out of this module's import graph — production passes
+ * `node:tls` out of this module's import graph, production passes
  * `createImapTlsSocket()` from the sibling node entry, and a test passes a
  * plain loopback socket.
  */
@@ -53,7 +53,7 @@ export interface ImapMailboxConnectionOptions {
  * A failed `open()` destroys the socket it was given before the failure
  * propagates. Without that, every reconnect attempt against a server that
  * refuses at LOGIN leaks a live socket, and a watcher retrying on a five
- * minute ceiling leaks them for as long as the condition lasts — which for a
+ * minute ceiling leaks them for as long as the condition lasts, which for a
  * refused credential is "until somebody notices".
  */
 export function imapMailboxConnectionPort(
@@ -95,12 +95,12 @@ export function imapMailboxConnectionPort(
       // (`EmailService` included), and probing on each of those would spend
       // round trips nobody asked for. Only a long-lived watcher needs the
       // answer up front. Two round trips, once per connection, and both
-      // command forms — see `probeMailboxBody` for why neither is droppable.
+      // command forms, see `probeMailboxBody` for why neither is droppable.
       let bodyCapability: ImapBodyProbe;
       try {
         bodyCapability = await client.probeBodyReadable();
         if (bodyCapability.outcome === 'unreadable') {
-          // This account cannot read message content — either the server
+          // This account cannot read message content, either the server
           // accepted the fetch and returned nothing for a message it declared
           // has content, or it refused and named no condition any classifier
           // can place. No amount of reconnecting grants an account access

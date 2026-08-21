@@ -1,5 +1,5 @@
 /**
- * owner-identity.ts — who "the owner" is, for the one exemption that names him.
+ * owner-identity.ts, who "the owner" is, for the one exemption that names him.
  *
  * ── Why an exemption exists at all ────────────────────────────────────────
  *
@@ -10,7 +10,7 @@
  * what came in, so it trips the check every time.
  *
  * The owner is the trust root, not a third party. Sending him a summary is not
- * an outward effect in the sense the rule guards — it is the assistant
+ * an outward effect in the sense the rule guards, it is the assistant
  * reporting, which is the point of it reading his mail at all.
  *
  * So exactly one exemption: a send whose every recipient is the owner himself.
@@ -32,7 +32,7 @@
  * `email.fromAddress`, `email.username`, and the daemon's own
  * `surfaces.email.from` / `.user` / `.username`.
  *
- * Never from anything a message can influence — not a `From:` header, not
+ * Never from anything a message can influence, not a `From:` header, not
  * `Reply-To:`, not delivery evidence, not the ledger, not the body. A
  * recipient the content chose is the attack, so content is not consulted.
  *
@@ -42,11 +42,11 @@
  * capabilities than sending mail: anything able to rewrite daemon config can
  * also disable this guard outright, repoint the SMTP server, or read the
  * credential store. The exemption is therefore not the weakest link in its own
- * chain — it sits behind a capability that already implies compromise.
+ * chain, it sits behind a capability that already implies compromise.
  *
  * What it does NOT survive: an owner who has never configured a from-address.
  * Then there is no owner identity, `ownerAddresses` is empty, and the
- * exemption cannot fire — the refusal stays. That is the correct failure
+ * exemption cannot fire, the refusal stays. That is the correct failure
  * direction, and it is why this returns a set rather than a best guess.
  */
 
@@ -74,7 +74,7 @@ export function normalizeOwnerAddress(value: string): string {
   return (angled?.[1] ?? trimmed).replace(/^<|>$/g, '').trim().toLowerCase();
 }
 
-/** Looks like an address at all — a bare word is not an identity. */
+/** Looks like an address at all, a bare word is not an identity. */
 function isAddressShaped(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
@@ -92,7 +92,7 @@ export function resolveOwnerAddresses(getConfig: OwnerConfigReader): ReadonlySet
     try {
       raw = getConfig(key);
     } catch {
-      // An absent config section reads as "not configured", never as a throw —
+      // An absent config section reads as "not configured", never as a throw,
       // the same guard the connector uses everywhere else.
       continue;
     }

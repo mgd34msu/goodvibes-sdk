@@ -1,5 +1,5 @@
 /**
- * supervision.ts — the spine all three watcher kinds share.
+ * supervision.ts, the spine all three watcher kinds share.
  *
  * A watcher that fails does two things in order: it walks a backoff ladder so a
  * briefly unreachable source recovers fast while a broken one stops hammering,
@@ -29,7 +29,7 @@ export interface SupervisionPolicy {
 
 /**
  * Parses the comma-separated `watchers.triggers.backoffLadderMs` setting.
- * Falls back to the default ladder rather than throwing — a malformed setting
+ * Falls back to the default ladder rather than throwing, a malformed setting
  * must not take the whole supervisor down.
  */
 export function parseBackoffLadder(raw: string | undefined): readonly number[] {
@@ -110,7 +110,7 @@ export function isCircuitOpen(record: Pick<TriggerRecord, 'state'>): boolean {
 }
 
 /**
- * Explicit operator reset. The breaker never closes on its own — that is the
+ * Explicit operator reset. The breaker never closes on its own, that is the
  * point of parking, and an auto-closing breaker is just a slower retry loop.
  */
 export function resetBreaker(record: TriggerRecord, now: number): TriggerRecord {

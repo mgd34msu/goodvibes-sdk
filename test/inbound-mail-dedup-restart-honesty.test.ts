@@ -6,7 +6,7 @@
  * value "has a correctness floor". None of it was true, and no setting could
  * have made it true: `InboundMailSupervisor.runStart()` builds a brand new
  * `createInboundMailDedup(...)`, so a restart DESTROYS the cache rather than
- * expiring it — and `runStart()` runs on a config change and a cluster-gate
+ * expiring it, and `runStart()` runs on a config change and a cluster-gate
  * handoff as well as on a process restart.
  *
  * The live sequence that made it matter: UID 205 is announced, the daemon's
@@ -18,14 +18,14 @@
  *
  *  1. **What the cache genuinely cannot do.** The first test drives a real
  *     supervisor through a restart and shows the same message handled twice.
- *     It is not a fail-first reproduction of a wrong answer — it is a statement
+ *     It is not a fail-first reproduction of a wrong answer, it is a statement
  *     of an ABSENCE OF CAPABILITY, written down so the false comments cannot
  *     come back. It passes before and after the fix, by construction.
  *
  *  2. **What actually covers the restart.** The rest exercise the mechanism
  *     that does: the intake asks the record store whether this exact message
  *     was already announced, and that store is on disk. The failure direction
- *     is checked as carefully as the success one — anything the store cannot
+ *     is checked as carefully as the success one, anything the store cannot
  *     answer leads to announcing, because §6's ruling is that a duplicate beats
  *     silence.
  */
@@ -158,8 +158,8 @@ describe('the dedup cache does not survive a restart, and no TTL changes that', 
         disclosurePath: join(dir, 'housekeeping.json'),
       }),
       handle: async (message) => {
-        // Only the IMAP variant has a UID — the Gmail one is keyed on
-        // historyId — so the identity is chosen on the discriminant. The old
+        // Only the IMAP variant has a UID, the Gmail one is keyed on
+        // historyId, so the identity is chosen on the discriminant. The old
         // `message.uid ?? 0` read a field that does not exist on half the
         // union, which is a different thing from a UID that is absent.
         const uid = message.source === 'imap' ? message.uid : 0;
@@ -182,7 +182,7 @@ describe('the dedup cache does not survive a restart, and no TTL changes that', 
       await supervisor.stop();
     }
 
-    // Handled again. The claim was not expired — the object holding it was
+    // Handled again. The claim was not expired, the object holding it was
     // replaced. This is the number the three comments said could not happen.
     expect(handled).toHaveLength(2);
   });

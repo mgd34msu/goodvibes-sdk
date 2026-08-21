@@ -33,15 +33,15 @@ export const DEFAULT_DOMAINS: readonly RuntimeEventDomain[] = [
 /**
  * What a client needs to RENDER a turn whose loop it is not running.
  *
- * `DEFAULT_DOMAINS` carries `turn` — the text deltas, the turn lifecycle, and
- * the token usage on `LLM_RESPONSE_RECEIVED` — but it does NOT carry `tools`,
+ * `DEFAULT_DOMAINS` carries `turn`, the text deltas, the turn lifecycle, and
+ * the token usage on `LLM_RESPONSE_RECEIVED`, but it does NOT carry `tools`,
  * which is where `TOOL_RECEIVED`, `TOOL_EXECUTING`, `TOOL_SUCCEEDED` and
  * `TOOL_FAILED` are emitted. A subscriber on the defaults therefore receives
  * everything the model SAID and nothing it DID: the turn renders with its tool
  * calls missing entirely, which reads as an assistant that paused for no
  * reason and then answered.
  *
- * This is `DEFAULT_DOMAINS` plus `tools`, deliberately ADDITIVE — a stream
+ * This is `DEFAULT_DOMAINS` plus `tools`, deliberately ADDITIVE, a stream
  * moved onto it keeps every domain it already delivered and gains the tool
  * frames, so no existing consumer loses an event it was relying on.
  */
@@ -63,8 +63,8 @@ export interface ScopedSessionDelivery {
  *
  * A stream opened at a per-session path must not render another session's turn
  * into that session's transcript. The gateway's `sessionId` option alone has
- * never filtered delivery — it records which session a client is ABOUT, and
- * several streams set it while deliberately watching the whole daemon — so
+ * never filtered delivery, it records which session a client is ABOUT, and
+ * several streams set it while deliberately watching the whole daemon, so
  * scoping is opted into explicitly and resolved here, in one place, rather than
  * being written twice and drifting between live delivery and replay.
  *
@@ -219,13 +219,13 @@ export function pruneDisconnectedClientRecords(
  * did not subscribe to.
  *
  * `replayDomains` MUST be the same null-or-set value the caller registered on the
- * live client (`LiveControlPlaneClient.domains`) — null when the client did NOT
+ * live client (`LiveControlPlaneClient.domains`), null when the client did NOT
  * opt into narrowing (deliver-all, matching live), a `Set` when it did. Do NOT
  * derive this from `options.domains` here: by the time options reaches this
  * function it has already been normalized (empty/undefined domains fall back to
  * DEFAULT_DOMAINS, which excludes e.g. 'permissions'), so re-deriving from it
  * would always look "explicit" and silently narrow every default consumer's
- * replay — the bug this parameter exists to prevent.
+ * replay, the bug this parameter exists to prevent.
  */
 export function replayRecentTraffic(
   recentEvents: readonly ScopedControlPlaneRecentEvent[],
@@ -245,10 +245,10 @@ export function replayRecentTraffic(
 
 /** What a client's stated stream position turned into. */
 export type ControlPlaneReplayOutcome =
-  /** No position was presented — the client is new, so it gets the catch-up window. */
+  /** No position was presented, the client is new, so it gets the catch-up window. */
   | { readonly resume: 'none' }
   /**
-   * The position was found. `replayed` counts the records that sat after it —
+   * The position was found. `replayed` counts the records that sat after it,
    * the replay CANDIDATES. The kind/route/surface/domain filters still apply on
    * top, so a narrowed client may be sent fewer than this; the number says how
    * much history was there, not how much this particular client was owed.
@@ -265,7 +265,7 @@ export type ControlPlaneReplayOutcome =
  *
  * The case worth being explicit about is an id we cannot find. Event ids are
  * random per record, not ordered, so an id that is not in the ring cannot be
- * compared against one that is — there is no "everything after" to compute.
+ * compared against one that is, there is no "everything after" to compute.
  * Treating that as "the client has no position" and re-sending the whole
  * catch-up window is what poisons a live turn: the window still holds the
  * previous turn's `TURN_COMPLETED`, and a consumer that has never seen that

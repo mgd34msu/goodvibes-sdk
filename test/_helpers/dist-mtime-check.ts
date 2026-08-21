@@ -45,18 +45,18 @@ for (const pkg of MONITORED_PACKAGES) {
       stalePackages.push(`${pkg}: dist/index.js (${new Date(distMtime).toISOString()}) is older than src/index.ts (${new Date(srcMtime).toISOString()})`);
     }
   } catch (e) {
-    // dist/ absent is strictly worse than stale — fail loudly
+    // dist/ absent is strictly worse than stale, fail loudly
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') {
-      stalePackages.push(`${pkg}: dist/index.js is MISSING — run \`bun run build\``);
+      stalePackages.push(`${pkg}: dist/index.js is MISSING, run \`bun run build\``);
     } else {
-      stalePackages.push(`${pkg}: stat error — ${(e as Error).message}`);
+      stalePackages.push(`${pkg}: stat error, ${(e as Error).message}`);
     }
   }
 }
 
 if (stalePackages.length > 0) {
   throw new Error(
-    `[dist-mtime-check] Stale dist/ detected — run \`bun run build\` before running these tests:\n` +
+    `[dist-mtime-check] Stale dist/ detected, run \`bun run build\` before running these tests:\n` +
     stalePackages.map((p) => `  ${p}`).join('\n'),
   );
 }

@@ -1,5 +1,5 @@
 /**
- * card-fields.ts — recognising a payment field on any page.
+ * card-fields.ts, recognising a payment field on any page.
  *
  * Lives in security/ rather than in payments/ or browser/ because both need it
  * and neither owns it. The browser's snapshot must suppress a payment field's
@@ -95,7 +95,7 @@ const CARD_NAME_PATTERNS: readonly RegExp[] = [
 export function isCardFieldDescriptor(control: FormControlDescriptor): boolean {
   // Every field is coerced rather than trusted. This runs on data that came
   // back from inside a page, where a missing or oddly-typed property is an
-  // ordinary occurrence — and a throw here would fail the whole snapshot, which
+  // ordinary occurrence, and a throw here would fail the whole snapshot, which
   // is a far worse outcome than misclassifying one control.
   const text = (value: unknown): string => (typeof value === 'string' ? value : '');
   const tag = text(control.tag).toLowerCase();

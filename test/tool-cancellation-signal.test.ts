@@ -27,20 +27,20 @@ describe('exec tool — cooperative cancellation via opts.signal', () => {
 
     const start = Date.now();
     // timeout_ms must stay under PROGRESS_AUTO_THRESHOLD_MS (30s) so this
-    // takes the default foreground path — the only one wired for opts.signal
+    // takes the default foreground path, the only one wired for opts.signal
     // today (runCommandWithProgress/runUntil are explicitly deferred, see
     // the WO report).
     const resultPromise = tool.execute(
       { working_dir: root, commands: [{ cmd: 'sleep 30', timeout_ms: 20_000 }] },
       { signal: controller.signal },
     );
-    // Abort shortly after the process starts — well before `sleep 30` would
+    // Abort shortly after the process starts, well before `sleep 30` would
     // ever return on its own.
     setTimeout(() => controller.abort(), 50);
     const result = await resultPromise;
     const elapsedMs = Date.now() - start;
 
-    // SIGTERM, a 200ms grace period, then SIGKILL — the process must be gone
+    // SIGTERM, a 200ms grace period, then SIGKILL, the process must be gone
     // in well under a second, not the full 30s sleep duration.
     expect(elapsedMs).toBeLessThan(5_000);
     const output = JSON.parse(result.output ?? '{}') as { cancelled?: boolean; timed_out?: boolean };

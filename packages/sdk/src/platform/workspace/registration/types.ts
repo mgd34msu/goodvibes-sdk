@@ -26,7 +26,7 @@ export interface RegisteredWorkspaceRecord {
   /**
    * Which surface/flow wrote this record (e.g. a TUI self-recording, an
    * operator verb, an agent boot stamp). Absent on records written before
-   * provenance existed — honest absence, never back-filled.
+   * provenance existed, honest absence, never back-filled.
    */
   readonly origin?: string;
   /**
@@ -72,7 +72,7 @@ export interface WorkspaceGitMetadata {
    * The absolute top-level of the MAIN worktree the query path's git worktree
    * links to (derived from `git rev-parse --git-common-dir`, NOT from path
    * ancestry). Set only when the path is a LINKED worktree whose main repo lives
-   * elsewhere — so an orchestration-spawned sibling worktree outside the
+   * elsewhere, so an orchestration-spawned sibling worktree outside the
    * registered root still inherits the main repo's registration. Undefined when
    * the path is the main worktree, not a worktree, or not in a git repo.
    */

@@ -1,5 +1,5 @@
 /**
- * client-seam-phone-tool.test.ts — the `phone` tool driving a real device
+ * client-seam-phone-tool.test.ts, the `phone` tool driving a real device
  * runtime through the real verb handlers, with only the phone itself stubbed.
  *
  * ── Why it is built this way ──────────────────────────────────────────────
@@ -7,7 +7,7 @@
  * The one thing that cannot be real in a test is the phone. Everything between
  * the tool and it can be, and is: the device posture runtime, its capability
  * service, its grants ledger, its capture store, and the actual `devices.*`
- * route handlers bound to a catalog. Only the peer transport is stubbed — the
+ * route handlers bound to a catalog. Only the peer transport is stubbed, the
  * same seam the daemon's own capability test stubs, for the same reason.
  *
  * That matters because the interesting assertions are about a boundary a mock
@@ -21,7 +21,7 @@
  * refusals all belong to the runtime, and this drives each of them through the
  * tool to prove the tool reports rather than re-decides. And the line this
  * client draws differently from the in-process tool: a person declining is a
- * successful tool result saying they declined, not a tool error — because a
+ * successful tool result saying they declined, not a tool error, because a
  * model reads a failed call as retryable, and retrying means prompting someone
  * again for the thing they just refused.
  *
@@ -162,7 +162,7 @@ describe('the phone tool reaches a real device runtime over the verbs', () => {
     const payload = await run(h.tool, { action: 'clipboard_read', reason: 'reading the copied link' });
     expect(payload['success']).toBe(true);
     expect(payload['allowed']).toBe(true);
-    // The runtime asked — the tool did not decide anything.
+    // The runtime asked, the tool did not decide anything.
     expect(h.asks).toHaveLength(1);
     // Why it was allowed is stated on every result.
     expect(String(payload['authority'])).not.toBe('');
@@ -186,7 +186,7 @@ describe('the phone tool reaches a real device runtime over the verbs', () => {
     h.approve('always');
     await run(h.tool, { action: 'clipboard_read', reason: 'first' });
     await run(h.tool, { action: 'clipboard_read', reason: 'second' });
-    // One prompt, two uses — the grant lives in the runtime's ledger, which is
+    // One prompt, two uses, the grant lives in the runtime's ledger, which is
     // the whole reason the ledger is not in the surface's process.
     expect(h.asks).toHaveLength(1);
   });

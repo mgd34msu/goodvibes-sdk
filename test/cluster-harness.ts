@@ -1,5 +1,5 @@
 /**
- * cluster-harness.ts — shared rig for the leader-election tests.
+ * cluster-harness.ts, shared rig for the leader-election tests.
  *
  * Not a test file (the runner globs *.test.ts): it builds a world of nodes on
  * one in-memory bus and one fake clock, records every consumer start/stop and
@@ -10,10 +10,10 @@
  * thing the design turns on: a node holding a Telegram token and a node
  * holding only an ntfy topic must contest ntfy and leave Telegram alone. A
  * node's surface list here is exactly what its composition root would have
- * registered — a credential it holds and a consumer it can start.
+ * registered, a credential it holds and a consumer it can start.
  *
  * The ordered log is the point. Most of what these tests assert is not "who
- * won" but "in what order did things happen" — a handoff that starts the
+ * won" but "in what order did things happen", a handoff that starts the
  * successor before the predecessor stopped consuming is the bug, and only an
  * interleaved log can catch it.
  */
@@ -120,7 +120,7 @@ function createWorld(): World {
  * Wrap the memory transport so a send lands in the same ordered log as gates.
  *
  * The surface is logged by its short NAME where the test knows one, resolved
- * from the digest on the datagram — the datagram itself only ever carries the
+ * from the digest on the datagram, the datagram itself only ever carries the
  * digest, which is what `surfaceId is a digest` asserts against.
  */
 function logged(
@@ -152,7 +152,7 @@ interface AddNodeOptions {
   readonly surfaces: readonly string[];
   readonly settings?: Partial<ClusterSettings>;
   /**
-   * Model a consumer that wedges on stop — a long poll whose socket never
+   * Model a consumer that wedges on stop, a long poll whose socket never
    * closes. That surface's transition queue blocks forever, which is exactly
    * what the preemption grace timer exists to survive.
    */
@@ -214,7 +214,7 @@ function registerSurface(world: World, node: TestNode, name: string, stopHangs =
   node.unregister.set(name, unregister);
 }
 
-/** Take a surface away from a node — a credential removed while it runs. */
+/** Take a surface away from a node, a credential removed while it runs. */
 function removeSurface(node: TestNode, name: string): void {
   node.unregister.get(name)?.();
   node.unregister.delete(name);
@@ -231,7 +231,7 @@ async function drain(count: number): Promise<void> {
  *
  * Each wait is RACED against a plain microtask drain rather than awaited
  * outright: a node whose consumer wedges on stop blocks that surface's queue
- * forever, and the rest of the cluster has to keep running — that is the whole
+ * forever, and the rest of the cluster has to keep running, that is the whole
  * reason the preemption grace timer exists. Awaiting such a node would deadlock
  * the test instead of exercising the behavior.
  */

@@ -1,5 +1,5 @@
 /**
- * coverage-gate — aggregate (single-process) coverage ratchet.
+ * coverage-gate, aggregate (single-process) coverage ratchet.
  *
  * Parses Bun's text coverage table ("All files | %Funcs | %Lines") and enforces
  * per-repo floors. Test failures in the single-process run are reported as a
@@ -48,7 +48,7 @@ export function evaluateCoverageGate(output: string, config: Pick<CoverageConfig
   const summary = parseCoverageSummary(output);
   const failCount = parseFailCount(output);
   if (!summary) {
-    return { ok: false, summary: null, failCount, detail: 'no coverage table found in output — did the run crash?' };
+    return { ok: false, summary: null, failCount, detail: 'no coverage table found in output, did the run crash?' };
   }
   const funcsOk = summary.funcsPct >= config.funcsFloor;
   const linesOk = summary.linesPct >= config.linesFloor;

@@ -10,7 +10,7 @@ await import('./refresh-contract-artifacts.ts');
 // refresh-contract-artifacts.ts never touches
 // packages/contracts/src/generated/foundation-client-types.ts (it only
 // regenerates operator-contract/operator-method-ids/peer-contract/
-// peer-endpoint-ids/foundation-metadata) — that file is emitted by
+// peer-endpoint-ids/foundation-metadata), that file is emitted by
 // scripts/export-foundation-artifacts.ts, which is absent from this repo
 // (an unrecoverable-source decision: hand-authored fallback with a
 // mandatory consistency check). Run that check here so `contracts:check`
@@ -33,7 +33,7 @@ await import('./generate-openapi-contract.ts');
 // facade (packages/contracts/src/generated/webui-facade.ts) and the Home
 // Assistant Python client (packages/contracts/artifacts/python/
 // homeassistant_operator_client.py), both emitted from the committed
-// operator-contract.json. Same gate, same drift idiom — a stale generated
+// operator-contract.json. Same gate, same drift idiom, a stale generated
 // consumer layer reddens `contracts:check`.
 const { generateWebuiFacade } = await import('./generate-webui-facade.ts');
 const { generateHomeassistantClient } = await import('./generate-homeassistant-client.ts');
@@ -41,6 +41,6 @@ let consumerDrift = false;
 consumerDrift = generateWebuiFacade({ check: true }) || consumerDrift;
 consumerDrift = generateHomeassistantClient({ check: true }) || consumerDrift;
 if (consumerDrift) {
-  console.error('[contracts:check] generated consumer transport drift — run `bun run refresh:contracts`');
+  console.error('[contracts:check] generated consumer transport drift, run `bun run refresh:contracts`');
   process.exit(1);
 }

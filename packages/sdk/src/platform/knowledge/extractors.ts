@@ -15,7 +15,7 @@ type JsZipModule = typeof import('jszip');
 /**
  * `jszip` is an optionalDependency and the Office extractors are the only
  * things that need it. Reached at use rather than at module init, so an
- * installation without it still builds a daemon binary and still boots one —
+ * installation without it still builds a daemon binary and still boots one,
  * see utils/optional-dependency.ts for what a static import of an optional
  * package does to both. `extractOfficeWithFallback` turns the unavailable case
  * into the plain-text fallback with the reason attached.

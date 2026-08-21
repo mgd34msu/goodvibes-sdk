@@ -5,7 +5,7 @@
  * been left off: `senderDisplay` and `deliveredToAddress`.
  *
  * `record-store.ts` redacted `subject` and `bodyExcerpt` and stated the reason
- * beside the subject — "the subject is persisted alongside the excerpt AND
+ * beside the subject, "the subject is persisted alongside the excerpt AND
  * rendered to the owner in the notice, so it is the same exposure by a
  * different field". That reasoning describes three fields and was applied to
  * one of them:
@@ -27,7 +27,7 @@
  * Also pinned: §11.0's re-clamp hazard. A redaction marker is LONGER than the
  * digits it replaces (`[redacted:security-code]` is twenty-four characters for
  * three), and a `deliveredToAddress` that loses its `@` or exceeds 320
- * characters fails `validateInboundMailRecord` on the next load — which
+ * characters fails `validateInboundMailRecord` on the next load, which
  * discards the WHOLE record. Redacting a field into oblivion would trade an
  * exposure for a disappearance.
  */
@@ -154,7 +154,7 @@ describe('the record still survives its own validator — §11.0\'s re-clamp rul
   test('an address whose redaction outgrows the 320-char bound keeps its @ and stays in bounds', async () => {
     // Growth is real: `cvv 123 ` (8 chars) becomes `cvv [redacted:security-code] `.
     // A head-slice would cut the `@` off and the loader would drop the record
-    // whole — an exposure traded for a disappearance.
+    // whole, an exposure traded for a disappearance.
     const stuffed = `${'cvv 123 '.repeat(37)}@his-catchall.test`;
     expect(stuffed.length).toBeLessThanOrEqual(320);
 

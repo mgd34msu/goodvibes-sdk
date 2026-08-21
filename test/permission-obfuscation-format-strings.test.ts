@@ -6,7 +6,7 @@
  * testing every argument against `/%[0-9a-fA-F]{2}/` denied ordinary formatting
  * commands as "obfuscation detected". These tests pin the narrowed detector.
  *
- * This narrows a false positive only — no new denial class is added.
+ * This narrows a false positive only, no new denial class is added.
  */
 import { describe, expect, test } from 'bun:test';
 import { normalizeCommandWithVerdicts } from '../packages/sdk/src/platform/runtime/permissions/normalization/index.js';
@@ -41,7 +41,7 @@ describe('obfuscation detection — format specifiers are not URL-encoded conten
 describe('obfuscation detection — genuine percent-encoding is still detected', () => {
   // This check reads `node.args`. The tokenizer emits a URL as its own `url`
   // token rather than an argument, so a percent-encoded URL never reaches this
-  // predicate at all — that is unchanged by the narrowing above, and the
+  // predicate at all, that is unchanged by the narrowing above, and the
   // agent-layer check (which reads the raw segment text) is what covers URLs.
   // The cases below are the ones this layer actually sees.
   const flagged: ReadonlyArray<[label: string, command: string]> = [

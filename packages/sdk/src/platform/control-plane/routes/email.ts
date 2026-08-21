@@ -1,5 +1,5 @@
 /**
- * routes/email.ts — the daemon actually serving `email.*`.
+ * routes/email.ts, the daemon actually serving `email.*`.
  *
  * These four methods shipped cataloged with `invokable: false` because the
  * IMAP/SMTP service that could satisfy them lived inside a single product, so
@@ -27,7 +27,7 @@
  *    and the underlying client uses `BODY.PEEK`, so serving them over the wire
  *    cannot mark the owner's mail as read.
  *
- * Mail read through here is attacker-controlled text — anyone who knows the
+ * Mail read through here is attacker-controlled text, anyone who knows the
  * address can put words in front of whatever consumes this. The service
  * records an untrusted ingest for every message it returns; a caller that
  * feeds a body onward is responsible for keeping that provenance attached.
@@ -117,7 +117,7 @@ export interface EmailGatewayDraftResult {
   readonly draftId: string;
   /**
    * The APPENDUID the server assigned, when it advertises UIDPLUS. Absent
-   * otherwise — a server that does not report one has not given us a uid, and
+   * otherwise, a server that does not report one has not given us a uid, and
    * inventing a number a later fetch would not resolve is worse than saying so.
    */
   readonly uid?: number;
@@ -238,7 +238,7 @@ export function createEmailDraftCreateHandler(service: EmailGatewayService): Gat
  * routes/browser-composition.ts), so "read a page, then send mail" is one
  * composition rather than two unrelated acts. In the agent, that composition
  * is REFUSED: an owner turn has a start, so exposure has a scope, and the
- * refusal's fix — take it to the owner — has someone to take it to.
+ * refusal's fix, take it to the owner, has someone to take it to.
  *
  * An unattended daemon has neither. Nothing marks a turn boundary, so a single
  * page read would silently disable outbound mail for the life of the process;
@@ -249,7 +249,7 @@ export function createEmailDraftCreateHandler(service: EmailGatewayService): Gat
  * So the daemon reports instead of hiding: every send made while the ledger
  * holds untrusted exposure carries the origins that produced it and the
  * standing rule, on the send receipt, where a reader and an audit both see it.
- * The engine's own refusals are untouched — a page this daemon read still
+ * The engine's own refusals are untouched, a page this daemon read still
  * cannot cause a form submission, which is the effect page content can reach
  * on its own.
  */
@@ -260,7 +260,7 @@ function untrustedExposureDisclosure(ledger: UntrustedContentLedger): Record<str
     untrustedContent: {
       originsInScope: [...origins],
       rule: UNTRUSTED_CONTENT_RULE,
-      note: 'This process has read content from these sources. The send passed the derivation check — none of its recipient, subject or body repeats what was read — and the provenance travels with the receipt so a reader can still weigh it.',
+      note: 'This process has read content from these sources. The send passed the derivation check, none of its recipient, subject or body repeats what was read, and the provenance travels with the receipt so a reader can still weigh it.',
     },
   };
 }
@@ -278,7 +278,7 @@ function untrustedExposureDisclosure(ledger: UntrustedContentLedger): Record<str
  * The check is on derivation, not exposure, which is what makes strictness
  * affordable: a scheduled report that queries a database and mails a summary
  * derives from nothing anyone wrote at it and proceeds. Disclosure is kept for
- * the sends that do proceed — it stops being the only protection.
+ * the sends that do proceed, it stops being the only protection.
  */
 function refuseTaintedSend(
   ledger: UntrustedContentLedger,
@@ -294,7 +294,7 @@ function refuseTaintedSend(
   // summary that necessarily reuses the words of what came in, so without this
   // the feature is refused in its most ordinary use.
   //
-  // Deliberately narrow: his configured addresses only — not a domain, not a
+  // Deliberately narrow: his configured addresses only, not a domain, not a
   // pattern, and not partial. A send to the owner AND anyone else is not
   // exempt, because naming him first and slipping a second recipient in beside
   // him is exactly how this would be abused. Identity comes from configuration
@@ -337,7 +337,7 @@ export function createEmailSendHandler(
   ledger: UntrustedContentLedger = getProcessUntrustedContentLedger(),
   /**
    * The owner's own addresses, from configuration. Empty disables the
-   * owner-destination exemption rather than widening it — see
+   * owner-destination exemption rather than widening it, see
    * security/owner-identity.ts.
    */
   ownerAddresses: ReadonlySet<string> = new Set(),
@@ -357,7 +357,7 @@ export function createEmailSendHandler(
     const subject = readRequiredString(params.subject, 'subject');
     const body = readRequiredString(params.body, 'body');
     // Before anything leaves the machine: does what is about to leave derive
-    // from what was read? Recipient included — a redirected reply is as much
+    // from what was read? Recipient included, a redirected reply is as much
     // an injection outcome as a rewritten body.
     refuseTaintedSend(ledger, { to, subject, body }, `sending mail to ${to}`, [], ownerAddresses);
     const sent = await service.send({

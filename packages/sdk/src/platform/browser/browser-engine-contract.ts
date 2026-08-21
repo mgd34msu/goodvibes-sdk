@@ -1,5 +1,5 @@
 /**
- * browser-engine-contract.ts — the engine's option/target types, its error, and
+ * browser-engine-contract.ts, the engine's option/target types, its error, and
  * the two pure helpers that neither read nor hold engine state.
  *
  * Split out of browser-engine.ts, which crossed the 800-line cap once the
@@ -10,7 +10,7 @@
  * and `normalizeUrl` is a pure string check.
  *
  * Every public name is re-exported from browser-engine.ts so the
- * `platform/browser` barrel's surface is unchanged — the same convention
+ * `platform/browser` barrel's surface is unchanged, the same convention
  * orchestrator-runner.ts used when its context-window unit moved out.
  */
 import { BrowserSessionError } from './browser-sessions.js';
@@ -44,8 +44,8 @@ export interface BrowserEngineOptions {
    * defaulted: an engine with no port would read pages and label nothing, which
    * is the boundary silently absent rather than a compile error. The
    * implementation is expected to be backed by the process-wide ledger every
-   * other surface that reads stranger-written text also writes to — the email
-   * surface most of all — so "read a page, then send a message" is visible as
+   * other surface that reads stranger-written text also writes to, the email
+   * surface most of all, so "read a page, then send a message" is visible as
    * one composition rather than two unrelated acts.
    */
   readonly untrusted: UntrustedContentPort;
@@ -159,7 +159,7 @@ export function looksLikeCredentialPage(url: string, hasPasswordField: boolean):
  * The message/fix pair for refusing an interactive action on a credential
  * page, or null when the page is not one.
  *
- * `elements` is whatever the last snapshot recorded — a plain `{ role, name }`
+ * `elements` is whatever the last snapshot recorded, a plain `{ role, name }`
  * shape rather than the full `BrowserElementRef`, so this stays a pure
  * function with no dependency on the snapshot module. The engine is the only
  * caller, and it is the one place that knows whether a snapshot exists at all.
@@ -172,13 +172,13 @@ export function credentialPageRefusal(
   const hasPasswordField = elements.some((element) => element.role.toLowerCase() === 'textbox' && /password/i.test(element.name));
   if (!looksLikeCredentialPage(url, hasPasswordField)) return null;
   return {
-    message: `This page looks like a sign-in page (${url}), so the browser layer will not ${action} on it. Automated sign-ins are not supported here — only the account owner can complete one.`,
+    message: `This page looks like a sign-in page (${url}), so the browser layer will not ${action} on it. Automated sign-ins are not supported here, only the account owner can complete one.`,
     fix: `Give the owner this URL to open in their own browser and sign in there: ${url}`,
   };
 }
 
 /**
- * What `launch()` tells the caller happened. Reuse is called out explicitly —
+ * What `launch()` tells the caller happened. Reuse is called out explicitly,
  * only one managed session runs at a time, so a second launch call getting
  * the same session back is a normal outcome, not a silent no-op.
  */

@@ -1,5 +1,5 @@
 /**
- * credentials.set / credentials.delete — writing a credential through the
+ * credentials.set / credentials.delete, writing a credential through the
  * daemon instead of into a client's own secret store.
  *
  * ── The gap this closes ────────────────────────────────────────────────────
@@ -7,7 +7,7 @@
  * `credentials.get` has existed since the config-sharing work: a surface can
  * ask the daemon, over the wire, which credentials are configured and usable.
  * There has never been a way to SET one. Every product wrote secrets through an
- * in-process SecretsManager against its own disk — which works exactly as long
+ * in-process SecretsManager against its own disk, which works exactly as long
  * as the client and the daemon share a filesystem, and produces the platform's
  * oldest recurring failure the moment they do not: a credential pasted into a
  * settings modal reports success, lands in a store the daemon never reads, and
@@ -18,7 +18,7 @@
  * The same four steps the plaintext sweep uses, for the same reason:
  *
  *   1. Derive the secret-store name from the config path
- *      (`daemonSecretKeyFor` — one derivation, platform-wide).
+ *      (`daemonSecretKeyFor`, one derivation, platform-wide).
  *   2. Write the value into the secret store at the scope the ownership rules
  *      resolve (`resolveSecretWriteScope`); a daemon-needed credential goes to
  *      the daemon tier no matter who asked.
@@ -36,14 +36,14 @@
  *
  * The value. Not on success, not in an error, not in a log line. The response
  * names the config key, the secret-store key, the scope it landed in and the
- * reference the config now holds — everything an operator needs to verify the
+ * reference the config now holds, everything an operator needs to verify the
  * write, and nothing that repeats the credential. `credentials.get` remains the
  * only read, and it is secret-free by construction.
  *
  * ── Auth posture ───────────────────────────────────────────────────────────
  *
  * `access: 'admin'` and `write:config`, matching `config.set` and
- * `credentials.get` — a credential write is a config write whose value happens
+ * `credentials.get`, a credential write is a config write whose value happens
  * to be secret, and it must not be reachable by a scoped-down token that was
  * only granted session access. Step-up rides the platform's existing rule
  * rather than a per-verb flag: these are MUTATING calls, so when
@@ -95,7 +95,7 @@ export interface CredentialWriteDeps {
   readonly additionalSecretKeys?: readonly string[] | undefined;
   /**
    * Where the audit line goes. Defaults to the platform logger at info. Never
-   * receives a value — only key names, scope and outcome.
+   * receives a value, only key names, scope and outcome.
    */
   readonly audit?: ((entry: CredentialWriteAuditEntry) => void) | undefined;
 }
@@ -128,7 +128,7 @@ function requireString(value: unknown, field: string): string {
 /**
  * Refuse a key whose value is not credential material.
  *
- * Not politeness — routing. This verb stores its value in the secret store and
+ * Not politeness, routing. This verb stores its value in the secret store and
  * leaves a reference behind, and doing that to an ordinary setting would leave
  * a `goodvibes://secrets/…` string where a number or a boolean belongs, which
  * every reader of that key would then fail to parse. `config.set` is the verb
@@ -165,7 +165,7 @@ function record(deps: CredentialWriteDeps, entry: CredentialWriteAuditEntry): vo
 /**
  * Store a credential for a secret-bearing config key.
  *
- * Returns key names, the resolved scope and the reference now in config — never
+ * Returns key names, the resolved scope and the reference now in config, never
  * the value, and never a value-derived fingerprint either, which is a hash of a
  * short secret and therefore a way to confirm a guess.
  */
@@ -254,7 +254,7 @@ export function createCredentialSetHandler(deps: CredentialWriteDeps): GatewayMe
  * Order matters and is the reverse of the write. Clearing the config first
  * would leave an orphaned secret in the store that nothing points at and
  * nothing reaps; clearing the secret first leaves, for an instant, a reference
- * that resolves to nothing — which every reader already treats as "configured
+ * that resolves to nothing, which every reader already treats as "configured
  * but broken", the honest state for a credential mid-removal.
  *
  * `cleared` is false when there was nothing to remove. That is a miss, not an

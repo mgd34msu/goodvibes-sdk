@@ -11,10 +11,10 @@ import {
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 /**
- * Memory unification — one canonical cross-surface memory store.
+ * Memory unification, one canonical cross-surface memory store.
  *
  * Proves the core outcome under the ruled model (shared canonical path,
- * sequential/owned access — never a naive concurrent shared-file write):
+ * sequential/owned access, never a naive concurrent shared-file write):
  *   1. A record written by one surface recalls from another surface that opens the
  *      SAME canonical path.
  *   2. The fold/migration path folds every legacy per-surface store into the

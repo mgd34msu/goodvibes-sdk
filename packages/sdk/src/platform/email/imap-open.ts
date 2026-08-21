@@ -4,7 +4,7 @@
  *
  * Split out of `imap-client.ts` to keep that file under the repository's
  * per-file line cap, and because these types are what a caller reasons about
- * BEFORE it has a usable client — the failure it has to classify and the
+ * BEFORE it has a usable client, the failure it has to classify and the
  * capability record it has to read.
  */
 
@@ -25,25 +25,25 @@ export const NOT_OPEN_MESSAGE =
  * They are distinct because they call for different responses, and a caller
  * that cannot tell them apart necessarily gets some of them wrong:
  *
- *   - `authentication-rejected` — the credential was REFUSED as a credential,
+ *   - `authentication-rejected`, the credential was REFUSED as a credential,
  *     or could not be put on the wire at all. TERMINAL. Retrying a rejected
  *     password on a backoff loop is how an account gets locked; the operator
  *     has to change something before this can succeed.
- *   - `mailbox-unavailable` — the credential worked and the named mailbox does
+ *   - `mailbox-unavailable`, the credential worked and the named mailbox does
  *     not exist. TERMINAL for the same reason: reconnecting does not create a
  *     folder. Authenticated is not readable, and this is the case that says so.
- *   - `server-unavailable` — the server said no for a reason that is about the
+ *   - `server-unavailable`, the server said no for a reason that is about the
  *     SERVER, not the account: a connection limit, a capacity refusal, a
  *     temporary fault. NOT terminal. This exists because a refusal at the
  *     login step is not necessarily about the login: Gmail answers
  *     `NO [LIMIT] Too many simultaneous connections` right there, and it
  *     clears in seconds. Classifying that as a rejected credential stops a
  *     watcher permanently, and the symptom is a mailbox that looks quiet while
- *     mail piles up behind it — which is the failure this whole capability
+ *     mail piles up behind it, which is the failure this whole capability
  *     exists to end. We reach it routinely on our own account, because
  *     `EmailService` opens a fresh connection per request on top of the one a
  *     watcher holds permanently, and Gmail allows fifteen at once.
- *   - `connection-failed` — the socket, the greeting or the timing. Transient.
+ *   - `connection-failed`, the socket, the greeting or the timing. Transient.
  *
  * When the server gives no response code and its wording is ambiguous, the
  * classification is deliberately the NON-terminal one. The asymmetry is not
@@ -173,8 +173,8 @@ export function classifyServerRefusal(
 /**
  * An `open()` that did not reach a readable mailbox, with the reason named.
  *
- * The message is composed so it still contains the underlying wording — the
- * server's own text where the server gave any — because "IMAP command failed"
+ * The message is composed so it still contains the underlying wording, the
+ * server's own text where the server gave any, because "IMAP command failed"
  * with no further detail is what made these three indistinguishable before.
  */
 export class ImapOpenError extends Error {
@@ -229,11 +229,11 @@ export class ImapOpenError extends Error {
 export interface ImapConnectionReport {
   /**
    * Capability atoms the server volunteered, upper-cased. Empty means it
-   * volunteered none — ask `capabilities()`, which will request them.
+   * volunteered none, ask `capabilities()`, which will request them.
    */
   readonly advertisedCapabilities: readonly string[];
   /**
-   * Whether `IDLE` (RFC 2177) was advertised — as two cases, not three values.
+   * Whether `IDLE` (RFC 2177) was advertised, as two cases, not three values.
    *
    * A tri-state whose third value can be read as falsy looks careful and
    * behaves carelessly: `if (report.supportsIdle)` would compile and would
@@ -257,7 +257,7 @@ export interface ImapConnectionReport {
  * Two cases, not three values: either the server told us (`known: true`, with
  * the answer) or it told us nothing (`known: false`, with no answer to read).
  * `supported` is deliberately absent from the second case rather than present
- * and undefined — present-and-undefined is falsy, which is the exact mistake
+ * and undefined, present-and-undefined is falsy, which is the exact mistake
  * this shape exists to make impossible.
  */
 export type ImapIdleSupport =
@@ -274,9 +274,9 @@ export function idleSupportFrom(capabilities: readonly string[]): ImapIdleSuppor
 export interface ImapIdleDecision {
   readonly supported: boolean;
   /**
-   * `advertised` — the server named IDLE.
-   * `not-advertised` — the server listed its capabilities and IDLE was not one.
-   * `server-would-not-say` — it never listed them, even when asked. Polling is
+   * `advertised`, the server named IDLE.
+   * `not-advertised`, the server listed its capabilities and IDLE was not one.
+   * `server-would-not-say`, it never listed them, even when asked. Polling is
    *   the right fallback, and the reason belongs in the surfaced status so the
    *   owner can see WHY it is polling rather than assume the provider cannot
    *   do better.
@@ -289,7 +289,7 @@ export interface ImapIdleDecision {
  *
  * This is the accessor the watcher goes through. It exists so that "the server
  * said nothing" is answered by a `CAPABILITY` command rather than by a
- * shrug — an unknown resolved into a real answer, or into a named reason for
+ * shrug, an unknown resolved into a real answer, or into a named reason for
  * not having one.
  */
 export async function resolveIdleSupport(
@@ -314,12 +314,12 @@ export async function resolveIdleSupport(
  * `credential-unavailable` sits alongside the three open failures because it
  * is the same fact from one step earlier: there is nothing to sign in with.
  * It is called out separately because its fix is different from a rejected
- * password — the secret is missing rather than wrong.
+ * password, the secret is missing rather than wrong.
  *
  * `bodies-unfetchable` sits alongside them from one step LATER: the credential
  * worked, the mailbox opened, and the server will not hand over what is inside
  * a message. It is deliberately not `mailbox-unavailable` and deliberately not
- * a refused fetch — the server answered, and answered with nothing — because
+ * a refused fetch, the server answered, and answered with nothing, because
  * its remedy is different from both: the account's access rights, not the
  * folder name and not the password.
  */
@@ -358,7 +358,7 @@ export function ownerMessageForFailure(
       return 'No mail password is stored where the daemon reads secrets. Nothing '
         + 'will be read until the secret named by email.passwordRef exists at '
         + 'daemon scope. A credential saved by another surface is not visible '
-        + 'here and is deliberately not searched for — reading one would work on '
+        + 'here and is deliberately not searched for, reading one would work on '
         + 'the machine that saved it and fail everywhere else.';
     case 'authentication-rejected':
       return 'The mail server rejected the sign-in. Nothing will be read until '
@@ -373,11 +373,11 @@ export function ownerMessageForFailure(
     case 'bodies-unfetchable':
       return `This account can sign in and open '${mailbox}' but is not `
         + 'permitted to read message content, so check this account\'s access '
-        + `rights on '${mailbox}' — and where the provider offers a restricted `
+        + `rights on '${mailbox}', and where the provider offers a restricted `
         + 'or metadata-only app password, replace it with one that may read '
         + 'message content.';
     case 'server-unavailable':
-      return 'The mail server refused the connection for now — it reported a '
+      return 'The mail server refused the connection for now, it reported a '
         + 'limit or a fault of its own, not a problem with the account. The '
         + 'usual cause is too many mailbox connections at once. This is retried '
         + 'automatically on a longer backoff; no change is needed unless it '
@@ -392,7 +392,7 @@ export function ownerMessageForFailure(
  * Read the routable notice off a failure, whatever threw it.
  *
  * Structural rather than `instanceof`, so a credential failure raised before
- * any socket exists — in a module this one must not import — is routed by the
+ * any socket exists, in a module this one must not import, is routed by the
  * same path as an open failure.
  */
 export function describeEmailCapabilityFailure(
@@ -466,7 +466,7 @@ export function composeOpenFailure(input: {
     });
   }
 
-  // The server said no. What it said is the authority on what it meant — the
+  // The server said no. What it said is the authority on what it meant, the
   // phase only supplies the fallback, and only when it is not the terminal
   // guess.
   if (serverMessage.startsWith('IMAP command failed:')) {

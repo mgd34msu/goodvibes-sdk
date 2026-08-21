@@ -16,7 +16,7 @@ import { RUNTIME_EVENT_DOMAINS, type RuntimeEventDomain } from '../../events/dom
  * instead of guessing from undocumented behavior.
  *
  * NOTE (One-Platform S1 coordination): new broker signals flow through the SAME
- * `session-update` wire channel automatically because `publishUpdate` is generic — when
+ * `session-update` wire channel automatically because `publishUpdate` is generic, when
  * S1's `sessions.register` flow emits e.g. `session-registered`, only THIS enum needs the
  * added string (the wire channel already carries it). Keep this list aligned with the
  * broker's publishUpdate/publishInputLifecycleEvent call sites.
@@ -99,8 +99,8 @@ const RUNTIME_DOMAIN_DESCRIPTIONS = {
   surfaces: 'Surface registration and health events.',
   knowledge: 'Knowledge ingest, extraction, projection, packet, and job events.',
   workspace: 'Workspace swap lifecycle events (start, complete, refuse).',
-  fleet: 'Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.',
-  config: 'Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value — EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.',
+  fleet: 'Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked), the poll-free counterpart to fleet.snapshot.',
+  config: 'Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value, EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.',
 } satisfies Record<RuntimeEventDomain, string>;
 
 export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] = [
@@ -147,7 +147,7 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
     title: 'Approval Record Update',
     description:
       'Every approval record transition, pushed the moment the broker records it: an ask RAISED (status '
-      + 'pending — this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, '
+      + 'pending, this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, '
       + 'or updated in place (a started fix session stamped onto an accepted offer). The payload is the whole '
       + '`approval` record plus the `createdAt` of the notice, so a subscriber renders the prompt from the '
       + 'event and never needs a follow-up read to draw it. '
@@ -158,7 +158,7 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
       + 'the stream with ?domains=… must include `permissions` to receive it; a client that opted into no '
       + 'domain narrowing receives it as before. '
       + 'The record is the daemon\'s, not the subscriber\'s: several surfaces see the same transition and the '
-      + 'daemon remains the single source of the applied result — a surface renders what the record says '
+      + 'daemon remains the single source of the applied result, a surface renders what the record says '
       + 'rather than what it locally decided.',
     category: 'transport',
     transport: ['sse', 'ws'],
@@ -177,16 +177,16 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
       'Every lifecycle transition of a session whose loop runs INSIDE the daemon: created, attached, '
       + 'detached, turn started, turn ended, terminated, and restored after a restart. The payload '
       + 'carries the whole hosted-session record plus the transition name, the client it is about '
-      + '(attach/detach) and a short detail — so a subscriber renders the change from the event and '
+      + '(attach/detach) and a short detail, so a subscriber renders the change from the event and '
       + 'needs no follow-up read. '
-      + 'This channel is LIFECYCLE ONLY. The turn itself — streamed tokens, tool calls, tool results, '
-      + 'turn transitions — is already on the `turn` and `tools` runtime domains, stamped with the '
+      + 'This channel is LIFECYCLE ONLY. The turn itself, streamed tokens, tool calls, tool results, '
+      + 'turn transitions, is already on the `turn` and `tools` runtime domains, stamped with the '
       + 'hosted session id, because a hosted session runs the ordinary orchestrator; a client watches '
       + 'those exactly as it does for a local session and filters on the id it was handed. A second '
       + 'copy of that stream is not published here. '
       + 'Domain-tagged `session`, so a client narrowing with ?domains=… must include `session` to '
       + 'receive it. The record is the daemon\'s: `effectiveDetachPolicy` says what leaving would do '
-      + 'right now, and `terminatedReason` says why a session ended — a hosted session never simply '
+      + 'right now, and `terminatedReason` says why a session ended, a hosted session never simply '
       + 'disappears.',
     category: 'transport',
     transport: ['sse', 'ws'],
@@ -213,7 +213,7 @@ export const builtinGatewayEventDescriptors: readonly GatewayEventDescriptor[] =
       + 'created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / '
       + 'session-route-attached / session-reopened; steered ⇐ session-input-delivered / '
       + 'session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard '
-      + 'removal — the record is gone, not merely closed). '
+      + 'removal, the record is gone, not merely closed). '
       + 'Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag '
       + 'control.hosted_session_update carries: both are session lifecycle, so a client that '
       + 'narrows with ?domains=… must include `session` to receive EITHER of them, and one that '

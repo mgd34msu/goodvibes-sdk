@@ -1,9 +1,9 @@
 /**
- * device-binding.ts — a configured input device is a HINT, not a guarantee.
+ * device-binding.ts, a configured input device is a HINT, not a guarantee.
  *
  * `voice.wake.inputDevice` was believed. It named a PipeWire node on the owner's
  * Bluetooth headset; the headset was away; the recorder was handed a target that
- * does not exist and the listener captured NOTHING — no error, no status, no
+ * does not exist and the listener captured NOTHING, no error, no status, no
  * frames. Wake detection appeared to be running and was deaf, for as long as the
  * headset stayed off. A pinned device that is absent must never again equal
  * silence.
@@ -27,8 +27,8 @@
  * own audio, which is the most convincing way possible to look like it is
  * listening while never hearing a word anyone says.
  *
- * Enumeration itself is the HOST's job — it is `pactl` on one surface and
- * `navigator.mediaDevices` in a browser tab — so it arrives injected, exactly as
+ * Enumeration itself is the HOST's job, it is `pactl` on one surface and
+ * `navigator.mediaDevices` in a browser tab, so it arrives injected, exactly as
  * the capture opener does. Nothing here imports `node:` anything. The parsers
  * for the two common Linux tools live here anyway ({@link parsePactlSources},
  * {@link parseArecordCaptureDevices}) so every host does not reinvent them, and
@@ -55,7 +55,7 @@ export interface AudioInputDevice {
 /**
  * Lists the input devices this host can see. Host-supplied.
  *
- * Absent — or throwing — means "this host cannot tell", which is treated as
+ * Absent, or throwing, means "this host cannot tell", which is treated as
  * unverifiable rather than as absence: refusing to listen because enumeration
  * is unavailable would break every surface that never had it.
  */
@@ -69,7 +69,7 @@ export type AudioInputBindingState =
   | 'default'
   /** A pin is set and ABSENT; capture follows the default and says so. */
   | 'fallback'
-  /** No real microphone exists on this host — only monitors, or nothing. */
+  /** No real microphone exists on this host, only monitors, or nothing. */
   | 'no-microphone'
   /** No enumerator, or enumeration failed: the pin is used as given, unchecked. */
   | 'unverified';
@@ -103,8 +103,8 @@ function findPinned(devices: readonly AudioInputDevice[], pinned: string): Audio
 function noMicrophoneMessage(devices: readonly AudioInputDevice[], pinned: string): string {
   const monitors = devices.filter((device) => device.isMonitor);
   const head = pinned.trim().length > 0
-    ? `Wake has no microphone — the pinned input device ${pinned} is not connected, and `
-    : 'Wake has no microphone — ';
+    ? `Wake has no microphone, the pinned input device ${pinned} is not connected, and `
+    : 'Wake has no microphone, ';
   if (monitors.length > 0) {
     return `${head}the only input sources on this machine are output monitors `
       + `(${monitors.map((device) => device.label || device.id).join(', ')}), which record what the machine is `
@@ -190,7 +190,7 @@ export async function resolveAudioInputBinding(
       device: '',
       pinned: pin,
       usable: true,
-      message: `The pinned input device ${pin} is an output monitor — it records what this machine is playing, not `
+      message: `The pinned input device ${pin} is an output monitor, it records what this machine is playing, not `
         + 'what anyone says. Listening on the system default input instead.',
     };
   }
@@ -233,7 +233,7 @@ export function parsePactlSources(stdout: string, defaultSourceName?: string | u
  *
  * Device names start at column 0 and their descriptions are indented beneath.
  * ALSA exposes no monitors here, so everything listed is treated as a real
- * capture device — `null` excepted, which discards audio.
+ * capture device, `null` excepted, which discards audio.
  */
 export function parseArecordCaptureDevices(stdout: string): readonly AudioInputDevice[] {
   const devices: AudioInputDevice[] = [];

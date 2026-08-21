@@ -1,18 +1,18 @@
 /**
- * approval-updates.ts — watching approval records over the push channel instead
+ * approval-updates.ts, watching approval records over the push channel instead
  * of asking again every few seconds.
  *
  * ── What this replaces ─────────────────────────────────────────────────────
  *
  * Two consumers polled `approvals.list`: the client raise seam (approval-raiser
  * .ts, every 750ms while a prompt was open) and every surface's approvals panel
- * (a 15s refresh). The 15s one is the worse of the two — an ask raised on a
+ * (a 15s refresh). The 15s one is the worse of the two, an ask raised on a
  * phone took up to fifteen seconds to appear on the terminal that could answer
  * it, and a decision made elsewhere left a stale prompt on screen for the same
  * window.
  *
- * `control.approval_update` already carries every transition of every record —
- * raised, claimed, approved, denied, cancelled, expired — the moment the broker
+ * `control.approval_update` already carries every transition of every record,
+ * raised, claimed, approved, denied, cancelled, expired, the moment the broker
  * records it, with the whole record in the payload so nothing needs a follow-up
  * read. This is the subscription over it.
  *
@@ -20,14 +20,14 @@
  *
  * A stream can be refused (no daemon, a 401, a proxy that will not hold a
  * connection). A permission ask blocks a tool call, so a consumer that cannot
- * open a stream must still work — {@link watchApprovalUpdates} reports failure
+ * open a stream must still work, {@link watchApprovalUpdates} reports failure
  * to the caller instead of throwing, and the caller keeps whatever fallback it
  * had. Push is the fast path, not a new dependency.
  *
  * ── Ownership is unchanged ─────────────────────────────────────────────────
  *
  * The record on the wire is the daemon's. A subscriber renders what the record
- * says, not what it locally believes it asked for — the same parity contract
+ * says, not what it locally believes it asked for, the same parity contract
  * the decide verbs have always documented.
  */
 
@@ -112,7 +112,7 @@ export function approvalUpdateStreamUrl(baseUrl: string): string {
 /**
  * Open a subscription to approval transitions.
  *
- * Resolves to null when the stream could not be opened — the caller keeps
+ * Resolves to null when the stream could not be opened, the caller keeps
  * whatever it was doing before, and the reason is logged once rather than
  * thrown into a keystroke path.
  */

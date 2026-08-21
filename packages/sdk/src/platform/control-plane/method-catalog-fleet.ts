@@ -1,20 +1,20 @@
 /**
  * method-catalog-fleet.ts
  *
- * (see CHANGELOG 1.0.0) — fleet.* + checkpoints.* method descriptors. Split out of
+ * (see CHANGELOG 1.0.0), fleet.* + checkpoints.* method descriptors. Split out of
  * method-catalog-control-core.ts (which was already at the 800-line
  * source-file cap) rather than grown into it, mirroring how
  * method-catalog-control-automation.ts is a sibling split of the same file
  * merged back in by method-catalog-control.ts.
  *
  * Thin read (fleet) / checkpoint-lifecycle verbs over managers the daemon
- * ALREADY holds in-process (ProcessRegistry, WorkspaceCheckpointManager —
+ * ALREADY holds in-process (ProcessRegistry, WorkspaceCheckpointManager,
  * see routes/fleet.ts and routes/checkpoints.ts header comments). No `http`
  * REST path is bound: these are registered with a direct handler on the
  * catalog (RuntimeServices construction, ../runtime/services.ts).
  * `transport: ['ws']` with no `http` binding is the transport-parity gate's
  * (test/transport-parity.test.ts) own sanctioned category for a method
- * dispatchable ONLY via the generic invoke-by-id mechanism — see the
+ * dispatchable ONLY via the generic invoke-by-id mechanism, see the
  * TRANSPORT NOTE above `sessions.search` in method-catalog-control-core.ts
  * for the full rationale (this block predates that comment only in file
  * position, not in reasoning).
@@ -62,7 +62,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'fleet.snapshot',
     title: 'Fleet Snapshot',
-    description: 'Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap) — use fleet.list to page through a larger fleet.',
+    description: 'Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap), use fleet.list to page through a larger fleet.',
     category: 'fleet',
     scopes: ['read:fleet'],
     transport: ['ws'],
@@ -72,7 +72,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'fleet.graph.get',
     title: 'Get Workstream Task Graph',
-    description: 'The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.',
+    description: 'The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this, the fleet/observability idiom. 404 when the workstream is unknown to this daemon.',
     category: 'fleet',
     scopes: ['read:fleet'],
     http: { method: 'GET', path: '/api/fleet/workstreams/{workstreamId}/graph' },
@@ -178,7 +178,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'fleet.attempts.pick',
     title: 'Pick a Best-of-N Winner',
-    description: 'Accept one attempt as the winner of its best-of-N group: its worktree branch is merged through the existing sequential integration lane and every losing sibling\'s worktree is cleaned. The winner must be a held (passed) candidate of a group whose siblings are all terminal — an unknown/not-ready group or an invalid winner is an honest 409, never a partial merge.',
+    description: 'Accept one attempt as the winner of its best-of-N group: its worktree branch is merged through the existing sequential integration lane and every losing sibling\'s worktree is cleaned. The winner must be a held (passed) candidate of a group whose siblings are all terminal, an unknown/not-ready group or an invalid winner is an honest 409, never a partial merge.',
     category: 'fleet',
     scopes: ['write:fleet'],
     dangerous: true,
@@ -189,7 +189,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'fleet.attempts.judge',
     title: 'Propose a Best-of-N Winner (Model Judgment)',
-    description: 'Run the optional judge model over a best-of-N group\'s candidates and PROPOSE a winner, with reasons. The output is explicitly model judgment (scoredBy:"model") — it never auto-picks unless the source item opted into auto-accept; a human still confirms via fleet.attempts.pick. An engine with no judge configured returns an honest 501.',
+    description: 'Run the optional judge model over a best-of-N group\'s candidates and PROPOSE a winner, with reasons. The output is explicitly model judgment (scoredBy:"model"), it never auto-picks unless the source item opted into auto-accept; a human still confirms via fleet.attempts.pick. An engine with no judge configured returns an honest 501.',
     category: 'fleet',
     scopes: ['read:fleet'],
     transport: ['ws'],
@@ -199,7 +199,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'fleet.observed.steer',
     title: 'Steer an Observed Foreign Agent',
-    description: 'Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session\'s own control channel — for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row — observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node\'s observed.steerDrillInOnly), never a bulk affordance.',
+    description: 'Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session\'s own control channel, for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row, observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node\'s observed.steerDrillInOnly), never a bulk affordance.',
     category: 'fleet',
     scopes: ['write:fleet'],
     transport: ['ws'],
@@ -239,7 +239,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'checkpoints.create',
     title: 'Create Workspace Checkpoint',
-    description: 'Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint — no commit, ref, or manifest entry is created in that case.',
+    description: 'Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint, no commit, ref, or manifest entry is created in that case.',
     category: 'checkpoints',
     scopes: ['write:checkpoints'],
     transport: ['ws'],
@@ -259,7 +259,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'checkpoints.restore',
     title: 'Restore Workspace Checkpoint',
-    description: 'DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.restorePreview. An unconfirmed call returns a structured refusal (result:null, refused:true, refusal naming both options) — not an error. An unknown/gc\'d checkpoint id (once confirmed) is an honest 404, not a silent no-op.',
+    description: 'DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.restorePreview. An unconfirmed call returns a structured refusal (result:null, refused:true, refusal naming both options), not an error. An unknown/gc\'d checkpoint id (once confirmed) is an honest 404, not a silent no-op.',
     category: 'checkpoints',
     scopes: ['write:checkpoints'],
     dangerous: true,
@@ -280,7 +280,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'checkpoints.revertHunkPreview',
     title: 'Preview a Single-Hunk Revert',
-    description: 'Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token — an honest "this hunk no longer applies", not an error. No workspace mutation.',
+    description: 'Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token, an honest "this hunk no longer applies", not an error. No workspace mutation.',
     category: 'checkpoints',
     scopes: ['read:checkpoints'],
     transport: ['ws'],
@@ -290,7 +290,7 @@ export const builtinGatewayFleetMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'checkpoints.revertHunk',
     title: 'Revert a Single Hunk',
-    description: 'DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse — a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options) — not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.',
+    description: 'DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse, a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options), not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.',
     category: 'checkpoints',
     scopes: ['write:checkpoints'],
     dangerous: true,

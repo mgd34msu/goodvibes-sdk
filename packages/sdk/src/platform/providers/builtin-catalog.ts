@@ -119,7 +119,7 @@ export function getBuiltinProviderEnvVars(providerId: string): readonly string[]
 /**
  * Reasoning-format audit, 2026-07-25: every entry below without an explicit
  * `reasoningFormat` sends no reasoning parameter at all. That is deliberate,
- * not an oversight — a format is only declared for a backend whose own current
+ * not an oversight, a format is only declared for a backend whose own current
  * documentation was read and cited at the entry. The rest stay silent because
  * guessing a field name earns a provider-side 400 on every turn, which is worse
  * than the setting having no effect. Re-audit an entry by reading its docs and
@@ -248,7 +248,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     modelsAsOf: '2026-07-12',
     id: 'stepfun',
     // StepFun's API reference (platform.stepfun.ai/docs) documents only
-    // chat/completions, files, and audio — no model-listing endpoint
+    // chat/completions, files, and audio, no model-listing endpoint
     // (verified 2026-07-12).
     modelListing: 'none',
     label: 'StepFun',
@@ -323,7 +323,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     modelsAsOf: '2026-07-12',
     id: 'xiaomi',
     // Xiaomi MiMo's docs (mimo.mi.com) document only POST chat/completions
-    // and the Anthropic-style messages endpoint — no model listing
+    // and the Anthropic-style messages endpoint, no model listing
     // (verified 2026-07-12).
     modelListing: 'none',
     label: 'Xiaomi MiMo',
@@ -338,7 +338,7 @@ export const BUILTIN_COMPAT_PROVIDERS: readonly BuiltinCompatDefinition[] = [
     modelsAsOf: '2026-07-12',
     id: 'zai',
     // Z.ai's complete doc index (docs.z.ai/llms.txt) enumerates chat, agents,
-    // audio, image, video, tokenizer, and search endpoints — no model-listing
+    // audio, image, video, tokenizer, and search endpoints, no model-listing
     // endpoint exists on the paas/v4 surface (verified 2026-07-12).
     modelListing: 'none',
     label: 'Z.ai',

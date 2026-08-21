@@ -1,5 +1,5 @@
 /**
- * feature-settings.ts — the binding layer between domain settings keys and the
+ * feature-settings.ts, the binding layer between domain settings keys and the
  * internal capability gates, plus the per-feature settings metadata surfaces
  * render.
  *
@@ -9,13 +9,13 @@
  * namespace: at boot the runtime derives each internal gate's state from its
  * bound settings key, and the live bridge keeps them in sync afterwards.
  * The internal gate registry (flags.ts) and its kill-switch manager survive as
- * implementation detail only — surfaces render FEATURE_SETTINGS, never that
+ * implementation detail only, surfaces render FEATURE_SETTINGS, never that
  * registry as a category of its own.
  *
  * Binding kinds:
  * - boolean : the key's boolean value is the feature's enablement.
  * - enum    : the feature is active while the key's value is in enabledValues
- *             (several features can share one key — e.g. telemetry.otelMode
+ *             (several features can share one key, e.g. telemetry.otelMode
  *             drives both the in-process instrumentation and remote export).
  * - constant: the capability has no separate off switch; its own domain keys
  *             (listed in its settings association) govern runtime activation
@@ -40,7 +40,7 @@ export interface FeatureSettingsBinding {
   readonly enabledValues?: readonly string[];
 }
 
-/** Every capability's enablement binding — one entry per registry id. */
+/** Every capability's enablement binding, one entry per registry id. */
 export const FEATURE_SETTINGS_BINDINGS: readonly FeatureSettingsBinding[] = [
   { featureId: 'permissions-policy-engine', key: 'permissions.engine', kind: 'enum', enabledValues: ['policy-engine'] },
   { featureId: 'permissions-simulation', key: 'permissions.simulation', kind: 'boolean' },
@@ -119,7 +119,7 @@ export function getFeatureSettingsBinding(featureId: string): FeatureSettingsBin
 /**
  * Registry-membership check: composition fails LOUDLY when a gate id it
  * references has no FEATURE_SETTINGS binding. This is the defect class where
- * a never-registered id silently reads as "disabled" forever — no settings
+ * a never-registered id silently reads as "disabled" forever, no settings
  * key could ever turn it on, so the gated capability ships dead. Called by
  * the gates helpers (gates.ts) on every referenced id.
  */
@@ -137,8 +137,8 @@ export function assertFeatureGateIdRegistered(flagId: string, context: string): 
 export function deriveFeatureState(binding: FeatureSettingsBinding, value: unknown): FlagState {
   // A capability that cannot operate never derives to 'enabled', so the gate
   // manager, the gate itself, and any state readout all agree it is not
-  // running. The user's CONFIG value is left untouched — their intent is kept
-  // for the release that wires the capability up — and the surface explains
+  // running. The user's CONFIG value is left untouched, their intent is kept
+  // for the release that wires the capability up, and the surface explains
   // the gap with FeatureSetting.inoperableDetail rather than showing "on" for
   // something that is doing nothing.
   if (FEATURE_FLAG_MAP.get(binding.featureId)?.notOperable !== undefined) return 'disabled';
@@ -175,7 +175,7 @@ export function deriveFeatureStates(
  * feature bound to it. Runtime-toggleable gates apply immediately; startup
  * gates record an honest pending-restart marker (see
  * FeatureFlagManager.applyConfigState). Constant bindings need no
- * subscription — their domain keys act directly on the subsystems that read
+ * subscription, their domain keys act directly on the subsystems that read
  * them.
  */
 export function bindFeatureSettingsBridge(
@@ -231,7 +231,7 @@ export interface FeatureSetting {
   /** Whether a stock configuration has the feature active. */
   readonly defaultEnabled: boolean;
   /**
-   * False when the capability cannot operate in this build at all — the gate
+   * False when the capability cannot operate in this build at all, the gate
    * refuses it regardless of its settings key.
    *
    * A surface rendering `operable: false` must SAY SO where the control is,

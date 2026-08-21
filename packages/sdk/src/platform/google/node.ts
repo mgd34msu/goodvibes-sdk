@@ -2,8 +2,8 @@
  * The machine half of the Google connector.
  *
  * Everything else in this module is policy over injected ports, so the whole
- * connector — consent, token refresh, the Gmail and Calendar calls, the setup
- * flows, the console walkthrough — runs in a test with no filesystem, no
+ * connector, consent, token refresh, the Gmail and Calendar calls, the setup
+ * flows, the console walkthrough, runs in a test with no filesystem, no
  * socket, no subprocess and no browser. That property is only worth anything
  * if the concrete implementations live somewhere separate, and this is that
  * somewhere: four small adapters, each the ONLY place its kind of I/O happens.
@@ -85,10 +85,10 @@ export function createProcessCommandPort(): GoogleCommandPort {
 /**
  * Starts the local HTTP listener the browser redirects back to. Resolves as
  * soon as the server is bound; the first well-formed redirect it receives
- * settles `waitForCode()` — later redirects to the same server are ignored.
+ * settles `waitForCode()`, later redirects to the same server are ignored.
  *
- * The decision about what a given redirect means — is it ours, does it carry a
- * code, did Google report an error — is `classifyLoopbackRedirect`, not
+ * The decision about what a given redirect means, is it ours, does it carry a
+ * code, did Google report an error, is `classifyLoopbackRedirect`, not
  * anything here, so the `state` check that defends this flow is exercised by
  * tests that never bind a port.
  */
@@ -104,7 +104,7 @@ export function startLoopbackListener(options: StartLoopbackListenerOptions): Lo
   });
   // Attach a handler immediately, at creation, so this promise is never
   // reported as an unhandled rejection. `waitForCode` hands back this exact
-  // promise (deliberately not a Promise.race derivative — a promise created
+  // promise (deliberately not a Promise.race derivative, a promise created
   // by racing does not inherit this early handler, and Bun.serve treats an
   // unhandled rejection surfacing during request handling as a fatal error) so
   // callers still observe the real resolution or rejection.

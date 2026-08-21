@@ -3,7 +3,7 @@
 import type { BackgroundProcess } from '../../../tools/shared/process-manager.js';
 import type { ProcessNode, ProcessState } from '../types.js';
 
-/** Last non-empty stdout line — already tracked on the record, no new emission needed. */
+/** Last non-empty stdout line, already tracked on the record, no new emission needed. */
 export function lastOutputLine(stdout: readonly string[]): string | undefined {
   // stdout is an array of chunks; join a bounded tail and take the last
   // non-empty line so the scan stays cheap even for chatty processes.

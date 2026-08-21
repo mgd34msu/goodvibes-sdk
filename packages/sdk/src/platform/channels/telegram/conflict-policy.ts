@@ -1,5 +1,5 @@
 /**
- * conflict-policy.ts — what to do about a Telegram 409, decided as pure data.
+ * conflict-policy.ts, what to do about a Telegram 409, decided as pure data.
  *
  * ── The failure this exists to prevent ────────────────────────────────────
  *
@@ -7,8 +7,8 @@
  * and stayed stopped until a human restarted the daemon; every message in
  * between was unread, with nothing but a log line to say so.
  *
- * Telegram answers `getUpdates` with 409 in two unrelated situations — a
- * registered webhook, and another process long-polling the same token — and
+ * Telegram answers `getUpdates` with 409 in two unrelated situations, a
+ * registered webhook, and another process long-polling the same token, and
  * they used to be told apart by matching the error description against
  * "terminated by other getUpdates", with "webhook" as the fallback for
  * everything else. So a 409 whose description was missing, reworded, or
@@ -30,7 +30,7 @@
  * 2. `deleteWebhook` is idempotent and harmless, so it is attempted whenever a
  *    webhook is even plausible rather than only when it is proven.
  * 3. **Nothing here is ever terminal.** A stuck webhook can be removed by a
- *    person at any moment; a competing consumer is frequently transient — a
+ *    person at any moment; a competing consumer is frequently transient, a
  *    test daemon, a second checkout, a stale process. Both must recover on
  *    their own, so the caller keeps polling either way.
  * 4. Crossing the escalation threshold changes only how LOUDLY it is said.
@@ -69,7 +69,7 @@ export interface TelegramConflictInput {
   readonly description: string;
   /** The url `getWebhookInfo` reported, or null when it reported none. */
   readonly webhookUrl: string | null;
-  /** `cluster.enabled` — whether there is an election to defer to. */
+  /** `cluster.enabled`, whether there is an election to defer to. */
   readonly clustered: boolean;
   /** 1-based count of consecutive conflicts. */
   readonly attempt: number;
@@ -87,7 +87,7 @@ function competingConsumerReason(detail: string, clustered: boolean): string {
 /**
  * Decide what one 409 means and what to do about it.
  *
- * Never returns "give up" — there is no such action, deliberately. See rule 3.
+ * Never returns "give up", there is no such action, deliberately. See rule 3.
  */
 export function classifyTelegramConflict(input: TelegramConflictInput): TelegramConflictAction {
   const detail = input.description.trim() || 'no description';
@@ -120,7 +120,7 @@ export function classifyTelegramConflict(input: TelegramConflictInput): Telegram
     // The description blamed a webhook, Telegram reports none, and repeated
     // deletes changed nothing. This is the exact shape the live failure had,
     // and it is where the old code declared the conflict unrecoverable.
-    const ruledOut = `${detail} — but getWebhookInfo reports no webhook registered, and `
+    const ruledOut = `${detail}, but getWebhookInfo reports no webhook registered, and `
       + `${String(CONFLICT_ESCALATION_ATTEMPTS)} deleteWebhook attempts did not clear it, `
       + 'so this is another process polling the same token rather than a webhook';
     return {

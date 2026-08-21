@@ -17,7 +17,7 @@ import { SSE_HEARTBEAT_INTERVAL_MS, sseIdleTimeoutSeconds } from '../packages/sd
 describe('SSE idle-timeout invariant', () => {
   test('the derived idle timeout always comfortably exceeds the heartbeat interval', () => {
     // Realistic heartbeat intervals (Bun's idleTimeout hard-caps at 255s, so an
-    // interval above ~125s physically cannot be doubled under the cap — the SSE
+    // interval above ~125s physically cannot be doubled under the cap, the SSE
     // heartbeat is a fixed 15s, well inside this range).
     for (const heartbeatMs of [1_000, 5_000, SSE_HEARTBEAT_INTERVAL_MS, 30_000, 60_000, 120_000]) {
       const idleSeconds = sseIdleTimeoutSeconds(heartbeatMs);

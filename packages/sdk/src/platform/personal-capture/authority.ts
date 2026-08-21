@@ -6,8 +6,8 @@
  * ## Why this file exists
  *
  * The owner profile takes a write only from `owner-direct` authority
- * (owner-profile/trust.ts, layer 1). Every other authority — `web-page`,
- * `email`, `channel-message`, `document` — is refused by construction, because
+ * (owner-profile/trust.ts, layer 1). Every other authority, `web-page`,
+ * `email`, `channel-message`, `document`, is refused by construction, because
  * text the owner did not write must never be able to edit what the system
  * believes about him.
  *
@@ -17,7 +17,7 @@
  * pasted a flight itinerary, nothing was recorded, and when he asked whether
  * his trip was being tracked the honest answer was no.
  *
- * The fix is more precision, not a softer tier — which is the standing
+ * The fix is more precision, not a softer tier, which is the standing
  * instruction in security/untrusted-content.ts. The precision available is
  * WHICH channel: the owner has already named, in settings, the channels that
  * reach him privately. A message arriving on one of those is him. A message
@@ -25,16 +25,16 @@
  *
  * ## What counts as one of his channels
  *
- * `profile.ownerChannels` when it is set. When it is empty — the shipped
- * default — the channels fall back to `occasions.nudgeChannel`, which is where
+ * `profile.ownerChannels` when it is set. When it is empty, the shipped
+ * default, the channels fall back to `occasions.nudgeChannel`, which is where
  * the system already pushes his private occasion reminders. A channel trusted
  * to carry "your mother's birthday is coming up" outbound is a channel he has
  * claimed as his own; reading his own words back off it is the same
  * conversation in the other direction. That default is why the reported
  * Telegram case works without anyone editing a setting first.
  *
- * A turn with no channel at all is a local surface — he typed it himself into
- * the TUI, the agent or the web UI — and carries his authority directly.
+ * A turn with no channel at all is a local surface, he typed it himself into
+ * the TUI, the agent or the web UI, and carries his authority directly.
  */
 import { parseChannelDeliveryTarget } from '../channels/delivery/types.js';
 import type { AuthoritySurface } from '../security/untrusted-content.js';
@@ -47,7 +47,7 @@ export interface CaptureChannelIdentity {
   /** The account/chat within that surface, when the record carries one. */
   readonly address?: string | undefined;
   /**
-   * True when the turn came in over a configured route — i.e. it is a channel
+   * True when the turn came in over a configured route, i.e. it is a channel
    * turn whatever else the record says.
    *
    * Without this, a channel message that arrived with its `surfaceKind` missing
@@ -63,7 +63,7 @@ export interface CaptureAuthorityInput {
   readonly channel?: CaptureChannelIdentity | undefined;
   /** `profile.ownerChannels`, verbatim. Empty ⇒ fall back to the nudge channels. */
   readonly ownerChannels?: string | undefined;
-  /** `occasions.nudgeChannel`, verbatim — the channels already reaching him. */
+  /** `occasions.nudgeChannel`, verbatim, the channels already reaching him. */
   readonly nudgeChannels?: string | undefined;
 }
 
@@ -110,7 +110,7 @@ export function parseOwnerChannelList(
 
 /**
  * True when `channel` is named by `list`. An entry with no address matches
- * every address on that surface — `telegram` means "Telegram", not "Telegram
+ * every address on that surface, `telegram` means "Telegram", not "Telegram
  * only when I happen to know the chat id", which is what the shipped
  * `occasions.nudgeChannel` default relies on.
  */
@@ -139,7 +139,7 @@ export function resolveCaptureAuthority(
   const kind = (input.channel?.surfaceKind ?? '').trim();
 
   // A routed turn whose surface did not come through. Refused rather than
-  // waved through as a local surface — see CaptureChannelIdentity.routed.
+  // waved through as a local surface, see CaptureChannelIdentity.routed.
   if (kind.length === 0 && input.channel?.routed === true) {
     return {
       authority: 'channel-message',

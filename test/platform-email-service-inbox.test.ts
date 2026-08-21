@@ -172,7 +172,7 @@ import {
 /**
  * The framing the envelope FETCH comes back in.
  *
- * This file DOES emit `{n}` literals — but only through `sectionReply`, which
+ * This file DOES emit `{n}` literals, but only through `sectionReply`, which
  * serves `readMessage`'s body and header sections. The `listInbox` path, which
  * is `fetchEnvelopes`, wrote bare response lines. A literal elsewhere in the
  * same file is exactly what makes a gap like this survive a reading: the file
@@ -232,8 +232,8 @@ describe(`EmailService.listInbox — ${shape.name}`, () => {
 
     expect(fake.commands.some((line) => line.includes('SEARCH ALL'))).toBe(true);
     expect(result.messages).toHaveLength(3);
-    // Newest first, so UID 3 leads and UID 1 — the only one SEARCH UNSEEN
-    // returned — is last. Reporting all three as unread would be a fabricated
+    // Newest first, so UID 3 leads and UID 1, the only one SEARCH UNSEEN
+    // returned, is last. Reporting all three as unread would be a fabricated
     // flag, so the unseen set is asked for separately.
     expect(result.messages.map((message) => message.uid)).toEqual([3, 2, 1]);
     expect(result.messages.map((message) => message.unread)).toEqual([false, false, true]);

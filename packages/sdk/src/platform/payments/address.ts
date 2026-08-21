@@ -1,18 +1,18 @@
 /**
- * address.ts — the address on the order is the one he stored.
+ * address.ts, the address on the order is the one he stored.
  *
  * ══ The defect this closes ════════════════════════════════════════════════
  *
  * The profile stores a shipping and a billing address and maps them into
  * config, and nothing in the checkout path read either. The card got typed into
- * the page and the delivery address did not — which made the profile
+ * the page and the delivery address did not, which made the profile
  * write-only for the exact purpose it was built for, the same shape of defect
  * as a card store nothing could read.
  *
  * ══ Why the DAEMON supplies the value ═════════════════════════════════════
  *
  * Not for concealment. An address is not a PAN and there is nothing to hide
- * from the model here — it is about the value being AUTHORITATIVE rather than
+ * from the model here, it is about the value being AUTHORITATIVE rather than
  * recalled. A model retyping a postcode from its memory of a conversation three
  * turns ago is a model that can drop a digit, and the failure is silent: the
  * order goes through, the notice looks right, and a parcel goes to a house
@@ -30,7 +30,7 @@
  *
  * ══ Billing is INDEPENDENT of shipping ════════════════════════════════════
  *
- * There is no `payments.billingSameAsShipping` setting in the schema — checked,
+ * There is no `payments.billingSameAsShipping` setting in the schema, checked,
  * not assumed. Absent an explicit instruction from the owner that they are the
  * same, they are two addresses, and a checkout asking for both requires both to
  * be stored. Defaulting billing to shipping would be this module inventing a
@@ -52,7 +52,7 @@ export type AddressFieldName =
   | 'country';
 
 /**
- * Every field except `line2`, which is genuinely optional — plenty of addresses
+ * Every field except `line2`, which is genuinely optional, plenty of addresses
  * have no second line, and requiring one would refuse a valid address.
  */
 const REQUIRED_FIELDS: readonly AddressFieldName[] = [
@@ -117,7 +117,7 @@ export function checkAddress(address: PostalAddress | null, kind: AddressKind): 
     missing,
     reason:
       `Refused: the stored ${kind} address is missing ${missing.join(', ')}. `
-      + 'I will not guess at an address or fill part of one — set the missing fields and ask me again.',
+      + 'I will not guess at an address or fill part of one, set the missing fields and ask me again.',
   };
 }
 
@@ -183,7 +183,7 @@ export async function fillAddresses(
  * The destination, for the message he is being asked to veto.
  *
  * He should be able to see WHERE it is going in the notice, not only what it
- * costs — a correct total to the wrong address is still a wrong order, and this
+ * costs, a correct total to the wrong address is still a wrong order, and this
  * is the last point at which he can catch it.
  *
  * Rendered from the STORED value and sanitized like every other notice field.

@@ -1,4 +1,4 @@
-# GoodVibes SDK — Security Best Practices
+# GoodVibes SDK security best practices
 
 > **Surface scope:** This document describes the security model for the **full surface (Bun runtime)**. Companion consumers (React Native, browser, Hermes) operate through the subset of the security stack exposed via `./react-native`, `./browser`, and related companion-surface barrels. See [Runtime Surfaces](./surfaces.md) for the full surface breakdown.
 
@@ -8,11 +8,11 @@ For vulnerability reporting, see [`SECURITY.md`](../SECURITY.md) at the repo roo
 
 ---
 
-## Authentication Modes
+## Authentication modes
 
 The daemon supports two authentication modes. The active mode is determined by how the daemon is configured at startup.
 
-### Shared Bearer Token
+### Shared bearer token
 
 **When to use:** local development, single-user deployments, service-to-service connections where you control both ends.
 
@@ -35,7 +35,7 @@ function matchesSharedToken(token: string, sharedToken: string): boolean {
 - Suitable only when network access to the daemon is already restricted (localhost, private LAN, VPN)
 - Do not use in multi-user environments
 
-### Session Login
+### Session login
 
 **When to use:** multi-user deployments, web UI access, companion apps where individual identity matters.
 
@@ -61,11 +61,11 @@ The session cookie is set on login and cleared on logout by the daemon's interna
 
 ---
 
-## Token Management
+## Token management
 
-**Public subpath:** `@pellux/goodvibes-sdk/platform/security` — exports `SpawnTokenManager`, `ApiTokenAuditor`, the `TokenScopePolicy` type, `UserAuthManager`, `isOperatorAdmin`, and `authenticateOperatorToken`. (The operator session cookie builders referenced above are internal daemon wiring and are not part of this barrel.)
+**Public subpath:** `@pellux/goodvibes-sdk/platform/security`: exports `SpawnTokenManager`, `ApiTokenAuditor`, the `TokenScopePolicy` type, `UserAuthManager`, `isOperatorAdmin`, and `authenticateOperatorToken`. (The operator session cookie builders referenced above are internal daemon wiring and are not part of this barrel.)
 
-### Spawn Tokens
+### Spawn tokens
 
 `SpawnTokenManager` governs sub-agent spawning. When the orchestrator spawns an agent, it issues a cryptographically signed `SpawnToken`:
 
@@ -92,14 +92,14 @@ Tokens are signed with a per-session HMAC secret. Before spawning, `canSpawn()` 
 
 Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens are rejected even if unexpired.
 
-### API Token Auditing
+### API token auditing
 
 `ApiTokenAuditor` enforces scope minimization and rotation cadence for registered API tokens (LLM provider keys, integration credentials, etc.).
 
 **Two audit dimensions:**
 
-1. **Scope audit** — each token is evaluated against its `TokenScopePolicy`. Tokens holding scopes outside `allowedScopes` are flagged as violations.
-2. **Rotation audit** — tokens are checked against the policy's `rotationCadenceMs` (default: **90 days**). A warning is emitted when `msUntilDue ≤ rotationWarningThresholdMs` (default: **14 days**). When overdue, the token is flagged.
+1. **Scope audit.** Each token is evaluated against its `TokenScopePolicy`. Tokens holding scopes outside `allowedScopes` are flagged as violations.
+2. **Rotation audit.** Tokens are checked against the policy's `rotationCadenceMs` (default: **90 days**). A warning is emitted when `msUntilDue ≤ rotationWarningThresholdMs` (default: **14 days**). When overdue, the token is flagged.
 
 **Managed vs advisory mode:**
 
@@ -130,7 +130,7 @@ const report = auditor.auditAll();
 
 On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to update the registry.
 
-### Token Storage Recommendations
+### Token storage recommendations
 
 - **Companion/operator tokens** are stored at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). The file is written at mode `0600`. Consumers should keep the daemon-home directory outside any project tree.
 - **Session tokens** are in-memory only; they are not persisted to disk.
@@ -139,42 +139,42 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 ---
 
-## Companion App Pairing
+## Companion app pairing
 
 **Public subpath:** `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders).
 
-The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials. For the full companion pairing walkthrough — QR flow, token lifecycle, and client integration — see [Companion App Pairing](./pairing.md).
+The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials. For the full companion pairing walkthrough, QR flow, token lifecycle, and client integration, see [Companion app pairing](./pairing.md).
 
-### Security Properties
+### Security properties
 
-1. **Token generation** — companion tokens are generated with `randomBytes(24)` (192 bits of entropy), base64url-encoded, and prefixed with `gv_`. The `gv_` prefix makes tokens machine-identifiable in logs and secret scanners.
+1. **Token generation.** Companion tokens are generated with `randomBytes(24)` (192 bits of entropy), base64url-encoded, and prefixed with `gv_`. The `gv_` prefix makes tokens machine-identifiable in logs and secret scanners.
 
-2. **Persistence** — tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json`. The file is created at mode `0600`. The token is stable across daemon restarts.
+2. **Persistence.** Tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json`. The file is created at mode `0600`. The token is stable across daemon restarts.
 
-3. **QR payload** — `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface, and password when set) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page); it should not be left visible in shared screen recordings.
+3. **QR payload.** `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface, and password when set) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page). It should not be left visible in shared screen recordings.
 
-4. **No challenge-response** — the pairing is a direct token transfer. Security relies on:
+4. **No challenge-response.** The pairing is a direct token transfer. Security relies on:
    - The QR being displayed only in a trusted environment
    - The transport using TLS when the daemon is accessed over a network
    - The token being revocable: `regenerateCompanionToken({ daemonHomeDir })` instantly invalidates all existing companion connections
 
-5. **Connection** — after scanning, the companion app connects using `transport-http` with `Authorization: Bearer gv_<token>`. The daemon validates this through the normal `authenticateOperatorToken()` path.
+5. **Connection.** After scanning, the companion app connects using `transport-http` with `Authorization: Bearer gv_<token>`. The daemon validates this through the normal `authenticateOperatorToken()` path.
 
-### Token Lifecycle
+### Token lifecycle
 
 | Event | Action |
 |---|---|
-| First QR display | `getOrCreateCompanionToken({ daemonHomeDir })` — generates and persists token |
+| First QR display | `getOrCreateCompanionToken({ daemonHomeDir })`: generates and persists token |
 | Companion connects | Token validated against stored record |
 | Companion disconnects | Token remains valid; reconnection requires no re-scan |
-| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })` — replaces the stored token; existing sessions using the previous token are rejected on next request |
+| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })`: replaces the stored token; existing sessions using the previous token are rejected on next request |
 | Daemon restart | Token is loaded from disk; companion reconnects without re-scan |
 
 ---
 
-## Network Security
+## Network security
 
-### Security Settings Report
+### Security settings report
 
 SDK hosts can expose a user-facing explanation of security-relevant settings with:
 
@@ -207,8 +207,8 @@ CORS policy should be configured at the network edge (reverse proxy) or in the d
 
 The daemon ships two built-in rate limiters:
 
-- **General rate limiter** — 60 requests per minute per IP address (configurable via `rateLimit` option). Applied to all routes except login.
-- **Login rate limiter** — 5 requests per minute per IP address (configurable via `loginRateLimit` option). Applied to `POST /login` to prevent online brute-force attacks.
+- **General rate limiter.** 60 requests per minute per IP address (configurable via `rateLimit` option). Applied to all routes except login.
+- **Login rate limiter.** 5 requests per minute per IP address (configurable via `loginRateLimit` option). Applied to `POST /login` to prevent online brute-force attacks.
 
 For production deployments, place an additional rate-limiting reverse proxy (nginx, Traefik middleware, Cloudflare) **in front of** the daemon to provide a defence-in-depth second layer and to protect against:
 - High-volume denial-of-service via expensive LLM requests that the per-IP limiter alone may not catch
@@ -217,7 +217,7 @@ For production deployments, place an additional rate-limiting reverse proxy (ngi
 
 The reverse proxy rate limiter supplements the daemon's built-in limits; do not remove the built-in limits when adding a proxy.
 
-### Private Host SSRF Protection
+### Private host SSRF protection
 
 The remote fetch proxy has explicit SSRF protection via `resolvePrivateHostFetchOptions()` (in `http-policy.ts`), applied by the media and artifact fetch routes. When a client requests a fetch to a private/internal host, the daemon checks:
 1. `network.remoteFetch.allowPrivateHosts` must be `true` in config (disabled by default)
@@ -225,11 +225,11 @@ The remote fetch proxy has explicit SSRF protection via `resolvePrivateHostFetch
 
 If either check fails, the request is rejected with HTTP 403. Do not enable `allowPrivateHosts` unless your deployment specifically requires internal URL resolution.
 
-The `fetch` tool sanitizes responses by default (`fetch.sanitizeMode`, default `safe-text`). It classifies initial hosts and every redirect target before reading the response, blocks private/link-local/cloud-metadata targets absolutely, gates localhost dev servers behind a one-tap per-project approval (`fetch.allowLocalhost`), applies unknown-host safe-text sanitization, and stops reading once `max_content_length` is reached. Setting `fetch.sanitizeMode` to `none` skips content sanitization only — host blocking is unaffected.
+The `fetch` tool sanitizes responses by default (`fetch.sanitizeMode`, default `safe-text`). It classifies initial hosts and every redirect target before reading the response, blocks private/link-local/cloud-metadata targets absolutely, gates localhost dev servers behind a one-tap per-project approval (`fetch.allowLocalhost`), applies unknown-host safe-text sanitization, and stops reading once `max_content_length` is reached. Setting `fetch.sanitizeMode` to `none` skips content sanitization only. Host blocking is unaffected.
 
 ---
 
-## Secret Management
+## Secret management
 
 **Public subpath:** `@pellux/goodvibes-sdk/platform/config` (daemon embedders).
 
@@ -243,10 +243,10 @@ The `fetch` tool sanitizes responses by default (`fetch.sanitizeMode`, default `
 | `preferred_secure` | Use encrypted storage when available; fall back to plaintext | Default for most deployments |
 | `require_secure` | Reject all plaintext writes; encrypted storage is mandatory | Production / multi-user |
 
-Encrypted stores use AES-256-GCM with a key derived at runtime. Plaintext stores are JSON files — useful for development but not suitable for production.
+Encrypted stores use AES-256-GCM with a key derived at runtime. Plaintext stores are JSON files, useful for development but not suitable for production.
 
 The read order follows a precedence hierarchy:
-1. Environment variables (highest precedence — always checked first)
+1. Environment variables (highest precedence, always checked first)
 2. Project-scoped secure store
 3. Project-scoped plaintext store
 4. User-scoped secure store
@@ -254,9 +254,9 @@ The read order follows a precedence hierarchy:
 
 Use `inspect()` to audit the current storage state: it reports the active policy, whether secure storage is available, how many keys are in each store, and any warnings about plaintext storage of sensitive keys.
 
-### Secret Refs
+### Secret refs
 
-Instead of storing secret values directly in config files, use secret references — a URI (`goodvibes://secrets/...`) or a structured object pointing to an external secret source. The supported sources (`env`, `goodvibes`, `file`, `exec`, `1password`, `bitwarden`/`vaultwarden`, `bitwarden-secrets-manager`/`bws`), the `goodvibes://` URI shape, and resolution semantics (`resolveSecretRef()`) are documented canonically in [Secret References](./secrets.md). The generic `secret://...` scheme is intentionally not accepted.
+Instead of storing secret values directly in config files, use secret references, a URI (`goodvibes://secrets/...`) or a structured object pointing to an external secret source. The supported sources (`env`, `goodvibes`, `file`, `exec`, `1password`, `bitwarden`/`vaultwarden`, `bitwarden-secrets-manager`/`bws`), the `goodvibes://` URI shape, and resolution semantics (`resolveSecretRef()`) are documented canonically in [Secret References](./secrets.md). The generic `secret://...` scheme is intentionally not accepted.
 
 Slack setup uses this same URI mechanism. Direct setup writes Slack token values to the GoodVibes secret store and places references such as `goodvibes://secrets/goodvibes/SLACK_BOT_TOKEN` and `goodvibes://secrets/goodvibes/SLACK_APP_TOKEN` in config. Service-registry based Slack setup can use `primary`, `signingSecret`, `webhookUrl`, and `appToken` fields.
 
@@ -268,9 +268,9 @@ Slack setup uses this same URI mechanism. Direct setup writes Slack token values
 
 ---
 
-## Permission System
+## Permission system
 
-**Public subpath:** `@pellux/goodvibes-sdk/platform/runtime` — use the `security.*` namespace for policy simulation and signed policy bundles. Tool-execution permission checks remain daemon-host wiring.
+**Public subpath:** `@pellux/goodvibes-sdk/platform/runtime`: use the `security.*` namespace for policy simulation and signed policy bundles. Tool-execution permission checks remain daemon-host wiring.
 
 Every tool call goes through the `PermissionManager` before execution.
 
@@ -283,7 +283,7 @@ Every tool call goes through the `PermissionManager` before execution.
 | `execute` | Shell execution, process spawning | `bash`, `exec`, `run_script` |
 | `delegate` | Agent spawning, ACP tasks | `precision_agent`, delegate tools |
 
-### Risk Levels
+### Risk levels
 
 `analyzePermissionRequest()` classifies each tool call:
 
@@ -296,7 +296,7 @@ Every tool call goes through the `PermissionManager` before execution.
 
 The analyzer detects inline secrets in command arguments using pattern matching (`SECRET_NAME_PATTERN`, `INLINE_SECRET_PATTERN`) and flags them as critical risk.
 
-### Decision Sources
+### Decision sources
 
 Permission decisions flow through a layered policy stack:
 
@@ -311,7 +311,7 @@ Permission decisions flow through a layered policy stack:
 
 `checkDetailed()` returns a `PermissionCheckResult` with `approved: boolean`, `persisted: boolean` (whether to cache for session), `sourceLayer`, `reasonCode`, and the full `analysis`.
 
-### Auto-Approve Policies
+### Auto-approve policies
 
 When `behavior.autoApprove: true` is set in config (default `false`), all tool calls are approved without prompting; the decision is reported with `sourceLayer: config_policy` and `reasonCode: config_allow`. The distinct `permissions.mode: 'allow-all'` setting also approves every call, but reports `reasonCode: mode_allow_all`. This is appropriate for headless automation runs. For interactive use, leave this disabled and configure explicit per-tool permissions instead:
 
@@ -327,28 +327,28 @@ permissions:
 
 ---
 
-## Daemon Security Hardening
+## Daemon security hardening
 
-### Port Binding
+### Port binding
 
 By default, the daemon binds to `localhost` only. If you need network access, bind to a specific interface rather than `0.0.0.0` unless you have a firewall or reverse proxy handling ingress. Exposing the daemon port directly to the internet without TLS and rate limiting is not supported.
 
-### Authentication Requirement
+### Authentication requirement
 
 Always configure either a shared token or session auth before exposing the daemon to any network beyond localhost. A daemon with no auth configured accepts all requests.
 
-### Admin vs User Roles
+### Admin vs user roles
 
 - **Admin principals** (shared-token requests, or session users with the `admin` role): full access to all routes including control plane, user management, and config mutation
 - **Non-admin principals**: access to conversational and operational routes only; admin-gated routes return 403
 
 When creating user accounts with `UserAuthManager.addUser()`, the default role is `['admin']`. For least-privilege companion or integration accounts, pass a custom role array that excludes `admin`.
 
-### Principal Kinds and Scopes
+### Principal kinds and scopes
 
 The `AuthenticatedPrincipal` type carries a `principalKind` (`user` | `bot` | `service` | `token`) and a `scopes` array. Route handlers use `buildMissingScopeBody()` to enforce required scopes before processing a request. Scope violations return a structured error with `requiredScopes`, `grantedScopes`, and `missingScopes` fields.
 
-### Bootstrap Credential File
+### Bootstrap credential file
 
 **Note:** The bootstrap credential file is written internally during first-boot bootstrap and by `rotatePassword('admin', …)`; the only public `UserAuthManager` method that touches it directly is `clearBootstrapCredentialFile()` (accessed as `authManager.clearBootstrapCredentialFile()`). The `UserAuthManager` class is importable from `@pellux/goodvibes-sdk/platform/security`; host code reaches the configured, operational instance through daemon/runtime composition rather than instantiating it ad hoc.
 
@@ -374,7 +374,7 @@ This file is an **output**, not an authentication input. The runtime reads it on
 
 #### Drift detection
 
-Every time `UserAuthManager` is constructed (daemon startup), `detectBootstrapCredentialDrift()` runs automatically when operating in file-backed mode. It reads the bootstrap file and verifies that the stored password still matches the hash in `auth-users.json`. If they have drifted — for example because someone manually edited the file — a `warn`-level log is emitted:
+Every time `UserAuthManager` is constructed (daemon startup), `detectBootstrapCredentialDrift()` runs automatically when operating in file-backed mode. It reads the bootstrap file and verifies that the stored password still matches the hash in `auth-users.json`. If they have drifted, for example because someone manually edited the file, a `warn`-level log is emitted:
 
 ```
 Bootstrap credential file password does not match the stored hash; /login with this password will fail.
@@ -414,7 +414,7 @@ Drift detection fires only on file-backed instances; test configs that pass expl
 |---|---|
 | Bootstrap file deleted before first login | Re-bootstrap by deleting both `auth-bootstrap.txt` **and** `auth-users.json`; both files are regenerated on next start |
 | `auth-users.json` deleted while `auth-bootstrap.txt` still exists | Daemon re-bootstraps with a new password; the previous bootstrap file becomes stale. Drift detection will warn on next start |
-| Both files deleted | Clean re-bootstrap — a new admin account and new bootstrap file are created. All existing sessions are invalidated (sessions are in-memory) |
+| Both files deleted | Clean re-bootstrap: a new admin account and new bootstrap file are created. All existing sessions are invalidated (sessions are in-memory) |
 | Bootstrap file manually edited | Password mismatch; `/login` will reject the edited password. Drift detection warns on next startup. Fix by calling `rotatePassword()` to bring both files back in sync |
 
 There is no recovery path for a forgotten admin password beyond deleting both files to trigger a re-bootstrap.
@@ -426,7 +426,7 @@ There is no recovery path for a forgotten admin password beyond deleting both fi
 - Do not leave the file present after first login. A stale bootstrap file is a standing credential that grants admin access to any process running as the same OS user.
 - The bootstrap file path should be added to `.gitignore` and `.dockerignore` as a matter of policy, even though it lives outside the project root by convention.
 
-### Logging Guidance
+### Logging guidance
 
 - Token values, passwords, and secret values must never appear in log output
 - The `ApiTokenAuditor` logs token IDs and labels, never the secret value itself

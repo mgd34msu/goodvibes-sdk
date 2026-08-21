@@ -3,7 +3,7 @@
  *
  * This module is the model-decomposition counterpart to the deterministic
  * heuristic path in `plan-proposal.ts`. Given a goal, it drives a bounded,
- * READ-ONLY planning agent (through the injected `DecompositionRunner` seam —
+ * READ-ONLY planning agent (through the injected `DecompositionRunner` seam,
  * this module never imports the agent machinery, so it stays in `core` and is
  * fully unit-testable with a stubbed runner), parses and STRICTLY validates
  * the agent's structured output, and produces a `PlanProposal` tagged with
@@ -13,14 +13,14 @@
  * or output that is still malformed after ONE repair attempt all fall back to
  * the existing heuristic `singleItemProposal` path, tagged
  * `decomposedBy: 'heuristic'` with a `fallbackReason`. The heuristic path is
- * reused verbatim — `singleItemProposal`/`assemblePlanProposal` are never
- * modified — so their existing byte-for-byte test expectations are preserved;
+ * reused verbatim, `singleItemProposal`/`assemblePlanProposal` are never
+ * modified, so their existing byte-for-byte test expectations are preserved;
  * provenance is layered on afterward.
  *
  * The module NEVER performs surgery on agent output to force it to validate:
  * a proposal is accepted only when `assemblePlanProposal` reports ZERO issues
  * (no dangling dependency, no dependency cycle, no unresolved phase). Anything
- * short of that is one repair attempt and then an honest fallback — never a
+ * short of that is one repair attempt and then an honest fallback, never a
  * silent edit that drops or rewrites the agent's work items.
  */
 
@@ -39,7 +39,7 @@ import {
 // The agent output contract (the JSON a planning agent must emit)
 // ---------------------------------------------------------------------------
 
-/** A phase in the agent's decomposition. Optional across the contract — items
+/** A phase in the agent's decomposition. Optional across the contract, items
  *  may share an implicit single phase. */
 export interface DecompositionAgentPhase {
   title: string;
@@ -51,7 +51,7 @@ export interface DecompositionAgentPhase {
  *
  * `ordinal` fixes a stable execution order independent of array position.
  * `dependsOn` entries may be either other items' titles or their ordinals
- * (as a number or numeric string) — both are resolved to titles before the
+ * (as a number or numeric string), both are resolved to titles before the
  * proposal is assembled.
  */
 export interface DecompositionAgentItem {
@@ -103,10 +103,10 @@ export interface DecompositionRunnerRequest {
 
 /**
  * Terminal status of a planning-agent run.
- * - `completed` — the agent finished and produced final output text.
- * - `cancelled` — the run was stopped: an external kill, the wall-clock
+ * - `completed`, the agent finished and produced final output text.
+ * - `cancelled`, the run was stopped: an external kill, the wall-clock
  *   timeout firing, or the token ceiling being crossed all collapse to this.
- * - `failed`    — the agent could not be spawned or errored mid-run.
+ * - `failed`   , the agent could not be spawned or errored mid-run.
  */
 export type DecompositionRunStatus = 'completed' | 'cancelled' | 'failed';
 
@@ -304,7 +304,7 @@ const DEFAULT_PHASE_TITLE = 'Execute';
  * Map a validated `DecompositionAgentOutput` into the `RawDecomposition` shape
  * `assemblePlanProposal` consumes. Items are ordered by `ordinal` (stable on
  * ties). Every referenced phase is materialized so the assembler never has to
- * synthesize an "Unphased" bucket — an unresolved phase from here would be a
+ * synthesize an "Unphased" bucket, an unresolved phase from here would be a
  * real bug, not agent sloppiness. Ordinal-based dependency references are
  * resolved to titles so the assembler's title resolver handles them uniformly.
  */
@@ -415,7 +415,7 @@ export function buildPlannerSystemPrompt(): string {
     '}',
     '',
     'Rules: dependencies must reference real items and must be acyclic. Every brief must be',
-    'non-empty. Keep the decomposition honest — if the goal is genuinely a single unit of work,',
+    'non-empty. Keep the decomposition honest, if the goal is genuinely a single unit of work,',
     'return exactly one item.',
   ].join('\n');
 }
@@ -546,14 +546,14 @@ export async function decomposeGoal(
   if (first.ok && first.raw) {
     const { proposal, issues } = assemblePlanProposal(request.goal, gate.strategy, first.raw);
     if (issues.length === 0) return accept(proposal, issues, false);
-    // Not clean — fall through to a single repair with the assembler's issues.
+    // Not clean, fall through to a single repair with the assembler's issues.
     const repairErrors = issues.map((i) => i.message);
     const repaired = await tryRepair(repairErrors);
     if (repaired) return repaired;
     return heuristicResult({ kind: 'fallback', reason: `invalid agent decomposition after repair: ${issues.map((i) => i.kind).join(', ')}`, usage: lastUsage, elapsedMs: totalElapsedMs });
   }
 
-  // Malformed structure — one repair attempt with the parser's errors.
+  // Malformed structure, one repair attempt with the parser's errors.
   const repaired = await tryRepair(first.errors);
   if (repaired) return repaired;
   return heuristicResult({ kind: 'fallback', reason: `malformed agent output after repair: ${first.errors.slice(0, 3).join('; ')}`, usage: lastUsage, elapsedMs: totalElapsedMs });

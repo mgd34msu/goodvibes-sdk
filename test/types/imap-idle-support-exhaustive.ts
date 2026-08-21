@@ -3,12 +3,12 @@
  * "the server does not support IDLE".
  *
  * The connection report used to carry `supportsIdle: boolean | null`, and the
- * distinction it was drawing is a real one — a server that never listed its
+ * distinction it was drawing is a real one, a server that never listed its
  * capabilities has not told us it lacks IDLE. But a tri-state whose third
  * value is falsy is worse than a boolean, because it looks careful and behaves
  * carelessly: `if (report.supportsIdle)` compiled, and quietly meant "poll
  * forever against a server that supports push". The mistake is invisible at the
- * call site and produces no error anywhere — the watcher simply never uses the
+ * call site and produces no error anywhere, the watcher simply never uses the
  * capability it has.
  *
  * `ImapIdleSupport` closes that off structurally rather than by documentation.
@@ -28,7 +28,7 @@ import type {
 
 declare const report: ImapConnectionReport;
 
-// The unknown case has no `supported` to read AT ALL — not a `supported` that
+// The unknown case has no `supported` to read AT ALL, not a `supported` that
 // is present and undefined, which would be falsy and would make the truthiness
 // test below compile and silently mean "poll forever". This is the whole
 // point, so it is pinned as a truthiness read rather than an assignment: an
@@ -43,7 +43,7 @@ export function theMistake(): string {
 // case rather than a falsy value.
 export function describeIdle(support: ImapIdleSupport): string {
   if (!support.known) {
-    return 'the server did not say — ask with resolveIdleSupport()';
+    return 'the server did not say, ask with resolveIdleSupport()';
   }
   return support.supported ? 'IDLE is advertised' : 'IDLE is not advertised';
 }

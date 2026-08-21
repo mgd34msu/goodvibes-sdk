@@ -37,7 +37,7 @@ interface DiskFormat {
 }
 
 /**
- * ProjectIndex — In-memory project file index with token counts.
+ * ProjectIndex, In-memory project file index with token counts.
  *
  * Singleton per process. Loaded at startup from disk in the background.
  * Mutations are debounced: flush happens 5 seconds after last write.
@@ -214,20 +214,18 @@ export class ProjectIndex {
    * @param newBaseDir - Absolute path to the new project root.
    */
   async reroot(newBaseDir: string): Promise<void> {
-    // Step 1: flush pending writes to the current location.
     if (this.flushTimer !== null) {
       clearTimeout(this.flushTimer);
       this.flushTimer = null;
     }
     await this.forceFlush();
-    // Step 2: reset state and re-point to new directory
     this.projectRoot = newBaseDir;
     this.baseDir = newBaseDir;
     this.indexPath = join(newBaseDir, '.goodvibes', 'project-index.json');
     this.files = new Map();
     this.loaded = false;
     this.createdAt = new Date().toISOString();
-    // Step 3: load existing index at new location (no-op if not present)
+    // Load the existing index at the new location. A no-op if none exists yet.
     await this.load();
   }
 

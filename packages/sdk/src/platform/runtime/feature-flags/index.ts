@@ -1,5 +1,5 @@
 /**
- * Capability gates and per-feature settings metadata — barrel exports and factory.
+ * Capability gates and per-feature settings metadata, barrel exports and factory.
  *
  * Surfaces render FEATURE_SETTINGS: every platform capability as a first-class
  * domain setting (enablement key, option shapes, real descriptions). The gate

@@ -1,12 +1,12 @@
 /**
- * cross-process-lock.ts — a file-based mutual-exclusion lock for a single
+ * cross-process-lock.ts, a file-based mutual-exclusion lock for a single
  * directory, shared by every process that touches it.
  *
  * WorkspaceCheckpointManager's `withLock` (manager.ts) is an in-process
  * promise chain: it serializes concurrent operations WITHIN one process, but
  * two separate processes sharing the same checkpoint directory (e.g. a
  * daemon and a CLI invocation, or two daemon instances pointed at the same
- * workspace) have no in-process chain in common — their `git add -A` /
+ * workspace) have no in-process chain in common, their `git add -A` /
  * `read-tree --reset` / `checkout-index` calls can interleave and corrupt the
  * shared side-repo index. This module is the cross-process half: an
  * advisory lock file acquired with `O_CREAT|O_EXCL` (atomic create-if-absent
@@ -26,7 +26,7 @@
  *     descriptor open and touches its mtime on a timer (unref'd, so it never
  *     holds a process open) for as long as it holds the lock. Age-based
  *     staleness therefore measures "nobody has been alive at this lock since
- *     `staleMs`", not "this operation has been running a while" — a
+ *     `staleMs`", not "this operation has been running a while", a
  *     legitimately long operation (a large first snapshot, a slow restore)
  *     can no longer have its lock stolen out from under it mid-flight.
  *
@@ -35,9 +35,9 @@
  *     two waiters both unlink (the second one deleting the first's brand-new
  *     lock, leaving two holders), and the moment between the unlink and the
  *     create is a gap in which any third waiter's plain create succeeds. So
- *     takeover is (a) serialized by a short-lived takeover ticket —
+ *     takeover is (a) serialized by a short-lived takeover ticket,
  *     `<lock>.takeover`, itself an O_CREAT|O_EXCL file, so exactly one
- *     process performs a takeover at a time — and (b) performed as an ATOMIC
+ *     process performs a takeover at a time, and (b) performed as an ATOMIC
  *     REPLACE: the winner writes its payload into a staging file and
  *     `rename()`s it over the stale lock, so the lock path is never, at any
  *     instant, absent. The winner also re-checks the lock's INODE IDENTITY
@@ -47,12 +47,12 @@
  *     ticket serializes takeovers against each other but NOT against the
  *     plain-create path: a stale holder can release between the verdict and
  *     the rename, another waiter's `open(…,'wx')` lands a fresh live lock, and
- *     the rename replaces it — two processes then hold. It reproduced as a
+ *     the rename replaces it, two processes then hold. It reproduced as a
  *     millisecond-scale overlap between two different pids in the
  *     eight-process contention test, on a loaded host.
  *
  *     Residual, documented: taking over by AGE from a holder that is still
- *     alive but frozen (see rule 1 — a running holder refreshes and is never
+ *     alive but frozen (see rule 1, a running holder refreshes and is never
  *     judged stale) races that holder's own release. Advisory file locking
  *     has no compare-and-swap to close that last window; what it does have is
  *     rule 3, which keeps the dispossessed holder from deleting the winner's
@@ -141,7 +141,7 @@ function cancellableSleep(ms: number): { promise: Promise<void>; cancel: () => v
   return { promise, cancel: () => { if (timer !== undefined) clearTimeout(timer); } };
 }
 
-/** True when a process with this pid is still alive (or exists but we lack permission to signal it — still "alive" for our purposes). */
+/** True when a process with this pid is still alive (or exists but we lack permission to signal it, still "alive" for our purposes). */
 function isPidAlive(pid: number): boolean {
   if (!Number.isFinite(pid) || pid <= 0) return false;
   try {
@@ -188,7 +188,7 @@ interface LockVerdict {
 /**
  * Judge the lock currently at `lockPath`, returning its identity alongside the
  * verdict so a takeover can prove it moved the exact file it judged. Returns
- * null when the lock vanished between the failed create and this check —
+ * null when the lock vanished between the failed create and this check,
  * there is nothing to take over, so the caller just retries the create.
  */
 function inspectLock(lockPath: string, staleMs: number): LockVerdict | null {
@@ -223,9 +223,9 @@ function reclaimAbandonedTicket(ticketPath: string, staleMs: number): void {
 
 /**
  * The staging-file name prefix both populated-create paths use:
- * `<lock>.new-<pid>-<hex>`. A staging file is meant to live for microseconds —
+ * `<lock>.new-<pid>-<hex>`. A staging file is meant to live for microseconds,
  * it is created, written, and then either linked/renamed onto the lock path or
- * unlinked — but a process killed between the `openSync(…,'wx')` and the
+ * unlinked, but a process killed between the `openSync(…,'wx')` and the
  * `linkSync`/`unlinkSync` pair leaves one behind with nothing to clean it up.
  */
 function stagingPrefix(lockPath: string): string {
@@ -251,7 +251,7 @@ const lastStagingSweepAt = new Map<string, number>();
  * staging file is at most microseconds old, so reaping only files whose mtime
  * is older than `staleMs` (the same threshold that judges an abandoned takeover
  * ticket) can never delete a staging file someone is about to link. ENOENT is
- * success — another sweep, or the owner itself, got there first. Best-effort
+ * success, another sweep, or the owner itself, got there first. Best-effort
  * throughout: this is litter collection, never a correctness requirement.
  */
 function reclaimAbandonedStagingFiles(lockPath: string, staleMs: number): void {
@@ -282,7 +282,7 @@ function reclaimAbandonedStagingFiles(lockPath: string, staleMs: number): void {
       reclaimed += 1;
     } catch (error) {
       // ENOENT is success: another sweep already reclaimed it, and the
-      // post-state is the one we wanted — it is simply not ours to count.
+      // post-state is the one we wanted, it is simply not ours to count.
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
         logger.warn('cross-process-lock: could not reclaim an abandoned staging file', {
           lockPath,
@@ -338,7 +338,7 @@ function tryTakeOverStaleLock(lockPath: string, staleMs: number, token: string):
       // the plain-create path: between the verdict above and this rename, the
       // stale holder can release and another waiter's `open(…,'wx')` can land a
       // fresh, live lock. Renaming over that hands out a second holder, and
-      // both processes then believe they hold it — which is exactly what the
+      // both processes then believe they hold it, which is exactly what the
       // eight-process contention test caught, as a genuine millisecond-scale
       // overlap between two different pids.
       //
@@ -395,13 +395,13 @@ let hardlinkUnsupported = false;
  *
  * Why not simply `open(lockPath, 'wx')` and write afterwards: that publishes a
  * ZERO-BYTE lock file for the instant between create and write, and a waiter
- * that reads it in that instant sees an unreadable payload — which is exactly
- * the "corrupt, therefore stale" signal — and takes over a lock that was just
+ * that reads it in that instant sees an unreadable payload, which is exactly
+ * the "corrupt, therefore stale" signal, and takes over a lock that was just
  * legitimately acquired. Two holders. Populating before publishing removes the
  * window entirely.
  *
  * Returns the open descriptor of the lock file this process now owns, or null
- * when someone else holds the lock (EEXIST — ordinary contention).
+ * when someone else holds the lock (EEXIST, ordinary contention).
  */
 function createLockAtomically(lockPath: string, token: string): number | null {
   if (hardlinkUnsupported) return createLockDirectly(lockPath, token);
@@ -427,10 +427,10 @@ function createLockAtomically(lockPath: string, token: string): number | null {
     if (code === 'EEXIST') return null; // someone else holds it
     if (code === 'EPERM' || code === 'ENOSYS' || code === 'EOPNOTSUPP' || code === 'EXDEV') {
       // A filesystem without hardlinks (exFAT and friends). Fall back to the
-      // plain create — it reintroduces the tiny zero-byte window described
+      // plain create, it reintroduces the tiny zero-byte window described
       // above, which is the best an FS with no atomic populated-create offers.
       hardlinkUnsupported = true;
-      logger.warn('cross-process-lock: filesystem does not support hardlinks — falling back to plain lock creation', {
+      logger.warn('cross-process-lock: filesystem does not support hardlinks, falling back to plain lock creation', {
         lockPath,
         error: summarizeError(error),
       });
@@ -482,7 +482,7 @@ function refreshLockMtime(fd: number): void {
  * In-process waiters, keyed by lock path. The file lock alone cannot serialize
  * acquisitions from WITHIN one process: a second acquisition here sees a lock
  * whose pid is alive (its own) and whose mtime the first holder's refresh
- * timer keeps fresh — never stale, so it can only wait out `totalTimeoutMs`
+ * timer keeps fresh, never stale, so it can only wait out `totalTimeoutMs`
  * and fail. Two checkpoint managers over one store in one process (a daemon
  * host plus a runtime, or two test fixtures) is a legitimate shape, so
  * same-process acquisitions queue FIFO here and only the queue head ever
@@ -499,9 +499,9 @@ const inProcessTails = new Map<string, Promise<void>>();
  * (typically in a `finally`) even if the protected work throws. Release is
  * idempotent, and only ever deletes a lock file this call actually owns.
  *
- * Throws if the lock cannot be acquired within `totalTimeoutMs` — counted
+ * Throws if the lock cannot be acquired within `totalTimeoutMs`, counted
  * from entry, spanning both the in-process queue wait and the file
- * acquisition — a wedged lock this function itself declines to take over
+ * acquisition, a wedged lock this function itself declines to take over
  * (still fresh, still owned by a live pid) must surface as an honest
  * failure, not a silent hang.
  */
@@ -535,7 +535,7 @@ export async function acquireCrossProcessLock(
     ]);
   } finally {
     // Whichever side won, the deadline handle is done with. Without this the
-    // common case — `prior` already resolved — strands a full-length timer on
+    // common case, `prior` already resolved, strands a full-length timer on
     // every single acquisition.
     deadline.cancel();
   }
@@ -589,7 +589,7 @@ async function acquireFileLock(
   const start = Date.now();
   const token = randomBytes(8).toString('hex');
   for (;;) {
-    // `fd` is the descriptor of the lock file we now own — from a plain
+    // `fd` is the descriptor of the lock file we now own, from a plain
     // create, or from a takeover's atomic replace. It stays open for the
     // lock's lifetime: it is both the refresh handle (futimes) and the
     // ownership proof (inode).
@@ -636,8 +636,8 @@ async function acquireFileLock(
         if (!owned || Number(onDisk.ino) !== owned.ino || Number(onDisk.dev) !== owned.dev) {
           // Someone took this lock over while we held it (we ran longer than
           // staleMs without refreshing, or the file was replaced by hand).
-          // The file at the lock path belongs to the current holder — leave it.
-          logger.warn('cross-process-lock: release skipped — the lock file is no longer the one we created', { lockPath });
+          // The file at the lock path belongs to the current holder, leave it.
+          logger.warn('cross-process-lock: release skipped, the lock file is no longer the one we created', { lockPath });
           return;
         }
         unlinkSync(lockPath);

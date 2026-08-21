@@ -4,11 +4,11 @@
  * The managed local-voice provisioning verbs are wired: voice.local.status and
  * voice.local.install are in the live catalog with REST bindings that reconcile
  * against the real daemon dispatch chain, and their handlers return the
- * provisioner service's output. No real provisioning runs — the service is a stub.
+ * provisioner service's output. No real provisioning runs, the service is a stub.
  *
  * The three wake-word verbs attach through the same already-registered group, so
  * they are covered here too: their catalog bindings, and the chunked model read a
- * browser tab depends on (it cannot fetch the pinned asset itself — that asset
+ * browser tab depends on (it cannot fetch the pinned asset itself, that asset
  * answers with no CORS header).
  */
 import { describe, expect, test } from 'bun:test';
@@ -157,7 +157,7 @@ describe('the wake-word verbs ride the same registered group', () => {
     // can, and no more ability to fetch the release asset itself. A browser tab
     // reads the speech gate from here for the same reason it reads the classifier
     // from here. And a client that can fetch the bytes but not the NOTICE cannot
-    // satisfy the terms it received them under — so the front end's and the gate's
+    // satisfy the terms it received them under, so the front end's and the gate's
     // NOTICEs are components here too, not just the classifier's.
     for (const component of ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice']) {
       expect(() => createWakeModelHandler(service)({ component } as never)).not.toThrow();
@@ -222,7 +222,7 @@ describe('the chunked model read a browser tab reassembles', () => {
   });
 
   test('every component is served from its own path, under its own pin', () => {
-    // Different artifacts, so different pinned checksums — a client verifying the
+    // Different artifacts, so different pinned checksums, a client verifying the
     // file it rebuilt against the wrong pin would reject a perfectly good model.
     const components = ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice'] as const;
     const pins = components.map((component) => wake.modelChunk({ component, offset: 0, maxBytes: 16 }).sha256);

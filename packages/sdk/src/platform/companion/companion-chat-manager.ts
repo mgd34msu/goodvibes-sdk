@@ -16,7 +16,7 @@
  *   turn.tool_result events.
  * - Streaming chunks are fanned out via ControlPlaneGateway.publishEvent
  *   with a per-session clientId filter, so they only reach the subscriber
- *   for that specific session — never the global TUI event feed.
+ *   for that specific session, never the global TUI event feed.
  * - A GC sweep closes sessions that have been idle beyond the TTL.
  */
 
@@ -77,7 +77,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 
 // ---------------------------------------------------------------------------
-// Turn control (per-turn abort scope, cancel finalization, pending queue) —
+// Turn control (per-turn abort scope, cancel finalization, pending queue),
 // see companion-chat-turn-control.ts; provider stream types moved with it.
 // ---------------------------------------------------------------------------
 
@@ -254,7 +254,7 @@ export class CompanionChatManager {
   /** Tracks whether the async init() has completed. */
   private initCompleted = false;
   private readonly pendingReplies = new Map<string, PendingReply>();
-  /** True once dispose() ran — lets a cancelled turn report stoppedBy 'shutdown' honestly. */
+  /** True once dispose() ran, lets a cancelled turn report stoppedBy 'shutdown' honestly. */
   private disposed = false;
   /**
    * Serializes persistence writes per session to prevent write-after-write
@@ -278,7 +278,7 @@ export class CompanionChatManager {
     this._brokerSync = new CompanionBrokerSync(config.sessionBroker ?? null);
 
     // Persistence
-    // Default is false — most callers (tests, downstream consumers) get the
+    // Default is false, most callers (tests, downstream consumers) get the
     // safe no-write default. The daemon opts into persistence explicitly via
     // persist: true in facade-composition. When sessionsDir is omitted, derive
     // the root from the INJECTED home so an isolated-home daemon stays inside it.
@@ -303,7 +303,7 @@ export class CompanionChatManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Async initialisation — load persisted sessions from disk
+  // Async initialisation, load persisted sessions from disk
   // ---------------------------------------------------------------------------
 
   /**
@@ -457,7 +457,7 @@ export class CompanionChatManager {
   /**
    * Register the SSE clientId for this session so events are routed only to
    * the correct subscriber. Replaces any previous registration (single subscriber
-   * per session in v1 — the last SSE connection wins).
+   * per session in v1, the last SSE connection wins).
    */
   registerSubscriber(sessionId: string, clientId: string): void {
     const session = this.sessions.get(sessionId);
@@ -488,7 +488,7 @@ export class CompanionChatManager {
   }
 
   /**
-   * Cancel the in-flight turn (`companion.chat.turns.cancel`) — a per-turn
+   * Cancel the in-flight turn (`companion.chat.turns.cancel`), a per-turn
    * stop that never touches the session controller. Refusal semantics and the
    * bounded finalization wait live in companion-chat-turn-control.ts.
    */
@@ -503,7 +503,7 @@ export class CompanionChatManager {
   /**
    * Permanently delete a session (see CHANGELOG 1.0.0: `delete` is now a genuine removal,
    * distinct from `closeSession` above). Aborts any in-flight turn, removes
-   * the on-disk record file, and drops the in-memory entry — reusing
+   * the on-disk record file, and drops the in-memory entry, reusing
    * {@link _hardRemove}, the SAME primitive the GC 'delete-persistent' sweep
    * action uses, so there is exactly one removal code path.
    *
@@ -511,7 +511,7 @@ export class CompanionChatManager {
    * session throws `{ code: 'SESSION_ACTIVE', status: 409 }` (the caller must
    * close it first, mirroring the SESSION_CLOSED-throw convention elsewhere
    * in this file). An unknown OR already-deleted id throws
-   * `{ code: 'SESSION_NOT_FOUND', status: 404 }` — delete is not a 200-noop.
+   * `{ code: 'SESSION_NOT_FOUND', status: 404 }`, delete is not a 200-noop.
    */
   async deleteSession(sessionId: string): Promise<{ readonly sessionId: string; readonly deleted: true }> {
     const session = this.sessions.get(sessionId);
@@ -519,7 +519,7 @@ export class CompanionChatManager {
       throw Object.assign(new Error(`Session not found: ${sessionId}`), { code: 'SESSION_NOT_FOUND', status: 404 });
     }
     if (session.meta.status !== 'closed') {
-      throw Object.assign(new Error('Session is active — close it, then delete.'), { code: 'SESSION_ACTIVE', status: 409 });
+      throw Object.assign(new Error('Session is active, close it, then delete.'), { code: 'SESSION_ACTIVE', status: 409 });
     }
 
     session.abortController.abort();
@@ -609,7 +609,7 @@ export class CompanionChatManager {
 
     // A send that lands while another turn is running QUEUES (visible in the
     // transcript immediately, marked 'queued', answered after the current
-    // turn) — it must never start a concurrent turn against the same
+    // turn), it must never start a concurrent turn against the same
     // conversation. A steer jumps the queue instead (see steerMessage).
     const queuedBehindActiveTurn = session.activeTurn != null && options.steer !== true;
     const userMsg: CompanionChatMessage = {
@@ -624,7 +624,7 @@ export class CompanionChatManager {
     };
 
     // Provider-ready content is built at post time but committed to the
-    // conversation only when the turn STARTS — committing now would leak a
+    // conversation only when the turn STARTS, committing now would leak a
     // queued message into the active turn's later tool rounds, which re-read
     // the conversation every round.
     const providerContent = await buildProviderUserContent(content, attachments, this.artifactStore);
@@ -693,7 +693,7 @@ export class CompanionChatManager {
         cancelledTurnId = result.turnId;
       } catch (err: unknown) {
         // Benign races: the turn finished naturally (NO_ACTIVE_TURN), or the
-        // slot already belongs to a newer turn — possibly this very steer
+        // slot already belongs to a newer turn, possibly this very steer
         // (TURN_MISMATCH). The turnId guard is what makes this safe: a steer
         // must never cancel its own turn or an unrelated newer one.
         const code = (err as { code?: string }).code;
@@ -750,7 +750,7 @@ export class CompanionChatManager {
     const turnId = randomUUID();
     const sessionId = session.meta.id;
 
-    // Per-turn abort scope chained under the session controller — see
+    // Per-turn abort scope chained under the session controller, see
     // companion-chat-turn-control.ts for why the session controller must
     // never be aborted for a single-turn stop.
     const scope = createTurnAbortScope(turnId, session.abortController.signal);
@@ -759,7 +759,7 @@ export class CompanionChatManager {
 
     // Track announced-but-unresolved tool calls so a cancelled turn can close
     // them (every turn.tool_call gets a turn.tool_result before the terminal
-    // event — no client is ever left rendering a wedged tool block).
+    // event, no client is ever left rendering a wedged tool block).
     const openToolCalls = new Map<string, string>();
 
     const publish = (event: CompanionChatTurnEvent): void => {
@@ -792,7 +792,7 @@ export class CompanionChatManager {
 
     let assistantContent = '';
     // The tail not yet committed to the conversation history (completed tool
-    // rounds commit as they finish) — what a cancel hands to the model-facing
+    // rounds commit as they finish), what a cancel hands to the model-facing
     // history so later turns can reason about the interruption.
     let uncommittedContent = '';
     const assistantMessageId = randomUUID();
@@ -926,8 +926,8 @@ export class CompanionChatManager {
 
       // A detected abort (user cancel, session close, or shutdown) where the
       // provider ended its stream gracefully instead of throwing: finalize as
-      // a cancellation — persist the honest partial and emit the terminal
-      // turn.cancelled — never record it as a successful complete reply.
+      // a cancellation, persist the honest partial and emit the terminal
+      // turn.cancelled, never record it as a successful complete reply.
       if (abortSignal.aborted) {
         finalizeCancelled();
         return;
@@ -972,7 +972,7 @@ export class CompanionChatManager {
       // Release the active-turn slot only if this turn still owns it (a newer
       // concurrent turn may have taken it), detach the session-abort chain,
       // and settle for any exit path that did not run finalizeCancelled
-      // (resolve is idempotent — a second call is a no-op).
+      // (resolve is idempotent, a second call is a no-op).
       if (session.activeTurn === scope.activeTurn) session.activeTurn = null;
       scope.detach();
       scope.settle({ partialPersisted: false });
@@ -982,13 +982,13 @@ export class CompanionChatManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Regenerate + edit-and-branch (honest lineage — see companion-chat-branching.ts)
+  // Regenerate + edit-and-branch (honest lineage, see companion-chat-branching.ts)
   // ---------------------------------------------------------------------------
 
   /**
    * Regenerate an assistant response: supersede the target assistant message (an
-   * explicit id, or the latest response) and everything after it — retained as
-   * history, never deleted — then re-run a fresh turn from the preceding user
+   * explicit id, or the latest response) and everything after it, retained as
+   * history, never deleted, then re-run a fresh turn from the preceding user
    * message. Refuses a closed (409 SESSION_CLOSED) or unknown (404
    * SESSION_NOT_FOUND) session; honest code when there is nothing to regenerate.
    */
@@ -1069,7 +1069,7 @@ export class CompanionChatManager {
    * HISTORY): close-idle closes an idle active session; evict-memory drops a
    * long-closed session's in-memory handles (meta + on-disk copy kept);
    * delete-persistent removes the file ONLY under an explicit finite retention
-   * window (default retains indefinitely — see {@link planCompanionSweep}).
+   * window (default retains indefinitely, see {@link planCompanionSweep}).
    */
   _gcSweep(): void {
     const now = Date.now();
@@ -1128,7 +1128,7 @@ export class CompanionChatManager {
   }
 
   // ---------------------------------------------------------------------------
-  // Live shared-broker registration (S1 item D) — see companion-chat-broker-sync.ts
+  // Live shared-broker registration (S1 item D), see companion-chat-broker-sync.ts
   // ---------------------------------------------------------------------------
 
   /**
@@ -1143,10 +1143,10 @@ export class CompanionChatManager {
 
   /**
    * Hard-remove a session's persisted file and in-memory record. The ONE
-   * removal code path — shared by {@link deleteSession} and the GC
+   * removal code path, shared by {@link deleteSession} and the GC
    * 'delete-persistent' action. Never fork this. Order matters:
    * drop the map entry, drain any in-flight {@link _persist} save for this
-   * id, THEN unlink — else a save mid-write from {@link closeSession} can
+   * id, THEN unlink, else a save mid-write from {@link closeSession} can
    * resurrect the file post-unlink.
    */
   private async _hardRemove(sessionId: string): Promise<void> {

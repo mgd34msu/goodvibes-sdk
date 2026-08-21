@@ -4,7 +4,7 @@
  * The repository declares its bun version in twenty-three places. One of them
  * carries a FLOOR with a reason behind it: bun 1.3.10 through 1.3.13 deadlock
  * the module loader once a process has closed two or more `node:fs` watch
- * handles, and the next module graph the loader fetches never resolves — an
+ * handles, and the next module graph the loader fetches never resolves, an
  * idle event loop, no output, and nothing to notice it until something outside
  * the process runs out of patience. It cost two fifteen-minute CI cycles of
  * silence before it was found.

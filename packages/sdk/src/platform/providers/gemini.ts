@@ -41,7 +41,7 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
 };
 
 /**
- * Dated fallback model list — used when no API key is configured (so a live
+ * Dated fallback model list, used when no API key is configured (so a live
  * ListModels call isn't possible) and as the offline baseline when a live
  * call fails with no prior cache. Docs-verified (no Gemini API key was
  * available in the environment to live-verify) against ai.google.dev model
@@ -112,7 +112,7 @@ function buildGeminiThinkingConfig(
 }
 
 /**
- * GeminiProvider — calls the Gemini generateContent API directly via fetch.
+ * GeminiProvider, calls the Gemini generateContent API directly via fetch.
  * Tools are `functionDeclarations` inside a `tools` array.
  * Tool calls come as `functionCall` parts; results as `functionResponse` parts.
  * Uses streamGenerateContent for real-time token delivery when onDelta is provided.
@@ -145,7 +145,7 @@ export class GeminiProvider implements LLMProvider {
   private cachedContentHash: string | null = null;
   /** When the cache expires (epoch ms) */
   private cachedContentExpiry: number = 0;
-  /** Hashes known to be below the 32K cache minimum — skip API call */
+  /** Hashes known to be below the 32K cache minimum, skip API call */
   private uncacheableHashes = new Set<string>();
 
   constructor(
@@ -162,7 +162,7 @@ export class GeminiProvider implements LLMProvider {
    * Re-check Gemini's live model list. Called at boot (background, respects
    * the on-disk TTL cache) and on-demand for a picker-open re-check or an
    * explicit user refresh (`force: true`, bypasses the TTL cache). Always
-   * resolves — falls back to the on-disk cache, then to the dated-static
+   * resolves, falls back to the on-disk cache, then to the dated-static
    * list, and reports the honest reason when live discovery fails rather
    * than silently keeping stale data with no explanation.
    */
@@ -213,7 +213,7 @@ export class GeminiProvider implements LLMProvider {
       return this.cachedContentName;
     }
 
-    // Estimate tokens — skip if below 28K (conservative buffer below 32K minimum)
+    // Estimate tokens, skip if below 28K (conservative buffer below 32K minimum)
     const estimatedChars = (systemPrompt?.length ?? 0) + JSON.stringify(tools ?? []).length;
     if (estimatedChars / 3 < 28_000) {
       if (this.uncacheableHashes.size >= 50) this.uncacheableHashes.clear();
@@ -233,7 +233,6 @@ export class GeminiProvider implements LLMProvider {
       }).catch(err => logger.warn('[Gemini] Failed to delete previous cache', { error: summarizeError(err) }));
     }
 
-    // Create new cached content
     try {
       const cacheBody: Record<string, unknown> = {
         model: `models/${model}`,
@@ -311,7 +310,7 @@ export class GeminiProvider implements LLMProvider {
       const cachedName = await this.ensureCachedContent(systemPrompt, tools, model);
 
       if (cachedName) {
-        // Cached content already contains systemInstruction and tools — do NOT resend them
+        // Cached content already contains systemInstruction and tools, do NOT resend them
         body['cachedContent'] = cachedName;
       } else {
         if (systemInstruction) {

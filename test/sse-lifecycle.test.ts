@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * SSE subscriber lifecycle — verifies that STREAM_SUBSCRIBER_CONNECTED
+ * SSE subscriber lifecycle, verifies that STREAM_SUBSCRIBER_CONNECTED
  * and STREAM_SUBSCRIBER_DISCONNECTED events are emittable and structurally correct.
  */
 describe('sse lifecycle', () => {
@@ -43,7 +43,7 @@ describe('sse lifecycle', () => {
     expect(envelope.payload.reason).toBe('client closed');
   });
 
-  // production wiring — ControlPlaneGateway.createEventStream fires connected/disconnected.
+  // production wiring, ControlPlaneGateway.createEventStream fires connected/disconnected.
   test('createEventStream emits STREAM_SUBSCRIBER_CONNECTED on connect and DISCONNECTED on abort', async () => {
     const { EventEmitter } = await import('node:events');
     const { ControlPlaneGateway } = await import('../packages/sdk/src/platform/control-plane/gateway.js');

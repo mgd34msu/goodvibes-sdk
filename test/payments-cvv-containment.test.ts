@@ -1,8 +1,8 @@
 /**
  * payments-cvv-containment.test.ts
  *
- * The card verification value is stored. That is the owner's ruling — "we save
- * the cvv, full stop. it is 100% needed for autonomous action" — and it is
+ * The card verification value is stored. That is the owner's ruling, "we save
+ * the cvv, full stop. it is 100% needed for autonomous action", and it is
  * settled (docs/decisions/2026-07-27-the-cvv-is-stored.md).
  *
  * This file is the reason that decision is safe to live with. Storing the value
@@ -139,7 +139,7 @@ describe('the payments module never emits card material', () => {
     for await (const file of glob.scan({ cwd: dir })) {
       // entry-surface.ts is the one module that must NAME these fields: it
       // decides whether an inbound message looks like card details so it can
-      // refuse it. It reports which SHAPE matched and never the matching text —
+      // refuse it. It reports which SHAPE matched and never the matching text,
       // asserted separately in payments-card-entry-surface.test.ts, including
       // that the refusal contains no four-digit run at all. Exempting it by name
       // keeps this rule meaningful for every other module rather than widening
@@ -148,7 +148,7 @@ describe('the payments module never emits card material', () => {
       // The three modules that exist to HANDLE card material, added with
       // `payments.checkout.fillCard`. The capability has to type the card into a
       // checkout or it cannot buy anything, so exactly these three name the
-      // fields — and each is held to a stricter rule in the test below, which
+      // fields, and each is held to a stricter rule in the test below, which
       // asserts none of them can log, serialize or echo what it holds. The
       // exemption is by name rather than by widening the pattern, so every
       // decision module in this directory is still covered by the rule above.
@@ -157,7 +157,7 @@ describe('the payments module never emits card material', () => {
         || file === 'card-redaction.ts'
         || file === 'fill-card.ts'
         // Names the card FIELD NAMES in a refusal ("name one of: number,
-        // expiry, ... cvv"), and holds no material itself — it delegates to
+        // expiry, ... cvv"), and holds no material itself, it delegates to
         // fill-card.ts. Held to the same stricter rule below regardless.
         || file === 'payments-gateway-service.ts'
       ) continue;

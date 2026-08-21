@@ -1,5 +1,5 @@
 /**
- * TokenStore — Focused responsibility: token persistence.
+ * TokenStore, Focused responsibility: token persistence.
  *
  * Owns all read/write/clear operations on a `GoodVibesTokenStore`. Consumers
  * that only need token storage can interact with this class directly rather

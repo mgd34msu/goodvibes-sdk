@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Code-index chunking — pure content → chunk transformation for CodeIndexStore
+ * Code-index chunking, pure content → chunk transformation for CodeIndexStore
  * (Stage A, see CHANGELOG 0.38.0; extracted from code-index-store.ts to keep that file
  * within the 800-line source discipline).
  *
@@ -12,7 +12,7 @@
  * Chunking contract (unchanged from the original in-store implementation):
  *  - Files with top-level tree-sitter symbols chunk one-per-symbol ('symbols').
  *  - Unsupported languages, parse failures, and symbol-less files fall back to
- *    fixed-size line windows ('window') — a non-empty file is never silently
+ *    fixed-size line windows ('window'), a non-empty file is never silently
  *    dropped.
  *  - Whitespace-only content yields zero chunks ('empty').
  *  - chunk_id is a deterministic function of path + line span + content hash,
@@ -96,7 +96,7 @@ export async function chunkFileContent(
   }
 
   // Unsupported language, parse failure, or a supported-language file with
-  // zero top-level declarations (e.g. a pure re-export barrel) — the index
+  // zero top-level declarations (e.g. a pure re-export barrel), the index
   // must never silently drop a non-empty file, so it falls back to windows.
   const drafts = makeWindowChunks(
     relPath,

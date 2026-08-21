@@ -1,5 +1,5 @@
 /**
- * QA-08: WrfcController — happy-path, gate-failure, and escalation coverage
+ * QA-08: WrfcController, happy-path, gate-failure, and escalation coverage
  *
  * Tests:
  * - Happy path: engineer completes → reviewer fires → score passes → WORKFLOW_CHAIN_PASSED
@@ -23,8 +23,8 @@ import { join } from 'node:path';
 import { trackDisposables } from './_helpers/disposables.ts';
 
 // Every WrfcController starts a watchdog setInterval at construction (see
-// resetWatchdog() in wrfc-controller.ts); registering here — inside
-// createHarness() — disposes it after each test regardless of whether the
+// resetWatchdog() in wrfc-controller.ts); registering here, inside
+// createHarness(), disposes it after each test regardless of whether the
 // test body remembers to call controller.dispose() itself.
 const disposables = trackDisposables();
 
@@ -57,7 +57,7 @@ function makeRecord(overrides: Partial<AgentRecord> & { id: string; task: string
 
 /**
  * A structured passing review. The mechanical gate requires the reviewer to
- * record what was verified (acceptanceChecklist) — a prose-only score line can
+ * record what was verified (acceptanceChecklist), a prose-only score line can
  * no longer pass, by design.
  */
 const PASSING_REVIEW_OUTPUT = ['```json', JSON.stringify({
@@ -380,7 +380,7 @@ describe('WrfcController — happy path', () => {
 
     const reviewerRecord = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
     // Reviewer reports a PERFECT score and passed:true, but its own acceptance
-    // checklist — derived from the task — flags the interface and the units as
+    // checklist, derived from the task, flags the interface and the units as
     // NOT met (a valid-but-wrong deliverable). The contract gate must reject it.
     h.setOutput(reviewerRecord.id, ['```json', JSON.stringify({
       version: 1,
@@ -538,7 +538,7 @@ describe('WrfcController — happy path', () => {
   });
 
   test('autoCommit (commitScope: all) commits direct workspace changes and merges only write-capable WRFC agents', async () => {
-    // commitScope: 'all' pins today's legacy full-tree `git add -A` behavior explicitly —
+    // commitScope: 'all' pins today's legacy full-tree `git add -A` behavior explicitly,
     // 'scoped' is now the default (see the commitScope tests below), so this test opts into
     // the legacy mode on purpose to keep exercising the merge-candidate-agent logic below.
     const h = createHarness({ autoCommit: true, gitRepo: true, commitScope: 'all' });
@@ -559,7 +559,7 @@ describe('WrfcController — happy path', () => {
     expect(h.directCommitMessages).toHaveLength(1);
     expect(h.directCommitMessages[0]).toStartWith('WRFC: implement auto commit feature');
     expect(h.directCommitMessages[0]).toContain('implement auto commit feature'); // untruncated body
-    // 'all' scope calls commitWorkingTree with no paths argument — the legacy full-tree sweep.
+    // 'all' scope calls commitWorkingTree with no paths argument, the legacy full-tree sweep.
     expect(h.directCommitPaths).toEqual([undefined]);
     expect(h.mergedAgentIds).toEqual([chain.engineerAgentId!]);
     expect(h.mergedAgentIds).not.toContain(reviewerRecord.id);
@@ -594,7 +594,7 @@ describe('WrfcController — happy path', () => {
     await flushMicrotasks(40);
 
     expect(chain.state).toBe('passed');
-    // The superseded engineer tree is NEVER re-merged at chain level — the fix
+    // The superseded engineer tree is NEVER re-merged at chain level, the fix
     // work already landed via the workstream lane; no fixer agent exists.
     expect(h.mergedAgentIds).toEqual([]);
     expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'fixer')).toHaveLength(0);
@@ -866,7 +866,7 @@ describe('WrfcController — wrfc.commitScope', () => {
     // Review outcome and commit outcome are stated separately on the operator-facing
     // status line; the gitignored bookkeeping path is reported as skipped, not as a
     // failure. `fullOutput` carries the work's answer, which readers of a finished
-    // agent — including chat surfaces — receive instead of this bookkeeping.
+    // agent, including chat surfaces, receive instead of this bookkeeping.
     expect(owner.progress).toContain('review 10/10');
     expect(owner.progress).toContain('committed ');
     expect(owner.progress).toContain('1 ignored path skipped');
@@ -877,7 +877,7 @@ describe('WrfcController — wrfc.commitScope', () => {
 
   test('autoCommit failure completes the chain as passed with a non-fatal warning, never FAILED', async () => {
     // A commit that genuinely cannot complete (permissions, a locked index, a rejecting hook) must
-    // not flip a green chain to FAILED — the review and gates already passed. AgentWorktree restores
+    // not flip a green chain to FAILED, the review and gates already passed. AgentWorktree restores
     // the index for the paths it staged, so this path only needs to prove the non-fatal status.
     const h = createHarness({
       autoCommit: true,
@@ -941,7 +941,7 @@ describe('WrfcController — wrfc.commitScope', () => {
     const chain = h.controller.createChain(ownerRecord);
 
     // Plain-prose engineer output parses to an EngineerReport shape with empty
-    // filesCreated/filesModified/filesDeleted (see parseEngineerCompletionReport's fallback) —
+    // filesCreated/filesModified/filesDeleted (see parseEngineerCompletionReport's fallback),
     // this is the "empty ledger" case: a real chain, but nothing to scope a commit to.
     h.setOutput(chain.engineerAgentId!, 'I have completed the feature. Summary: done.');
     emitAgentCompleted(h.bus, chain.engineerAgentId!);
@@ -954,7 +954,7 @@ describe('WrfcController — wrfc.commitScope', () => {
 
     expect(chain.state).toBe('passed');
     // commitWorkingTree must never be called with paths omitted/empty as a silent fallback
-    // to the legacy full-tree sweep — an empty ledger means skip the commit entirely.
+    // to the legacy full-tree sweep, an empty ledger means skip the commit entirely.
     expect(h.directCommitMessages).toEqual([]);
     expect(h.directCommitPaths).toEqual([]);
 
@@ -986,7 +986,7 @@ describe('WrfcController — wrfc.commitScope', () => {
     const subjectLine = message.split('\n')[0]!;
     expect(subjectLine.length).toBeLessThanOrEqual('WRFC: '.length + 72);
     // The full untruncated task must appear somewhere in the message body, even though it's
-    // well over 72 characters — this is the fix for the "anything past 72 characters is
+    // well over 72 characters, this is the fix for the "anything past 72 characters is
     // silently discarded" bug.
     expect(message).toContain(longTask);
 
@@ -1203,7 +1203,7 @@ describe('WrfcController — gate failure', () => {
     });
 
     // Complete both reviewers back-to-back so both chains reach awaiting_gates
-    // before checkAndRunGatesForAll executes — WRFC-3 regression scenario.
+    // before checkAndRunGatesForAll executes, WRFC-3 regression scenario.
     emitAgentCompleted(busWithGate, reviewer1!.id);
     emitAgentCompleted(busWithGate, reviewer2!.id);
     await fixAttempted;
@@ -1216,7 +1216,7 @@ describe('WrfcController — gate failure', () => {
     // gateRunner (chain1, first inserted) transitions to 'fixing'
     expect(chain1.state).toBe('fixing');
 
-    // Non-owner chain stays in 'awaiting_gates' — no fixer, no failed transition
+    // Non-owner chain stays in 'awaiting_gates', no fixer, no failed transition
     expect(chain2.state).toBe('awaiting_gates');
 
     controller.dispose();
@@ -1252,7 +1252,7 @@ describe('WrfcController — escalation', () => {
     expect(h.spawnedRecords.filter((record) => record.wrfcRole === 'reviewer')).toHaveLength(2);
     const reviewerRecord2 = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
 
-    // Second reviewer also fails — fixAttempts(1) >= maxFixAttempts(1) → fail chain
+    // Second reviewer also fails, fixAttempts(1) >= maxFixAttempts(1) → fail chain
     h.setOutput(reviewerRecord2.id, FAILING_REVIEW_OUTPUT);
     emitAgentCompleted(h.bus, reviewerRecord2.id);
     await flushMicrotasks(40);
@@ -1284,7 +1284,7 @@ describe('WrfcController — escalation', () => {
 
     expect(chain.state).toBe('failed');
     expect(chain.error).not.toBeUndefined(); // presence-only: error was set on failed chain
-    // Non-transport failure — classified as 'other', not retried.
+    // Non-transport failure, classified as 'other', not retried.
     expect(chain.failureKind).toBe('other');
     expect(chain.transportRetryCount ?? 0).toBe(0);
 
@@ -1303,7 +1303,7 @@ describe('WrfcController — escalation', () => {
     expect(chain.state).toBe('engineering');
 
     // Stamp the structured turn-budget outcome on the engineer record at the
-    // source and mark it terminal — exactly what the orchestrator-runner does on
+    // source and mark it terminal, exactly what the orchestrator-runner does on
     // overflow (record.status='failed' + the structured fields) before emitting.
     const engineer = h.agentStore.get(chain.engineerAgentId!);
     if (engineer) {
@@ -1319,7 +1319,7 @@ describe('WrfcController — escalation', () => {
     await flushMicrotasks();
 
     expect(chain.state).toBe('failed');
-    // Typed, machine-readable outcome — not an infrastructure error.
+    // Typed, machine-readable outcome, not an infrastructure error.
     expect(chain.failureKind).toBe('max_turns');
 
     const failedEvent = h.workflowEvents.find((e) => e.type === 'WORKFLOW_CHAIN_FAILED');
@@ -1351,7 +1351,7 @@ describe('WrfcController — escalation', () => {
     emitAgentFailed(h.bus, firstEngineer.id, 'The socket connection was closed unexpectedly');
     await flushMicrotasks();
 
-    // Chain must NOT be failed yet — it gets one bounded automatic retry.
+    // Chain must NOT be failed yet, it gets one bounded automatic retry.
     expect(chain.state).toBe('engineering');
     expect(chain.transportRetryCount).toBe(1);
     expect(h.workflowEvents.map((e) => e.type)).not.toContain('WORKFLOW_CHAIN_FAILED');
@@ -1681,7 +1681,7 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
       state: 'reviewing',
       allAgentIds: ['dead-owner', 'dead-engineer'],
     });
-    // Neither 'dead-owner' nor 'dead-engineer' exists in h.agentStore — this
+    // Neither 'dead-owner' nor 'dead-engineer' exists in h.agentStore, this
     // process's AgentManager has no record of them (a fresh restart).
 
     const imported = h.controller.importChain(chain);
@@ -1717,7 +1717,7 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
     // A consumer reacting to the terminal chain-failed event looks the chain up
     // on the controller. importChain now inserts the chain into the map BEFORE
     // reapZombieChain emits its state-changed/chain-failed events, so this
-    // resolves to the reaped (failed) chain rather than undefined — consistent
+    // resolves to the reaped (failed) chain rather than undefined, consistent
     // with every other terminal transition, all of which fire while the chain
     // is already present in this.chains.
     let resolvedDuringEvent: WrfcChain | null | undefined;
@@ -1823,12 +1823,12 @@ describe('WrfcController — importChain zombie reap (d5)', () => {
 
     // The chain's own agent "dies" without ever notifying the controller
     // (simulates a process restart wiping the in-memory AgentManager, but
-    // WITHOUT going through importChain — createChain's chain is already
+    // WITHOUT going through importChain, createChain's chain is already
     // live in this controller instance).
     h.agentStore.delete(chain.engineerAgentId!);
     h.agentStore.delete(record.id);
 
-    // Calling listChains() repeatedly must never itself reap anything — the
+    // Calling listChains() repeatedly must never itself reap anything, the
     // reap check lives ONLY in importChain.
     h.controller.listChains();
     h.controller.listChains();
@@ -1889,7 +1889,7 @@ describe('WrfcController — acceptance-checklist gate (deterministic, both revi
     await flushMicrotasks(20);
 
     const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    // Perfect score, but NO checklist at all — the review records nothing verified.
+    // Perfect score, but NO checklist at all, the review records nothing verified.
     h.setOutput(reviewer.id, reviewJson({ score: 10, passed: true, acceptanceChecklist: [] }));
     emitAgentCompleted(h.bus, reviewer.id);
     await flushMicrotasks(20);
@@ -1941,7 +1941,7 @@ describe('WrfcController — the review record rides the wire (checklist + verdi
     await flushMicrotasks(20);
 
     const reviewer = latestSpawnedByWrfcRole(h.spawnedRecords, 'reviewer');
-    // Perfect score but ONE unverified contract item — the gate fails it, and
+    // Perfect score but ONE unverified contract item, the gate fails it, and
     // the wire must serve the TRUE (controller) verdict with the items intact.
     h.setOutput(reviewer.id, reviewJsonWire({
       score: 10, passed: true,
@@ -1956,7 +1956,7 @@ describe('WrfcController — the review record rides the wire (checklist + verdi
     const { adaptChain } = await import('../packages/sdk/src/platform/runtime/fleet/adapters/wrfc.js');
     const node = adaptChain(chain, [], Date.now());
     expect(node.review).toBeDefined();
-    // The CONTROLLER verdict — not the reviewer's passed:true claim.
+    // The CONTROLLER verdict, not the reviewer's passed:true claim.
     expect(node.review!.passed).toBe(false);
     expect(node.review!.score).toBe(10);
     expect(node.review!.cycles).toBe(1);

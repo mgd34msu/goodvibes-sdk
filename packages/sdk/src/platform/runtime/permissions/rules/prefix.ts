@@ -2,7 +2,7 @@
  * Prefix matching policy rule evaluator.
  *
  * PrefixRule matches tool calls by tool name and optionally the command prefix
- * of the first string argument. Independently testable — no external dependencies.
+ * of the first string argument. Independently testable, no external dependencies.
  */
 
 import type {
@@ -17,7 +17,7 @@ export interface PrefixRuleResult {
 }
 
 /**
- * toolMatchesPrefixPattern — Returns true if `toolName` is matched by the rule's
+ * toolMatchesPrefixPattern, Returns true if `toolName` is matched by the rule's
  * `toolPattern` field (which may be a single string, `'*'`, or an array).
  */
 function toolMatchesPrefixPattern(
@@ -31,7 +31,7 @@ function toolMatchesPrefixPattern(
 }
 
 /**
- * extractCommandArgs — Extracts EVERY command string from args.
+ * extractCommandArgs, Extracts EVERY command string from args.
  * Understands the exec tool's real shape (`commands: [{ cmd }, ...]`) as well
  * as flat `command`/`cmd` strings; falls back to the first string value.
  */
@@ -54,7 +54,7 @@ export function extractCommandArgs(args: Record<string, unknown>): string[] {
 }
 
 /**
- * evaluatePrefixRule — Evaluates a single PrefixRule against a tool call.
+ * evaluatePrefixRule, Evaluates a single PrefixRule against a tool call.
  *
  * Returns `matched: true` only when:
  *   1. The tool name matches the rule's `toolPattern`, AND
@@ -63,9 +63,9 @@ export function extractCommandArgs(args: Record<string, unknown>): string[] {
  *      (case-insensitive; allow rules need EVERY command to match, deny
  *      rules need ANY).
  *
- * @param rule     — The PrefixRule to evaluate.
- * @param toolName — Name of the tool being called.
- * @param args     — Arguments passed to the tool.
+ * @param rule    , The PrefixRule to evaluate.
+ * @param toolName, Name of the tool being called.
+ * @param args    , Arguments passed to the tool.
  */
 export function evaluatePrefixRule(
   rule: PrefixRule,
@@ -89,7 +89,7 @@ export function evaluatePrefixRule(
   const hasPrefixes = (rule.commandPrefixes?.length ?? 0) > 0;
   const hasExact = (rule.exactCommands?.length ?? 0) > 0;
 
-  // No command constraint — tool name match alone is sufficient
+  // No command constraint, tool name match alone is sufficient
   if (!hasPrefixes && !hasExact) {
     return {
       matched: true,

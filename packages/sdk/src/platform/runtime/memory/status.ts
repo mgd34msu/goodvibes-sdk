@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
-// memory-status.ts — the surface-facing projection of the daemon's memory
+// memory-status.ts, the surface-facing projection of the daemon's memory
 // governance (ops.memory.get + OPS_MEMORY_PRESSURE).
 //
 // MemoryGovernor next door owns the policy: it samples RSS/heap against a
 // budget, sheds memory by tier (trimming registered caches, pausing deferrable
 // background jobs), refuses new expensive work at the critical tier, and trips
 // on a genuine leak before the OS OOM-kills it. This module is the read-only
-// projection the /health memory (doctor) surface renders from — the snapshot
-// rows — and the attention line OPS_MEMORY_PRESSURE produces when the tier
+// projection the /health memory (doctor) surface renders from, the snapshot
+// rows, and the attention line OPS_MEMORY_PRESSURE produces when the tier
 // changes or the tripwire fires.
 //
 // Pure formatting only (no I/O): a caller fetches the typed verb response over
@@ -18,7 +18,7 @@
 import type { OperatorMethodOutput } from '../../types/generated/foundation-client-types.js';
 import type { OpsEvent } from '../../../events/ops.js';
 
-/** ops.memory.get output — the full governor snapshot. */
+/** ops.memory.get output, the full governor snapshot. */
 export type MemoryGovernorSnapshotResult = OperatorMethodOutput<'ops.memory.get'>;
 /** The OPS_MEMORY_PRESSURE event payload (a tier change or a tripwire firing). */
 export type MemoryPressurePayload = Extract<OpsEvent, { type: 'OPS_MEMORY_PRESSURE' }>;
@@ -55,16 +55,16 @@ export function memoryTierNote(tier: MemoryGovernorSnapshotResult['tier']): stri
 }
 
 /**
- * The /health memory (doctor) rows — the honest account of the daemon defending
+ * The /health memory (doctor) rows, the honest account of the daemon defending
  * its footprint. Order: tier + posture, budget vs RSS, heap, tier thresholds,
  * per-cache footprints the governor can shrink, which deferrable jobs are
  * paused, and the leak-tripwire state.
  */
 export function memoryStatusLines(snapshot: MemoryGovernorSnapshotResult): string[] {
   const lines: string[] = [];
-  lines.push(`  tier: ${snapshot.tier} — ${memoryTierNote(snapshot.tier)}`);
+  lines.push(`  tier: ${snapshot.tier}, ${memoryTierNote(snapshot.tier)}`);
   if (snapshot.refusingExpensiveWork) {
-    lines.push('  expensive work: REFUSED (critical tier) — new ingestion / reindex / voice install is declined until RSS recovers');
+    lines.push('  expensive work: REFUSED (critical tier), new ingestion / reindex / voice install is declined until RSS recovers');
   }
   lines.push(`  budget: ${formatMb(snapshot.rssMb)} rss / ${formatMb(snapshot.budgetMb)} budget (${Math.round(snapshot.usedPct)}%)`);
   const heap = snapshot.heapTotalMb !== undefined
@@ -88,7 +88,7 @@ export function memoryStatusLines(snapshot: MemoryGovernorSnapshotResult): strin
     : `  paused jobs: ${snapshot.pausedJobs.join(', ')}`);
 
   if (snapshot.tripwire.armed) {
-    lines.push(`  tripwire: ARMED — watching for a sustained >${snapshot.tripwire.rateMbPerSec} MB/s post-flush leak (held ${Math.round(snapshot.tripwire.sustainedSec)}s)`);
+    lines.push(`  tripwire: ARMED, watching for a sustained >${snapshot.tripwire.rateMbPerSec} MB/s post-flush leak (held ${Math.round(snapshot.tripwire.sustainedSec)}s)`);
   } else {
     lines.push('  tripwire: disarmed (no post-flush leak growth under watch)');
   }
@@ -104,9 +104,9 @@ export function memoryStatusLines(snapshot: MemoryGovernorSnapshotResult): strin
 export function memoryPressureLine(event: MemoryPressurePayload): string {
   const base = `memory pressure: ${event.previousTier} → ${event.tier} (${formatMb(event.rssMb)} rss / ${formatMb(event.budgetMb)} budget, ${Math.round(event.usedPct)}%)`;
   if (event.tripwire) {
-    return `${base} — leak tripwire fired (${event.tripwire.rateMbPerSec} MB/s sustained ${Math.round(event.tripwire.sustainedSec)}s); the daemon will exit for a clean restart`;
+    return `${base}, leak tripwire fired (${event.tripwire.rateMbPerSec} MB/s sustained ${Math.round(event.tripwire.sustainedSec)}s); the daemon will exit for a clean restart`;
   }
-  if (event.note) return `${base} — ${event.note}`;
+  if (event.note) return `${base}, ${event.note}`;
   return base;
 }
 

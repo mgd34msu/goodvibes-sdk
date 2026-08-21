@@ -1,9 +1,9 @@
 /**
- * feature-gate-membership.test.ts — the gate-id registry-membership check and
+ * feature-gate-membership.test.ts, the gate-id registry-membership check and
  * the complete surface gate map.
  *
  * Defect class being pinned: a gate id referenced in composition that was
- * never registered in FEATURE_SETTINGS silently read as "disabled" forever —
+ * never registered in FEATURE_SETTINGS silently read as "disabled" forever,
  * no settings key could enable it, so the capability shipped dead (for three
  * months, once). Now any such reference FAILS LOUDLY (red-tested below).
  *
@@ -30,7 +30,7 @@ const CONFIG_KEYS = new Set(CONFIG_SCHEMA.map((s) => s.key));
 
 // The channel adapters shipped under platform/adapters that register as
 // chat/delivery surfaces (channels/builtin/plugins.ts). The github adapter is
-// an automation webhook ingress, not a channel surface — it has no
+// an automation webhook ingress, not a channel surface, it has no
 // surfaces.github.* domain and never registers on the surface registry.
 const CHANNEL_ADAPTER_SURFACES = [
   'slack',

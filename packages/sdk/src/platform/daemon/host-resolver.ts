@@ -1,10 +1,10 @@
 /**
- * host-resolver.ts — the ONE truth for daemon bind-address + port resolution.
+ * host-resolver.ts, the ONE truth for daemon bind-address + port resolution.
  *
  * Both resolvers carry an explicit `recognized` flag: an unrecognized or
  * malformed stored value never falls through to undefined behavior. The safe
  * fallback is always the LOCAL posture ('127.0.0.1' / the server-type default
- * port) — a config typo must never accidentally bind 0.0.0.0 or port NaN.
+ * port), a config typo must never accidentally bind 0.0.0.0 or port NaN.
  * Consumers that display the binding anchor to this resolver instead of
  * re-deriving their own defensive copies of the raw stored values.
  */
@@ -39,7 +39,7 @@ export function resolveHostBinding(
   customPort: number,
   serverType: 'controlPlane' | 'httpListener' | 'web',
 ): ResolvedHostBinding {
-  // hostMode decides the bind address. Port is always caller-controlled — a
+  // hostMode decides the bind address. Port is always caller-controlled, a
   // configured (valid) customPort takes precedence, and only falls back to the
   // server-type default when unset/zero/invalid. Reverting this rule would
   // force every localhost-bound test/dev setup into 'custom' mode.
@@ -71,7 +71,7 @@ export interface ResolvedWebBinding {
 }
 
 /**
- * The web endpoint's binding resolver — the same shape and fallback semantics
+ * The web endpoint's binding resolver, the same shape and fallback semantics
  * as {@link resolveHostBinding}, so surface-registry announcements, channel
  * account links, and the tailscale-serve verb all anchor to one truth instead
  * of each reading the raw stored values (`Number(raw ?? 3423)` let 0 stay 0
@@ -98,7 +98,7 @@ export function resolveWebBinding(input: {
   };
 }
 
-/** The validated web port (fallback 3423) — a convenience over {@link resolveWebBinding}. */
+/** The validated web port (fallback 3423), a convenience over {@link resolveWebBinding}. */
 export function resolveWebPort(rawPort: unknown): number {
   return resolveWebBinding({ port: rawPort }).port;
 }

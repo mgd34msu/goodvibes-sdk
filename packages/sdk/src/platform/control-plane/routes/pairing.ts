@@ -47,7 +47,7 @@ function createListHandler(service: PairingGatewayService): GatewayMethodHandler
 /**
  * Turn a paired-node cap refusal into a wire error that names the setting and
  * the count. 409, because the request is well-formed and the state is what
- * refuses it — and it becomes satisfiable by unpairing a device or raising
+ * refuses it, and it becomes satisfiable by unpairing a device or raising
  * `device.nodes.maxPaired`, with no change to the request.
  */
 function rethrowAsVerbError(error: unknown): never {
@@ -76,7 +76,7 @@ function createMigrateHandler(service: PairingGatewayService): GatewayMethodHand
     const params = readInvocationParams(invocation);
     const name = requireString(params.name, 'name');
     try {
-      // A device moving off the legacy shared token is not a NEW node — it is a
+      // A device moving off the legacy shared token is not a NEW node, it is a
       // node that is already using this daemon. Refusing it at the cap would
       // strand a working device on a token that is about to be revoked, so the
       // migration mint is exempt from the cap.
@@ -131,7 +131,7 @@ const PAIRING_HANDLER_FACTORIES: Readonly<Record<string, (service: PairingGatewa
 
 /**
  * Attach the `pairing.tokens.*` handlers to their cataloged descriptors. A
- * missing descriptor is a silent no-op rather than a throw — construction must
+ * missing descriptor is a silent no-op rather than a throw, construction must
  * never fail because one verb failed to register; the operator-contract gates
  * catch a real drift.
  */

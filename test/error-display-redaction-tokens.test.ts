@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { normalizeError, summarizeError } from '../packages/sdk/src/platform/utils/error-display.js';
 
 /**
- * Redaction tokens vs. the JSON stripper — redaction rewrites home paths to
+ * Redaction tokens vs. the JSON stripper, redaction rewrites home paths to
  * /home/[REDACTED]/... before cleanMessage runs. The bracket-stripping pass
  * (which exists to drop inline JSON blobs from provider error messages) must
  * not eat those placeholders: stripping them turned

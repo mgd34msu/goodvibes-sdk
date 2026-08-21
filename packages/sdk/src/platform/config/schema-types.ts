@@ -120,7 +120,7 @@ export interface GoodVibesConfig {
     // getCategory('sandbox')), not scalar ConfigKeys.
     enabled: boolean;
     // Model-judgment pass on the residual sandbox ask-tail: off, annotate
-    // (default — annotates the human ask, never decides), or auto-approve
+    // (default, annotates the human ask, never decides), or auto-approve
     // (additionally auto-approves looks-safe verdicts; explicit opt-in).
     judgment: 'off' | 'annotate' | 'auto-approve';
     egressAllowlist: string[];
@@ -160,7 +160,7 @@ export interface GoodVibesConfig {
   relay: RelayConfig;
   daemon: { enabled: boolean; timezone: string; connectedHost: { enabled: boolean } };
   payments: PaymentsConfig;
-    // default: enabled true — run the local session daemon (loopback only); timezone '' — IANA name the daemon reckons calendar days in, empty means UTC
+    // default: enabled true, run the local session daemon (loopback only); timezone '', IANA name the daemon reckons calendar days in, empty means UTC
   danger: {
     httpListener: boolean;          // default: false — enable HTTP webhook listener
   };
@@ -184,7 +184,7 @@ export interface GoodVibesConfig {
     transportRetryDelayMs: number;
     commitScope: 'off' | 'scoped' | 'all';   // default: 'scoped'
     // NOTE: gates is an array of objects and does not fit the scalar-value dot-path config API.
-    // Access via configManager.getCategory('wrfc').gates — not via ConfigKey/ConfigValue.
+    // Access via configManager.getCategory('wrfc').gates, not via ConfigKey/ConfigValue.
     gates: Array<{ name: string; command: string; enabled: boolean }>;
   };
   cache: {
@@ -218,7 +218,7 @@ export interface ManualModelPriceConfig {
   cacheWrite?: number | undefined;
 }
 
-/** Pricing domain — manual model prices keyed `provider:model`. */
+/** Pricing domain, manual model prices keyed `provider:model`. */
 export interface PricingConfig {
   modelPrices: Record<string, ManualModelPriceConfig>;
 }
@@ -546,7 +546,7 @@ export type ConfigKey =
   | 'watchers.heartbeatIntervalMs'
   | 'watchers.recoveryWindowMinutes'
   | 'watchers.ciPollIntervalMs'
-  // Trigger family — shapes and descriptions live in schema-domain-triggers.ts
+  // Trigger family, shapes and descriptions live in schema-domain-triggers.ts
   | 'watchers.triggers.enabled'
   | 'watchers.triggers.backoffLadderMs'
   | 'watchers.triggers.breakerStrikes'

@@ -1,5 +1,5 @@
 /**
- * noise-suppression.ts — `voice.wake.noiseSuppression`, as a stage that runs.
+ * noise-suppression.ts, `voice.wake.noiseSuppression`, as a stage that runs.
  *
  * The row shipped with two values and one of them refused: `speex` named a
  * filter nothing applied, so selecting it stopped the detector rather than
@@ -19,7 +19,7 @@
  * filtered. There is no path that sees one and not the other, which is what makes
  * one row honest for the whole voice stack.
  *
- * `none` is not a stage that does nothing — it is NO stage. The wrapper hands the
+ * `none` is not a stage that does nothing, it is NO stage. The wrapper hands the
  * inner opener's frames straight through, the same objects, so the byte path with
  * suppression off is exactly the path that shipped.
  *
@@ -27,7 +27,7 @@
  *
  * The module contains the denoiser and nothing else: no echo canceller, no
  * automatic gain control (which would move the loudness the wake classifier was
- * trained against), no voice-activity gate — `voice.wake.vadThreshold` still has
+ * trained against), no voice-activity gate, `voice.wake.vadThreshold` still has
  * no model behind it and still refuses. Those stages are disabled explicitly in
  * the WebAssembly entry points rather than left at upstream defaults.
  */
@@ -74,7 +74,7 @@ export const SPEEXDSP_PREPROCESS = {
   /**
    * What the denoiser is asked to do: attenuate the estimated noise floor by this
    * many dB. SpeexDSP's own default, read back from the running state rather than
-   * assumed — {@link NoiseSuppressionStage.suppressionDb}.
+   * assumed, {@link NoiseSuppressionStage.suppressionDb}.
    */
   defaultSuppressionDb: -15,
 } as const;
@@ -177,7 +177,7 @@ function compileModule(): Promise<WebAssembly.Module> {
     if (bytes.length !== SPEEXDSP_WASM_BYTES) {
       throw new Error(
         `[capture] the embedded speexdsp module decoded to ${bytes.length} bytes, not the ${SPEEXDSP_WASM_BYTES} `
-        + 'recorded for it — the artifact in vendor/speexdsp-wasm.ts has been altered',
+        + 'recorded for it, the artifact in vendor/speexdsp-wasm.ts has been altered',
       );
     }
     return WebAssembly.compile(bytes);
@@ -291,13 +291,13 @@ export interface NoiseSuppressingOpenerOptions {
  * Wrap a capture opener so `noiseSuppression: 'speex'` is actually applied.
  *
  * The inner opener is asked for the SAME request with `noiseSuppression: 'none'`,
- * because it is now being asked for raw frames that this wrapper filters — which
+ * because it is now being asked for raw frames that this wrapper filters, which
  * is also what makes wrapping idempotent: a host that wraps its own opener and
  * then hands it to the listener ends up with the outer wrapper filtering and the
  * inner one passing through, never with the audio filtered twice.
  *
  * With `none`, the inner opener is called unchanged and its frames are handed on
- * untouched — the same Float32Array objects, so the path is byte-identical to
+ * untouched, the same Float32Array objects, so the path is byte-identical to
  * having no wrapper at all.
  */
 export function createNoiseSuppressingOpener(

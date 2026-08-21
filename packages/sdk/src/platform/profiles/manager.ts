@@ -7,7 +7,7 @@ import { summarizeError } from '../utils/error-display.js';
 
 /**
  * ProfileData - host-specific settings stored in a profile.
- * Excludes permissions and API keys — only display/behavior/provider settings.
+ * Excludes permissions and API keys, only display/behavior/provider settings.
  */
 export interface ProfileData {
   display?: Partial<GoodVibesConfig['display']> | undefined;

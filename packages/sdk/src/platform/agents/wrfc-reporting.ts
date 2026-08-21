@@ -52,14 +52,14 @@ export function extractScoreFromText(text: string): number | null {
  * Determines whether a review verdict passes.
  *
  * Score >= threshold is a NECESSARY condition. Prose language ("passed",
- * "approved") is treated as confirmation only — it can never elevate a
+ * "approved") is treated as confirmation only, it can never elevate a
  * sub-threshold score to a pass verdict.
  *
  * This is intentionally fail-closed: if the score is below threshold,
  * the result is always false regardless of what the reviewer wrote.
  */
 export function extractPassedFromText(text: string, score: number, threshold: number): boolean {
-  // Score must meet or exceed threshold — no exceptions.
+  // Score must meet or exceed threshold, no exceptions.
   if (score < threshold) return false;
   // Score meets threshold: treat prose as optional confirmation (ignored either way).
   // We check for explicit fail language as a safety override even when score >= threshold.
@@ -107,7 +107,7 @@ export function parseEngineerCompletionReport(rawOutput: string, _template?: str
  * - 'files_verified': claims present and all found on disk.
  * - 'git_corroborated': claims present, some missing on disk, but git diff shows changes.
  * - 'verified_empty': no claims made but git diff shows changes (engineer did real work without listing files).
- * - 'unverifiable_no_claims': no claims AND no git diff — suspicious; treated as phantom work.
+ * - 'unverifiable_no_claims': no claims AND no git diff, suspicious; treated as phantom work.
  * - 'unverified': claims present but not found on disk and git shows no changes.
  */
 export type ClaimVerificationKind =
@@ -155,7 +155,7 @@ export interface ClaimVerificationResult {
  *    (the engineer may have written to a path not literally listed).
  * 3. If no paths were claimed at all, fall through to git as the sole signal.
  *
- * This is intentionally lenient about the git check — a non-empty diff is
+ * This is intentionally lenient about the git check, a non-empty diff is
  * treated as corroborating evidence even when individual file stats fail.
  */
 export function verifyEngineerClaims(
@@ -178,7 +178,7 @@ export function verifyEngineerClaims(
   const claimedPaths = [
     ...report.filesCreated,
     ...report.filesModified,
-    // Note: filesDeleted are intentionally excluded — we expect them to be gone.
+    // Note: filesDeleted are intentionally excluded, we expect them to be gone.
   ];
 
   const foundPaths: string[] = [];
@@ -205,7 +205,7 @@ export function verifyEngineerClaims(
       }).trim();
       gitDiffDetected = result.length > 0;
     } catch {
-      // git not available or not a git repo — treat as inconclusive
+      // git not available or not a git repo, treat as inconclusive
       gitDiffDetected = null;
     }
   }
@@ -217,7 +217,7 @@ export function verifyEngineerClaims(
   // - files_verified: had claims and all found on disk.
   // - git_corroborated: had claims but some missing; git diff shows work happened.
   // - verified_empty: no claims at all but git diff shows changes (legit no-list work).
-  // - unverifiable_no_claims: no claims AND no git diff — suspicious phantom work.
+  // - unverifiable_no_claims: no claims AND no git diff, suspicious phantom work.
   // - unverified: had claims, some missing, and git shows nothing.
   let kind: ClaimVerificationKind;
   if (allClaimedFound) {
@@ -228,7 +228,7 @@ export function verifyEngineerClaims(
     kind = 'verified_empty';
   } else if (claimedPaths.length === 0 && !gitCorroborates) {
     // Either git showed no changes (gitDiffDetected === false) or git was unavailable (null).
-    // Both cases are treated as unverifiable — we cannot confirm any work was done.
+    // Both cases are treated as unverifiable, we cannot confirm any work was done.
     kind = 'unverifiable_no_claims';
   } else {
     // claimedPaths.length > 0 && missingPaths.length > 0 && !gitCorroborates
@@ -321,13 +321,13 @@ export function buildReviewTask(
     formatReviewableOutput(report),
     ``,
     `Instructions:`,
-    `Verify that the work that was done is the work that SHOULD have been done and that it is correct — not merely that some work happened. Review the complete current result against the original WRFC ask above. Do not narrow the review to the latest fix, files touched in the last child turn, or functions mentioned in the digest.`,
+    `Verify that the work that was done is the work that SHOULD have been done and that it is correct, not merely that some work happened. Review the complete current result against the original WRFC ask above. Do not narrow the review to the latest fix, files touched in the last child turn, or functions mentioned in the digest.`,
     `1. DERIVE AN EXPLICIT ACCEPTANCE CHECKLIST from the original task BEFORE examining the work: what was asked, the documented public interface, argument names / count / order, formats, required paths, cardinality (how many inputs/outputs/rows), thresholds, exit behavior, and side effects. Each becomes a checklist item you will score against.`,
-    `2. INDEPENDENTLY EXERCISE THE DELIVERABLE exactly as documented — invoke the real CLI / function / service through your OWN path, never just re-running the engineer's tests — and check the outputs SEMANTICALLY end to end (units, ordering, and the whole source-to-output path for any derived, numeric, or tabular artifact). Work that is internally self-consistent but wrong (wrong axis domain, wrong units, positional args where named flags were required, a one-input test where the contract required two, missing result rows, out-of-threshold numerics) must FAIL.`,
-    `3. Compilation, loadability, hashes, diffs, file existence, and the engineer's own report and tests are SUPPORTING evidence only — never proof of behavior. Never pass work on structural/partial evidence alone.`,
-    `4. Independently RESOLVE every material uncertainty the engineer reported — reconstruct or re-derive it yourself; do not inherit the engineer's claim.`,
+    `2. INDEPENDENTLY EXERCISE THE DELIVERABLE exactly as documented, invoke the real CLI / function / service through your OWN path, never just re-running the engineer's tests, and check the outputs SEMANTICALLY end to end (units, ordering, and the whole source-to-output path for any derived, numeric, or tabular artifact). Work that is internally self-consistent but wrong (wrong axis domain, wrong units, positional args where named flags were required, a one-input test where the contract required two, missing result rows, out-of-threshold numerics) must FAIL.`,
+    `3. Compilation, loadability, hashes, diffs, file existence, and the engineer's own report and tests are SUPPORTING evidence only, never proof of behavior. Never pass work on structural/partial evidence alone.`,
+    `4. Independently RESOLVE every material uncertainty the engineer reported, reconstruct or re-derive it yourself; do not inherit the engineer's claim.`,
     `5. If the original ask requested a non-file deliverable or explicitly said not to write files, review the Engineer reviewable output as the deliverable. Do not fail only because no files exist. Read referenced files directly when files were created or modified.`,
-    `6. SCORE AGAINST THE CHECKLIST: work that is correct but is NOT what was asked cannot pass. After any fix cycle, re-run the COMPLETE original contract, not just the fixed slice — a fix must not regress any other checklist item.`,
+    `6. SCORE AGAINST THE CHECKLIST: work that is correct but is NOT what was asked cannot pass. After any fix cycle, re-run the COMPLETE original contract, not just the fixed slice, a fix must not regress any other checklist item.`,
     `7. ANTI-GAMING: verify strictly against the STATED task contract and the documented interface. Never seek out, infer, reconstruct, or rely on any hidden verifier, grader, oracle, expected-output fixture, or grading key; if you notice such data, ignore it. Your judgement comes only from the task contract and the deliverable you exercised.`,
     `8. Score the implementation using the 10-dimension review rubric. The passing score threshold is ${threshold}/10. Return a structured ReviewerReport JSON block in your final response.`,
     ``,
@@ -338,7 +338,7 @@ export function buildReviewTask(
     `- passed: <boolean>`,
     `- dimensions: array of { name, score, maxScore, issues[] }`,
     `- issues: array of { severity, description, file?, line?, pointValue }`,
-    `- acceptanceChecklist: array of { item: string (a requirement derived from the original task), verified: boolean, evidence: string, howExercised?: string (how you INDEPENDENTLY exercised it) } — the record of what was checked and how, so a consumer can render what was verified. A false item on any interface / cardinality / format / threshold requirement means the work does not meet the contract.`,
+    `- acceptanceChecklist: array of { item: string (a requirement derived from the original task), verified: boolean, evidence: string, howExercised?: string (how you INDEPENDENTLY exercised it) }, the record of what was checked and how, so a consumer can render what was verified. A false item on any interface / cardinality / format / threshold requirement means the work does not meet the contract.`,
     `- constraintFindings: array of exactly { constraintId: string, satisfied: boolean, evidence: string, severity?: "critical" | "major" | "minor" }`,
   ];
 
@@ -459,7 +459,7 @@ function buildReviewBrief(report: CompletionReport): string[] {
   return lines;
 }
 // buildFixTask is GONE: the single-fixer prompt path was replaced by
-// planned task execution — review findings parse into a dependency-graph
+// planned task execution, review findings parse into a dependency-graph
 // workstream (orchestration/review-task-source.ts + fix-workstream-runner.ts).
 
 

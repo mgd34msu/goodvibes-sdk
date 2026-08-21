@@ -1,16 +1,16 @@
 /**
- * platform/hosted-sessions — a conversation loop composed INSIDE the daemon.
+ * platform/hosted-sessions, a conversation loop composed INSIDE the daemon.
  *
  * The capability behind `sessions.hosted.*`: the same orchestrator, tool
  * registry and permission gate a terminal runs, hosted in the daemon process so
  * a conversation does not depend on the client that opened it staying open.
  *
  * The pieces, in the order they matter:
- *  - {@link HostedSessionManager} — lifecycle, the detach policy, durability.
- *  - {@link createHostedSessionRuntime} — one session's loop.
- *  - {@link HostedWorkspaceFloors} — the composition every session in one
+ *  - {@link HostedSessionManager}, lifecycle, the detach policy, durability.
+ *  - {@link createHostedSessionRuntime}, one session's loop.
+ *  - {@link HostedWorkspaceFloors}, the composition every session in one
  *    workspace shares, and the reasoning for sharing it.
- *  - {@link HostedSessionStore} — the bounded, validated, swept disk state.
+ *  - {@link HostedSessionStore}, the bounded, validated, swept disk state.
  *
  * A product supplies two things and no more: how a workspace floor is built
  * (which is where its trust posture lives) and where lifecycle notices go.
@@ -35,7 +35,7 @@ export type {
 export { createHostedSessionRuntime, newHostedSessionId } from './session-runtime.js';
 export type { HostedSessionRuntime, HostedSessionRuntimeOptions } from './session-runtime.js';
 
-// How much authority a hosted run's exec tool carries — the contained default,
+// How much authority a hosted run's exec tool carries, the contained default,
 // the explicitly-granted workstream posture, and the pieces a product needs to
 // state one on the floor it builds.
 export {

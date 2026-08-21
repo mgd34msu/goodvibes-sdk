@@ -2,7 +2,7 @@
  * inbound-mail-lifecycle-failures.test.ts
  *
  * Four ways the inbound-mail watcher used to die permanently while reporting
- * healthy — the exact defect the whole capability exists to eliminate
+ * healthy, the exact defect the whole capability exists to eliminate
  * (docs/inbound-email.md §3.4b). Each one is a gate:
  *
  *  1. A throw out of the run loop (a cursor-store write that fails) is caught,
@@ -11,12 +11,12 @@
  *     never reads true for a loop that has exited.
  *  2. One unreadable byte in a store file is DISCARDED and disclosed, not a
  *     permanent hard failure: the other two stores still sweep, `start()`
- *     still starts, and `email.inbound.status` still answers — naming the
+ *     still starts, and `email.inbound.status` still answers, naming the
  *     corruption, because it is the one thing that can explain the state.
  *  3. A terminal capability failure reaches the OWNER, once per transition,
  *     rendered from structured fields.
  *  4. Recovery from `insufficient` back to healthy reaches `status` and
- *     `health()` — "fixing his scopes does not require a restart" has to be
+ *     `health()`, "fixing his scopes does not require a restart" has to be
  *     true of something he can see.
  */
 import { afterAll, afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -310,7 +310,7 @@ describe('a cursor-store write that fails does not end inbound mail in silence',
         () => refusing.advanceAttempts >= 1,
         'the first refused cursor write',
         // The cursor write is REFUSED here, so the cursor never advances and a
-        // duplicate wake would re-deliver UID 102 — which `sink.uids` asserts
+        // duplicate wake would re-deliver UID 102, which `sink.uids` asserts
         // exactly. A long interval keeps this a recovery from a lost edge.
         // `clock.waitForSleepers` above proves the re-issue timer is armed,
         // but that timer is armed one line BEFORE the untagged waiter, so it
@@ -333,7 +333,7 @@ describe('a cursor-store write that fails does not end inbound mail in silence',
       await waitFor(() => mailbox.connectionCount >= 2, 'a reconnect after the refused write');
 
       // 3. A store that never recovers becomes a terminal failure that is
-      //    announced — and time passing does not resurrect it.
+      //    announced, and time passing does not resurrect it.
       for (let round = 0; round < 30 && observer.terminals.length === 0; round += 1) {
         await clock.waitForDue(3_600_000, 'the next wait');
         await clock.advance(3_600_000);
@@ -343,7 +343,7 @@ describe('a cursor-store write that fails does not end inbound mail in silence',
       expect(terminal.reason).toBe('local-store-unwritable');
       expect(terminal.fix).toContain('~/.goodvibes/daemon');
 
-      // 4. And the supervisor's OWN status agrees — this is the assertion the
+      // 4. And the supervisor's OWN status agrees, this is the assertion the
       //    defect was hiding behind.
       expect(rig.supervisor.status.running).toBe(false);
       expect(rig.supervisor.status.mode).toBe('inactive');
@@ -400,7 +400,7 @@ describe('an unreadable store file is discarded and disclosed, not a permanent h
     // Seeded into the FILE rather than written through `record()`.
     //
     // `record()` applies both policy bounds to what it writes, so a record
-    // already past `retentionMs` never lands — which is the point of that fix
+    // already past `retentionMs` never lands, which is the point of that fix
     // and makes it useless as a way to manufacture rows for a sweep to find.
     // These five stand for what a sweep genuinely still has to reach: rows a
     // previous build wrote, rows a peer process wrote, rows that aged past the
@@ -573,7 +573,7 @@ describe('a terminal failure is announced to the owner, once per transition', ()
       secretsManager: { get: async () => null } as never,
       shellPaths: { resolveUserPath: (_scope: string, name: string) => join(dir, name) } as never,
       routeBindings: {
-        // The gate is ON with no bindings stored — the fresh-install shape.
+        // The gate is ON with no bindings stored, the fresh-install shape.
         // `resolveNoticeRoute` now asks, so that it can tell this apart from
         // the gate being off, which answers `[]` identically.
         isRouteBindingEnabled: () => true,
@@ -586,7 +586,7 @@ describe('a terminal failure is announced to the owner, once per transition', ()
         return { delivered: true } as never;
       },
       // This case is about the IMAP terminal-failure path, so the machine it
-      // runs on has no Google account — STATED, rather than left as an absent
+      // runs on has no Google account, STATED, rather than left as an absent
       // optional. `gmailReader` is required precisely because an unfilled
       // optional field is what let the Gmail arm ship inert.
       gmailReader: async () => ({
@@ -611,7 +611,7 @@ describe('a terminal failure is announced to the owner, once per transition', ()
    * The refusal the `.catch()` could never see.
    *
    * `deliverStructuredNotice` reports a refused delivery by RESOLVING
-   * `{ delivered: false, reason: 'no-route-binding' }` — it does not reject.
+   * `{ delivered: false, reason: 'no-route-binding' }`, it does not reject.
    * With no route binding configured, which is a fresh install, the announcer
    * latched before the send, the rejection handler never fired, nothing
    * recorded the failure, and the log line said `announced: true`. The owner

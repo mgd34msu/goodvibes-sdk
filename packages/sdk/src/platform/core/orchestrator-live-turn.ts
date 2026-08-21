@@ -1,5 +1,5 @@
 /**
- * orchestrator-live-turn.ts — per-call cancellation registry and queued-message
+ * orchestrator-live-turn.ts, per-call cancellation registry and queued-message
  * editing for the live turn.
  *
  * Two small interaction wins the Orchestrator delegates here:
@@ -65,7 +65,7 @@ export function listQueuedMessages(
 
 /**
  * Replace the text of a still-queued message. False when the id is no longer
- * queued (already delivered — delivered messages are immutable) or the new
+ * queued (already delivered, delivered messages are immutable) or the new
  * text is blank. Editing clears multimodal content: the edited plain text is
  * what will be delivered.
  */

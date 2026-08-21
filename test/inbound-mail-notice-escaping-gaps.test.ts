@@ -10,7 +10,7 @@
  * literal.
  *
  * Three are not reachable through inbound mail today. They are tested anyway,
- * because each is a trap for the NEXT producer rather than a bug in this one —
+ * because each is a trap for the NEXT producer rather than a bug in this one,
  * and §11.1 puts a second producer (payments) on this exact path.
  */
 import { describe, expect, test } from 'bun:test';
@@ -58,7 +58,7 @@ function everyRendering(notice: StructuredNotice): { name: string; text: string 
 }
 
 // ---------------------------------------------------------------------------
-// M1 — a newline in untrusted text forges a labelled line
+// M1, a newline in untrusted text forges a labelled line
 // ---------------------------------------------------------------------------
 
 describe('an untrusted span cannot forge a line on ANY path', () => {
@@ -100,7 +100,7 @@ describe('an untrusted span cannot forge a line on ANY path', () => {
 });
 
 // ---------------------------------------------------------------------------
-// M2 — the label is the one part that reaches the wire unescaped
+// M2, the label is the one part that reaches the wire unescaped
 // ---------------------------------------------------------------------------
 
 describe('a field label cannot forge a line either', () => {
@@ -115,7 +115,7 @@ describe('a field label cannot forge a line either', () => {
 });
 
 // ---------------------------------------------------------------------------
-// M3 — LIVE: a bare-domain URL is tappable on every channel
+// M3, LIVE: a bare-domain URL is tappable on every channel
 // ---------------------------------------------------------------------------
 
 describe('a bare-domain URL is defanged, not only a schemed one', () => {
@@ -152,7 +152,7 @@ describe('a bare-domain URL is defanged, not only a schemed one', () => {
 });
 
 // ---------------------------------------------------------------------------
-// M4 — the server's own wording is not ours
+// M4, the server's own wording is not ours
 // ---------------------------------------------------------------------------
 
 describe('a capability reason quoting the server is escaped like any untrusted text', () => {
@@ -162,7 +162,7 @@ describe('a capability reason quoting the server is escaped like any untrusted t
     fields: [{
       label: 'Outcome',
       value: [
-        { kind: 'literal', text: 'LIMITED VIEW — this account cannot currently ' },
+        { kind: 'literal', text: 'LIMITED VIEW, this account cannot currently ' },
         { kind: 'untrusted', text: '*read bodies*' },
         { kind: 'literal', text: '. Read from envelope fields only.' },
       ],
@@ -182,7 +182,7 @@ describe('a capability reason quoting the server is escaped like any untrusted t
 
   test('the PRODUCER marks the server wording untrusted, not literal', () => {
     // The test above proves the escapers handle an untrusted span correctly.
-    // This one proves the producer actually emits one — without it, the fix
+    // This one proves the producer actually emits one, without it, the fix
     // could be reverted in `inbound-notice.ts` and nothing would notice.
     const produced = renderInboundMailNotice({
       senderDisplay: 'someone@sender.test',
@@ -190,7 +190,7 @@ describe('a capability reason quoting the server is escaped like any untrusted t
       deliveredTo: null,
       outcome: { kind: 'capability-degraded', missingCapability: '*read bodies*' },
       links: [],
-      // ReceiptTimestamp is branded and its only constructor takes a Date —
+      // ReceiptTimestamp is branded and its only constructor takes a Date,
       // deliberately, so an attacker-supplied string can never become one.
       receivedAt: receiptTimestamp(new Date('2026-07-28T09:00:00.000Z')),
     });

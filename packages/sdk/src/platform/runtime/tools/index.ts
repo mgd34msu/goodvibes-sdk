@@ -1,5 +1,5 @@
 /**
- * src/runtime/tools/index.ts — barrel and factory for the phased tool executor.
+ * src/runtime/tools/index.ts, barrel and factory for the phased tool executor.
  *
  * Usage:
  * ```ts
@@ -53,7 +53,7 @@ function resolveDefaultBudget(
 }
 
 /**
- * createPhasedExecutor — factory with sane defaults.
+ * createPhasedExecutor, factory with sane defaults.
  *
  * Merges the provided partial config over the defaults so callers only
  * need to specify what they want to change. When a ConfigManager is supplied,

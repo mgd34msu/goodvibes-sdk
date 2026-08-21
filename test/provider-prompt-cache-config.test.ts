@@ -6,8 +6,8 @@
  *
  * Both keys used to be dead. `providers/anthropic.ts` built its `CacheContext`
  * unconditionally and called `getDefaultStrategy` on it, so `cache.enabled:
- * false` still paid cache writes; and `CacheContext.configuredTtl` — the field
- * `cache.stableTtl` exists to fill — was populated by no caller, so the enum's
+ * false` still paid cache writes; and `CacheContext.configuredTtl`, the field
+ * `cache.stableTtl` exists to fill, was populated by no caller, so the enum's
  * '5m' position produced the same 1h breakpoints as its '1h' one. Their two live
  * siblings (`cache.monitorHitRate`, `cache.hitRateWarningThreshold`) are read
  * per turn through a ConfigManager, and these are read the same way.

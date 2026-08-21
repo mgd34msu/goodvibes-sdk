@@ -1,9 +1,9 @@
 /**
- * surface-card-gate.ts — refuse card-shaped content arriving on any remote
+ * surface-card-gate.ts, refuse card-shaped content arriving on any remote
  * messaging channel (docs/inbound-email.md §11.0).
  *
  * **Provenance, stated plainly: §11.0 is a coordinator ruling, not an owner
- * quote.** The owner's ruling it enforces is his own — card details are entered
+ * quote.** The owner's ruling it enforces is his own, card details are entered
  * only at a local terminal or in the webui, never over a remote messaging
  * channel. This is the daemon-side enforcement of that.
  *
@@ -13,8 +13,8 @@
  * the owner's explicit ruling and it stays. Remote surfaces have authority to
  * **say yes or no about a purchase**; they have **no path for entering the
  * instrument**. Authority over a decision is not a channel for a secret. A
- * later reader will be tempted to unify the two — "if he can approve a payment
- * from Telegram, why not enter the card there" — and must not.
+ * later reader will be tempted to unify the two, "if he can approve a payment
+ * from Telegram, why not enter the card there", and must not.
  *
  * This is also why the refusal reply is delivered rather than dropped silently:
  * the message being refused may itself have BEEN a veto, and an unheard
@@ -24,7 +24,7 @@
  * ## Why this lives on the shared ingress hook and not in the adapters
  *
  * `authorizeSurfaceIngress` is the single hook all nineteen remote adapter call
- * sites already pass through — the same reason work-proposal and approval-reply
+ * sites already pass through, the same reason work-proposal and approval-reply
  * consumption live there. The payments round learned the alternative firsthand:
  * a fix applied per-adapter leaves the other seventeen open.
  *
@@ -52,7 +52,7 @@ export interface SurfaceCardGateDeps
   readonly channelPolicy: Pick<ChannelPolicyManager, 'getPolicy'>;
 }
 
-/** Decision reason prefix. The suffix names the matched shape KINDS — never the digits. */
+/** Decision reason prefix. The suffix names the matched shape KINDS, never the digits. */
 export const CARD_SHAPES_REFUSED_REASON = 'card-shapes-refused';
 
 /**
@@ -90,13 +90,13 @@ export async function refuseCardShapedIngress(
 
   // Tell him, on the channel he sent from, through the same delivery path the
   // conversation gate uses for its proposals. He can resend without the digits
-  // — including resending a veto, which is the case that makes silence costly.
+  //, including resending a veto, which is the case that makes silence costly.
   const binding = resolveOriginBinding(deps, {
     surface: input.surface,
     ...(input.userId !== undefined ? { userId: input.userId } : {}),
     ...(input.channelId !== undefined ? { channelId: input.channelId } : {}),
     ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
-    // No `text` — the origin this gate builds must not carry the refused message.
+    // No `text`, the origin this gate builds must not carry the refused message.
   });
   const outcome = await deliverProposalNotice(deps, binding, renderCardShapeRefusal(findings));
 

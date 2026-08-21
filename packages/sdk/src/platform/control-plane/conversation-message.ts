@@ -4,8 +4,8 @@ import type { ArtifactDescriptor } from '../artifacts/index.js';
  * conversation-message.ts
  *
  * Shared envelope types for conversation messages flowing through the
- * control-plane gateway. All consumers — SSE companion-chat streams,
- * TUI-surface follow-up listeners, and web-UI clients — depend on this
+ * control-plane gateway. All consumers, SSE companion-chat streams,
+ * TUI-surface follow-up listeners, and web-UI clients, depend on this
  * stable shape.
  */
 

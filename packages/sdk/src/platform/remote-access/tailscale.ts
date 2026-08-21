@@ -43,7 +43,7 @@ export function defaultTailscaleRunner(): TailscaleCommandRunner {
   };
 }
 
-/** Read-only detection result — what a surface needs to offer (or not offer) the affordance. */
+/** Read-only detection result, what a surface needs to offer (or not offer) the affordance. */
 export interface TailscaleDetection {
   /** The tailscale binary exists and answered. */
   readonly available: boolean;
@@ -59,7 +59,7 @@ export interface TailscaleDetection {
 
 /**
  * Detect a usable tailscale environment. READ-ONLY: `tailscale status --json`
- * only — never up/login/serve/set. Absence is a quiet, honest result, not an
+ * only, never up/login/serve/set. Absence is a quiet, honest result, not an
  * error and never a nag.
  */
 export function detectTailscale(runner: TailscaleCommandRunner = defaultTailscaleRunner()): TailscaleDetection {
@@ -98,7 +98,7 @@ export function detectTailscale(runner: TailscaleCommandRunner = defaultTailscal
   };
 }
 
-/** The honest record of one serve attempt — persisted either way. */
+/** The honest record of one serve attempt, persisted either way. */
 export interface TailscaleServeReceipt {
   readonly at: number;
   readonly command: string;
@@ -109,7 +109,7 @@ export interface TailscaleServeReceipt {
 }
 
 /**
- * Run `tailscale serve --bg <port>` — the ONE state-changing tailscale action,
+ * Run `tailscale serve --bg <port>`, the ONE state-changing tailscale action,
  * invoked only from the explicit user-initiated verb. Returns an honest receipt
  * either way; the caller persists it and updates web.publicBaseUrl on success.
  */

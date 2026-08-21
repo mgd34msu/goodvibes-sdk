@@ -1,12 +1,12 @@
 /**
  * routes/checkpoints.ts
  *
- * (see CHANGELOG 1.0.0) — `checkpoints.list` / `checkpoints.create` / `checkpoints.diff` /
+ * (see CHANGELOG 1.0.0), `checkpoints.list` / `checkpoints.create` / `checkpoints.diff` /
  * `checkpoints.restore` gateway-method handlers over the ALREADY
  * daemon-resident `WorkspaceCheckpointManager` (constructed +
  * eagerly-`init()`'d at ../../runtime/services.ts:620, exposed on
  * RuntimeServices at :245). Thin verb registration over an existing manager
- * — see routes/fleet.ts's header comment for the full rationale on why these
+ *, see routes/fleet.ts's header comment for the full rationale on why these
  * are wired via `GatewayMethodCatalog.register(descriptor, handler)` instead
  * of a daemon-sdk REST route or a router.ts change.
  *
@@ -15,7 +15,7 @@
  * the destructive restore should execute immediately) OR a `confirmToken`
  * obtained from a prior `checkpoints.restorePreview` call (which returns a
  * short-lived, single-use token plus a preview of what would change). An
- * unconfirmed call is NOT an error — it returns a structured, non-destructive
+ * unconfirmed call is NOT an error, it returns a structured, non-destructive
  * refusal body (`result: null, refused: true, refusal: {...}`) that names both
  * paths, so a surface can proceed without guessing. Existing callers that
  * already gate restore behind their own UI confirm (the TUI's DiffPanel
@@ -71,7 +71,7 @@ const CHECKPOINTS_LIST_MAX_LIMIT = 500;
  * public `get(id)` to pre-check existence without a second full manager
  * call, so this handler matches the message text the manager already
  * commits to (any manager.ts rewrite of that string is covered by the
- * bootDaemon proof test — see test/fleet-checkpoints-search.test.ts — as a regression net,
+ * bootDaemon proof test, see test/fleet-checkpoints-search.test.ts, as a regression net,
  * not by this string match alone).
  */
 const NO_CHECKPOINT_FOUND_MARKER = 'no checkpoint found with id';
@@ -83,7 +83,7 @@ async function callOrHonestNotFound<T>(fn: () => Promise<T>): Promise<T> {
     const message = err instanceof Error ? err.message : String(err);
     if (message.includes(NO_CHECKPOINT_FOUND_MARKER)) {
       // Preserve the manager's own message (it already names the specific
-      // missing id) — only the status/code are being upgraded from the
+      // missing id), only the status/code are being upgraded from the
       // blanket 500 a plain throw would collapse to.
       throw new GatewayVerbError(message, 'NOT_FOUND', 404);
     }
@@ -165,7 +165,7 @@ function clampLimit(raw: unknown): number {
   return Math.min(Math.floor(n), CHECKPOINTS_LIST_MAX_LIMIT);
 }
 
-/** Structural deps — the read/write surface `checkpoints.*` + `sessions.changes.get` needs. */
+/** Structural deps, the read/write surface `checkpoints.*` + `sessions.changes.get` needs. */
 export type CheckpointsGatewayManager = Pick<WorkspaceCheckpointManager, 'list' | 'create' | 'diff' | 'restore' | 'sessionChanges' | 'workspaceRoot'>;
 
 export function createCheckpointsListHandler(manager: CheckpointsGatewayManager): GatewayMethodHandler {
@@ -181,7 +181,7 @@ export function createCheckpointsListHandler(manager: CheckpointsGatewayManager)
 }
 
 /**
- * `sessions.changes.get` — the aggregate workspace file changes a session made,
+ * `sessions.changes.get`, the aggregate workspace file changes a session made,
  * joined over its sessionId-stamped checkpoints (see
  * WorkspaceCheckpointManager.sessionChanges). A session with no stamped
  * checkpoints returns checkpointCount:0 with an empty diff, not an error.
@@ -209,7 +209,7 @@ export function createCheckpointsCreateHandler(manager: CheckpointsGatewayManage
       paths: optionalStringArray(body.paths),
     });
     // `create` returns null when the workspace tree is unchanged since the
-    // parent checkpoint (manager.ts:349-357) — an honest no-op, not an
+    // parent checkpoint (manager.ts:349-357), an honest no-op, not an
     // error and not a fabricated checkpoint record.
     return { checkpoint, noop: checkpoint === null };
   };
@@ -227,7 +227,7 @@ export function createCheckpointsDiffHandler(manager: CheckpointsGatewayManager)
 
 /**
  * Build a preview of what restoring checkpoint `id` would change: the label,
- * the affected-path count and a bounded sample, and the diffstat — all from the
+ * the affected-path count and a bounded sample, and the diffstat, all from the
  * manager's own diff against the live working tree (no workspace mutation). An
  * unknown/gc'd id surfaces as the same honest 404 `diff`/`restore` already use.
  */
@@ -272,17 +272,17 @@ export function createCheckpointsRestoreHandler(
     if (confirmToken !== undefined) {
       // An explicit token that does not check out is a real failure of the
       // caller's confirm attempt (not the "you didn't confirm" refusal), so it
-      // is an honest 400 that names the remedy — mint a fresh one.
+      // is an honest 400 that names the remedy, mint a fresh one.
       if (!tokens.consume(confirmToken, id)) {
         throw new GatewayVerbError(
-          'confirmToken is invalid, already used, expired, or was issued for a different checkpoint — call checkpoints.restorePreview to obtain a fresh one.',
+          'confirmToken is invalid, already used, expired, or was issued for a different checkpoint, call checkpoints.restorePreview to obtain a fresh one.',
           'INVALID_ARGUMENT',
           400,
           'confirmToken',
         );
       }
     } else if (confirm !== true) {
-      // Unconfirmed: honest, actionable, NON-destructive. Not a thrown error —
+      // Unconfirmed: honest, actionable, NON-destructive. Not a thrown error,
       // a 200 body the caller can branch on.
       return {
         result: null,
@@ -305,7 +305,7 @@ export function createCheckpointsRestoreHandler(
 }
 
 /**
- * `checkpoints.revertHunkPreview` — read-only: does reverse-applying this one
+ * `checkpoints.revertHunkPreview`, read-only: does reverse-applying this one
  * unified-diff hunk to its file apply cleanly right now? A stale/drifted hunk is
  * `applies:false` with a human-readable `conflict` and a null token (honest, not
  * an error); a clean hunk mints a single-use token bound to this exact (path,
@@ -329,7 +329,7 @@ export function createCheckpointsRevertHunkPreviewHandler(
 }
 
 /**
- * `checkpoints.revertHunk` — confirm-gated reverse-apply of ONE hunk to the live
+ * `checkpoints.revertHunk`, confirm-gated reverse-apply of ONE hunk to the live
  * working tree, following the checkpoints.restore / rewind.apply confirm idiom:
  * an unconfirmed call is a non-error refusal, a bad token is a 400, and a hunk
  * that no longer applies cleanly is a 409 conflict (never a partial write). The
@@ -353,7 +353,7 @@ export function createCheckpointsRevertHunkHandler(
     if (confirmToken !== undefined) {
       if (!tokens.consume(confirmToken, fingerprint)) {
         throw new GatewayVerbError(
-          'confirmToken is invalid, already used, expired, or was issued for a different hunk — call checkpoints.revertHunkPreview to obtain a fresh one.',
+          'confirmToken is invalid, already used, expired, or was issued for a different hunk, call checkpoints.revertHunkPreview to obtain a fresh one.',
           'INVALID_ARGUMENT',
           400,
           'confirmToken',
@@ -378,7 +378,7 @@ export function createCheckpointsRevertHunkHandler(
     } catch (err) {
       if (err instanceof HunkRevertConflictError) {
         // The hunk went stale (the file changed since the diff was taken). Honest
-        // 409 — nothing was written, so the caller can re-diff and retry.
+        // 409, nothing was written, so the caller can re-diff and retry.
         throw new GatewayVerbError(err.message, 'CONFLICT', 409);
       }
       throw err;
@@ -405,7 +405,7 @@ export function createCheckpointsRevertHunkHandler(
  * (without a handler) from ../method-catalog-control-core.ts's static
  * builtin array. Call once, at RuntimeServices construction time, after
  * `workspaceCheckpointManager` exists. A missing descriptor is a silent
- * no-op — see routes/fleet.ts's `registerFleetGatewayMethods` for the same
+ * no-op, see routes/fleet.ts's `registerFleetGatewayMethods` for the same
  * rationale.
  */
 export function registerCheckpointGatewayMethods(
@@ -416,7 +416,7 @@ export function registerCheckpointGatewayMethods(
   // One token store shared by the preview (mints) and restore (consumes)
   // handlers for this daemon's lifetime.
   const restoreTokens = new RestoreTokenStore();
-  // A separate store for the per-hunk revert preview/apply pair — its tokens bind
+  // A separate store for the per-hunk revert preview/apply pair, its tokens bind
   // to a (path, hunk) fingerprint, not a checkpoint id, so they never cross with
   // the whole-checkpoint restore tokens above.
   const revertHunkTokens = new RestoreTokenStore();

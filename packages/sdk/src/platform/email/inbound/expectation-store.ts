@@ -1,5 +1,5 @@
 /**
- * expectation-store.ts — persistence for `VerificationExpectationBook`
+ * expectation-store.ts, persistence for `VerificationExpectationBook`
  * (docs/inbound-email.md §9.2).
  *
  * `VerificationExpectationBook` (`platform/google/verification-expectations.ts`)
@@ -8,29 +8,29 @@
  * reasoning is overridden narrowly, for a reason that post-dates it: the
  * daemon auto-restarts (hourly update check, restart at idle), so an
  * expectation opened moments before a restart must survive one, or the
- * verification mail it was waiting for arrives inert — the exact failure
+ * verification mail it was waiting for arrives inert, the exact failure
  * this whole feature exists to eliminate.
  *
  * The override is narrow and keeps what the original reasoning protects:
  *  - Expectations persist with their ORIGINAL ABSOLUTE `expiresAt`. Nothing
- *    here ever recomputes a window from "now" — a restored expectation never
+ *    here ever recomputes a window from "now", a restored expectation never
  *    gets a fresh grant.
  *  - Anything already expired is reaped ON LOAD, before it can match anything.
  *  - Every record is validated by content using
- *    `validatePersistedExpectation` — the SAME rules
- *    `VerificationExpectationBook.openExpectation` enforces — so a file on
+ *    `validatePersistedExpectation`, the SAME rules
+ *    `VerificationExpectationBook.openExpectation` enforces, so a file on
  *    disk can never mint an expectation the live API would have refused.
  *    That is the security property of this store.
  *  - `MAX_OPEN_EXPECTATIONS` is enforced on load, not only on open.
  *
  * This store is a PERSISTENCE MIRROR, not a second decision-maker: it holds
- * no matching logic and does not decide what satisfies an expectation — that
+ * no matching logic and does not decide what satisfies an expectation, that
  * stays entirely in `VerificationExpectationBook`. The intended wiring
  * (performed by the boot-time supervisor, not this module):
  *   1. At boot, call `runRecoverySweep()` and feed each surviving expectation
  *      into `VerificationExpectationBook.hydrateExpectation()` (added
  *      alongside `validatePersistedExpectation` in verification-expectations.ts
- *      for exactly this purpose — see that file's header for what was added).
+ *      for exactly this purpose, see that file's header for what was added).
  *   2. After every book mutation (open, close, consuming match), call
  *      `replaceAll(book.list())` to keep the on-disk mirror current.
  *   3. On the periodic timer, call `sweep('periodic')` to reap anything that
@@ -46,7 +46,7 @@ import {
 } from '../../google/verification-expectations.js';
 import type { HousekeepingTrigger } from './types.js';
 
-/** `file-unreadable` is the whole-file counterpart of `malformed` — see `CursorDiscardReason`. */
+/** `file-unreadable` is the whole-file counterpart of `malformed`, see `CursorDiscardReason`. */
 export type ExpectationDiscardReason = 'malformed' | 'file-unreadable' | 'expired' | 'over-cap';
 
 export interface ExpectationDiscard {
@@ -87,7 +87,7 @@ export interface PersistedExpectationStoreOptions {
 /**
  * Durable mirror of `VerificationExpectationBook`'s open set. See the file
  * header for the exact security property this enforces and the intended
- * wiring — this class does not itself decide whether an inbound message
+ * wiring, this class does not itself decide whether an inbound message
  * matches anything.
  */
 export class PersistedExpectationStore {
@@ -139,7 +139,7 @@ export class PersistedExpectationStore {
     const now = this.now();
     // The chain orders writers inside THIS process; the lock orders them
     // across processes. Both, because neither alone is "one writer at a time"
-    // — see store-write-lock.ts for why a second daemon is reachable here.
+    //, see store-write-lock.ts for why a second daemon is reachable here.
     const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { expectations, malformed, corrupt } = await this.readWithDrops(now);
       const { next, result } = await fn(expectations, malformed, now, corrupt);
@@ -151,7 +151,7 @@ export class PersistedExpectationStore {
   }
 
   /**
-   * Live, content-validated, unexpired expectations. Read-time filter — does
+   * Live, content-validated, unexpired expectations. Read-time filter, does
    * not persist the drop; `sweep()` does that. So a read between sweeps can
    * never hand back an expired or invalid record even though `sweep()`
    * has not run yet.
@@ -164,11 +164,11 @@ export class PersistedExpectationStore {
 
   /**
    * Full mirror write. Re-validates every entry with the exact rules
-   * `openExpectation` enforces before writing (defense in depth — the caller
+   * `openExpectation` enforces before writing (defense in depth, the caller
    * is expected to pass `book.list()`, which is already valid, but this store
    * never trusts a write without checking it, the same as every read).
    * Invalid entries are silently dropped rather than persisted; this is a
-   * mirror op, not a disclosure boundary, so no report is produced here —
+   * mirror op, not a disclosure boundary, so no report is produced here,
    * `sweep()` is where drops from the FILE (not from the caller) are itemised.
    *
    * `maxOpenExpectations` IS ENFORCED HERE, not only on load and sweep. It was

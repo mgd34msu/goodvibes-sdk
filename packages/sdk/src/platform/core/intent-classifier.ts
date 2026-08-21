@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Intent Classifier — pure heuristic, no LLM calls.
+ * Intent Classifier, pure heuristic, no LLM calls.
  *
  * Classifies user messages as 'chat', 'task', or 'project' based on
  * weighted signal scoring.
@@ -44,7 +44,7 @@ const CONCRETE_IMPLEMENTATION_ACTION = /\b(build|implement|develop|add|refactor|
 
 /**
  * Classify user message intent using heuristics.
- * Runs in the harness — no LLM call needed.
+ * Runs in the harness, no LLM call needed.
  */
 export function classifyIntent(message: string): ClassificationResult {
   const signals: string[] = [];

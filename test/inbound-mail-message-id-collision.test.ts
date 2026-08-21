@@ -1,5 +1,5 @@
 /**
- * §12 gate #14 — a `Message-ID` collision cannot suppress a message.
+ * §12 gate #14, a `Message-ID` collision cannot suppress a message.
  *
  * `Message-ID` is written by whoever sent the mail. If it were ever the
  * identity a duplicate is judged by, anybody able to send a message could
@@ -14,13 +14,13 @@
  * It was **unconstructible**. `fake-imap-mailbox.ts` minted
  * `Message-ID: <uid-N@example.test>` per UID with no way to override it, so a
  * collision could not be built and the gate could never be satisfied as
- * written — an entry on the test plan that no amount of effort could turn
+ * written, an entry on the test plan that no amount of effort could turn
  * green. The harness now takes an override, and this is what it is for.
  *
  * ## Why the mailbox starts empty
  *
  * A message already present when the watcher connects sits at or below the
- * high-water mark the cursor establishes at, and is never offered — that is
+ * high-water mark the cursor establishes at, and is never offered, that is
  * the no-backfill rule (§4) working correctly. Seeding one of the colliding
  * pair would therefore leave only ONE message actually delivered, and "both
  * were delivered" would be untestable while looking tested. Both arrive after
@@ -131,7 +131,7 @@ describe('a forged Message-ID cannot suppress a message (gate #14)', () => {
     // reads the SERVER's command log, and the client registers the waiter that
     // ends the round one round trip later. A `deliver()` edge landing in that
     // window is seen by nobody who can act on it, and the only recovery is the
-    // 27-minute re-issue on a `FakeClock` this test never advances — so it
+    // 27-minute re-issue on a `FakeClock` this test never advances, so it
     // presents as a hard timeout, not as slowness. Nothing is re-sent unless
     // the wake really was lost, and a duplicate wake cannot double-count here
     // anyway: the sink claims `imap:<uidValidity>:<uid>` before it runs.
@@ -147,7 +147,7 @@ describe('a forged Message-ID cannot suppress a message (gate #14)', () => {
     expect(harness.handled).toEqual([101, 102]);
     // The collision was CONSTRUCTED, not merely intended. Without this the
     // test would pass just as well against the old harness, which minted a
-    // distinct id per UID and made the gate unsatisfiable — a green test for a
+    // distinct id per UID and made the gate unsatisfiable, a green test for a
     // property it never exercised.
     expect(harness.messageIds).toEqual([FORGED_ID, FORGED_ID]);
   });

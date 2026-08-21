@@ -4,7 +4,7 @@
  * The single canonical skill service. It sits over an injectable `SkillStore`
  * (store.ts) and owns the rules every consumer must share: name validation,
  * create-vs-update semantics, and honest absence. It is deliberately transport-
- * neutral — the daemon CRUD gateway verbs (control-plane/routes/skills.ts) are
+ * neutral, the daemon CRUD gateway verbs (control-plane/routes/skills.ts) are
  * a thin adapter over this, and a consumer embedding the SDK directly can call
  * the same methods without any gateway.
  *

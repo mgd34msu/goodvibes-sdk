@@ -76,7 +76,7 @@ If `sdk.auth.setToken(...)` throws a configuration error, you created the SDK wi
 
 Pass `tokenStore` if the SDK needs to mutate token state.
 
-## Next Reads
+## Next reads
 
 - [Error Handling](./error-handling.md)
 - [Error Kinds](./error-kinds.md)

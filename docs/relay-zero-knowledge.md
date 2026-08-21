@@ -1,8 +1,8 @@
-# Zero-knowledge relay — reachability without a trusted operator
+# Zero-knowledge relay: reachability without a trusted operator
 
 The relay makes a durable daemon (an always-on box) reachable from a surface
-(webui / PWA on a phone) that is **off the LAN**, without any party — including
-whoever runs the relay — being able to read the traffic. This page states the
+(webui / PWA on a phone) that is **off the LAN**, without any party, including
+whoever runs the relay, being able to read the traffic. This page states the
 design and, plainly, exactly what the relay can and cannot see.
 
 The rule this implements: if GoodVibes ships reachability, it is the
@@ -32,7 +32,7 @@ relay routes traffic the vendor can read; this one cannot.
 ## The E2E handshake (primitives)
 
 A Noise **NK**-style authenticated key exchange, built only from Web Crypto
-primitives — no new dependency, nothing hand-rolled:
+primitives: no new dependency, nothing hand-rolled:
 
 - **ECDH over NIST P-256** for key agreement (universally available across the
   browser PWA, Bun daemon, and Node; matches the curve already used for push
@@ -46,16 +46,16 @@ primitives — no new dependency, nothing hand-rolled:
 The surface pins the **daemon's static public key** from the pairing payload.
 The derived keys mix a static-ephemeral DH against that pinned key, so:
 
-- **Daemon authentication** — only the real daemon holds the matching private
+- **Daemon authentication.** Only the real daemon holds the matching private
   key, so a curious or malicious relay that tries to sit in the middle cannot
   derive the session keys; its forged handshake confirmation fails and the
   surface tears the pipe down.
-- **Forward secrecy** — an ephemeral-ephemeral DH means recording ciphertext and
+- **Forward secrecy.** An ephemeral-ephemeral DH means recording ciphertext and
   later stealing the daemon's static key still does not reveal past sessions.
 
 ## Trust bootstrap: the pairing payload
 
-Trust starts with a **pairing payload** — a compact, QR-encodable string
+Trust starts with a **pairing payload**, a compact, QR-encodable string
 (`gvrelay1.…`) carrying the relay URL, the rendezvous id, and the daemon's
 pinned static public key. Deliver it out-of-band (scan a QR on the same LAN,
 copy the string). This is the same trust model as an SSH host-key fingerprint or
@@ -66,11 +66,11 @@ credential**: whoever holds one can reach the daemon through the relay.
 
 **Cannot see** (structural, not policy):
 
-- Request/response contents, paths, headers, bodies, auth tokens — all inside
+- Request/response contents, paths, headers, bodies, auth tokens: all inside
   the AES-256-GCM tunnel. The operator's bearer token rides *inside* the tunnel.
-- The E2E keys — every key derives from DH secrets the relay never receives.
+- The E2E keys: every key derives from DH secrets the relay never receives.
 
-**Can see** (connection metadata — stated plainly):
+**Can see** (connection metadata, stated plainly):
 
 - Which rendezvous id a daemon registered and which surfaces paired with it.
 - The multiplexed **pipe ids** it assigns for routing.
@@ -79,19 +79,19 @@ credential**: whoever holds one can reach the daemon through the relay.
 
 ## What a malicious relay could do
 
-- **Read content?** No — it only ever forwards ciphertext.
-- **Impersonate the daemon (MITM)?** No — it lacks the pinned static private
+- **Read content?** No. It only ever forwards ciphertext.
+- **Impersonate the daemon (MITM)?** No. It lacks the pinned static private
   key, so it cannot complete the handshake.
-- **Traffic analysis** — yes: it sees sizes/timing/pairing metadata and can
+- **Traffic analysis.** Yes: it sees sizes/timing/pairing metadata and can
   fingerprint activity. If that matters, run your own relay.
-- **Denial of service** — yes: like any middlebox it can drop or delay traffic,
-  or refuse to pair. This is why the relay is **self-hostable** — the honest
+- **Denial of service.** Yes: like any middlebox it can drop or delay traffic,
+  or refuse to pair. This is why the relay is **self-hostable**. The honest
   answer to "don't trust the operator" is "be the operator." A public instance
   is defended by caps (max daemons/pipes/per-daemon pipes/message size) and
   per-address handshake rate limiting so it cannot be turned into a liability,
   but it can never be made trustworthy for availability the way a self-hosted
   one is.
-- **No accounts, no stored state** on the relay — nothing to breach there.
+- **No accounts, no stored state** on the relay. Nothing to breach there.
 
 ## Security controls around the path
 
@@ -109,7 +109,7 @@ credential**: whoever holds one can reach the daemon through the relay.
     policy (relying-party id, allowed origins, user-verification requirement).
   - **Mint** a short-lived, single-use challenge with `stepup.challenge.mint`
     (bound to the calling session/rendezvous; freshness window `ttlMs`, clamped
-    5s–300s, default 120s). This one verb is exempt from the gate — it is the
+    5s–300s, default 120s). This one verb is exempt from the gate. It is the
     prerequisite for producing an assertion, so requiring one would deadlock.
     Credential registration is **not** exempt.
   - **Verify.** The daemon's `StepUpAssertionVerifier` (node/Web Crypto only)
@@ -120,26 +120,26 @@ credential**: whoever holds one can reach the daemon through the relay.
     `authenticatorData || SHA-256(clientDataJSON)` is valid; and the signature
     counter has not gone backwards (a cloned-authenticator signal). Only a
     complete pass consumes the challenge and advances the stored counter. Every
-    other path **fails closed** — it denies rather than allowing or faking a
+    other path **fails closed**. It denies rather than allowing or faking a
     pass, and nothing ever reports an unverified assertion as verified.
 
-  **Threat model — 'none' attestation.** Registration accepts the credential's
+  **Threat model: 'none' attestation.** Registration accepts the credential's
   COSE public key directly and does **not** verify an attestation certificate
   chain ('none' attestation). This is the standard, deliberate posture for a
   self-hosted deployment: there is no central RP verifying which *make/model* of
   authenticator an operator uses, and registration is already an admin/local-only
   act on the daemon the operator controls. The security of the control rests on
   the signature check against the registered public key and the single-use,
-  time-bound challenge — not on attestation provenance.
+  time-bound challenge, not on attestation provenance.
 - **LAN HTTPS posture: the daemon never mints certificates.** There is no
   self-provisioned CA and no daemon-generated certificate, ever. The
   recommended path to https is **tailscale serve**: it fronts the daemon's
-  port and terminates TLS with tailscale's own certificates — certificate
+  port and terminates TLS with tailscale's own certificates, certificate
   issuance and renewal are tailscale's business, never the daemon's. The
   daemon side is strictly read-only detection plus one explicit
   user-initiated enable (`tailscale.get` / `tailscale.serve.run`; see
   `platform/remote-access/tailscale.ts`). Where tailscale is absent, LAN
-  access stays plain http on the interface the operator chose — an honest
+  access stays plain http on the interface the operator chose, an honest
   posture rather than a locally-minted trust root.
 - **Relay connections are visibly distinct.** Every tunneled request is tagged
   with an `x-goodvibes-via-relay` header (`isRelayTunneledRequest`), and the
@@ -150,8 +150,8 @@ credential**: whoever holds one can reach the daemon through the relay.
 
 No relay connection is ever made without explicit configuration:
 
-1. `relay.enabled` (default `true` — the capability is ready), and
-2. a configured `relay.url` (default empty — nothing to dial).
+1. `relay.enabled` (default `true`, the capability is ready), and
+2. a configured `relay.url` (default empty, nothing to dial).
 
 Both must agree before the daemon opens an outbound registration; with no URL
 configured the relay path is byte-for-byte inert and the daemon stays LAN-only.
@@ -164,8 +164,8 @@ GOODVIBES_RELAY_PORT=8787 bun run --bun @pellux/goodvibes-daemon-sdk/relay-serve
 ```
 
 Put it behind TLS (`wss://`) at the edge, point `relay.url` at it, pair a surface
-with the daemon's QR, and you have reachability that no operator — not even you,
-running the relay — can read.
+with the daemon's QR, and you have reachability that no operator, not even you,
+running the relay, can read.
 
 ## Live event streaming over the relay
 
@@ -175,12 +175,12 @@ streaming subscription over the same E2E channel rather than a unary call:
 
 - The client sends a `stream-open` frame; the daemon dispatches it against its
   own event source (the existing SSE route) and bridges the source's bytes back
-  as sealed `stream-data` frames — ciphertext to the relay, exactly like every
+  as sealed `stream-data` frames, ciphertext to the relay, exactly like every
   other payload.
 - **Flow control.** The daemon reads the source with natural backpressure and
   holds a **bounded** per-stream send buffer. If a slow consumer makes it
   overflow, chunks are dropped and **counted**, and a `stream-overflow` frame
-  carries the dropped count — the client surfaces it as a visible
+  carries the dropped count, the client surfaces it as a visible
   `relay-overflow` SSE event. Never a silent gap. Per-pipe stream count is
   capped, consistent with the relay server's other limits.
 - **Clean close** is explicit in both directions (`stream-close`): the daemon
@@ -189,5 +189,5 @@ streaming subscription over the same E2E channel rather than a unary call:
 
 Because the client exposes this through its relay-backed `fetch`, the existing
 Server-Sent-Events connector idiom (`openServerSentEventStream`, which just calls
-`fetch` and reads the streaming body) works over the relay unchanged — a surface
+`fetch` and reads the streaming body) works over the relay unchanged, a surface
 that today rejects SSE over relay can drop that rejection and call it directly.

@@ -1,5 +1,5 @@
 /**
- * channel-sync/types.ts — the two tables a daemon mirrors on behalf of the
+ * channel-sync/types.ts, the two tables a daemon mirrors on behalf of the
  * surfaces that talk to channels.
  *
  * ROUTING RULES bind a channel to a profile. They are deliberately NOT the
@@ -15,8 +15,8 @@
  * so a draft started on a phone is there on a laptop, which is the only reason
  * the daemon holds them at all.
  *
- * A webhook URL in a draft is a credential — anyone holding it can post to the
- * channel — so the store refuses one outright rather than storing it. The
+ * A webhook URL in a draft is a credential, anyone holding it can post to the
+ * channel, so the store refuses one outright rather than storing it. The
  * surface redacts before it sends; a raw value arriving here means that
  * redaction did not happen, and accepting it would put a live credential in a
  * cross-device store that syncs to every one of the owner's machines.
@@ -50,7 +50,7 @@ export interface ChannelDraft {
   readonly title?: string | undefined;
   readonly channel?: string | undefined;
   readonly route?: string | undefined;
-  /** Redacted before it ever arrives — see the module header. */
+  /** Redacted before it ever arrives, see the module header. */
   readonly webhook?: string | undefined;
   readonly link?: string | undefined;
   readonly tags?: readonly string[] | undefined;

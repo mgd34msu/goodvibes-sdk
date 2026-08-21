@@ -144,7 +144,7 @@ function toFrontmatter(block: string): SkillFrontmatter {
 }
 
 /**
- * Parse only the frontmatter of a skill document — the cheap index-line read.
+ * Parse only the frontmatter of a skill document, the cheap index-line read.
  * The body is never materialized. `updatedAt`, when known by the caller (e.g.
  * a file mtime), is threaded through unchanged.
  */
@@ -154,7 +154,7 @@ export function parseSkillIndex(text: string, updatedAt?: number): SkillIndexEnt
 }
 
 /**
- * Parse a full skill document — frontmatter plus the Markdown body. A single
+ * Parse a full skill document, frontmatter plus the Markdown body. A single
  * leading blank line after the closing fence and a single trailing newline are
  * trimmed, so a body round-trips exactly through `serializeSkill` (which emits
  * one trailing newline) and a conventional newline-terminated file yields a

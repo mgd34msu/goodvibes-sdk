@@ -1,11 +1,11 @@
 /**
- * group-operations.ts — the seven things an operator can do to a group.
+ * group-operations.ts, the seven things an operator can do to a group.
  *
  * Every one of them returns STRUCTURED DATA. Nothing here formats a table,
  * pads a column or decides on a colour. That is deliberate and it is the rule
  * for the whole feature: the CLI renders human text from these results, `--json`
  * prints the same results verbatim, and the TUI and web UI render them their own
- * way. One implementation, three renderings — never a second code path that
+ * way. One implementation, three renderings, never a second code path that
  * drifts from the first.
  *
  * These are also exactly the daemon verbs. The CLI does not reach past them,
@@ -53,7 +53,7 @@ export type GroupOperationResult<T> =
     readonly fix: string;
     /**
      * True when this machine is out of the group and waiting will not change
-     * it — as opposed to the ordinary "nobody answered yet", which resolves on
+     * it, as opposed to the ordinary "nobody answered yet", which resolves on
      * its own the moment another machine comes up.
      *
      * An automatic caller must not swallow this one. It is the difference
@@ -110,7 +110,7 @@ export interface GroupStatusReport {
   readonly nodeName: string;
   readonly version: string;
   readonly memberCount: number;
-  /** Null when the per-surface layer has not supplied it — never a fabricated empty list. */
+  /** Null when the per-surface layer has not supplied it, never a fabricated empty list. */
   readonly surfaces: readonly SurfaceHolding[] | null;
   readonly keyGeneration: number | null;
   readonly keyGenerationsHeld: number;
@@ -164,11 +164,11 @@ export function groupStatus(context: GroupOperationsContext): GroupOperationResu
   const material = runtime.keyMaterial;
   const membership = runtime.membership;
   const advice = !context.settings.enabled
-    ? 'sharing inbound work with your other machines is switched off here — turn it on with `config set cluster.enabled true`'
+    ? 'sharing inbound work with your other machines is switched off here, turn it on with `config set cluster.enabled true`'
     : membership === 'no-group'
-      ? 'this machine is not in a group yet — run `cluster create` here, or `cluster join` to join one that already exists'
+      ? 'this machine is not in a group yet, run `cluster create` here, or `cluster join` to join one that already exists'
       : membership === 'unreadable-key-material'
-        ? 'the stored group key material could not be read — run `cluster join` to rejoin the group'
+        ? 'the stored group key material could not be read, run `cluster join` to rejoin the group'
         : null;
   return {
     ok: true,
@@ -334,7 +334,7 @@ export async function joinGroup(
     const timedOut = outcome.reason.includes('answered in time');
     return failed(
       timedOut
-        ? 'no machine in that group accepted the join key — either the join key is wrong, or no machine in that group is reachable on this network'
+        ? 'no machine in that group accepted the join key, either the join key is wrong, or no machine in that group is reachable on this network'
         : outcome.reason,
       'check the join key with `cluster key` on a machine already in the group, and that both machines are on the same network',
     );
@@ -376,7 +376,7 @@ export interface JoinKeyResult {
 /**
  * Show the join key.
  *
- * On demand and repeatable, from any member — not a one-shot reveal at create
+ * On demand and repeatable, from any member, not a one-shot reveal at create
  * time. A key you can only see once is a key that gets written on a sticky
  * note, and the operator adding a fourth machine six months later has every
  * right to just ask for it again.
@@ -453,7 +453,7 @@ export interface ForgetNodeResult {
  * Members that have not yet adopted keep accepting the old key for the moments
  * it takes the announcement to reach them. That gap is inherent to a network
  * and is not papered over here: it closes as the rotation propagates, and the
- * tombstone — which is what governs re-entry — is effective immediately.
+ * tombstone, which is what governs re-entry, is effective immediately.
  */
 export async function forgetNode(
   context: GroupOperationsContext,
@@ -508,11 +508,11 @@ export interface RotateKeyResult {
  *
  * Two shapes, and the difference is what happens to the key being retired:
  *
- *   default — the outgoing generation stays accepted for the usual few minutes,
+ *   default, the outgoing generation stays accepted for the usual few minutes,
  *     so machines that have not yet picked up the new key keep being heard and
  *     nothing is interrupted. This is the right answer for routine hygiene.
  *
- *   --now — the outgoing generation stops being accepted immediately, and the
+ *   --now, the outgoing generation stops being accepted immediately, and the
  *     group's SIGNING key is replaced as well. This is the answer when a key is
  *     believed to have leaked: whatever was taken stops working the moment each
  *     machine adopts the replacement, and the cost is that a machine which is
@@ -561,7 +561,7 @@ export interface LeaveGroupResult {
  * Leave the group, from this machine.
  *
  * This forgets the group HERE. It does not remove this machine from the other
- * members' rosters — they will simply stop hearing from it, and the operator
+ * members' rosters, they will simply stop hearing from it, and the operator
  * can tidy up with `cluster forget` on any of them. Making one machine's
  * decision to leave silently rewrite everyone else's membership would be a
  * strictly worse default.
@@ -590,7 +590,7 @@ export interface RenameGroupResult {
  *
  * The name is replicated group state, so renaming on any machine renames it
  * everywhere. It is also what the discovery beacon advertises, which means it
- * is visible to anything on the network — the setting's description says so
+ * is visible to anything on the network, the setting's description says so
  * plainly, and the default is neutral for that reason.
  */
 export async function renameGroupTo(
@@ -617,7 +617,7 @@ export function groupsOnTheNetwork(context: GroupOperationsContext): GroupOperat
  *
  * Called on start by a machine that already has key material, and available by
  * hand when a return needs a nudge. Succeeds only if the node id is still on
- * the roster — see `decideAdmission`.
+ * the roster, see `decideAdmission`.
  */
 export async function rejoinGroup(
   context: GroupOperationsContext,

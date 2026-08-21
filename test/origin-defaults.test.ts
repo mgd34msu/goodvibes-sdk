@@ -4,13 +4,13 @@
  * Default behavior (home / single-user / local deployments): permissive.
  * No constructor guard, no request-time Origin check.
  *
- * Opt-in (enforceCors: true — enterprise / multi-user / internet-exposed):
- *   SG-1: Startup guard — hostMode=network + enforceCors=true + allowedOrigins=[] throws SECURITY_UNSAFE_ORIGIN_CONFIG
- *   SG-2: Startup guard — hostMode=network + enforceCors=true + allowedOrigins non-empty constructs OK
- *   RT-1: Request-time — enforceCors=true + loopback + empty allowedOrigins + no Origin header → 200/pass
- *   RT-2: Request-time — enforceCors=true + loopback + empty allowedOrigins + Origin header → 403 CORS_NOT_CONFIGURED
- *   RT-3: Request-time — enforceCors=true + network + allowedOrigins set + wrong Origin → 403 ORIGIN_NOT_ALLOWED
- *   RT-4: Request-time — enforceCors=true + network + allowedOrigins set + correct Origin → 200/pass
+ * Opt-in (enforceCors: true, enterprise / multi-user / internet-exposed):
+ *   SG-1: Startup guard, hostMode=network + enforceCors=true + allowedOrigins=[] throws SECURITY_UNSAFE_ORIGIN_CONFIG
+ *   SG-2: Startup guard, hostMode=network + enforceCors=true + allowedOrigins non-empty constructs OK
+ *   RT-1: Request-time, enforceCors=true + loopback + empty allowedOrigins + no Origin header → 200/pass
+ *   RT-2: Request-time, enforceCors=true + loopback + empty allowedOrigins + Origin header → 403 CORS_NOT_CONFIGURED
+ *   RT-3: Request-time, enforceCors=true + network + allowedOrigins set + wrong Origin → 403 ORIGIN_NOT_ALLOWED
+ *   RT-4: Request-time, enforceCors=true + network + allowedOrigins set + correct Origin → 200/pass
  *
  * Permissive default (enforceCors unset / false):
  *   PD-1: Default config + network mode + empty allowedOrigins constructs OK (no startup guard)

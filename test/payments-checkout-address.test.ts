@@ -1,9 +1,9 @@
 /**
- * payments-checkout-address.test.ts — the order carries the address he stored.
+ * payments-checkout-address.test.ts, the order carries the address he stored.
  *
  * The profile stored a shipping and a billing address and mapped them into
  * config, and nothing in the checkout path read either: the card was typed into
- * the page and the delivery address was not. These prove the seam is closed —
+ * the page and the delivery address was not. These prove the seam is closed,
  * the stored value reaches the page byte for byte, a missing one refuses by
  * name instead of guessing, and the notice he is asked to veto says where it is
  * going.
@@ -96,7 +96,7 @@ describe('the stored address reaches the page', () => {
     await fillAddresses(shippingTargets(), { store: store(), fill: page.fill });
 
     // Not normalised, not title-cased, not re-spaced. An address a human typed
-    // is the address that goes on the parcel — accents, apostrophes, the lot.
+    // is the address that goes on the parcel, accents, apostrophes, the lot.
     for (const field of ['name', 'line1', 'line2', 'city', 'region', 'postalCode', 'country'] as const) {
       const target = { name: 'ship-name', line1: 'ship-line1', line2: 'ship-line2', city: 'ship-city', region: 'ship-region', postalCode: 'ship-postal', country: 'ship-country' }[field];
       expect(page.written.get(target)).toBe(addressFieldValue(STORED_SHIPPING, field));
@@ -167,7 +167,7 @@ describe('a missing address refuses rather than guessing', () => {
 
   test('a PARTIAL stored address types nothing at all', async () => {
     const page = recordingFill();
-    // Present but incomplete — the dangerous case, because unlike a null
+    // Present but incomplete, the dangerous case, because unlike a null
     // address this one has values to fill and a form that would accept them.
     const result = await fillAddresses(shippingTargets(), {
       store: store({ shipping: { ...STORED_SHIPPING, postalCode: '', region: '' } }),
@@ -192,7 +192,7 @@ describe('a missing address refuses rather than guessing', () => {
 
     expect(result.ok).toBe(false);
     expect(result.reason).toContain('no billing address is stored');
-    // Not even the shipping half, which IS stored — both kinds are resolved
+    // Not even the shipping half, which IS stored, both kinds are resolved
     // before anything is typed.
     expect(page.written.size).toBe(0);
   });

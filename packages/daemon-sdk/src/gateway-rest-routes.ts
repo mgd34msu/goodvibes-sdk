@@ -12,7 +12,7 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  * branch, reachable over the wire via the generic
  * `POST /api/control/gateway-methods/:methodId/invoke` endpoint. But each one
  * also promises a plain-REST path (`GET /api/skills`, …) in its descriptor's
- * http binding, and no route ever served those paths — a caller trusting the
+ * http binding, and no route ever served those paths, a caller trusting the
  * advertisement and hitting `GET /api/skills` got a bare 404. That is the exact
  * advertise-without-route defect the capability-route reconcile
  * (method-catalog-route-reconcile.ts) exists to catch.
@@ -21,7 +21,7 @@ import type { DaemonGatewayRestRouteHandlers } from './context.js';
  * the gate: it maps each advertised REST path to its gateway methodId and
  * dispatches through `handlers.invokeGatewayRestVerb`, which the daemon wires
  * back to the SAME `invokeGatewayMethodCall` the methodId-invoke endpoint uses.
- * No verb logic is duplicated — the REST path and the methodId-invoke endpoint
+ * No verb logic is duplicated, the REST path and the methodId-invoke endpoint
  * now resolve to the identical in-process handler, with the identical
  * access/scope gate. Path parameters ({name}, {sessionId}, …) are folded into
  * the invocation query so the handler's `readInvocationParams` view sees them.
@@ -68,7 +68,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/principals/{principalId}', 'principals.get'),
   route('DELETE', '/api/principals/{principalId}', 'principals.delete'),
   route('POST', '/api/principals/{principalId}/update', 'principals.update'),
-  // profile.* — the owner profile (docs/owner-profile.md §11.1). `person` is a
+  // profile.*, the owner profile (docs/owner-profile.md §11.1). `person` is a
   // POST with the name in the body rather than a GET with it in the path: a
   // path segment lands in every access log and proxy trace it passes through,
   // and the whole point of the People section's containment is that a person's
@@ -83,7 +83,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/profile/forget', 'profile.forget'),
   route('POST', '/api/profile/undo', 'profile.undo'),
 
-  // occasions.* — the owner's important dates and plans, and the loop that
+  // occasions.*, the owner's important dates and plans, and the loop that
   // raises them (docs/occasions.md §7). The two verbs that read a whole
   // collection are GET; everything that names one thing, answers a question or
   // writes a line takes a body and is POST.
@@ -116,11 +116,11 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('DELETE', '/api/ci/watches/{watchId}', 'ci.watches.delete'),
   route('POST', '/api/ci/watches/{watchId}/run', 'ci.watches.run'),
   // channels.profiles.*
-  // channels.routing.* / channels.drafts.* — the daemon-mirrored routing table
+  // channels.routing.* / channels.drafts.*, the daemon-mirrored routing table
   // and draft store (sdk platform/channel-sync). Both families advertised these
   // paths long before anything served them and carried `invokable: false` to
   // say so; the store and handlers exist now, so the paths resolve here.
-  // channels.inbox.list — the merged inbound feed, served by the host that
+  // channels.inbox.list, the merged inbound feed, served by the host that
   // holds the provider credentials from its synced mirror. Same treatment as
   // its two siblings below: the advertised path dispatches to the same
   // methodId, so the REST call and the methodId invoke are one handler. A build
@@ -152,18 +152,18 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/sessions/{sessionId}/queued-messages', 'sessions.queuedMessages.list'),
   route('POST', '/api/sessions/{sessionId}/queued-messages/{messageId}', 'sessions.queuedMessages.edit'),
   route('DELETE', '/api/sessions/{sessionId}/queued-messages/{messageId}', 'sessions.queuedMessages.delete'),
-  // stepup.* — relay WebAuthn step-up ceremony (register a credential, mint a
+  // stepup.*, relay WebAuthn step-up ceremony (register a credential, mint a
   // challenge). Both handler-backed gateway verbs with an advertised REST path.
   route('POST', '/api/stepup/credentials', 'stepup.credentials.register'),
   route('POST', '/api/stepup/challenge', 'stepup.challenge.mint'),
-  // memory.projections.* — the live read-only projection of standing memory
+  // memory.projections.*, the live read-only projection of standing memory
   // records (project/team scope) to their markdown form. Handler-backed gateway
   // verbs with an advertised REST path, so they need parity entries here (the
   // Pattern-B memory.records.* verbs are served by operator.ts's own table
   // instead and are intentionally NOT listed here).
   route('GET', '/api/memory/projections', 'memory.projections.list'),
   route('GET', '/api/memory/projections/{id}', 'memory.projections.get'),
-  // runtime.metrics.get — the process-wide RuntimeMeter snapshot. This is the
+  // runtime.metrics.get, the process-wide RuntimeMeter snapshot. This is the
   // sole route for GET /api/runtime/metrics: the daemon-sdk raw handler that
   // once served it was removed in favor of this gateway-verb parity entry, so
   // the URL now resolves to the same in-process handler (and the same
@@ -171,12 +171,12 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   // dispatchDaemonApiRoutes tries the gateway-REST table BEFORE the operator
   // dispatcher, this entry is what answers the URL.
   route('GET', '/api/runtime/metrics', 'runtime.metrics.get'),
-  // fleet.graph.get — the workstream task-graph view.
+  // fleet.graph.get, the workstream task-graph view.
   route('GET', '/api/fleet/workstreams/{workstreamId}/graph', 'fleet.graph.get'),
-  // power.* — sleep ownership: the chip state + the owner keep-awake toggle.
+  // power.*, sleep ownership: the chip state + the owner keep-awake toggle.
   route('GET', '/api/power/status', 'power.status.get'),
   route('POST', '/api/power/keep-awake', 'power.keepAwake.set'),
-  // devices.* — paired-phone capability nodes, the durable "always allow"
+  // devices.*, paired-phone capability nodes, the durable "always allow"
   // grants surface, and the housekeeping sweep with its disclosure.
   route('GET', '/api/devices/nodes', 'devices.nodes.list'),
   // Asking one of those nodes for a capability, and reading back a capture a
@@ -187,13 +187,13 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/devices/grants', 'devices.grants.list'),
   route('POST', '/api/devices/grants/revoke', 'devices.grants.revoke'),
   route('POST', '/api/devices/housekeeping', 'devices.housekeeping.run'),
-  // ops.memory.get — the MemoryGovernor snapshot (tier, budget, RSS/heap,
+  // ops.memory.get, the MemoryGovernor snapshot (tier, budget, RSS/heap,
   // per-cache footprints, paused jobs, tripwire state).
   route('GET', '/api/ops/memory', 'ops.memory.get'),
-  // voice.local.* — managed local-voice runtime status + one-act install.
+  // voice.local.*, managed local-voice runtime status + one-act install.
   route('GET', '/api/voice/local/status', 'voice.local.status'),
   route('POST', '/api/voice/local/install', 'voice.local.install'),
-  // voice.wake.* — the pinned wake-word artifacts: content-verified state, the
+  // voice.wake.*, the pinned wake-word artifacts: content-verified state, the
   // explicit ~3.7MB provision, and a bounded chunked read of one artifact's
   // bytes. The last exists because a browser tab cannot fetch the pinned asset
   // itself (the release asset answers with no CORS header), so the tab reads it
@@ -202,7 +202,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('GET', '/api/voice/wake/status', 'voice.wake.status'),
   route('POST', '/api/voice/wake/provision', 'voice.wake.provision'),
   route('GET', '/api/voice/wake/model', 'voice.wake.model.get'),
-  // calendar.* — event read/write and iCalendar import/export over the
+  // calendar.*, event read/write and iCalendar import/export over the
   // platform Google connector. These paths were advertised for a long time
   // with nothing behind them, because the connector lived inside one product
   // and the daemon had no implementation to call; the descriptors carried
@@ -213,16 +213,16 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/calendar/events', 'calendar.events.create'),
   route('GET', '/api/calendar/ics/export', 'calendar.ics.export'),
   route('POST', '/api/calendar/ics/import', 'calendar.ics.import'),
-  // email.* — inbox read and outbound send over the platform IMAP/SMTP
+  // email.*, inbox read and outbound send over the platform IMAP/SMTP
   // service. Same story as calendar above, with a sharper consequence: while
   // there was no daemon-reachable implementation, nothing the daemon did on
-  // its own — a schedule, a trigger, a channel reply — could send mail.
+  // its own, a schedule, a trigger, a channel reply, could send mail.
   route('GET', '/api/email/inbox', 'email.inbox.list'),
   route('GET', '/api/email/inbox/{uid}', 'email.inbox.read'),
   route('POST', '/api/email/drafts', 'email.draft.create'),
   route('POST', '/api/email/send', 'email.send'),
 
-  // payments.* — the daemon holds the card and charges it, so every surface
+  // payments.*, the daemon holds the card and charges it, so every surface
   // reads and writes this over the wire. Card material goes IN through
   // cards.create and has no read route by design; see routes/payments.ts.
   route('GET', '/api/payments/budget', 'payments.budget.status'),
@@ -230,12 +230,12 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
   route('POST', '/api/payments/cards', 'payments.cards.create'),
   route('DELETE', '/api/payments/cards/{id}', 'payments.cards.delete'),
   // The daemon types the stored card into an open checkout page. Takes a card
-  // id and field targets, answers with field names and a boolean — no request
+  // id and field targets, answers with field names and a boolean, no request
   // or response on this route carries card material in either direction.
   route('POST', '/api/payments/checkout/begin', 'payments.checkout.begin'),
   route('POST', '/api/payments/checkout/fill-card', 'payments.checkout.fillCard'),
   route('GET', '/api/payments/purchases', 'payments.purchases.list'),
-  // browser.* — real browser control over the platform engine. The engine was
+  // browser.*, real browser control over the platform engine. The engine was
   // hoisted into the SDK and the daemon could link it, but no verb and no path
   // existed, so a daemon-only caller had nothing to invoke: with no surface
   // process attached, a schedule, a trigger or a channel reply could not open
@@ -274,7 +274,7 @@ export const GATEWAY_REST_ROUTES: readonly GatewayRestRoute[] = [
  * Returns the handler's `Response` when a path+method entry matches, or `null`
  * when nothing matches (so the caller falls through to the rest of the route
  * chain / a 404). When the daemon has not wired `invokeGatewayRestVerb` (e.g. a
- * minimal embed), a matching path returns `null` rather than throwing — it
+ * minimal embed), a matching path returns `null` rather than throwing, it
  * degrades to the same 404 the caller saw before these routes existed.
  */
 /**

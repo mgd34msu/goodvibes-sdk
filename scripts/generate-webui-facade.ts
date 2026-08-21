@@ -21,7 +21,7 @@
  *     generated facade is self-contained.
  *
  * Deterministic (catalog order, no clock, no randomness): a regenerated artifact
- * is byte-identical unless the contract changed — the property that lets the
+ * is byte-identical unless the contract changed, the property that lets the
  * committed artifact carry a --check drift gate wired into `contracts:check`.
  *
  * Source of truth: packages/contracts/artifacts/operator-contract.json
@@ -223,14 +223,14 @@ export function generateWebuiFacade({ check }: { check: boolean }): boolean {
   writeFileSync(WEBUI_FACADE_OUT_PATH, content, 'utf8');
   const routes = Object.keys(buildRoutes(contract.operator.methods)).length;
   const ws = buildWsInvokeIds(contract.operator.methods).length;
-  console.log(`[webui-facade] wrote ${WEBUI_FACADE_OUT_PATH} — ${contract.operator.methods.length} methods, ${routes} REST-routed, ${ws} ws-only invoke`);
+  console.log(`[webui-facade] wrote ${WEBUI_FACADE_OUT_PATH}, ${contract.operator.methods.length} methods, ${routes} REST-routed, ${ws} ws-only invoke`);
   return false;
 }
 
 if (import.meta.main) {
   const drifted = generateWebuiFacade({ check: process.argv.includes('--check') });
   if (drifted) {
-    console.error('[webui-facade] drift detected — run `bun run refresh:contracts`');
+    console.error('[webui-facade] drift detected, run `bun run refresh:contracts`');
     process.exit(1);
   }
 }

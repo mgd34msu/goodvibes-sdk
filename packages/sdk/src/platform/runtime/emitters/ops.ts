@@ -1,5 +1,5 @@
 /**
- * Ops emitters — typed emission wrappers for the OpsEvent domain.
+ * Ops emitters, typed emission wrappers for the OpsEvent domain.
  *
  * Every intervention emits both a specific action event AND an OPS_AUDIT
  * entry with the reason code, as required by the Operator Control Plane spec.

@@ -1,5 +1,5 @@
 /**
- * memory-record-body.ts — request-body parsers for the daemon-owned memory record
+ * memory-record-body.ts, request-body parsers for the daemon-owned memory record
  * routes (add / search / update-review).
  *
  * These build the loose, wire-shaped input objects the route handlers hand to the
@@ -80,7 +80,7 @@ function readReviewField(body: JsonRecord): MemoryRecordAddInput['review'] | und
   };
 }
 
-/** Parse POST /api/memory/records — cls and summary are required. */
+/** Parse POST /api/memory/records, cls and summary are required. */
 export function parseMemoryRecordAddBody(body: JsonRecord): MemoryRecordAddInput | Response {
   const cls = readOptionalStringField(body, 'cls');
   const summary = readOptionalStringField(body, 'summary');
@@ -102,7 +102,7 @@ export function parseMemoryRecordAddBody(body: JsonRecord): MemoryRecordAddInput
   };
 }
 
-/** Parse a memory search filter — every field optional; unknowns ignored. Shared by search/list/searchSemantic/export. */
+/** Parse a memory search filter, every field optional; unknowns ignored. Shared by search/list/searchSemantic/export. */
 export function parseMemoryRecordFilterBody(body: JsonRecord): MemoryRecordSearchFilterInput {
   return {
     ...(readOptionalStringField(body, 'scope') ? { scope: readOptionalStringField(body, 'scope') } : {}),
@@ -119,7 +119,7 @@ export function parseMemoryRecordFilterBody(body: JsonRecord): MemoryRecordSearc
   };
 }
 
-/** Parse POST /api/memory/records/search — every field optional; unknowns ignored. */
+/** Parse POST /api/memory/records/search, every field optional; unknowns ignored. */
 export function parseMemoryRecordSearchBody(
   body: JsonRecord,
 ): { readonly filter: MemoryRecordSearchFilterInput; readonly recall: boolean } {
@@ -127,14 +127,14 @@ export function parseMemoryRecordSearchBody(
 }
 
 /**
- * Parse POST /api/memory/records/:id/update — editable fields
+ * Parse POST /api/memory/records/:id/update, editable fields
  * (scope/summary/detail/tags + the temporal validity window). All optional; the
  * store leaves unset fields unchanged. NOT a review update (that is the /review
- * route) — this edits content/scope, e.g. promoting a record project→team.
+ * route), this edits content/scope, e.g. promoting a record project→team.
  *
  * validFrom/validUntil carry the store's three-state window semantics: a number
  * sets the bound, an explicit `null` clears it, and an absent field leaves it
- * unchanged — so a proposal that changes only the window round-trips.
+ * unchanged, so a proposal that changes only the window round-trips.
  */
 export function parseMemoryRecordUpdateBody(body: JsonRecord): MemoryRecordUpdateInput {
   const scope = readOptionalStringField(body, 'scope');
@@ -153,7 +153,7 @@ export function parseMemoryRecordUpdateBody(body: JsonRecord): MemoryRecordUpdat
   };
 }
 
-/** Parse POST /api/memory/records/:id/links — toId and relation are required (fromId is the path id). */
+/** Parse POST /api/memory/records/:id/links, toId and relation are required (fromId is the path id). */
 export function parseMemoryLinkBody(body: JsonRecord): MemoryLinkInput | Response {
   const toId = readOptionalStringField(body, 'toId');
   const relation = readOptionalStringField(body, 'relation');
@@ -163,7 +163,7 @@ export function parseMemoryLinkBody(body: JsonRecord): MemoryLinkInput | Respons
 }
 
 /**
- * Parse POST /api/memory/records/import — a { bundle } envelope holding a MemoryBundle.
+ * Parse POST /api/memory/records/import, a { bundle } envelope holding a MemoryBundle.
  * Records/links are passed through loosely; the store re-normalizes scope/reviewState/
  * confidence per record and skips ids it already holds (no-loss id-keyed union).
  */
@@ -181,7 +181,7 @@ export function parseMemoryBundleImportBody(body: JsonRecord): MemoryBundleInput
   return { bundle: bundle as unknown as MemoryBundleInput['bundle'] };
 }
 
-/** Parse POST /api/memory/records/:id/review — all review fields optional; id comes from the path. */
+/** Parse POST /api/memory/records/:id/review, all review fields optional; id comes from the path. */
 export function parseMemoryRecordReviewBody(body: JsonRecord): MemoryRecordReviewInput {
   const state = readOptionalStringField(body, 'state');
   const confidence = readOptionalNumberField(body, 'confidence');

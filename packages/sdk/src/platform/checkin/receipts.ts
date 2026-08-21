@@ -44,9 +44,9 @@ export class CheckinReceiptStore {
   /**
    * Append a receipt (capped to the most recent MAX_RECEIPTS).
    *
-   * The write is ORDERED against every other append. A check-in run is long —
+   * The write is ORDERED against every other append. A check-in run is long,
    * it reads a state snapshot, asks a model to judge it, and delivers over a
-   * channel — so the scheduled run and the manual verb overlap readily, and
+   * channel, so the scheduled run and the manual verb overlap readily, and
    * `PersistentStore.persist` is atomic but says nothing about which of two
    * in-flight writes lands last. Unordered, the earlier run's write could land
    * second and replace the file with its own snapshot, which does not contain

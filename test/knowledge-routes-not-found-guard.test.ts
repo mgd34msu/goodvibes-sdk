@@ -6,7 +6,7 @@
  * explicit code was supplied. To prevent category-only not-found errors from silently becoming
  * HTTP 404 responses, the guard now requires EITHER:
  *   - a domain-specific not-found code (KNOWLEDGE_ISSUE_NOT_FOUND, KNOWLEDGE_CANDIDATE_NOT_FOUND,
- *     KNOWLEDGE_JOB_NOT_FOUND) — always explicit, never auto-inferred, OR
+ *     KNOWLEDGE_JOB_NOT_FOUND), always explicit, never auto-inferred, OR
  *   - bare NOT_FOUND code AND status === 404 (confirms the error originated from a real HTTP 404)
  *
  * This test file pins those four distinct cases so any regression is immediately visible.
@@ -16,7 +16,7 @@ import { GoodVibesSdkError } from '../packages/errors/dist/index.js';
 import { buildErrorResponseBody } from '../packages/daemon-sdk/src/error-response.js';
 
 // ---------------------------------------------------------------------------
-// Inline guard helper — mirrors the logic in knowledge-routes.ts catch blocks
+// Inline guard helper, mirrors the logic in knowledge-routes.ts catch blocks
 // (each handler uses the same pattern; we test the rule once here)
 // ---------------------------------------------------------------------------
 
@@ -42,7 +42,7 @@ describe('buildErrorResponseBody — code always present for GoodVibesSdkError o
   });
 
   test('GoodVibesSdkError with category-only inferred code appears on wire (NOT_FOUND inference)', () => {
-    // No explicit code — inferCodeFromCategory('not_found') supplies NOT_FOUND.
+    // No explicit code, inferCodeFromCategory('not_found') supplies NOT_FOUND.
     // This is the new behavior: code is always present on GoodVibesSdkError even without
     // an explicit code. The wire body always includes 'code' for SDK errors.
     const err = new GoodVibesSdkError('resource unavailable', { category: 'not_found' });
@@ -99,7 +99,7 @@ describe('knowledge-routes 404 guard — bare NOT_FOUND provenance check', () =>
 
   test('NOT_FOUND without status does NOT map to 404 (category-only inference)', () => {
     // This is the core regression guard: previously code was undefined (no match),
-    // now it is NOT_FOUND via inference — but without status:404 it must not 404.
+    // now it is NOT_FOUND via inference, but without status:404 it must not 404.
     const err = new GoodVibesSdkError('resource unavailable', { category: 'not_found' });
     expect(err.code).toBe('NOT_FOUND'); // inference happened
     expect((err as unknown as { status?: unknown }).status).toBeUndefined();

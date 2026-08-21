@@ -68,7 +68,7 @@ function artifactSizeError(maxBytes: number): GoodVibesSdkError {
  * Bun (and Node) keep-alive connection reuse depends on the previous
  * request's body having been fully read off the wire. `stream.cancel()`
  * signals "stop delivering chunks to me" but does not, in practice, drain the
- * underlying connection buffer — leaving the connection's NEXT request
+ * underlying connection buffer, leaving the connection's NEXT request
  * stalled for several seconds waiting for the runtime to notice the
  * connection is actually free (verified directly against a bare
  * `Bun.serve()`, no SDK code involved: cancelling left a follow-up request on
@@ -552,7 +552,7 @@ async function spoolMultipartUpload(req: Request, maxFileBytes?: number): Promis
     // Any early exit here (size cap, malformed boundary, truncated part, …)
     // can leave bytes unread on the wire. Drain them before rethrowing so the
     // connection stays healthy for reuse instead of stalling the caller's
-    // next request — see drainReader's doc comment.
+    // next request, see drainReader's doc comment.
     await drainReader(reader);
     await cleanupTempDir(tempDir, error);
     throw error;

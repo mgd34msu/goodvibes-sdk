@@ -3,7 +3,7 @@
  *
  * Behaviour coverage for the typed-IO coverage ratchet's pure rule functions
  * (scripts/foundation-io-coverage-rule.ts) plus a live-source assertion that
- * the checked-in baseline matches reality — so a future contract change that
+ * the checked-in baseline matches reality, so a future contract change that
  * moves the untyped count without updating the baseline fails here too, not
  * only under `contracts:check`.
  */
@@ -85,7 +85,7 @@ describe('foundation-io coverage ratchet — live source', () => {
     const output = parseMapKeys(typesText, 'OperatorMethodOutputMap');
     const untyped = untypedMethodIds(ids, input, output);
     // If this fails, either add typed IO entries (count rose) or update the
-    // baseline (count fell) — the ratchet's own message says which.
+    // baseline (count fell), the ratchet's own message says which.
     expect(untyped.length).toBe(FOUNDATION_IO_COVERAGE_BASELINE);
     expect(evaluateRatchet(untyped.length, FOUNDATION_IO_COVERAGE_BASELINE).ok).toBe(true);
   });

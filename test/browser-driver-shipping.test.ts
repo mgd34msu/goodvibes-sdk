@@ -46,8 +46,8 @@ import type {
  *      shadowed a good one and self-provisioning could never take effect;
  *   3. the remediation told a binary user to install the npm package.
  *
- * The half of that story that is about ONE product's release assets — its
- * archive manifest, its capability probe, its install-kind detector — stays
+ * The half of that story that is about ONE product's release assets, its
+ * archive manifest, its capability probe, its install-kind detector, stays
  * with that product, because the SDK ships no release and has no installer.
  * What is here is the platform half: the archive reader, the resolver, the
  * install-runtime candidates, self-provisioning, and the SHAPE of a remediation
@@ -134,7 +134,7 @@ describe('the driver archive provisioning downloads', () => {
     expect(existsSync(join(target, 'cli.js'))).toBe(true);
     expect(existsSync(join(target, 'package.json'))).toBe(true);
     // And the FIRST place the runtime looks is that same directory name beside
-    // the running executable — which is what a release asset, an installer, and
+    // the running executable, which is what a release asset, an installer, and
     // an update swap all extract into.
     expect(driverSearchDirectories({ surfaceRoot: 'test-surface', homeDirectory: installDir })[0])
       .toBe(join(dirname(process.execPath), DRIVER_DIR_NAME));
@@ -160,7 +160,7 @@ describe('the driver archive provisioning downloads', () => {
 describe('resolving a driver that is not an installed module', () => {
   test('a partial driver beside the binary does not shadow a good one elsewhere', () => {
     // The search stops at the first match, so an incomplete candidate that
-    // still counted as a driver made the good one unreachable — and no amount
+    // still counted as a driver made the good one unreachable, and no amount
     // of self-provisioning could recover, because the broken one kept winning.
     const installDir = scratch('gv-shadow');
     const partial = join(installDir, 'partial', DRIVER_DIR_NAME);
@@ -184,7 +184,7 @@ describe('resolving a driver that is not an installed module', () => {
 
   test('the beside-the-executable candidates do not depend on knowing a surface', () => {
     // Only the managed driver directory is surface-scoped. A caller with no
-    // surface — a probe, a diagnostic — must still see the driver staged next
+    // surface, a probe, a diagnostic, must still see the driver staged next
     // to the binary, or browser control reads as absent in exactly the shipped
     // artifact the search exists for.
     const withoutSurface = driverSearchDirectories();
@@ -274,7 +274,7 @@ describe('the browser install step on a machine with no interpreter', () => {
  *
  * The agent's version of these tests asserted its own release asset names and
  * its own `bun add -g @pellux/goodvibes-agent`. Those are facts about a
- * product, and the SDK has none — so the profile is supplied here and what is
+ * product, and the SDK has none, so the profile is supplied here and what is
  * asserted is that each install kind is answered with ITS OWN fix and never
  * another's, which is the defect these tests exist for.
  */

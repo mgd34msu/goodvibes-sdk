@@ -27,14 +27,14 @@ describe('version-consistency-check', () => {
       JSON.stringify({ name: 'root', version: '1.0.0' }),
     );
 
-    // packages/a — version matches root
+    // packages/a, version matches root
     mkdirSync(join(fixture, 'packages', 'a'), { recursive: true });
     writeFileSync(
       join(fixture, 'packages', 'a', 'package.json'),
       JSON.stringify({ name: '@scope/a', version: '1.0.0' }),
     );
 
-    // packages/b — version diverges from root
+    // packages/b, version diverges from root
     mkdirSync(join(fixture, 'packages', 'b'), { recursive: true });
     writeFileSync(
       join(fixture, 'packages', 'b', 'package.json'),

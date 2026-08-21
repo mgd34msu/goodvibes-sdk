@@ -1,5 +1,5 @@
 /**
- * Timeline buffer tests — correctness of the TimelineBuffer ring buffer
+ * Timeline buffer tests, correctness of the TimelineBuffer ring buffer
  * and time-travel step/seek controls.
  */
 import { describe, test, expect, beforeEach } from 'bun:test';

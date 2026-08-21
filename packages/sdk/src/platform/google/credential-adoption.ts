@@ -3,7 +3,7 @@
  *
  * The defect this exists to fix: working Gmail OAuth credentials were sitting
  * in `~/.gmail-mcp/` while the agent told its owner that email was not
- * configured — because nothing ever looked there. Capability discovery
+ * configured, because nothing ever looked there. Capability discovery
  * reported empty registries and the model reasoned from that emptiness.
  *
  * So adoption is deliberately generous about where it looks and deliberately
@@ -13,7 +13,7 @@
  *     that is in active use; rotating or rewriting them would break it.
  *   - Secret values never leave this module except through the returned
  *     credential record. Summaries, logs, errors and progress lines carry only
- *     presence, provenance, scopes and expiry — never a token.
+ *     presence, provenance, scopes and expiry, never a token.
  *
  * Precedence is native-first: once the agent has its own credentials in the
  * encrypted store, those win, and the adopted copy becomes a fallback.
@@ -32,7 +32,7 @@ export interface GoogleFilePort {
   readText(path: string): string | null;
 }
 
-/** A complete, usable OAuth credential set. Contains secrets — never log this. */
+/** A complete, usable OAuth credential set. Contains secrets, never log this. */
 export interface GoogleOAuthCredentials {
   readonly clientId: string;
   readonly clientSecret: string;
@@ -43,7 +43,7 @@ export interface GoogleOAuthCredentials {
   readonly scopes: readonly string[];
   readonly tokenUri: string;
   readonly origin: GoogleCredentialOrigin;
-  /** Where it was found. A path or a store key name — never a value. */
+  /** Where it was found. A path or a store key name, never a value. */
   readonly location: string;
 }
 
@@ -149,7 +149,7 @@ interface TokenFileContents {
  * Read a token file. The two known shapes differ in how they express expiry:
  * `expiry_date` is an absolute epoch, `expires_in` is a duration from an
  * issue time we do not have. A duration alone cannot be turned into an
- * absolute expiry, so it is treated as unknown rather than guessed — an
+ * absolute expiry, so it is treated as unknown rather than guessed, an
  * unknown expiry makes the token manager refresh proactively, which is the
  * safe direction to be wrong in.
  */

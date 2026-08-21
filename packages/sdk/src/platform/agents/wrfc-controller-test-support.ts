@@ -4,7 +4,7 @@
  * Test-only construction seam for WrfcController. `skipClaimVerification`
  * disables the phantom-work guard (verifyEngineerClaims) and must NEVER be set
  * by production code, so it is not a public constructor option. This factory is
- * the sole sanctioned path that injects it — named `…ForTest` per the repo's
+ * the sole sanctioned path that injects it, named `…ForTest` per the repo's
  * test-seam idiom (cf. `buildFromFilesForTest`, `resolveSpecifierForTest`).
  * Production code calls `new WrfcController(...)` directly and never reaches here.
  */
@@ -36,11 +36,11 @@ export interface StubFixRunInput {
 /**
  * Install a scripted FixWorkstreamRunner on a controller under test (the
  * planned-fix path that replaced the single-fixer prompt). Behaviors:
- * - 'merged' (default): every cycle resolves merged — the controller proceeds
+ * - 'merged' (default): every cycle resolves merged, the controller proceeds
  *   to the terminal contract re-review (a fresh reviewer spawn the harness
  *   can complete);
  * - 'failed': every cycle resolves a structured tasks-failed outcome;
- * - 'pending': the promise never settles — the chain stays honestly 'fixing'.
+ * - 'pending': the promise never settles, the chain stays honestly 'fixing'.
  * Returns the recorded invocations for assertions.
  */
 export function installStubFixRunner(

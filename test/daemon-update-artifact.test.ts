@@ -2,7 +2,7 @@
  * The auto-update loop never assumes the SDK package is the shipped artifact.
  *
  * - Embedded default (no artifact identity): even with update.auto=true and a
- *   releases URL configured, NO auto-update loop starts — the host manages
+ *   releases URL configured, NO auto-update loop starts, the host manages
  *   updates, and the SDK package version is never compared against the host's
  *   release tags.
  * - With a host-provided artifact identity, the loop compares the HOST's
@@ -63,7 +63,7 @@ function lifecycleWith(
     configManager,
     platformServiceManager,
     isIdle: overrides.isIdle ?? (() => true),
-    // Boot promotion hands over by exiting — tests OBSERVE the exit.
+    // Boot promotion hands over by exiting, tests OBSERVE the exit.
     exitProcess: (code: number) => { exits.push(code); },
     // These tests simulate a COMPILED daemon promoting; the bun-test process is
     // itself a source run, so default the seam to compiled and let a dev-gate
@@ -97,7 +97,7 @@ describe('daemon update artifact identity', () => {
       const updater = updaterOf(runtime);
       expect(updater).not.toBeNull();
       expect(updater!.options.currentVersion).toBe('999.0.0-host-artifact');
-      // The embedder's identity is what gets compared and swapped — the SDK
+      // The embedder's identity is what gets compared and swapped, the SDK
       // package version must play no part when a host names its artifact.
       expect(updater!.options.currentVersion).not.toBe(VERSION);
       expect(updater!.options.execPath).toBe('/opt/host/bin/host-app');
@@ -210,7 +210,7 @@ describe('boot-edge service promotion (independent of updates)', () => {
   });
 
   test('a source/dev run never self-promotes (no unit written, no handover)', () => {
-    // Everything else says "promote" (artifact identity, idle, not installed) —
+    // Everything else says "promote" (artifact identity, idle, not installed),
     // only the compiled-binary gate stops it, because a dev unit would fail on
     // the next boot.
     const { runtime, installs, exits } = lifecycleWith(artifact, { isCompiledBinary: () => false });

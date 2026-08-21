@@ -1,9 +1,9 @@
 /**
- * schema-domain-memory.ts — MemoryGovernor config (`memory.*`).
+ * schema-domain-memory.ts, MemoryGovernor config (`memory.*`).
  *
  * Owner-confirmed defaults (2026-07-14). `memory.budgetMb` uses 0 as an "auto"
  * sentinel: the governor resolves it to min(25% of system RAM, 4096 MB) at
- * runtime — kept a sentinel here so the browser-safe config schema never calls
+ * runtime, kept a sentinel here so the browser-safe config schema never calls
  * node:os. The tier percentages and tripwire values are literal defaults.
  */
 import { type ConfigSettingDefinition, intRange, numRange } from './schema-shared.js';
@@ -27,7 +27,7 @@ export interface MemoryConfig {
     sustainSec: number;
   };
   /**
-   * Absolute-RSS backstop as a percent of the EFFECTIVE KILL CEILING — the
+   * Absolute-RSS backstop as a percent of the EFFECTIVE KILL CEILING, the
    * own-cgroup memory limit where one applies, else physical RAM. Default 90.
    * Anchored to the ceiling (not the budget) so a large-but-stable working set
    * above the deliberately-small budget never exits a healthy daemon; the
@@ -113,7 +113,7 @@ export const memoryConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 90,
     description:
-      'Absolute-memory backstop as a percent of the EFFECTIVE KILL CEILING — the daemon\'s own cgroup memory limit where one applies, else physical RAM. If RSS holds at/above this percent of that ceiling for memory.tripwire.sustainSec, the governor writes a hard-limit receipt and exits so a supervisor restarts clean — catching a leak too slow for memory.tripwire.rateMbPerSec just before the kernel/cgroup OOM killer would strike. Default 90: fire at 90% of the real kill line, leaving a safety margin for the exit itself. Deliberately anchored to the kill ceiling and NOT to memory.budgetMb: the budget caps small by design (25% of RAM, max 4096 MB), and a large-but-stable working set above the budget on a big-RAM host is handled by the critical tier (refuse new expensive work, stay alive) — anchoring the exit to the budget would put such a healthy daemon in a permanent restart loop.',
+      'Absolute-memory backstop as a percent of the EFFECTIVE KILL CEILING, the daemon\'s own cgroup memory limit where one applies, else physical RAM. If RSS holds at/above this percent of that ceiling for memory.tripwire.sustainSec, the governor writes a hard-limit receipt and exits so a supervisor restarts clean, catching a leak too slow for memory.tripwire.rateMbPerSec just before the kernel/cgroup OOM killer would strike. Default 90: fire at 90% of the real kill line, leaving a safety margin for the exit itself. Deliberately anchored to the kill ceiling and NOT to memory.budgetMb: the budget caps small by design (25% of RAM, max 4096 MB), and a large-but-stable working set above the budget on a big-RAM host is handled by the critical tier (refuse new expensive work, stay alive), anchoring the exit to the budget would put such a healthy daemon in a permanent restart loop.',
     ...intRange(1, 100),
   },
 ];

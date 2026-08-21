@@ -54,7 +54,7 @@ if (!DRY_RUN && !getAuthToken(REGISTRY)) {
     throw new Error('[publish] RELEASE BLOCKED: packages/sdk/package.json is missing a string version.');
   }
   assertChangelogSection(version, 'publish');
-  console.log(`[publish] changelog-check OK — CHANGELOG.md contains section for v${version}`);
+  console.log(`[publish] changelog-check OK, CHANGELOG.md contains section for v${version}`);
 })();
 
 const { tempRoot, publicStages } = await stagePackages();
@@ -85,7 +85,7 @@ try {
     } else if (isPublished(packageName, packageVersion, null)) {
       // `npm publish --dry-run` does two things: it assembles the tarball, and
       // it asks the registry whether the publish would be allowed. The second
-      // one is a hard error for a version that already exists — so the dry run
+      // one is a hard error for a version that already exists, so the dry run
       // failed on a state the REAL publish handles fine, by skipping it a few
       // lines up. A rehearsal that is stricter than the performance is a broken
       // rehearsal: it made the pre-publish chain unpassable on any branch
@@ -94,13 +94,13 @@ try {
       //
       // So run the half that still means something. `npm pack --dry-run`
       // assembles the same tarball from the same staged, normalized manifest
-      // and fails on the same packing faults; only the registry precondition —
-      // the part whose answer is already known — is skipped. This is not a
+      // and fails on the same packing faults; only the registry precondition,
+      // the part whose answer is already known, is skipped. This is not a
       // no-op: every package still gets its tarball built and its file list
       // checked, and the count is reported below so a fully-skipped run can
       // never read as a fully-rehearsed one.
       console.log(
-        `Dry-run: ${packageName}@${packageVersion} is already on ${REGISTRY} — packing only, registry precondition not applicable.`,
+        `Dry-run: ${packageName}@${packageVersion} is already on ${REGISTRY}, packing only, registry precondition not applicable.`,
       );
       run('npm', ['pack', '--dry-run'], stage.stageDir, {
         auth: false,
@@ -137,7 +137,7 @@ try {
 
 if (DRY_RUN) {
   console.log(
-    `[publish] dry-run summary: ${publicStages.length} public package(s) — ` +
+    `[publish] dry-run summary: ${publicStages.length} public package(s), ` +
       `${fullRehearsalCount} full publish rehearsal(s), ${packOnlyCount} pack-only ` +
       `(version already on ${REGISTRY}).`,
   );

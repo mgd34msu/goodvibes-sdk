@@ -4,10 +4,10 @@
  * The owner messaged the bot on Telegram and received these, as chat messages,
  * inside the exchange:
  *
- *     registry — email send
- *     fetch — standard
+ *     registry, email send
+ *     fetch, standard
  *     find
- *     exec — standard
+ *     exec, standard
  *
  * That is `AgentRecord.progress`. The orchestrator writes the running tool's
  * name and a scrap of its arguments there for the TUI's activity surfaces, and
@@ -127,7 +127,7 @@ describe('the exact leak the owner saw', () => {
     const h = harness('telegram');
     h.track('agent-unmarked');
     h.advance(20_000);
-    // No audience at all — an older emitter, a plugin, a caller that forgot.
+    // No audience at all, an older emitter, a plugin, a caller that forgot.
     await h.progress('agent-unmarked', 'Turn 2 · registry — gmail');
     await h.complete('agent-unmarked', 'Done.');
     await waitFor(() => h.published.length > 0);

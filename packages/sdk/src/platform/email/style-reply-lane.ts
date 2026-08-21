@@ -23,15 +23,15 @@
  * re-declaring them here would put a second copy of a product's type system in
  * the SDK for it to drift from. So these functions return exactly the object
  * literals they build, and the surface pins them to its own types at the point
- * of use — where a mismatch becomes a compile error in the product, which is
+ * of use, where a mismatch becomes a compile error in the product, which is
  * where it belongs. The literal annotations below exist so that pinning
  * succeeds: without them the union-valued fields widen to `string`.
  *
  * BEFORE-SEND REVIEW BOUNDARY (enforced here and in style-reply.ts)
  * ──────────────────────────────────────────────────────────────────────
  * The style-reply lane ONLY produces a DRAFT. Composition is local-only in
- * nature (the live record's typed `effect` is 'read-only' — the closest value
- * in the surface's live-record effect union — and it carries no `freshness`, so
+ * nature (the live record's typed `effect` is 'read-only', the closest value
+ * in the surface's live-record effect union, and it carries no `freshness`, so
  * it is never counted as a provider read). Sending requires the confirmed send path
  * (EmailService.sendMail with confirm:true, or an MCP connector action) with
  * explicit user review and confirmation before any provider effect is executed.

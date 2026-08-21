@@ -9,7 +9,7 @@
  *
  * Every write verb answers 200 with the store's own `{ ok, reason, changes,
  * disclosure }`, and `ok` is required by the output schema. That follows
- * `principals.delete` in this same directory — "an honest boolean, never a 200
+ * `principals.delete` in this same directory, "an honest boolean, never a 200
  * that pretends". The alternative considered and rejected was mapping a trust
  * refusal to 403 by matching its wording, which would have made the wire status
  * depend on a sentence the trust module is free to reword. What DOES throw is
@@ -19,8 +19,8 @@
  * ## Why every verb goes through the store
  *
  * `owner-profile/writer.ts` knows how to edit lines and nothing about trust.
- * The store runs the §7 gate — authority, then derivation against the process
- * untrusted-content ledger, then the verbatim-quote requirement — before a line
+ * The store runs the §7 gate, authority, then derivation against the process
+ * untrusted-content ledger, then the verbatim-quote requirement, before a line
  * lands. The module barrel deliberately does not export the raw writer, and
  * nothing here reaches around the store to reach it. A gate that can be walked
  * around is not a gate.
@@ -43,8 +43,8 @@
  *
  * ## Policy vs mechanism
  *
- * The owner's three switches — `profile.autonomousWrites`,
- * `profile.discloseWrites`, `profile.discloseClosedTierReads` — are applied by
+ * The owner's three switches, `profile.autonomousWrites`,
+ * `profile.discloseWrites`, `profile.discloseClosedTierReads`, are applied by
  * `owner-profile-policy.ts`, which wraps the store for writes, and by the read
  * handlers below for the read receipt. The trust gate is not policy and is not
  * here: it lives in the store, and nothing in this file can turn it off.
@@ -113,8 +113,8 @@ function requireFieldId(value: unknown): string {
  * reasoning `explicit-user-request.ts` uses for its own field. That reasoning
  * does not transfer, and the difference matters: `explicitUserRequest` lives in
  * an invocation CONTEXT no transport populates, so requiring it would refuse
- * every real caller. `authority` is a body parameter of these verbs — any
- * caller already constructing `{fieldId, value, surface, said}` can state it —
+ * every real caller. `authority` is a body parameter of these verbs, any
+ * caller already constructing `{fieldId, value, surface, said}` can state it,
  * so requiring it costs one word and removes a hole rather than a capability.
  *
  * The hole was not theoretical for removals. §7 gives `forget` and `undo`
@@ -157,7 +157,7 @@ function createReadHandler(service: OwnerProfileGatewayService): GatewayMethodHa
 
 function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethodHandler {
   // Load state, path, section names, counts, invalid fields + reasons. Never a
-  // value — that property is what makes this verb safe in a support bundle, and
+  // value, that property is what makes this verb safe in a support bundle, and
   // owner-profile-containment.test.ts asserts it against a populated profile.
   return () => service.status();
 }
@@ -169,7 +169,7 @@ function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethod
  * as-is, and that object carries two properties the published contract never
  * declared: `section` and `lineIndex`. Every operator method's output schema
  * carries `additionalProperties: false` and the client validates against it, so
- * the extras were not tolerated and ignored — they were a hard failure, and no
+ * the extras were not tolerated and ignored, they were a hard failure, and no
  * profile field could be read from a strict client at all. It cost the owner
  * his shipping address on a live agent turn.
  *
@@ -181,7 +181,7 @@ function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethod
  *
  * Projecting explicitly, rather than spreading whatever the store holds, is
  * what stops the next property added to `ProfileFieldValue` from repeating
- * this. `profile.read` has always projected — see `OwnerProfileStore.viewOf`.
+ * this. `profile.read` has always projected, see `OwnerProfileStore.viewOf`.
  */
 function profileFieldPayload(field: ProfileFieldValue): Record<string, unknown> {
   return {
@@ -205,7 +205,7 @@ function createGetHandler(
     const def = profileFieldById(fieldId);
     // A closed-tier read is disclosed unless he turned the receipts off; an
     // open-tier one never is, because the open tier is already in context and a
-    // receipt for it would be noise. The VALUE is returned either way — the
+    // receipt for it would be noise. The VALUE is returned either way, the
     // setting governs whether he is told, not whether the consumer is served.
     const disclose = field !== undefined
       && def?.tier === 'closed'
@@ -281,7 +281,7 @@ function createForgetHandler(service: OwnerProfileGatewayService): GatewayMethod
       ? undefined
       : requireFieldId(params.fieldId);
     // A prose line is named by its section and its exact text, never by its
-    // position — see PROFILE_FORGET_INPUT_SCHEMA for why an index cannot be
+    // position, see PROFILE_FORGET_INPUT_SCHEMA for why an index cannot be
     // made safe here. `lineIndex` is deliberately not read at all: silently
     // ignoring it would let a caller believe a positional delete had happened.
     if (params.lineIndex !== undefined) {
@@ -314,7 +314,7 @@ function createForgetHandler(service: OwnerProfileGatewayService): GatewayMethod
 /**
  * `profile.undo` deliberately does NOT call `refuseNonUserRequest`.
  *
- * §11.1 names three verbs that do — set, append, forget — and undo is not one
+ * §11.1 names three verbs that do, set, append, forget, and undo is not one
  * of them. It is also the only mutation that cannot lose information: it
  * promotes a value the owner previously had back to the active line. The
  * authority gate still applies, so an untrusted surface cannot reach it.
@@ -332,8 +332,8 @@ function createUndoHandler(service: OwnerProfileGatewayService): GatewayMethodHa
 /**
  * Attach the nine handlers.
  *
- * `policy` defaults to permissive so a caller that has no config to read from —
- * a test, a narrow embed — behaves exactly as the schema defaults describe.
+ * `policy` defaults to permissive so a caller that has no config to read from,
+ * a test, a narrow embed, behaves exactly as the schema defaults describe.
  * The daemon passes live predicates, so all three switches take effect on the
  * next call rather than on the next restart.
  */

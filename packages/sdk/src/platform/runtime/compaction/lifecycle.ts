@@ -122,10 +122,10 @@ export interface StrategySelectionParams {
  * Selects the appropriate compaction strategy based on trigger and token pressure.
  *
  * Selection priority:
- * 1. `reactive`     — any prompt-too-long error (emergency, must shrink now)
- * 2. `microcompact` — token pressure < 50% of context window (light touch)
- * 3. `autocompact`  — token pressure 50–85% (standard auto-compaction)
- * 4. `collapse`     — token pressure > 85% or manual trigger (aggressive shrink)
+ * 1. `reactive`    , any prompt-too-long error (emergency, must shrink now)
+ * 2. `microcompact`, token pressure < 50% of context window (light touch)
+ * 3. `autocompact` , token pressure 50–85% (standard auto-compaction)
+ * 4. `collapse`    , token pressure > 85% or manual trigger (aggressive shrink)
  */
 export function selectStrategy(
   params: StrategySelectionParams,
@@ -144,7 +144,7 @@ export function selectStrategy(
   if (pressure < 0.85) {
     return 'autocompact';
   }
-  // High pressure or manual trigger — aggressive collapse
+  // High pressure or manual trigger, aggressive collapse
   return 'collapse';
 }
 

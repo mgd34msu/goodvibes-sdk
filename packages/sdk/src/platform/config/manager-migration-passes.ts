@@ -1,5 +1,5 @@
 /**
- * manager-migration-passes.ts — the load-time settings-file migration passes
+ * manager-migration-passes.ts, the load-time settings-file migration passes
  * ConfigManager runs (extracted so manager.ts stays under the line cap; the
  * behavior lives here verbatim). Each pass is invisible: the file rewrites
  * once, a one-line receipt rides the announce-once queue, and an unwritable
@@ -35,7 +35,7 @@ export type MigrationReceiptSink = (id: string, text: string) => void;
  * `~/.goodvibes/daemon/settings.json` is written by the daemon and READ by
  * every terminal product, because a client resolves daemon-owned keys to show
  * and edit them. A pass that rewrites the file on load therefore runs in
- * processes that do not own it — and on a real machine those processes are not
+ * processes that do not own it, and on a real machine those processes are not
  * the same version at the same moment.
  *
  * That is not hypothetical. A 2.0.5-runtime client loaded the daemon tier,
@@ -47,8 +47,8 @@ export type MigrationReceiptSink = (id: string, text: string) => void;
  * ── The rule ──────────────────────────────────────────────────────────────
  *
  * A process migrates ON DISK only the files it owns. A reader that does not own
- * the file migrates its in-memory view — so a new client reading an old file
- * still resolves the right values — and leaves the bytes alone. No receipt is
+ * the file migrates its in-memory view, so a new client reading an old file
+ * still resolves the right values, and leaves the bytes alone. No receipt is
  * filed either: a receipt says "your file now reads this way", and with nothing
  * written that sentence would be false.
  *
@@ -189,7 +189,7 @@ export function applyDaemonEmbedInProcessMigrationPass(
   const quoted = result.removedValue === undefined ? '' : ` (it was ${String(result.removedValue)})`;
   const receiptText =
     `Setting removed: daemon.embedInProcess${quoted} is gone from ${sourcePath}. `
-    + 'It offered a choice no surface could act on — every product adopts a running daemon, and that '
+    + 'It offered a choice no surface could act on, every product adopts a running daemon, and that '
     + 'is decided before any embed preference is read, so the value never changed what happened. '
     + 'Hosting a daemon inside another process remains available to an embedder composing one '
     + 'directly; it is not a setting. Nothing about how your daemon runs changes.';
@@ -206,7 +206,7 @@ export function applyDaemonEmbedInProcessMigrationPass(
  * `daemon.enabled: false` gets the other half of its old meaning written down:
  * `daemon.connectedHost.enabled: true`, with a receipt.
  *
- * The one key used to answer two questions — does this surface ADOPT a daemon
+ * The one key used to answer two questions, does this surface ADOPT a daemon
  * of its own, and may it DIAL one it is already connected to. Declining the
  * first silently declined the second, so a machine with `daemon.enabled: false`
  * and a live connected host had its session-inputs poll, rewind registration,
@@ -239,11 +239,11 @@ export function applyDaemonConnectedHostSplitMigrationPass(
   persistMigratedFile(sourcePath, result.config, 'daemon connected-host split');
   const receiptText =
     `Setting added: daemon.connectedHost.enabled is now true in ${sourcePath}. `
-    + 'Your daemon.enabled is false and is unchanged — it still means this surface does not adopt a '
+    + 'Your daemon.enabled is false and is unchanged, it still means this surface does not adopt a '
     + 'session daemon of its own. It used to ALSO mean this surface may not talk to a daemon it is '
     + 'already connected to, which is a different decision and is now its own setting. While they '
     + 'were one key, turning adoption off also stopped inbound-message delivery, conversation rewind '
-    + 'registration, the live approvals stream and daemon-routed turns — on machines whose connected '
+    + 'registration, the live approvals stream and daemon-routed turns, on machines whose connected '
     + 'host was running and answering everything else. Those now work. Set '
     + 'daemon.connectedHost.enabled to false if you want no daemon contact at all.';
   logger.info(receiptText);
@@ -259,7 +259,7 @@ export function applyDaemonConnectedHostSplitMigrationPass(
  * The payments budget amounts move onto their new names, with their numbers
  * converted, and a receipt naming every key and both values.
  *
- * These four settings used to be named for — and stored as — the count of the
+ * These four settings used to be named for, and stored as, the count of the
  * currency's smallest division, so a hundred was written `10000` and a limit
  * was one missing zero away from being a hundred times what its owner meant.
  * They now hold the amount itself. The receipt quotes what each key was and
@@ -268,12 +268,12 @@ export function applyDaemonConnectedHostSplitMigrationPass(
  *
  * This is the one pass with a NON-OWNING caller: it runs over the daemon tier,
  * which every client reads and only the daemon writes. See {@link
- * MigrationOwnership} — `ownsFile: false` applies the rename to the in-memory
+ * MigrationOwnership}, `ownsFile: false` applies the rename to the in-memory
  * view and writes neither the file nor a receipt.
  *
  * The owning write also records a reader floor. Ownership stops a client from
  * renaming keys under an older daemon; the floor covers the other direction,
- * where the DAEMON is newer — an older reader of the migrated file then names
+ * where the DAEMON is newer, an older reader of the migrated file then names
  * the version and says to update, instead of skipping four limits it cannot
  * place. See PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR.
  */
@@ -303,7 +303,7 @@ export function applyPaymentsBudgetMigrationPass(
   // The marker rides a COPY. ingestSettingsFile strips the floor BEFORE it calls
   // a migration and then screens whatever that migration returns, so a marker
   // left on the returned object would be reported as a setting this build does
-  // not know — the very sentence this change exists to stop producing.
+  // not know, the very sentence this change exists to stop producing.
   const persisted = raiseSettingsReaderFloor(
     { ...result.config },
     PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR,
@@ -316,7 +316,7 @@ export function applyPaymentsBudgetMigrationPass(
   const receiptText =
     `Settings renamed: your payment limits now hold the amount you would say out loud, `
     + `so you enter 100 for a hundred and 19.99 for nineteen ninety-nine. `
-    + `${moved} (${sourcePath}). Your limits are unchanged — only how they are written.`;
+    + `${moved} (${sourcePath}). Your limits are unchanged, only how they are written.`;
   logger.info(receiptText);
   try {
     receipt(`settings-migration-payments-budget-amounts:${sourcePath}`, receiptText);
@@ -332,7 +332,7 @@ export function applyPaymentsBudgetMigrationPass(
  * DAEMON-OWNED, CLIENT-READ, exactly like the payments rename beside it: the
  * `occasions.` prefix lives in the daemon tier, which every terminal product
  * reads and only the daemon writes. So ownership applies (see {@link
- * MigrationOwnership}) — a non-owning reader drops the key from its in-memory
+ * MigrationOwnership}), a non-owning reader drops the key from its in-memory
  * view and writes neither the bytes nor a receipt, because "your file now reads
  * this way" would not be true, and because a client rewriting daemon-owned keys
  * under an older daemon is the precise shape of the incident that made
@@ -341,7 +341,7 @@ export function applyPaymentsBudgetMigrationPass(
  * No reader floor is recorded, and the difference from the payments pass is
  * worth stating. That one RENAMED keys, so an older daemon reading the migrated
  * file would find names it could not place and silently skip four spending
- * limits — the floor exists to make that loud. This one only removes a key that
+ * limits, the floor exists to make that loud. This one only removes a key that
  * no longer governs anything. An older reader of the migrated file simply falls
  * back to a default for a setting whose value never reaches a decision, so
  * there is nothing for it to get wrong and nothing to refuse a start over.
@@ -365,7 +365,7 @@ export function applyOccasionsFinalStretchMigrationPass(
   const receiptText =
     `Setting removed: occasions.finalStretchDays${quoted} is gone from ${sourcePath}. `
     + 'It set how many days before a date your reminders went daily, and nothing goes daily any more: '
-    + 'an upcoming date is now raised twice — when it enters its runway, and on the day itself — and '
+    + 'an upcoming date is now raised twice, when it enters its runway, and on the day itself, and '
     + 'stays quiet in between. Your dates, how far ahead they are raised, and where reminders go are '
     + 'all unchanged.';
   logger.info(receiptText);
@@ -391,7 +391,7 @@ export function applyOccasionsFinalStretchMigrationPass(
  * key its build did not know and stopped resolving a configured spending limit.
  * The client was right about the change and had no business writing it.
  *
- * These run BEFORE the ingestion key screen — see ingestSettingsFile's `migrate`
+ * These run BEFORE the ingestion key screen, see ingestSettingsFile's `migrate`
  * hook. A key one of these removes or renames is not a key the build fails to
  * understand, and screening first would report a state that is already handled.
  */
@@ -412,12 +412,12 @@ export function runDaemonTierMigrationPasses(
  * the passes: each runs on the output of the one before it, and the default-strip
  * pass has to come last so it sees the shape the others leave behind.
  *
- * OWNERSHIP: every pass in this sequence runs over a SURFACE settings file —
+ * OWNERSHIP: every pass in this sequence runs over a SURFACE settings file,
  * the global `~/.goodvibes/<surface>/settings.json` and the project
  * `<workingDir>/.goodvibes/<surface>/settings.json`. A surface file is written
  * and read by that surface's own process, so writer and owner are the same
  * runtime by construction and these passes take no ownership argument. The
- * daemon tier is the exception, and it is loaded separately — see
+ * daemon tier is the exception, and it is loaded separately, see
  * ConfigManager.loadDaemonTier and {@link MigrationOwnership}.
  */
 export function runLoadMigrationPasses(

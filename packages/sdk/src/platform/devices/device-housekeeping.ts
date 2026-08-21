@@ -1,11 +1,11 @@
 /**
- * device-housekeeping.ts — recovery-time and periodic garbage collection for
+ * device-housekeeping.ts, recovery-time and periodic garbage collection for
  * everything the paired-device feature persists.
  *
  * Two stores outlive a restart: the grants ledger (durable "always allow"
  * approvals) and the retained capture artifacts. Persistence without
- * recovery-time housekeeping does not fail loudly — it silently serves stale or
- * corrupt state forever — so both are swept on recovery AND on a timer, and
+ * recovery-time housekeeping does not fail loudly, it silently serves stale or
+ * corrupt state forever, so both are swept on recovery AND on a timer, and
  * every sweep discloses what it removed.
  *
  * Disclosure is written to `device-housekeeping.json` beside the stores, the
@@ -32,7 +32,7 @@ interface HousekeepingLog extends Record<string, unknown> {
   readonly reports: readonly DeviceHousekeepingReport[];
 }
 
-/** Keep the disclosure log itself bounded — it is persisted state too. */
+/** Keep the disclosure log itself bounded, it is persisted state too. */
 const MAX_DISCLOSURE_REPORTS = 20;
 
 export interface DeviceHousekeepingOptions {

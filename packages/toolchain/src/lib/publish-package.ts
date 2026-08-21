@@ -1,5 +1,5 @@
 /**
- * publish-package — idempotent npm publish + post-publish propagation poll.
+ * publish-package, idempotent npm publish + post-publish propagation poll.
  *
  * One implementation of the publish concern with a single set of constants.
  * Idempotency: if the exact name@version is already on the registry, skip
@@ -59,8 +59,8 @@ export function runPublishPackage(options: PublishOptions): PublishResult {
   const tarball = options.tarballPath === undefined ? undefined : resolve(options.tarballPath);
 
   if (tarball !== undefined) {
-    // Tarball mode: publish a prebuilt .tgz. Validate the flag value — the file
-    // must exist and be a `.tgz` — before doing anything with it. `npm pack
+    // Tarball mode: publish a prebuilt .tgz. Validate the flag value, the file
+    // must exist and be a `.tgz`, before doing anything with it. `npm pack
     // --dry-run` is meaningless here (there is nothing to pack), so a dry run
     // just confirms the staged tarball is present and readable.
     if (!tarball.endsWith('.tgz') || !fileExists(tarball)) {
@@ -71,7 +71,7 @@ export function runPublishPackage(options: PublishOptions): PublishResult {
     }
     const alreadyTarball = getPublishedVersion(exec, options.name, options.version, registry);
     if (alreadyTarball === options.version) {
-      logger.info(`[publish-package] ${options.name}@${options.version} already published — skipping`);
+      logger.info(`[publish-package] ${options.name}@${options.version} already published, skipping`);
       return { ok: true, skipped: true, detail: 'already published' };
     }
     const res = exec('npm', ['publish', tarball, '--access', 'public', '--registry', registry], { cwd: options.cwd });
@@ -89,7 +89,7 @@ export function runPublishPackage(options: PublishOptions): PublishResult {
 
   const already = getPublishedVersion(exec, options.name, options.version, registry);
   if (already === options.version) {
-    logger.info(`[publish-package] ${options.name}@${options.version} already published — skipping`);
+    logger.info(`[publish-package] ${options.name}@${options.version} already published, skipping`);
     return { ok: true, skipped: true, detail: 'already published' };
   }
 

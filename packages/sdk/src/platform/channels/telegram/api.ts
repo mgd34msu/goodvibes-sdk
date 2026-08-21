@@ -1,9 +1,9 @@
 /**
- * api.ts — the slice of the Telegram Bot API the daemon actually calls.
+ * api.ts, the slice of the Telegram Bot API the daemon actually calls.
  *
  * Deliberately small: getUpdates for polling ingress, the webhook trio for
  * webhook ingress, and sendMessage for onboarding replies. Outbound task
- * replies keep going through the channel delivery strategy — this client is
+ * replies keep going through the channel delivery strategy, this client is
  * not a second delivery path.
  *
  * Every call returns the Telegram `result` payload or throws TelegramApiError
@@ -22,7 +22,7 @@ export class TelegramApiError extends Error {
   readonly retryAfterSeconds: number | null;
   /** HTTP status, for transport-level failures with no Telegram body. */
   readonly httpStatus: number | null;
-  /** Telegram's own `description`, verbatim — two different 409s share a code. */
+  /** Telegram's own `description`, verbatim, two different 409s share a code. */
   readonly description: string;
 
   constructor(
@@ -46,7 +46,7 @@ export class TelegramApiError extends Error {
    * True when ANOTHER PROCESS is already long-polling this same bot token.
    *
    * Telegram answers the second getUpdates with 409 and the description
-   * "terminated by other getUpdates request" — the SAME status code it uses
+   * "terminated by other getUpdates request", the SAME status code it uses
    * for a registered webhook, and a completely different situation. A webhook
    * conflict is ours to clear; this one is not, because the other consumer is
    * a real process that is genuinely receiving the user's messages. Treating
@@ -60,7 +60,7 @@ export class TelegramApiError extends Error {
 
   /**
    * True when a webhook is registered and therefore getUpdates cannot run.
-   * Telegram reports this as 409 Conflict — but so does a concurrent consumer,
+   * Telegram reports this as 409 Conflict, but so does a concurrent consumer,
    * which is a different problem with a different remedy, so it is excluded
    * here rather than swept into the same branch.
    */
@@ -68,13 +68,13 @@ export class TelegramApiError extends Error {
     return this.errorCode === 409 && !this.isConcurrentConsumerConflict;
   }
 
-  /** True when the bot token is missing, revoked, or wrong — never retryable. */
+  /** True when the bot token is missing, revoked, or wrong, never retryable. */
   get isUnauthorized(): boolean {
     return this.errorCode === 401 || this.errorCode === 403;
   }
 }
 
-/** One Telegram Update, kept as an opaque record — the adapter parses it. */
+/** One Telegram Update, kept as an opaque record, the adapter parses it. */
 export type TelegramUpdate = Record<string, unknown>;
 
 export interface TelegramWebhookInfo {
@@ -205,7 +205,7 @@ export class TelegramBotApi {
   /**
    * Ask Telegram who this token belongs to.
    *
-   * The bot's username is not a fact only the operator knows — the token
+   * The bot's username is not a fact only the operator knows, the token
    * identifies the bot and Telegram hands back the handle for free. Making the
    * user type it, and degrading silently when they do not, is the product
    * declining to answer a question it can answer itself. An empty handle breaks

@@ -1,12 +1,12 @@
 /**
- * cli-network-posture.test.ts — classifyBindPosture / isLoopbackHost /
+ * cli-network-posture.test.ts, classifyBindPosture / isLoopbackHost /
  * isNetworkFacing.
  *
  * This is the honesty check behind every "Local only" vs "Local Network"
  * label a front-end prints next to an endpoint. Getting it wrong in the
  * reassuring direction is the failure that matters: a binding reachable from
  * the LAN must never be described as local. So the classification is
- * belt-and-braces — it trusts the stored hostMode, but also inspects the
+ * belt-and-braces, it trusts the stored hostMode, but also inspects the
  * resolved host, because a 'local' mode paired with 0.0.0.0 is a
  * misconfiguration, not a local bind.
  */

@@ -3,7 +3,7 @@
  *
  * A cold eval: the WRFC owner row showed 284.4k tokens "unpriced" while its
  * children priced fine, and the chain detail read "model unknown". Root cause: the
- * owner runs no LLM turn itself, so it has no resolved model — its usage is a
+ * owner runs no LLM turn itself, so it has no resolved model, its usage is a
  * mixed-model rollup of its children. Single-model pricing is wrong and "unpriced"
  * is misleading.
  *
@@ -119,7 +119,7 @@ describe('registry integration — owner priced, chain model, no double-count', 
     expect(chainNode.model).toBe('2 models');
     expect(chainNode.costUsd).toBeCloseTo(0.446, 6);
 
-    // (a) owner priced — adopts the chain total, no longer "unpriced".
+    // (a) owner priced, adopts the chain total, no longer "unpriced".
     const owner = nodeById(registry, 'owner-1');
     expect(owner.costState).toBe('priced');
     expect(owner.costUsd).toBeCloseTo(0.446, 6);

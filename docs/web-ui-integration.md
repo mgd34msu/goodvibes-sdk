@@ -1,8 +1,8 @@
-# Web UI Integration
+# Web UI integration
 
 This is the **companion surface** for web UI applications (browser runtime). See [Runtime Surfaces](./surfaces.md).
 
-Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers web-UI-specific patterns: entrypoint selection, companion chat, attachments, and voice playback. The shared browser foundation — auth, transport, realtime, error handling, and observability — lives in [Browser Integration](./browser-integration.md).
+Web UI apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP). Those require Bun. This guide covers web-UI-specific patterns: entrypoint selection, companion chat, attachments, and voice playback. The shared browser foundation, auth, transport, realtime, error handling, and observability, lives in [Browser integration](./browser-integration.md).
 
 Use the narrowest browser entrypoint that matches the app. A normal GoodVibes
 WebUI that presents the base knowledge/wiki system should use
@@ -27,7 +27,7 @@ daemon stays loopback-only until you enable one.
 **Same-origin bundle serving (recommended).** Set `controlPlane.webui.serve` on and
 point `controlPlane.webui.bundleDir` at the built web UI directory (`index.html` +
 `assets/`). The daemon then serves the bundle at `/` from its own origin, so the
-browser's same-origin policy is a non-issue — bundle and API share one origin. Static
+browser's same-origin policy is a non-issue. Bundle and API share one origin. Static
 assets carry correct content types and caching (hashed `assets/*` immutable, the shell
 `no-cache`), and unknown navigation routes fall back to `index.html` (SPA). Any
 `/api/*` path keeps precedence and is never served as a file. The bundle is public; the
@@ -37,11 +37,11 @@ For cross-machine reach, front the single daemon origin with `tailscale serve` o
 HTTPS: bundle + API arrive same-origin on the Tailscale hostname with zero CORS. This
 is the supported remote path.
 
-**Cross-origin (dev / separate host).** When the UI is served from a different origin —
+**Cross-origin (dev or separate host).** When the UI is served from a different origin,
 the Vite dev server on `http://localhost:5173`, or a deliberately separate static host
-— set `controlPlane.cors.enabled` on and list the exact browser origins in
+set `controlPlane.cors.enabled` on and list the exact browser origins in
 `controlPlane.cors.allowedOrigins` (comma-separated). The daemon then answers OPTIONS
-preflight and emits `Access-Control-Allow-*` only for those origins — never a wildcard,
+preflight and emits `Access-Control-Allow-*` only for those origins, never a wildcard,
 credentials allowlist-gated, `Authorization` allowed so the bearer-token flow works.
 A non-allowlisted origin is refused honestly (403 preflight, no allow-origin header).
 CORS controls only which origin may read a response; it does not change any route's auth
@@ -64,7 +64,7 @@ For a browser-based web UI:
 WebUI. `@pellux/goodvibes-sdk/browser/homeassistant` is for Home Assistant
 panels and includes Home Graph routes without pulling the base knowledge/wiki
 route table. `@pellux/goodvibes-sdk/browser/agent` (via `createBrowserAgentSdk`)
-scopes to the GoodVibes Agent surface — the agent's own knowledge/wiki space
+scopes to the GoodVibes Agent surface: the agent's own knowledge/wiki space
 served under `/api/goodvibes-agent/knowledge`, plus work-plan, artifact, and
 companion-chat routes. `@pellux/goodvibes-sdk/browser` and
 `@pellux/goodvibes-sdk/web` remain full all-method browser clients for
@@ -79,7 +79,7 @@ See [public-surface.md](./public-surface.md) for the full entry-point reference.
 3. Refresh affected read models when key events arrive.
 4. Keep mutation calls on HTTP even when realtime is enabled.
 
-## Companion Chat
+## Companion chat
 
 Use `sdk.chat` from `@pellux/goodvibes-sdk/browser/knowledge` for standalone
 browser chat. These sessions are separate from operator task sessions and do

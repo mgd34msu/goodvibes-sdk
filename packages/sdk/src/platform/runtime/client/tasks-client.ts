@@ -1,17 +1,17 @@
 /**
- * tasks-client.ts — a task list shows every runtime task, not just this
+ * tasks-client.ts, a task list shows every runtime task, not just this
  * surface's.
  *
  * ── What a task list used to read ─────────────────────────────────────────
  *
- * The operator client's `tasks.list(500)` — a DirectTransport call straight into
+ * The operator client's `tasks.list(500)`, a DirectTransport call straight into
  * this process's own task read model, answered synchronously because there was
  * no wire to cross. While the surface hosted a daemon, that model held every
  * task on the machine.
  *
  * Now it holds this surface's own: the exec, agent and ACP tasks the loop here
- * spawned. The daemon holds its own set — scheduled work, channel-driven runs,
- * tasks other surfaces submitted — and a list that showed only the local half
+ * spawned. The daemon holds its own set, scheduled work, channel-driven runs,
+ * tasks other surfaces submitted, and a list that showed only the local half
  * would read as complete while omitting most of it.
  *
  * ── The union, and who wins ───────────────────────────────────────────────
@@ -19,8 +19,8 @@
  * Local rows are AUTHORITATIVE for tasks this surface owns: they are live, and
  * the lifecycle acts below (`update`, `complete`, `fail`, `pause`, `resume`)
  * reach a registry that is genuinely here. The daemon's rows fill in the rest.
- * A task carried by both — an id the local registry knows AND the daemon lists
- * — is shown from the local copy, which is the fresher one.
+ * A task carried by both, an id the local registry knows AND the daemon lists
+ *, is shown from the local copy, which is the fresher one.
  *
  * ── Reading is allowed to be optimistic; writing is not ───────────────────
  *
@@ -31,7 +31,7 @@
  * actually runs the task. Those route to the daemon's verb where one exists
  * (`tasks.cancel`, `tasks.retry`) and refuse by name where one does not.
  *
- * The contract carries six task verbs — create, get, list, status, cancel,
+ * The contract carries six task verbs, create, get, list, status, cancel,
  * retry. There is no wire verb for update/complete/fail/pause/resume, so those
  * are honestly refused for a daemon-owned task rather than silently applied to
  * a local record that does not exist.
@@ -40,7 +40,7 @@ import { logger, summarizeError } from '../../utils/index.js';
 import type { RuntimeTask } from '../store/index.js';
 import type { DaemonVerbCaller } from './daemon-verbs.js';
 
-/** Where a task record came from — which decides what may be done to it. */
+/** Where a task record came from, which decides what may be done to it. */
 export type TaskOrigin = 'local' | 'daemon';
 
 export interface UnionTask {
@@ -52,7 +52,7 @@ export interface TasksUnionResult {
   readonly tasks: readonly UnionTask[];
   /**
    * Why the daemon's half is missing, when it is. `null` means the union is
-   * complete — either the daemon answered, or none is configured and the local
+   * complete, either the daemon answered, or none is configured and the local
    * set genuinely IS every task.
    */
   readonly daemonUnavailable: string | null;

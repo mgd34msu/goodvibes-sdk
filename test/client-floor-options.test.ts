@@ -1,5 +1,5 @@
 /**
- * client-floor-options.test.ts — the three postures the floor would otherwise
+ * client-floor-options.test.ts, the three postures the floor would otherwise
  * silently reverse.
  *
  * ── Why these are options and not preferences ─────────────────────────────
@@ -13,8 +13,8 @@
  *     misconfigured key becomes a crash before the first frame rather than a
  *     degraded provider.
  *  2. DISCOVERY TIMING. The floor always ran model discovery, whose write is
- *     async and unawaited. A composition that will not outlive that write — a
- *     suite against a temp workspace, a one-shot subcommand — needs to skip it,
+ *     async and unawaited. A composition that will not outlive that write, a
+ *     suite against a temp workspace, a one-shot subcommand, needs to skip it,
  *     or the write lands in a directory that has been removed.
  *  3. THE HOOK CAPABILITY BOUNDARY. The floor always handed the hook dispatcher
  *     the agent manager. At least one product withholds it on purpose: a hook
@@ -24,7 +24,7 @@
  * Each was a real blocker measured against a real consumer, so each is checked
  * here in both directions: the option changes what happens, AND omitting it
  * changes nothing. The second half is the one that matters for every existing
- * caller — a default that quietly shifted would be a behaviour change delivered
+ * caller, a default that quietly shifted would be a behaviour change delivered
  * as a refactor.
  */
 import { afterAll, describe, expect, test } from 'bun:test';
@@ -128,7 +128,7 @@ describe('whether model discovery runs at construction', () => {
     const probe = discoveryProbe();
     createProviderStack({ ...stackOptions(), providerRegistryFactory: probe.factory, modelDiscovery: 'skip' });
     // Skipping is a statement about this composition's lifetime, never a claim
-    // that discovery is unwanted — so custom providers are still initialised.
+    // that discovery is unwanted, so custom providers are still initialised.
     expect(probe.calls).toEqual([]);
   });
 });
@@ -162,7 +162,7 @@ describe('whether a hook can reach the agent manager', () => {
       sessionId: 'floor-options', timestamp: Date.now(), payload: {},
     } as never);
     // `fire` aggregates and does not surface a single hook's refusal, so the
-    // per-hook result is read off the activity tracker — the same record a
+    // per-hook result is read off the activity tracker, the same record a
     // hooks-activity view renders.
     return JSON.stringify(services.hookActivityTracker.listRecent(10));
   }

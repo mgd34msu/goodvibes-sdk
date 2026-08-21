@@ -3,8 +3,8 @@
  *
  * `InboundExpectationRegistry.sweep()` is the only thing that turns an elapsed
  * window into an `onExpired` report, and it had exactly one caller repo-wide:
- * its own test. `onExpired` itself WAS wired — `facade-inbound-mail.ts` passes a
- * handler that logs the expiry with its reason — so the announcement path was
+ * its own test. `onExpired` itself WAS wired, `facade-inbound-mail.ts` passes a
+ * handler that logs the expiry with its reason, so the announcement path was
  * built, connected, and unreachable. A signup whose verification mail never
  * arrived was therefore never reported to anybody. That is the silent-death
  * class this whole round exists to close, in the component built to prevent it.
@@ -13,7 +13,7 @@
  *
  *  1. the registry can sweep on a schedule at all, and a swept expectation is
  *     reported with its reason (`startSweeping`);
- *  2. the DAEMON arms it — `composeInboundMail`, the real production
+ *  2. the DAEMON arms it, `composeInboundMail`, the real production
  *     composition, leaves a timer running that reaps an expired record with
  *     nothing in the test ever calling `sweep()`.
  *
@@ -23,13 +23,13 @@
  * WHY THE SECOND TEST WATCHES THE FILE RATHER THAN `list()`. It would be
  * natural to assert that `registry.list()` drops to zero, and it would prove
  * nothing. `list()` answers "what is open at this instant", and an expired
- * record is not open — it is absent from the list whether or not anything has
+ * record is not open, it is absent from the list whether or not anything has
  * swept, because the list filters on the window. The persisted file has no such
  * behaviour: only a write-through from a real sweep empties it, so it is the
  * one observable that cannot answer correctly by accident.
  *
  * (When this was written, `list()` reached the book's own `list()`, which
- * called `sweepExpired()` and discarded the return value — so the record was
+ * called `sweepExpired()` and discarded the return value, so the record was
  * not merely absent from the answer, it was destroyed by asking, and with it
  * the report `onExpired` owed the owner. That is fixed; reads filter and only
  * `sweepExpired` reaps. See
@@ -233,7 +233,7 @@ describe('composeInboundMail arms the sweep in the daemon itself', () => {
       const rig = composeRig();
 
       // The path a signup workstream takes. `windowMs` is the book's own
-      // minimum, so the window genuinely elapses in real time — the registry
+      // minimum, so the window genuinely elapses in real time, the registry
       // built by `composeInboundMail` uses the real clock and there is nothing
       // to advance.
       const opened = await rig.handlers.get('email.expectation.open')!({

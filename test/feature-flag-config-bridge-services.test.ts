@@ -5,7 +5,7 @@
  * createRuntimeServices() (platform/runtime/services.ts): a real
  * ConfigManager.set on a capability's domain settings key (behavior.hitlMode,
  * permissions.engine, ...), after RuntimeServices is already constructed,
- * must reach the internally-created FeatureFlagManager without a restart —
+ * must reach the internally-created FeatureFlagManager without a restart,
  * for runtime-toggleable gates only. A startup-gated capability must show up
  * as pending-restart on the manager's snapshot instead of silently doing
  * nothing or faking a live apply.
@@ -91,7 +91,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
     expect(runtimeServices.featureFlags.isEnabled(STARTUP_GATED_FLAG_ID)).toBe(false);
     configManager.setDynamic(STARTUP_GATED_KEY, 'policy-engine');
 
-    // No live apply — the runtime must not fake a startup-only flag as active.
+    // No live apply, the runtime must not fake a startup-only flag as active.
     expect(runtimeServices.featureFlags.isEnabled(STARTUP_GATED_FLAG_ID)).toBe(false);
     expect(seen).toEqual([]);
 
@@ -129,7 +129,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
     configManager.setDynamic(TOGGLEABLE_KEY, 'off');
     // The composition root only bridges the manager it created itself
     // (mirrors the options.featureFlags === undefined guard around the boot
-    // loadFromConfig call) — an injected manager is the caller's to bridge.
+    // loadFromConfig call), an injected manager is the caller's to bridge.
     // The injected manager keeps its registry default (enabled) untouched.
     expect(injectedFeatureFlags.isEnabled(TOGGLEABLE_FLAG_ID)).toBe(true);
   });
@@ -146,7 +146,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
       workingDir,
       surfaceRoot: 'goodvibes-test',
     });
-    // Persist a settings choice BEFORE RuntimeServices is constructed — the
+    // Persist a settings choice BEFORE RuntimeServices is constructed, the
     // boot path derives gate states from the domain keys at construction.
     configManager.setDynamic(TOGGLEABLE_KEY, 'off');
 
@@ -167,7 +167,7 @@ describe('createRuntimeServices — live feature-settings bridge', () => {
 // ---------------------------------------------------------------------------
 //
 // The mode drives two gates in FEATURE_SETTINGS_BINDINGS (otel-foundation,
-// otel-remote-export), and their only reader was `createTelemetryProvider` —
+// otel-remote-export), and their only reader was `createTelemetryProvider`,
 // which had no callers. The live meter in runtime/metrics.ts was built with no
 // reference to any of it, so 'off', 'in-process' and 'remote-export' produced
 // identical behaviour: no spans, from any mode, ever.
@@ -187,7 +187,7 @@ function servicesWithOtelMode(mode: string): { configManager: ConfigManager } {
   mkdirSync(homeDirectory, { recursive: true });
   const configManager = new ConfigManager({ homeDir: homeDirectory, workingDir, surfaceRoot: 'goodvibes-test' });
   // otel-foundation is startup-gated, so the value has to be persisted before
-  // the runtime is composed — the same ordering the case above documents.
+  // the runtime is composed, the same ordering the case above documents.
   configManager.setDynamic('telemetry.otelMode' as ConfigKey, mode);
   disposables.add(createRuntimeServices({
     configManager,

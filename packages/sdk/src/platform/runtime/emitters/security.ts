@@ -1,5 +1,5 @@
 /**
- * Security emitters — typed wrappers for SecurityEvent domain.
+ * Security emitters, typed wrappers for SecurityEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

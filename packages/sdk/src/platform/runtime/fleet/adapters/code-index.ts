@@ -3,7 +3,7 @@
 import type { CodeIndexBuildProgress, CodeIndexStats } from '../../../state/code-index-store.js';
 import type { ProcessNode, ProcessState } from '../types.js';
 
-/** Narrow view of CodeIndexStore the fleet needs — Pick<CodeIndexStore, ...>, same pattern as the other adapter deps. */
+/** Narrow view of CodeIndexStore the fleet needs, Pick<CodeIndexStore, ...>, same pattern as the other adapter deps. */
 export interface CodeIndexProcessSource {
   isBuilding(): boolean;
   buildProgress(): CodeIndexBuildProgress | null;
@@ -20,7 +20,7 @@ export function codeIndexNodeId(): string {
  * CodeIndexStore → ProcessNode. Silent source (no bus emission, like
  * background-process): liveness rides the registry tick. An index build has
  * no pid, so it is NOT a 'background-process' node (ProcessManager is
- * shell/OS-process-only) — it gets its own ProcessKind, mirroring the
+ * shell/OS-process-only), it gets its own ProcessKind, mirroring the
  * orchestrationEngine-dep precedent.
  */
 export function adaptCodeIndex(service: CodeIndexProcessSource, now: number): ProcessNode {

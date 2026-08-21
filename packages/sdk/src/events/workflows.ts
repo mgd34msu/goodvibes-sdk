@@ -1,5 +1,5 @@
 /**
- * WorkflowEvent — discriminated union for WRFC workflow lifecycle events.
+ * WorkflowEvent, discriminated union for WRFC workflow lifecycle events.
  */
 
 export interface Constraint {
@@ -53,7 +53,7 @@ export type WorkflowEvent =
        * Why the chain reached its terminal state. 'transport' means a transient
        * network/transport error that had already exhausted its automatic retry
        * budget (see WrfcChain.transportRetryCount); 'cancelled' means an operator
-       * killed/interrupted the chain (an intended stop, NOT a failure — narrate it
+       * killed/interrupted the chain (an intended stop, NOT a failure, narrate it
        * as cancelled); 'max_turns' means a member agent spent its whole turn
        * budget (a machine-readable turn-budget exhaustion, distinct from an
        * infrastructure error, so a consumer never has to regex the reason);
@@ -67,7 +67,7 @@ export type WorkflowEvent =
       turnLimitSource?: 'default' | 'spawn-override' | 'policy-bound' | undefined;
       /**
        * Whether EVERY chain member (owner + children) was already terminal when
-       * this outcome was emitted — the explicit quiescence signal. True means the
+       * this outcome was emitted, the explicit quiescence signal. True means the
        * outcome landed at true quiescence and a consumer can finalize immediately;
        * false means members are still winding down (their own terminal AGENT_*
        * events are still to come), so a consumer that needs full quiescence should

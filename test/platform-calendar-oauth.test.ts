@@ -3,7 +3,7 @@
  *
  * Authenticated calendar provider connectivity (Google
  * Calendar API v3 + Microsoft Graph over OAuth 2.0). The ENTIRE flow is proven
- * against in-memory fake servers behind the connector's injected HttpFetch — there
+ * against in-memory fake servers behind the connector's injected HttpFetch, there
  * is NO real network, no real port, and no real keychain anywhere in this file.
  *
  * Covered:
@@ -327,7 +327,7 @@ describe('client-config resolution', () => {
         expect(failure).toBeInstanceOf(Error);
         expect(failure!.message).toContain(`calendar.${provider}.clientId`);
         expect(failure!.message).toContain(`calendar.${provider}.clientSecretRef`);
-        // Honest about whose app it is — never "this build ships no default yet".
+        // Honest about whose app it is, never "this build ships no default yet".
         expect(failure!.message).toContain('register your own OAuth app');
       }
     }
@@ -339,7 +339,7 @@ describe('client-config resolution', () => {
       expect(profile.clientIdConfigKey).toBe(`calendar.${provider}.clientId`);
       expect(profile.clientSecretRefConfigKey).toBe(`calendar.${provider}.clientSecretRef`);
       // The whole profile, serialized, must not contain anything shaped like a
-      // baked credential — this is what stops one being reintroduced quietly.
+      // baked credential, this is what stops one being reintroduced quietly.
       expect(JSON.stringify(profile)).not.toContain('apps.googleusercontent.com');
       expect(JSON.stringify(profile)).not.toContain('REPLACE_WITH');
     }
@@ -512,7 +512,7 @@ describe('device-code flow', () => {
 });
 
 // ---------------------------------------------------------------------------
-// F3: expires_in coercion — never silently "never expires"
+// F3: expires_in coercion, never silently "never expires"
 // ---------------------------------------------------------------------------
 
 describe('parseTokenResponse: expires_in coercion', () => {
@@ -580,7 +580,7 @@ describe('token refresh lifecycle', () => {
 
   // F2: Microsoft rotates refresh tokens on every use, so two concurrent
   // getFreshAccessToken calls sharing one stored (soon-to-be-invalidated) refresh
-  // token must not both hit the provider — the loser would get invalid_grant on an
+  // token must not both hit the provider, the loser would get invalid_grant on an
   // otherwise perfectly working account.
   test('two concurrent getFreshAccessToken calls single-flight to exactly one refresh request', async () => {
     const state = freshState();
@@ -612,7 +612,7 @@ describe('token refresh lifecycle', () => {
   });
 
   // F2: a genuinely-dead refresh token (not merely lost a single-flight race) must
-  // still produce an honest reconnect-needed — the fix to (b) below must not make
+  // still produce an honest reconnect-needed, the fix to (b) below must not make
   // real failures silently invisible.
   test('a genuinely-dead refresh token still produces reconnect-needed', async () => {
     const state = freshState();

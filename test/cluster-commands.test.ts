@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// cluster-commands.test.ts — the `cluster` subcommands and the remote-target
+// cluster-commands.test.ts, the `cluster` subcommands and the remote-target
 // convention they establish.
 //
 // Two things are load-bearing here and both are tested directly:
@@ -299,7 +299,7 @@ describe('showing the join key', () => {
     expect(result.lines.join('\n')).toContain('gvj1-THEKEY');
     expect(result.lines.join('\n')).toContain('clipboard');
     // Against the literal expected bytes, NOT against clipboardEscapeSequence
-    // itself — comparing the writer to the writer is true however broken it is,
+    // itself, comparing the writer to the writer is true however broken it is,
     // which is precisely how the ESC/BEL bytes once went missing unnoticed.
     // The byte-level contract lives in cluster-render.test.ts.
     expect(result.rawOutput).toBe(`${String.fromCharCode(0x1b)}]52;c;Z3ZqMS1USEVLRVk=${String.fromCharCode(0x07)}`);

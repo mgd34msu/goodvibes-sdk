@@ -2,8 +2,8 @@
  * sessions.detach + per-hunk approvals (broker + pure-function level).
  *
  * Covers the two new steer verbs at the unit boundary the wire sits on:
- *  A. SharedSessionBroker.detachParticipant — detach != close != kill.
- *  B. ApprovalBroker.resolveApproval({ selectedHunks }) — server-side per-hunk
+ *  A. SharedSessionBroker.detachParticipant, detach != close != kill.
+ *  B. ApprovalBroker.resolveApproval({ selectedHunks }), server-side per-hunk
  *     apply, with the PARITY GOLDEN against the retired TUI reducer.
  *
  * The over-HTTP proofs live in detach-perhunk-daemon-wire.test.ts.
@@ -91,7 +91,7 @@ function tuiBuildModifiedEditArgs(request: PermissionPromptRequest, selected: Re
 }
 
 // ---------------------------------------------------------------------------
-// PART A — detach (pure helper)
+// PART A, detach (pure helper)
 // ---------------------------------------------------------------------------
 
 describe('detachSharedSessionParticipant (pure)', () => {
@@ -144,7 +144,7 @@ describe('detachSharedSessionParticipant (pure)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PART A — detach (broker)
+// PART A, detach (broker)
 // ---------------------------------------------------------------------------
 
 describe('SharedSessionBroker.detachParticipant', () => {
@@ -175,7 +175,7 @@ describe('SharedSessionBroker.detachParticipant', () => {
     await broker.closeSession('d3');
     const updated = await broker.detachParticipant('d3', 'tui-1');
     expect(updated?.status).toBe('closed');
-    // Participant list is untouched — nothing to detach from a closed session.
+    // Participant list is untouched, nothing to detach from a closed session.
     expect(updated?.participants.length).toBe(1);
   });
 
@@ -193,7 +193,7 @@ describe('SharedSessionBroker.detachParticipant', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PART B — per-hunk pure functions + parity golden
+// PART B, per-hunk pure functions + parity golden
 // ---------------------------------------------------------------------------
 
 describe('approval-hunk-apply pure functions', () => {
@@ -243,7 +243,7 @@ describe('approval-hunk-apply pure functions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PART B — per-hunk through the ApprovalBroker
+// PART B, per-hunk through the ApprovalBroker
 // ---------------------------------------------------------------------------
 
 describe('ApprovalBroker.resolveApproval with selectedHunks', () => {

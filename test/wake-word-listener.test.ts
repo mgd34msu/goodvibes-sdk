@@ -1,5 +1,5 @@
 /**
- * wake-word-listener.test.ts — the wake runtime, end to end, with no microphone.
+ * wake-word-listener.test.ts, the wake runtime, end to end, with no microphone.
  *
  * This is the chain that did not exist while the engine sat complete and unused:
  * recorder bytes -> frames -> the engine -> a confirmed detection -> the utterance
@@ -11,8 +11,8 @@
  * The two assertions that matter most for a microphone:
  *  - a wake does not re-open the device, it switches the SAME stream to recording
  *    the command, seeded with the pre-roll from before the wake fired;
- *  - a disabled feature never opens a device at all — no spawn, no permission
- *    prompt — whether it is off globally or off for this surface.
+ *  - a disabled feature never opens a device at all, no spawn, no permission
+ *    prompt, whether it is off globally or off for this surface.
  */
 import { describe, expect, test } from 'bun:test';
 import fixture from './fixtures/wake-word-front-end.json' with { type: 'json' };
@@ -300,7 +300,7 @@ describe('the silence floor is measured from the room the wake was heard in', ()
     });
     await wakeInRoom(h, 300);
 
-    // Speak over the room, then stop talking — the room noise continues.
+    // Speak over the room, then stop talking, the room noise continues.
     for (let i = 0; i < 5; i += 1) { h.child.emit(frameBytes(6000)); await settle(); }
     for (let i = 0; i < 10 && h.utterances.length === 0; i += 1) {
       h.child.emit(frameBytes(300));
@@ -319,7 +319,7 @@ describe('the silence floor is measured from the room the wake was heard in', ()
   test('voice.wake.silenceFloorRms is really read: a floor set under the room brings the ceiling back', async () => {
     // Same room, same speech. Pinning the floor at 100 puts it BELOW the room's
     // 300, so nothing is silent again and only the ceiling ends it. That is the
-    // setting proving it reaches the recorder — the adaptive path would have
+    // setting proving it reaches the recorder, the adaptive path would have
     // ended this capture on silence, as the test above does.
     const h = harness({
       'voice.wake.enabled': true,
@@ -353,7 +353,7 @@ describe('the silence floor is measured from the room the wake was heard in', ()
     expect(h.utterances).toHaveLength(0);
     expect(h.listener.state().phase).toBe('capturing-utterance');
 
-    // Then they stop, and the measured floor closes it — which is what makes
+    // Then they stop, and the measured floor closes it, which is what makes
     // turning the ceiling off safe in the first place.
     for (let i = 0; i < 10 && h.utterances.length === 0; i += 1) {
       h.child.emit(frameBytes(300));
@@ -409,7 +409,7 @@ describe('a stream that dies is a restart decision, not a silent stop', () => {
     expect(h.failures[1]?.detail).toContain('crashed');
     expect(h.listener.state().phase).toBe('latched');
     expect(h.listener.state().latchReason).toContain('will not be restarted');
-    // A latched detector refuses to start again until the latch is cleared —
+    // A latched detector refuses to start again until the latch is cleared,
     // which is the deliberate act of turning the feature off and on.
     const refused = await h.listener.start();
     expect(refused.started).toBe(false);

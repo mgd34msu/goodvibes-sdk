@@ -16,7 +16,7 @@ import {
 } from '../packages/sdk/src/platform/runtime/retention/append-only-registry.ts';
 
 // The gap this closes: an agent died on an uncaught exception and the stack
-// existed ONLY on the operator's terminal — nothing in the activity log, no
+// existed ONLY on the operator's terminal, nothing in the activity log, no
 // crash file, recovered afterwards only from a lucky pane capture.
 
 const dirs: string[] = [];
@@ -137,7 +137,7 @@ describe('crash log — bounded, validated, disclosed', () => {
       CONTEXT,
     ));
     expect(readFileSync(path, 'utf-8')).not.toContain('sk-ant-api03-SECRETVALUE');
-    // The record still parses — redaction must keep the line valid JSON.
+    // The record still parses, redaction must keep the line valid JSON.
     expect(readCrashRecords(path)).toHaveLength(1);
   });
 });

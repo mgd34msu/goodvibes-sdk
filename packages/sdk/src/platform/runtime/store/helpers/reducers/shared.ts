@@ -52,7 +52,7 @@ export function isCurrentTurnEvent(domain: ConversationDomainState, turnId: stri
  * fragment). It is recomputed on every STREAM_DELTA, so it must depend only on
  * facts that are stable across the deltas of a single tool call.
  *
- * A tool call's `arguments` string is NOT such a fact — it arrives a few
+ * A tool call's `arguments` string is NOT such a fact, it arrives a few
  * characters at a time as the provider streams the call's JSON. Including it
  * here made the status region redraw a longer fragment on every delta, which
  * reads as the label flashing through the model's output character by

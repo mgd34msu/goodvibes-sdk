@@ -1,5 +1,5 @@
 /**
- * Delivery emitters — typed wrappers for DeliveryEvent domain.
+ * Delivery emitters, typed wrappers for DeliveryEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

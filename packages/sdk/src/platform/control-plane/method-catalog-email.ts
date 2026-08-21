@@ -23,8 +23,8 @@ const EMAIL_INBOX_MESSAGE_SCHEMA = objectSchema({
  * A FETCH response on the returned page that the client could not read.
  *
  * Present only when there were any. A page can come back short for two
- * different reasons — a message expunged between the search and the fetch, or
- * an answer this client could not read — and `total` cannot tell them apart
+ * different reasons, a message expunged between the search and the fetch, or
+ * an answer this client could not read, and `total` cannot tell them apart
  * because it counts the SEARCH match while the loss happens at the FETCH.
  */
 const EMAIL_INBOX_UNREADABLE_SCHEMA = objectSchema({
@@ -50,7 +50,7 @@ const EMAIL_MESSAGE_DETAIL_SCHEMA = objectSchema({
 }, ['uid', 'from', 'subject', 'date', 'messageId', 'bodyText']);
 
 /**
- * Email operator methods — inbox read and outbound send through the standard
+ * Email operator methods, inbox read and outbound send through the standard
  * operator method protocol.
  *
  * These are SERVED. `registerEmailGatewayMethods`
@@ -64,7 +64,7 @@ const EMAIL_MESSAGE_DETAIL_SCHEMA = objectSchema({
  * path. For a long time no /api/email surface existed at any prefix and no
  * handler was registered, so these carried `invokable: false` to say
  * "cataloged, not callable" rather than let a caller find out the hard way.
- * The reason was never the routing — the only IMAP/SMTP implementation lived
+ * The reason was never the routing, the only IMAP/SMTP implementation lived
  * inside one product, so the daemon had nothing to call, and nothing the
  * daemon did unattended could send a message: not a schedule, not a trigger,
  * not a channel reply. Hoisting the service into the SDK is what made serving
@@ -104,7 +104,7 @@ const EMAIL_EXPECTATION_SCHEMA = objectSchema({
  *
  * `position` is a STRING on both sources deliberately. A Gmail `historyId` is
  * a decimal uint64 that loses precision the moment it becomes a JS number, and
- * an IMAP position is two numbers rather than one — a single numeric field
+ * an IMAP position is two numbers rather than one, a single numeric field
  * could only be wrong for one of them.
  */
 const EMAIL_INBOUND_CURSOR_SCHEMA = objectSchema({
@@ -151,7 +151,7 @@ const EMAIL_INBOUND_CAPABILITY_SCHEMA = objectSchema({
   fix: STRING_SCHEMA,
 }, ['state', 'reason', 'detail', 'fix']);
 
-/** What each store is holding and what bounds it — the §9 disclosure. */
+/** What each store is holding and what bounds it, the §9 disclosure. */
 const EMAIL_INBOUND_RETENTION_SCHEMA = objectSchema({
   cursors: objectSchema({
     kept: NUMBER_SCHEMA,
@@ -181,7 +181,7 @@ const EMAIL_INBOUND_RETENTION_SCHEMA = objectSchema({
 }, ['cursors', 'records', 'expectations']);
 
 /**
- * Email's health entry — shaped like a channel's, and deliberately NOT one.
+ * Email's health entry, shaped like a channel's, and deliberately NOT one.
  *
  * `state`, `enabled`, `id` and `label` line up with `ChannelStatusSnapshot` so
  * a health view renders it in the same list; `surface` is absent because email
@@ -229,7 +229,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
     id: 'email.inbox.list',
     title: 'List Email Inbox',
     description:
-      'Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.',
+      'Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so, an omitted message is not by itself evidence that it was deleted.',
     category: 'email',
     scopes: ['read:email'],
     http: { method: 'GET', path: '/api/email/inbox' },
@@ -314,7 +314,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
    * verbs above.
    *
    * They are not a REST surface. They are how an already-authorized
-   * workstream — an account signup, a purchase — declares in advance that a
+   * workstream, an account signup, a purchase, declares in advance that a
    * specific message is expected at a specific address from a specific
    * domain, before it submits the form. The callers are inside the daemon,
    * reaching them over the control plane; nothing external consumes them, and
@@ -323,7 +323,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
    *
    * `transport: ['ws']` follows from that and is not decoration. The default
    * is `['http', 'ws']`, and declaring http while serving no http path is a
-   * method advertising a transport it cannot be reached on — which the
+   * method advertising a transport it cannot be reached on, which the
    * transport-honesty gate catches, correctly. The declaration has to match
    * the reachability, not the convention.
    *
@@ -383,7 +383,7 @@ export const builtinGatewayEmailMethodDescriptors: readonly GatewayMethodDescrip
    * Anything persisted across restarts must say what it holds, and three
    * things outlive a restart here: the cursors, the inbound records, and the
    * expectations. This verb is where the owner reads all three, plus what the
-   * watcher is actually doing right now — which source is in force and what
+   * watcher is actually doing right now, which source is in force and what
    * that source COSTS in latency, so "real-time" is never claimed for a poll.
    *
    * `transport: ['ws']` for the same reason the expectation verbs carry it:

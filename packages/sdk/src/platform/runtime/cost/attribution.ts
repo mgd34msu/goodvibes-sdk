@@ -1,14 +1,14 @@
 /**
  * attribution.ts
  *
- * CostAttributionService — a cost view over the platform's existing LLM usage
+ * CostAttributionService, a cost view over the platform's existing LLM usage
  * records (the LLM_RESPONSE_RECEIVED turn events), with cache-aware pricing and
  * 24h/7d aggregation windows, attributable across every dimension a usage
  * record carries (agent, tool, hook, MCP server, model, provider, session).
  *
  * HONESTY IDIOM (non-negotiable, mirrors services.ts `priceUsage` and the fleet
  * cost-state contract): a model the pricing catalog does not know is `unpriced`
- * — its cost is null and it is counted separately, never folded into a
+ *, its cost is null and it is counted separately, never folded into a
  * fabricated dollar amount. An aggregate over a mix of priced and unpriced
  * records reports costState `estimated` (some contributors unpriced) so a
  * surface never mistakes a partial total for a complete one.
@@ -16,13 +16,13 @@
  * CACHE ECONOMICS: fresh input, cache-read, and cache-write tokens are priced
  * distinctly. The catalog carries only the fresh input/output rates, so the
  * cache-read/write rates are derived from the fresh input rate via a documented
- * per-provider multiplier table ({@link CACHE_MULTIPLIERS}) — these are the
+ * per-provider multiplier table ({@link CACHE_MULTIPLIERS}), these are the
  * providers' own published cache ratios (e.g. Anthropic cache-read 0.1x,
  * cache-write 1.25x), NOT a guessed base price: the base rate is always the
  * catalog's, and an unknown model stays unpriced regardless.
  */
 
-/** A single usage record. Every dimension is optional — the service attributes over whatever a record carries. */
+/** A single usage record. Every dimension is optional, the service attributes over whatever a record carries. */
 export interface CostUsageRecord {
   /** Epoch ms the usage occurred. */
   readonly at: number;
@@ -119,7 +119,7 @@ export type ResolvePricing = (model: string | undefined, provider?: string | und
  * Published per-provider cache ratios relative to the fresh input rate. Keyed by
  * a provider substring (matched case-insensitively). `read`/`write` multiply the
  * catalog input rate to price cache-read/cache-write tokens. The default (no
- * match) is 1.0/1.0 — cache tokens priced at full input rate, the conservative
+ * match) is 1.0/1.0, cache tokens priced at full input rate, the conservative
  * honest choice when the provider's ratio is unknown.
  */
 export const CACHE_MULTIPLIERS: Readonly<Record<string, { readonly read: number; readonly write: number }>> = {

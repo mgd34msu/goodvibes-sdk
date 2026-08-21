@@ -4,7 +4,7 @@
  * Token store backed by `react-native-keychain` for bare React Native on Android.
  *
  * On Android, `react-native-keychain` routes to EncryptedSharedPreferences
- * backed by the Android Keystore system — hardware-backed AES-256-GCM
+ * backed by the Android Keystore system, hardware-backed AES-256-GCM
  * encryption where available (API 23+). This is the **recommended**
  * implementation for proper hardware-backed security.
  *
@@ -14,7 +14,7 @@
  * `react-native-encrypted-storage`). The `react-native-keychain` path is
  * strongly preferred for production apps.
  *
- * `react-native-keychain` is an **optional peer dependency** — this module
+ * `react-native-keychain` is an **optional peer dependency**, this module
  * does NOT import it at the top level.
  *
  * ## Installation
@@ -73,8 +73,8 @@ export interface AndroidKeystoreTokenStoreOptions {
   /**
    * Access control policy. Maps to `Keychain.ACCESS_CONTROL` constants.
    *
-   * - `BIOMETRY_ANY` — require any enrolled biometric (fingerprint / face).
-   * - `DEVICE_PASSCODE` — require the device passcode / PIN / pattern.
+   * - `BIOMETRY_ANY`, require any enrolled biometric (fingerprint / face).
+   * - `DEVICE_PASSCODE`, require the device passcode / PIN / pattern.
    *
    * Leave undefined to use the default Keystore protection without interactive
    * authentication prompts.
@@ -138,7 +138,7 @@ async function loadKeychain(): Promise<KeychainModule> {
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
-      'react-native-keychain is not installed — the Android Keystore token store cannot be initialised. ' +
+      'react-native-keychain is not installed, the Android Keystore token store cannot be initialised. ' +
         'This optional peer dependency is required to persist tokens in Android Keystore-backed storage. ' +
         'Run `npm install react-native-keychain` and rebuild your app.',
       {
@@ -185,13 +185,13 @@ export interface AndroidKeystoreTokenStore extends GoodVibesTokenStore {
  * `react-native-keychain`.
  *
  * On Android, `react-native-keychain` uses `EncryptedSharedPreferences` backed
- * by the Android Keystore — hardware-backed AES-256-GCM encryption where
+ * by the Android Keystore, hardware-backed AES-256-GCM encryption where
  * supported (API 23+). This is strongly preferred over plain AsyncStorage.
  *
  * Pass `accessControl: 'BIOMETRY_ANY'` or `'DEVICE_PASSCODE'` to require
  * interactive user authentication before reading the stored credential.
  *
- * `react-native-keychain` is an **optional peer dependency** — install it with:
+ * `react-native-keychain` is an **optional peer dependency**, install it with:
  *
  * ```sh
  * npm install react-native-keychain

@@ -1,5 +1,5 @@
 /**
- * hosted-sessions-composition.ts — wiring the hosted-session engine into a
+ * hosted-sessions-composition.ts, wiring the hosted-session engine into a
  * daemon.
  *
  * The engine (platform/hosted-sessions) is deliberately ignorant of the daemon:
@@ -11,7 +11,7 @@
  *
  * A hosted run writes files, runs commands and delegates inside a workspace the
  * daemon was pointed at over the wire. WHICH permission seam sits in front of
- * that is the product's decision — the daemon puts its workspace trust gate
+ * that is the product's decision, the daemon puts its workspace trust gate
  * there, so an undecided workspace raises the trust question as an approval
  * record any attached surface can answer, and a restricted one refuses
  * non-read categories without asking.
@@ -49,7 +49,7 @@ import { CONVERSATIONAL_DIAGNOSIS_SECTION } from '../agents/conversational-contr
 /** What a product states to turn hosted sessions on. */
 export interface DaemonHostedSessionsOptions {
   /**
-   * How a workspace floor is built. Required — see the module header for why
+   * How a workspace floor is built. Required, see the module header for why
    * there is no default.
    */
   readonly floorFactory: HostedWorkspaceFloorFactory;
@@ -83,10 +83,10 @@ function defaultHostedSystemPrompt(input: { readonly workspaceRoot: string }): s
     [
       'You are running as a GoodVibes session hosted by the daemon rather than by a terminal.',
       `Your working directory is ${input.workspaceRoot}.`,
-      'A person may be attached and watching, or may have detached and be reading this later — write as if both are true.',
+      'A person may be attached and watching, or may have detached and be reading this later, write as if both are true.',
     ].join(' '),
     // A hosted turn answers a person, so it is held to the same contract every
-    // other conversational turn is held to — one text, not a second one that
+    // other conversational turn is held to, one text, not a second one that
     // drifts (agents/conversational-contract.ts).
     CONVERSATIONAL_DIAGNOSIS_SECTION,
   ].join('\n\n');
@@ -139,7 +139,7 @@ export function composeHostedSessions(input: HostedSessionCompositionInput): Hos
 /**
  * The facade's one-line entry point. Everything this composition needs is
  * already on the runtime graph, so the facade names the graph rather than
- * spelling out six fields it would have to keep in step by hand — and an
+ * spelling out six fields it would have to keep in step by hand, and an
  * absent options object returns null rather than making the facade branch.
  */
 export function composeHostedSessionsForFacade(

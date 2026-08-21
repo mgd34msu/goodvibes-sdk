@@ -1,5 +1,5 @@
 /**
- * Burst policy — detects rapid notification floods within a short observation
+ * Burst policy, detects rapid notification floods within a short observation
  * window and collapses them into a batch group key.
  *
  * Unlike the rolling BatchPolicy (which uses a fixed time window), the burst
@@ -7,7 +7,7 @@
  * activates only when the rate exceeds a configured threshold. Once activated,
  * subsequent notifications in the group are collapsed until the burst subsides.
  *
- * A burst group key is `{domain}:{level}` — matching the BatchPolicy scheme
+ * A burst group key is `{domain}:{level}`, matching the BatchPolicy scheme
  * so downstream consumers can coalesce both batch types uniformly.
  */
 
@@ -112,13 +112,13 @@ export class BurstPolicy {
     const rate = entry.timestamps.length;
 
     if (entry.active) {
-      // Already in burst mode — collapse this notification.
+      // Already in burst mode, collapse this notification.
       entry.collapsedCount += 1;
       return key;
     }
 
     if (rate > this.burstThreshold) {
-      // Rate exceeded threshold — activate burst suppression.
+      // Rate exceeded threshold, activate burst suppression.
       entry.active = true;
       entry.collapsedCount += 1;
       return key;

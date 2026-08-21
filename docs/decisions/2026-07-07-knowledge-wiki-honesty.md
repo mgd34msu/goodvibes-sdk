@@ -44,10 +44,10 @@ Activation is now honest and gated at `upsertNode`:
 - An explicit producer status (or a review that applied facts) is honored and labelled
   `explicit`/`reviewed`.
 - An already-active node stays active; the first time it passes the gate without prior
-  provenance it is labelled `pre-gate` — folds/migrations are never downgraded.
+  provenance it is labelled `pre-gate`, folds/migrations are never downgraded.
 - A new/draft node auto-accepts at/above a **configurable** confidence threshold
-  (`nodeAutoAcceptConfidence`, stored per KnowledgeStore) — labelled `auto-accepted` with
-  the numeric reason — otherwise it is held as `draft` (pending review) and is not served
+  (`nodeAutoAcceptConfidence`, stored per KnowledgeStore), labelled `auto-accepted` with
+  the numeric reason, otherwise it is held as `draft` (pending review) and is not served
   by search/ask until a decide step (`KnowledgeService.reviewNode`) accepts it (→ active,
   `reviewed`) or rejects it (→ stale).
 
@@ -56,7 +56,7 @@ Every activation now carries a `metadata.reviewProvenance` stamp, so a node is n
 
 **Default threshold = 40**, chosen just below the lowest confidence the existing synthesis
 producers emit (deterministic facts at 45, deterministic wiki pages at 55) so those flows
-keep activating — now with honest provenance — while genuinely low-confidence content is
+keep activating, now with honest provenance, while genuinely low-confidence content is
 held. The mechanism is the deliverable; consumers raise the threshold to hold more for
 review. `reviewProvenance` is treated as system bookkeeping: it is excluded from the
 node-content-shape classifier and from metadata search text so it changes neither
@@ -70,9 +70,8 @@ have answered). This also fixes the separate stale-serving `search` defect.
 
 `isRepairedAnswerGap` treated a merely `stale` or `not_applicable` gap as "repaired" and
 auto-closed the open issue with the invented reason *"Answer gap already has accepted
-repair evidence."* A gap is now repaired **only** with real evidence — `repairStatus ===
-'repaired'` **and** a concrete signal (a promoted fact count > 0 or accepted source ids) —
-and the resolution reason is built from that actual evidence. Otherwise the gap stays open
+repair evidence."* A gap is now repaired **only** with real evidence, `repairStatus ===
+'repaired'` **and** a concrete signal (a promoted fact count > 0 or accepted source ids), and the resolution reason is built from that actual evidence. Otherwise the gap stays open
 honestly.
 
 ### 4. Data-lake re-extraction on extractor-version advance
@@ -80,7 +79,7 @@ honestly.
 Re-extraction previously fired only to repair an *empty* extraction, so an improved
 extractor never re-processed already-successful captures. Extractions now carry an
 `extractorVersion` stamp, applied at the single `store.upsertExtraction` choke point (so
-every write path — ingest, home-graph, browser-history, import — is covered, and a fresh
+every write path, ingest, home-graph, browser-history, import, is covered, and a fresh
 write always lands the current generation without looping). `knowledgeExtractionNeedsRefresh`
 re-extracts a stored capture whose version is older than the current
 `KNOWLEDGE_EXTRACTOR_VERSION`, even when its prior text was usable. Bumping that constant
@@ -94,7 +93,7 @@ re-processes the retained lake through the existing per-source recompile job.
 - **Honest hard delete + GraphQL filter** (6): `deleteNode`/`deleteSource` exposed via the
   service/API; `queryNodes` (which backs the GraphQL `node`/`nodes` and the
   `/api/knowledge/nodes` route) now hides `stale` nodes by default, with an explicit
-  `includeStale` opt-out — a forgotten node is no longer served over the wire.
+  `includeStale` opt-out, a forgotten node is no longer served over the wire.
 - **Refinement-task cascade** (7): single-record node/source deletes now also delete the
   `knowledge_refinement_tasks` that referenced them (the space-level delete already did).
 - **Packet truncation disclosure** (9): `KnowledgePacket` carries `truncated`,
@@ -104,10 +103,10 @@ re-processes the retained lake through the existing per-source recompile job.
   record; sources stay append-only.
 - **Unlink is a real reversal** (home-graph): `unlinkHomeGraphKnowledge` now removes the
   link edge (and, if the link itself materialized the target node and nothing else
-  references it, that node too), and is an honest no-op on a never-linked target — no
+  references it, that node too), and is an honest no-op on a never-linked target, no
   phantom records. It returns a `HomeGraphUnlinkResult` (`reversed`, `removedEdgeId`,
   `removedNodeId`).
-- **Shared-artifact reset (Hazard H1)**: home-graph reset now scope-checks deletions — a
+- **Shared-artifact reset (Hazard H1)**: home-graph reset now scope-checks deletions, a
   blob explicitly owned by another knowledge family is preserved rather than deleted, so a
   reset cannot orphan another family's artifact reference. (Blobs are per-creation ids
   today, so this is defensive; the guard closes the documented hazard.)

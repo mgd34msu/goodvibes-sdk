@@ -60,7 +60,7 @@ const runtimeServices = {
 } as never;
 
 /**
- * The daemon is a separate product. A client host has exactly two daemon paths —
+ * The daemon is a separate product. A client host has exactly two daemon paths,
  * adopt one that is already running, or spawn the standalone `goodvibes-daemon`
  * binary as a detached child and adopt that. It never constructs one, and there
  * is no option or factory that makes it construct one: the module reaches
@@ -141,7 +141,7 @@ describe('startHostServices daemon lifecycle', () => {
     // The port probe said free, so the host spawned; by the time the identity
     // probe answered, the occupant was an incompatible daemon. It is refused,
     // and with no in-process daemon to fall back to the status is 'unavailable'
-    // naming the version mismatch — never a silent adopt of a skewed wire.
+    // naming the version mismatch, never a silent adopt of a skewed wire.
     const handle = await startHostServices(
       baseConfig(),
       runtimeBus,
@@ -330,7 +330,7 @@ describe('startHostServices HTTP listener composition', () => {
   test('enabled with no injected factory reports unavailable naming the daemon product', async () => {
     // The HttpListener class belongs to `goodvibes-daemon`. A client host that
     // cannot build one must not report the listener as merely off, because the
-    // setting says it is on — it reports why it did not start.
+    // setting says it is on, it reports why it did not start.
     const handle = await startHostServices(
       baseConfig({ 'daemon.enabled': false, 'danger.httpListener': true }),
       runtimeBus,
@@ -426,7 +426,7 @@ describe('startHostServices detached daemon spawn (Layer 2 default)', () => {
     // owner-profile/paths.ts, config/secrets.ts); this spawner passed the user
     // home, so a spawned daemon filed its operator tokens and daemon settings a
     // level up from where all of them look. On a normal machine the config half
-    // still landed right, because the user home IS the default parent — which is
+    // still landed right, because the user home IS the default parent, which is
     // exactly why nothing caught it.
     expect(captured.args).toContain(runtimeDir);
     expect(captured.args).not.toContain('/home/tester');
@@ -526,7 +526,7 @@ describe('client bootstrap cannot reach daemon composition code', () => {
   /**
    * Source-level, on purpose. A behavioural test cannot see this: an
    * `await import('../daemon/server.js')` on a branch nothing takes still makes
-   * a bundler pull `platform/daemon` — and everything it imports — into a client
+   * a bundler pull `platform/daemon`, and everything it imports, into a client
    * bundle, and wrap the shared platform modules in lazy initializers to do it.
    * That is what left module constants uninitialized when hoisted turn-engine
    * functions read them (`ACTION_VERBS` undefined, every turn dead). The daemon
@@ -547,7 +547,7 @@ describe('client bootstrap cannot reach daemon composition code', () => {
   });
 
   test('the daemon composition classes are neither bound nor constructed here', () => {
-    // Naming them in a comment is fine — reaching them is not.
+    // Naming them in a comment is fine, reaching them is not.
     expect(source).not.toMatch(/new\s+DaemonServer\b/);
     expect(source).not.toMatch(/new\s+HttpListener\b/);
     expect(source).not.toMatch(/\{\s*DaemonServer[\s,}]/);

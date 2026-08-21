@@ -50,7 +50,7 @@ describe('compiled dist fixtures (recursive freshness check)', () => {
 });
 
 /**
- * Lightweight entry-point existence guard — runs in parallel with the recursive
+ * Lightweight entry-point existence guard, runs in parallel with the recursive
  * check. This catches the case where dist/ is entirely absent (build never ran).
  */
 describe('compiled dist fixtures (entry-point existence)', () => {

@@ -1,5 +1,5 @@
 /**
- * checkout-registry.ts — which purchase, if any, is in flight on a browser page.
+ * checkout-registry.ts, which purchase, if any, is in flight on a browser page.
  *
  * ══ What this is for ══════════════════════════════════════════════════════
  *
@@ -11,9 +11,9 @@
  *     verb that types the owner's card into whatever page happens to be open,
  *     which is a strictly worse capability than the one it replaced.
  *   - **Refuse a fill into the wrong merchant.** The decision was made against
- *     one registrable domain. A page that has since navigated — or a second tab
+ *     one registrable domain. A page that has since navigated, or a second tab
  *     the model targeted by mistake, or a merchant page that framed someone
- *     else's form — is not that domain, and the card does not go there.
+ *     else's form, is not that domain, and the card does not go there.
  *
  * ══ The phases exist for crash recovery ═══════════════════════════════════
  *
@@ -57,7 +57,7 @@ export type InterruptedVerdict = 'not-submitted' | 'possibly-submitted' | 'submi
  * A purchase in flight, bound to the browser page it is running on.
  *
  * `merchantDomain` is the registrable domain computed by us from the VALIDATED
- * checkout url — never a name the page supplied. It is the value the fill's
+ * checkout url, never a name the page supplied. It is the value the fill's
  * origin check compares against, so its provenance is the whole point.
  */
 export interface InFlightCheckout {
@@ -219,7 +219,7 @@ export function verdictFor(phase: CheckoutPhase): InterruptedVerdict {
  *
  * Rendered from the record's own typed fields, never from anything the merchant
  * page said, for the same reason every other payment notice is
- * (message.ts) — a page that can write this text writes what he reads.
+ * (message.ts), a page that can write this text writes what he reads.
  */
 export function describeInterruption(
   record: InFlightCheckout,
@@ -237,7 +237,7 @@ export function describeInterruption(
   return (
     `A checkout at ${record.merchantDomain} was interrupted AT THE MOMENT OF SUBMITTING, so I `
     + 'cannot tell whether the order went through. Check your order history at that merchant. '
-    + 'I will not retry it and I have not released the budget it was holding — tell me which it '
+    + 'I will not retry it and I have not released the budget it was holding, tell me which it '
     + 'was and I will settle the record.'
   );
 }

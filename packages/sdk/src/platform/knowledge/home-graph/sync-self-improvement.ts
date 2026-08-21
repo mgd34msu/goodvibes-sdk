@@ -39,7 +39,7 @@ export async function runHomeGraphSyncSelfImprovementPump(
   for (let round = 0; round < SYNC_SELF_IMPROVEMENT_MAX_ROUNDS; round += 1) {
     if (signal.aborted) return;
     // Between-rounds governor gate: a high-tier pause (pauseAll) must stop the
-    // pump at the next ROUND boundary — the pump is exactly the deferrable
+    // pump at the next ROUND boundary, the pump is exactly the deferrable
     // background work the pause exists to shed. Belt-and-suspenders with the
     // in-run stopWhenPaused consult below (which stops a round already in
     // flight at its next per-gap yield point).
@@ -49,7 +49,7 @@ export async function runHomeGraphSyncSelfImprovementPump(
     }
     const remainingMs = Math.max(0, deadlineAt - Date.now());
     if (remainingMs <= 0) return;
-    // stopWhenPaused: the pump is background work — a governor pause stops each
+    // stopWhenPaused: the pump is background work, a governor pause stops each
     // round at the next safe boundary (the allowlist justification requires it).
     // This is threaded through to the runner's per-gap yield points, so it is
     // real for these space-scoped rounds, not just whole-store sweeps.
@@ -82,7 +82,7 @@ export async function enrichHomeGraphSpaceSources(
 ): Promise<void> {
   const sources = readHomeGraphSearchState(runtime.store, spaceId).sources;
   await runtime.semanticService.enrichSources(sources, { knowledgeSpaceId: spaceId });
-  // stopWhenPaused: the sync pump is background work — a governor pause stops
+  // stopWhenPaused: the sync pump is background work, a governor pause stops
   // it at the next safe boundary instead of running through memory pressure.
   const result = await runtime.semanticService.selfImprove({ knowledgeSpaceId: spaceId, reason: 'reindex' }, { stopWhenPaused: true });
   const installationId = readHomeGraphInstallationIdFromSpace(spaceId);
@@ -98,7 +98,7 @@ export async function enrichAndImproveHomeGraphSource(
 ): Promise<void> {
   // Governor backpressure on the 0ms ingest tail: while background knowledge
   // work is paused (or refused at the critical tier) the LLM-backed enrichment
-  // defers honestly — the source persists and the next sync/reindex enriches it.
+  // defers honestly, the source persists and the next sync/reindex enriches it.
   if (runtime.semanticService.isBackgroundWorkPaused()) {
     logger.info('Home Graph ingest enrichment deferred: background knowledge work is paused for memory pressure', { spaceId, sourceId });
     return;
@@ -110,13 +110,13 @@ export async function enrichAndImproveHomeGraphSource(
   }
   await runtime.semanticService.enrichSource(sourceId, { knowledgeSpaceId: spaceId });
   if (!sourceHasUsefulSemanticFacts(runtime.store, sourceId, spaceId)) return;
-  // The enrichment already produced usable facts — refresh this source's page
+  // The enrichment already produced usable facts, refresh this source's page
   // now; repair-accepted refreshes ride the governed run / next sync pump.
   const installationId = readHomeGraphInstallationIdFromSpace(spaceId);
   if (installationId) {
     await refreshHomeGraphDevicePagesForSourceIds(runtime, spaceId, installationId, [sourceId]);
   }
-  // Self-improvement rides the governed background scheduler — a direct 0ms
+  // Self-improvement rides the governed background scheduler, a direct 0ms
   // per-ingest run would bypass the floor, coalescing, zero-gap backoff, and
   // the memory governor's pause (the incident's hot-loop shape).
   runtime.semanticService.queueBackgroundSelfImprove({

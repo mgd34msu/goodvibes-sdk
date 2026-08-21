@@ -8,7 +8,7 @@
  *
  * It used to include the tool call's `arguments` string, which a provider
  * streams a few characters at a time. The status region therefore redrew a
- * slightly longer fragment on every delta — the label flashed through the
+ * slightly longer fragment on every delta, the label flashed through the
  * model's output character by character until the turn finished. These tests
  * pin the rule that replaced it: streamed characters belong to the transcript,
  * and the status label depends only on the tool name.

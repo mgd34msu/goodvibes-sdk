@@ -1,5 +1,5 @@
 /**
- * feature-pipeline.ts — audio in, classifier features out.
+ * feature-pipeline.ts, audio in, classifier features out.
  *
  * The two stages ahead of the wake classifier, run as a stream:
  *
@@ -130,7 +130,7 @@ export class WakeFeaturePipeline {
 
   /**
    * Feed exactly {@link chunkSamples} samples of 16 kHz mono audio, as raw int16
-   * magnitudes expressed as floats (NOT normalised to [-1, 1] — see
+   * magnitudes expressed as floats (NOT normalised to [-1, 1], see
    * melspectrogram.ts).
    *
    * Returns the trailing 16 x 96 feature window as a flat tensor, or null while
@@ -154,7 +154,7 @@ export class WakeFeaturePipeline {
 
   /**
    * The most recent `ms` milliseconds of raw audio, for a detection's pre-roll.
-   * Returns whatever is available when less has been seen — never pads.
+   * Returns whatever is available when less has been seen, never pads.
    */
   recentAudio(ms: number): Float32Array {
     const want = Math.min(
@@ -177,7 +177,7 @@ export class WakeFeaturePipeline {
   /**
    * Run the front end over the trailing `chunk + 480` samples and append the
    * resulting frames. When fewer than that have been seen the shorter tail is
-   * used, which produces fewer frames — correct for the very start of a stream.
+   * used, which produces fewer frames, correct for the very start of a stream.
    */
   #appendMel(): void {
     const take = Math.min(this.#chunkSamples + WAKE_MEL_CONTEXT_SAMPLES, this.#rawFilled);

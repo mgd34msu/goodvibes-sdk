@@ -1,5 +1,5 @@
 /**
- * Adapter behavioral coverage — WhatsApp adapter.
+ * Adapter behavioral coverage, WhatsApp adapter.
  */
 import { describe, expect, test } from 'bun:test';
 import { handleWhatsAppSurfaceWebhook } from '../packages/sdk/src/platform/adapters/whatsapp/index.js';

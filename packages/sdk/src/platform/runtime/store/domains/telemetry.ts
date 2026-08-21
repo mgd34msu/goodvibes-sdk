@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Telemetry domain state — tracks runtime observability data including
+ * Telemetry domain state, tracks runtime observability data including
  * correlation IDs, session metrics, and structured event counts.
  *
  * Correlation IDs and structured event counts are tracked from day one.
@@ -60,7 +60,7 @@ export interface TraceContext {
 }
 
 /**
- * TelemetryDomainState — runtime observability and metrics.
+ * TelemetryDomainState, runtime observability and metrics.
  */
 export interface TelemetryDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

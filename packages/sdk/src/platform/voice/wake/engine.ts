@@ -1,10 +1,10 @@
 /**
- * engine.ts — the wake-word detector, front end plus classifiers plus rules.
+ * engine.ts, the wake-word detector, front end plus classifiers plus rules.
  *
  * Feeds audio through the shared front end once per frame and every configured
  * classifier over the resulting features, then hands each model's score to its
  * own {@link WakeDetector}. Running N models costs N small classifier
- * inferences per frame and exactly ONE melspectrogram and ONE embedding pass —
+ * inferences per frame and exactly ONE melspectrogram and ONE embedding pass,
  * the expensive stages are shared, which is why a second wake word is cheap.
  *
  * MEASURED COST. The pipeline budget is ~3.53 ms per 80 ms frame on the
@@ -21,7 +21,7 @@
  * THE WARNING SINK IS INJECTED FOR THE SAME REASON THE SESSION IS
  *
  * This file used to import the platform logger, which writes files and therefore
- * imports `node:fs` — enough to make the whole engine unbundleable for the browser
+ * imports `node:fs`, enough to make the whole engine unbundleable for the browser
  * tab it claims to run in. So a host passes {@link WakeEngineOptions.warn} in
  * alongside the inference session it already supplies. A host that passes none
  * gets no warnings, which is why every shipped host passes one.
@@ -80,7 +80,7 @@ export interface WakeEngineOptions {
   readonly models: readonly WakeModelHandle[];
   /**
    * The speech gate. Omitted means every frame reaches the classifiers, which is
-   * what `voice.wake.vadThreshold: 0` — the shipped default — asks for.
+   * what `voice.wake.vadThreshold: 0`, the shipped default, asks for.
    */
   readonly vad?: WakeVadGate | undefined;
   /** Detector tuning; per-model thresholds still win. */
@@ -109,7 +109,7 @@ export interface WakeFrameResult {
   readonly detections: readonly WakeDetection[];
   /**
    * What the speech gate did, or null when no gate is running. A gated frame has
-   * empty scores and outcomes — it was never handed to a classifier.
+   * empty scores and outcomes, it was never handed to a classifier.
    */
   readonly vad: WakeVadOutcome | null;
 }
@@ -186,7 +186,7 @@ export class WakeWordEngine {
    * Score one frame of 16 kHz mono audio (raw int16 magnitudes as floats).
    *
    * Returns empty results while the front end is still filling its 16-frame
-   * feature window — about 1.3 seconds of audio — rather than emitting scores
+   * feature window, about 1.3 seconds of audio, rather than emitting scores
    * computed against openWakeWord's synthetic buffer priming.
    */
   async pushFrame(samples: Float32Array): Promise<WakeFrameResult> {
@@ -195,8 +195,8 @@ export class WakeWordEngine {
     if (features === null || this.#models.length === 0) return EMPTY_RESULT;
     const vad = this.#vad === null ? null : await this.#screen(features.data);
     if (vad !== null && vad.gated) {
-      // A withheld frame breaks any run in progress — patience counts consecutive
-      // SCORED frames, and a gap of non-speech is exactly what should end a run —
+      // A withheld frame breaks any run in progress, patience counts consecutive
+      // SCORED frames, and a gap of non-speech is exactly what should end a run,
       // while cooldown is left alone, since no wake fired here.
       for (const detector of this.#detectors.values()) detector.breakRun();
       return { scores: new Map(), outcomes: new Map(), detections: [], vad };
@@ -229,8 +229,8 @@ export class WakeWordEngine {
   /**
    * Run the speech gate over the newest embedding frame.
    *
-   * The newest frame is the LAST 96 values of the classifier window — the window
-   * is 16 frames of 96 in time order — so the gate reads what the front end just
+   * The newest frame is the LAST 96 values of the classifier window, the window
+   * is 16 frames of 96 in time order, so the gate reads what the front end just
    * produced rather than re-running anything.
    *
    * A gate that fails passes the frame through and says so. The alternative,
@@ -266,7 +266,7 @@ export class WakeWordEngine {
 
   /**
    * Run one classifier. A model that fails to run is logged and skipped rather
-   * than taking the whole detector down — one bad custom model must not stop
+   * than taking the whole detector down, one bad custom model must not stop
    * the pinned one from working.
    */
   async #score(model: WakeModelHandle, features: Float32Array): Promise<number | null> {

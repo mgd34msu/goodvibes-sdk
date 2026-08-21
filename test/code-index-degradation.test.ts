@@ -1,16 +1,16 @@
 /**
- * Repo code index (Stage A) — no-embedding-provider degradation.
+ * Repo code index (Stage A), no-embedding-provider degradation.
  *
- * The registry ALWAYS has HASHED_MEMORY_EMBEDDING_PROVIDER as its default —
- * there is never literally "no provider" — but the hashed one is a
+ * The registry ALWAYS has HASHED_MEMORY_EMBEDDING_PROVIDER as its default,
+ * there is never literally "no provider", but the hashed one is a
  * deterministic, weak lexical-ish signal. This suite covers the Stage-A
  * scope of that honesty contract: search still works in hashed mode (labeled
  * 'lexical'), the degradation reason is exposed exactly once (not per-turn
  * nagging), and a real provider flips retrieval quality to 'semantic' with no
  * further prompting.
  *
- * Stage B (auto-injection into coding turns) is explicitly deferred — see the
- * repo code index's staging decision — so this suite does not exercise
+ * Stage B (auto-injection into coding turns) is explicitly deferred, see the
+ * repo code index's staging decision, so this suite does not exercise
  * selectCodeContextForTask (it does not exist yet).
  */
 import { describe, expect, test, afterEach } from 'bun:test';
@@ -55,7 +55,7 @@ describe('CodeIndexStore — no-embedding-provider degradation (Stage A)', () =>
     expect(store.hasSemanticProvider()).toBe(false);
     const reason = store.describeDegradation();
     expect(reason).toBe('code auto-retrieval disabled: no semantic embedding provider configured');
-    // Calling it again is idempotent (same value) — the caller decides how
+    // Calling it again is idempotent (same value), the caller decides how
     // often to surface it (once), the store never nags on its own.
     expect(store.describeDegradation()).toBe(reason);
 

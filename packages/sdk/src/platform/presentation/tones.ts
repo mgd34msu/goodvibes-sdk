@@ -1,21 +1,21 @@
 /**
- * tones.ts — the canonical UI tone-token table, hoisted from `goodvibes-tui`
+ * tones.ts, the canonical UI tone-token table, hoisted from `goodvibes-tui`
  * src/renderer/ui-primitives.ts (UI_TONES + DIFF_TONES + SPINNER_FRAMES) and
  * src/renderer/theme.ts (resolveUiTones / UI_TONES_LIGHT).
  *
  * TONE_TOKENS mirrors the TUI's UI_TONES shape byte-for-byte (the TUI is the
- * reference, and its dark values are the accepted baseline — this keeps a
+ * reference, and its dark values are the accepted baseline, this keeps a
  * future TUI swap onto this module a no-op). resolveTones(mode) is the single
  * mode-resolved read path: 'dark' returns TONE_TOKENS itself (so a byte-identity
  * check against the constant is trivially true), 'light' returns the inverted
  * chrome/accent variant tuned for legibility on a light terminal background.
  *
- * This module is PURE data — no fs, no terminal I/O, no process globals.
+ * This module is PURE data, no fs, no terminal I/O, no process globals.
  * Painting stays renderer-owned; this module owns only the token values and
  * the mode-resolution function.
  */
 
-/** Background mode — dark is the safe default until a caller's own bg-probe lands. */
+/** Background mode, dark is the safe default until a caller's own bg-probe lands. */
 export type ThemeMode = 'dark' | 'light';
 
 /** The dark-mode (reference) tone-token table. */
@@ -59,7 +59,7 @@ export const TONE_TOKENS = {
     inspector: '#c4b5fd',
     workflow: '#fbbf24',
     conversation: '#93c5fd',
-    /** Neon brand accent — header/splash/thinking gradient only. */
+    /** Neon brand accent, header/splash/thinking gradient only. */
     brand: '#00ffff',
     gradientStart: '#00ffff',
     gradientEnd: '#d000ff',
@@ -67,7 +67,7 @@ export const TONE_TOKENS = {
   /** Canonical border stroke color for fullscreen/panel chrome. */
   border: '#64748b',
   /**
-   * Persistent-chrome foregrounds — header / footer / live-thinking rows that
+   * Persistent-chrome foregrounds, header / footer / live-thinking rows that
    * paint onto the TRANSPARENT terminal background (bg:''), NOT onto the
    * opaque dark modal/panel surfaces that fg.* and state.* serve. In light
    * mode this chrome sits on a light terminal and must invert toward dark to
@@ -111,16 +111,16 @@ export const SPINNER_FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', 
  * TypeScript's literal-type inference. */
 type DeepWidenToString<T> = T extends string ? string : { [K in keyof T]: DeepWidenToString<T[K]> };
 
-/** The mode-resolved shape returned by resolveTones — same keys as TONE_TOKENS,
+/** The mode-resolved shape returned by resolveTones, same keys as TONE_TOKENS,
  * widened from literal string types to `string` so light values can differ. */
 export type ToneTokens = DeepWidenToString<typeof TONE_TOKENS>;
 
 //
-// Light variant — inverts the chrome group (and the two accents/state roles
+// Light variant, inverts the chrome group (and the two accents/state roles
 // with no light-appropriate dark equivalent: state.info/reasoning,
 // accent.brand/gradientStart/gradientEnd) toward dark-on-light legibility.
 // Every other role has no light-specific value yet and is carried over from
-// TONE_TOKENS unchanged (spread below) — this mirrors the TUI's UI_TONES_LIGHT
+// TONE_TOKENS unchanged (spread below), this mirrors the TUI's UI_TONES_LIGHT
 // exactly, including which roles it leaves untouched.
 //
 const TONE_TOKENS_LIGHT: ToneTokens = {
@@ -153,7 +153,7 @@ Object.freeze(TONE_TOKENS_LIGHT.chrome);
 Object.freeze(TONE_TOKENS_LIGHT);
 
 /**
- * resolveTones — return the tone-token table for the given background mode.
+ * resolveTones, return the tone-token table for the given background mode.
  * 'dark' returns TONE_TOKENS itself (byte-identical, same object reference) so
  * a consumer that has not wired mode detection can call resolveTones('dark')
  * as the safe default with zero behavior change.

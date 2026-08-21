@@ -1,5 +1,5 @@
 /**
- * decide.ts — the decision order, as one pure function over a snapshot.
+ * decide.ts, the decision order, as one pure function over a snapshot.
  *
  * Pure and injectable on purpose: this is the part that must be exercised
  * exhaustively, and a version that needed a browser, a card and a wall clock
@@ -7,7 +7,7 @@
  *
  * ── The order (docs/payments.md §6) ───────────────────────────────────────
  *
- *   0.  GATES — terminal, no approval path, no downgrade path
+ *   0.  GATES, terminal, no approval path, no downgrade path
  *       enabled / card / address / owner request
  *       TAINT: intent derived from untrusted content        → REFUSE
  *       LINK:  checkout url from untrusted content          → validate or REFUSE
@@ -104,7 +104,7 @@ export function decidePurchase(input: DecisionInput): DecisionOutcome {
       code: 'currency-mismatch',
       reason:
         `Refused: this checkout is priced in ${quoted.currency} and your budget is in `
-        + `${input.budgetCurrency}. I will not convert — the issuer converts at its own rate on its `
+        + `${input.budgetCurrency}. I will not convert, the issuer converts at its own rate on its `
         + 'own date, so any number I showed you would not be the number you are charged.',
     };
   }

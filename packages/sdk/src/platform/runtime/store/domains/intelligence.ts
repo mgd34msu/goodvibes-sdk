@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Intelligence domain state — tracks AI-assisted developer intelligence
+ * Intelligence domain state, tracks AI-assisted developer intelligence
  * features: diagnostics, completions, hover info, and symbol references.
  */
 
@@ -53,7 +53,7 @@ export interface IntelligenceHoverState {
 }
 
 /**
- * IntelligenceDomainState — developer intelligence features.
+ * IntelligenceDomainState, developer intelligence features.
  */
 export interface IntelligenceDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

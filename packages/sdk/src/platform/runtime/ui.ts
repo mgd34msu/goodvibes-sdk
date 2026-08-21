@@ -6,7 +6,7 @@
  *
  * NOTE: This is NOT a re-export of the `runtime/ui/` subdirectory.
  * The `ui/` subdirectory contains model-picker and provider-health data
- * providers — several of which ARE re-exported here. This file is the
+ * providers, several of which ARE re-exported here. This file is the
  * curated public surface that the `./platform/runtime/ui` export map path
  * resolves to.
  *

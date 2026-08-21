@@ -1,9 +1,9 @@
 /**
- * router-knowledge-context.ts — the knowledge route context, built once.
+ * router-knowledge-context.ts, the knowledge route context, built once.
  *
  * The daemon serves knowledge routes on two surfaces: the operator's, and the
  * agent-aliased one under `/api/goodvibes-agent/knowledge`. They differ ONLY in
- * which knowledge service and GraphQL facade they point at — every other field
+ * which knowledge service and GraphQL facade they point at, every other field
  * was written out twice, verbatim, in the router. Two places to keep in step
  * and one to forget.
  *
@@ -24,7 +24,7 @@ type KnowledgeContextInput = Parameters<typeof buildKnowledgeRouteContext>[0];
 /**
  * The slice of the router's context this needs.
  *
- * Structural rather than the router's own context type, which is not exported —
+ * Structural rather than the router's own context type, which is not exported,
  * and narrower is better here anyway: this function has no business reaching
  * anything else on it.
  */

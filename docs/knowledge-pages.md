@@ -1,4 +1,4 @@
-# Generated Knowledge Pages
+# Generated knowledge pages
 
 Generated pages are a base knowledge/wiki capability. Extensions provide
 templates and object profiles, but the base graph owns facts, sources, gaps, and

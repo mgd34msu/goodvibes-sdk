@@ -5,7 +5,7 @@ import type { ProcessNode } from '../types.js';
 
 /**
  * TriggerDefinition → ProcessNode. Triggers have no timestamps and no run
- * state — enabled means armed ('idle'), disabled maps to 'paused' (NOT
+ * state, enabled means armed ('idle'), disabled maps to 'paused' (NOT
  * 'killed': the definition still exists and TriggerManager.enable() can
  * re-arm it). resumable mirrors the inverse of pausable.
  */

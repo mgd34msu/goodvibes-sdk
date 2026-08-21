@@ -49,10 +49,10 @@ export type CompactionLifecycleState =
 /**
  * Discriminated union identifying which compaction strategy to apply.
  *
- * - `microcompact`  — lightweight summary of recent turns; lowest latency
- * - `collapse`      — full context collapse into a single summary message
- * - `autocompact`   — threshold-based automatic compaction
- * - `reactive`      — emergency compaction triggered by prompt-too-long errors
+ * - `microcompact` , lightweight summary of recent turns; lowest latency
+ * - `collapse`     , full context collapse into a single summary message
+ * - `autocompact`  , threshold-based automatic compaction
+ * - `reactive`     , emergency compaction triggered by prompt-too-long errors
  */
 export type CompactionStrategy =
   | 'microcompact'
@@ -125,7 +125,7 @@ export interface BoundaryCommit {
   parentCheckpointId: string | null;
   /**
    * Ordered lineage of all prior checkpoint IDs from root to this commit.
-   * Used for replay-safe slicing — always append-only.
+   * Used for replay-safe slicing, always append-only.
    */
   lineage: readonly string[];
   /** The compacted messages at this boundary. */
@@ -177,9 +177,9 @@ export interface CompactionLifecycleResult {
 /**
  * What initiated the compaction lifecycle run.
  *
- * - `auto`        — threshold check determined compaction is needed
- * - `manual`      — user or orchestrator explicitly requested compaction
- * - `prompt_too_long` — reactive trigger from a provider prompt-too-long error
+ * - `auto`       , threshold check determined compaction is needed
+ * - `manual`     , user or orchestrator explicitly requested compaction
+ * - `prompt_too_long`, reactive trigger from a provider prompt-too-long error
  */
 export type CompactionTrigger = 'auto' | 'manual' | 'prompt_too_long';
 

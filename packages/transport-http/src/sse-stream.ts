@@ -21,7 +21,7 @@ export interface ServerSentEventHandlers {
    *
    * The stream already remembers its position so its OWN reconnects resume,
    * but a caller that closes this stream and opens a NEW one for the next
-   * turn starts from nothing — and a server that replays "recent traffic" to
+   * turn starts from nothing, and a server that replays "recent traffic" to
    * a client claiming no position hands that new stream the tail of the
    * previous turn, terminal frames included. Recording the id here (or
    * reading {@link ServerSentEventStreamHandle.lastEventId} at close) is what

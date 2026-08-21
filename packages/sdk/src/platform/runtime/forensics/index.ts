@@ -1,5 +1,5 @@
 /**
- * Forensics subsystem — public API.
+ * Forensics subsystem, public API.
  *
  * Usage:
  * 1. Create a ForensicsRegistry owned by the current runtime/session.

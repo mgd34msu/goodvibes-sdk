@@ -1,6 +1,6 @@
 /**
  * Unit tests for buildFallbackModelDefinition / ensureConfiguredModelIsRoutable
- * — the pre-catalog fallback registration for the configured model.
+ *, the pre-catalog fallback registration for the configured model.
  */
 import { describe, expect, test } from 'bun:test';
 import {

@@ -1,5 +1,5 @@
 /**
- * types.ts — the shapes of occasions, plans, acknowledgements and nudges.
+ * types.ts, the shapes of occasions, plans, acknowledgements and nudges.
  *
  * Two things live here, and they are deliberately not one thing (docs/occasions.md §2):
  *
@@ -11,7 +11,7 @@
  *    a nudge that would otherwise land while he is away.
  *
  * Both are declarations the owner owns, so both live as prose lines in his
- * profile file. Nothing machine-written goes there — the acknowledgement state
+ * profile file. Nothing machine-written goes there, the acknowledgement state
  * below is a separate machine-owned store, because the profile design's whole
  * guarantee is that a validator never rewrites a line he wrote.
  */
@@ -27,9 +27,9 @@ export type { IsoDate, OccasionDate, OccasionRecurrence } from './dates.js';
  * it would be genuinely bad. There is no heuristic that gets that right from a
  * label, so there is no heuristic.
  *
- *  - `gift-giving`  — raise it, and a yes opens the gift interview.
+ *  - `gift-giving` , raise it, and a yes opens the gift interview.
  *  - `remember-only`— raise it, and never mention a gift.
- *  - `neither`      — never raise it. It is recorded so the date can be
+ *  - `neither`     , never raise it. It is recorded so the date can be
  *                     answered when he asks, and for nothing else.
  */
 export type OccasionKind = 'gift-giving' | 'remember-only' | 'neither';
@@ -47,11 +47,11 @@ export function isOccasionKind(value: string): value is OccasionKind {
  * hourly is worse than not being told at all. That rule needs a subject, so the
  * subject is modelled rather than guessed:
  *
- *  - `owner`        — it is about him. Either the line says so (`for me`), or its
+ *  - `owner`       , it is about him. Either the line says so (`for me`), or its
  *                     attribution resolves to a name he declared for HIMSELF in
  *                     `Identity` (`identity.name`, `identity.goesBy`).
- *  - `other`        — it is about a named someone else.
- *  - `unattributed` — the line names nobody resolvable. "Our anniversary", "Dad".
+ *  - `other`       , it is about a named someone else.
+ *  - `unattributed`, the line names nobody resolvable. "Our anniversary", "Dad".
  *                     Treated as normal, because guessing that an unattributed
  *                     line is about him is how his wife's birthday goes quiet.
  *
@@ -68,7 +68,7 @@ export const OCCASION_SUBJECTS: readonly OccasionSubject[] = ['owner', 'other', 
  *
  * `id` is derived from the title rather than minted, so the same line reloaded
  * after a hand edit is the same occasion and its acknowledgement state survives.
- * Editing the TITLE does orphan the state — and orphaned state is reaped, which
+ * Editing the TITLE does orphan the state, and orphaned state is reaped, which
  * is the honest outcome: he renamed the thing, and last year's "no" was about
  * something with a different name.
  */
@@ -83,7 +83,7 @@ export interface Occasion {
   /** The person it is about, as a plain label. Empty when the title carries it. */
   readonly person: string;
   /**
-   * True when the LINE ITSELF says this one is about him — `for me`, `mine`.
+   * True when the LINE ITSELF says this one is about him, `for me`, `mine`.
    *
    * Separate from {@link subject} because the grammar can see this and cannot
    * see his name: the parser reads one line and knows nothing about the
@@ -95,7 +95,7 @@ export interface Occasion {
    * Who it is about, resolved. See {@link OccasionSubject}.
    *
    * `unattributed` until a reader with access to his declared names resolves
-   * it — the safe direction, because an unresolved subject gets the ordinary
+   * it, the safe direction, because an unresolved subject gets the ordinary
    * cadence rather than silence.
    */
   readonly subject: OccasionSubject;
@@ -114,7 +114,7 @@ export interface Occasion {
 /**
  * A line under the dates heading that did not parse as an occasion.
  *
- * Reported, never rewritten and never dropped — the same contract the profile's
+ * Reported, never rewritten and never dropped, the same contract the profile's
  * mechanical fields have. A line the parser dislikes is still his line.
  */
 export interface UnparsedOccasionLine {
@@ -163,11 +163,11 @@ export interface OccasionConflict {
  * What the owner answered when asked about an occasion.
  *
  * `acknowledged` is not a fourth flavour of `no`. The other three END the
- * question — a `no` and a `yes` resolve the open item and it is gone. This one
+ * question, a `no` and a `yes` resolve the open item and it is gone. This one
  * says only *"heard you"*: the item STAYS OPEN and stays enumerable, and what
  * changes is that nothing is pushed at him about this occurrence again. That
  * distinction is the whole point of having it. He answered a nudge about his
- * wife's birthday with "yeah I know, I'm on it" — that is not a decline, it is
+ * wife's birthday with "yeah I know, I'm on it", that is not a decline, it is
  * not a yes that should open a gift interview, and it is certainly not a reason
  * to keep pinging him.
  */
@@ -245,7 +245,7 @@ export interface GiftRecord {
  *
  * The mirror is not the record and this is not a second source of truth: it
  * holds the external id of an entry this system CREATED, and it exists so the
- * mirror is idempotent — re-writing the same occasion each year must not
+ * mirror is idempotent, re-writing the same occasion each year must not
  * accumulate duplicates. Nothing reads a calendar to build an occasion, so
  * deleting the calendar entry does not delete anything here; the next mirror
  * pass simply writes it again.
@@ -264,20 +264,20 @@ export type OpenItemKind = 'nudge' | 'conflict' | 'interview';
 /**
  * The two moments a nudge is allowed to SPEAK, and the whole ceiling.
  *
- *  - `lead`   — the day the occasion entered its lead window. The runway.
- *  - `day-of` — the occasion itself.
+ *  - `lead`  , the day the occasion entered its lead window. The runway.
+ *  - `day-of`, the occasion itself.
  *
  * There is no third. "Nothing unresolved drops" was read for a while as "raise
  * it again every pass until he answers", which on an hourly sweep meant the
  * owner was told about his own birthday five times in a day and counting. It
  * never meant that. It means the OPEN ITEM persists and stays enumerable until
- * it is resolved or expires — that is a property of the record, not a licence
+ * it is resolved or expires, that is a property of the record, not a licence
  * to repeat the push. Between the two boundaries the item sits open and quiet:
  * ask "anything coming up?" and it is there; say nothing and it says nothing.
  *
  * The ceiling is enforced by RECORDING WHICH BOUNDARY A RAISE SERVED rather
  * than by counting raises or comparing timestamps. A boundary is served once,
- * and a served boundary is not raisable again — so the ceiling holds no matter
+ * and a served boundary is not raisable again, so the ceiling holds no matter
  * how often the sweep runs, whether the daemon restarts, or whether a clock
  * moves backwards. A count could be reset by a bad write; a set of served
  * boundaries has nothing to reset to.
@@ -317,7 +317,7 @@ export interface OpenItem {
    * The gate on a nudge, and the reason the two-raise ceiling cannot be lost:
    * the sweep asks which boundary TODAY is, and raises only if that boundary is
    * absent from this list. Empty for a conflict or an interview, which keep the
-   * older repeating cadence — a conflict is a fact about his FILE that stays
+   * older repeating cadence, a conflict is a fact about his FILE that stays
    * wrong until he fixes it, and an interview is a conversation he walked out
    * of, and neither is the class of thing that was drowning him.
    */
@@ -333,8 +333,8 @@ export interface OpenItem {
    * it is what stops the push and the pull speaking the same thing twice: while
    * the agent is a configured push destination, `occasions.pending` leaves out
    * an item that has already been landed there. Absent means no push has landed
-   * on the agent — because none was configured, or because the one attempted
-   * failed — and the pull is then how the item gets raised, so a failed push
+   * on the agent, because none was configured, or because the one attempted
+   * failed, and the pull is then how the item gets raised, so a failed push
    * never costs him the nudge.
    */
   readonly agentPushedOn?: IsoDate | undefined;
@@ -422,7 +422,7 @@ export interface OccasionStateDisclosure {
    * The receipt for the migration off the old repeating cadence. A machine that
    * had been raising one occurrence every hour loads with items carrying a
    * raise count and no served boundaries; they are kept open, marked as having
-   * already spoken, and counted here — so the machine going quiet is a stated
+   * already spoken, and counted here, so the machine going quiet is a stated
    * fact rather than a mystery.
    */
   readonly reconciledOpenItems: number;

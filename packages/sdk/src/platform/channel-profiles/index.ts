@@ -1,8 +1,8 @@
 /**
- * channel-profiles/ — per-channel profile bindings for channel intake.
+ * channel-profiles/, per-channel profile bindings for channel intake.
  *
  * Each channel (a surface kind, optionally narrowed to one channel/account) can
- * bind a profile — the model/provider and permission-mode defaults applied to
+ * bind a profile, the model/provider and permission-mode defaults applied to
  * the sessions that channel originates. The intake helpers here (attribution +
  * profile resolution) let the inbound path attribute an originated session to
  * its sending principal and inherit the channel's profile with a single call.

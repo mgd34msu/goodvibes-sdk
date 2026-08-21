@@ -1,9 +1,9 @@
 /**
- * daemon-config-tier.ts — the daemon's own config store.
+ * daemon-config-tier.ts, the daemon's own config store.
  *
  * Every daemon-owned key (see config-ownership.ts) lives in exactly one file,
  * `<daemonHome>/settings.json`, which defaults to `~/.goodvibes/daemon/
- * settings.json` — the same directory that already holds the daemon's identity
+ * settings.json`, the same directory that already holds the daemon's identity
  * state (operator-tokens.json, detached-daemon.json). One writer, one reader of
  * record, therefore nothing to sync and nothing to drift.
  *

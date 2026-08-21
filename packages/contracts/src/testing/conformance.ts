@@ -1,5 +1,5 @@
 /**
- * testing/conformance.ts — the descriptor/handler drift gate, shipped from the
+ * testing/conformance.ts, the descriptor/handler drift gate, shipped from the
  * contracts package so every consuming front-end (terminal-shell, the tui and
  * agent forks, the webui) runs the SAME gate against its own composition rather
  * than keeping a divergent local copy.
@@ -7,7 +7,7 @@
  * A gateway method catalog registers DESCRIPTORS (the contract surface) and,
  * separately, HANDLERS (what actually answers an invoke). A descriptor with no
  * attached handler answers 501 "Gateway method is not invokable" over both
- * websocket and HTTP invoke — a whole verb family can look present in the
+ * websocket and HTTP invoke, a whole verb family can look present in the
  * contract yet be dead. That is the exact regression this gate catches: run
  * `assertEveryDescriptorHasHandler` against a FULLY-composed catalog in the
  * consumer's test suite and it fails loudly the moment any registered
@@ -34,7 +34,7 @@ export interface ConformanceOptions {
    */
   readonly onlyIds?: readonly string[];
   /**
-   * Descriptor ids allowed to have no handler — descriptors a given
+   * Descriptor ids allowed to have no handler, descriptors a given
    * composition intentionally does not answer. Prefer `onlyIds` for the common
    * case; use `ignoreIds` to carve out a small known set from a full sweep.
    */
@@ -74,7 +74,7 @@ export function assertEveryDescriptorHasHandler(
   const missing = findMethodsMissingHandlers(catalog, options);
   if (missing.length === 0) return;
   throw new Error(
-    `Gateway catalog has ${missing.length} descriptor(s) with no attached handler — `
+    `Gateway catalog has ${missing.length} descriptor(s) with no attached handler, `
     + `each answers 501 "Gateway method is not invokable" over websocket and HTTP invoke. `
     + `Attach handlers together with the descriptors at composition time. Offending ids:\n  `
     + missing.join('\n  '),

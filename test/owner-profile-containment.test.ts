@@ -1,5 +1,5 @@
 /**
- * owner-profile-containment.test.ts — docs/owner-profile.md §10, §11.2, §11.3.
+ * owner-profile-containment.test.ts, docs/owner-profile.md §10, §11.2, §11.3.
  *
  * Covers test-plan items 9 (not in logs), 10 (not in exports), 12 (not injected
  * outbound) and 19 (third-party containment), plus the footgun that makes a
@@ -7,8 +7,8 @@
  * profile value must never become a redaction pattern that blanks unrelated
  * text.
  *
- * The four containment paths §11.3 names — session export, at-rest persistence,
- * telemetry helpers, error display — all reach `redactSensitiveData` or
+ * The four containment paths §11.3 names, session export, at-rest persistence,
+ * telemetry helpers, error display, all reach `redactSensitiveData` or
  * `redactStructuredData`, so making those two profile-aware is the ONE change
  * that covers all four. This file exercises the shared functions plus the real
  * session-export entry points, rather than adding a fifth mechanism to test.
@@ -373,7 +373,7 @@ describe('closed-tier prose is redacted from EVERY closed section, not four of t
     await installedStore();
     // `## Boat` is not a canonical section. `profileSectionTier` makes every
     // heading except Style closed, and an earlier version collected prose only
-    // from People/Places/Work/Notes — so this line left an export in the clear
+    // from People/Places/Work/Notes, so this line left an export in the clear
     // while the People lines beside it were redacted.
     const redacted = redactSensitiveData('log: Home is the blue house on the corner of Elm');
     expect(redacted).not.toContain('blue house on the corner of Elm');

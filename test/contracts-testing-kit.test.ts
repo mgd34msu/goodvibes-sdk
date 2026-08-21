@@ -5,10 +5,10 @@
  * descriptor/handler conformance kit and the mock-daemon fixture generator, plus
  * the checked-in generated fixture artifact.
  *
- *   1. conformance kit — the single source terminal-shell/tui/agent now share.
- *   2. mock-daemon generator — every cataloged method gets a schema-valid sample,
+ *   1. conformance kit, the single source terminal-shell/tui/agent now share.
+ *   2. mock-daemon generator, every cataloged method gets a schema-valid sample,
  *      generated from the contract's own output schemas.
- *   3. generated fixtures — MOCK_DAEMON_FIXTURES covers every method and is in
+ *   3. generated fixtures, MOCK_DAEMON_FIXTURES covers every method and is in
  *      sync with a fresh generation (the in-test half of the drift guard).
  */
 import { describe, expect, test } from 'bun:test';

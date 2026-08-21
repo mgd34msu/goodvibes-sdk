@@ -25,7 +25,7 @@ from the committed contract artifact and kept honest by a drift gate.
   foundation-io coverage ratchet's untyped set, currently 97) carry
   `x-typed-client-io: false` on their operations and `typedClientIo: false` in
   the `x-operator-methods` index. They are represented, marked, and counted
-  (`x-untyped-client-io-count`) — never omitted.
+  (`x-untyped-client-io-count`), never omitted.
 - The auth scheme from the contract's auth block: `bearerAuth` (HTTP bearer) and
   `sessionCookie` (the login-issued cookie), with `access: public` methods
   opting out via an empty `security` array. The full contract auth block rides
@@ -39,7 +39,7 @@ bun run openapi:check      # exit 1 on drift
 ```
 
 `contracts:check` (part of `validate`) runs the drift check, so a change to the
-operator contract that is not reflected in the committed OpenAPI document — or a
-hand-edit to the document — fails gates. The generator's inputs are themselves
+operator contract that is not reflected in the committed OpenAPI document, or a
+hand-edit to the document, fails gates. The generator's inputs are themselves
 committed artifacts (`operator-contract.json` plus the typed-client-IO ratchet
 inputs), so generation is deterministic.

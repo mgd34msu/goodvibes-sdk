@@ -27,7 +27,7 @@ function resolveAgentSessionPaths(paths: AgentSessionPaths): AgentSessionPaths {
 }
 
 /**
- * AgentSession — Isolated session context for a spawned agent.
+ * AgentSession, Isolated session context for a spawned agent.
  *
  * Each agent gets its own ConversationManager, KVState namespace,
  * and JSONL message log file.
@@ -71,7 +71,7 @@ export class AgentSession {
       logger.debug('AgentSession journal retention skipped', { agentId, error: summarizeError(err) });
     }
 
-    // Own ConversationManager — not shared with main session
+    // Own ConversationManager, not shared with main session
     this.conversation = new ConversationManager();
 
     // KV state namespaced to this agent

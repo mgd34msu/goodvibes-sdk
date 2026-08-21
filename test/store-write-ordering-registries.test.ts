@@ -10,8 +10,8 @@
  * `WorkspaceRegistrationStore` is the exception in kind rather than degree. Its
  * mutations are read-modify-writes with no in-memory state behind them, and it
  * is the one store a second PROCESS writes, so ordering the write alone would
- * not close it. Both halves of its remedy — the in-process chain and the
- * advisory lock — get their own test.
+ * not close it. Both halves of its remedy, the in-process chain and the
+ * advisory lock, get their own test.
  */
 import { describe, test, expect } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -127,7 +127,7 @@ describe('AutomationRunStore — a completed run does not read back as running',
 
       // What the reconciler reads after a restart. A 'running' run whose agent
       // is gone is treated as work that never finished, so the job executes
-      // again — a completed automation run repeated.
+      // again, a completed automation run repeated.
       expect(readOnDisk<RunsFileShape>(path)?.runs[0]?.status).toBe('completed');
     } finally {
       cleanup();
@@ -231,7 +231,7 @@ describe('AutomationSourceStore — a removed source does not come back', () => 
 });
 
 // ---------------------------------------------------------------------------
-// WorkspaceRegistrationStore — read-modify-write, and cross-process.
+// WorkspaceRegistrationStore, read-modify-write, and cross-process.
 // ---------------------------------------------------------------------------
 
 describe('WorkspaceRegistrationStore — no registration is lost', () => {
@@ -247,7 +247,7 @@ describe('WorkspaceRegistrationStore — no registration is lost', () => {
 
       // Both read the empty registry before either writes. Unless the whole
       // read-modify-write is serialised, the second write replaces the first and
-      // one project is registered nowhere — no coverage, and nothing says so.
+      // one project is registered nowhere, no coverage, and nothing says so.
       await Promise.all([store.add('/home/dev/proj-a'), store.add('/home/dev/proj-b')]);
 
       const snapshot = await store.snapshot();
@@ -259,7 +259,7 @@ describe('WorkspaceRegistrationStore — no registration is lost', () => {
 
   test('two registrations at once both survive with no file to lock (the chain alone)', async () => {
     // `:memory:` is the store's declared injectable-I/O seam, and it has no
-    // lock file to contend on — the in-process chain is the whole of the
+    // lock file to contend on, the in-process chain is the whole of the
     // serialisation there, which is why it is not redundant with the lock.
     const store = new WorkspaceRegistrationStore({
       path: ':memory:',
@@ -295,7 +295,7 @@ describe('WorkspaceRegistrationStore — no registration is lost', () => {
 });
 
 // ---------------------------------------------------------------------------
-// TaskScheduler — a removed task does not come back and fire again.
+// TaskScheduler, a removed task does not come back and fire again.
 // ---------------------------------------------------------------------------
 
 interface SchedulerFileShape extends Record<string, unknown> {
@@ -331,7 +331,7 @@ describe('TaskScheduler — a removed task does not come back', () => {
 });
 
 // ---------------------------------------------------------------------------
-// CiWatchService — a deleted watch does not come back and notify again.
+// CiWatchService, a deleted watch does not come back and notify again.
 // ---------------------------------------------------------------------------
 
 interface CiWatchFileShape extends Record<string, unknown> {
@@ -370,7 +370,7 @@ describe('CiWatchService — a deleted watch does not come back', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PrincipalRegistry — a deleted principal stops resolving.
+// PrincipalRegistry, a deleted principal stops resolving.
 // ---------------------------------------------------------------------------
 
 describe('PrincipalRegistry — a deleted principal does not come back', () => {
@@ -408,7 +408,7 @@ describe('PrincipalRegistry — a deleted principal does not come back', () => {
 });
 
 // ---------------------------------------------------------------------------
-// ChannelProfileRegistry — a deleted binding stops resolving.
+// ChannelProfileRegistry, a deleted binding stops resolving.
 // ---------------------------------------------------------------------------
 
 describe('ChannelProfileRegistry — a deleted binding does not come back', () => {

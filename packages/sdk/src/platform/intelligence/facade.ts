@@ -1,5 +1,5 @@
 /**
- * CodeIntelligence — unified facade over tree-sitter and LSP services.
+ * CodeIntelligence, unified facade over tree-sitter and LSP services.
  *
  * Design principles:
  *   - Graceful degradation: never throw, always return safe defaults.
@@ -123,7 +123,7 @@ export class CodeIntelligence {
     }
 
     // Wire language configs into LspService (resolves config/facade disconnection).
-    // Only register languages that have an LSP command defined — don't overwrite
+    // Only register languages that have an LSP command defined, don't overwrite
     // configs that were already registered via registerServer().
     try {
       const lsp = this.lsp;
@@ -145,7 +145,6 @@ export class CodeIntelligence {
       logger.warn('CodeIntelligence: failed to load language configs', { error: summarizeError(err) });
     }
 
-    // Initialize tree-sitter WASM loader.
     try {
       await this.treeSitter.initialize();
     } catch (err) {
@@ -229,7 +228,7 @@ export class CodeIntelligence {
 
   /**
    * Parse a file and return syntax-level diagnostics (ERROR / MISSING nodes)
-   * from the tree-sitter parse. In-process and cheap — this does NOT type-check
+   * from the tree-sitter parse. In-process and cheap, this does NOT type-check
    * and never spawns a language server. Returns [] when no grammar is loaded for
    * the language or the parse is clean.
    */

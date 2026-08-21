@@ -1,5 +1,5 @@
 /**
- * agent.ts — the AGENT side of the Agent Client Protocol (ACP).
+ * agent.ts, the AGENT side of the Agent Client Protocol (ACP).
  *
  * Exposes a GoodVibes session as an ACP agent so ACP-capable editors (Zed and
  * others) can drive GoodVibes over stdio: initialize/authenticate → session
@@ -9,10 +9,10 @@
  * The substrate is the SDK Embedding API (`createEmbeddedSession`): each ACP
  * session boots an embedded GoodVibes session against the request's `cwd` and
  * bridges its runtime-event bus onto ACP `session/update` notifications. No new
- * engine — the adapter is a protocol mapping over the embed surface.
+ * engine, the adapter is a protocol mapping over the embed surface.
  *
  * Honest capability surface (see `initialize`): anything the platform does not
- * support is reported `false`, never stubbed —
+ * support is reported `false`, never stubbed,
  *   - `loadSession: false` (no session restore over ACP)
  *   - prompt `image`/`audio`/`embeddedContext`: false (input is text; the
  *     submit seam takes a text body)
@@ -82,7 +82,7 @@ interface AcpMcpServerDeclaration {
 /**
  * Translate a client's declared ACP MCP servers into our stdio `McpServerConfig`
  * shape. Returns the supported stdio configs and the names of servers we
- * genuinely cannot support (http/sse — no such transport in our MCP client,
+ * genuinely cannot support (http/sse, no such transport in our MCP client,
  * which is stdio JSON-RPC only). We advertise `mcpCapabilities.http/sse: false`
  * in `initialize`, so a compliant client never sends those; when one arrives
  * anyway it is reported by name rather than silently dropped.
@@ -319,7 +319,7 @@ export class GoodVibesAcpAgent implements Agent {
     // too; cancelActive ignores non-agent ids.)
     state.embedded.cancelActive(state.knownIds);
     // Also cancel a still-queued input (the pre-execution case cancelActive
-    // cannot reach — the input has not been delivered to an agent yet).
+    // cannot reach, the input has not been delivered to an agent yet).
     if (active?.inputId) {
       const sharedId = [...state.knownIds][0];
       if (sharedId) {

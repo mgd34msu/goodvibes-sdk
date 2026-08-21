@@ -213,7 +213,7 @@ export class KnowledgeStore {
 
   /**
    * Single-pass cursor over sources (insertion order, no materialization).
-   * O(N) for a full scan — offset paging in a loop re-walks the Map from zero
+   * O(N) for a full scan, offset paging in a loop re-walks the Map from zero
    * per page (O(N²/page)). Map iterators tolerate concurrent upsert/delete.
    */
   iterateSources(): IterableIterator<KnowledgeSourceRecord> {
@@ -504,12 +504,12 @@ export class KnowledgeStore {
     const nodeMetadata = nodeSpaceId
       ? ensureKnowledgeSpaceMetadata(mergedNodeMetadata, nodeSpaceId)
       : mergedNodeMetadata;
-    // clampConfidence (not an inline min/max) so a non-finite confidence — NaN or
-    // Infinity slips past `??`, which only catches null/undefined — resolves to the
+    // clampConfidence (not an inline min/max) so a non-finite confidence, NaN or
+    // Infinity slips past `??`, which only catches null/undefined, resolves to the
     // auto-accept default instead of `NaN >= autoAcceptConfidence === false`
     // silently holding a node as a draft forever.
     const confidence = clampConfidence(input.confidence ?? existing?.confidence ?? 70);
-    // Review gate: never silently active — stamp honest activation provenance. (Invariants 2 & 4.)
+    // Review gate: never silently active, stamp honest activation provenance. (Invariants 2 & 4.)
     const gated = resolveNodeActivation({ input, existing, confidence, metadata: nodeMetadata, now, autoAcceptConfidence: this.nodeAutoAcceptConfidence });
     const record: KnowledgeNodeRecord = {
       id: existing?.id ?? input.id ?? `node-${randomUUID().slice(0, 8)}`,
@@ -1103,7 +1103,7 @@ export class KnowledgeStore {
     this.jobRuns.clear();
     for (const record of snapshot.jobRuns) this.jobRuns.set(record.id, record);
     // Retention at load: an unbounded run history otherwise accretes across
-    // daemon restarts (one record per job run, forever — the incident's
+    // daemon restarts (one record per job run, forever, the incident's
     // zero-result self-improvement objects were exactly this class).
     this.pruneJobRuns(MAX_RETAINED_JOB_RUNS);
     this.refinementTasks.clear();

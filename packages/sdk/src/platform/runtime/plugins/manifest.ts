@@ -35,12 +35,12 @@ function isKnownCapability(value: string): value is PluginCapability {
 }
 
 /**
- * resolveCapabilityManifest — Parse and resolve the capability manifest for a
+ * resolveCapabilityManifest, Parse and resolve the capability manifest for a
  * plugin, applying the runtime's capability policy and trust-tier constraints.
  *
  * Evaluation order:
  *   1. Unknown capability strings are filtered out (warn + ignore).
- *   2. Trust-tier constraints are applied — high-risk capabilities blocked
+ *   2. Trust-tier constraints are applied, high-risk capabilities blocked
  *      unless the plugin has the `trusted` tier.
  *   3. The runtime capability policy callback is applied to the remaining set.
  *
@@ -65,7 +65,7 @@ export function resolveCapabilityManifest(
       requested.push(raw);
     } else {
       logger.warn(
-        `[plugin-lifecycle:${pluginName}] Unknown capability '${raw}' — ignored`,
+        `[plugin-lifecycle:${pluginName}] Unknown capability '${raw}', ignored`,
       );
     }
   }
@@ -76,7 +76,7 @@ export function resolveCapabilityManifest(
     logger.warn(
       `[plugin-lifecycle:${pluginName}] Trust tier '${trustTier}' blocks` +
       ` high-risk capabilities: [${trustResult.blocked.join(', ')}]` +
-      ' — trust escalation required',
+      ', trust escalation required',
     );
   }
 
@@ -101,7 +101,7 @@ export function resolveCapabilityManifest(
 
   logger.debug(
     `[plugin-lifecycle:${pluginName}] Capabilities resolved (trust=${trustTier})` +
-    ` — granted: [${granted.join(', ')}]` +
+    `, granted: [${granted.join(', ')}]` +
     (denied.length > 0 ? `, denied: [${denied.join(', ')}]` : ''),
   );
 
@@ -114,7 +114,7 @@ export function resolveCapabilityManifest(
 }
 
 /**
- * isHighRiskCapability — Returns whether a capability is classified as high-risk.
+ * isHighRiskCapability, Returns whether a capability is classified as high-risk.
  * High-risk capabilities require the `trusted` tier to be granted.
  */
 export function isHighRiskCapability(capability: PluginCapability): boolean {
@@ -122,7 +122,7 @@ export function isHighRiskCapability(capability: PluginCapability): boolean {
 }
 
 /**
- * hasCapability — Returns whether a plugin has been granted a specific
+ * hasCapability, Returns whether a plugin has been granted a specific
  * capability after manifest resolution.
  */
 export function hasCapability(
@@ -133,7 +133,7 @@ export function hasCapability(
 }
 
 /**
- * validateManifestV2 — Light validation of the PluginManifestV2 shape.
+ * validateManifestV2, Light validation of the PluginManifestV2 shape.
  * Returns null on success or an error string on failure.
  */
 export function validateManifestV2(manifest: unknown): string | null {

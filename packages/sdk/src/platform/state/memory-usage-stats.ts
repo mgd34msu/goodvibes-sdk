@@ -1,14 +1,14 @@
 /**
- * memory-usage-stats.ts — per-memory usage counters (HOISTED to the SDK).
+ * memory-usage-stats.ts, per-memory usage counters (HOISTED to the SDK).
  *
  * Answers "was injected context actually used?". Promoted verbatim from the
  * agent surface so every consumer records the SAME instrumentation the SAME way.
  *
  * The store records, per memory id, how many times it was injected into a prompt
  * and how many of those injections were plausibly referenced by the model's
- * output (see memory-usage-detection.ts — a heuristic distinctive-content
+ * output (see memory-usage-detection.ts, a heuristic distinctive-content
  * overlap, not ground truth). It duplicates no memory content: it keys on the id
- * only. It is instrumentation data, not a second memory store — same durable JSON
+ * only. It is instrumentation data, not a second memory store, same durable JSON
  * sidecar idiom as the prompt-context and consolidation receipts.
  *
  * The counters feed the idle consolidation decay ordering (never-referenced
@@ -135,7 +135,7 @@ export class MemoryUsageStatsStore {
     return entry ? { ...entry } : null;
   }
 
-  /** Consolidation decay ordering seam — undefined when the id was never instrumented. */
+  /** Consolidation decay ordering seam, undefined when the id was never instrumented. */
   public lookup(id: string): MemoryConsolidationUsageSignal | undefined {
     const entry = this.get(id);
     if (!entry) return undefined;

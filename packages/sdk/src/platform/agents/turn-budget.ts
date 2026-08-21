@@ -7,7 +7,7 @@
  *
  * Resolution order (mirrors the orchestration spawn-policy cap machinery so the
  * two never fight): a per-spawn override wins over the config default, but the
- * policy cap always wins over the override — a caller cannot lift the ceiling
+ * policy cap always wins over the override, a caller cannot lift the ceiling
  * past agents.maxTurnsCap. The resolved budget carries WHICH input applied so
  * the failure outcome can report it (default / spawn-override / policy-bound).
  */
@@ -22,7 +22,7 @@ export type TurnBudgetSource = 'default' | 'spawn-override' | 'policy-bound';
 export interface ResolvedTurnBudget {
   /** The turn ceiling that actually applies to the run. */
   readonly limit: number;
-  /** Which input set it — for the honest turn-budget-exhausted outcome. */
+  /** Which input set it, for the honest turn-budget-exhausted outcome. */
   readonly source: TurnBudgetSource;
 }
 
@@ -59,7 +59,7 @@ export function resolveTurnBudget(input: ResolveTurnBudgetInput): ResolvedTurnBu
   return { limit: requested, source: 'spawn-override' };
 }
 
-/** The human-readable turn-limit error string — unchanged prose, so nothing that reads it breaks. */
+/** The human-readable turn-limit error string, unchanged prose, so nothing that reads it breaks. */
 export function formatTurnLimitError(limit: number): string {
   return `Exceeded maximum turn limit (${limit})`;
 }

@@ -63,7 +63,7 @@ describe('non-leaf best-of-N expansion', () => {
     const { ws, siblings, dependent } = setup();
     expect(siblings).toHaveLength(2);
     expect(siblings.every((s) => s.attemptSourceId === 'X')).toBe(true);
-    // The original id "X" no longer names a live item — it was rewritten.
+    // The original id "X" no longer names a live item, it was rewritten.
     expect(ws.items.find((i) => i.id === 'X')).toBeUndefined();
     expect(dependent.dependsOn).toEqual(['X']);
   });

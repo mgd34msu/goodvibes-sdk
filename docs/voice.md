@@ -1,4 +1,4 @@
-# Voice and Streaming TTS
+# Voice and streaming TTS
 
 The SDK owns voice provider registration, provider and voice discovery, durable
 TTS defaults, and daemon HTTP routes. UI clients own command syntax, transcript
@@ -48,7 +48,7 @@ Spoken-output clients use these config keys:
 The config keys are defaults, not locks. Clients can pass `providerId`,
 `voiceId`, `modelId`, `format`, and `speed` on individual requests.
 
-## Daemon Routes
+## Daemon routes
 
 `POST /api/voice/tts` is unchanged. It still returns the existing JSON
 `VoiceSynthesisResult` with a complete audio artifact.
@@ -92,7 +92,7 @@ Web Audio API or `MediaSource` for low-latency playback. See
 [Web UI Integration](./web-ui-integration.md) for a full browser playback
 example; the TUI playback contract below covers local players such as `mpv`.
 
-## Voice Discovery, STT, and Realtime Routes
+## Voice discovery, STT, and realtime routes
 
 Beyond TTS, the daemon exposes voice discovery, status, transcription, and
 realtime-session routes. All use normal daemon authentication.
@@ -162,7 +162,7 @@ The response returns `providerId`, `sessionId`, `transport`, optional `url`,
 optional `expiresAt`, optional `headers`, and `metadata`. Clients connect to
 the provider's realtime endpoint using the returned transport details.
 
-## TUI Contract
+## TUI contract
 
 For a live `/tts <prompt>` command, the TUI should submit a normal chat turn
 with spoken-output intent. Text should continue rendering through the normal
@@ -176,7 +176,7 @@ remove the text turn.
 
 For streaming audio playback in a TUI context, pipe the byte stream to `mpv` (e.g. `mpv --no-cache --demuxer=rawaudio stdin://`) or `ffplay` (e.g. `ffplay -autoexit -f s16le -ar 24000 -`). Adjust format flags to match the TTS provider's output encoding.
 
-## Next Reads
+## Next reads
 
 - [Web UI Integration](./web-ui-integration.md) for browser streaming-audio playback.
 - [Observability](./observability.md)

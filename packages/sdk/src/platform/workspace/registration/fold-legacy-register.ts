@@ -1,11 +1,11 @@
 /**
- * fold-legacy-register.ts — move the workspace register from the pre-split
+ * fold-legacy-register.ts, move the workspace register from the pre-split
  * location into the shared tier, once, without losing a row.
  *
  * ── The merge, and its tie-break ──────────────────────────────────────────
  *
  * Both halves of the document are keyed lists, so the merge is an id-keyed
- * union: `workspaces` keyed on `root` (already normalized — coverage flows down
+ * union: `workspaces` keyed on `root` (already normalized, coverage flows down
  * that subtree, so the normalized path IS the identity), `declines` likewise.
  *
  * THE TIE-BREAK IS THE LATER `registeredAt`, and where they tie the destination
@@ -58,8 +58,8 @@ function readRows(snapshot: PersistedRegistry | null): PersistedRegistry {
 /**
  * Union keyed on `root`, later timestamp wins, a tie keeps the destination.
  *
- * The timestamp field differs between the two halves of the document —
- * `registeredAt` on a registration, `declinedAt` on a decline — so the caller
+ * The timestamp field differs between the two halves of the document,
+ * `registeredAt` on a registration, `declinedAt` on a decline, so the caller
  * names it rather than this guessing. ISO-8601 strings compare correctly with
  * `>`; a missing timestamp sorts as oldest, which is the right default for a
  * record written before the field existed.
@@ -91,7 +91,7 @@ function mergeKeyed<T extends { readonly root: string }>(
 /**
  * Fold `legacyPath` into `sharedPath`. Both may be absent; an absent legacy
  * file is a no-op, and an absent destination is created from the legacy rows.
- * The legacy file is NOT removed here — retiring it is the sweep's job, and it
+ * The legacy file is NOT removed here, retiring it is the sweep's job, and it
  * only does so after this has succeeded.
  */
 export async function foldLegacyWorkspaceRegister(input: {

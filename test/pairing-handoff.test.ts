@@ -19,7 +19,7 @@ import {
 /**
  * Real subscription key material. The hand-off registers a push subscription
  * through the same content validation `push.subscriptions.create` applies, so
- * placeholder strings are refused at 400 — as they should be, since they could
+ * placeholder strings are refused at 400, as they should be, since they could
  * never receive a push.
  */
 const pushKeys = ((): { p256dh: string; auth: string } => {
@@ -149,7 +149,7 @@ describe('pairing.handoff.* over the catalog', () => {
   test('a notifications offer with unusable key material is refused, not stored', async () => {
     const { catalog, captured } = makeCatalog();
     // A malformed request is a 400 here, the same as every other bad argument
-    // in this verb — and nothing reaches the push service, so a record that
+    // in this verb, and nothing reaches the push service, so a record that
     // could never receive a push is never registered.
     await expect(catalog.invoke('pairing.handoff.complete', {
       ...ctx,

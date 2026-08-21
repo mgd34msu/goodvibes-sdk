@@ -85,7 +85,7 @@ const SESSION_DELETION_RETENTION_MS = Number.POSITIVE_INFINITY;
 
 export class SharedSessionBroker {
   private readonly store: PersistentStore<SharedSessionStoreSnapshot>;
-  /** The file this broker serves from, or null for an injected store. Boot folds/sweeps must NAME it, never re-derive it — see daemon/daemon-session-store-boot.ts. */
+  /** The file this broker serves from, or null for an injected store. Boot folds/sweeps must NAME it, never re-derive it, see daemon/daemon-session-store-boot.ts. */
   readonly storePath: string | null;
   private readonly routeBindings: RouteBindingManager;
   private readonly agentStatusProvider: SharedSessionAgentStatusProvider;
@@ -200,7 +200,7 @@ export class SharedSessionBroker {
 
   /**
    * Install the hook that routes an agent's answer back to the channel the
-   * message arrived on. See SharedSessionSurfaceReplyBinder — the broker
+   * message arrived on. See SharedSessionSurfaceReplyBinder, the broker
    * announces every (agent, surface-originated input) pairing through it, so a
    * host wires the reply path once instead of per adapter.
    */
@@ -209,7 +209,7 @@ export class SharedSessionBroker {
   }
 
   /**
-   * Install the path for a one-line unsolicited message to a route's channel —
+   * Install the path for a one-line unsolicited message to a route's channel,
    * distinct from the reply binder above, which pairs an AGENT's answer with a
    * conversation. Today's only caller is the route-binding healing in
    * session-broker-intent.ts, telling a chat its conversation moved.
@@ -227,7 +227,7 @@ export class SharedSessionBroker {
     try {
       this.surfaceReplyBinder(binding);
     } catch (error) {
-      logger.error('Surface reply binding failed — an answer may not reach its conversation', {
+      logger.error('Surface reply binding failed, an answer may not reach its conversation', {
         sessionId: binding.sessionId,
         agentId: binding.agentId,
         bindingId: binding.routeId ?? null,
@@ -401,12 +401,12 @@ export class SharedSessionBroker {
   /**
    * Permanently remove a shared session record and its queued messages/inputs
    * from the home-scoped store (see CHANGELOG 1.0.0: a real hard-delete verb, distinct from
-   * `closeSession` — closed sessions are HISTORY and are never touched by this
+   * `closeSession`, closed sessions are HISTORY and are never touched by this
    * path unless explicitly asked). Requires the session to already be closed:
    * deleting a still-active session returns `'active'` so the caller can
    * surface an honest 409 (close it, then delete) rather than yanking a
    * record out from under a live participant/agent. An unknown OR
-   * already-deleted id returns `'not-found'` — delete is not a 200-noop; a
+   * already-deleted id returns `'not-found'`, delete is not a 200-noop; a
    * second delete of the same id is an honest 404 at the route layer.
    *
    * Emits `session-deleted` on the same `session-update` wire channel as
@@ -664,7 +664,7 @@ export class SharedSessionBroker {
     });
   }
 
-  /** Snapshot now, write in call order — `gcSweep` persists unawaited and would
+  /** Snapshot now, write in call order, `gcSweep` persists unawaited and would
    * otherwise land a stale view over a `cancelInput`. See StoreWriteQueue. */
   private async persist(): Promise<void> {
     const state = { sessions: this.sessions, messages: this.messages, inputs: this.inputs };
@@ -778,7 +778,7 @@ export class SharedSessionBroker {
       // be answered. Harmless for a local caller that polls its own inputs;
       // for one that arrived over a channel it is silence, so say so.
       if (next.routeId ?? next.surfaceKind) {
-        logger.error('A channel follow-up is queued but no continuation runner is installed — it will not be answered', {
+        logger.error('A channel follow-up is queued but no continuation runner is installed, it will not be answered', {
           sessionId,
           inputId: next.id,
           bindingId: next.routeId ?? null,
@@ -840,7 +840,7 @@ export class SharedSessionBroker {
   }
 
   /**
-   * MemoryGovernor trim hook — a REAL reclaim. `floor` runs the idle/closed
+   * MemoryGovernor trim hook, a REAL reclaim. `floor` runs the idle/closed
    * session GC sweep immediately; `flush` additionally truncates the message
    * and input buckets of every non-busy session to a short tail (the full
    * transcript persists in the session store; these buckets are the live

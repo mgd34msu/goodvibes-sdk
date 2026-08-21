@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * OpsEvent — discriminated union covering all operator control plane events.
+ * OpsEvent, discriminated union covering all operator control plane events.
  *
  * These events are emitted when the operator intervenes in task or agent
  * lifecycle via the /ops command or Ctrl+O panel. Every intervention emits
@@ -136,7 +136,7 @@ export type OpsEvent =
         | {
             rateMbPerSec: number;
             sustainedSec: number;
-            /** The action taken — a graceful exit so a supervisor restarts clean. */
+            /** The action taken, a graceful exit so a supervisor restarts clean. */
             action: 'exit';
           }
         | undefined;

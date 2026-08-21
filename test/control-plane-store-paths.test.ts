@@ -61,7 +61,7 @@ describe('the repointed writers actually write scoped', () => {
     const config = new ConfigManager({ surfaceRoot: 'daemon', configDir: join(home, 'cfg'), homeDir: home });
     const catalog = new GatewayMethodCatalog();
     // Cheap and real: the constructor does no I/O until load()/loadSync()/watch()
-    // is called, none of which this test needs — only the occasions state store
+    // is called, none of which this test needs, only the occasions state store
     // (installOccasions's own OccasionStateStore) is under test here.
     const ownerProfile = new OwnerProfileStore({ path: join(home, 'owner-profile.md'), enabled: true });
 
@@ -105,7 +105,7 @@ describe('the repointed writers actually write scoped', () => {
     const sharedPath = join(home, '.goodvibes', 'shared', 'workspace-registrations.json');
     expect(existsSync(sharedPath)).toBe(true);
 
-    // Not under any surface root — that is the split — and not at the pre-split
+    // Not under any surface root, that is the split, and not at the pre-split
     // address either, which is what this whole round is clearing out.
     expect(existsSync(join(home, '.goodvibes', 'tui', 'control-plane', 'workspace-registrations.json'))).toBe(false);
     expect(existsSync(join(home, '.goodvibes', 'agent', 'control-plane', 'workspace-registrations.json'))).toBe(false);
@@ -163,7 +163,7 @@ describe('the repointed writers actually write scoped', () => {
 
     // And the store itself reads through, rather than starting empty. The
     // status is 'covered' rather than 'registered' because the recorded root
-    // normalizes to the covering subtree — either answer means the operator's
+    // normalizes to the covering subtree, either answer means the operator's
     // registration was SEEN; 'unknown' is the failure this guards, and is what
     // an updated product would report without the fallback.
     const evaluation = await new WorkspaceRegistrationManager({ shellPaths }).evaluate();

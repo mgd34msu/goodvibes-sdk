@@ -1,5 +1,5 @@
 /**
- * auth-flow-e2e.test.ts — S-ζ Test 1
+ * auth-flow-e2e.test.ts, S-ζ Test 1
  *
  * End-to-end auth flow fixture: boots a fake Bun.serve HTTP server that emulates
  * the operator endpoint's auth flow, then drives the real `createGoodVibesAuthClient`
@@ -214,7 +214,7 @@ function buildFakeOperatorServer(opts: {
  *
  * We compose with a real `createOperatorSdk` so the real HTTP transport +
  * contract resolution path is exercised. The cookie jar is managed via the
- * `credentials: 'include'` fetch behaviour — our test manually threads the
+ * `credentials: 'include'` fetch behaviour, our test manually threads the
  * cookie in headers because Bun's fetch does not maintain a cookie jar across
  * requests.
  */

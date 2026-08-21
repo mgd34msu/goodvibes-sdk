@@ -1,5 +1,5 @@
 /**
- * RuntimeTracer — lightweight OTel-compatible span factory.
+ * RuntimeTracer, lightweight OTel-compatible span factory.
  *
  * Implements span creation, parent/child relationships, attributes, events,
  * and export without depending on the @opentelemetry/* packages.
@@ -159,7 +159,7 @@ class SpanImpl implements Span {
 // ── RuntimeTracer ──────────────────────────────────────────────────────────────
 
 /**
- * RuntimeTracer — creates spans and routes completed spans to exporters.
+ * RuntimeTracer, creates spans and routes completed spans to exporters.
  *
  * Usage:
  * ```ts
@@ -197,7 +197,6 @@ export class RuntimeTracer {
     }
   ): Span {
     if (!this.config.enabled) {
-      // Return a no-op span when tracing is disabled
       return new NoopSpan();
     }
 

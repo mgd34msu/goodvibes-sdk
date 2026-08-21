@@ -19,7 +19,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { reasoningEffortSpecFromLevels } from '../providers/reasoning-effort.js';
 
 /**
- * PluginProviderConfig — minimal config for registering a custom LLM provider
+ * PluginProviderConfig, minimal config for registering a custom LLM provider
  * via an OpenAI-compatible endpoint.
  */
 export interface PluginProviderConfig {
@@ -75,24 +75,24 @@ export interface PluginProviderRegistration {
 }
 
 /**
- * PluginToolSchema — JSON Schema for a tool parameter object.
+ * PluginToolSchema, JSON Schema for a tool parameter object.
  */
 export type PluginToolSchema = Record<string, unknown>;
 
 /**
- * PluginToolHandler — Called when the LLM invokes a plugin-registered tool.
+ * PluginToolHandler, Called when the LLM invokes a plugin-registered tool.
  */
 export type PluginToolHandler = (
   args: Record<string, unknown>,
 ) => Promise<{ success: boolean; output?: string; error?: string }>;
 
 /**
- * PluginCommandHandler — Called when a user runs a plugin-registered slash command.
+ * PluginCommandHandler, Called when a user runs a plugin-registered slash command.
  */
 export type PluginCommandHandler = (args: string[]) => void | Promise<void>;
 
 /**
- * PluginAPI — The constrained API surface exposed to plugins.
+ * PluginAPI, The constrained API surface exposed to plugins.
  * Plugins receive an instance of this interface during init; they cannot
  * access the wider application implementation details directly.
  */
@@ -175,7 +175,7 @@ export interface PluginAPIContext {
 }
 
 /**
- * createPluginAPI — Factory that creates a sandboxed PluginAPI for a single plugin.
+ * createPluginAPI, Factory that creates a sandboxed PluginAPI for a single plugin.
  * All registrations are tracked in `ctx.cleanup` so they can be undone on deactivation.
  */
 export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
@@ -284,7 +284,7 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
     registerTool(name, schema, handler) {
       const toolName = `plugin_${ctx.pluginName}_${name}`;
       if (ctx.toolRegistry.has(toolName)) {
-        logger.warn(`[plugin:${ctx.pluginName}] Tool '${toolName}' already registered — skipping`);
+        logger.warn(`[plugin:${ctx.pluginName}] Tool '${toolName}' already registered, skipping`);
         return;
       }
       const definition: ToolDefinition = {
@@ -304,7 +304,7 @@ export function createPluginAPI(ctx: PluginAPIContext): PluginAPI {
       });
       // ToolRegistry has no unregister method. Track for cleanup awareness.
       ctx.cleanup.push(() => {
-        logger.warn(`[plugin:${ctx.pluginName}] Tool '${toolName}' cannot be unregistered on deactivate — it persists until process restart`);
+        logger.warn(`[plugin:${ctx.pluginName}] Tool '${toolName}' cannot be unregistered on deactivate, it persists until process restart`);
       });
     },
 

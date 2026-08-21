@@ -1,13 +1,13 @@
-# Automation And Watchers
+# Automation and watchers
 
 The automation system provides durable jobs, runs, schedules, route bindings,
 deliveries, and watcher services for daemon-hosted work.
 
 Consumer apps interact through operator methods documented below. Daemon embedders wire automation through host runtime composition rather than a catch-all platform namespace.
 
-The method lists below are an index. For the full request/response shape of each method — including the category each method is registered under (for example `watchers.list` under `watchers`, `services.status` under `services`) — see the generated [Operator method reference](./reference-operator.md), or fetch the live catalog at `GET /api/control-plane/methods` for the registration in your daemon build.
+The method lists below are an index. For the full request and response shape of each method, including the category each method is registered under (for example `watchers.list` under `watchers`, `services.status` under `services`), see the generated [Operator method reference](./reference-operator.md), or fetch the live catalog at `GET /api/control-plane/methods` for the registration in your daemon build.
 
-## Automation Domain
+## Automation domain
 
 Automation records are split into jobs, runs, sources, routes, schedules, and
 deliveries.
@@ -34,11 +34,11 @@ Automation config controls enablement, max concurrent runs, run history,
 default timeout, catch-up window, failure cooldown, and delete-after-run.
 
 > **Core-verb rename (see CHANGELOG 1.0.0):** `automation.jobs.patch` was renamed to
-> `automation.jobs.update` — the canonical verb is `update`, not `patch`. The
+> `automation.jobs.update`: the canonical verb is `update`, not `patch`. The
 > separate `automation.jobs.pause` / `automation.jobs.resume` methods were
 > retired: they were a byte-identical redundant lifecycle pair with
 > `automation.jobs.disable` / `automation.jobs.enable` (same `{id, enabled}`
-> output, same semantics — pause==disable, resume==enable). A caller-facing
+> output, same semantics: pause==disable, resume==enable). A caller-facing
 > "pause"/"resume" verb should now invoke `automation.jobs.disable` /
 > `automation.jobs.enable`. See
 > [`packages/contracts/src/core-verbs.ts`](../packages/contracts/src/core-verbs.ts)
@@ -61,15 +61,15 @@ The schedule endpoints manage host-owned schedule records:
 > the agent's own reminder/routine tooling (which called these methods under
 > the bare name) and `knowledge.schedule(s).*` below (a different resource:
 > recurring knowledge-ingestion jobs, not automation prompt jobs). The HTTP
-> paths were already `/api/automation/schedules/*` — only the operator method
-> id was inconsistent with its own route; the rename brings the two in line
+> paths were already `/api/automation/schedules/*`. Only the operator method
+> id was inconsistent with its own route. The rename brings the two in line
 > and removes the bare top-level `schedules` namespace entirely, leaving only
 > two clearly-scoped "schedule" families: `automation.schedules.*` (this one)
 > and `knowledge.schedule(s).*` (below).
 
-Knowledge jobs also have their own schedule API. The single-record methods are singular — `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable` — while the list method is the plural `knowledge.schedules.list`. This singular-item/plural-list split is the CANONICAL namespace convention (see `core-verbs.ts`), not a special case — `automation.schedules.*` above has no separate single-item family because none of its callers need one yet.
+Knowledge jobs also have their own schedule API. The single-record methods are singular: `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable`, while the list method is the plural `knowledge.schedules.list`. This singular-item and plural-list split is the CANONICAL namespace convention (see `core-verbs.ts`), not a special case. `automation.schedules.*` above has no separate single-item family because none of its callers need one yet.
 
-## Route Bindings
+## Route bindings
 
 Route bindings preserve the relationship between external surfaces and daemon
 state. They are used by channel replies, ntfy, Home Assistant, companion/chat
@@ -131,7 +131,7 @@ Operator methods:
 - `services.restart`
 - `services.uninstall`
 
-## Next Reads
+## Next reads
 
 - [Runtime Orchestration](./runtime-orchestration.md)
 - [Feature settings](./feature-settings.md)

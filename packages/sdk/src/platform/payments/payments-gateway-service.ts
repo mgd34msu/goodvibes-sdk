@@ -1,11 +1,11 @@
 /**
- * payments-gateway-service.ts — the daemon side, so the capability is reachable.
+ * payments-gateway-service.ts, the daemon side, so the capability is reachable.
  *
  * ══ What was missing ══════════════════════════════════════════════════════
  *
  * `runCheckout` was complete and had no caller. `routes/payments.ts` declared a
  * `PaymentsGatewayService` interface and nothing implemented it. So every piece
- * worked and the daemon had no way to begin a purchase — the chain broke at the
+ * worked and the daemon had no way to begin a purchase, the chain broke at the
  * point where a request turns into a checkout.
  *
  * This is that link: one service, constructed from the daemon's own managers,
@@ -26,7 +26,7 @@
  * `begin` opens a checkout and `fillCard` completes one, and they are separate
  * verbs arriving as separate control-plane calls. The in-flight registry has to
  * outlive both, so it lives here for the life of the service rather than being
- * constructed per call — which is also what makes "refuse a fill with no
+ * constructed per call, which is also what makes "refuse a fill with no
  * decision in flight" enforceable across two independent invocations.
  */
 import { BudgetLedger, type BudgetLimits } from './budget.js';
@@ -94,7 +94,7 @@ export interface PaymentsServiceDeps {
   readonly merchantJudge: MerchantJudgePort;
   /** Resolves the driver for an open browser session and page. */
   readonly driverFor: (sessionId: string, pageId: string) => CheckoutPageDriver;
-  /** The gate inputs the daemon alone can answer — leadership most of all. */
+  /** The gate inputs the daemon alone can answer, leadership most of all. */
   readonly gates: () => GateInput;
   readonly config: () => PaymentsServiceConfig;
   readonly now?: (() => number) | undefined;
@@ -115,7 +115,7 @@ export interface BeginCheckoutInput {
    *
    * The wire says `ref` because that is what a snapshot calls an element; the
    * flow says `target` because it has no opinion about what an addressing
-   * string is. Translating here — explicitly, rather than by casting — is what
+   * string is. Translating here, explicitly, rather than by casting, is what
    * keeps a mismatch a compile error instead of a runtime refusal that reads
    * like a missing address.
    */
@@ -157,8 +157,8 @@ export class PaymentsGatewayServiceImpl {
   /**
    * Begin and run a checkout.
    *
-   * Everything the flow needs that only the daemon knows — the limits, the
-   * timezone, the leadership answer — is read HERE, at the moment of the call,
+   * Everything the flow needs that only the daemon knows, the limits, the
+   * timezone, the leadership answer, is read HERE, at the moment of the call,
    * rather than captured at construction. A budget raised five minutes ago
    * should apply to this purchase.
    */
@@ -242,7 +242,7 @@ export class PaymentsGatewayServiceImpl {
    * Type the stored card into an open checkout.
    *
    * The refusals live in `fillCard`; this only adapts the shapes. A
-   * `FillCardRefusal` is rethrown so the route can forward its message — it
+   * `FillCardRefusal` is rethrown so the route can forward its message, it
    * carries no card material and it is the owner's business why the fill was
    * refused.
    */

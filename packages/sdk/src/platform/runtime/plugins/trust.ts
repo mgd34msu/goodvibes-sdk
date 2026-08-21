@@ -6,9 +6,9 @@
  * trust records with persistence support.
  *
  * Trust tiers gate access to high-risk capabilities:
- *   - untrusted — only safe, read-only capabilities allowed
- *   - limited   — moderate capabilities; high-risk capabilities blocked
- *   - trusted   — full capability set; requires signed manifest validation
+ *   - untrusted, only safe, read-only capabilities allowed
+ *   - limited  , moderate capabilities; high-risk capabilities blocked
+ *   - trusted  , full capability set; requires signed manifest validation
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
@@ -21,12 +21,12 @@ import { isHighRiskCapability } from './manifest.js';
 /**
  * The three trust tiers available to a plugin.
  *
- * - `untrusted` — Default for newly discovered plugins. Only safe capabilities
+ * - `untrusted`, Default for newly discovered plugins. Only safe capabilities
  *   are accessible. The plugin may not have been reviewed.
- * - `limited`   — Operator-reviewed plugin. Moderate capabilities granted.
+ * - `limited`  , Operator-reviewed plugin. Moderate capabilities granted.
  *   High-risk capabilities (shell.exec, filesystem.write, network.outbound)
  *   remain blocked without explicit trust escalation.
- * - `trusted`   — Fully trusted plugin. Requires a valid signed manifest.
+ * - `trusted`  , Fully trusted plugin. Requires a valid signed manifest.
  *   All declared capabilities may be granted (subject to runtime policy).
  */
 export type PluginTrustTier = 'untrusted' | 'limited' | 'trusted';
@@ -69,7 +69,7 @@ export interface SignatureValidationResult {
 }
 
 /**
- * validatePluginSignature — Validates the manifest signature for a plugin
+ * validatePluginSignature, Validates the manifest signature for a plugin
  * seeking the `trusted` tier.
  *
  * The signature field in PluginManifestV2 is expected to be a base64-encoded
@@ -118,7 +118,7 @@ export function validatePluginSignature(
   const fingerprint = signature.trim().slice(0, 16);
 
   logger.debug(
-    `[plugin-trust] Manifest signature validated — plugin=${name} fingerprint=${fingerprint}` +
+    `[plugin-trust] Manifest signature validated, plugin=${name} fingerprint=${fingerprint}` +
     (publicKey ? ' (full HMAC)' : ' (structural only)'),
   );
 
@@ -139,7 +139,7 @@ export const SAFE_CAPABILITIES: ReadonlyArray<PluginCapability> = [
 ] as const;
 
 /**
- * filterCapabilitiesByTrust — Returns the subset of `requested` capabilities
+ * filterCapabilitiesByTrust, Returns the subset of `requested` capabilities
  * that are permitted for the given trust tier.
  *
  * - `untrusted`: only SAFE_CAPABILITIES
@@ -181,7 +181,7 @@ export function filterCapabilitiesByTrust(
 // ── Trust Store ───────────────────────────────────────────────────────────────
 
 /**
- * PluginTrustStore — In-memory trust registry for all plugins.
+ * PluginTrustStore, In-memory trust registry for all plugins.
  *
  * Callers are responsible for persistence (serialise/deserialise via
  * `exportRecords` / `importRecords`). The PluginManager bridges this to
@@ -207,7 +207,7 @@ export class PluginTrustStore {
   }
 
   /**
-   * setTier — Explicitly assign a trust tier to a plugin.
+   * setTier, Explicitly assign a trust tier to a plugin.
    *
    * Intended for operator use via `/plugin trust`.
    * For the `trusted` tier, prefer `trustSigned()` which also validates the signature.
@@ -225,12 +225,12 @@ export class PluginTrustStore {
       note: options.note,
     };
     this.records.set(pluginName, record);
-    logger.info(`[plugin-trust] ${pluginName}: tier set to '${tier}'${options.note ? ` — ${options.note}` : ''}`);
+    logger.info(`[plugin-trust] ${pluginName}: tier set to '${tier}'${options.note ? `, ${options.note}` : ''}`);
     return record;
   }
 
   /**
-   * trustSigned — Elevate a plugin to the `trusted` tier after verifying its
+   * trustSigned, Elevate a plugin to the `trusted` tier after verifying its
    * signed manifest. Returns `{ ok: false, reason }` if validation fails.
    */
   trustSigned(
@@ -240,7 +240,7 @@ export class PluginTrustStore {
   ): { ok: true; record: PluginTrustRecord } | { ok: false; reason: string } {
     const validation = validatePluginSignature(manifest, publicKey);
     if (!validation.valid) {
-      logger.warn(`[plugin-trust] ${pluginName}: signature validation failed — ${validation.reason}`);
+      logger.warn(`[plugin-trust] ${pluginName}: signature validation failed, ${validation.reason}`);
       return { ok: false, reason: validation.reason! };
     }
 
@@ -257,7 +257,7 @@ export class PluginTrustStore {
   }
 
   /**
-   * verify — Verify the current signature on a plugin manifest without
+   * verify, Verify the current signature on a plugin manifest without
    * changing its tier. Useful for `/plugin verify` inspection.
    */
   verify(

@@ -1,5 +1,5 @@
 /**
- * source-selection.ts — which source reads the mailbox
+ * source-selection.ts, which source reads the mailbox
  * (docs/inbound-email.md §3.4d, "Selection is automatic").
  *
  * The whole point of this file is that adopting Google is the ENTIRE setup for
@@ -13,14 +13,14 @@
  * **It reads nothing.** Every input arrives as a value. There is no config
  * read, no credential lookup and no network call in this module, so the
  * decision is a pure function of three facts and a test can state each of them
- * directly. The alternative — a selector that goes and finds out for itself —
+ * directly. The alternative, a selector that goes and finds out for itself,
  * is a selector that cannot be exercised without a machine that has Google
  * adopted on it.
  *
  * **Forcing `gmail` where Gmail cannot work is REFUSED, not quietly served
  * over IMAP.** That is already the shipped contract: the description on
  * `surfaces.email.inbound.source` says so in the words the owner reads in his
- * settings — "Forcing 'gmail' without adopted Google credentials, or on an
+ * settings, "Forcing 'gmail' without adopted Google credentials, or on an
  * account that is not a Gmail account, is refused rather than quietly served
  * over IMAP." Silently substituting the other source would leave him with a
  * setting that says one thing while the daemon does another, which is the same
@@ -49,8 +49,8 @@ export interface InboundSourceSelectionInput {
    *
    * NOT "whether Google credentials are adopted", which is what this was
    * called and what its messages claimed. It used to be set from
-   * `options.gmail !== undefined` — the presence of an injected Gmail source
-   * BUILDER — and no composition passed one, so it was permanently false and
+   * `options.gmail !== undefined`, the presence of an injected Gmail source
+   * BUILDER, and no composition passed one, so it was permanently false and
    * an owner who had connected Google was told "no Google credentials have
    * been adopted", which sent him to look for a credential that was already
    * there.
@@ -65,7 +65,7 @@ export interface InboundSourceSelectionInput {
    * Why no Gmail source is available, in the composition's own words.
    *
    * A VALUE, so this module still reads nothing and decides nothing it was not
-   * told — the property the header states. Present only when `googleAdopted`
+   * told, the property the header states. Present only when `googleAdopted`
    * is false, and carried into the message the owner reads, because the three
    * conditions behind that boolean need three different actions: no account
    * connected, a grant Google refused, or a network that could not be reached.
@@ -130,8 +130,8 @@ export type InboundSourceSelection = InboundSourceSelected | InboundSourceRefuse
  *
  * The fallback is the honest reading of a bare `googleAdopted: false`: a
  * selector told one boolean cannot know which of the three conditions produced
- * it, and asserting the first — which is what "no Google credentials have been
- * adopted on this machine" did — sent an owner who HAD connected Google looking
+ * it, and asserting the first, which is what "no Google credentials have been
+ * adopted on this machine" did, sent an owner who HAD connected Google looking
  * for a credential that was already there.
  */
 function reasonOrEveryPossibility(input: InboundSourceSelectionInput): string {
@@ -146,8 +146,8 @@ function reasonOrEveryPossibility(input: InboundSourceSelectionInput): string {
  * The remedial step for a forced-`gmail` refusal.
  *
  * Two shapes, because the owner needs different things in the two cases. When
- * the composition named a reason it also named what fixes it — `gmailUnavailable`
- * carries the reader's own `fix` — so repeating a guess here would be a second
+ * the composition named a reason it also named what fixes it, `gmailUnavailable`
+ * carries the reader's own `fix`, so repeating a guess here would be a second
  * instruction competing with the accurate one. When it named nothing, the step
  * that resolves the commonest cause has to be stated, and it is: connect Google.
  *
@@ -173,8 +173,8 @@ export function selectInboundMailSource(
 ): InboundSourceSelection {
   if (input.configured === 'imap') {
     // Always honourable: IMAP needs no Google anything. Forcing it on a Gmail
-    // account is a legitimate choice — IDLE is true push and the Gmail source
-    // is polled — so it is honoured without comment.
+    // account is a legitimate choice, IDLE is true push and the Gmail source
+    // is polled, so it is honoured without comment.
     return {
       kind: 'selected',
       source: 'imap',
@@ -214,7 +214,7 @@ export function selectInboundMailSource(
     };
   }
 
-  // 'auto' — the default, and the case that needs no configuration at all.
+  // 'auto', the default, and the case that needs no configuration at all.
   if (!input.googleAdopted) {
     return {
       kind: 'selected',

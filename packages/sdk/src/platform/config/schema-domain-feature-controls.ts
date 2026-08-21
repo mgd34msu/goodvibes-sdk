@@ -1,5 +1,5 @@
 /**
- * schema-domain-feature-controls.ts — ConfigSetting entries for per-feature
+ * schema-domain-feature-controls.ts, ConfigSetting entries for per-feature
  * enablement and mode keys that live in domains declared elsewhere
  * (schema-domain-core.ts / schema-domain-runtime.ts own the defaults; this
  * file only contributes the schema entries, keeping those files under their
@@ -38,7 +38,7 @@ export const featureControlSettings: ConfigSetting[] = [
     type: 'enum',
     default: 'ast',
     description:
-      'Compound shell command evaluation: ast (default — per-segment safe/unsafe verdicts with specific denial explanations, automatic fallback to flat on any parser failure) or flat (baseline segmentation). The frozen catastrophic command block is enforced identically in both modes.',
+      'Compound shell command evaluation: ast (default, per-segment safe/unsafe verdicts with specific denial explanations, automatic fallback to flat on any parser failure) or flat (baseline segmentation). The frozen catastrophic command block is enforced identically in both modes.',
     enumValues: ['ast', 'flat'],
   },
   {
@@ -46,7 +46,7 @@ export const featureControlSettings: ConfigSetting[] = [
     type: 'enum',
     default: 'reconcile',
     description:
-      'What happens to dangling tool-call state at turn end: reconcile (default — synthetic error results are injected and a reconciliation event emitted, preventing silent conversation corruption) or warn-only (log a warning without injecting results).',
+      'What happens to dangling tool-call state at turn end: reconcile (default, synthetic error results are injected and a reconciliation event emitted, preventing silent conversation corruption) or warn-only (log a warning without injecting results).',
     enumValues: ['reconcile', 'warn-only'],
   },
   {
@@ -82,7 +82,7 @@ export const featureControlSettings: ConfigSetting[] = [
     type: 'enum',
     default: 'off',
     description:
-      'OpenTelemetry instrumentation: off (default — no OTel SDK initialization), in-process (span creation and in-process export only), or remote-export (additionally export spans as OTLP/HTTP JSON to the collector named by OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, or OTEL_EXPORTER_OTLP_ENDPOINT with /v1/traces appended). Switching away from off requires a restart; in-process <-> remote-export applies live.',
+      'OpenTelemetry instrumentation: off (default, no OTel SDK initialization), in-process (span creation and in-process export only), or remote-export (additionally export spans as OTLP/HTTP JSON to the collector named by OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, or OTEL_EXPORTER_OTLP_ENDPOINT with /v1/traces appended). Switching away from off requires a restart; in-process <-> remote-export applies live.',
     enumValues: ['off', 'in-process', 'remote-export'],
   },
   {
@@ -173,7 +173,7 @@ export const featureControlSettings: ConfigSetting[] = [
     type: 'boolean',
     default: true,
     description:
-      'Device-push fan-out for the approval class: a pending approval pushes to every paired push target. On by default — the toggle exists to silence the class, never as a prerequisite for it to work. Read live per event.',
+      'Device-push fan-out for the approval class: a pending approval pushes to every paired push target. On by default, the toggle exists to silence the class, never as a prerequisite for it to work. Read live per event.',
   },
   {
     key: 'notifications.pushNeedsInput',
@@ -194,7 +194,7 @@ export const featureControlSettings: ConfigSetting[] = [
     type: 'number',
     default: 5 * 60 * 1000,
     description:
-      'How long a fleet node blocked on the operator may wait for a HUMAN response before a device push is sent REGARDLESS of an attached surface. Presence (an open TUI, a heartbeat) suppresses only the immediate push, never this escalation — a process being attended is not a human answer. A real interaction that clears the block cancels the escalation. Read live when a block is first tracked.',
+      'How long a fleet node blocked on the operator may wait for a HUMAN response before a device push is sent REGARDLESS of an attached surface. Presence (an open TUI, a heartbeat) suppresses only the immediate push, never this escalation, a process being attended is not a human answer. A real interaction that clears the block cancels the escalation. Read live when a block is first tracked.',
     ...intRange(0, 24 * 60 * 60 * 1000),
   },
   {

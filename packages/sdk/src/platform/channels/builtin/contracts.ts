@@ -36,7 +36,7 @@ interface BuiltinContractContext {
   readonly resolveTarget: (surface: ChannelSurface, options: ChannelTargetResolveOptions) => Promise<ChannelResolvedTarget | null>;
   /**
    * What this node can see of the surface's live path. Optional so an embedder
-   * that composes this context by hand still type-checks — an absent observer
+   * that composes this context by hand still type-checks, an absent observer
    * yields `unknown`, which is the honest answer for a caller that supplied no
    * way to look, and never a green.
    */
@@ -129,7 +129,7 @@ export async function getBuiltinDoctorReport(
   );
   // Declared is not resolved. A `goodvibes://secrets/...` reference naming a
   // key that lives in ANOTHER surface's store passes every check above this one
-  // and sends nothing — the exact configuration that made a Telegram bot answer
+  // and sends nothing, the exact configuration that made a Telegram bot answer
   // "Missing Telegram bot token" while its reported health read fine.
   const unresolvedSecrets = effectiveAccount.secrets.filter((secret) => secret.configured && secret.resolved === false);
   if (unresolvedSecrets.length > 0) {

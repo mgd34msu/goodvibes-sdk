@@ -4,7 +4,7 @@
  * Drives the REAL per-agent turn loop (`runAgentTask`, orchestrator-runner.ts)
  * against a scripted fake LLMProvider, with a real AgentMessageBus, a real
  * RuntimeEventBus, and a real ProcessRegistry (`createProcessRegistry`) wired
- * to that same message bus — so `registry.steer()` and the runner's per-turn
+ * to that same message bus, so `registry.steer()` and the runner's per-turn
  * inbox drain are exercised together, end to end, exactly as they are
  * composed in the real runtime.
  *
@@ -172,7 +172,7 @@ describe('orchestrator-runner — steer drain', () => {
         if (chatCallCount === 1) {
           // Simulate the operator steering the agent while its first turn is
           // already in flight (mid-tool-round, per the brief's delivery
-          // contract) — this must NOT be visible in turn 1's own messages
+          // contract), this must NOT be visible in turn 1's own messages
           // (already captured above) and must land at turn 2's drain.
           const result = registry.steer(record.id, 'focus on the auth module first');
           expect(result.queued).toBe(true);
@@ -201,11 +201,11 @@ describe('orchestrator-runner — steer drain', () => {
     expect(record.status).toBe('completed');
     expect(steerMessageId.length).toBeGreaterThan(0);
 
-    // Red half: turn 1's own messages must NOT already contain the steer —
+    // Red half: turn 1's own messages must NOT already contain the steer,
     // it wasn't queued until partway through turn 1's LLM call.
     expect(userMessageContents(capturedMessages[0]!)).not.toContain('focus on the auth module first');
 
-    // Green half: turn 2's messages contain it verbatim — no "[Steer from
+    // Green half: turn 2's messages contain it verbatim, no "[Steer from
     // operator]" (or any "[Kind from sender]") wrapper.
     expect(userMessageContents(capturedMessages[1]!)).toContain('focus on the auth module first');
     for (const content of userMessageContents(capturedMessages[1]!)) {
@@ -243,7 +243,7 @@ describe('orchestrator-runner — steer drain', () => {
       async chat(): Promise<ChatResponse> {
         chatCallCount += 1;
         if (chatCallCount === 1) {
-          // Same mid-turn-1 steer as the happy-path test above — it will be
+          // Same mid-turn-1 steer as the happy-path test above, it will be
           // drained at the TOP of turn 2, before turn 2's chat call below.
           const result = registry.steer(record.id, 'focus on the auth module first');
           expect(result.queued).toBe(true);
@@ -258,7 +258,7 @@ describe('orchestrator-runner — steer drain', () => {
         // Turn 2: the steer is drained into the conversation (see the runner's
         // pending-message loop) BEFORE this call runs, then this call fails.
         // A generic error is not network/rate-limit/fallback-eligible, so the
-        // runner's retry loop rethrows immediately — this is the "chat
+        // runner's retry loop rethrows immediately, this is the "chat
         // exhausts retries" case the fix targets: the drain happened, but the
         // turn it was drained into never produced a successful response.
         throw new Error('simulated total chat failure on turn 2');
@@ -274,7 +274,7 @@ describe('orchestrator-runner — steer drain', () => {
     expect(steerMessageId.length).toBeGreaterThan(0);
 
     // The honest signal: the steer was drained into turn 2's conversation,
-    // but turn 2's chat call never succeeded, so consumed must NEVER fire —
+    // but turn 2's chat call never succeeded, so consumed must NEVER fire,
     // emitting it here would tell a consumer the steer was incorporated when
     // the run actually died without ever producing a response for it.
     expect(consumedEvents).toHaveLength(0);
@@ -298,7 +298,7 @@ describe('orchestrator-runner — steer drain', () => {
       name: 'fake',
       models: ['fake-model'],
       async chat(): Promise<ChatResponse> {
-        // Queued mid this — the agent's only turn — AFTER its own drain
+        // Queued mid this, the agent's only turn, AFTER its own drain
         // already ran empty. There is no further turn to drain it on.
         const result = registry.steer(record.id, 'too late');
         expect(result.queued).toBe(true); // accepted onto the inbox…

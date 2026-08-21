@@ -65,7 +65,7 @@ const ALL_PLAYBOOKS: readonly Playbook[] = [
   compactionFailurePlaybook,
 ] as const;
 
-/** Registry version — bump when playbooks are added or updated. */
+/** Registry version, bump when playbooks are added or updated. */
 export const REGISTRY_VERSION = '1.0.0';
 
 /**

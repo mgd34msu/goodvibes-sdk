@@ -1,5 +1,5 @@
 /**
- * public-suffix.ts — the registrable domain (eTLD+1) of a host.
+ * public-suffix.ts, the registrable domain (eTLD+1) of a host.
  *
  * ── Why this exists rather than a string comparison ───────────────────────
  *
@@ -9,8 +9,8 @@
  *   `includes('google.com')`      passes `google.com.evil.example`
  *   split on the last two labels  gets `co.uk` wrong for `bbc.co.uk`
  *
- * The only correct comparison is on the REGISTRABLE domain — the label
- * immediately below the public suffix — because that is the unit somebody had
+ * The only correct comparison is on the REGISTRABLE domain, the label
+ * immediately below the public suffix, because that is the unit somebody had
  * to buy. `google.com.evil.example` is registrable-domain `evil.example`, and
  * so it fails against `google.com` for the right reason rather than by luck.
  *
@@ -19,12 +19,12 @@
  * This is a BUNDLED SNAPSHOT of the ICANN section of Mozilla's Public Suffix
  * List, reduced to the rules that matter for the comparison this module
  * performs: the multi-label suffixes. A single-label suffix (`com`, `dev`,
- * `app`, any new gTLD) needs no rule — the fallback treats one label as the
+ * `app`, any new gTLD) needs no rule, the fallback treats one label as the
  * suffix, which is correct for all of them.
  *
  * That fallback is what makes the snapshot safe to be slightly stale: an
  * unknown NEW suffix degrades to the single-label rule. The failure that
- * matters is the opposite direction — a multi-label suffix we do not know
+ * matters is the opposite direction, a multi-label suffix we do not know
  * about, e.g. a newly delegated `something.xx`, would make two distinct
  * registrants compare equal. So the list must be refreshed, and refreshing it
  * is a data change with no code change:
@@ -48,7 +48,7 @@ import {
  *
  * The first version of this file carried a HAND-CURATED 174 suffixes out of
  * upstream's 5,484. That left 5,332 multi-label suffixes under which two
- * different registrants reduced to the same registrable domain — a link check
+ * different registrants reduced to the same registrable domain, a link check
  * would have accepted a stranger's domain as the authorized one. The drift
  * check caught it on its first run. Curation by hand is how that happens, so
  * the data is generated now and the tables below are not edited directly.
@@ -65,7 +65,7 @@ const WILDCARD_SUFFIX_PARENTS: readonly string[] = PUBLIC_SUFFIX_WILDCARD_PARENT
  * `!exception` rules: registrable despite matching a wildcard above.
  *
  * Checked before the wildcard rules, which is the order the PSL algorithm
- * requires — an exception that lost to its own wildcard would do nothing.
+ * requires, an exception that lost to its own wildcard would do nothing.
  */
 const SUFFIX_EXCEPTIONS: ReadonlySet<string> = new Set(PUBLIC_SUFFIX_EXCEPTIONS);
 
@@ -73,7 +73,7 @@ const SUFFIX_EXCEPTIONS: ReadonlySet<string> = new Set(PUBLIC_SUFFIX_EXCEPTIONS)
  * The bundled snapshot, for the drift check.
  *
  * Exported so `scripts/check-public-suffix-drift.ts` compares against the data
- * this module actually uses — a drift check holding its own copy of what it is
+ * this module actually uses, a drift check holding its own copy of what it is
  * checking would pass forever.
  */
 export function bundledMultiLabelSuffixes(): ReadonlySet<string> {
@@ -97,8 +97,8 @@ export function isPublicSuffix(host: string): boolean {
 }
 
 /**
- * The registrable domain of `host` — the label immediately below its public
- * suffix — or `null` when the host has none (it IS a suffix, or is a single
+ * The registrable domain of `host`, the label immediately below its public
+ * suffix, or `null` when the host has none (it IS a suffix, or is a single
  * label, or is malformed).
  *
  * `null` is a refusal, never a fallback to the whole host: a caller that

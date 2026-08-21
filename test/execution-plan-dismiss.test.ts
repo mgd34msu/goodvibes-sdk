@@ -1,7 +1,7 @@
 /**
  * execution-plan-dismiss.test.ts
  *
- * ExecutionPlanManager.dismiss() — the archive verb behind /plan dismiss.
+ * ExecutionPlanManager.dismiss(), the archive verb behind /plan dismiss.
  *
  * Rulings under test:
  *   - No active plan            → { outcome: 'no-active-plan' }, nothing written.
@@ -57,7 +57,7 @@ describe('ExecutionPlanManager.dismiss', () => {
     expect(result.plan?.dismissedFrom).toBe('draft');
     expect(typeof result.plan?.dismissedAt).toBe('string');
 
-    // Active pointer cleared — a later /plan starts fresh.
+    // Active pointer cleared, a later /plan starts fresh.
     expect(manager.getActive('session-1')).toBeNull();
 
     // Retained on disk, not deleted: reloadable + still in list().

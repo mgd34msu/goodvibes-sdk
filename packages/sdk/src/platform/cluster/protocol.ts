@@ -1,5 +1,5 @@
 /**
- * protocol.ts — datagram encoding, and the optional shared-secret signature.
+ * protocol.ts, datagram encoding, and the optional shared-secret signature.
  *
  * The wire format is one JSON object per datagram. It is deliberately small
  * and deliberately boring: a node that cannot parse a datagram drops it and
@@ -8,13 +8,13 @@
  *
  * Fields: `v`, `surfaceId`, `type`, `nodeId`, `nodeVersion`, `seq`, `ts`, and
  * `sig` when signing. `surfaceId` is a DIGEST and is the reason a topic name
- * never reaches the network — see surface-id.ts. It is null on a group-level
+ * never reaches the network, see surface-id.ts. It is null on a group-level
  * datagram, which this module never sends but must decode.
  *
  * Signing is opt-in. With `cluster.secret` empty the protocol runs unsigned,
  * which is the right default for a home LAN where the alternative is an
  * operator who never turns the feature on. With a secret set, EVERY inbound
- * datagram must carry a signature that verifies against it — an unsigned or
+ * datagram must carry a signature that verifies against it, an unsigned or
  * wrongly-signed datagram is dropped, so a stray process without the secret
  * can never take a surface.
  */
@@ -71,7 +71,7 @@ export interface ClusterDecodeResult {
  * Parse and authenticate a datagram.
  *
  * When `secret` is set the signature is required and compared in constant
- * time. When it is empty a `sig` field is simply ignored — a cluster that has
+ * time. When it is empty a `sig` field is simply ignored, a cluster that has
  * not been given a secret has no basis on which to judge one.
  */
 export function decodeMessage(raw: string, secret: string): ClusterDecodeResult {

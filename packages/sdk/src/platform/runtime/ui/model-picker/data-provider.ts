@@ -1,11 +1,11 @@
 /**
- * ModelPickerDataProvider — enriched model picker data surface.
+ * ModelPickerDataProvider, enriched model picker data surface.
  *
  * Combines ModelDefinition records from the provider registry with
  * ProviderHealthDomainState and ModelDomainState to produce a single,
  * sorted, health-enriched ModelPickerData snapshot for UI consumption.
  *
- * This class is a data provider only — it contains no rendering logic.
+ * This class is a data provider only, it contains no rendering logic.
  * Subscribe to change notifications and call getSnapshot() to render.
  */
 import type { ModelDefinition } from '../../../providers/registry.js';
@@ -125,7 +125,7 @@ export class ModelPickerDataProvider {
 
   /**
    * Release all subscriber references.
-   * Does not clear internal state — getSnapshot() remains usable after disposal.
+   * Does not clear internal state, getSnapshot() remains usable after disposal.
    */
   public dispose(): void {
     this._subscribers.clear();

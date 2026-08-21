@@ -1,9 +1,9 @@
 /**
- * decision-otlp.ts — map permission/policy decision-log records to OpenTelemetry
+ * decision-otlp.ts, map permission/policy decision-log records to OpenTelemetry
  * (OTLP) span and log semantics, and export them as OTLP/HTTP JSON.
  *
  * HONEST SCOPE: this is EXPORT-ONLY. It surfaces ahead-of-field data that
- * already exists — every allow/deny the DecisionLog already records — by
+ * already exists, every allow/deny the DecisionLog already records, by
  * mapping each decision to the OTLP wire shape and POSTing it to a configured
  * collector. There is no ingestion path, no span/trace correlation with the
  * runtime tracer, and no new heavyweight dependency: the payload is plain
@@ -11,13 +11,13 @@
  * `instrumentedFetch`. Off by default; enabled only with an endpoint.
  *
  * Each decision maps to the same attribute set in both shapes:
- *   decision.id      — the log entry's monotonic sequence number
- *   tool.name        — the tool evaluated
- *   command.class    — the semantic classification (read/write/network/…)
- *   permission.mode  — the active permission mode, when the caller supplies it
- *   decision.layer   — the evaluation layer that produced the decision
- *   decision.reason  — the canonical reason code
- *   decision.allowed — the boolean outcome
+ *   decision.id     , the log entry's monotonic sequence number
+ *   tool.name       , the tool evaluated
+ *   command.class   , the semantic classification (read/write/network/…)
+ *   permission.mode , the active permission mode, when the caller supplies it
+ *   decision.layer  , the evaluation layer that produced the decision
+ *   decision.reason , the canonical reason code
+ *   decision.allowed, the boolean outcome
  */
 
 import { randomBytes } from 'node:crypto';
@@ -40,7 +40,7 @@ export interface OtlpKeyValue {
   readonly value: OtlpAnyValue;
 }
 
-/** An OTLP span (v1/traces) — the fields this mapping populates. */
+/** An OTLP span (v1/traces), the fields this mapping populates. */
 export interface OtlpSpan {
   readonly traceId: string;
   readonly spanId: string;
@@ -52,7 +52,7 @@ export interface OtlpSpan {
   readonly status: { readonly code: number };
 }
 
-/** An OTLP log record (v1/logs) — the fields this mapping populates. */
+/** An OTLP log record (v1/logs), the fields this mapping populates. */
 export interface OtlpLogRecord {
   readonly timeUnixNano: string;
   readonly observedTimeUnixNano: string;
@@ -88,7 +88,7 @@ export interface OtlpLogsPayload {
 
 /** Export configuration; mirrors the `telemetry.decisionOtlp*` config keys. */
 export interface DecisionOtlpConfig {
-  /** Master switch — off by default. */
+  /** Master switch, off by default. */
   readonly enabled: boolean;
   /** OTLP/HTTP JSON endpoint base (spans → `<base>/v1/traces`, logs → `<base>/v1/logs`). */
   readonly endpoint: string;
@@ -164,7 +164,7 @@ export function decisionToLogRecord(entry: DecisionLogEntry, ctx: DecisionOtlpCo
   return {
     timeUnixNano: nanos,
     observedTimeUnixNano: nanos,
-    // INFO(9) for an allow, ERROR(17) for a deny — an honest severity mapping.
+    // INFO(9) for an allow, ERROR(17) for a deny, an honest severity mapping.
     severityNumber: allowed ? 9 : 17,
     severityText: allowed ? 'INFO' : 'ERROR',
     body: {
@@ -216,7 +216,7 @@ export function buildLogsPayload(
 
 // ── Export ──────────────────────────────────────────────────────────────────
 
-/** Outcome of an export attempt. Never thrown — export never blocks the runtime. */
+/** Outcome of an export attempt. Never thrown, export never blocks the runtime. */
 export interface DecisionExportResult {
   readonly exported: boolean;
   /** Why nothing was exported, when `exported` is false. */
@@ -261,7 +261,7 @@ async function postOtlp(
 /**
  * Export a batch of decision-log entries as OTLP/HTTP JSON. Off by default: when
  * `enabled` is false or no endpoint is configured, this is a no-op that reports
- * why. Never throws — an unreachable collector never blocks a permission
+ * why. Never throws, an unreachable collector never blocks a permission
  * decision.
  */
 export async function exportDecisions(

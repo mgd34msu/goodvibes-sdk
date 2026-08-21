@@ -8,7 +8,7 @@
  *
  * `cancelHostedAgentRuns` shipped as required in 1.17.1 while the shared
  * implementation it names, `cancelAllAgentRuns`, was reachable from no published
- * subpath at all — the contract asked for something the package did not hand
+ * subpath at all, the contract asked for something the package did not hand
  * out, and the only way to satisfy it was to re-write the cancel loop in every
  * fork. The subpath surface gate does not catch this class: it records what IS
  * exported, not whether a required member can be met.

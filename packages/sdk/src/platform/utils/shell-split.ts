@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// shellSplit — POSIX-compatible word tokenizer
+// shellSplit, POSIX-compatible word tokenizer
 // ---------------------------------------------------------------------------
 // Splits a shell command string into tokens, respecting:
 //   - Double-quoted strings: preserve spaces, process \\ and \" escapes

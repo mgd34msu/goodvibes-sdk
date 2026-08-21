@@ -2,8 +2,8 @@
  * session-spine-daemon-integration.test.ts
  *
  * Consumability proof: drives the extracted SDK SessionSpineClient against a
- * REAL bootDaemon (isolated home, ephemeral port) over a real HttpTransport — no
- * mocked wire — using the transport adapter EXACTLY as the TUI's bootstrap builds
+ * REAL bootDaemon (isolated home, ephemeral port) over a real HttpTransport, no
+ * mocked wire, using the transport adapter EXACTLY as the TUI's bootstrap builds
  * it (register/close over httpTransport.operator.sessions, resolve->ok / throw->
  * offline). Exercises the full TUI journey: adopt (activate), register, keepalive,
  * offline queue, reconnect flush, and close.
@@ -32,7 +32,7 @@ const TOKEN = 'spine-integration-token';
  * machine's numbers: a 2 s poll ceiling and bun's implicit 5 s per-test default,
  * against work that legitimately includes process boot and socket setup. On a
  * loaded host these failed with "this test timed out after 5000ms" while the
- * daemon was still coming up perfectly normally — the whole file takes ~37 s
+ * daemon was still coming up perfectly normally, the whole file takes ~37 s
  * there, so a 5 s budget for one of its tests was never realistic.
  */
 const WAIT_CEILING_MS = 30_000;
@@ -50,7 +50,7 @@ async function waitFor<T>(
     if (value !== undefined && value !== null) return value;
     const elapsedMs = Date.now() - startedAt;
     if (elapsedMs > timeoutMs) {
-      throw new Error(`waitFor: ${what} never became true — waited ${elapsedMs}ms (ceiling ${timeoutMs}ms)`);
+      throw new Error(`waitFor: ${what} never became true, waited ${elapsedMs}ms (ceiling ${timeoutMs}ms)`);
     }
     await new Promise((r) => setTimeout(r, intervalMs));
   }
@@ -140,7 +140,7 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
       'session tui-keepalive-1 appears in sessions.list');
     const initialLastSeen = initial.participants[0]?.lastSeenAt ?? 0;
 
-    // No further calls into the client — the 20ms keepalive timer drives heartbeats.
+    // No further calls into the client, the 20ms keepalive timer drives heartbeats.
     const advanced = await waitFor(async () => {
       const rec = (await harness!.listSessions()).find((s) => s.id === 'tui-keepalive-1');
       const lastSeen = rec?.participants[0]?.lastSeenAt ?? 0;
@@ -168,7 +168,7 @@ describe('SDK SessionSpineClient against a real bootDaemon (TUI-exact adapter)',
     // blocked wire, fail, and be buffered before the status flips, and how long
     // that takes is a property of the machine, not of the behaviour under test.
     // The wait ends the moment the client reports what it should, so a fast host
-    // pays nothing — and the assertions below still hold it to the exact state.
+    // pays nothing, and the assertions below still hold it to the exact state.
     await waitFor(async () => (client.status() === 'offline' && client.pendingOps === 1 ? true : null),
       'the blocked register buffers and the client reports status offline');
     expect(client.status()).toBe('offline');

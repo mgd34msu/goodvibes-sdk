@@ -1,14 +1,14 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * fix-workstream-runner.ts — drives ONE planned-fix cycle through the ONE
+ * fix-workstream-runner.ts, drives ONE planned-fix cycle through the ONE
  * workstream engine and reports a structured outcome to the WRFC controller.
  *
  * This is what replaced the single-fixer prompt path: the review parses into
  * a dependency graph of typed tasks (review-task-source.ts), the engine runs
  * them elastically in isolated worktrees with reviewed-and-merged edge
- * release, and the outcome is STRUCTURED — merged, or a cycle / orphaned /
- * tasks-failed chain outcome — never a prompt an agent "may or may not follow
+ * release, and the outcome is STRUCTURED, merged, or a cycle / orphaned /
+ * tasks-failed chain outcome, never a prompt an agent "may or may not follow
  * all the way through". Task-level green is telemetry: the CALLER (the
  * controller's terminal contract gate) decides completion by re-reviewing the
  * merged result against the ORIGINAL request.
@@ -88,7 +88,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
       });
       if (!planned) {
         // A failing review with zero parseable findings/constraints/checklist
-        // misses cannot drive a fix cycle — surface that honestly.
+        // misses cannot drive a fix cycle, surface that honestly.
         return Promise.resolve({
           status: 'failed',
           reason: 'the review failed but carried no parseable findings, unmet constraints, or unverified acceptance items',
@@ -110,7 +110,7 @@ export function createFixWorkstreamRunner(deps: FixWorkstreamRunnerDeps): FixWor
         const evaluate = (): void => {
           const live = deps.engine.getWorkstream(workstream.id);
           if (!live) return;
-          // Structured outcomes surface IMMEDIATELY — a cycle or an orphaned
+          // Structured outcomes surface IMMEDIATELY, a cycle or an orphaned
           // task fails the cycle the moment it is known, never a silent stall.
           if (cycleSeen) {
             finish({ status: 'failed', workstreamId: workstream.id, structured: 'cycle', reason: `dependency cycle: ${cycleSeen.join(' -> ')}` });

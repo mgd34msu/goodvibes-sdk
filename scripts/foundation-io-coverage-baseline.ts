@@ -19,7 +19,7 @@
 // entries are rendered from method-catalog descriptors, so
 // scripts/generate-foundation-io-entries.ts emits all 443 mechanically and
 // check-foundation-io-types.ts diffs all 443 against those same schemas. At 0
-// this ratchet says what it should — every catalogued verb carries typed IO, and
+// this ratchet says what it should, every catalogued verb carries typed IO, and
 // a verb that ships without one fails the gate instead of joining a backlog.
 //
 // Baseline captured after every catalogued verb gained rendered typed-IO

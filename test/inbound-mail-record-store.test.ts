@@ -65,7 +65,7 @@ function validRaw(overrides: Record<string, unknown> = {}): Record<string, unkno
  * `InboundMailRecordInput` is distributive over
  * `ImapInboundMailRecord | GmailInboundMailRecord`, so a `Partial` of the whole
  * union spread over a literal produces a union TypeScript cannot place in
- * either arm. This helper builds an IMAP record — it sets uidValidity and uid —
+ * either arm. This helper builds an IMAP record, it sets uidValidity and uid,
  * so naming that arm is both what makes it typecheck and what it always meant.
  */
 type ImapRecordInput = Extract<InboundMailRecordInput, { source: 'imap' }>;
@@ -121,7 +121,7 @@ describe('recording and reading back', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Validate by content — never repair
+// Validate by content, never repair
 // ---------------------------------------------------------------------------
 describe('a torn or oversized record is discarded, not repaired', () => {
   test('validateInboundMailRecord refuses each broken field independently', () => {

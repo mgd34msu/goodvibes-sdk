@@ -12,7 +12,7 @@ export interface RetryConfig {
    * Cancellation for the backoff between attempts.
    *
    * Without it the backoff is unreachable once armed: a caller that has been
-   * cancelled — an agent killed, a turn abandoned — still sits out the full
+   * cancelled, an agent killed, a turn abandoned, still sits out the full
    * wait, up to `maxDelayMs` per attempt, before it can even discover it was
    * cancelled. The wait is where nearly all of a failing retry's wall time
    * goes, so leaving it uncancellable made cancellation approximate.

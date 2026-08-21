@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// workstream-draft-edits.ts — pure item edits for a not-yet-launched proposal
+// workstream-draft-edits.ts, pure item edits for a not-yet-launched proposal
 //
 // The plan-review gate a surface offers lets a human reshape a decomposed
 // proposal BEFORE anything is spent: rewrite one item's brief, drop an item, or
 // reorder items. These are pure functions over the launchable
-// CreateWorkstreamInput — no engine calls, no I/O — so the same spec that is
+// CreateWorkstreamInput, no engine calls, no I/O, so the same spec that is
 // edited here is byte-for-byte what launch hands createWorkstream. Held apart
 // from workstream-services.ts to keep that construction module lean and to give
 // the edits a clean unit-test target.
@@ -13,18 +13,18 @@
 // does):
 //   - editItemBrief rewrites an item's `task` (the instructions its agent
 //     runs), never its `title` (the short label). The engineer/review phase
-//     template is unchanged — a brief is WHAT the item does, not HOW the
+//     template is unchanged, a brief is WHAT the item does, not HOW the
 //     pipeline runs it.
 //   - removeItem also strips the removed item's id from every other item's
 //     `dependsOn`, so the spec never carries a dangling dependency into
 //     fromPlanProposal's assembly (which would otherwise reject it). It
-//     refuses to remove the last item — a workstream needs at least one.
+//     refuses to remove the last item, a workstream needs at least one.
 //   - moveItem reorders the AUTHORING order (the ordinals shown in the review
 //     and the tie-break when the engine has a free capacity slot and several
 //     claimable items). It never rewrites dependencies, so it cannot create a
 //     cycle; the engine still schedules strictly by dependency + capacity, not
 //     by array position. Reordering is a presentation/authoring act, not a
-//     scheduling override — and is documented as such where it is offered.
+//     scheduling override, and is documented as such where it is offered.
 // ---------------------------------------------------------------------------
 
 import type { CreateWorkstreamInput } from './engine.js';
@@ -68,7 +68,7 @@ export function editItemBrief(spec: CreateWorkstreamInput, ref: string, brief: s
 export function removeItemFromSpec(spec: CreateWorkstreamInput, ref: string): DraftEditResult {
   const index = resolveItemIndex(spec.items, ref);
   if (index === undefined) return { error: unresolvedError(spec.items, ref) };
-  if (spec.items.length <= 1) return { error: 'Cannot remove the last item — a workstream needs at least one.' };
+  if (spec.items.length <= 1) return { error: 'Cannot remove the last item, a workstream needs at least one.' };
   const removedId = spec.items[index]!.id;
   const items = spec.items
     .filter((_, i) => i !== index)

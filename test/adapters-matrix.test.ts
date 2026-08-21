@@ -1,5 +1,5 @@
 /**
- * Adapter behavioral coverage — Matrix adapter.
+ * Adapter behavioral coverage, Matrix adapter.
  */
 import { describe, expect, test } from 'bun:test';
 import { handleMatrixSurfaceWebhook } from '../packages/sdk/src/platform/adapters/matrix/index.js';

@@ -5,7 +5,7 @@
  *
  * Custody note: a stored subscription's `endpoint` is a capability URL (anyone
  * holding it can push to that device) and its `keys` are the receiver's
- * encryption material. Neither is ever returned over the wire — read verbs
+ * encryption material. Neither is ever returned over the wire, read verbs
  * hand back the redacted `PublicPushSubscription` view instead. The VAPID
  * private key never appears in any shape here at all; it lives only inside the
  * secrets store (see push/vapid.ts).
@@ -25,11 +25,11 @@ export interface StoredPushSubscription {
    * key the record is reconciled on. A browser whose push endpoint rotates
    * presents the SAME deviceId with a NEW endpoint, so the daemon heals the one
    * record in place instead of accumulating a stale duplicate. Absent on legacy
-   * records registered before device identity existed — those still reconcile
+   * records registered before device identity existed, those still reconcile
    * on the raw endpoint.
    */
   readonly deviceId?: string | undefined;
-  /** The browser Push endpoint — a capability URL, kept off the wire. */
+  /** The browser Push endpoint, a capability URL, kept off the wire. */
   readonly endpoint: string;
   readonly keys: SubscriptionKeyMaterial;
   readonly createdAt: number;
@@ -61,7 +61,7 @@ export interface PublicPushSubscription {
   /**
    * A short, stable hash of the full endpoint. A client compares this against
    * the hash of its OWN current endpoint to detect that the daemon holds a
-   * stale one (drift) and reconcile — the hash reveals drift without ever
+   * stale one (drift) and reconcile, the hash reveals drift without ever
    * handing the capability URL back out.
    */
   readonly endpointHash: string;
@@ -74,10 +74,10 @@ export interface PublicPushSubscription {
 
 /**
  * Whether a reconcile-on-open changed the daemon's record for a device.
- * - 'created'          — no record existed for this device identity; a new one was stored.
- * - 'endpoint-updated' — a record existed with a DIFFERENT endpoint (drift); it was healed in place.
- * - 'keys-updated'     — same endpoint, rotated key material refreshed in place.
- * - 'unchanged'        — the stored endpoint and keys already matched.
+ * - 'created'         , no record existed for this device identity; a new one was stored.
+ * - 'endpoint-updated', a record existed with a DIFFERENT endpoint (drift); it was healed in place.
+ * - 'keys-updated'    , same endpoint, rotated key material refreshed in place.
+ * - 'unchanged'       , the stored endpoint and keys already matched.
  */
 export type PushReconcileDrift = 'created' | 'endpoint-updated' | 'keys-updated' | 'unchanged';
 
@@ -98,12 +98,12 @@ export interface PushDeliveryReceipt {
 export type PushUrgency = 'very-low' | 'low' | 'normal' | 'high';
 
 /**
- * Notification category — the `kind` discriminant the service worker switches on
+ * Notification category, the `kind` discriminant the service worker switches on
  * to decide how to render a push and where its deep link goes.
- * - 'approval'    — an approval decision is waiting (deep link: approvalId).
- * - 'needs-input' — a fleet node is blocked waiting on the operator (deep link:
+ * - 'approval'   , an approval decision is waiting (deep link: approvalId).
+ * - 'needs-input', a fleet node is blocked waiting on the operator (deep link:
  *   sessionId/nodeId).
- * - 'completion'  — a tracked run reached a terminal state (deep link:
+ * - 'completion' , a tracked run reached a terminal state (deep link:
  *   sessionId/nodeId; fan-out via attachCompletionSource).
  */
 export type PushNotificationCategory = 'approval' | 'needs-input' | 'completion';
@@ -123,7 +123,7 @@ export interface PushNotificationData {
   /** Fleet-node deep link (categories 'needs-input' and 'completion'). */
   readonly nodeId?: string | undefined;
   /**
-   * True on a 'needs-input' push that fired as an escalation — a block that
+   * True on a 'needs-input' push that fired as an escalation, a block that
    * waited past its grace with no human response, delivered regardless of an
    * attached surface. Lets the service worker render it as a stronger reminder.
    */

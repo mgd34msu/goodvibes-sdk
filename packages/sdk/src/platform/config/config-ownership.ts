@@ -1,5 +1,5 @@
 /**
- * config-ownership.ts — which runtime OWNS a config key.
+ * config-ownership.ts, which runtime OWNS a config key.
  *
  * Ownership follows the runtime that ACTS on a setting, not the client that
  * happens to edit it. Before this module existed, every product wrote every key
@@ -10,20 +10,20 @@
  *
  * Three scopes:
  *
- * - `daemon` — the daemon executes it unattended, so it has exactly one home:
+ * - `daemon`, the daemon executes it unattended, so it has exactly one home:
  *   the daemon tier (`~/.goodvibes/daemon/settings.json`). Chat surfaces,
  *   control-plane binding, watchers and triggers, device pairing and grants,
  *   local voice provisioning, delivery, at-rest retention.
  *
- * - `client` — presentation and per-installation lifecycle. Genuinely local and
+ * - `client`, presentation and per-installation lifecycle. Genuinely local and
  *   genuinely different between the TUI, the agent and the web UI: rendering,
  *   theme, transcript display, keybindings, and the "do I run/embed a daemon at
  *   all" switches (`daemon.*`, `service.*`) which are a property of THIS
- *   installation, not of the daemon's behavior. This is the DEFAULT scope — a
+ *   installation, not of the daemon's behavior. This is the DEFAULT scope, a
  *   key is client-owned unless it is listed below, so adding a schema key never
  *   silently relocates a user's existing value.
  *
- * - `user` — cross-client defaults that ride the surface-root-independent
+ * - `user`, cross-client defaults that ride the surface-root-independent
  *   shared tier (`~/.goodvibes/shared/settings.json`).
  *
  * Two user-level precedences exist and the difference is deliberate:
@@ -38,7 +38,7 @@
 import type { ConfigKey } from './schema.js';
 import { CONFIG_SCHEMA } from './schema.js';
 
-/** Which runtime owns — and therefore writes — a config key. */
+/** Which runtime owns, and therefore writes, a config key. */
 export type ConfigScope = 'daemon' | 'client' | 'user';
 
 /**
@@ -46,12 +46,12 @@ export type ConfigScope = 'daemon' | 'client' | 'user';
  * when it starts with one of these prefixes.
  *
  * Deliberately NOT here, and why:
- *   - `daemon.*`   — "does THIS installation run/embed a daemon"; the agent
+ *   - `daemon.*`  , "does THIS installation run/embed a daemon"; the agent
  *                    answers no and the TUI answers yes, and neither answer is
  *                    the daemon's to give. Making it daemon-owned would make
  *                    the agent start a daemon because the TUI runs one.
- *   - `service.*`  — same shape: per-installation platform-service lifecycle.
- *   - `voice.wake.*` — the wake word listens inside each client process.
+ *   - `service.*` , same shape: per-installation platform-service lifecycle.
+ *   - `voice.wake.*`, the wake word listens inside each client process.
  */
 export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   'surfaces.',
@@ -68,7 +68,7 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // The daemon is the process that holds the card and charges it, with every
   // surface closed and across restarts. Card material and budgets left
   // client-owned would live in whichever surface happened to enter them and the
-  // daemon would charge against defaults — the failure mode the budget exists to
+  // daemon would charge against defaults, the failure mode the budget exists to
   // prevent. See docs/payments.md §3.
   'payments.',
   'voice.local.',
@@ -82,14 +82,14 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // Hosted sessions run IN the daemon, so the process that reads the detach
   // policy, enforces the session cap and bounds the persisted transcript is the
   // daemon. Left client-owned, a detach policy flipped to `survive` from the
-  // terminal would land in the terminal's silo while the daemon — the process
-  // that actually decides whether a session outlives its client — kept reading
+  // terminal would land in the terminal's silo while the daemon, the process
+  // that actually decides whether a session outlives its client, kept reading
   // the default, and the setting would report success and change nothing.
   'hostedSessions.',
   // Leader election decides which node CONSUMES inbound channel messages, and
   // the daemon is the process that does that consuming. Left client-owned, the
   // group, port and shared phrase would live in whichever client the operator
-  // happened to edit, while the daemon kept coordinating on the defaults —
+  // happened to edit, while the daemon kept coordinating on the defaults,
   // producing the exact failure the election exists to prevent (two nodes each
   // certain they are alone) with a settings file that reads as if it were
   // configured.
@@ -97,8 +97,8 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // The owner profile is one file at daemon scope with the daemon as its single
   // writer, so the policy governing it has to resolve from the daemon store as
   // well. Left client-owned, `profile.autonomousWrites` turned off from the TUI
-  // would land in the TUI's silo while the daemon — the process that loads the
-  // file, serves the profile.* verbs and decides whether a fact gets recorded —
+  // would land in the TUI's silo while the daemon, the process that loads the
+  // file, serves the profile.* verbs and decides whether a fact gets recorded,
   // kept reading the default. That is the reported-success-configured-nothing
   // failure the daemon tier exists for, and this instance would be a bad one:
   // the operator would believe he had stopped autonomous recording.
@@ -107,7 +107,7 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // closed. Its lead time, its quiet window, its cadence and its delivery
   // channel are read there and nowhere else, so a value set from a surface and
   // left in that surface's silo would configure nothing while reporting
-  // success — the same failure `profile.` is here for, one feature along.
+  // success, the same failure `profile.` is here for, one feature along.
   'occasions.',
   // The mail and calendar connector: the account the daemon composes, sends
   // and lists mail through, and the calendar client it authenticates with,
@@ -117,8 +117,8 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // added under one of these names later without a schema row of its own
   // making it visible here first. Left client-owned, a Gmail app password
   // reference or an OAuth client id set from one surface would strand in
-  // that surface's silo and the daemon — the process that actually reads
-  // mail and refreshes the calendar unattended — would keep reporting "not
+  // that surface's silo and the daemon, the process that actually reads
+  // mail and refreshes the calendar unattended, would keep reporting "not
   // connected", the exact failure this migration exists to end. See
   // schema-domain-connectors.ts for what changed and why.
   'email.',
@@ -137,8 +137,8 @@ export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
   // day reads it, starting with the payment capability's daily budgets.
   //
   // Left client-owned it would land in whichever surface the operator happened
-  // to set it from, and the daemon — the process that actually rolls the budget
-  // over at midnight — would never see it and would keep resetting in UTC. The
+  // to set it from, and the daemon, the process that actually rolls the budget
+  // over at midnight, would never see it and would keep resetting in UTC. The
   // operator would have picked a zone, been shown that zone, and had his money
   // reset in a different one.
   'daemon.timezone',
@@ -167,7 +167,7 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   'conversationGate.gatedSurfaces',
   // Same shape as gatedSurfaces: an array-valued daemon setting that the
   // prefix match already routes to the daemon store, but that every owned-set
-  // WALK would miss without an entry here — so a static peer list set before
+  // WALK would miss without an entry here, so a static peer list set before
   // this shipped would strand in a client silo and the daemon would keep
   // coordinating over multicast alone on a network that drops it.
   'cluster.peers',
@@ -175,19 +175,19 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // cluster's settings are: the daemon is the only thing that reads it, and a
   // client silo can only hold a stale copy of it.
   //
-  // Being daemon-owned does NOT make it replicate — `cluster.` is ruled
+  // Being daemon-owned does NOT make it replicate, `cluster.` is ruled
   // node-local in config-replication-policy.ts, and for this key that ruling is
   // load-bearing rather than incidental. See the note there.
   'cluster.groupMaterial',
   // NOTE: the mail and calendar connector's `email.*`, `calendar.google.*`,
-  // `calendar.microsoft.*` and `google.*` keys — nineteen of them — were
+  // `calendar.microsoft.*` and `google.*` keys, nineteen of them, were
   // listed here for a while, for the same reason `surfaces.email.*` and
   // `surfaces.calendar.*` were listed above this note before they moved:
   // they were app-layer paths seeded onto the live config object by a
   // structural cast (`connector-config-sections.ts`), not CONFIG_SCHEMA
   // keys, and the derivation below walks the ENUMERATED daemon-owned paths
   // rather than matching an `email.`/`calendar.`/`google.` prefix that did
-  // not exist yet — so nothing enumerating them meant no daemon-owned
+  // not exist yet, so nothing enumerating them meant no daemon-owned
   // credential name was derived from them, and a stored app password or
   // OAuth client secret went to whichever client silo the operator happened
   // to be in.
@@ -197,7 +197,7 @@ export const DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS = [
   // makes them daemon-owned AND renders them in the settings modal, so an
   // operator can actually see and edit the connection the daemon is using.
   // This list is for paths that are NOT scalar schema keys, and keeping them
-  // here as well would double-count them in every owned-set walk — the same
+  // here as well would double-count them in every owned-set walk, the same
   // reason the `surfaces.` pair is not repeated here either.
 ] as const;
 
@@ -246,7 +246,7 @@ const USER_LOCAL_OVERRIDE_SET = new Set<string>(USER_LOCAL_OVERRIDE_CONFIG_KEYS)
  * a walk over owned paths would not miss a non-scalar. `email.passwordRef`, the
  * calendar client secrets and the Google refresh token went through exactly
  * that gap for a while: they were on this list before `email.`/`calendar.`/
- * `google.` were daemon-owned prefixes, so the two answers disagreed — the
+ * `google.` were daemon-owned prefixes, so the two answers disagreed, the
  * walk called them daemon-owned while this predicate called them client-owned.
  * They are schema keys under those prefixes now (schema-domain-connectors.ts),
  * so the prefix match alone answers yes for all of them.
@@ -305,7 +305,7 @@ export function listDaemonOwnedConfigKeys(): readonly ConfigKey[] {
 let daemonOwnedPathCache: readonly DaemonOwnedConfigPath[] | null = null;
 
 /**
- * Every path the daemon owns — schema keys PLUS the non-scalar paths above.
+ * Every path the daemon owns, schema keys PLUS the non-scalar paths above.
  *
  * This is the list every owned-set walk should use: migration, the daemon-tier
  * overlay, whole-config strip, and reset. `listDaemonOwnedConfigKeys` remains
@@ -320,7 +320,7 @@ export function listDaemonOwnedConfigPaths(): readonly DaemonOwnedConfigPath[] {
 }
 
 /**
- * Human-readable reason a client may not be the writer for `key` — used by the
+ * Human-readable reason a client may not be the writer for `key`, used by the
  * routing layer's failure text so "this went somewhere else" is never silent.
  */
 export function describeConfigOwnership(key: string): string {

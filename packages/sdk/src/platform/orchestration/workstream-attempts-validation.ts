@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
-// workstream-attempts-validation.ts — plan-format validation for best-of-N.
+// workstream-attempts-validation.ts, plan-format validation for best-of-N.
 //
 // The plan format carries a per-item `attempts` field (WorkItem/
-// WorkItemSpec.attempts — best-of-N). A best-of-N item MAY be non-leaf: it may
+// WorkItemSpec.attempts, best-of-N). A best-of-N item MAY be non-leaf: it may
 // declare its own `dependsOn` (each sibling inherits it) and other items may
-// depend on it — a dependent is held by the dependency gate until the group's
+// depend on it, a dependent is held by the dependency gate until the group's
 // winner is picked and merged, then resolves to that winner (see
 // WorkItemSpec.attempts). This enforces the engine's genuine constraints at
 // plan validation rather than letting a launch silently drop the field:
@@ -36,7 +36,7 @@ function itemKey(item: CreateWorkstreamInput['items'][number]): string {
 /**
  * Validate a draft spec's best-of-N usage against the worktree-isolation and
  * stable-id (when depended upon) constraints. Non-leaf best-of-N is allowed.
- * Pure — no I/O. `violations` are hard (block launch); `notes` are advisory.
+ * Pure, no I/O. `violations` are hard (block launch); `notes` are advisory.
  */
 export function validateAttempts(spec: CreateWorkstreamInput): AttemptsValidation {
   const violations: string[] = [];
@@ -58,16 +58,16 @@ export function validateAttempts(spec: CreateWorkstreamInput): AttemptsValidatio
     const label = item.title;
 
     if (!worktree) {
-      violations.push(`"${label}" requests ${attempts} attempts, but the workstream is not worktree-isolated — best-of-N needs isolated trees. Set --isolation worktree.`);
+      violations.push(`"${label}" requests ${attempts} attempts, but the workstream is not worktree-isolated, best-of-N needs isolated trees. Set --isolation worktree.`);
     }
     // Non-leaf best-of-N is allowed. The only structural requirement: if other
     // items depend on this one, it must carry a stable id for the dependency
-    // edge to name — an anonymous best-of-N item cannot be a dependency target.
+    // edge to name, an anonymous best-of-N item cannot be a dependency target.
     if (dependedUpon.has(itemKey(item)) && !item.id) {
-      violations.push(`another item depends on best-of-N item "${label}", but it has no stable id — give the item an id so the dependency can resolve to the winner (an anonymous best-of-N item cannot be a dependency target).`);
+      violations.push(`another item depends on best-of-N item "${label}", but it has no stable id, give the item an id so the dependency can resolve to the winner (an anonymous best-of-N item cannot be a dependency target).`);
     }
     if (attempts > MAX_ATTEMPTS) {
-      notes.push(`"${label}" requests ${attempts} attempts — the engine caps best-of-N at ${MAX_ATTEMPTS}, so ${MAX_ATTEMPTS} siblings will run.`);
+      notes.push(`"${label}" requests ${attempts} attempts, the engine caps best-of-N at ${MAX_ATTEMPTS}, so ${MAX_ATTEMPTS} siblings will run.`);
     }
   }
 

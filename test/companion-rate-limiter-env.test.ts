@@ -46,13 +46,13 @@ describe('readThresholdFromEnv', () => {
 });
 
 // ---------------------------------------------------------------------------
-// CompanionChatRateLimiter constructor — threshold precedence
+// CompanionChatRateLimiter constructor, threshold precedence
 // ---------------------------------------------------------------------------
 
 describe('CompanionChatRateLimiter threshold precedence', () => {
   test('uses default when neither config nor env is set', () => {
     const limiter = new CompanionChatRateLimiter({}, {});
-    // Send DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION messages — should all pass
+    // Send DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION messages, should all pass
     for (let i = 0; i < DEFAULT_MESSAGES_PER_MINUTE_PER_SESSION; i++) {
       expect(() => limiter.check('session-a', '')).not.toThrow();
     }
@@ -72,7 +72,7 @@ describe('CompanionChatRateLimiter threshold precedence', () => {
 
   test('explicit config option overrides env var', () => {
     const env = { GOODVIBES_CHAT_LIMITER_THRESHOLD: '2' };
-    // Config says 5 — env says 2; config must win
+    // Config says 5, env says 2; config must win
     const limiter = new CompanionChatRateLimiter({ perSessionLimit: 5 }, env);
     for (let i = 0; i < 5; i++) {
       expect(() => limiter.check('session-c', '')).not.toThrow();
@@ -85,11 +85,11 @@ describe('CompanionChatRateLimiter threshold precedence', () => {
     const env = { GOODVIBES_CHAT_LIMITER_THRESHOLD: '2' };
     const limiter = new CompanionChatRateLimiter({}, env);
 
-    // Request 1 — OK
+    // Request 1, OK
     expect(() => limiter.check('session-f15', 'client-1')).not.toThrow();
-    // Request 2 — OK
+    // Request 2, OK
     expect(() => limiter.check('session-f15', 'client-1')).not.toThrow();
-    // Request 3 — must throw with rate-limit category
+    // Request 3, must throw with rate-limit category
     const caught = (() => { try { limiter.check('session-f15', 'client-1'); } catch (e) { return e; } })();
     // GoodVibesSdkError should have category 'rate_limit'
     expect((caught as { category?: string }).category).toBe('rate_limit');

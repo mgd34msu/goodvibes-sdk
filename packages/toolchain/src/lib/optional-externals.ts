@@ -1,5 +1,5 @@
 /**
- * optional-externals — a compiled build must survive a package the manifest
+ * optional-externals, a compiled build must survive a package the manifest
  * says is optional, and must not survive one it says is required.
  *
  * ── The gap this closes ───────────────────────────────────────────────────
@@ -35,7 +35,7 @@
  *
  * For every package a manifest declares REQUIRED and that is not installed,
  * the build FAILS, by name and by manifest. Externalising that one would trade
- * a loud build failure for a binary that dies in the field — the exact trade
+ * a loud build failure for a binary that dies in the field, the exact trade
  * this whole line of work exists to undo.
  */
 
@@ -121,7 +121,7 @@ export function resolveOptionalExternals(input: OptionalExternalsInput): Optiona
 
 /** The message a build failure prints. Named packages, named manifests, one instruction. */
 export function describeMissingRequired(missing: readonly MissingRequired[]): string {
-  const lines = missing.map((m) => `  ${m.packageName} — required by ${m.declaredBy} (${m.manifestPath})`);
+  const lines = missing.map((m) => `  ${m.packageName}, required by ${m.declaredBy} (${m.manifestPath})`);
   return [
     `build-binaries: ${missing.length} required package(s) are not installed:`,
     ...lines,

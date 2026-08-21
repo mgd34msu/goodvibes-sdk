@@ -5,10 +5,10 @@
  * well-formed. Two callers share it and must never disagree:
  *
  *  - Registration (`routes/push.ts`, `routes/pairing-handoff.ts`,
- *    `PushSubscriptionStore.reconcile`) — junk is refused with a plain reason at
+ *    `PushSubscriptionStore.reconcile`), junk is refused with a plain reason at
  *    the moment it is offered, so a record that could never receive a push is
  *    never written to disk in the first place.
- *  - Delivery (`push/encryption.ts`) — the same predicates, with the same
+ *  - Delivery (`push/encryption.ts`), the same predicates, with the same
  *    wording, guard the encryption path.
  *
  * Sharing the predicates is the point: before this module, registration checked
@@ -43,7 +43,7 @@ export const AUTH_SECRET_INVALID_MESSAGE = 'Push subscription auth secret is not
 
 /**
  * Characters a base64 / base64url encoding may contain. Both alphabets are
- * accepted (browsers differ) — what is rejected is a string that is not an
+ * accepted (browsers differ), what is rejected is a string that is not an
  * encoding at all, which would otherwise decode to a silently truncated buffer.
  */
 const BASE64_ANY_ALPHABET = /^[A-Za-z0-9_\-+/]+={0,2}$/;
@@ -108,7 +108,7 @@ export function describeEndpointProblem(value: unknown): string | null {
   return null;
 }
 
-/** The structural slice validated — the wire shape of a subscription offer. */
+/** The structural slice validated, the wire shape of a subscription offer. */
 export interface PushSubscriptionCandidate {
   readonly endpoint: unknown;
   readonly keys?: { readonly p256dh?: unknown; readonly auth?: unknown } | undefined;

@@ -12,7 +12,7 @@ import {
 } from '../packages/sdk/src/platform/providers/stop-reason-maps.js';
 
 // ---------------------------------------------------------------------------
-// Tests — Anthropic
+// Tests, Anthropic
 // ---------------------------------------------------------------------------
 
 describe('Anthropic stop reason mapper', () => {
@@ -46,7 +46,7 @@ describe('Anthropic stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — context-overflow warning signal
+// Tests, context-overflow warning signal
 // ---------------------------------------------------------------------------
 
 describe('isContextOverflowSignal', () => {
@@ -71,7 +71,7 @@ describe('isContextOverflowSignal', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — OpenAI
+// Tests, OpenAI
 // ---------------------------------------------------------------------------
 
 describe('OpenAI stop reason mapper', () => {
@@ -105,7 +105,7 @@ describe('OpenAI stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — Gemini
+// Tests, Gemini
 // ---------------------------------------------------------------------------
 
 describe('Gemini stop reason mapper', () => {
@@ -148,7 +148,7 @@ describe('Gemini stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — llama.cpp
+// Tests, llama.cpp
 // ---------------------------------------------------------------------------
 
 describe('llama.cpp stop reason mapper', () => {
@@ -171,7 +171,7 @@ describe('llama.cpp stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — Ollama
+// Tests, Ollama
 // ---------------------------------------------------------------------------
 
 describe('Ollama stop reason mapper', () => {
@@ -191,7 +191,7 @@ describe('Ollama stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — OpenAI Codex (responses API)
+// Tests, OpenAI Codex (responses API)
 // ---------------------------------------------------------------------------
 
 describe('OpenAI Codex stop reason mapper', () => {
@@ -216,7 +216,7 @@ describe('OpenAI Codex stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — LM Studio (responses API)
+// Tests, LM Studio (responses API)
 // ---------------------------------------------------------------------------
 
 describe('LM Studio stop reason mapper', () => {
@@ -238,7 +238,7 @@ describe('LM Studio stop reason mapper', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Integration — llama.cpp provider wiring
+// Integration, llama.cpp provider wiring
 // ---------------------------------------------------------------------------
 
 describe('llama.cpp provider stop-reason wiring', () => {
@@ -261,7 +261,7 @@ describe('llama.cpp provider stop-reason wiring', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Integration — Ollama provider wiring
+// Integration, Ollama provider wiring
 // ---------------------------------------------------------------------------
 
 describe('Ollama provider stop-reason wiring', () => {
@@ -284,7 +284,7 @@ describe('Ollama provider stop-reason wiring', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Integration — OpenAI Codex provider wiring
+// Integration, OpenAI Codex provider wiring
 // ---------------------------------------------------------------------------
 
 describe('OpenAI Codex provider stop-reason wiring', () => {
@@ -311,7 +311,7 @@ describe('OpenAI Codex provider stop-reason wiring', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Integration — LM Studio provider wiring
+// Integration, LM Studio provider wiring
 // ---------------------------------------------------------------------------
 
 describe('LM Studio provider stop-reason wiring', () => {

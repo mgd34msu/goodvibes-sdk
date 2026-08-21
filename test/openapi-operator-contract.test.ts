@@ -7,7 +7,7 @@
  *     operations, invoke-only methods listed on the generic invoke endpoint,
  *     and ALL methods in the x-operator-methods index);
  *   - the untyped-client-IO methods are marked `x-typed-client-io: false` and
- *     their count equals the foundation-io ratchet's untyped set — honestly
+ *     their count equals the foundation-io ratchet's untyped set, honestly
  *     present, never omitted;
  *   - the docs/ copy and the package artifact are byte-identical;
  *   - auth schemes mirror the contract's auth block.

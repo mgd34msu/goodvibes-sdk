@@ -1,5 +1,5 @@
 /**
- * payments-config.ts — the daemon's live settings, read at the moment of use.
+ * payments-config.ts, the daemon's live settings, read at the moment of use.
  *
  * ══ Why this is a function and not a captured object ══════════════════════
  *
@@ -8,7 +8,7 @@
  * ago has to apply to the purchase happening now; a timezone he corrected has
  * to move the daily reset before the next order, not after a restart. Capturing
  * these at startup would mean the settings UI wrote values that quietly did
- * nothing until the daemon was bounced — which is the failure that makes a
+ * nothing until the daemon was bounced, which is the failure that makes a
  * settings screen untrustworthy.
  *
  * So every field below is read through `configManager.get` on each call.
@@ -27,7 +27,7 @@
  *
  * ══ Amounts in config, whole units in code ════════════════════════════════
  *
- * A budget key holds the amount the owner would say out loud — `100` is a
+ * A budget key holds the amount the owner would say out loud, `100` is a
  * hundred, `19.99` is nineteen ninety-nine, in whatever `payments.currency` is.
  * Everything past this module works in `MinorUnits`: whole counts of the
  * currency's smallest division, so the arithmetic is integer-exact and no
@@ -99,7 +99,7 @@ function readTier(config: PaymentsConfigReader): ShippingTier {
  * Whether the CVV is stored, which decides whether purchasing can be
  * unattended at all.
  *
- * `'prompt'` means every purchase stops and waits for a human to type it — the
+ * `'prompt'` means every purchase stops and waits for a human to type it, the
  * veto window still runs, but nothing completes while he is away. Exposed here
  * so the daemon can report that honestly rather than a purchase mysteriously
  * hanging.
@@ -128,7 +128,7 @@ export function readNotifyChannels(config: PaymentsConfigReader): readonly strin
  *
  * Defaults are all zero and all off. A daemon that has never been configured
  * refuses every purchase with "the daily item budget is 0" rather than
- * inheriting a number nobody chose — see `decidePurchase`, which treats a zero
+ * inheriting a number nobody chose, see `decidePurchase`, which treats a zero
  * item budget as a terminal refusal.
  */
 export function readBudgetLimits(config: PaymentsConfigReader, currency: string): BudgetLimits {

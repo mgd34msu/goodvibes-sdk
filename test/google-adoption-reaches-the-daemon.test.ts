@@ -2,8 +2,8 @@
  * The owner's live failure, end to end, in a throwaway home.
  *
  * What happened on his machine: he ran `/google adopt` in goodvibes-agent and it
- * reported success. He then messaged the bot on Telegram — served by the daemon,
- * with the agent closed — and was told "I can't send the email from this session
+ * reported success. He then messaged the bot on Telegram, served by the daemon,
+ * with the agent closed, and was told "I can't send the email from this session
  * because no email integration is available."
  *
  * His standing rule: "anything configured on one of the surfaces is
@@ -14,7 +14,7 @@
  *
  *   1. Put credentials on the machine where another tool would leave them
  *      (`~/.gmail-mcp`), in a home that exists only for this test.
- *   2. Adopt them through the AGENT's config and secret managers — the real
+ *   2. Adopt them through the AGENT's config and secret managers, the real
  *      `adoptExistingGoogleCredentials`, not a stand-in.
  *   3. Throw those managers away. The agent is closed.
  *   4. Build the DAEMON's own managers over the same home and ask the same
@@ -53,7 +53,7 @@ import { readFileSync, existsSync } from 'node:fs';
  * Every throwaway home this file creates, reaped when it finishes.
  *
  * `mkdtempSync` leaves the directory behind. One suite run is nothing; the
- * suites run constantly, and /tmp is a tmpfs with a fixed inode table — this
+ * suites run constantly, and /tmp is a tmpfs with a fixed inode table, this
  * repo's test scratch had taken 51,306 top-level directories and pushed the
  * table to 100% used, at which point every `mkdtempSync` in every suite fails
  * with ENOSPC while `df -h` still reports 24% free. Cleaning up is cheap and it
@@ -123,7 +123,7 @@ function surface(home: string, surfaceRoot: string) {
   });
   const config: GoogleConfigPort = {
     get: (key) => configManager.get(key as never),
-    // No scope forced — the ownership machinery decides, which is the whole
+    // No scope forced, the ownership machinery decides, which is the whole
     // contract GoogleConfigPort documents.
     set: (key, value) => { configManager.setDynamic(key as never, value); },
   };
@@ -172,7 +172,7 @@ describe("a credential adopted in the agent is the daemon's to use", () => {
       files: nodeFiles, config: agent.config, secrets: agent.secrets, homeDirectory: home,
     });
 
-    // The TUI was never open during setup. It must still see the connection —
+    // The TUI was never open during setup. It must still see the connection,
     // "everything gets everything for free" is the same rule read from the
     // other end.
     const tui = surface(home, 'tui');
@@ -219,7 +219,7 @@ describe('a setup that only half landed is finished, not left for the owner to r
     const home = throwawayHome();
     seedGmailMcp(home);
     const agent = surface(home, 'agent');
-    // Secrets only — exactly what survives when the config writes throw.
+    // Secrets only, exactly what survives when the config writes throw.
     await agent.secrets.set(GOOGLE_SECRET_KEYS.oauthClientSecret, FAKE_CLIENT_SECRET);
     await agent.secrets.set(GOOGLE_SECRET_KEYS.oauthRefreshToken, FAKE_REFRESH_TOKEN);
     return home;

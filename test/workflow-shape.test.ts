@@ -146,7 +146,7 @@ describe('ci.yml: zero-touch auto-release', () => {
     for (const job of gatingJobs) {
       expect(needs, `auto-release must need ${job} so it only runs when that gate is green`).toContain(job);
     }
-    // And its needs set is exactly the other jobs — no gate omitted, no self-need.
+    // And its needs set is exactly the other jobs, no gate omitted, no self-need.
     const otherJobs = jobs(ci).map(([n]) => n).filter((n) => n !== 'auto-release');
     expect([...needs].sort()).toEqual([...otherJobs].sort());
   });
@@ -276,7 +276,7 @@ describe('release.yml: by-reference release', () => {
   test('dispatch is dry-run unless mode=release', () => {
     // A release-mode dispatch is now a first-class publish path (the zero-touch
     // auto-release job dispatches release.yml with mode=release), so publish-npm
-    // runs on a push OR a release-mode dispatch — while the dry-run job is fenced
+    // runs on a push OR a release-mode dispatch, while the dry-run job is fenced
     // off to a NON-release dispatch so it can never publish.
     const pubIf = String(rel.jobs!['publish-npm']!.if);
     expect(pubIf).toContain("github.event_name == 'push'");
@@ -331,7 +331,7 @@ describe('reusable workflows: workflow_call contracts', () => {
     const registrySteps = byIf('registry');
 
     // workspace mode self-hosts: checkout the verified commit, build the
-    // workspace toolchain, run the local dist bin — never bunx-from-registry.
+    // workspace toolchain, run the local dist bin, never bunx-from-registry.
     expect(JSON.stringify(workspaceSteps)).toContain('actions/checkout');
     expect(JSON.stringify(workspaceSteps)).toContain('tsc -b packages/toolchain');
     expect(JSON.stringify(workspaceSteps)).toContain('packages/toolchain/dist/bin/per-job-green.js');
@@ -366,7 +366,7 @@ describe('reusable workflows: workflow_call contracts', () => {
   test('reusable-npm-publish has a tarball-artifact input defaulting to "" with a conditioned download step', () => {
     const wf = load('reusable-npm-publish.yml');
     const inputs = (wf.on as { workflow_call?: { inputs?: Record<string, { default?: string }> } }).workflow_call?.inputs ?? {};
-    // Optional input, empty default — the pack-and-publish-cwd default path is unchanged.
+    // Optional input, empty default, the pack-and-publish-cwd default path is unchanged.
     expect(inputs['tarball-artifact']).toBeTruthy();
     expect(inputs['tarball-artifact']?.default).toBe('');
 
@@ -396,7 +396,7 @@ describe('reusable workflows: workflow_call contracts', () => {
   test('reusable-gh-release: notes-file overrides the changelog excerpt, with the excerpt as fallback', () => {
     const wf = load('reusable-gh-release.yml');
     const inputs = (wf.on as { workflow_call?: { inputs?: Record<string, { default?: string; required?: boolean }> } }).workflow_call?.inputs ?? {};
-    // Optional input, empty default — existing callers keep the excerpt behavior.
+    // Optional input, empty default, existing callers keep the excerpt behavior.
     expect(inputs['notes-file']).toBeTruthy();
     expect(inputs['notes-file']?.default).toBe('');
     expect(inputs['notes-file']?.required).not.toBe(true);
@@ -477,7 +477,7 @@ describe('reusable workflows: workflow_call contracts', () => {
       expect(step, `verify step ${id} must exist`).toBeTruthy();
       const match = /--deadline-ms\s+"?(\d+)"?/.exec(String(step!.run ?? ''));
       // Without an explicit deadline under the cap, the tool's honest
-      // deadline-exceeded verdict is unreachable — the job kill wins.
+      // deadline-exceeded verdict is unreachable, the job kill wins.
       expect(match, `${id} must pass --deadline-ms`).toBeTruthy();
       const deadlineMinutes = Number(match![1]) / 60_000;
       expect(deadlineMinutes).toBeLessThan(capMinutes);

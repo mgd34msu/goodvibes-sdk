@@ -3,7 +3,7 @@
  * proven against the COMMITTED package.json exports manifest, not just
  * compilation. Every import here goes through the package NAME (the workspace
  * link into packages/sdk), so Bun applies the real exports map exactly as a
- * consumer install would — a subpath missing from the manifest fails here
+ * consumer install would, a subpath missing from the manifest fails here
  * even though the dist file exists on disk.
  */
 import { describe, expect, test } from 'bun:test';
@@ -40,12 +40,12 @@ const SUBPATH_SURFACE: Record<string, readonly string[]> = {
 const DIR_SUBPATH_SURFACE: Record<string, readonly string[]> = {
   './platform/power': ['PowerManager', 'wireRuntimePower', 'createLinuxLogindSeam', 'bindPowerWorkSignals', 'createUnavailablePowerSeam'],
   './platform/relay': ['StepUpService', 'createRelayReachability', 'buildDaemonRelayReachability', 'evaluateStepUp', 'isMutatingMethod'],
-  // The consolidation driver rides the existing ./platform/state barrel — a
+  // The consolidation driver rides the existing ./platform/state barrel, a
   // consumer constructs it the way runtime/services.ts does.
   './platform/state': ['MemoryConsolidationScheduler', 'runMemoryConsolidation', 'resolveMemoryConsolidationConfig'],
   // The memory-governance layer: fork-composing consumers (agent, TUI) build
   // their own runtime services and must construct the governor the way
-  // runtime/services.ts does — this was the 2026-07-16 phantom-export find
+  // runtime/services.ts does, this was the 2026-07-16 phantom-export find
   // (dist-built, composed in-process, absent from the map).
   './platform/runtime/memory': [
     'CacheRegistry', 'PauseController', 'MemoryGovernor',
@@ -54,7 +54,7 @@ const DIR_SUBPATH_SURFACE: Record<string, readonly string[]> = {
     'resolveEffectiveSystemRamMb',
   ],
   // singleFlight is composition machinery the SDK's own voice-install path
-  // uses — consumers must not have to duplicate it.
+  // uses, consumers must not have to duplicate it.
   './platform/utils': ['singleFlight', 'logger'],
 };
 
@@ -96,7 +96,7 @@ describe('export-map subpath resolution (committed manifest)', () => {
   }
 
   test('./platform/runtime/memory entrypoint COMPOSES: a consumer builds a working governor through the package name', async () => {
-    // The way a fork-composed runtime (agent, TUI) constructs it — real
+    // The way a fork-composed runtime (agent, TUI) constructs it, real
     // registry + controller, injected sampler/clock, no interval started.
     const memory = await import('@pellux/goodvibes-sdk/platform/runtime/memory');
     let rss = 10 * 1024 * 1024;
@@ -123,7 +123,7 @@ describe('export-map subpath resolution (committed manifest)', () => {
   });
 
   test('./platform/runtime/voice-setup entrypoint COMPOSES: a consumer builds a working setup service through the package name', async () => {
-    // The way a fork-composed runtime (TUI) constructs it — the provisioner and
+    // The way a fork-composed runtime (TUI) constructs it, the provisioner and
     // status-read are injected seams, so the entrypoint runs with no network,
     // no download, and no real voice runtime on the host.
     const { createVoiceSetupService } = await import('@pellux/goodvibes-sdk/platform/runtime/voice-setup');

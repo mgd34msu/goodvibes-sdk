@@ -18,7 +18,7 @@ import type { RuntimeEventDomain } from '../runtime/events/index.js';
  * Wire events whose descriptor declares a read scope. Enforced per-client on the
  * web SSE/WS fan-out so a scoped-down token cannot receive a channel it was not
  * granted. In-process/local/service clients and admin tokens bypass (the
- * single-admin-token model collapses scopes — see method-catalog-events.ts).
+ * single-admin-token model collapses scopes, see method-catalog-events.ts).
  */
 export const CHANNEL_REQUIRED_SCOPE: Readonly<Record<string, string>> = {
   'session-update': 'read:sessions',
@@ -36,7 +36,7 @@ export interface ScopedClientView {
  * Whether a live client may receive a scope-gated channel. Only web SSE/WS
  * clients (which carry a principal's scopes) are filtered; in-process/local and
  * service ('daemon') clients are trusted and always pass, and an admin token
- * bypasses (single-admin-token model — scopes collapse). A `*` scope is a
+ * bypasses (single-admin-token model, scopes collapse). A `*` scope is a
  * wildcard grant. A principal-scoped client is filtered only when it carries an
  * explicit scopes array; internal streams with no scopes stay trusted.
  */
@@ -51,8 +51,8 @@ export function clientMaySeeScopedChannel(client: ScopedClientView, requiredScop
  * Maps a manually-broadcast wire event (published via
  * `ControlPlaneGateway.publishEvent`) to the `RuntimeEventDomain` a client must
  * have subscribed to in order to receive it. These events do NOT flow through a
- * runtime-bus `onDomain` subscription — that path is already domain-scoped by the
- * subscription itself — so without this map the fan-out ignored the subscriber's
+ * runtime-bus `onDomain` subscription, that path is already domain-scoped by the
+ * subscription itself, so without this map the fan-out ignored the subscriber's
  * declared domains and over-delivered (e.g. `session-update` reached the webui,
  * which declares no `session` domain and dropped it as inert).
  *
@@ -77,7 +77,7 @@ export const EVENT_DOMAIN: Readonly<Record<string, RuntimeEventDomain>> = {
   // to a top-level broadcast.
   'session-deleted': 'session',
   // The hosted-session engine's lifecycle channel: which sessions the daemon
-  // hosts and what happened to them. Turn content is NOT here — it rides the
+  // hosts and what happened to them. Turn content is NOT here, it rides the
   // `turn`/`tools` runtime domains (see method-catalog-hosted-sessions.ts).
   'hosted-session-update': 'session',
 };
@@ -88,7 +88,7 @@ export const EVENT_DOMAIN: Readonly<Record<string, RuntimeEventDomain>> = {
  *
  * `clientDomains === null` means the client did NOT opt into domain narrowing
  * (it connected with no `?domains=` param) and receives everything it is
- * scope-permitted to see — today's behavior, preserved. This null=deliver-all
+ * scope-permitted to see, today's behavior, preserved. This null=deliver-all
  * default is the only migration-safe choice: an empty-set-means-nothing default
  * would silently black out every consumer that did not opt in.
  *

@@ -20,7 +20,7 @@ export interface GitHubWebhookEvent {
 // ---------------------------------------------------------------------------
 
 /**
- * GitHubIntegration — HMAC verification, event parsing, prompt generation,
+ * GitHubIntegration, HMAC verification, event parsing, prompt generation,
  * and outbound GitHub API calls (comments, reviews).
  */
 export class GitHubIntegration {

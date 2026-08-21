@@ -94,7 +94,7 @@ function makeOperatorStub(
 
 describe('pre-flight: leeway triggers refresh when token is near expiry', () => {
   it('calls ensureFreshToken and proceeds when leeway window not exceeded', async () => {
-    // Token expires 2 hours from now — well outside 60s leeway.
+    // Token expires 2 hours from now, well outside 60s leeway.
     const store = createMemoryTokenStore('valid-token', Date.now() + 2 * 3_600_000);
     const { sdk, calls } = makeOperatorStub();
 
@@ -114,7 +114,7 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
   });
 
   it('triggers refresh when token expires within leeway window', async () => {
-    // Token expires in 30 seconds — inside 60s leeway.
+    // Token expires in 30 seconds, inside 60s leeway.
     // No refresh endpoint → graceful no-op, but coordinator runs.
     const store = createMemoryTokenStore('expiring-token', Date.now() + 30_000);
     const { sdk, calls } = makeOperatorStub();
@@ -146,7 +146,7 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
       { autoRefresh: true, refreshLeewayMs: 60_000 },
     );
 
-    // Should still succeed — no-refresh endpoint means graceful skip.
+    // Should still succeed, no-refresh endpoint means graceful skip.
     await auth.current();
 
     // The request went through (current() was called)
@@ -161,7 +161,7 @@ describe('pre-flight: leeway triggers refresh when token is near expiry', () => 
 
 describe('in-flight queuing: concurrent refreshes collapse to one', () => {
   it('queues concurrent requests — single refresh call when token near expiry', async () => {
-    // Token expires in 10s — well within leeway.
+    // Token expires in 10s, well within leeway.
     // No refresh endpoint, but we track coordinator behaviour via promise ordering.
 
     let refreshCount = 0;
@@ -387,7 +387,7 @@ describe('opt-out: autoRefresh:false disables refresh and bubbles 401', () => {
   });
 
   it('does not run pre-flight refresh when autoRefresh is false', async () => {
-    // Token expires in 5 seconds — would trigger pre-flight if enabled.
+    // Token expires in 5 seconds, would trigger pre-flight if enabled.
     const store = createMemoryTokenStore('expiring', Date.now() + 5_000);
 
     const { AutoRefreshCoordinator } = await import(
@@ -466,7 +466,7 @@ describe('observer: onAuthTransition emitted on successful refresh', () => {
         throw make401Error();
       });
     } catch {
-      // Second attempt also fails (no real server) — but the refresh DID succeed.
+      // Second attempt also fails (no real server), but the refresh DID succeed.
       // We need to test the case where the first attempt throws 401,
       // refresh succeeds, but second attempt also throws 401.
       // The observer for the refresh should still fire.

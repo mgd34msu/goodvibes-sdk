@@ -1,5 +1,5 @@
 /**
- * routes/browser-composition.ts — the daemon's own browser.
+ * routes/browser-composition.ts, the daemon's own browser.
  *
  * Assembling it here rather than in the runtime composition root keeps two
  * properties visible.
@@ -11,14 +11,14 @@
  *
  * **The ledger is the process's, not this module's.** The untrusted-content
  * port handed to the engine records into
- * `getProcessUntrustedContentLedger()` — the same ledger the daemon's mail
+ * `getProcessUntrustedContentLedger()`, the same ledger the daemon's mail
  * verbs write to. That is the whole point: reading a page through
  * `browser.readText` and then calling `email.send` in the same turn is ONE
  * composition, and only a shared ledger can see both halves. A fresh ledger
  * here would make the composition invisible while looking correct.
  *
  * The engine is built on FIRST USE, not at registration. Registering the verbs
- * must never resolve a driver, download a browser, or start a process — a
+ * must never resolve a driver, download a browser, or start a process, a
  * daemon that never browses should never have paid for browsing. Everything
  * after that is the engine's: provisioning on demand, sessions addressed by
  * id, and the ownership rule that a browser this daemon did not start has no
@@ -58,8 +58,8 @@ export interface BrowserCompositionDeps {
   /** Test seam: overrides the whole service, so no driver or process is touched. */
   readonly browserGateway?: DaemonBrowserGatewayService | undefined;
   /**
-   * Test seam: the untrusted-content port the engine records into. Absent —
-   * the daemon's own case — the port is bound to the process-wide ledger the
+   * Test seam: the untrusted-content port the engine records into. Absent,
+   * the daemon's own case, the port is bound to the process-wide ledger the
    * mail verbs also write to.
    */
   readonly browserUntrusted?: UntrustedContentPort | undefined;
@@ -68,7 +68,7 @@ export interface BrowserCompositionDeps {
 /** The gateway slice plus the teardown the daemon's disposal scope runs. */
 export interface DaemonBrowserGatewayService extends BrowserGatewayService {
   /**
-   * Closes browsers this daemon launched. Attached browsers are untouched —
+   * Closes browsers this daemon launched. Attached browsers are untouched,
    * the session registry's shutdown only ends what it started.
    */
   shutdown(): Promise<void>;

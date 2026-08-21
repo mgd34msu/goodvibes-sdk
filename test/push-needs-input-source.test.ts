@@ -28,7 +28,7 @@ afterEach(() => {
 function makeService(): { service: PushService; delivered: PushMessage[] } {
   // Both halves, deliberately. The injected scheduler keeps an escalation timer
   // from outliving the test whatever the service does, and tracking the service
-  // for dispose() exercises PushService.dispose() itself — which is the thing
+  // for dispose() exercises PushService.dispose() itself, which is the thing
   // this round added, and would otherwise be covered nowhere.
   const service = new PushService({
     vapid: {} as VapidManager,
@@ -146,7 +146,7 @@ describe('PushService.dispose', () => {
    * Every outstanding block holds one armed escalation timer, and until dispose()
    * existed the only ways to cancel one were to answer the ask or to inject the
    * scheduler seam. A daemon shutting down with blocked asks outstanding could
-   * not put them down at all — so this measures the real scheduler's handles,
+   * not put them down at all, so this measures the real scheduler's handles,
    * not a stand-in.
    */
   function makeRealTimerService(): { service: PushService; armed: number; cancelled: () => number } {

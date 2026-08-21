@@ -117,12 +117,12 @@ export interface HomeGraphObjectInput {
 }
 
 /**
- * What a CALLER may hand in for one object — camelCase, or the raw Home
+ * What a CALLER may hand in for one object, camelCase, or the raw Home
  * Assistant wire spelling.
  *
  * `normalizeHomeGraphObjectInput` reads every alias below (`entity_id`,
  * `device_id`, `area_id`, `platform`, `domain`, `original_name`, `unique_id`,
- * `slug`, `label_ids`, `attributes`) and has since it was written — accepting a
+ * `slug`, `label_ids`, `attributes`) and has since it was written, accepting a
  * Home Assistant snapshot unmodified is the point of it. The snapshot fields
  * were nonetheless typed as `HomeGraphObjectInput`, which names none of them,
  * so passing a real snapshot did not typecheck. It went unnoticed because the
@@ -130,7 +130,7 @@ export interface HomeGraphObjectInput {
  * typechecked; the first attempt to make one compile deleted `platform` from a
  * fixture and broke the assertion that depended on it.
  *
- * The normalizer still RETURNS `HomeGraphObjectInput` — camelCase only. This
+ * The normalizer still RETURNS `HomeGraphObjectInput`, camelCase only. This
  * type is the input side alone.
  */
 export interface HomeGraphObjectInputSource extends HomeGraphObjectInput {
@@ -298,7 +298,7 @@ export interface HomeGraphLinkResult {
 /**
  * Result of an unlink. Unlink is a real reversal: it removes the link edge (and,
  * if the prior link materialized the target node and nothing else references it,
- * that node too). Unlinking a never-linked target is an honest no-op — it creates
+ * that node too). Unlinking a never-linked target is an honest no-op, it creates
  * no phantom records. `reversed` is true only when an active link was actually
  * removed.
  */

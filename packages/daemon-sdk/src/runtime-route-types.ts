@@ -198,7 +198,7 @@ export interface DaemonRuntimeRouteContext {
     detachParticipant(sessionId: string, surfaceId: string): Promise<{ id: string; status: string } | null>;
     /**
      * Hard-remove a session record + its messages/inputs (see CHANGELOG 1.0.0: a real delete
-     * verb, distinct from close). Requires the session already closed —
+     * verb, distinct from close). Requires the session already closed,
      * `'active'` means the caller must close it first (409); `'not-found'`
      * covers an unknown OR already-deleted id (404, never a 200-noop).
      */

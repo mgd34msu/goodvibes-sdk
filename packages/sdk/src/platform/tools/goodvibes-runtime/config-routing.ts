@@ -1,5 +1,5 @@
 /**
- * config-routing.ts — the ownership-aware read and write path used by the
+ * config-routing.ts, the ownership-aware read and write path used by the
  * `goodvibes_settings` and `goodvibes_context` tools.
  *
  * A setting has exactly one owning runtime (see `config/config-ownership.ts`).
@@ -16,7 +16,7 @@
  * written into the agent's own settings file, reported as a success, and
  * configured nothing, because Telegram runs in the daemon. When the same value
  * was later asked for, the agent read its own store, found nothing, and said the
- * setting was not set — after it had been set. A write that routes correctly
+ * setting was not set, after it had been set. A write that routes correctly
  * paired with a read that does not is still a system that reports fiction.
  *
  * So: one source of truth per key, read live, and every reported value carries
@@ -46,7 +46,7 @@ import { persistSharedKey } from '../../config/shared-config-tier.js';
  * once (the agent does it in `config/daemon-config-routing.ts`) and hands the
  * same object to both the tools and its own config paths, so there is one
  * routing table. Enumerating the fields here instead would silently drop any
- * the router later grows — and a dropped discovery hook is not a type error,
+ * the router later grows, and a dropped discovery hook is not a type error,
  * it is a daemon that looks absent while it is running.
  */
 export type ConfigRoutingOptions =
@@ -58,8 +58,8 @@ export type ConfigRoutingOptions =
      * not the host's own surface.
      *
      * A daemon-hosted session runs inside the host process but belongs to the
-     * surface that asked for it. Client-owned keys — rendering, transcript
-     * display, wake-word selection — are that surface's, and they live in that
+     * surface that asked for it. Client-owned keys, rendering, transcript
+     * display, wake-word selection, are that surface's, and they live in that
      * surface's file. Without this the host's own ConfigManager answered, and a
      * hosted AGENT conversation read and wrote `~/.goodvibes/tui/settings.json`
      * for its whole life: asked to enable the wake word, it wrote the TUI's
@@ -75,7 +75,7 @@ export type ConfigRoutingOptions =
 
 /** The originating surface's own settings file, for client-owned keys. */
 export interface ClientOwnedStore {
-  /** Surface root — `agent`, `tui`, `webui`. Reported so a value names its owner. */
+  /** Surface root, `agent`, `tui`, `webui`. Reported so a value names its owner. */
   readonly surface: string;
   /** Absolute path to that surface's `settings.json`. */
   readonly settingsPath: string;
@@ -169,7 +169,7 @@ export function localStorePathForKey(
  * Absent means absent: the answer falls back to the SCHEMA DEFAULT, never to the
  * host's stored value. The host is a different surface with its own explicit
  * settings, and reporting one surface's choice as another's is the whole defect
- * — it is how a hosted agent turn was told the TUI's wake-word setting was its
+ *, it is how a hosted agent turn was told the TUI's wake-word setting was its
  * own.
  */
 function readClientOwnedValue(store: ClientOwnedStore, key: string): unknown {
@@ -289,7 +289,7 @@ export async function applyRoutedConfigWrite(
  *
  * A daemon-owned key is read live over the control plane when a daemon is
  * running, because a running daemon may hold state it has not flushed. With no
- * daemon running, the daemon's own store file is the answer — it is the same
+ * daemon running, the daemon's own store file is the answer, it is the same
  * store the daemon will read at startup. When a daemon IS expected and cannot be
  * reached, this returns `available: false` with the reason instead of the local
  * default: reporting a default as the current setting is the failure mode this

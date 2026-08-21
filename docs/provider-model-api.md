@@ -1,4 +1,4 @@
-# Provider & Model API Reference
+# Provider and model API reference
 
 **Base path**: model catalog routes are under `/api/models`; runtime provider metadata remains under `/api/providers`; companion remote-session routes are under `/api/companion/chat`
 **Authentication**: all routes require the standard daemon bearer token (`Authorization: Bearer <token>` or the operator session cookie).
@@ -82,7 +82,7 @@ List all registered providers and their models. Returns configured status, auth 
 | `currentModel` | `ProviderModelRef \| null` | Daemon/TUI currently-selected model; `null` if none configured |
 | `secretsResolutionSkipped` | `boolean` | `true` when no `SecretsManager` was available during this response; `false` when a secrets manager was consulted regardless of whether it resolved any keys. Always present. |
 
-**`ProviderAuthRouteDescriptor` fields** — each entry in `providers[].routes` (and the optional `routes` array on `GET /api/models/current`):
+**`ProviderAuthRouteDescriptor` fields.** Each entry in `providers[].routes` (and the optional `routes` array on `GET /api/models/current`):
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -157,7 +157,7 @@ curl -H "Authorization: Bearer $GV_TOKEN" \
 
 ### `PATCH /api/models/current`
 
-Switch the active model live — no daemon restart required. Persists the selection to config and emits a `MODEL_CHANGED` event to all subscribers.
+Switch the active model live. No daemon restart required. Persists the selection to config and emits a `MODEL_CHANGED` event to all subscribers.
 
 This route is intentionally global. Use it for the live TUI/shared-session model picker. Do not use it for an isolated companion remote chat session that should keep its own provider/model.
 
@@ -171,7 +171,7 @@ This route is intentionally global. Use it for the live TUI/shared-session model
 |-------|------|-------------|
 | `registryKey` | `string` | The `registryKey` from `GET /api/models` (format: `provider:modelId`) |
 
-**Response `200 OK`** — same shape as `GET /api/models/current` with the new model, plus `persisted`.
+**Response `200 OK`.** Same shape as `GET /api/models/current` with the new model, plus `persisted`.
 
 ```json
 {
@@ -401,5 +401,5 @@ Content-Type: application/json
 
 ## Related
 
-- [Providers](./providers.md) — provider surfaces overview and the default provider catalog (stable provider ids, labels, and env vars).
+- [Providers](./providers.md): provider surfaces overview and the default provider catalog (stable provider ids, labels, and env vars).
 - Model ids are volatile and version frequently; treat `GET /api/models` as the live source of truth for available `registryKey` values rather than any hardcoded list.

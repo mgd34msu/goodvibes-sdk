@@ -8,7 +8,7 @@
  * will be: the companion-chat GC sweep, the batch manager's tick, and the HTTP
  * listener's two rate-limiter eviction sweeps. Both classes then opened stop()
  * with `if (this.server === null) return`, which reads "no socket, nothing to
- * do" — but the socket was never what those timers hung off. Construct, enable,
+ * do", but the socket was never what those timers hung off. Construct, enable,
  * and stop without ever starting (a port collision, a config that keeps the
  * daemon off, a host that changes its mind) and every one of them kept ticking
  * with no reachable teardown left.
@@ -129,7 +129,7 @@ beforeAll(async () => {
     liveAfterStop = describeLive();
 
     // Composing the graph starts background work that was genuinely in flight
-    // when stop() was called — the checkpoint manager's cross-process lock and
+    // when stop() was called, the checkpoint manager's cross-process lock and
     // its 5s mtime refresh, a git probe, a log flush. None is a poller this
     // object left running, but they are real handles, and this file runs inside
     // the shared-process leak scan where a handle that outlives its file fires

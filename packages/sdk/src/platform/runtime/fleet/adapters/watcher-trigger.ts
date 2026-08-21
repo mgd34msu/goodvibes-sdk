@@ -7,9 +7,9 @@ import type { ProcessNode, ProcessState } from '../types.js';
  * Trigger-family TriggerRecord → ProcessNode.
  *
  * Distinct from adapters/trigger.ts, which adapts the workflow tool's
- * event→action TriggerDefinition. Both surface under the 'trigger' kind — a
+ * event→action TriggerDefinition. Both surface under the 'trigger' kind, a
  * consumer showing "a thing armed to fire" should not have to learn two
- * vocabularies — so the raw payload is tagged (see isWatcherTriggerRaw) and
+ * vocabularies, so the raw payload is tagged (see isWatcherTriggerRaw) and
  * every control path routes on that tag rather than on the kind alone.
  *
  * State mapping keeps the supervision story visible rather than flattening it:
@@ -67,7 +67,7 @@ export function adaptWatcherTrigger(record: TriggerRecord, now: number): Process
     currentActivity: describeActivity(record),
     capabilities: {
       interruptible: false,
-      // A parked trigger is still cancellable — that is how an operator
+      // A parked trigger is still cancellable, that is how an operator
       // retires one they no longer want rather than leaving it parked forever.
       killable: record.state !== 'cancelled',
       pausable: false,

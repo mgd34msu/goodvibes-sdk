@@ -5,7 +5,7 @@ import type { ProcessNode } from '../types.js';
 
 /**
  * Automation-job node ids are namespaced separately from workflow-tool
- * ScheduleEntry ids (adapters/schedule.ts's scheduleNodeId) — same kind
+ * ScheduleEntry ids (adapters/schedule.ts's scheduleNodeId), same kind
  * ('schedule'), completely different id space (AutomationJob.id vs
  * ScheduleEntry.name), so the two can never collide even though a user
  * could name a workflow-tool schedule and an automation job identically.
@@ -14,20 +14,20 @@ export function automationJobNodeId(jobId: string): string {
   return `automation-job:${jobId}`;
 }
 
-/** The `raw` shape for an automation-job-sourced 'schedule' node — the source marker registry.ts's control dispatch switches on to route kill/interrupt/resume to AutomationManager instead of ScheduleManager. */
+/** The `raw` shape for an automation-job-sourced 'schedule' node, the source marker registry.ts's control dispatch switches on to route kill/interrupt/resume to AutomationManager instead of ScheduleManager. */
 export interface AutomationJobRaw {
   readonly source: 'automation-manager';
   readonly job: AutomationJob;
 }
 
-/** Type guard for AutomationJobRaw, used by registry.ts to distinguish an automation-job 'schedule' node's `raw` from a workflow-tool ScheduleEntry's `raw` — both share the 'schedule' kind. */
+/** Type guard for AutomationJobRaw, used by registry.ts to distinguish an automation-job 'schedule' node's `raw` from a workflow-tool ScheduleEntry's `raw`, both share the 'schedule' kind. */
 export function isAutomationJobRaw(raw: unknown): raw is AutomationJobRaw {
   return raw !== null && typeof raw === 'object' && (raw as { source?: unknown }).source === 'automation-manager';
 }
 
 /**
  * AutomationJob → ProcessNode. Reuses the 'schedule'
- * kind rather than inventing a new one — a job created via `/schedule` IS a
+ * kind rather than inventing a new one, a job created via `/schedule` IS a
  * schedule from the user's viewpoint, even though it lives in a completely
  * separate subsystem (platform/automation) from the workflow-tool's
  * ScheduleManager (platform/tools/workflow) that adapters/schedule.ts

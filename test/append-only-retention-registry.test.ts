@@ -1,11 +1,11 @@
 /**
- * append-only-retention-registry.test.ts — every append-only store the platform
+ * append-only-retention-registry.test.ts, every append-only store the platform
  * writes has a registered retention owner, and a start-time janitor sweeps them.
  *
  * Defect class: an append-only file that no one prunes grows without bound (the
  * observed 22.8 MB activity.md). Now every append-only store registers here with
  * an owner + policy, a start-time sweep owns every registered path, and a
- * membership check fails LOUDLY on an unregistered id — the same fail-closed
+ * membership check fails LOUDLY on an unregistered id, the same fail-closed
  * discipline as the feature-gate-id and model-source checks.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -24,7 +24,7 @@ import {
 import { resolveScopedDirectory } from '../packages/sdk/src/platform/runtime/surface-root.ts';
 
 // The append-only stores the platform writes. A new append-only writer must be
-// added here AND registered in APPEND_ONLY_STORES — this list is the honest
+// added here AND registered in APPEND_ONLY_STORES, this list is the honest
 // enumeration the membership check is measured against.
 const KNOWN_APPEND_ONLY_STORES: readonly AppendOnlyStoreId[] = [
   'session-journals',
@@ -77,7 +77,7 @@ describe('start-time retention sweep', () => {
     const workingDirectory = tempDir();
     const surfaceRoot = 'tui';
     // Agent journals live under sessions/agents/ (see agents/session.ts,
-    // agents/wrfc-workmap.ts) — the session-journals store sweeps that
+    // agents/wrfc-workmap.ts), the session-journals store sweeps that
     // directory wholesale, never the parent sessions/ (user conversations).
     const agentJournalsDir = join(resolveScopedDirectory(workingDirectory, surfaceRoot, 'sessions'), 'agents');
     mkdirSync(agentJournalsDir, { recursive: true });
@@ -167,8 +167,8 @@ describe('start-time retention sweep', () => {
     const userConversation = join(sessionsDir, 'my-saved-chat.jsonl');
     // Real opening records: classification is name AND first-line content
     // (runtime/retention/legacy-agent-journal-patterns.ts), so these fixtures
-    // are the genuine article — an AgentSession session-start record and a
-    // WrfcWorkmap entry — not just correctly-named filler.
+    // are the genuine article, an AgentSession session-start record and a
+    // WrfcWorkmap entry, not just correctly-named filler.
     writeFileSync(
       legacyAgentJournal,
       JSON.stringify({ type: 'meta', agentId: 'agent-deadbeef', model: 'm', provider: 'p', title: '', timestamp: Date.now() }) + '\n'
@@ -194,7 +194,7 @@ describe('start-time retention sweep', () => {
     expect(outcome.sweptStores).toContain('session-journals');
     expect(() => statSync(legacyAgentJournal)).toThrow();
     expect(() => statSync(legacyWorkmap)).toThrow();
-    // The user conversation file — same directory, same age — is never swept.
+    // The user conversation file, same directory, same age, is never swept.
     expect(statSync(userConversation).size).toBe(1000);
   });
 

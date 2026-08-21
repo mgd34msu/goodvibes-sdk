@@ -56,7 +56,7 @@ function provideAddon(target: BinaryTarget, sameHost: boolean): boolean {
 
 /**
  * The manifests whose optionalDependencies may be externalised: this repo's
- * own, plus the SDK it bundles. The SDK's are the ones that matter — it is
+ * own, plus the SDK it bundles. The SDK's are the ones that matter, it is
  * where the thirty optional packages are declared and where the dynamic
  * imports that make them genuinely optional live.
  */

@@ -201,7 +201,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     key: 'display.theme',
     type: 'string',
     default: 'vaporwave',
-    description: 'Color theme name — the color palette (e.g. vaporwave). Independent of display.themeMode, which controls light/dark appearance.',
+    description: 'Color theme name, the color palette (e.g. vaporwave). Independent of display.themeMode, which controls light/dark appearance.',
   },
   {
     key: 'display.themeMode',
@@ -269,7 +269,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'off',
     description:
-      'Provider routing optimizer: off (optimizer inactive, default), manual (optimizer active but never auto-routes), auto (selects the best capable provider per request via capability contracts), or pinned (force one model — see provider.optimizerPinnedModel). Runtime /provider commands and pin/unpin still override for the session.',
+      'Provider routing optimizer: off (optimizer inactive, default), manual (optimizer active but never auto-routes), auto (selects the best capable provider per request via capability contracts), or pinned (force one model, see provider.optimizerPinnedModel). Runtime /provider commands and pin/unpin still override for the session.',
     enumValues: ['off', 'manual', 'auto', 'pinned'],
   },
   {
@@ -366,7 +366,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
       + 'permission mode as the foreground turn loop (allow-all changes nothing; '
       + 'prompt/plan/accept-edits/custom apply their matrices; asks broker through the '
       + 'same blocked-on-user machinery with subagent attribution). '
-      + 'allow-all: background agents are exempt — their tool calls auto-approve regardless '
+      + 'allow-all: background agents are exempt, their tool calls auto-approve regardless '
       + 'of the session mode.',
     enumValues: ['inherit', 'allow-all'],
   },
@@ -548,7 +548,7 @@ export const coreHeadConfigSettings: ConfigSettingDefinition[] = [
     key: 'sandbox.judgment',
     type: 'enum',
     default: 'annotate',
-    description: 'Model-judgment pass on sandbox escalation asks: off (plain asks), annotate (default — a proposed verdict with stated reasons annotates the ask, the human still decides), or auto-approve (additionally auto-approves looks-safe verdicts; explicit opt-in). Never auto-denies and never touches the frozen catastrophic block; every judgment leaves a receipt.',
+    description: 'Model-judgment pass on sandbox escalation asks: off (plain asks), annotate (default, a proposed verdict with stated reasons annotates the ask, the human still decides), or auto-approve (additionally auto-approves looks-safe verdicts; explicit opt-in). Never auto-denies and never touches the frozen catastrophic block; every judgment leaves a receipt.',
     enumValues: ['off', 'annotate', 'auto-approve'],
   },
   {
@@ -708,14 +708,14 @@ export const coreTailConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: true,
     description:
-      'Whether THIS surface ADOPTS a session daemon of its own — the background service hosting the shared session broker and companion chat, bound to loopback (127.0.0.1). On (the default), the surface looks for one and adopts it. Off, it makes no adoption attempt and probes no port. It does not control the daemon process itself: a daemon started on its own runs regardless of this setting, which is a per-surface choice about adopting one. It is also NOT the switch for talking to a daemon this surface is already connected to — that is daemon.connectedHost.enabled, and the two were one key until they were split apart.',
+      'Whether THIS surface ADOPTS a session daemon of its own, the background service hosting the shared session broker and companion chat, bound to loopback (127.0.0.1). On (the default), the surface looks for one and adopts it. Off, it makes no adoption attempt and probes no port. It does not control the daemon process itself: a daemon started on its own runs regardless of this setting, which is a per-surface choice about adopting one. It is also NOT the switch for talking to a daemon this surface is already connected to, that is daemon.connectedHost.enabled, and the two were one key until they were split apart.',
   },
   {
     key: 'daemon.connectedHost.enabled',
     type: 'boolean',
     default: true,
     description:
-      'Whether this surface may DIAL the daemon it is connected to. On (the default), the features that reach a connected host work: the session-inputs poll that delivers inbound messages, conversation rewind registration, the live approvals stream, daemon-routed conversation turns, and the operator verbs. Off, each of those refuses plainly rather than failing at a connection. This is separate from daemon.enabled on purpose: adopting a daemon of your own and talking to one that is already there are different decisions, and while they shared a single key, turning adoption off silently stopped the inputs poll, the approvals stream and rewind registration on machines whose connected host was live and answering — the session and memory spines kept dialing the same host perfectly well, which is how the split showed itself.',
+      'Whether this surface may DIAL the daemon it is connected to. On (the default), the features that reach a connected host work: the session-inputs poll that delivers inbound messages, conversation rewind registration, the live approvals stream, daemon-routed conversation turns, and the operator verbs. Off, each of those refuses plainly rather than failing at a connection. This is separate from daemon.enabled on purpose: adopting a daemon of your own and talking to one that is already there are different decisions, and while they shared a single key, turning adoption off silently stopped the inputs poll, the approvals stream and rewind registration on machines whose connected host was live and answering, the session and memory spines kept dialing the same host perfectly well, which is how the split showed itself.',
   },
   {
     key: 'danger.httpListener',

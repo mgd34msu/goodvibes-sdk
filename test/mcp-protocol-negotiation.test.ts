@@ -33,7 +33,7 @@ function send(message: unknown): void {
 
 const tools = Array.from({ length: toolCount }, (_, i) => ({
   name: 'tool-' + i,
-  description: 'Tool number ' + i + ' — ' + 'd'.repeat(200),
+  description: 'Tool number ' + i + ', ' + 'd'.repeat(200),
   inputSchema: {
     type: 'object',
     properties: { value: { type: 'string', description: 'v'.repeat(400) } },
@@ -271,7 +271,7 @@ describe('MCP attach-time context cost', () => {
     const attachMethods = existsSync(logPath)
       ? readFileSync(logPath, 'utf8').trim().split('\n').filter(Boolean)
       : [];
-    // Attach performed era detection only — no tool names, no schemas.
+    // Attach performed era detection only, no tool names, no schemas.
     expect(attachMethods).toEqual(['server/discover']);
 
     const surfaceBytesAfterAttach = JSON.stringify(createMcpTool({} as unknown as McpRegistry).definition).length;

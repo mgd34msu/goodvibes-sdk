@@ -1,5 +1,5 @@
 /**
- * runtime-seam.ts — the SDK runtime surface under the names the terminal
+ * runtime-seam.ts, the SDK runtime surface under the names the terminal
  * front-ends reach it by.
  *
  * The two terminal products each keep a `src/runtime/index.ts` barrel that
@@ -12,7 +12,7 @@
  * Those tests now live here. This helper gives them the same names from the
  * SDK's own modules, so what they assert is the SDK implementation and not a
  * consumer's re-export of it. Two of the barrel's names were consumer-local
- * re-implementations rather than re-exports — `extractForwardedClientIp` is the
+ * re-implementations rather than re-exports, `extractForwardedClientIp` is the
  * one that reached these tests, and it is bound below to the SDK's function in
  * platform/runtime/network, which is the implementation that actually ships.
  */
@@ -29,8 +29,8 @@ import type {
 } from '@pellux/goodvibes-sdk/platform/runtime';
 // `Playbook` is not re-exported from the `operations` namespace (only the
 // playbook instances are), so there is no public, bare-specifier name for it.
-// Imported directly from source — matching the resolution style the rest of
-// this test suite already uses for SDK-internal types — purely to give the
+// Imported directly from source, matching the resolution style the rest of
+// this test suite already uses for SDK-internal types, purely to give the
 // seven playbook re-exports below an explicit annotation; without one, `tsc`
 // cannot name their inferred type across the dist/src module-instance split
 // (TS2883).

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * observed/detect.ts — read-only detection of externally-launched coding-agent
+ * observed/detect.ts, read-only detection of externally-launched coding-agent
  * sessions this daemon did NOT spawn or host (someone's own Claude Code / Codex
  * process on the same host).
  *
@@ -21,7 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, readlinkSync, existsSync } from 'node:fs';
 import type { ObservedAgentKind } from '../types.js';
 
-/** One live process as read from the process table — only read-only-derivable facts. */
+/** One live process as read from the process table, only read-only-derivable facts. */
 export interface ObservedRawProcess {
   readonly pid: number;
   readonly ppid: number;
@@ -58,7 +58,7 @@ const COMMAND_TIMEOUT_MS = 5_000;
 
 /**
  * Classify a process's argv shape into an external coding-agent kind, or null
- * when it is not one of the known agents (so it is skipped entirely — not an
+ * when it is not one of the known agents (so it is skipped entirely, not an
  * `unknown` row). `unknown` is reserved for a process that matched a launcher
  * shape but whose specific agent could not be named; the current matchers are
  * specific enough that they always name a kind, so null-vs-kind is the real
@@ -70,7 +70,7 @@ export function classifyExternalKind(args: string): ObservedAgentKind | null {
   const basename = (token: string): string => token.split('/').pop() ?? token;
   const argv0base = basename(tokens[0] ?? '');
   // The "effective program": when argv0 is a JS runtime launcher, the agent's
-  // real basename is argv1 (e.g. `node /…/bin/codex …` — argv0 is node, the
+  // real basename is argv1 (e.g. `node /…/bin/codex …`, argv0 is node, the
   // program is codex). Otherwise it is argv0 itself.
   const launcher = /^(node|node-MainThread|bun|deno|npx|bunx)$/.test(argv0base);
   const base = launcher && tokens[1] ? basename(tokens[1]) : argv0base;
@@ -155,7 +155,7 @@ function readControllingTty(pid: number): string | undefined {
         return target;
       }
     } catch {
-      // fd absent or not readable — try the next one.
+      // fd absent or not readable, try the next one.
     }
   }
   return undefined;
@@ -163,7 +163,7 @@ function readControllingTty(pid: number): string | undefined {
 
 /**
  * The real process-table reader over Linux `/proc`. Every field is read from a
- * pseudo-file or a symlink — no child process is spawned and no target process
+ * pseudo-file or a symlink, no child process is spawned and no target process
  * is signalled or probed. On a host without `/proc` (non-Linux) it yields an
  * empty set, so detection is honestly quiet rather than wrong.
  */
@@ -233,7 +233,7 @@ export function defaultProcessTableReader(): ProcessTableReader {
 /**
  * The real tmux pane reader. Runs `tmux list-panes -a -F '#{pane_tty} #{pane_id}'`
  * once (read-only; never a state-changing tmux verb, never a shell). No tmux
- * server, or no panes, yields an empty set — detection then honestly reports no
+ * server, or no panes, yields an empty set, detection then honestly reports no
  * steer channel for every tty.
  */
 export function defaultTmuxPaneReader(): TmuxPaneReader {

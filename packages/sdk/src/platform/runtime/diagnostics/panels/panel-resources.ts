@@ -24,7 +24,7 @@ const HEALTH_ORDER: Record<string, number> = {
 };
 
 /**
- * PanelResourcesPanel — diagnostic data provider for panel resource health.
+ * PanelResourcesPanel, diagnostic data provider for panel resource health.
  *
  * Polls the ComponentHealthMonitor on a configurable interval and maintains a
  * current ComponentResourceSnapshot for the diagnostics panel to render.
@@ -45,7 +45,7 @@ export class PanelResourcesPanel {
 
   /**
    * Start polling the health monitor.
-   * Safe to call multiple times — subsequent calls are no-ops.
+   * Safe to call multiple times, subsequent calls are no-ops.
    */
   start(): void {
     if (this._timerId !== null) return;

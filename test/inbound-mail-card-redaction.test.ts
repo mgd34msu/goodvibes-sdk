@@ -9,7 +9,7 @@
  * because order confirmations legitimately carry long digit runs and they are
  * the consumer the inbound-mail capability exists to serve. Refusing them would
  * break it. So the message is still recorded, still notified, still able to
- * satisfy an expectation — only the digits fail to reach disk.
+ * satisfy an expectation, only the digits fail to reach disk.
  *
  * The exposure this closes was introduced by this round's own machinery: the
  * record store persists a bounded body excerpt for thirty days, so a card
@@ -43,7 +43,7 @@ afterEach(() => {
 });
 
 /**
- * The IMAP arm specifically — this fixture sets uidValidity and uid.
+ * The IMAP arm specifically, this fixture sets uidValidity and uid.
  * `InboundMailRecordInput` is distributive over the record union, so a
  * `Partial` of the whole union spread over a literal yields a union
  * TypeScript cannot place in either arm.
@@ -70,7 +70,7 @@ function recordInput(overrides: Partial<ImapRecordInput> = {}): ImapRecordInput 
   };
 }
 
-/** The bytes actually on disk — not the returned object, which is easier to get right. */
+/** The bytes actually on disk, not the returned object, which is easier to get right. */
 function rawFile(): string {
   return readFileSync(storePath, 'utf-8');
 }
@@ -125,7 +125,7 @@ describe('a card number in an email never reaches disk', () => {
 
   test('a card straddling the excerpt cap is redacted whole, not truncated into a readable prefix', async () => {
     // Slicing before redacting would keep up to eighteen digits of the card and
-    // drop only the tail — which is not a redaction, it is a shorter leak.
+    // drop only the tail, which is not a redaction, it is a shorter leak.
     const cap = 200;
     const store = new InboundMailStore(storePath, { policy: { maxBodyExcerptChars: cap } });
     // Positioned so that ten digits of the card fall INSIDE the cap and six
@@ -148,7 +148,7 @@ describe('a card number in an email never reaches disk', () => {
     // becomes `[redacted:pan]` (fourteen), so every one of them pulls
     // everything after it five characters leftwards. A later card straddling
     // the far edge of the window is seen only in PART, so it does not match,
-    // so it is left raw — and the accumulated shortening then drags those raw
+    // so it is left raw, and the accumulated shortening then drags those raw
     // digits back inside the final `slice(0, cap)`, where they are persisted
     // verbatim.
     //
@@ -160,7 +160,7 @@ describe('a card number in an email never reaches disk', () => {
     const OLD_WINDOW = 19 + 18;
     const GROUPED = '4111 1111 1111 1111';
     const SECOND = '5555444433332222';
-    /** Eight groupeds shorten the string by forty characters — more than the window. */
+    /** Eight groupeds shorten the string by forty characters, more than the window. */
     const head = Array.from({ length: 8 }, () => `charge ${GROUPED};`).join(' ');
     /** Positioned so eleven of the second card's digits fall inside the old window. */
     const pad = cap + OLD_WINDOW - head.length - 11;

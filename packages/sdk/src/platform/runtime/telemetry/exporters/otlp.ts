@@ -1,7 +1,7 @@
 /**
  * OTLP HTTP span exporter with fail-safe queue and retry.
  *
- * All exports are non-blocking — spans are enqueued immediately and
+ * All exports are non-blocking, spans are enqueued immediately and
  * exported asynchronously. Export failures are logged but never thrown.
  * The runtime is never blocked by OTLP connectivity issues.
  *
@@ -97,7 +97,7 @@ function attributeValue(
  * Non-blocking OTLP/HTTP span exporter.
  *
  * Spans are batched and exported via an internal fail-safe queue.
- * The exporter never throws — failures are logged and retried per
+ * The exporter never throws, failures are logged and retried per
  * the configured retry policy.
  *
  * @example
@@ -238,12 +238,12 @@ export class OtlpExporter implements SpanExporter {
   }
 
   /**
-   * Result callback — logs failures without throwing.
+   * Result callback, logs failures without throwing.
    */
   private _onExportResult(result: ExportResult): void {
     if (result.code === 'failure') {
       // use structured logger so OTLP exporter failures appear in activity log
-      logger.error('[OtlpExporter] Export failed permanently — spans lost', {
+      logger.error('[OtlpExporter] Export failed permanently, spans lost', {
         spanCount: result.spanCount,
         attempts: result.attempts,
         error: result.error,

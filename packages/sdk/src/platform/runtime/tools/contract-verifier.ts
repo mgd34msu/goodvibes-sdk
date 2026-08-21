@@ -1,5 +1,5 @@
 /**
- * Tool Contract Verifier — registration-time contract checks for all registered tools.
+ * Tool Contract Verifier, registration-time contract checks for all registered tools.
  *
  * Validates five contract dimensions for every tool:
  * 1. Schema validity
@@ -98,7 +98,7 @@ export interface ContractVerifierOptions {
 // ── Dimension checkers ────────────────────────────────────────────────────────
 
 /**
- * Check 1 — Schema validity.
+ * Check 1, Schema validity.
  *
  * Validates that the tool definition's parameters object is a structurally
  * sound JSON Schema. Does not make network calls or validate against a meta-schema;
@@ -183,7 +183,7 @@ function checkSchema(def: ToolDefinition): ContractViolation[] {
 }
 
 /**
- * Check 2 — Timeout and cancellation semantics.
+ * Check 2, Timeout and cancellation semantics.
  *
  * For PhasedTools: validates that phase timeouts are positive integers and that
  * long-running tool categories declare cancellable=true.
@@ -227,7 +227,7 @@ function checkTimeoutCancellation(phased: Partial<PhasedTool>, toolName: string)
 }
 
 /**
- * Check 3 — Permission class mapping.
+ * Check 3, Permission class mapping.
  *
  * For PhasedTools: validates that a category is declared and maps to a known
  * permission class. Plain Tools receive a warning about missing classification.
@@ -257,7 +257,7 @@ function checkPermissionClass(phased: Partial<PhasedTool>, toolName: string, str
 }
 
 /**
- * Check 4 — Output policy alignment.
+ * Check 4, Output policy alignment.
  *
  * For PhasedTools: validates that the tool's category maps to a known ToolClass
  * with a configured output policy. All default policies exist, but third-party
@@ -285,7 +285,7 @@ function checkOutputPolicy(phased: Partial<PhasedTool>, toolName: string): Contr
 }
 
 /**
- * Check 5 — Idempotency declaration.
+ * Check 5, Idempotency declaration.
  *
  * Side-effecting tools (write/execute/network/delegate) must explicitly declare
  * their idempotency posture. This is surfaced as a contract property on the tool
@@ -326,7 +326,7 @@ function checkIdempotency(phased: Partial<PhasedTool> & { idempotent?: unknown }
 // ── Main verifier ─────────────────────────────────────────────────────────────
 
 /**
- * ToolContractVerifier — runs all 5 contract checks on a single tool.
+ * ToolContractVerifier, runs all 5 contract checks on a single tool.
  *
  * Usage:
  * ```ts

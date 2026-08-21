@@ -19,7 +19,7 @@ import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 /**
  * Standing memory as git-backed markdown files that round-trip through the
  * confirmation-gated mutation path: a file edit/deletion becomes a proposal, and
- * the store is mutated ONLY for confirmed proposals — never a silent write.
+ * the store is mutated ONLY for confirmed proposals, never a silent write.
  */
 
 const roots: string[] = [];

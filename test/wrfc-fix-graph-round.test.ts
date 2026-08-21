@@ -1,11 +1,11 @@
 /**
- * wrfc-fix-graph-round.test.ts — the fix-phase rework's done-when clauses at
+ * wrfc-fix-graph-round.test.ts, the fix-phase rework's done-when clauses at
  * the engine/planner level (the controller-side clauses are pinned in
  * wrfc-constraint-propagation / wrfc-controller / wrfc-phantom-fixes):
  *
  * - a multi-finding review decomposes into a dependency graph (visible via the
  *   graph snapshot surfaces render);
- * - release semantics: a blocker's claimed-done releases NOTHING — only its
+ * - release semantics: a blocker's claimed-done releases NOTHING, only its
  *   review-pass + landed merge releases an edge (test pins this exact case);
  * - a mid-task discovered dependency adds a live edge (and may re-queue);
  * - a seeded cycle and an orphaned task surface as structured outcomes
@@ -136,11 +136,11 @@ describe('release semantics — claimed-done releases NOTHING', () => {
   }
 
   test('in-flight (claimed/working) releases nothing; passed-but-unmerged releases nothing; passed+merged releases (test pins this exact case)', () => {
-    // An agent CLAIMING the work (in-phase) — or even claiming it finished
-    // while review is pending — releases nothing.
+    // An agent CLAIMING the work (in-phase), or even claiming it finished
+    // while review is pending, releases nothing.
     expect(dependencySatisfied(...(() => { const { ws, dep } = fakeWorkstream({ state: 'in-phase' }); return [ws, dep] as const; })())).toBe(false);
     // Slice review passed (item state 'passed') but the merge has NOT landed:
-    // still released? NO — reviewed AND merged is the edge contract.
+    // still released? NO, reviewed AND merged is the edge contract.
     expect(dependencySatisfied(...(() => { const { ws, dep } = fakeWorkstream({ state: 'passed', mergeState: 'pending' }); return [ws, dep] as const; })())).toBe(false);
     // Review passed AND the merge landed in the integration lane: released.
     expect(dependencySatisfied(...(() => { const { ws, dep } = fakeWorkstream({ state: 'passed', mergeState: 'merged' }); return [ws, dep] as const; })())).toBe(true);
@@ -206,7 +206,7 @@ describe('dynamic graph — live edges, cycles, orphans', () => {
     const cycleEvent = events.find((e) => e.type === 'graph-cycle');
     expect(cycleEvent).toBeDefined();
     expect((cycleEvent as { cycle: readonly string[] } | undefined)?.cycle.join('->')).toContain('A');
-    // The graph is unchanged — no silently-poisoned edge.
+    // The graph is unchanged, no silently-poisoned edge.
     expect(ws.items.find((i) => i.id === 'b')!.dependsOn).toHaveLength(0);
   });
 
@@ -326,7 +326,7 @@ describe('elastic pool — spawn on ready, visible at-cap, retire on empty', () 
     h.completeAgent(agentId, engineerReportOutput({ summary: 'done' }));
     await flushMicrotasks(30);
     // The single task passed; the ready set is empty; nothing in flight could
-    // release an edge — the agent retires cleanly instead of idling warm.
+    // release an edge, the agent retires cleanly instead of idling warm.
     const retired = events.find((e) => e.type === 'agent-retired');
     expect(retired).toBeDefined();
     expect(retired).toMatchObject({ agentId, reason: 'ready set empty; no imminent edge release' });

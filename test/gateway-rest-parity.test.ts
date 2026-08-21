@@ -3,7 +3,7 @@
  *
  * Proves the gateway-hoisted verb families (skills.*, principals.*, checkin.*,
  * ci.*, channels.profiles.*, sessions.permissionMode/contextUsage) are genuinely
- * served over their advertised REST paths — not merely that the capability-route
+ * served over their advertised REST paths, not merely that the capability-route
  * reconcile can see a route match. A real request flows through
  * dispatchDaemonApiRoutes → dispatchGatewayRestRoutes → invokeGatewayRestVerb and
  * lands on the same invokeGatewayMethodCall the methodId-invoke endpoint uses,
@@ -115,7 +115,7 @@ describe('gateway REST parity — advertised paths reach the gateway handler', (
   test('a path outside the gateway REST table is not claimed by this dispatcher', async () => {
     const { calls, handlers } = buildHarness();
     // /api/skills/{name}/update is POST-only; a GET must not match it, and no
-    // other gateway-rest entry claims it — so this GET falls through (the default
+    // other gateway-rest entry claims it, so this GET falls through (the default
     // stub has no such route, so the dispatch returns null).
     const res = await dispatchDaemonApiRoutes(makeRequest('GET', 'http://localhost/api/skills/x/update'), handlers);
     expect(res).toBeNull();

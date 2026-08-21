@@ -6,7 +6,7 @@
  *
  * Both come from one incident. The "Platform matrix (bun)" job printed
  * `##[group]test/arch03-error-hierarchy.test.ts:` and then nothing at all for
- * fifteen minutes, until the job timeout killed it — bun's module loader had
+ * fifteen minutes, until the job timeout killed it, bun's module loader had
  * deadlocked BETWEEN two test files, where no per-test timeout applies, and
  * nothing in the process was in a position to notice. The runner's post-job
  * step then reported two `bun` processes it had to terminate itself, because a
@@ -52,7 +52,7 @@ afterEach(() => {
   for (const dir of tmpDirs.splice(0)) rmSync(dir, { recursive: true, force: true });
 });
 
-/** A test file that never finishes loading — the wedge's actual shape. */
+/** A test file that never finishes loading, the wedge's actual shape. */
 function writeWedgedFile(dir: string, name = 'wedged.test.ts'): string {
   const path = join(dir, name);
   writeFileSync(
@@ -76,7 +76,7 @@ function writeWedgedFile(dir: string, name = 'wedged.test.ts'): string {
  * Slowly and silently on purpose. A run that finishes inside one poll tick
  * could not tell a working stall ceiling from one that fires on everything,
  * and a run that PRINTS could not tell a working heartbeat from output being
- * mistaken for progress — which is the thing the heartbeat exists to replace,
+ * mistaken for progress, which is the thing the heartbeat exists to replace,
  * because a green local run prints almost nothing for three minutes.
  */
 function writeHealthyFile(dir: string, name = 'healthy.test.ts'): string {
@@ -115,7 +115,7 @@ function writePidRecordingWedgedFile(dir: string, pidPath: string, name = 'wedge
 
 /**
  * A runner that behaves exactly like scripts/test.ts, minus everything the
- * lifecycle does not need — and with BOTH ceilings off, so the only thing that
+ * lifecycle does not need, and with BOTH ceilings off, so the only thing that
  * can end the suite in these cases is the thing being tested.
  */
 function writeRunnerScript(dir: string, wedged: string, name = 'runner.ts'): string {
@@ -200,7 +200,7 @@ describe('the stall ceiling ends a run that has stopped starting tests', () => {
     const dir = mkTemp();
     const wedged = writeWedgedFile(dir);
     setRunnerEnv('GOODVIBES_TEST_STALL_MS', '0');
-    // With the stall ceiling off, the overall ceiling is what ends it — and it
+    // With the stall ceiling off, the overall ceiling is what ends it, and it
     // says so, which is how the two are told apart in a log.
     setRunnerEnv('GOODVIBES_TEST_CEILING_MS', '4000');
     const result = await runOwnedTestChild({
@@ -316,7 +316,7 @@ describe('the suite dies with the process that started it', () => {
 
   test('a runner whose own shell is killed gives up instead of being orphaned', async () => {
     // The CI shape, exactly: a job timeout kills the STEP'S SHELL. The runner
-    // is not signalled — it is reparented — so the only thing that can end it
+    // is not signalled, it is reparented, so the only thing that can end it
     // is noticing that the process which started it is gone. Both `bun`
     // processes the orphan sweep reported were this pair.
     const dir = mkTemp();
@@ -357,7 +357,7 @@ describe('the suite dies with the process that started it', () => {
 
   test('the runner half of the lifecycle never imports bun:test', () => {
     // scripts/test-child-watchdog.ts imports `bun:test` and registers a global
-    // `beforeEach` — correct inside the suite, and a defect in the PARENT,
+    // `beforeEach`, correct inside the suite, and a defect in the PARENT,
     // which would then carry a lifecycle hook of its own into every run. The
     // shared env names live in their own import-free module for this reason.
     // Invisible at runtime until something odd happens, so it is scanned for.

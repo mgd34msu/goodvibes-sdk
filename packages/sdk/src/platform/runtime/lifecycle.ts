@@ -53,7 +53,7 @@ export function fireSessionStart(
  * 3. Destroy ScheduleManager (cancels pending scheduled tasks)
  * 4. Stop provider registry file-watcher
  *
- * This function does NOT touch the terminal (alt-screen, raw mode, etc.) —
+ * This function does NOT touch the terminal (alt-screen, raw mode, etc.),
  * that remains the responsibility of main.ts.
  *
  * @param sessionId  - Active session identifier.
@@ -74,7 +74,6 @@ export async function shutdownRuntime(
   sessionOrchestration?: Pick<CrossSessionTaskRegistry, 'dispose'> | null,
   persistenceOptions?: SessionPersistenceOptions,
 ): Promise<void> {
-  // Step 1: persist conversation
   let shutdownError: Error | null = null;
   try {
     saveSession(sessionId, sessionData, model, provider, title, persistenceOptions);
@@ -86,7 +85,7 @@ export async function shutdownRuntime(
     });
   }
 
-  // Step 2: lifecycle hooks are started without waiting for async handlers.
+  // Lifecycle hooks are started without waiting for async handlers.
   const fireHook = (specific: string): void => {
     if (!hookDispatcher) return;
     try {
@@ -115,7 +114,6 @@ export async function shutdownRuntime(
   fireHook('end');
   fireHook('save');
 
-  // Step 3: stop ScheduleManager
   try {
     scheduleManager?.destroy();
   } catch (err) {
@@ -124,7 +122,6 @@ export async function shutdownRuntime(
     });
   }
 
-  // Step 4: stop provider registry watcher
   try {
     providerRegistry?.stopWatching();
   } catch (err) {
@@ -133,7 +130,7 @@ export async function shutdownRuntime(
     });
   }
 
-  // Step 5: dispose cross-session orchestration registry if it is app-owned in this runtime
+  // Dispose the cross-session orchestration registry if it is app-owned in this runtime.
   try {
     sessionOrchestration?.dispose();
   } catch (err) {

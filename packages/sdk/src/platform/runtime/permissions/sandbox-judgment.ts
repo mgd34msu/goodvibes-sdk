@@ -1,13 +1,13 @@
 /**
- * sandbox-judgment.ts — the model-judgment tier for the residual sandbox
+ * sandbox-judgment.ts, the model-judgment tier for the residual sandbox
  * ask-tail.
  *
  * When the per-command exec sandbox is active and a command STILL lands on
- * "ask" (a boundary that needs host access — network, host-privilege
+ * "ask" (a boundary that needs host access, network, host-privilege
  * escalation), an optional model-judgment pass takes the command, its sandbox
  * plan, workspace context, and the policy reasons and produces a PROPOSED
  * verdict with stated reasons. Its verdict either annotates the ask shown to the
- * human, or — only when the operator has opted into auto-approve mode —
+ * human, or, only when the operator has opted into auto-approve mode,
  * auto-approves the ask.
  *
  * FROZEN CATASTROPHIC BLOCK / ALLOW→DENY INVARIANT. Recorded doctrine, verbatim:
@@ -20,7 +20,7 @@
  * identically inside the boundary). The judgment can only RELAX a standing "ask"
  * to an allow (auto-approve, and only on a `looks-safe` verdict when the
  * operator opted in) or ANNOTATE it for the human. A `flags-risk` verdict never
- * denies on its own — it annotates the human ask, which the human still decides.
+ * denies on its own, it annotates the human ask, which the human still decides.
  */
 
 import { logger } from '../../utils/logger.js';
@@ -43,7 +43,7 @@ export interface SandboxJudgmentInput {
   readonly policyReasons: readonly string[];
 }
 
-/** A provider's PROPOSED verdict — it never carries a deny/allow enforcement. */
+/** A provider's PROPOSED verdict, it never carries a deny/allow enforcement. */
 export interface SandboxJudgmentProposal {
   readonly verdict: 'looks-safe' | 'flags-risk';
   readonly reasons: readonly string[];
@@ -58,7 +58,7 @@ export type SandboxJudgmentProvider = (
 export interface SandboxJudgmentResult {
   readonly verdict: SandboxJudgmentVerdict;
   readonly reasons: readonly string[];
-  /** "model judgment: looks safe because… / flags risk because…" — empty when unavailable. */
+  /** "model judgment: looks safe because… / flags risk because…", empty when unavailable. */
   readonly annotation: string;
 }
 
@@ -133,7 +133,7 @@ function buildAnnotation(proposal: SandboxJudgmentProposal): string {
 
 /**
  * Run the judgment pass. Degrades to an `unavailable` result (empty annotation)
- * on any provider failure — the caller then falls back to a plain ask, never a
+ * on any provider failure, the caller then falls back to a plain ask, never a
  * blocked or auto-denied one.
  */
 export async function runSandboxJudgment(
@@ -168,7 +168,7 @@ export async function runSandboxJudgment(
  * INVARIANT: `autoApprove` is true only for a `looks-safe` verdict AND only when
  * the operator opted into auto-approve mode. Every other case leaves the human
  * ask standing (annotated when the verdict is available). A `flags-risk` verdict
- * NEVER auto-denies — it annotates, and the human decides.
+ * NEVER auto-denies, it annotates, and the human decides.
  */
 export function applySandboxJudgment(
   result: SandboxJudgmentResult,
@@ -196,7 +196,7 @@ export function applySandboxJudgment(
     };
   }
 
-  // Annotate-only (the default) — the human ask stands, carrying the verdict.
+  // Annotate-only (the default), the human ask stands, carrying the verdict.
   return {
     autoApprove: false,
     annotations: [result.annotation],

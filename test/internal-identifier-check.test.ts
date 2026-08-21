@@ -3,7 +3,7 @@
  * text again, while genuine technical tokens stay legal.
  *
  * Every banned token in this file is CONSTRUCTED at runtime (concatenation)
- * so this test file itself never contains one — the checker scans test/.
+ * so this test file itself never contains one, the checker scans test/.
  */
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'fs';
@@ -75,7 +75,7 @@ describe('internal-identifier rule', () => {
       'RestartSteps=8 with RestartMaxDelaySec=300', // plain unit directives
       'systemd 254 supports escalating restart delays', // version numbers
       'HTTP 400/404/405 are handled distinctly', // numeric slash chains
-      // Semver / release-version strings must NEVER trip the plan-item shape —
+      // Semver / release-version strings must NEVER trip the plan-item shape,
       // versions are the doctrine's sanctioned provenance:
       "isDaemonVersionCompatible('1.4.2', '1.0.0') stays true", // bare semver args
       'Full-detach catalog (1.2.0) reads serialize a bare array', // parenthesized release version

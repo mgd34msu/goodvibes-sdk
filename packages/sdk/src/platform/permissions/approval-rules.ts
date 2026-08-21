@@ -1,12 +1,12 @@
 /**
- * Approval decisions that persist and generalize — the rule side.
+ * Approval decisions that persist and generalize, the rule side.
  *
  * An approval prompt can offer remember tiers beyond "this session":
- *   - 'exact'         — this exact command (exec)
- *   - 'command-class' — this command class, e.g. every `git ...` (exec)
- *   - 'path'          — edits/writes under the asked path's directory
- *   - 'tool'          — always allow/deny this tool in this project
- *   - 'session'       — the classic in-memory session cache only
+ *   - 'exact'        , this exact command (exec)
+ *   - 'command-class', this command class, e.g. every `git ...` (exec)
+ *   - 'path'         , edits/writes under the asked path's directory
+ *   - 'tool'         , always allow/deny this tool in this project
+ *   - 'session'      , the classic in-memory session cache only
  *
  * A tiered decision becomes a durable user-origin PolicyRule (the same shape
  * evaluateRuntimePolicy consults), stored per project. The session approval
@@ -37,7 +37,7 @@ export interface RememberTierOption {
   readonly detail: string;
 }
 
-/** First whitespace token of a command — its class (git, npm, bun, ...). */
+/** First whitespace token of a command, its class (git, npm, bun, ...). */
 export function commandClassOf(command: string): string {
   return command.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
 }
@@ -177,7 +177,7 @@ export interface DurableRuleMatch {
 }
 
 /**
- * First-match-wins evaluation of durable user rules against a call — the
+ * First-match-wins evaluation of durable user rules against a call, the
  * lightweight matcher behind the session-cache layer (it must work with the
  * policy engine flag on OR off, so it does not go through the full layered
  * evaluator).
@@ -204,7 +204,7 @@ export function matchDurableRules(
         matched = evaluateNetworkScopeRule(rule, toolName, args).matched;
         break;
       case 'mode-constraint':
-        // Mode-constraint rules are mode-layer policy, not approval-derived —
+        // Mode-constraint rules are mode-layer policy, not approval-derived,
         // no remember tier produces one, and mode handling already lives in
         // checkDetailed before this matcher runs.
         matched = false;

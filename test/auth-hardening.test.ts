@@ -1,14 +1,14 @@
 /**
- * Auth hardening tests — Item 5, goodvibes-sdk
+ * Auth hardening tests, Item 5, goodvibes-sdk
  *
  * Covers:
- *   1. fsync parity — atomicWriteSecretFile uses fsync (structural test via file integrity check)
- *   2. Per-account lockout — escalating backoff, no username-existence leak
- *   3. Cloudflare IP validation — isCloudflareIp range checks
+ *   1. fsync parity, atomicWriteSecretFile uses fsync (structural test via file integrity check)
+ *   2. Per-account lockout, escalating backoff, no username-existence leak
+ *   3. Cloudflare IP validation, isCloudflareIp range checks
  *   4. Retry-After on 429 responses (login rate limit + account lock)
  *   5. Auto-retire bootstrap credential after first successful login
- *   6. Scrypt cost parameterization — configurable params, backward compat with legacy hashes
- *   7. Shared-token timing oracle fix — no length side-channel
+ *   6. Scrypt cost parameterization, configurable params, backward compat with legacy hashes
+ *   7. Shared-token timing oracle fix, no length side-channel
  */
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import {
@@ -59,7 +59,7 @@ function readBootstrapPassword(dir: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 1. fsync parity — atomicWriteSecretFile durability
+// 1. fsync parity, atomicWriteSecretFile durability
 // ---------------------------------------------------------------------------
 describe('atomicWriteSecretFile — durability', () => {
   let dir: string;
@@ -125,7 +125,7 @@ describe('per-account lockout', () => {
 
   test('6th failure triggers a 30-second lock (threshold anchored above IP budget of 5)', () => {
     const mgr = makeManager(dir);
-    // 5 failures — no lock (must match the IP-budget threshold so they all return 401 from the HTTP layer)
+    // 5 failures, no lock (must match the IP-budget threshold so they all return 401 from the HTTP layer)
     for (let i = 0; i < 5; i++) {
       const r = mgr.authenticate('admin', 'wrongpassword');
       expect(r.ok).toBe(false);
@@ -178,7 +178,7 @@ describe('per-account lockout', () => {
     // without mutating internal lock state directly.
     let fakeNow = Date.now();
     const mgr = makeManager(dir, { nowFn: () => fakeNow });
-    // First 5 failures — no lock
+    // First 5 failures, no lock
     for (let i = 0; i < 5; i++) mgr.authenticate('admin', 'wrong');
     // 6th failure sets 30s lock
     mgr.authenticate('admin', 'wrong');
@@ -434,7 +434,7 @@ describe('scrypt cost parameterization', () => {
     );
     writeFileSync(storePath, JSON.stringify(store, null, 2) + '\n');
 
-    // Reload manager — it must read the patched store from disk
+    // Reload manager, it must read the patched store from disk
     const mgr2 = makeManager(dir);
     const result = mgr2.authenticate('admin', pw);
     expect(result.ok).toBe(true);
@@ -495,7 +495,7 @@ describe('scrypt cost parameterization', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Shared-token timing oracle fix — constant-time comparison
+// 7. Shared-token timing oracle fix, constant-time comparison
 // ---------------------------------------------------------------------------
 describe('shared-token constant-time comparison', () => {
   /**
@@ -575,7 +575,7 @@ describe('accountLocks cap and eviction', () => {
     for (let i = 0; i < cap; i++) {
       mgr.authenticate(`spray-user-${i}`, 'wrong');
     }
-    // Insert one more — must trigger eviction so size stays <= cap
+    // Insert one more, must trigger eviction so size stays <= cap
     mgr.authenticate('spray-user-overflow', 'wrong');
     // Total entries in the map must not exceed cap + 1 (the overflow user
     // is added, then eviction removes one, net = cap).
@@ -624,7 +624,7 @@ describe('accountLocks cap and eviction', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Bootstrap credential retire — non-bootstrap vs bootstrap paths (M3)
+// 9. Bootstrap credential retire, non-bootstrap vs bootstrap paths (M3)
 // ---------------------------------------------------------------------------
 describe('bootstrap credential retire — non-bootstrap only', () => {
   let dir: string;
@@ -683,7 +683,7 @@ describe('bootstrap credential retire — non-bootstrap only', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. m1 — lock escalation during active window is documented and tested
+// 10. m1, lock escalation during active window is documented and tested
 // ---------------------------------------------------------------------------
 describe('lock escalation during active window (m1)', () => {
   let dir: string;
@@ -728,7 +728,7 @@ describe('lock escalation during active window (m1)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. m2 — ipv6ToBytes strict validation (zone index, oversized groups, garbage)
+// 11. m2, ipv6ToBytes strict validation (zone index, oversized groups, garbage)
 // ---------------------------------------------------------------------------
 describe('isCloudflareIp — ipv6ToBytes strict validation', () => {
   test('rejects IPv6 with zone index (fe80::1%eth0)', () => {
@@ -742,7 +742,7 @@ describe('isCloudflareIp — ipv6ToBytes strict validation', () => {
   });
 
   test('rejects IPv6 group with 5+ hex chars (oversized)', () => {
-    // 10000 has 5 hex digits — invalid IPv6 group
+    // 10000 has 5 hex digits, invalid IPv6 group
     expect(isCloudflareIp('2606:4700:0:0:0:0:0:10000')).toBe(false);
   });
 

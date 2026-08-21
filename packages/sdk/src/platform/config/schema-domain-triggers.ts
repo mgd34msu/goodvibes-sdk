@@ -1,15 +1,15 @@
 /**
- * schema-domain-triggers.ts — the trigger family (`watchers.triggers.*`).
+ * schema-domain-triggers.ts, the trigger family (`watchers.triggers.*`).
  *
  * Three watcher kinds share one supervision spine:
- *   - stream    — regex-filtered, line-batched tail of a long-lived command
- *   - condition — model-free declarative check (probe -> extract -> rule)
- *   - on-exit   — one-shot payload when a supervised child process terminates
+ *   - stream   , regex-filtered, line-batched tail of a long-lived command
+ *   - condition, model-free declarative check (probe -> extract -> rule)
+ *   - on-exit  , one-shot payload when a supervised child process terminates
  *
  * `watchers.triggers.enabled` ships **false** by design, not as limbo: a
  * trigger starts supervised long-lived processes, so on-by-default would run
  * watchers nobody asked for. Every key below is a real configurable feature
- * with a written purpose, never a bare toggle — the supervision ladder, the
+ * with a written purpose, never a bare toggle, the supervision ladder, the
  * breaker, the retention bounds and the process caps are all operator-tunable.
  *
  * Kept in its own domain module so the trigger family can evolve without
@@ -20,7 +20,7 @@ import { intRange } from './schema-shared.js';
 
 /** Trigger-family configuration (`watchers.triggers.*`). */
 export interface TriggersConfig {
-  /** Master gate. False by default — a trigger supervises real processes. */
+  /** Master gate. False by default, a trigger supervises real processes. */
   enabled: boolean;
   /** Comma-separated backoff ladder (ms) walked on consecutive check failures. */
   backoffLadderMs: string;
@@ -32,7 +32,7 @@ export interface TriggersConfig {
   probeTimeoutMs: number;
   /** Condition checks allowed to run at the same moment. */
   maxConcurrentChecks: number;
-  /** Observations retained per trigger — the ring buffer the rules read. */
+  /** Observations retained per trigger, the ring buffer the rules read. */
   observationRingSize: number;
   /** Run-history records retained per trigger. */
   runHistoryLimit: number;
@@ -96,7 +96,7 @@ export const triggersConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'Enable the trigger family: stream watchers over long-lived commands, model-free condition checks, and one-shot on-exit process triggers. Off by default because a trigger launches and supervises real processes on your machine without a person watching — turning it on is a deliberate choice, not a fallback. With it on and no triggers defined, the supervisor idles and consumes nothing.',
+      'Enable the trigger family: stream watchers over long-lived commands, model-free condition checks, and one-shot on-exit process triggers. Off by default because a trigger launches and supervises real processes on your machine without a person watching, turning it on is a deliberate choice, not a fallback. With it on and no triggers defined, the supervisor idles and consumes nothing.',
   },
   {
     key: 'watchers.triggers.backoffLadderMs',
@@ -149,7 +149,7 @@ export const triggersConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 200,
     description:
-      'Observations kept per trigger in its persisted ring buffer. Every rule — change, transition, rate-of-change, windowed aggregation — is a pure function over this buffer, so this is the memory depth available to them. Larger windows need a larger ring.',
+      'Observations kept per trigger in its persisted ring buffer. Every rule, change, transition, rate-of-change, windowed aggregation, is a pure function over this buffer, so this is the memory depth available to them. Larger windows need a larger ring.',
     ...intRange(2, 10_000),
   },
   {
@@ -238,7 +238,7 @@ export const triggersConfigSettings: ConfigSettingDefinition[] = [
     default: 'none',
     enumValues: ['none', 'empty'],
     description:
-      'Standard input handed to a supervised on-exit child. "none" closes stdin so a password-prompting process gets EOF and exits instead of blocking forever; "empty" attaches an immediately-closed empty pipe for programs that require a readable stdin handle. There is deliberately no interactive option — nobody is at the keyboard.',
+      'Standard input handed to a supervised on-exit child. "none" closes stdin so a password-prompting process gets EOF and exits instead of blocking forever; "empty" attaches an immediately-closed empty pipe for programs that require a readable stdin handle. There is deliberately no interactive option, nobody is at the keyboard.',
   },
   {
     key: 'watchers.triggers.outputTailBytes',

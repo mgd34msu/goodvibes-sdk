@@ -55,13 +55,13 @@ export interface SmtpSendResult {
   /**
    * The `Message-ID` header this send actually carried, angle brackets
    * included. It is generated here, written into the message, and handed back
-   * — the same string on the wire and in the return value, because its whole
+   *, the same string on the wire and in the return value, because its whole
    * purpose is to correlate with what left the machine and with the
    * `In-Reply-To` of whatever comes back.
    */
   readonly messageId: string;
   /**
-   * ISO-8601 instant the server ACCEPTED the message — read after the final
+   * ISO-8601 instant the server ACCEPTED the message, read after the final
    * `250`, not when the attempt started, so it records a send that happened
    * rather than one that was tried.
    */
@@ -151,7 +151,7 @@ function base64(str: string): string {
  *
  * The domain half has to be the sending domain. A literal like `localhost`, or
  * a domain that does not exist, is a signal receiving servers weigh against a
- * message — an id is supposed to be globally unique BECAUSE its right-hand
+ * message, an id is supposed to be globally unique BECAUSE its right-hand
  * side belongs to whoever wrote it. The from-address supplies it; the SMTP
  * hostname stands in only if the address somehow carries none.
  */
@@ -288,7 +288,7 @@ export class SmtpClient {
   }
 
   /**
-   * Connect, negotiate EHLO, and authenticate — then QUIT without sending any
+   * Connect, negotiate EHLO, and authenticate, then QUIT without sending any
    * mail. Used to verify SMTP credentials/host reachability (a connect-wizard
    * "test connection" step) without the side effect of an actual send.
    * Throws with a plain-language message on any failure stage.

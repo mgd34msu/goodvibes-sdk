@@ -56,7 +56,7 @@ Session cookie:
 
 GoodVibes also ships an OAuth flow used for daemon-side token acquisition (for example, authorizing third-party providers). The flow itself runs on the server side: `OAuthClient` and the core helpers (`platform/runtime/auth/oauth-core.ts`, `oauth-client.ts`) depend on Node runtime facilities and are **not** part of the consumer client surface. Clients do not run the OAuth handshake directly; they receive acquired tokens through a `TokenStore`.
 
-The OAuth *payload types* — `OAuthStartState` and `OAuthTokenPayload` — are exported from `@pellux/goodvibes-sdk/client-auth` (and re-exported from `@pellux/goodvibes-sdk/auth`) for typing the values you persist. `PermissionResolver`, also exported from `@pellux/goodvibes-sdk/client-auth`, resolves the permissions carried by an acquired token.
+The OAuth *payload types*, `OAuthStartState` and `OAuthTokenPayload`, are exported from `@pellux/goodvibes-sdk/client-auth` (and re-exported from `@pellux/goodvibes-sdk/auth`) for typing the values you persist. `PermissionResolver`, also exported from `@pellux/goodvibes-sdk/client-auth`, resolves the permissions carried by an acquired token.
 
 ## SDK auth helpers
 
@@ -113,13 +113,13 @@ const sdk = createBrowserGoodVibesSdk({
 
 For same-origin web UIs, cookie-backed session auth is often simpler than token persistence.
 
-## Automatic Token Refresh
+## Automatic token refresh
 
 When you provide a `tokenStore`, the SDK wires a built-in `AutoRefreshCoordinator` that handles proactive token refresh and reactive 401 retry automatically. No custom middleware is needed.
 
-**Proactive refresh** — the coordinator checks the token's `expiresAt` field before each request. If the token expires within `refreshLeewayMs` (default: 60 seconds), a refresh call is issued before the request proceeds.
+**Proactive refresh.** The coordinator checks the token's `expiresAt` field before each request. If the token expires within `refreshLeewayMs` (default: 60 seconds), a refresh call is issued before the request proceeds.
 
-**Reactive 401 retry** — when the server returns 401, the coordinator attempts one refresh and retries the original request with the new token, transparently to the caller.
+**Reactive 401 retry.** When the server returns 401, the coordinator attempts one refresh and retries the original request with the new token, transparently to the caller.
 
 Configure via the `autoRefresh` option in `createGoodVibesSdk`:
 

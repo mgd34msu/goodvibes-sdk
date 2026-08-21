@@ -1,5 +1,5 @@
 /**
- * device-policy-source.ts — how the device stores and the capability service
+ * device-policy-source.ts, how the device stores and the capability service
  * take their policy.
  *
  * Every one of them used to freeze its policy at construction. That is correct

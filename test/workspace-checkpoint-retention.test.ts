@@ -71,7 +71,7 @@ describe('WorkspaceCheckpointManager retention/gc', () => {
       expect(() => runGit(root, ['--git-dir', gitDir, 'rev-parse', '--verify', '--quiet', `${CHECKPOINT_REF_PREFIX}${survivingId}`])).not.toThrow();
     }
 
-    // The core claim: pruned checkpoints' commits are not merely ref-less —
+    // The core claim: pruned checkpoints' commits are not merely ref-less,
     // they are unreachable from every surviving ref (checkpoint commits are
     // parentless, so no surviving descendant's parent chain keeps them
     // alive) and `git gc --prune=now` has actually deleted the objects.

@@ -6,11 +6,11 @@
  *
  *  - Plain http on a PRIVATE-NETWORK origin (LAN IP, .local, localhost) is a
  *    deliberate, supported posture. The one honest line about it is stated at
- *    pairing — never a nag.
+ *    pairing, never a nag.
  *  - Browsers gate some capabilities on a secure context (https, or the
  *    localhost loopback). Rather than a surface showing a dead button, the
  *    daemon labels each gated capability with WHY it is unavailable and the
- *    supported way to get it (tailscale ⇒ https without minting certificates —
+ *    supported way to get it (tailscale ⇒ https without minting certificates,
  *    the daemon NEVER provisions a CA or mints certificates).
  */
 import { isPrivateNetworkHost } from '@pellux/goodvibes-transport-http';
@@ -35,7 +35,7 @@ export interface OriginPosture {
   /** The origin the posture describes (scheme://host[:port]). */
   readonly origin: string;
   readonly scheme: 'http' | 'https' | 'other';
-  /** Loopback / RFC 1918 / .local — the supported plain-http LAN posture. */
+  /** Loopback / RFC 1918 / .local, the supported plain-http LAN posture. */
   readonly privateNetwork: boolean;
   /** Whether browsers treat this origin as a secure context (https, or loopback). */
   readonly secureContext: boolean;
@@ -52,7 +52,7 @@ export interface OriginPosture {
 export const LAN_PLAIN_HTTP_NOTICE =
   'Connection is unencrypted on your LAN. Everything works except browser-gated features; Tailscale gives encrypted access with the full app.';
 
-const NEEDS_HTTPS_REASON = 'needs https — available via tailscale';
+const NEEDS_HTTPS_REASON = 'needs https, available via tailscale';
 
 function isLoopbackHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
@@ -61,7 +61,7 @@ function isLoopbackHost(hostname: string): boolean {
 
 /**
  * Describe the TLS/capability posture of a web origin. Invalid origins are
- * reported honestly as scheme 'other' with every capability unavailable —
+ * reported honestly as scheme 'other' with every capability unavailable,
  * never a throw (this feeds a render path, not a validation gate).
  */
 export function describeOriginPosture(origin: string): OriginPosture {

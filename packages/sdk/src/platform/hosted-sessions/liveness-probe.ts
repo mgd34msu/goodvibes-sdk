@@ -3,7 +3,7 @@
  * now?", asked by the shared session broker's idle reaper.
  *
  * Why the reaper has to ask instead of working it out: every liveness signal
- * the broker records is emitted by a turn running IN the broker's own process —
+ * the broker records is emitted by a turn running IN the broker's own process,
  * a message appended, an agent bound, an input queued, a participant
  * heartbeat. A hosted turn emits none of them. Its transcript lives on the
  * hosted record (so the broker's `messageCount` stays 0, which puts the session
@@ -45,7 +45,7 @@ export interface HostedSessionLivenessProbeOptions {
 /**
  * Build the probe the broker installs via `setExternalLivenessProbe`.
  *
- * Answers true only for sessions this engine actually owns — a non-hosted
+ * Answers true only for sessions this engine actually owns, a non-hosted
  * session, or a hosted id the engine has no record of, is not this probe's to
  * vouch for, and it says so rather than blanket-exempting everything and
  * quietly disabling the reaper.

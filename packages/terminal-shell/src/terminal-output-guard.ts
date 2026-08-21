@@ -1,5 +1,5 @@
 /**
- * terminal-output-guard.ts — catches direct stdout/stderr/console writes made
+ * terminal-output-guard.ts, catches direct stdout/stderr/console writes made
  * while a full-screen terminal renderer owns the screen, so a stray write from
  * some other code path never corrupts the compositor's output.
  *
@@ -8,7 +8,7 @@
  * everything on dispose. Installing a second guard before the first is
  * disposed first disposes that first guard, so the restore chain always
  * unwinds against the real underlying write rather than an intermediate
- * patch — without this, a second install's "original" would actually be the
+ * patch, without this, a second install's "original" would actually be the
  * first guard's wrapper, and disposing the second would leave the first's
  * patch installed forever.
  *
@@ -19,9 +19,9 @@
  * captures:
  *   - `onCapture`: the cumulative count of writes captured this session, for
  *     a caller that keeps its own quiet counter (e.g. surfaced by /debug).
- *   - `notify`: a formatted, human-readable notice — how many writes were
+ *   - `notify`: a formatted, human-readable notice, how many writes were
  *     captured since the last notice (reset to zero after each call) and the
- *     most recent write's preview — for a caller that wants to push a
+ *     most recent write's preview, for a caller that wants to push a
  *     transcript-style message. Also logged via logger.info at the same
  *     cadence, so the aggregate stays reachable in the activity log even
  *     where a UI-level noise gate drops the notice from a visible feed.
@@ -74,14 +74,14 @@ export type FullScreenTerminalOutputGuardOptions = {
    * Called (rate-limited, at most once per 5s) with the cumulative count of
    * direct writes captured this session, so an honest quiet counter (e.g.
    * /debug) can refresh. The per-write detail is already recorded to the
-   * activity log via logger.warn inside installTerminalOutputGuard — this
+   * activity log via logger.warn inside installTerminalOutputGuard, this
    * callback intentionally does NOT push transcript lines.
    */
   readonly onCapture?: (total: number) => void;
   /**
    * Called (rate-limited, at most once per 5s) with a formatted notice naming
-   * how many direct writes were captured since the last notice — that count
-   * resets to zero after each call — and the most recent write's preview.
+   * how many direct writes were captured since the last notice, that count
+   * resets to zero after each call, and the most recent write's preview.
    * Also logged via logger.info at the same cadence.
    */
   readonly notify?: (message: string) => void;
@@ -271,7 +271,7 @@ export function installFullScreenTerminalOutputGuard(options: FullScreenTerminal
     onIntercept: (event) => {
       // Each intercept is already logged (logger.warn in record()). This
       // wrapper only maintains the two counters below and, rate-limited,
-      // refreshes whichever of the caller's callbacks is present — no
+      // refreshes whichever of the caller's callbacks is present, no
       // repeated transcript lines per write.
       totalInterceptedWrites++;
       sinceLastNotifyCount++;
@@ -288,7 +288,7 @@ export function installFullScreenTerminalOutputGuard(options: FullScreenTerminal
         const notice = `[Terminal] Captured ${count} direct ${event.source} write${plural} that would have corrupted the TUI: ${event.preview}`;
         // Keep the aggregate count reachable in the activity log even where a
         // UI-level noise gate drops the notice from a visible feed. (Drop-
-        // from-the-feed, not delete — an honest degraded state.)
+        // from-the-feed, not delete, an honest degraded state.)
         logger.info(notice, { source: event.source, count });
         options.notify(notice);
       }

@@ -1,9 +1,9 @@
 /**
- * offer-copy.ts — plain-language copy for the pairing offer set, the one
+ * offer-copy.ts, plain-language copy for the pairing offer set, the one
  * honest LAN-posture line, and the labeled browser-capability list.
  *
  * Each offer names, in plain terms, what accepting it does and what declining it
- * costs — no security jargon, just the concrete consequence. Every offer is
+ * costs, no security jargon, just the concrete consequence. Every offer is
  * independently declinable; a pairing without any accepted offer still pairs the
  * device (it just signs in with none of the extras).
  *
@@ -37,16 +37,16 @@ export const PAIRING_OFFER_COPY: Record<PairingHandoffOfferKind, PairingOfferCop
   },
 };
 
-/** The offer set as `label — consequence` lines, in the given order. */
+/** The offer set as `label, consequence` lines, in the given order. */
 export function formatPairingOffers(offers: readonly PairingHandoffOfferKind[]): string[] {
   return offers.map((kind) => {
     const copy = PAIRING_OFFER_COPY[kind];
-    return `  ${copy.title} — ${copy.consequence}`;
+    return `  ${copy.title}, ${copy.consequence}`;
   });
 }
 
 /**
- * Plain-language label for each browser-gated capability the posture reports —
+ * Plain-language label for each browser-gated capability the posture reports,
  * what the paired device would actually get, named without jargon.
  */
 export const POSTURE_CAPABILITY_LABEL: Record<BrowserGatedCapability, string> = {
@@ -57,7 +57,7 @@ export const POSTURE_CAPABILITY_LABEL: Record<BrowserGatedCapability, string> = 
 
 /**
  * The one honest LAN line to render, or null. This is the SDK posture's own
- * `notice` field verbatim (LAN_PLAIN_HTTP_NOTICE) — present ONLY for the
+ * `notice` field verbatim (LAN_PLAIN_HTTP_NOTICE), present ONLY for the
  * plain-http-on-LAN posture, absent (and so never a nag) everywhere else.
  */
 export function pairingPostureNotice(posture: OriginPosture | undefined): string | null {
@@ -66,7 +66,7 @@ export function pairingPostureNotice(posture: OriginPosture | undefined): string
 
 /**
  * The labeled capability list from the posture: each browser-gated capability as
- * a `Label — available` / `Label — <reason>` line, so the pairing surface lists
+ * a `Label, available` / `Label, <reason>` line, so the pairing surface lists
  * what the paired device will get instead of hiding a dead button. Empty when no
  * posture is known.
  */
@@ -75,6 +75,6 @@ export function formatPostureCapabilities(posture: OriginPosture | undefined): s
   return posture.capabilities.map((cap) => {
     const label = POSTURE_CAPABILITY_LABEL[cap.capability as BrowserGatedCapability] ?? cap.capability;
     const status = cap.available ? 'available' : (cap.reason ?? 'unavailable');
-    return `  ${label} — ${status}`;
+    return `  ${label}, ${status}`;
   });
 }

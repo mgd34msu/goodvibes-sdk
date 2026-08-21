@@ -1,13 +1,13 @@
 /**
  * Cost provenance over the wire: every verb that serves priced dollars also
  * says WHERE the rates came from (costSource: user / provider / catalog /
- * mixed) and, for dated sources, the pricing snapshot's as-of date — so a
+ * mixed) and, for dated sources, the pricing snapshot's as-of date, so a
  * surface can render "your price" vs "catalog price, as of <date>" without
  * deriving provenance client-side.
  *
  * Covers each source state end-to-end at the verb/snapshot boundary:
  * user (undated), provider (dated), catalog (dated), unknown/unpriced
- * (absent — never fabricated), and 'mixed' for aggregates.
+ * (absent, never fabricated), and 'mixed' for aggregates.
  */
 import { describe, expect, test } from 'bun:test';
 import {

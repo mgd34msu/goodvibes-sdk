@@ -293,11 +293,11 @@ export class HomeAssistantConversationRoutes {
   }
 
   /**
-   * Cancel the in-flight turn for a Home Assistant conversation — the session
+   * Cancel the in-flight turn for a Home Assistant conversation, the session
    * STAYS OPEN so the next utterance keeps its conversation context. (Before
    * the turns.cancel verb existed this closed the whole session: the only
    * available hammer, and the next message silently started a fresh session
-   * with no memory of the exchange.) "Nothing running" is a success — the
+   * with no memory of the exchange.) "Nothing running" is a success, the
    * user's intent (stop) is already true. The response contract is unchanged.
    */
   private async cancelConversation(body: JsonRecord): Promise<Response> {
@@ -367,7 +367,7 @@ export class HomeAssistantConversationRoutes {
   }
 
   /**
-   * Read an optional grounding reference — the pre-registered home-graph
+   * Read an optional grounding reference, the pre-registered home-graph
    * knowledge space / Home Assistant installation this turn should consult.
    * Accepts a nested `grounding` object or top-level `knowledgeSpaceId` /
    * `installationId` (with snake_case variants); returns undefined when neither

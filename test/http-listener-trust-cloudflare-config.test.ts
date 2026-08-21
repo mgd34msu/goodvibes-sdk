@@ -2,20 +2,20 @@
  * http-listener-trust-cloudflare-config.test.ts
  *
  * `trustCloudflare` decides whether the listener reads the real client IP out
- * of CF-Connecting-IP — the address the rate limiter counts against and the
+ * of CF-Connecting-IP, the address the rate limiter counts against and the
  * access log records. The listener carried the whole mechanism, including the
  * published-range check that is the only thing stopping any peer from choosing
  * which address it is rate-limited as.
  *
  * It was reachable ONLY as a constructor argument. There was no config key and
- * no config fallback — unlike `trustProxy`, which has both — so no shipped
+ * no config fallback, unlike `trustProxy`, which has both, so no shipped
  * composition could turn it on, and the range check was dead on every daemon
  * anyone runs.
  *
  * These pin the CONFIG PATH: the key exists, it ships off, it reads through the
  * same fallback shape `trustProxy` uses, and an explicit constructor argument
  * still wins. The range semantics themselves are `isCloudflareIp`, exercised
- * here at the boundary that matters — inside a published range versus outside.
+ * here at the boundary that matters, inside a published range versus outside.
  */
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';

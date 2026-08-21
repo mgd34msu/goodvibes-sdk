@@ -3,7 +3,7 @@
  *
  * The release policy: a report passes only when nothing sits in
  * `graduate-candidate`. A validated flag must flip on (become `graduated`) or
- * record a dated blocker (become `blocked`) — otherwise it blocks the release.
+ * record a dated blocker (become `blocked`), otherwise it blocks the release.
  */
 import { describe, expect, test } from 'bun:test';
 import {

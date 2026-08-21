@@ -12,7 +12,7 @@
  * adapter context is rebuilt per inbound message, so anything held on the
  * context would be a fresh, empty cache every time and would dedupe nothing.
  *
- * Bounded and expiring — a dedup cache that grows forever is its own defect.
+ * Bounded and expiring, a dedup cache that grows forever is its own defect.
  */
 
 const DEFAULT_TTL_MS = 10 * 60_000;
@@ -64,7 +64,7 @@ export class InboundMessageDedup {
    * stops two concurrent deliveries of one message both running the pipeline.
    * That ordering has a consequence: if the work then FAILS, the key stays
    * claimed, and a retry is suppressed as a duplicate of an attempt that never
-   * finished. The message is silently dropped — which, for a caller whose
+   * finished. The message is silently dropped, which, for a caller whose
    * whole purpose is to tell somebody a message arrived, is worse than the
    * double-delivery the claim was preventing.
    *
@@ -73,7 +73,7 @@ export class InboundMessageDedup {
    * advances only after processing completes, so a failure there is
    * DESIGNED to redeliver, and the redelivery has to be allowed to succeed.
    *
-   * Releasing a key that was never claimed is a no-op, not an error — an error
+   * Releasing a key that was never claimed is a no-op, not an error, an error
    * path that can itself throw is not much of an error path.
    */
   release(key: string): void {
@@ -112,5 +112,5 @@ export function inboundDedupKey(
   return `${surface}:${scope ?? ''}:${messageId.trim()}`;
 }
 
-/** The ntfy adapter's shared cache — see the module docstring for why it is here. */
+/** The ntfy adapter's shared cache, see the module docstring for why it is here. */
 export const ntfyInboundDedup = new InboundMessageDedup();

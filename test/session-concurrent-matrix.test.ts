@@ -1,7 +1,7 @@
 /**
  * session-concurrent-matrix.test.ts
  *
- * D7c — CONCURRENT SESSIONS ARE A MUST-HAVE. N sessions across N surfaces coexist
+ * D7c, CONCURRENT SESSIONS ARE A MUST-HAVE. N sessions across N surfaces coexist
  * on ONE daemon: starting one never disturbs another, heartbeats are independent,
  * closing ONE closes only that one, and a daemon restart survives all of them.
  *

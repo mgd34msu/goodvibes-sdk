@@ -3,7 +3,7 @@
  *
  * A cold eval: K on a chain cancelled its running leaf, which routed through
  * failChain and flipped the whole chain + owner to "✗ failed" while the cohort
- * tally read "0 completed, 1 failed, 0 cancelled" — contradicting the transcript's
+ * tally read "0 completed, 1 failed, 0 cancelled", contradicting the transcript's
  * "operator cancellation". Only the leaf showed ⊘ cancelled.
  *
  * Fix: a cancelled member agent cancels the CHAIN (cancelChain), setting
@@ -43,7 +43,7 @@ function createHarness() {
     workflowEvents.push({ type: envelope.type, data: (envelope as unknown as { payload: Record<string, unknown> }).payload });
   });
   // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-  // with a per-key conditional return type — a by-string-key stub can't be typed
+  // with a per-key conditional return type, a by-string-key stub can't be typed
   // against that generic signature directly (TypeScript hits its own recursion
   // limit, "Excessive stack depth", comparing two such generic conditional
   // signatures). Casting the whole mock once at the boundary sidesteps that

@@ -177,7 +177,7 @@ export class WrfcController {
     // phantom-work guard). It is read only via this internal seam shape, set
     // exclusively by createWrfcControllerForTest; production defaults to false.
     this.skipClaimVerification = (deps as { readonly skipClaimVerification?: boolean }).skipClaimVerification ?? false;
-    // Cache existsSync at construction time — the workmap will mkdir under projectRoot
+    // Cache existsSync at construction time, the workmap will mkdir under projectRoot
     // during the first appendOwnerDecision, so checking later would always return true.
     this.projectRootExistedAtStartup = existsSync(deps.projectRoot);
     this.createWorktree = deps.createWorktree ?? (() => new AgentWorktree(this.projectRoot));
@@ -264,7 +264,7 @@ export class WrfcController {
         // NOTE: We intentionally only re-inject for claimsVerified===false (kind='unverified').
         // The 'unverifiable_no_claims' path leaves claimsVerified===undefined; if that chain
         // was interrupted mid-review, the reviewer already received the synthetic issue in
-        // its task text during startReview — it does not need re-injection on resume.
+        // its task text during startReview, it does not need re-injection on resume.
         if (chain.claimsVerified === false) {
           chain.syntheticIssues ??= [];
           const alreadyInjected = chain.syntheticIssues.some((issue) =>
@@ -345,10 +345,10 @@ export class WrfcController {
    * the schema version is newer than this runtime supports.
    *
    * Schema versioning:
-   * - Missing schemaVersion (v0/legacy): accepted for back-compat — the JSON
+   * - Missing schemaVersion (v0/legacy): accepted for back-compat, the JSON
    *   is the raw chain object directly.
    * - schemaVersion === CURRENT_WRFC_CHAIN_SCHEMA_VERSION (1): unwrap { schemaVersion, chain }.
-   * - schemaVersion > CURRENT_WRFC_CHAIN_SCHEMA_VERSION: rejected — fail closed.
+   * - schemaVersion > CURRENT_WRFC_CHAIN_SCHEMA_VERSION: rejected, fail closed.
    */
   deserializeChain(json: string): WrfcChain | null {
     let raw: unknown;
@@ -369,7 +369,7 @@ export class WrfcController {
     ) {
       const version = (raw as { schemaVersion: number }).schemaVersion;
       if (version > CURRENT_WRFC_CHAIN_SCHEMA_VERSION) {
-        logger.error('WrfcController.deserializeChain: future schemaVersion rejected — upgrade runtime to read this payload', {
+        logger.error('WrfcController.deserializeChain: future schemaVersion rejected, upgrade runtime to read this payload', {
           schemaVersion: version,
           supportedVersion: CURRENT_WRFC_CHAIN_SCHEMA_VERSION,
         });
@@ -391,7 +391,7 @@ export class WrfcController {
       || !('ownerAgentId' in candidate) || typeof (candidate as { ownerAgentId: unknown }).ownerAgentId !== 'string'
       || !('task' in candidate) || typeof (candidate as { task: unknown }).task !== 'string'
     ) {
-      logger.warn('WrfcController.deserializeChain: invalid chain JSON — missing required fields (id, state, ownerAgentId, task)');
+      logger.warn('WrfcController.deserializeChain: invalid chain JSON, missing required fields (id, state, ownerAgentId, task)');
       return null;
     }
     return candidate as WrfcChain;
@@ -410,7 +410,7 @@ export class WrfcController {
   importChain(chain: WrfcChain, force = false): boolean {
     const existing = this.chains.get(chain.id);
     if (existing && !isChainTerminal(existing.state) && !force) {
-      logger.warn('WrfcController.importChain: refused — existing chain is non-terminal; use force=true to overwrite', {
+      logger.warn('WrfcController.importChain: refused, existing chain is non-terminal; use force=true to overwrite', {
         chainId: chain.id,
         existingState: existing.state,
       });
@@ -419,7 +419,7 @@ export class WrfcController {
     // Insert into the chain map BEFORE reapZombieChain runs. reapZombieChain
     // emits state-changed + chain-failed for a terminal transition, and every
     // other terminal transition in this controller operates on a chain already
-    // present in this.chains — so a consumer that resolves the chain via
+    // present in this.chains, so a consumer that resolves the chain via
     // getChain(id) in response to those events finds it, consistent with the
     // rest of the lifecycle. (chain is a reference already held here, so
     // setting first and then mutating it in reapZombieChain is equivalent.)
@@ -439,10 +439,10 @@ export class WrfcController {
    * Item d5 (see CHANGELOG 0.38.0): resurrection-safe zombie check for a chain about
    * to be imported at rehydrate. A non-terminal chain whose ENTIRE roster
    * (allAgentIds) is absent from THIS process's live AgentManager never
-   * survived the restart — no in-process execution is coming back to finish
+   * survived the restart, no in-process execution is coming back to finish
    * it, so it would otherwise show as "running" forever. If even ONE roster
    * agent id IS live (e.g. re-imported mid-session, not at a real process
-   * restart), this returns false and the chain is left exactly as imported —
+   * restart), this returns false and the chain is left exactly as imported,
    * reaping only ever fires when NOTHING could possibly still be driving it.
    */
   private isZombieChain(chain: WrfcChain): boolean {
@@ -456,7 +456,7 @@ export class WrfcController {
    * Deliberately does NOT call failChain()/cancelChain(): those assume a
    * live in-memory execution (cancel running children, complete the owner
    * agent record, re-check gates for siblings) that makes no sense for a
-   * chain whose entire roster is already confirmed dead — this is a direct,
+   * chain whose entire roster is already confirmed dead, this is a direct,
    * minimal field mutation plus the same state-changed/chain-failed events
    * every other terminal transition emits, so consumers see one consistent
    * "chain failed" signal regardless of which path produced it.
@@ -474,7 +474,7 @@ export class WrfcController {
       reason,
       failureKind: 'other',
     });
-    logger.warn('WrfcController.importChain: reaped zombie chain — no member agent survived restart', {
+    logger.warn('WrfcController.importChain: reaped zombie chain, no member agent survived restart', {
       chainId: chain.id,
       priorState: from,
       agentIds: chain.allAgentIds,
@@ -727,7 +727,7 @@ export class WrfcController {
   /**
    * True when verifyEngineerClaims should be skipped: the explicit test-only
    * flag (createWrfcControllerForTest), or projectRoot not existing at
-   * construction (cached — the workmap mkdirs it later). Both are false in
+   * construction (cached, the workmap mkdirs it later). Both are false in
    * any real session, so claim verification always runs in production.
    */
   private shouldSkipClaimVerification(): boolean {
@@ -852,7 +852,7 @@ export class WrfcController {
     const reason = errorMessage ?? `Agent ${agentId} failed`;
     // A transport-classified failure of the most recently spawned child gets one
     // bounded automatic retry (respawn same role/task) before the chain is failed
-    // outright — see retryTransportFailure. Guarding on lastChildSpawn.agentId
+    // outright, see retryTransportFailure. Guarding on lastChildSpawn.agentId
     // matching this exact agentId avoids acting on a stale/duplicate failure event
     // for an agent that isn't the chain's current active child.
     if (
@@ -865,7 +865,7 @@ export class WrfcController {
     }
     this.setWrfcWorkPlanTaskStatus(chain, agentId, 'failed', reason);
     // A member that spent its whole turn budget is a typed turn-budget exhaustion
-    // (set at the source on the record), not an infrastructure error — carry the
+    // (set at the source on the record), not an infrastructure error, carry the
     // applied limit + source onto the outcome so a consumer never regexes prose.
     const failedRecord = this.agentManager.getStatus(agentId);
     const isTurnBudget = failedRecord?.failureReason === 'max_turns' || isTurnBudgetExhaustedMessage(reason);
@@ -905,7 +905,7 @@ export class WrfcController {
     });
     const timer = setTimeout(() => {
       // The chain may have reached a terminal state while this retry was waiting
-      // (e.g. cancelled) — don't resurrect it.
+      // (e.g. cancelled), don't resurrect it.
       if (isChainTerminal(chain.state)) return;
       const record = this.spawnWrfcAgent(chain, spawn.role, spawn.template, spawn.task, spawn.dangerouslyDisableWrfc, spawn.subtaskId);
       this.registerSpawnedChild(chain, record, spawn.role, spawn.subtaskId);
@@ -936,12 +936,12 @@ export class WrfcController {
       this.cancelChain(chain, reason ?? 'WRFC owner agent cancelled');
       return;
     }
-    // A CANCELLED member agent means the whole chain was cancelled — an operator
+    // A CANCELLED member agent means the whole chain was cancelled, an operator
     // kill of any member (the fleet cascade cancels the running leaf first), or an
     // explicit interrupt. That is an intended STOP, not a failure: cancel the chain
     // so the chain row, owner row, cohort tally, and completion narration all read
     // 'cancelled', not '✗ failed'. (Genuine agent CRASHES arrive as 'failed' via a
-    // separate path and still failChain — see onAgentFailed.) The controller's own
+    // separate path and still failChain, see onAgentFailed.) The controller's own
     // cascade re-cancels are guarded by the isChainTerminal check above.
     this.setWrfcWorkPlanTaskStatus(chain, agentId, 'cancelled', reason ?? `Agent ${agentId} cancelled`);
     this.cancelChain(chain, reason ?? `Agent ${agentId} cancelled`);
@@ -1008,7 +1008,7 @@ export class WrfcController {
       unsatisfiedConstraintIds,
       constraintFailure,
     } = constraintEvaluation;
-    // A false acceptance-checklist item ⇒ the deliverable doesn't meet the contract derived from the task (wrong interface/cardinality/format/threshold): correct-but-not-what-was-asked cannot pass, whatever the score. An ABSENT/EMPTY checklist also blocks — a review that records nothing about what was verified cannot pass (shared deterministic gate, completion-report.ts).
+    // A false acceptance-checklist item ⇒ the deliverable doesn't meet the contract derived from the task (wrong interface/cardinality/format/threshold): correct-but-not-what-was-asked cannot pass, whatever the score. An ABSENT/EMPTY checklist also blocks, a review that records nothing about what was verified cannot pass (shared deterministic gate, completion-report.ts).
     const checklistGate = evaluateAcceptanceChecklistGate(review);
     if (checklistGate.unmet.length > 0) {
       review.issues ??= [];
@@ -1016,9 +1016,9 @@ export class WrfcController {
     }
     if (checklistGate.missing) {
       review.issues ??= [];
-      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist — the review records nothing about what was verified against the task contract, so it cannot pass. Emit acceptanceChecklist items derived from the original task.', pointValue: 0 });
+      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist, the review records nothing about what was verified against the task contract, so it cannot pass. Emit acceptanceChecklist items derived from the original task.', pointValue: 0 });
     }
-    // MIN-4: claimsVerified===false is a mechanical block — cannot pass review regardless of score.
+    // MIN-4: claimsVerified===false is a mechanical block, cannot pass review regardless of score.
     const passed = review.score >= threshold && !constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && chain.claimsVerified !== false;
     // The gate-inclusive verdict rides the chain so wire consumers render the
     // TRUE outcome, not the reviewer's own passed claim.
@@ -1079,7 +1079,7 @@ export class WrfcController {
           this.runtimeBus,
           this.sessionId,
           chain.id,
-          `Score regression warning: initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10 — both below initial. Fix quality may be degrading.`,
+          `Score regression warning: initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10, both below initial. Fix quality may be degrading.`,
         );
       }
     }
@@ -1092,7 +1092,7 @@ export class WrfcController {
           ? `Engineer/fixer claims could not be verified on disk (suspected phantom work) after ${attemptsLabel}`
           : constraintFailure && review.score >= threshold
             ? `Unsatisfied constraints [${unsatisfiedConstraintIds.join(',')}] after ${attemptsLabel}`
-            : `Score ${review.score}/10 below threshold ${threshold}/10 after ${attemptsLabel} — below threshold`;
+            : `Score ${review.score}/10 below threshold ${threshold}/10 after ${attemptsLabel}, below threshold`;
       this.failChain(
         chain,
         failureReason,
@@ -1135,7 +1135,7 @@ export class WrfcController {
       { role: 'fixer' });
 
     const rawScope = getWrfcCommitScope(this.configManager);
-    // 'off' cannot drive a worktree merge lane — the fix graph needs commits; scoped is the safe floor.
+    // 'off' cannot drive a worktree merge lane, the fix graph needs commits; scoped is the safe floor.
     const commitScope = rawScope === 'off' ? 'scoped' : rawScope;
     const effectiveReview = augmentReviewWithMissingConstraintFindings(review, targetConstraintIds);
     void runner.run({
@@ -1368,7 +1368,7 @@ export class WrfcController {
       gate: failedGates.map((gate) => gate.gate).join(', '),
     });
 
-    logger.debug('WrfcController.processGateResults: gate failure — spawned same-chain fixer', {
+    logger.debug('WrfcController.processGateResults: gate failure, spawned same-chain fixer', {
       chainId: chain.id,
       fixerAgentId: fixerRecord.id,
     });
@@ -1439,7 +1439,7 @@ export class WrfcController {
       }
     } else {
       // Gate failure: spawn exactly ONE fixer (for the gateRunner). Non-owner chains
-      // stay in awaiting_gates — they will be committed/passed once the gateRunner's
+      // stay in awaiting_gates, they will be committed/passed once the gateRunner's
       // fix→review cycle eventually brings gates back to passing.
       for (const chain of readyChains) {
         if (chain.id !== gateRunner.id) {
@@ -1463,7 +1463,7 @@ export class WrfcController {
     }
 
     // Planned-fix cycles land their work via the engine lane; with no gate
-    // fixer/integrator the initial engineer tree is superseded — nothing to commit.
+    // fixer/integrator the initial engineer tree is superseded, nothing to commit.
     const plannedFixOwnsTheCommit = chain.fixAttempts > 0
       && !chain.fixerAgentId
       && !chain.integratorAgentId
@@ -1479,7 +1479,7 @@ export class WrfcController {
         return;
       }
       // A structurally odd chain (no engineer/fixer/integrator) cannot be auto-committed, but the
-      // full-scope review and gates already passed — that is what determines success. Surface the
+      // full-scope review and gates already passed, that is what determines success. Surface the
       // miss as a warning on a passing chain rather than flipping a green chain to FAILED.
       logger.warn('WrfcController.autoCommit: no write-capable WRFC agent found on chain; skipping commit', {
         chainId: chain.id,
@@ -1503,7 +1503,7 @@ export class WrfcController {
         if (commitScope === 'scoped') {
           const touchedPaths = this.collectChainTouchedPaths(chain);
           if (touchedPaths.length === 0) {
-            // Do NOT fall back to a full-tree `--all` sweep here — an empty self-reported
+            // Do NOT fall back to a full-tree `--all` sweep here, an empty self-reported
             // ledger means we genuinely don't know what this chain touched, and committing
             // everything dirty in the working tree is exactly the trust bug this fixes.
             ledgerEmpty = true;
@@ -1571,7 +1571,7 @@ export class WrfcController {
     if (chain.subtasks && chain.subtasks.length > 0) {
       for (const subtask of chain.subtasks) {
         // A subtask whose fix work went through a planned workstream cycle is
-        // already committed/merged by the engine's integration lane — its
+        // already committed/merged by the engine's integration lane, its
         // original engineer tree is superseded, never re-merged here.
         add(subtask.fixerAgentId ?? (subtask.fixAttempts > 0 ? undefined : subtask.engineerAgentId));
       }
@@ -1605,7 +1605,7 @@ export class WrfcController {
    * last-stored report slots (chain.engineerReport / chain.integratorReport /
    * subtask.engineerReport) for chains serialized before touchedPaths existed.
    *
-   * Self-reported, not ground truth — same accuracy ceiling as verifyEngineerClaims. Per-agent
+   * Self-reported, not ground truth, same accuracy ceiling as verifyEngineerClaims. Per-agent
    * worktree isolation (AgentWorktree.create) is not wired up in this controller today, so
    * there is no git-branch-diff signal to corroborate against.
    */
@@ -1632,7 +1632,7 @@ export class WrfcController {
     const firstLine = fullTask.replace(/\s+/g, ' ').slice(0, 72) || chain.id;
     const subject = `WRFC: ${firstLine}`;
 
-    // Subject is length-capped for git log readability; the body below is never truncated —
+    // Subject is length-capped for git log readability; the body below is never truncated,
     // this is the fix for the "anything past 72 characters is silently discarded" bug.
     const bodyLines: string[] = ['', fullTask || chain.id];
 
@@ -1650,7 +1650,7 @@ export class WrfcController {
       const touchedPaths = this.collectChainTouchedPaths(chain);
       bodyLines.push(touchedPaths.length > 0
         ? `Staged paths (${touchedPaths.length}): ${touchedPaths.join(', ')}`
-        : 'Staged paths: (none — chain edit ledger empty)');
+        : 'Staged paths: (none, chain edit ledger empty)');
     }
 
     return [subject, ...bodyLines].join('\n');
@@ -1754,11 +1754,11 @@ export class WrfcController {
     // Honest completion narration: an operator cancellation summarises the work
     // that already landed on disk from the chain's edit ledger, mirroring the
     // dual-outcome message pattern used for a passed chain's commit note. So the
-    // user sees "cancelled — N file(s) already modified on disk" rather than a bare
+    // user sees "cancelled, N file(s) already modified on disk" rather than a bare
     // stop that hides in-flight edits.
     const landed = this.collectChainTouchedPaths(chain);
     const narration = landed.length > 0
-      ? `${reason} — ${landed.length} file${landed.length === 1 ? '' : 's'} already modified on disk`
+      ? `${reason}, ${landed.length} file${landed.length === 1 ? '' : 's'} already modified on disk`
       : reason;
 
     chain.error = narration;
@@ -2021,7 +2021,7 @@ export class WrfcController {
   /**
    * Appends a completion report's self-reported filesCreated/filesModified/filesDeleted
    * into the chain's running edit ledger (chain.touchedPaths). Called for every engineer,
-   * fixer, and integrator completion — not just the first pass — so a chain that goes
+   * fixer, and integrator completion, not just the first pass, so a chain that goes
    * through gate-fix or review-fix cycles still has the fixer's edits represented. This is
    * why it is a standalone accumulator rather than reading the last-stored report field:
    * chain.engineerReport / subtask.engineerReport are last-write slots that do not reliably
@@ -2062,7 +2062,7 @@ export class WrfcController {
     }
 
     // Capture constraints from the engineer report and emit the enumeration event.
-    // Only emit once per chain — the initial engineer completion, not fixer re-runs.
+    // Only emit once per chain, the initial engineer completion, not fixer re-runs.
     //
     // Note on narrowing: EngineerReport.archetype is the literal 'engineer', but
     // GenericReport.archetype is a wide `string`. A bare `report.archetype === 'engineer'`
@@ -2079,7 +2079,7 @@ export class WrfcController {
       // and only for constraints whose text describes the parallelism/spawn-count
       // topology the collapse removed. Such a constraint cannot be satisfied by ANY
       // fix agent (the precondition is gone), so it is excluded from the rubric and
-      // can never fail the review — no fix-loop re-billing while chasing it.
+      // can never fail the review, no fix-loop re-billing while chasing it.
       if (chain.fanoutCollapse) {
         const unsatisfiable = chain.constraints
           .filter((constraint) => isFanoutShapeConstraintText(constraint.text))
@@ -2133,17 +2133,17 @@ export class WrfcController {
         chain.syntheticIssues ??= [];
         chain.syntheticIssues.push({ severity: 'critical', description });
       }
-      // The authoritative constraint list is NOT overwritten — chain.constraints remains the
+      // The authoritative constraint list is NOT overwritten, chain.constraints remains the
       // original enumeration from the initial engineer turn.
     }
 
     // Item 2 / MAJ-1 / MAJ-9: Verify claims before handing off to reviewer.
     // Runs for BOTH the initial engineer pass (chain.state === 'engineering') AND fixer
     // re-runs (chain.state === 'fixing'). A lying fixer that claims files it did not write
-    // is the same phantom-work pattern as a lying engineer — the same tri-state logic applies.
+    // is the same phantom-work pattern as a lying engineer, the same tri-state logic applies.
     //
     // Skip conditions (see shouldSkipClaimVerification for full rationale):
-    //   - Explicit opt-out (skipClaimVerification, injected only via createWrfcControllerForTest) — harness use only.
+    //   - Explicit opt-out (skipClaimVerification, injected only via createWrfcControllerForTest), harness use only.
     //   - Environment-driven: projectRoot does not exist on disk (existsSync false).
     //
     // Tri-state kind logic (same for engineer and fixer passes):
@@ -2153,17 +2153,17 @@ export class WrfcController {
     //   'unverifiable_no_claims'  → claimsVerified=undefined, inject advisory synthetic issue.
     //                               NOTE: claimsVerified is left undefined (not false) because we cannot confirm
     //                               work WAS done, but we also cannot confirm it WASN't. The synthetic issue
-    //                               is the enforcement mechanism — the mechanical MIN-4 gate is NOT applied.
+    //                               is the enforcement mechanism, the mechanical MIN-4 gate is NOT applied.
     //                               For fixers, a zero-claims completion is MORE suspicious (a fix round
-    //                               by definition follows concrete reviewer findings) — but we keep the same
+    //                               by definition follows concrete reviewer findings), but we keep the same
     //                               advisory contract for consistency; the reviewer sees the synthetic issue.
     //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate will block pass.
     if (!this.shouldSkipClaimVerification()) {
       const claimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
       if (claimVerification.kind === 'unverifiable_no_claims') {
-        // Leave chain.claimsVerified as undefined — not a confirmed false, but suspicious.
+        // Leave chain.claimsVerified as undefined, not a confirmed false, but suspicious.
         const agentClass = chain.state === 'fixing' ? 'fixer' : 'engineer';
-        logger.warn(`WrfcController: ${agentClass} sent success prose with no claims and no git diff — suspected phantom work`, {
+        logger.warn(`WrfcController: ${agentClass} sent success prose with no claims and no git diff, suspected phantom work`, {
           chainId: chain.id,
           kind: claimVerification.kind,
           summary: claimVerification.summary,
@@ -2171,14 +2171,14 @@ export class WrfcController {
         chain.syntheticIssues ??= [];
         chain.syntheticIssues.push({
           severity: 'critical',
-          description: `No work claimed and no git diff detected — suspected phantom work: ${claimVerification.summary}`,
+          description: `No work claimed and no git diff detected, suspected phantom work: ${claimVerification.summary}`,
         });
       } else {
         chain.claimsVerified = claimVerification.verified;
         if (!claimVerification.verified) {
           // kind === 'unverified': claims present but missing on disk and no git corroboration.
           const agentClass = chain.state === 'fixing' ? 'fixer' : 'engineer';
-          logger.warn(`WrfcController: ${agentClass} claim verification failed — phantom work detected`, {
+          logger.warn(`WrfcController: ${agentClass} claim verification failed, phantom work detected`, {
             chainId: chain.id,
             kind: claimVerification.kind,
             summary: claimVerification.summary,
@@ -2349,8 +2349,8 @@ export class WrfcController {
     //   'unverified'              → claimsVerified=false,    inject synthetic issue; MIN-4 gate blocks pass.
     const subtaskClaimVerification = verifyEngineerClaims(reportForReview, this.projectRoot);
     if (subtaskClaimVerification.kind === 'unverifiable_no_claims') {
-      // Leave subtask.claimsVerified as undefined — suspicious but not a confirmed false.
-      logger.warn('WrfcController: compound subtask engineer sent success prose with no claims and no git diff — suspected phantom work', {
+      // Leave subtask.claimsVerified as undefined, suspicious but not a confirmed false.
+      logger.warn('WrfcController: compound subtask engineer sent success prose with no claims and no git diff, suspected phantom work', {
         chainId: chain.id,
         subtaskId: subtask.id,
         kind: subtaskClaimVerification.kind,
@@ -2359,13 +2359,13 @@ export class WrfcController {
       subtask.syntheticIssues ??= [];
       subtask.syntheticIssues.push({
         severity: 'critical',
-        description: `No work claimed and no git diff detected for subtask ${subtask.id} — suspected phantom work: ${subtaskClaimVerification.summary}`,
+        description: `No work claimed and no git diff detected for subtask ${subtask.id}, suspected phantom work: ${subtaskClaimVerification.summary}`,
       });
     } else {
       subtask.claimsVerified = subtaskClaimVerification.verified;
       if (!subtaskClaimVerification.verified) {
         // kind === 'unverified': claims present but missing on disk and no git corroboration.
-        logger.warn('WrfcController: compound engineer claim verification failed — phantom work detected', {
+        logger.warn('WrfcController: compound engineer claim verification failed, phantom work detected', {
           chainId: chain.id,
           subtaskId: subtask.id,
           kind: subtaskClaimVerification.kind,
@@ -2428,7 +2428,7 @@ export class WrfcController {
     const constraintEvaluation = this.evaluateSubtaskConstraints(subtask, review);
     // The SAME deterministic acceptance-checklist gate as the main chain review
     // (shared helper, completion-report.ts): a verified:false item blocks a
-    // pass whatever the score, and an absent/empty checklist blocks — a
+    // pass whatever the score, and an absent/empty checklist blocks, a
     // sub-deliverable review that records nothing verified cannot pass.
     const checklistGate = evaluateAcceptanceChecklistGate(review);
     if (checklistGate.unmet.length > 0) {
@@ -2437,7 +2437,7 @@ export class WrfcController {
     }
     if (checklistGate.missing) {
       review.issues ??= [];
-      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist — the review records nothing about what was verified against the sub-deliverable contract, so it cannot pass. Emit acceptanceChecklist items derived from the sub-deliverable ask.', pointValue: 0 });
+      review.issues.push({ severity: 'critical', description: 'Reviewer emitted no acceptance checklist, the review records nothing about what was verified against the sub-deliverable contract, so it cannot pass. Emit acceptanceChecklist items derived from the sub-deliverable ask.', pointValue: 0 });
     }
     // MIN-4: claimsVerified===false is a mechanical block on compound subtasks too.
     const passed = review.score >= threshold && !constraintEvaluation.constraintFailure && checklistGate.unmet.length === 0 && !checklistGate.missing && subtask.claimsVerified !== false;
@@ -2482,7 +2482,7 @@ export class WrfcController {
           this.runtimeBus,
           this.sessionId,
           chain.id,
-          `Score regression warning (subtask ${subtask.id}): initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10 — both below initial. Fix quality may be degrading.`,
+          `Score regression warning (subtask ${subtask.id}): initial ${initial}/10, last two ${lastTwo[0]}/10, ${lastTwo[1]}/10, both below initial. Fix quality may be degrading.`,
         );
       }
     }
@@ -2652,7 +2652,7 @@ export class WrfcController {
     }
     // Remember how this child was spawned so a transport-classified failure of
     // this exact agent can be retried later by respawning with identical inputs
-    // (see retryTransportFailure). Overwritten on every spawn — only ever
+    // (see retryTransportFailure). Overwritten on every spawn, only ever
     // describes the most recent child.
     chain.lastChildSpawn = { agentId: record.id, role, template, task, dangerouslyDisableWrfc, subtaskId };
     return record;
@@ -2663,7 +2663,7 @@ export class WrfcController {
   }
 
   /**
-   * Terminal success path — the ONE derivation point for a passing chain (its counterpart is
+   * Terminal success path, the ONE derivation point for a passing chain (its counterpart is
    * failChain). The chain's terminal status derives here from the full-scope review and quality
    * gates, never from the auto-commit result: the optional `commitNote` states the commit outcome
    * SEPARATELY in the completion message so a skipped/failed commit reads as a warning on a passing
@@ -2688,7 +2688,7 @@ export class WrfcController {
 
   /**
    * `message` is the chain STATUS (what the workflow did); `answer` is what the
-   * work produced. Readers of this agent get the ANSWER — the session
+   * work produced. Readers of this agent get the ANSWER, the session
    * transcript, and through it the chat surface the request came from. The
    * status stays on `progress` under the 'operator' audience, which the channel
    * delivery path never forwards to a person.
@@ -2707,7 +2707,7 @@ export class WrfcController {
     // children), so its own usage/toolCallCount stay at the spawn-time zero
     // default forever unless rolled up here from the real numbers its phase
     // agents accumulated. This is what makes AgentManager.getStatus()/list()
-    // — the read path TUI per-agent surfaces actually use — return real data
+    //, the read path TUI per-agent surfaces actually use, return real data
     // for the owner instead of the never-updated zeros (a previous fix wired
     // the AGENT_COMPLETED.usage forwarding but nothing populated the source).
     owner.usage = this.aggregateChainUsage(chain);
@@ -2740,7 +2740,7 @@ export class WrfcController {
   /**
    * Roll up token usage across every agent that has ever run under this
    * chain (the owner plus all phase/subtask children, across every review
-   * and fix cycle — `chain.allAgentIds` already tracks the full roster for
+   * and fix cycle, `chain.allAgentIds` already tracks the full roster for
    * worktree cleanup, so it doubles as the usage-aggregation source). Each
    * contributor's usage is added in, including the owner's own (normally
    * zero, but summed rather than ignored in case it is ever populated

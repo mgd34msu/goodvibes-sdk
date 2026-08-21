@@ -1,5 +1,5 @@
 /**
- * Worktree isolation (wo/worktree-isolation) — stage (b): AgentOrchestrator
+ * Worktree isolation (wo/worktree-isolation), stage (b): AgentOrchestrator
  * honors a per-call working-directory override.
  *
  * Verified BEFORE this stage: AgentOrchestrator.getFullRegistry() cached ONE
@@ -15,13 +15,13 @@
  *   (orchestrator.ts).
  *
  * Two levels:
- *  1. Wiring — createRunContext(cwd) threads the override into BOTH
+ *  1. Wiring, createRunContext(cwd) threads the override into BOTH
  *     `workingDirectory` and the `getFullRegistry` closure it hands back,
  *     without touching getFullRegistry's own real implementation.
- *  2. The real thing — getFullRegistry(cwd) against REAL tool deps: two
+ *  2. The real thing, getFullRegistry(cwd) against REAL tool deps: two
  *     distinct cwds produce two DISTINCT ToolRegistry instances, and a
  *     spawned agent's real `write` tool actually writes into whichever cwd
- *     its record carries — the concrete claim stage (b) exists to prove.
+ *     its record carries, the concrete claim stage (b) exists to prove.
  */
 import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -72,14 +72,14 @@ describe('AgentOrchestrator — createRunContext cwd threading (wiring)', () => 
     expect(overrideCtx.getFullRegistry()).not.toBe(defaultCtx.getFullRegistry());
 
     // Calling with the SAME override twice returns the identical cached
-    // registry instance — a second worktree-mode phase for the same item
+    // registry instance, a second worktree-mode phase for the same item
     // must not pay a second registration cost.
     const overrideCtxAgain = orchestrator.createRunContext('/item/worktree/path');
     expect(overrideCtxAgain.getFullRegistry()).toBe(overrideCtx.getFullRegistry());
   });
 });
 
-/** Real (not stubbed) AgentOrchestratorToolDeps, minimal enough to satisfy registerAllTools's registration-time requirements without a full production wiring (runtime/services.ts). Scoped to `defaultDir` — matches `toolDeps.workingDirectory` exactly like real startup wiring. */
+/** Real (not stubbed) AgentOrchestratorToolDeps, minimal enough to satisfy registerAllTools's registration-time requirements without a full production wiring (runtime/services.ts). Scoped to `defaultDir`, matches `toolDeps.workingDirectory` exactly like real startup wiring. */
 const disposables = trackDisposables();
 
 function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<string, unknown> {
@@ -91,7 +91,7 @@ function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<strin
     // KNOWN SURVIVOR, and not this one: the override-cwd write below goes
     // through a registry that getFullRegistry(cwd) deliberately built with
     // `projectIndex: undefined`, and registerAllTools then makes its own
-    // (tools/index.ts). That instance is held only in tool closures — no
+    // (tools/index.ts). That instance is held only in tool closures, no
     // caller, this test included, can reach it to dispose it, so its 5s
     // debounce timeout survives the file. Closing it needs a disposal seam on
     // ToolRegistry in product code, not a change here.
@@ -111,7 +111,7 @@ function makeRealToolDeps(defaultDir: string, scratchRoot: string): Record<strin
     workflowServices: createWorkflowServices(),
     overflowHandler: new OverflowHandler({ baseDir: scratchRoot }),
     // registerAllTools resolves agentManager from either deps.agentManager or
-    // deps.remoteRunnerRegistry.agentManager — a real AgentManager is cheap
+    // deps.remoteRunnerRegistry.agentManager, a real AgentManager is cheap
     // and exercises the exact production duck-typed lookup path.
     agentManager: new AgentManager({
       configManager: { get: ((_key: string): unknown => undefined) as ConfigManager['get'] },

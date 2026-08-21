@@ -37,16 +37,16 @@ describe('orchestrator WRFC spawn continuation contract', () => {
 
   test('an explicit no-delegation instruction suppresses the routing directive entirely', () => {
     // The user asks for WRFC-shaped work but explicitly forbids spawning agents / starting a chain.
-    // The harness must inject NOTHING — never coerce against explicit user intent.
+    // The harness must inject NOTHING, never coerce against explicit user intent.
     expect(buildWrfcWorkflowRoutingPrompt(
       'Build a slugify CLI with WRFC. Do NOT spawn agents and do NOT start a WRFC chain.',
     )).toBeNull();
-    expect(buildWrfcWorkflowRoutingPrompt('WRFC review this, but do it yourself — no agents.')).toBeNull();
+    expect(buildWrfcWorkflowRoutingPrompt('WRFC review this, but do it yourself, no agents.')).toBeNull();
     expect(buildWrfcWorkflowRoutingPrompt("Implement the WRFC fix directly; don't delegate.")).toBeNull();
   });
 
   test('userProhibitsDelegation is high-precision: catches explicit prohibitions, ignores normal requests', () => {
-    // Caught — explicit negation paired with a delegation concept, or a direct-action instruction.
+    // Caught, explicit negation paired with a delegation concept, or a direct-action instruction.
     for (const prohibition of [
       'do not spawn agents',
       "don't spawn any subagents",
@@ -63,7 +63,7 @@ describe('orchestrator WRFC spawn continuation contract', () => {
     ]) {
       expect(userProhibitsDelegation(prohibition)).toBe(true);
     }
-    // Not caught — ordinary requests, including ones that opt INTO WRFC/agents.
+    // Not caught, ordinary requests, including ones that opt INTO WRFC/agents.
     for (const normal of [
       'WRFC review for a token bucket rate limiter',
       'build a slugify CLI with WRFC',

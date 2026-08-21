@@ -7,7 +7,7 @@
  * It is a problem with all of them. Every channel adapter reaches the broker
  * through `submitMessage` carrying a `routeId` and no `sessionId`, so every one
  * of them resolved to the closed session and every one of them would have been
- * black-holed the same way — Telegram is simply the surface the owner uses.
+ * black-holed the same way, Telegram is simply the surface the owner uses.
  *
  * The fix therefore lives at the shared seam, and this file demonstrates that
  * rather than inferring it from the call graph:
@@ -15,7 +15,7 @@
  *  - a SECOND adapter's real inbound path (Signal) heals a closed-bound
  *    conversation, with a real broker and real route bindings underneath;
  *  - the announcement goes out on the route the message arrived on, whatever
- *    surface that is — nothing about it is Telegram-shaped;
+ *    surface that is, nothing about it is Telegram-shaped;
  *  - the incident alarm keys on the failing surface, and `ChannelPluginRegistry`
  *    feeds it for every webhook-delivered surface at one seam, so no adapter
  *    can be forgotten.
@@ -83,7 +83,7 @@ describe('the healed seam is shared: a non-Telegram surface behaves identically'
     const h = await makeHarness();
     try {
       // Drive the adapter once so the binding is created exactly as production
-      // creates it, then close the session it bound — the observed state.
+      // creates it, then close the session it bound, the observed state.
       const first = await handleSignalSurfaceWebhook(new Request('http://localhost/webhook/signal', {
         method: 'POST',
         body: JSON.stringify({ source: '+15550001111', message: 'first message' }),
@@ -112,7 +112,7 @@ describe('the healed seam is shared: a non-Telegram surface behaves identically'
       expect(h.routeBindings.getBinding(bindingId)?.sessionId).toBe(rolled);
       expect(h.replies).toHaveLength(2);
 
-      // The announcement goes out on the SIGNAL route — nothing Telegram-shaped
+      // The announcement goes out on the SIGNAL route, nothing Telegram-shaped
       // anywhere in the path; the broker only ever names a route id, and the
       // delivery helper picks the escaper from that route's own surface.
       expect(h.notices).toHaveLength(1);
@@ -130,7 +130,7 @@ describe('the healed seam is shared: a non-Telegram surface behaves identically'
       'surfaces.whatsapp.signingSecret': signingSecret,
     });
     try {
-      // A real Meta Cloud webhook, signed the way Meta signs it — the adapter
+      // A real Meta Cloud webhook, signed the way Meta signs it, the adapter
       // rejects anything else, and a test that bypassed that would be exercising
       // a code path production never takes.
       const signedRequest = (text: string): Request => {
@@ -216,7 +216,7 @@ describe('the incident alarm is fed for every webhook surface at one seam', () =
   );
 
   test('the error is re-thrown so a retrying provider still sees a failure', async () => {
-    // Swallowing it here would turn a retryable 500 into a 200 — "might be
+    // Swallowing it here would turn a retryable 500 into a 200, "might be
     // redelivered" becomes "definitely lost", which is the opposite of the fix.
     const { registry } = registryWith('signal', async () => { throw new Error('boom'); });
     await expect(registry.handleInbound('/webhook/signal', new Request('http://localhost/x')))

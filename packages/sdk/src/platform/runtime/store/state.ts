@@ -1,5 +1,5 @@
 /**
- * RuntimeState — the canonical top-level state shape for the GoodVibes
+ * RuntimeState, the canonical top-level state shape for the GoodVibes
  * runtime store. All domain slices are defined here.
  *
  * Each domain includes revision, lastUpdatedAt, and source metadata fields.
@@ -61,7 +61,7 @@ import { createInitialIntelligenceState } from './domains/intelligence.js';
 import { createInitialSurfacePerfState } from './domains/surface-perf.js';
 
 /**
- * RuntimeState — the complete state shape managed by the runtime store.
+ * RuntimeState, the complete state shape managed by the runtime store.
  *
  * Domain slices, each with revision/lastUpdatedAt/source metadata.
  * All mutations must go through typed domain dispatch APIs.

@@ -106,7 +106,7 @@ describe('createLaunchTolerantProviderRegistry', () => {
     expect(openai).toBeDefined();
     expect(openai?.apiKey).toBe('');
     // Not every provider class carries a mutable `configured` field (OpenAIProvider
-    // computes it on demand rather than storing it) — the reset is conditional on
+    // computes it on demand rather than storing it), the reset is conditional on
     // the field existing at all, so this only asserts it when present.
     if (openai && 'configured' in openai) expect(openai.configured).toBe(false);
   });

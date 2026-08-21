@@ -1,5 +1,5 @@
 /**
- * capture-watchdogs.ts — the bounds that turn silence into a report.
+ * capture-watchdogs.ts, the bounds that turn silence into a report.
  *
  * Every one of these exists because something had NO bound and therefore no
  * failure: a start that never settled left the listener in `starting` forever,
@@ -13,7 +13,7 @@ export const START_TIMEOUT_MS = 15_000;
 /**
  * Default bound on an open stream that has delivered no audio.
  *
- * Frames arrive every 80 ms, so seconds of nothing is not slowness — it is a
+ * Frames arrive every 80 ms, so seconds of nothing is not slowness, it is a
  * recorder that is not reading the device.
  */
 export const FIRST_FRAME_TIMEOUT_MS = 5_000;

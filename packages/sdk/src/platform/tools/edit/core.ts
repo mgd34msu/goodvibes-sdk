@@ -201,9 +201,9 @@ async function buildImportGraphWarning(cwd: string, writtenPaths: Set<string>): 
       .split('\n')
       .filter((line) => relAffected.some((rel) => line.includes(rel)));
     if (outputLines.length > 0) {
-      return `\n⚠ Import graph: ${affectedSet.size} transitive dependent(s) affected by this edit — type errors detected in downstream files:\n${outputLines.join('\n')}`;
+      return `\n⚠ Import graph: ${affectedSet.size} transitive dependent(s) affected by this edit, type errors detected in downstream files:\n${outputLines.join('\n')}`;
     }
-    return `\n⚠ Import graph: ${affectedSet.size} transitive dependent(s) affected. tsc reported errors outside the affected set — check unrelated files.`;
+    return `\n⚠ Import graph: ${affectedSet.size} transitive dependent(s) affected. tsc reported errors outside the affected set, check unrelated files.`;
   } catch (err) {
     logger.warn('[import-graph] Import graph tracing failed', { error: summarizeError(err) });
     return undefined;
@@ -271,7 +271,7 @@ async function validateAfterTextEdits(
     await restoreOriginalContents(fileContents, env);
   }
   return {
-    error: `Post-edit validation failed${transactionMode === 'atomic' ? ' — edits rolled back' : ''}. ${formatValidatorFailure(failure)}`,
+    error: `Post-edit validation failed${transactionMode === 'atomic' ? ', edits rolled back' : ''}. ${formatValidatorFailure(failure)}`,
   };
 }
 
@@ -299,7 +299,7 @@ function formatOutput(results: EditResult[], format: 'count_only' | 'minimal' | 
       } else {
         const id = r.id ? ` [${r.id}]` : '';
         const statusTag = r.status ? ` [${r.status}]` : '';
-        lines.push(`  FAIL${statusTag}${id}: ${r.path} — ${r.error}`);
+        lines.push(`  FAIL${statusTag}${id}: ${r.path}, ${r.error}`);
         if (r.hint) {
           lines.push(`    HINT: ${r.hint}`);
         }
@@ -315,7 +315,7 @@ function formatOutput(results: EditResult[], format: 'count_only' | 'minimal' | 
       lines.push(`\n--- ${r.path}${id}${statusTag} (${r.occurrencesReplaced} replacement(s))${dryTag} ---`);
       if (r.diff) {
         if (r.diff_truncated) {
-          lines.push(`[diff truncated — showing first ${DIFF_PREVIEW_LENGTH} chars]`);
+          lines.push(`[diff truncated, showing first ${DIFF_PREVIEW_LENGTH} chars]`);
           lines.push(r.diff_preview ?? r.diff.slice(0, DIFF_PREVIEW_LENGTH));
         } else {
           lines.push(r.diff);
@@ -501,7 +501,7 @@ async function executeTextEdits(
     }
   }
 
-  // Post-edit diagnostics — cheap, in-process syntax check of each file we just
+  // Post-edit diagnostics, cheap, in-process syntax check of each file we just
   // wrote, appended as a text block (this output already carries text suffixes
   // like the import-graph warning). Off when configured off; empty block when
   // the provider finds nothing (honest absence).

@@ -1,7 +1,7 @@
 # Decision: browser push (Web Push) subscriptions, VAPID key custody, and the delivery seam
 
 Date: 2026-07-07
-Scope: SDK enabler for the desktop web UI — the headline PWA capability (receive
+Scope: SDK enabler for the desktop web UI, the headline PWA capability (receive
 approvals/completions as browser push notifications). Lands on SDK main.
 Status: accepted
 
@@ -21,7 +21,7 @@ Two facts shaped the design:
    off the wire and handled like credentials.
 2. **The SDK already has the pieces to do this without a new dependency.** Node's
    built-in `crypto` covers P-256 keygen, ECDH, HKDF, AES-128-GCM, and ES256
-   signing — everything RFC 8291 (message encryption) and RFC 8292 (VAPID)
+   signing, everything RFC 8291 (message encryption) and RFC 8292 (VAPID)
    require. The channels delivery seam is prior art for fanning an event out to
    many destinations, and the approval broker already exposes a `subscribe()`
    listener seam.
@@ -37,24 +37,24 @@ with handlers attached at RuntimeServices construction time via
 reached over real HTTP through the generic
 `/api/control-plane/methods/{id}/invoke` endpoint:
 
-- `push.vapid.get` — serve the public application-server key. (`get`, core)
-- `push.subscriptions.create` — register a device (endpoint + p256dh/auth).
-  (`create`, core — "subscribe")
-- `push.subscriptions.list` — list the caller's devices, redacted. (`list`, core)
-- `push.subscriptions.delete` — unsubscribe. (`delete`, core — delete means delete)
-- `push.subscriptions.verify` — send a live test push, return an honest receipt.
+- `push.vapid.get`, serve the public application-server key. (`get`, core)
+- `push.subscriptions.create`, register a device (endpoint + p256dh/auth).
+  (`create`, core, "subscribe")
+- `push.subscriptions.list`, list the caller's devices, redacted. (`list`, core)
+- `push.subscriptions.delete`, unsubscribe. (`delete`, core, delete means delete)
+- `push.subscriptions.verify`, send a live test push, return an honest receipt.
 
 `verify` is not a generic CRUD word, so it is documented in a new `push-delivery`
-category in `packages/contracts/src/core-verbs.ts` rather than smuggled in — a
+category in `packages/contracts/src/core-verbs.ts` rather than smuggled in, a
 single-purpose delivery probe, per the spec's own extension path.
 
-### 2. VAPID key custody — private key as a secret, never in the config
+### 2. VAPID key custody: private key as a secret, never in the config
 
-`push/vapid.ts` generates one P-256 keypair on first real need (lazy — a daemon
+`push/vapid.ts` generates one P-256 keypair on first real need (lazy, a daemon
 that never uses push never mints or stores a key) and persists the WHOLE keypair
 (including the private JWK) only through the `SecretsManager`, under the secret
 key `push.vapid.keypair`. That means it lands in the secure store (or the
-plaintext secrets file) per the active secret policy — **never** in the config,
+plaintext secrets file) per the active secret policy, **never** in the config,
 so it can never ride out in the secret-free config snapshot. The private key is
 used only to sign the short-lived VAPID JWT for one delivery; it is never logged
 and never returned by any read verb. Only the public key leaves the daemon
@@ -64,22 +64,22 @@ Subscription endpoints and key material are treated the same way: stored on disk
 in the daemon's own state directory (an atomic JSON store, same posture as the
 approval/session stores), and never returned over the wire. Read verbs hand back
 a redacted `PublicPushSubscription` (id, endpoint origin + short hash,
-timestamps, last outcome) — enough to manage a device without handing the
+timestamps, last outcome), enough to manage a device without handing the
 capability back out.
 
-### 3. Delivery seam — one path, honest failure, one real event source
+### 3. Delivery seam: one path, honest failure, one real event source
 
 `push/delivery.ts` is the single place a message is encrypted (RFC 8291 +
 `aes128gcm`, Node crypto) and POSTed to the subscription endpoint with the
 `Content-Encoding`, `TTL`, `Urgency`, and VAPID `Authorization` headers. The
-endpoint is whatever the browser registered — in tests a local HTTP sink, in
+endpoint is whatever the browser registered, in tests a local HTTP sink, in
 production the browser vendor's push service; this module never contacts a
 hard-coded service of its own.
 
 Honest degrade is centralized here: a `2xx` is `delivered`; a `404/410 gone`
 prunes the subscription (delete means delete on prune too) and reports `pruned`
 with the status that proved it dead; any other non-2xx or transport error is
-`failed` with the reason — never a faked success. No subscriptions means an
+`failed` with the reason, never a faked success. No subscriptions means an
 empty receipt list, not a silent success.
 
 The **real event source** wired for this landing is the approval broker: when an
@@ -102,7 +102,7 @@ daemon-side only and is not imported by the runtime-neutral or browser bundles.
 
 ## Verification
 
-`test/web-push-daemon-wire.test.ts` — a real `bootDaemon` proof (isolated home,
+`test/web-push-daemon-wire.test.ts`, a real `bootDaemon` proof (isolated home,
 ephemeral port, token auth) against a **local fake push sink** (never a real
 push service, never the external network):
 

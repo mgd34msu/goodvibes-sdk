@@ -6,7 +6,7 @@ import { BrowserSessionError, BrowserSessionManager, cdpEndpointCandidates } fro
 import type { BrowserProvisionIo } from '../packages/sdk/src/platform/browser/browser-types.js';
 
 // BrowserSessionManager.launch() does a real `mkdirSync(profileDirectory, ...)`
-// even with a fully mocked driver (see browser-sessions.ts) — a fixed literal
+// even with a fully mocked driver (see browser-sessions.ts), a fixed literal
 // '/tmp/...' string here would create that directory in the real host /tmp,
 // bypassing the TMPDIR redirection scripts/test.ts sets up for the whole
 // suite. Routing it through tmpdir() keeps it inside this run's sandboxed
@@ -77,7 +77,7 @@ function createManager(closes: string[]): BrowserSessionManager {
 /**
  * A manager whose `launchPersistentContext` is the caller's own function, so
  * tests can count calls, fail on demand, or hand back a context that reports
- * itself dead — the three shapes the single-instance and retry-cap rules
+ * itself dead, the three shapes the single-instance and retry-cap rules
  * have to tell apart.
  */
 function createControllableManager(
@@ -325,7 +325,7 @@ describe('single managed session, bounded retries', () => {
     await expect(manager.launch({})).rejects.toThrow(/boom/);
     await expect(manager.launch({})).rejects.toThrow(/boom/);
     // The third attempt is refused in plain words before it ever touches the
-    // driver again — no third window opens.
+    // driver again, no third window opens.
     await expect(manager.launch({})).rejects.toThrow(/stopped retrying/);
   });
 

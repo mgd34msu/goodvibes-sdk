@@ -1,10 +1,10 @@
 /**
- * ranking.ts — who should hold a surface, decided identically on every node.
+ * ranking.ts, who should hold a surface, decided identically on every node.
  *
  * The ranking is per SURFACE, not per node, and it is total and deterministic:
  * given the same two candidates and the same surface, every node reaches the
  * same answer without talking to anyone. That is what lets a split-brain heal
- * without negotiation — both sides compute the same winner and the loser stands
+ * without negotiation, both sides compute the same winner and the loser stands
  * down.
  *
  * Two orderings live here, and the difference between them matters.
@@ -23,12 +23,12 @@
  * Uptime is deliberately ABSENT. It was the second tier in the whole-node
  * design and it is exactly wrong for spread: the longest-lived node wins every
  * tiebreak, so it accumulates every surface and a freshly-booted second machine
- * never takes anything. Uptime survives only as a liveness signal — a node is
+ * never takes anything. Uptime survives only as a liveness signal, a node is
  * alive because it is heartbeating, not because it has been up a long time.
  *
  * STABLE ORDER (`compareStableRank`) drops the holdings tier and decides
  * anything that MUST resolve identically on both sides even when their views
- * disagree — chiefly two masters of one surface reconciling after a partition
+ * disagree, chiefly two masters of one surface reconciling after a partition
  * heals. Holdings are observed from traffic, so two nodes can briefly hold
  * different counts; a reconciliation decided on a disputed number could have
  * both sides believing they lost, or both believing they won. Version and a
@@ -140,7 +140,7 @@ export function outranksStably(
 /**
  * True when `candidate` carries a STRICTLY NEWER version than `incumbent`.
  *
- * This — and only this — authorizes preempting a node that is already
+ * This, and only this, authorizes preempting a node that is already
  * consuming a surface. Holdings and hashes decide who wins an election among
  * peers with nothing to consume yet; they are deliberately not grounds for
  * taking a surface away from a node that is already serving it, because that
@@ -156,7 +156,7 @@ export function isStrictlyNewerVersion(candidate: ClusterRankable, incumbent: Cl
  *
  * TWO, not one, and this is the whole anti-oscillation argument. Yielding moves
  * one surface: the holder loses one and the taker gains one, so the gap closes
- * by exactly 2. From a gap of 2 the cluster lands on 0 — balanced, and no
+ * by exactly 2. From a gap of 2 the cluster lands on 0, balanced, and no
  * further yield triggers. From a gap of 1 it would land on -1, the new holder
  * would then be the overloaded one, and the pair would trade the same surface
  * back and forth forever.
@@ -167,7 +167,7 @@ export const SURFACE_YIELD_GAP = 2;
  * True when a holder should voluntarily release a surface to a lighter node.
  *
  * Voluntary is the operative word. Rebalancing never preempts a sitting holder
- * from the outside — the holder decides, and it releases through the ordinary
+ * from the outside, the holder decides, and it releases through the ordinary
  * ordered stop-then-RESIGN path, so consumption stops before anything else
  * starts. An external preemption would have to interrupt a working consumer
  * from a node whose view of the load may be a heartbeat out of date.

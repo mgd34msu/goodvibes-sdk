@@ -1,9 +1,9 @@
 /**
- * Pricing config domain — user-set manual model prices.
+ * Pricing config domain, user-set manual model prices.
  *
  * `pricing.modelPrices` is a record keyed `provider:model`, each entry USD
  * per 1M tokens. A manual price ALWAYS outranks provider-served and catalog
- * pricing in the model pricing resolver (providers/model-pricing.ts) — the
+ * pricing in the model pricing resolver (providers/model-pricing.ts), the
  * owner's negotiated or self-hosted rate is the truth for that deployment.
  * The value is read live on every resolution, so edits apply with no
  * restart. An empty record means no manual prices: models resolve from
@@ -30,6 +30,6 @@ export const pricingConfigSettings: ConfigSetting[] = [
       + 'provider-served and catalog pricing and applies live (no restart). Set one when registering a '
       + 'custom provider/model, or to pin a negotiated rate for any model.',
     validate: validateManualModelPrices,
-    validationHint: 'record keyed "provider:model" of { input, output, cacheRead?, cacheWrite? } — finite numbers >= 0, USD per 1M tokens',
+    validationHint: 'record keyed "provider:model" of { input, output, cacheRead?, cacheWrite? }, finite numbers >= 0, USD per 1M tokens',
   },
 ];

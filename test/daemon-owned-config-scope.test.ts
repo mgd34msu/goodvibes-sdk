@@ -3,7 +3,7 @@
  *
  * The bug this covers: a daemon-owned setting written from a non-daemon client
  * (the agent) reported SUCCESS, landed in `~/.goodvibes/agent/settings.json`,
- * and configured nothing — the daemon reads a different file. Telegram runs in
+ * and configured nothing, the daemon reads a different file. Telegram runs in
  * the daemon, so the owner's bot username, bot token and chat id were set and
  * had no effect.
  *
@@ -156,7 +156,7 @@ describe('daemon-owned keys have exactly one home', () => {
     agent.set('display.theme', 'nord');
 
     expect(readJson(surfaceSettings(h, 'agent'))['display']).toEqual({ theme: 'nord' });
-    // A different surface must NOT see it — presentation is genuinely local.
+    // A different surface must NOT see it, presentation is genuinely local.
     const tui = new ConfigManager({ homeDir: h, surfaceRoot: 'tui' });
     expect(tui.get('display.theme')).not.toBe('nord');
     // And the daemon store stays out of it entirely.
@@ -380,7 +380,7 @@ describe('a daemon KNOWN to be there vs an address merely derived from config', 
     });
     // A foreground daemon writes no detached-daemon record. Before the binding
     // fallback existed it looked absent, and daemon-owned writes went to the
-    // local file while it was live — the exact divergence this change removes.
+    // local file while it was live, the exact divergence this change removes.
     expect(outcome.appliedBy).toBe('daemon');
     expect(existsSync(daemonSettings(h))).toBe(false);
   });

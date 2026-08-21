@@ -1,17 +1,17 @@
 /**
- * voice-vad-gate.test.ts — `voice.wake.vadThreshold`, proven on real signal.
+ * voice-vad-gate.test.ts, `voice.wake.vadThreshold`, proven on real signal.
  *
  * The row shipped refusing: it named a stage with no model behind it. There is a
- * model now — ours, a speech/non-speech head over the SAME pinned embedding the
- * wake classifier consumes — so the claim to prove is that non-speech frames are
+ * model now, ours, a speech/non-speech head over the SAME pinned embedding the
+ * wake classifier consumes, so the claim to prove is that non-speech frames are
  * WITHHELD from the classifier while speech frames reach it.
  *
  * The probabilities here are not invented. `test/fixtures/wake-vad.json` carries
  * the head's output for every frame of one held-out noise recording and one
  * held-out speech recording, run through the SDK's own melspectrogram and the
  * pinned embedding session by the training harness (kept beside the artifacts;
- * see docs/wake-word-model.md). The SDK has no inference runtime of its own — the
- * host supplies one — so this is the same shape the wake-word tests already use
+ * see docs/wake-word-model.md). The SDK has no inference runtime of its own, the
+ * host supplies one, so this is the same shape the wake-word tests already use
  * for the classifier: the real model's real output, replayed.
  */
 import { describe, expect, test } from 'bun:test';
@@ -56,7 +56,7 @@ describe('the speech gate is pinned, measured, and its numbers match the artifac
       expect(pinned?.speechPassRate).toBeCloseTo(row.speechPassRate, 3);
       expect(pinned?.noiseGateRate).toBeCloseTo(row.noiseGateRate, 3);
     }
-    // The twins decide identically — a tflite host and an onnx host gate the same
+    // The twins decide identically, a tflite host and an onnx host gate the same
     // frames, which is the only reason shipping both is safe.
     expect(WAKE_VAD_MODEL.measurements.twinDecisionFlips).toBe(0);
     expect(WAKE_VAD_MODEL.measurements.maxAbsTwinDeviation).toBeLessThan(1e-5);

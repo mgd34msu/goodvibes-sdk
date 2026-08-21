@@ -36,7 +36,7 @@ function makeStateTool(
 }
 
 // ---------------------------------------------------------------------------
-// B7 — Well-known keys: get behavior
+// B7, Well-known keys: get behavior
 // ---------------------------------------------------------------------------
 
 describe('state tool — well-known key reads', () => {
@@ -58,7 +58,7 @@ describe('state tool — well-known key reads', () => {
 });
 
 // ---------------------------------------------------------------------------
-// B7 — Well-known keys: set behavior
+// B7, Well-known keys: set behavior
 // ---------------------------------------------------------------------------
 
 describe('state tool — runtime.workingDir set', () => {

@@ -1,5 +1,5 @@
 /**
- * atomic-json-store.test.ts — the two mechanics every on-disk JSON store in the
+ * atomic-json-store.test.ts, the two mechanics every on-disk JSON store in the
  * platform now shares, tested once at the helper.
  *
  * The per-store suites do not re-test these; they test that their store is
@@ -48,13 +48,13 @@ function siblings(dir: string, path: string, infix: string): string[] {
   return readdirSync(dir).filter((name) => name.startsWith(prefix) && !name.endsWith('.why'));
 }
 
-/** Valid JSON followed by two NUL bytes — the zero-tail a torn write leaves. */
+/** Valid JSON followed by two NUL bytes, the zero-tail a torn write leaves. */
 function zeroTailed(): Buffer {
   const json = `${JSON.stringify({ version: 1, items: ['a'] }, null, 2)}\n`;
   return Buffer.concat([Buffer.from(json, 'utf-8'), Buffer.from([0, 0])]);
 }
 
-/** JSON cut in half — the other shape a crash mid-write leaves. */
+/** JSON cut in half, the other shape a crash mid-write leaves. */
 function truncated(): string {
   const json = JSON.stringify({ version: 1, items: ['a', 'b', 'c'] }, null, 2);
   return json.slice(0, Math.floor(json.length / 2));
@@ -91,7 +91,7 @@ describe('atomic write', () => {
     const stale = `${path}.tmp-999999`;
     writeFileSync(stale, 'half a write from a process that died', 'utf-8');
     // Aged past the safety window, because age is what tells a crash leftover
-    // apart from another writer's file still being written — see
+    // apart from another writer's file still being written, see
     // atomic-write-concurrency.test.ts for the crash that taught this.
     const longAgo = new Date(Date.now() - (STALE_TEMP_FILE_MIN_AGE_MS + 60_000));
     utimesSync(stale, longAgo, longAgo);

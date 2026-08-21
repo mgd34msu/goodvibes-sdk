@@ -6,7 +6,7 @@
  * registry is the platform-wide successor to the agent fork's local
  * registered-workspaces file: it records which project roots an operator has
  * opted into, remembers subtree-scoped declines, and resolves any path to the
- * nearest covering root — following the git worktree→main-repo link, not path
+ * nearest covering root, following the git worktree→main-repo link, not path
  * ancestry, so an orchestration sibling worktree inherits its main repo's
  * registration.
  *
@@ -44,7 +44,7 @@ export const builtinGatewayWorkspacesMethodDescriptors: readonly GatewayMethodDe
     id: 'workspaces.registrations.add',
     title: 'Register a Workspace',
     description:
-      'Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400 — coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.',
+      'Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400, coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.',
     category: 'workspaces',
     scopes: ['write:workspaces'],
     http: { method: 'POST', path: '/api/workspaces/registrations' },
@@ -55,7 +55,7 @@ export const builtinGatewayWorkspacesMethodDescriptors: readonly GatewayMethodDe
     id: 'workspaces.registrations.remove',
     title: 'Unregister a Workspace',
     description:
-      'Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered — an honest boolean, never a 200 that pretends a phantom root was removed.',
+      'Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered, an honest boolean, never a 200 that pretends a phantom root was removed.',
     category: 'workspaces',
     scopes: ['write:workspaces'],
     http: { method: 'DELETE', path: '/api/workspaces/registrations' },
@@ -66,7 +66,7 @@ export const builtinGatewayWorkspacesMethodDescriptors: readonly GatewayMethodDe
     id: 'workspaces.resolve',
     title: 'Resolve Workspace Coverage',
     description:
-      'Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root\'s subtree and is inherited through the git worktree→main-repo link — a linked worktree outside any registered root still resolves to the main repo\'s registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.',
+      'Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root\'s subtree and is inherited through the git worktree→main-repo link, a linked worktree outside any registered root still resolves to the main repo\'s registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.',
     category: 'workspaces',
     scopes: ['read:workspaces'],
     http: { method: 'POST', path: '/api/workspaces/resolve' },

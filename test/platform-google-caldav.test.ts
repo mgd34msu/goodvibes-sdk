@@ -3,7 +3,7 @@
  * (`caldav-client.ts`).
  *
  * Three layers are covered:
- *   1. Parser unit tests — namespace prefix variance, RFC 5545 line
+ *   1. Parser unit tests, namespace prefix variance, RFC 5545 line
  *      unfolding, all-day vs timed events, malformed/missing input.
  *   2. Client tests against an injected fake `CalDavHttpPort`, using
  *      realistic-shaped multistatus fixtures.

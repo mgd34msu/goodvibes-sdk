@@ -1,9 +1,9 @@
 /**
- * bookmark-modal.test.ts — BookmarkModal list state.
+ * bookmark-modal.test.ts, BookmarkModal list state.
  *
  * The modal owns three numbers that must stay consistent with each other and
  * with a list that mutates underneath them: selectedIndex, scrollOffset, and
- * the entries snapshot. Removal is the interesting case — the manager's list
+ * the entries snapshot. Removal is the interesting case, the manager's list
  * shrinks, and an index that pointed at the last row would otherwise point off
  * the end. These tests pin the wrap-around navigation, the post-removal clamp,
  * and the scroll window that follows the selection.

@@ -10,7 +10,7 @@
  *  - per-hunk approvals: seed a pending edit approval into the daemon's OWN
  *    broker (BootedDaemon.approvals), then approve/deny it over HTTP with and
  *    without selectedHunks and prove the resolved decision's modifiedArgs is
- *    computed server-side — including the out-of-range 400.
+ *    computed server-side, including the out-of-range 400.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -177,7 +177,7 @@ describe('per-hunk approvals over HTTP', () => {
       method: 'POST', headers: auth(), body: JSON.stringify({ selectedHunks: [9] }),
     });
     expect(res.status).toBe(400);
-    // the approval is still pending — the failed approve did not resolve it
+    // the approval is still pending, the failed approve did not resolve it
     await fetch(`${daemon.url}/api/approvals/${id}/deny`, { method: 'POST', headers: auth() });
   });
 
@@ -206,7 +206,7 @@ describe('per-hunk approvals over HTTP', () => {
   // pins record WHICH validation source fires on each failure mode so the
   // honest-400 contract is owned deliberately, not accidentally:
   //   - shape/type errors (missing required, wrong element type) -> S1 gate
-  //     (code INVALID_INPUT), pre-empting our handlers — fine, still honest;
+  //     (code INVALID_INPUT), pre-empting our handlers, fine, still honest;
   //   - request-specific errors (hunk index out of range) -> OUR broker
   //     (INVALID_ARGUMENT), because only it knows the pending edit list.
   // The plain-HTTP tests above bypass the gate entirely and pin our handler
@@ -248,7 +248,7 @@ describe('per-hunk approvals over HTTP', () => {
       const { id } = await seedPending('call-inv-oob');
       const { status, json } = await invokeVerb('approvals.approve', { approvalId: id, selectedHunks: [9] });
       expect(status).toBe(400);
-      // Not the S1 gate's INVALID_INPUT — the broker's range check fired.
+      // Not the S1 gate's INVALID_INPUT, the broker's range check fired.
       expect(json.code).not.toBe('INVALID_INPUT');
       expect(String(json.error)).toContain('out of range');
       await fetch(`${daemon.url}/api/approvals/${id}/deny`, { method: 'POST', headers: auth() });

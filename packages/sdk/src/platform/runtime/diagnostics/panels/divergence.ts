@@ -17,7 +17,7 @@ import { logger } from '../../../utils/logger.js';
 import { summarizeError } from '../../../utils/error-display.js';
 
 /**
- * DivergencePanel — diagnostics data provider for the divergence dashboard.
+ * DivergencePanel, diagnostics data provider for the divergence dashboard.
  *
  * Usage:
  * ```ts
@@ -48,7 +48,7 @@ export class DivergencePanel {
   }
 
   /**
-   * recordTrendEntry — Captures a trend snapshot and notifies subscribers.
+   * recordTrendEntry, Captures a trend snapshot and notifies subscribers.
    *
    * Call this on a periodic timer (e.g. every 30 seconds) to build trend
    * history. The panel respects `bufferLimit` for display purposes; the
@@ -60,7 +60,7 @@ export class DivergencePanel {
   }
 
   /**
-   * getSnapshot — Returns the current full dashboard snapshot.
+   * getSnapshot, Returns the current full dashboard snapshot.
    *
    * The trend is capped at `bufferLimit` entries for display.
    */
@@ -73,7 +73,7 @@ export class DivergencePanel {
   }
 
   /**
-   * checkEnforceGate — Delegates to the underlying dashboard's gate check.
+   * checkEnforceGate, Delegates to the underlying dashboard's gate check.
    */
   public checkEnforceGate(): EnforceGateResult {
     return this._dashboard.checkEnforceGate();

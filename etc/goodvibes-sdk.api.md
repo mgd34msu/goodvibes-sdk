@@ -565,7 +565,7 @@ export type CompactionEvent =
 * manual) compaction path so a compaction is never silent. Carries what was
 * compacted, token/message counts before and after, the strategy, the quality
 * score/grade the guard computed, whether the standing instruction chain was
-* re-injected, and the outcome — `applied` (compacted context committed),
+* re-injected, and the outcome, `applied` (compacted context committed),
 * `kept-original` (quality guard rejected it, conversation retained), or
 * `failed` (compaction threw before producing a usable result).
 */
@@ -26763,9 +26763,9 @@ export type ToolEvent =
 /**
 * A runtime budget was exceeded and the phase pipeline was terminated.
 * The `reason` discriminant distinguishes the type of budget breached:
-*  - BUDGET_EXCEEDED_MS    — wall-clock execution time limit
-*  - BUDGET_EXCEEDED_TOKENS — token consumption limit
-*  - BUDGET_EXCEEDED_COST  — cost limit in USD
+*  - BUDGET_EXCEEDED_MS,    wall-clock execution time limit
+*  - BUDGET_EXCEEDED_TOKENS, token consumption limit
+*  - BUDGET_EXCEEDED_COST,  cost limit in USD
 */
 | {
     type: 'BUDGET_EXCEEDED_MS';
@@ -27187,10 +27187,10 @@ export type TurnEvent =
 *
 * `metadata.memory.recordIds` carries the MEMORY-sourced knowledge-record ids
 * that were injected into this turn (TurnInjectionRecord.injectedIds filtered
-* to source 'memory' — code-index hits are deliberately excluded). The path
+* to source 'memory', code-index hits are deliberately excluded). The path
 * shape matches the documented surface convention exactly
 * (`metadata.memory.recordIds: string[]`), so a provenance chip reads it
-* unchanged. A turn with no memory injections carries NO metadata field —
+* unchanged. A turn with no memory injections carries NO metadata field,
 * honest absence, never an empty array.
 */
 | {
@@ -27525,7 +27525,7 @@ export type WorkspaceEvent =
     reason: string;
 }
 /**
-* A unified rewind was PREVIEWED (rewind.plan) — a surface can render that a
+* A unified rewind was PREVIEWED (rewind.plan), a surface can render that a
 * rewind to this turn anchor is staged and awaiting confirmation. Read-only:
 * nothing has changed yet.
 */
@@ -27536,7 +27536,7 @@ export type WorkspaceEvent =
     scope: 'files' | 'conversation' | 'both';
 }
 /**
-* A unified rewind was APPLIED (rewind.apply) — the receipt surfaces render.
+* A unified rewind was APPLIED (rewind.apply), the receipt surfaces render.
 * `undoAvailable` is true when the apply recorded an undo point (a pre-restore
 * safety checkpoint and/or a captured conversation snapshot) so the rewind can
 * be reversed.
@@ -27552,7 +27552,7 @@ export type WorkspaceEvent =
 }
 /**
 * A single unified-diff hunk was reverse-applied to its file in the working
-* tree (checkpoints.revertHunk) — the per-hunk counterpart to a whole-checkpoint
+* tree (checkpoints.revertHunk), the per-hunk counterpart to a whole-checkpoint
 * restore. `undoAvailable` is true when a pre-revert whole-tree safety
 * checkpoint was recorded (restore it to reverse the revert).
 */

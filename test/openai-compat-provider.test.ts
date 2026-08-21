@@ -15,13 +15,13 @@
  *    `configured`/`isConfigured()` status from the ORIGINAL apiKey.
  *
  * 2. The chat/stream error-diagnostic path (extractOpenAICompatErrorDiagnostic
- *    + buildOpenAICompatErrorMessage) must render a clean, bounded message —
- *    "<provider> chat <phase> failed <status>: <detail> (request_id=<id>)" —
+ *    + buildOpenAICompatErrorMessage) must render a clean, bounded message,
+ *    "<provider> chat <phase> failed <status>: <detail> (request_id=<id>)",
  *    for both the request phase (fails before the stream opens) and the
  *    stream phase (fails after the stream opens, mid-consumption), never a
  *    stringified function/object dump.
  *
- * These run against whatever `openai` version bun.lock actually resolves —
+ * These run against whatever `openai` version bun.lock actually resolves,
  * printed below so the pin is visible in test output.
  */
 import { describe, expect, test, afterAll } from 'bun:test';
@@ -33,7 +33,7 @@ import { createDiscoveredProvider } from '../packages/sdk/src/platform/providers
 import type { DiscoveredServer } from '../packages/sdk/src/platform/discovery/scanner.js';
 import type { ProviderRuntimeMetadataDeps } from '../packages/sdk/src/platform/providers/interface.js';
 
-/** Minimal describeRuntime() dependency stub — no stored secrets, no
+/** Minimal describeRuntime() dependency stub, no stored secrets, no
  * services, no subscriptions. Enough to exercise the auth-mode/configured
  * derivation without pulling in real secret-store/service-registry plumbing. */
 const STUB_RUNTIME_DEPS: ProviderRuntimeMetadataDeps = {
@@ -42,7 +42,7 @@ const STUB_RUNTIME_DEPS: ProviderRuntimeMetadataDeps = {
   subscriptionManager: { get: () => null, getPending: () => null },
 };
 
-// Resolve relative to openai-compat.ts (not this test file) — `openai` is a
+// Resolve relative to openai-compat.ts (not this test file), `openai` is a
 // dependency of packages/sdk, and Bun's workspace hoisting doesn't guarantee
 // it's reachable via require.resolve() from the repo root.
 const providerModuleRequire = createRequire(
@@ -113,7 +113,7 @@ describe('OpenAICompatProvider — empty apiKey construction', () => {
     });
     expect(provider.isConfigured()).toBe(true);
     const runtime = await provider.describeRuntime(STUB_RUNTIME_DEPS);
-    // mode is 'anonymous' only when allowAnonymous && !this.configured — proves
+    // mode is 'anonymous' only when allowAnonymous && !this.configured, proves
     // the substituted placeholder never leaked into the internal `configured`
     // flag (it's still derived from the ORIGINAL empty apiKey).
     expect(runtime.auth).toBeDefined();
@@ -164,7 +164,7 @@ describe('createDiscoveredProvider — every discovered server type constructs w
   ];
 
   for (const serverType of serverTypes) {
-    test(`serverType=${serverType} — apiKey: '' hardcoded in discovered-factory.ts does not throw at construction`, () => {
+    test(`serverType=${serverType}, apiKey: '' hardcoded in discovered-factory.ts does not throw at construction`, () => {
       const server = makeDiscoveredServer({ serverType, name: `test-${serverType}` });
       let provider: ReturnType<typeof createDiscoveredProvider> | undefined;
       expect(() => {
@@ -249,7 +249,7 @@ describe('OpenAICompatProvider.chat — error diagnostic message format', () => 
             // First chunk is well-formed so the SDK's stream genuinely opens
             // (streamOpened = true) before the failure.
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(validChunk)}\n\n`));
-            // Second "chunk" is malformed (no `choices` field) — our own
+            // Second "chunk" is malformed (no `choices` field), our own
             // consumption code (`raw.choices[0]?.delta`) throws reading it,
             // a real thrown error occurring strictly after streamOpened=true.
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ id: 'x' })}\n\n`));

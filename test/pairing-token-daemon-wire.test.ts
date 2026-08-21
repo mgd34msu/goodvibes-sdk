@@ -69,7 +69,7 @@ describe('per-pairing tokens over the operator contract', () => {
     expect((await invoke(tokenA.token, 'pairing.tokens.list')).status).toBe(200);
     expect((await invoke(tokenB.token, 'pairing.tokens.list')).status).toBe(200);
 
-    // The list is redacted — no secret is ever returned.
+    // The list is redacted, no secret is ever returned.
     const list = await invoke(tokenA.token, 'pairing.tokens.list');
     const names = (list.json.tokens as Array<{ name: string }>).map((t) => t.name).sort();
     expect(names).toEqual(['Laptop', 'Phone']);

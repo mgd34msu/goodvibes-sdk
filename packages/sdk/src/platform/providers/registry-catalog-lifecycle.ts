@@ -59,7 +59,7 @@ export async function refreshProviderCatalog(ctx: CatalogLifecycleContext): Prom
   const previous = [...ctx.getCatalogModels()];
   const models = await fetchCatalog();
   if (models.length === 0) {
-    logger.warn('[model-catalog] Refresh returned 0 models — keeping existing catalog');
+    logger.warn('[model-catalog] Refresh returned 0 models, keeping existing catalog');
     return;
   }
   const { cachePath, tmpPath } = ctx.getCatalogCachePaths();

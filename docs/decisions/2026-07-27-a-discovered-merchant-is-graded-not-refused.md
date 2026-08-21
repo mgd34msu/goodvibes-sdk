@@ -48,7 +48,7 @@ was ruled on, and the ruling is narrower than it looks.
 The old gate answered both with one rule and refused both cases.
 
 "Buy the cheapest X you can find" is *his* instruction. The item is his, the
-intent is his, the budget is his — only the storefront was found on a page.
+intent is his, the budget is his, only the storefront was found on a page.
 Refusing that does not stop an attack; it stops the feature, and it leaves the
 actual risk (money going somewhere with no recourse) unaddressed, because a
 merchant *he* names is not automatically one he can get his money back from.
@@ -69,7 +69,7 @@ Two properties defend it:
   asserts refusal anyway.
 - The refusal is **structural, not textual**. The test that guards it uses a
   ledger whose content does not overlap any intent field, so the only thing that
-  can refuse it is the origin rule — a text-match refusal would let the
+  can refuse it is the origin rule, a text-match refusal would let the
   structural rule be deleted while the test still passed.
 
 `item` and `requestedMax` are still always checked. They come from him or the
@@ -93,7 +93,7 @@ recourse is the thing it stood for.
 is nobody to go to.** Micro Center qualifies at two dozen stores; Redbubble
 qualifies with no stores at all.
 
-## Judgement against a profile — NOT a curated list
+## Judgement against a profile: NOT a curated list
 
 The first implementation shipped a hardcoded allowlist of retailer domains. He
 rejected it:
@@ -109,7 +109,7 @@ instruction:
   for the sole reason of being absent from a file.
 - It requires permanent maintenance and rots silently.
 - It is the same shape as the site-specific adapters this platform already
-  rejected — scaffolding that thinks for the model instead of letting the model
+  rejected, scaffolding that thinks for the model instead of letting the model
   think.
 
 So the mechanism is judgement against the profile, and the list is **deleted**,
@@ -123,10 +123,10 @@ would have.
 
 Two things look similar and are not:
 
-- **Reading the page to decide whether it looks legitimate** — injectable, and
+- **Reading the page to decide whether it looks legitimate**, injectable, and
   still banned. A storefront built to look trustworthy is trivial to produce.
 - **Judging a validated registrable domain against what is known about the
-  world** — not page-derived at all. The domain comes from the URL that passed
+  world**, not page-derived at all. The domain comes from the URL that passed
   link validation and is reduced by `registrableDomain()`. Whether that retailer
   is established is a fact about the world, not a claim the page makes.
 
@@ -152,8 +152,8 @@ never approved.
 
 `payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` beat
 the judgement in both directions. An exclusion short-circuits before the judge
-is consulted at all. Additions remain his alone — nothing learned, nothing
-inferred from a page, nothing added by an agent — because anything that could
+is consulted at all. Additions remain his alone, nothing learned, nothing
+inferred from a page, nothing added by an agent, because anything that could
 argue itself onto that list could buy from itself unattended.
 
 ## eBay: per-listing, and auctions refused structurally
@@ -179,7 +179,7 @@ apart, the figure is unreadable.
 
 Matching is on the validated registrable domain **that takes the card**. An
 established retailer that hands off to a payment page on an unrelated registrable
-domain no longer carries the protection the qualification rested on — that is
+domain no longer carries the protection the qualification rested on, that is
 not-major, and the notification says why.
 
 ## What a later reader must not "clean up"
@@ -194,10 +194,10 @@ not-major, and the notification says why.
 
 ## Where it lives
 
-- `platform/payments/taint-gate.ts` — origin rule, conditional field checks
-- `platform/payments/merchant-recourse.ts` — the criterion, the judge port, the
+- `platform/payments/taint-gate.ts`, origin rule, conditional field checks
+- `platform/payments/merchant-recourse.ts`, the criterion, the judge port, the
   config seam (`merchantPolicyFromConfig`)
-- `platform/payments/marketplace-listing.ts` — the eBay per-listing conditions
-- `platform/payments/message.ts` — `renderPurchaseNotice`, the single send site
-- `test/payments-merchant-recourse.test.ts` — the rulings as tests
-- `docs/payments.md` §9.1, §9.1.1 — the full design
+- `platform/payments/marketplace-listing.ts`, the eBay per-listing conditions
+- `platform/payments/message.ts`, `renderPurchaseNotice`, the single send site
+- `test/payments-merchant-recourse.test.ts`, the rulings as tests
+- `docs/payments.md` §9.1, §9.1.1, the full design

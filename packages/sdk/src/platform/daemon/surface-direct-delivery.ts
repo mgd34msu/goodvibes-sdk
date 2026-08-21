@@ -1,5 +1,5 @@
 /**
- * surface-direct-delivery.ts — sending straight to one surface's own API,
+ * surface-direct-delivery.ts, sending straight to one surface's own API,
  * bypassing the channel render path.
  *
  * Split out of surface-delivery.ts, which was back over the 800-line cap. Same
@@ -7,12 +7,12 @@
  * that differs only in how each surface expresses the same message, with the
  * routing decision left in DaemonSurfaceDeliveryHelper.
  *
- * IMPORTANT — what this module is NOT. `deliverSurfaceProgress` here is
+ * IMPORTANT, what this module is NOT. `deliverSurfaceProgress` here is
  * implemented for slack, discord and ntfy only, and that list is much smaller
  * than the set of surfaces the platform can talk to. It is a fallback, not the
  * delivery path: the general path is the channel delivery router, which every
  * surface has a strategy for. An unimplemented surface therefore THROWS by
- * name — returning quietly is what let a caller read "nothing was sent" as
+ * name, returning quietly is what let a caller read "nothing was sent" as
  * "the message went out".
  *
  * Every function takes its collaborators as an object rather than a bound

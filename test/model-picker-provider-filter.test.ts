@@ -1,5 +1,5 @@
 /**
- * model-picker-provider-filter.test.ts — groupProviders / filterProviders.
+ * model-picker-provider-filter.test.ts, groupProviders / filterProviders.
  *
  * Two properties matter here and neither is obvious from the signatures:
  * grouping is case-insensitive on membership but preserves the caller's

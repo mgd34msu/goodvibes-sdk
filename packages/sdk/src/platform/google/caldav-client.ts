@@ -11,15 +11,15 @@
  *     filter
  *   - `discover()`, a convenience that chains all three discovery steps
  *
- * Every method returns a typed, discriminated result — `{ ok: true, ... }`
- * or `{ ok: false, problem, fix }` — instead of throwing on HTTP-level or
+ * Every method returns a typed, discriminated result, `{ ok: true, ... }`
+ * or `{ ok: false, problem, fix }`, instead of throwing on HTTP-level or
  * protocol-level failure. Exceptions are reserved for programmer error
  * (e.g. passing a non-URL string where a URL is required is still handled
  * defensively below rather than thrown, since a live server address is
  * exactly the kind of input that can be malformed).
  *
  * Credentials are never included in a returned value, an error message, or
- * a log line anywhere in this module — failures are described in plain
+ * a log line anywhere in this module, failures are described in plain
  * language keyed off the HTTP status code only.
  *
  * Transport injection
@@ -308,7 +308,7 @@ export class CalDavClient {
    * `{ ok: true, body }` on a CalDAV-successful response, or a
    * `{ ok: false, problem, fix }` result for both transport failures (the
    * request never completed) and HTTP-level failures (it completed with a
-   * non-2xx/207 status) — the caller never has to distinguish the two.
+   * non-2xx/207 status), the caller never has to distinguish the two.
    */
   private async send(
     method: string,

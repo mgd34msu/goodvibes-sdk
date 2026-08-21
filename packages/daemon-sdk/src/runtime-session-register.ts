@@ -10,7 +10,7 @@ function readString(value: unknown): string | undefined {
 }
 
 /**
- * Handle POST /api/sessions/register — the idempotent registration + heartbeat
+ * Handle POST /api/sessions/register, the idempotent registration + heartbeat
  * upsert keyed on a caller-supplied `sessionId`. Requires a participant triple
  * {surfaceKind, surfaceId, userId?}; carries the identity spine (kind + project)
  * onto the record. Re-calling with the same id advances participant.lastSeenAt.

@@ -1,5 +1,5 @@
 /**
- * PermissionResolver — Focused responsibility: role and scope checks.
+ * PermissionResolver, Focused responsibility: role and scope checks.
  *
  * Inspects a `ControlPlaneAuthSnapshot` to answer permission questions.
  * Callers that only need access control checks can use this directly

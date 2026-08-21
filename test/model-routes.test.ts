@@ -570,7 +570,7 @@ describe('PATCH /api/models/current', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PATCH /api/models/current — discovered/anonymous provider
+// PATCH /api/models/current, discovered/anonymous provider
 // ---------------------------------------------------------------------------
 
 describe('PATCH /api/models/current — discovered anonymous provider', () => {
@@ -697,7 +697,7 @@ describe('createCompanionProviderAdapter: isConfigured guard', () => {
 
 
 // ---------------------------------------------------------------------------
-// Router-level integration test — secretsManager wiring through DaemonHttpRouter
+// Router-level integration test, secretsManager wiring through DaemonHttpRouter
 // ---------------------------------------------------------------------------
 
 describe('DaemonHttpRouter: secretsManager wiring', () => {

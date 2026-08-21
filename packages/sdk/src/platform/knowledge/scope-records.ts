@@ -345,7 +345,7 @@ function uniqueStrings(values: readonly (string | undefined)[]): readonly string
 
 function readOnlyMetadataKeys(metadata: Record<string, unknown>): readonly string[] {
   // 'reviewProvenance' is system bookkeeping stamped by the node review gate, not
-  // content — excluded so it never changes a node's content-shape classification.
+  // content, excluded so it never changes a node's content-shape classification.
   return Object.keys(metadata).filter((key) => !['knowledgeSpaceId', 'namespace', 'reviewProvenance'].includes(key));
 }
 

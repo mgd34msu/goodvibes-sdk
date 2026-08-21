@@ -1,5 +1,5 @@
 /**
- * checkout-page.ts — the narrow set of page operations a purchase needs.
+ * checkout-page.ts, the narrow set of page operations a purchase needs.
  *
  * The checkout flow does not import the browser engine. It names the handful of
  * things it needs done to a page and takes an implementation, for three
@@ -17,7 +17,7 @@
  *
  * ── Element addressing ────────────────────────────────────────────────────
  *
- * Targets are opaque strings the CALLER supplies — a snapshot ref in the daemon
+ * Targets are opaque strings the CALLER supplies, a snapshot ref in the daemon
  * implementation, a field name in the fixture. This module never constructs
  * one, never parses one, and never has an opinion about what a checkout's
  * fields are called. The model identifies the fields on whatever page it is on;
@@ -40,7 +40,7 @@ export interface CheckoutPageDriver {
   /**
    * Type a value into a field.
    *
-   * For ordinary values only — an address, a quantity, a coupon. Card material
+   * For ordinary values only, an address, a quantity, a coupon. Card material
    * has its own entry point so that no call site can pass one to the other by
    * accident.
    */
@@ -59,22 +59,22 @@ export interface CheckoutPageDriver {
    */
   fillSecret(target: string, value: string, kind: CardFieldKind): Promise<void>;
 
-  /** Choose one of a set of options — a delivery tier, usually. */
+  /** Choose one of a set of options, a delivery tier, usually. */
   choose(target: string, value: string): Promise<void>;
 
   /**
    * Submit the order. The one outward act in the whole flow.
    *
    * Returns whatever identifies the resulting order, when the merchant shows
-   * one. A null order id is not a failure — plenty of merchants show a
-   * confirmation page with the number somewhere the model has to go read — it
+   * one. A null order id is not a failure, plenty of merchants show a
+   * confirmation page with the number somewhere the model has to go read, it
    * just means the audit record carries no merchant reference.
    */
   submitOrder(target: string): Promise<{
     readonly url: string;
     readonly orderId: string | null;
     /**
-     * Set when the merchant interrupted the submit with a verification step —
+     * Set when the merchant interrupted the submit with a verification step,
      * 3-D Secure, a CAPTCHA, a one-time code.
      *
      * Reported rather than solved. The flow pauses, keeps the budget reserved,

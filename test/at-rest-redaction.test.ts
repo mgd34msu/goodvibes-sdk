@@ -166,7 +166,7 @@ describe('LocalLedgerExporter execution ledger — redaction + replay', () => {
     const raw = readFileSync(join(dir, 'run.ledger.jsonl'), 'utf8');
     expect(raw).not.toContain('sk-ABCDEFGHIJKLMNOPQRSTUVWX');
     expect(raw).toContain('[REDACTED_API_KEY]');
-    // Replay reads the redacted record fine — content shows the marker.
+    // Replay reads the redacted record fine, content shows the marker.
     const entries = exporter.readRunEntries('run-1');
     expect(entries).toHaveLength(1);
     expect(JSON.stringify(entries[0]!.payload)).toContain('[REDACTED_API_KEY]');

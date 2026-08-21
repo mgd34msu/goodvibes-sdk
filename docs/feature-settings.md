@@ -1,4 +1,4 @@
-# Feature Settings
+# Feature settings
 
 Every platform capability is a first-class setting in its natural configuration
 domain. There is no separate enablement namespace: turning a feature on, off, or
@@ -36,7 +36,7 @@ configurable capability, never unreachable machinery.
 
 Configs written before the dissolution carried a `featureFlags` record. On
 first load the SDK migrates each entry onto its domain settings key (explicit
-choices preserved — a legacy `disabled` maps to the feature's off value, a
+choices preserved: a legacy `disabled` maps to the feature's off value, a
 legacy `enabled` defers to an existing domain switch it used to AND with),
 removes the legacy record, persists the rewritten file, and logs a one-line
 receipt. `sandbox.judgmentAutoApprove` migrates onto `sandbox.judgment` the

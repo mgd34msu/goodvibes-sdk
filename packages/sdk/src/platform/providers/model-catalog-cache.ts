@@ -53,7 +53,7 @@ type ModelsDevResponse = Record<string, CatalogProviderShape>;
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 const CATALOG_FETCH_TIMEOUT_MS = 30_000;
 /**
- * Version 2: `pricing` became nullable — a model whose catalog entry carries
+ * Version 2: `pricing` became nullable, a model whose catalog entry carries
  * no cost is honestly unpriced instead of coerced to $0. Version-1 caches
  * (which baked in the $0 coercion) are discarded and refetched.
  *
@@ -113,7 +113,7 @@ function getStringArray(value: unknown): string[] {
 /**
  * Sanitize the feed's `reasoning_options` array.
  *
- * Returns undefined when the field is absent — "the catalog says nothing",
+ * Returns undefined when the field is absent, "the catalog says nothing",
  * which falls through to the curated family table. An empty array is kept as
  * an empty array, because the feed uses it to say something different and
  * specific: this model reasons but exposes no configurable levels.

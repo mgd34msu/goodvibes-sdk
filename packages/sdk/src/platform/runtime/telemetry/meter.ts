@@ -1,5 +1,5 @@
 /**
- * RuntimeMeter — lightweight OTel-compatible metric instruments.
+ * RuntimeMeter, lightweight OTel-compatible metric instruments.
  *
  * Provides Counter, Histogram, and Gauge instruments without depending
  * on the @opentelemetry/* packages.
@@ -122,7 +122,7 @@ class GaugeImpl implements Gauge {
 // ── RuntimeMeter ────────────────────────────────────────────────────────────
 
 /**
- * RuntimeMeter — creates and caches named metric instruments.
+ * RuntimeMeter, creates and caches named metric instruments.
  *
  * Usage:
  * ```ts
@@ -192,7 +192,7 @@ export class RuntimeMeter {
 
   /**
    * Reset all accumulated values on every registered instrument.
-   * Intended for test isolation only — clears counter sums, histogram accumulators,
+   * Intended for test isolation only, clears counter sums, histogram accumulators,
    * and gauge values on the singleton meter so tests do not bleed state.
    */
   reset(): void {

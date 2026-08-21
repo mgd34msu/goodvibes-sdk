@@ -12,7 +12,7 @@ export async function handleSlackSurfaceWebhook(req: Request, context: SurfaceAd
     ?? await resolveSlackConfigSecret(context, 'surfaces.slack.signingSecret')
     ?? process.env.SLACK_SIGNING_SECRET;
   if (!signingSecret) {
-    logger.warn('handleSlackSurfaceWebhook: SLACK_SIGNING_SECRET not set — rejecting');
+    logger.warn('handleSlackSurfaceWebhook: SLACK_SIGNING_SECRET not set, rejecting');
     return Response.json({ error: 'Webhook not configured' }, { status: 503 });
   }
 

@@ -31,8 +31,8 @@ export type {
   MemoryReviewState,
   // The return type of MemoryStore.importBundle and the patch type its review
   // API takes. Both are exported from memory-store.ts and both were missing
-  // here, so a caller reaching them through this barrel — the only path the
-  // package publishes — could name neither.
+  // here, so a caller reaching them through this barrel, the only path the
+  // package publishes, could name neither.
   MemoryImportResult,
   MemoryReviewPatch,
   MemoryTemporalStatus,
@@ -123,7 +123,7 @@ export type {
   MemoryConsolidationRunReceipt,
 } from './memory-consolidation.js';
 // The daemon-side consolidation driver: a consumer composing its own runtime
-// constructs it exactly like the SDK's composition root (runtime/services.ts) —
+// constructs it exactly like the SDK's composition root (runtime/services.ts),
 // memoryRegistry + live configSource + isIdle. Its dep types (registry, config
 // source, usage lookup, run receipt) are already exported just above.
 export { MemoryConsolidationScheduler } from './memory-consolidation-scheduler.js';

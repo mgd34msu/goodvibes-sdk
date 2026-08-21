@@ -9,7 +9,7 @@
  * convenience:
  *   - an ordinary setting's notice carries the new VALUE, so a subscriber can
  *     apply it without a round trip;
- *   - a credential-bearing key's notice carries the key NAME and nothing else —
+ *   - a credential-bearing key's notice carries the key NAME and nothing else,
  *     `secret: true`, and no `value` property at all. Not a nulled value, which
  *     a subscriber would read as "the credential was cleared".
  */
@@ -157,7 +157,7 @@ describe('the watched surface', () => {
   test('covers the declared schema keys plus the daemon-owned non-schema paths', () => {
     const paths = listWatchableConfigPaths();
     expect(paths).toContain('watchers.enabled');
-    // A daemon-owned path with no scalar schema entry — the class that every
+    // A daemon-owned path with no scalar schema entry, the class that every
     // owned-set walk used to miss.
     expect(paths).toContain('email.passwordRef');
     // A declared credential-bearing path.

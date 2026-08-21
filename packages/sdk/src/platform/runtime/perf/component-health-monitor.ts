@@ -1,11 +1,11 @@
 /**
- * ComponentHealthMonitor — enforces per-component resource contracts.
+ * ComponentHealthMonitor, enforces per-component resource contracts.
  *
  * Tracks update rate and render cost per component. Components that exceed their
  * contracted budget are throttled (render gated to a minimum interval).
  * Components with sustained violations are degraded (rendered at a fixed low rate).
  *
- * The monitor does NOT render components itself — callers ask canRender() before
+ * The monitor does NOT render components itself, callers ask canRender() before
  * rendering and report the actual render cost via recordRender().
  *
  * This keeps the monitor policy-focused and the rendering path ignorant of
@@ -54,7 +54,7 @@ interface ComponentTrack {
 }
 
 /**
- * ComponentHealthMonitor — tracks component resource usage and enforces budgets.
+ * ComponentHealthMonitor, tracks component resource usage and enforces budgets.
  *
  * Usage:
  * 1. Register components with register(componentId, category).
@@ -127,7 +127,6 @@ export class ComponentHealthMonitor {
     // Record this request in the current window
     track.windowRequests.push(now);
 
-    // Check update rate limit
     let requestsInWindow = 0;
     for (const t of track.windowRequests) {
       if (now - t < RATE_WINDOW_MS) requestsInWindow++;
@@ -161,7 +160,7 @@ export class ComponentHealthMonitor {
     const track = this._tracks.get(componentId);
     if (!track) return;
 
-    // Add sample to ring buffer (O(1) modular index — no shift/realloc)
+    // Add sample to ring buffer (O(1) modular index, no shift/realloc)
     const rb = track.renderSamples;
     rb.buf[rb.head] = durationMs;
     rb.head = (rb.head + 1) % RENDER_SAMPLE_CAPACITY;
@@ -175,11 +174,10 @@ export class ComponentHealthMonitor {
     track.health.lastRenderAt = now;
     track.health.rendersInWindow++;
 
-    // Check render cost budget
     if (track.health.renderP95Ms > track.contract.maxRenderMs) {
       this._applyViolation(track, now);
     } else {
-      // Render cost within budget — count as a clean observation
+      // Render cost within budget, count as a clean observation
       this._recordClean(track);
     }
   }
@@ -228,7 +226,6 @@ export class ComponentHealthMonitor {
       return;
     }
     if (now - track.windowStart >= RATE_WINDOW_MS) {
-      // Check for recovery
       let requestsLastWindow = 0;
       for (const t of track.windowRequests) {
         if (t >= track.windowStart && t < track.windowStart + RATE_WINDOW_MS) requestsLastWindow++;

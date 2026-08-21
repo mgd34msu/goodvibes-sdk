@@ -1,10 +1,10 @@
 /**
- * flags-graduation.ts — the feature-defaults release gate.
+ * flags-graduation.ts, the feature-defaults release gate.
  *
  * Prints every platform capability with its default-disposition state and
  * validation evidence, then enforces the release policy: it exits non-zero
  * when any capability sits in `graduate-candidate` (judged ready but neither
- * defaulted on nor given a dated blocker). That is the forcing function —
+ * defaulted on nor given a dated blocker). That is the forcing function,
  * every release, a validated default either flips on or records why it is
  * being held.
  *
@@ -35,11 +35,11 @@ function main(): void {
   console.log('');
 
   if (!gate.ok) {
-    console.error(`FAIL — ${gate.message}`);
+    console.error(`FAIL, ${gate.message}`);
     console.error('Default each candidate on (set its defaultState) or record a dated blocker annotation.');
     process.exit(1);
   }
-  console.log(`OK — ${gate.message}`);
+  console.log(`OK, ${gate.message}`);
 }
 
 main();

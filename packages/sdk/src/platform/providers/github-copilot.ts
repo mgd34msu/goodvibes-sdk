@@ -17,7 +17,7 @@ const COPILOT_GITHUB_API_VERSION = '2025-04-01';
 const COPILOT_TOKEN_ENV_VARS = ['COPILOT_GITHUB_TOKEN', 'GH_TOKEN', 'GITHUB_TOKEN'] as const;
 
 /**
- * Dated fallback model list — used when no GitHub token is configured (so a
+ * Dated fallback model list, used when no GitHub token is configured (so a
  * live /models call isn't possible) and as the offline baseline when a live
  * call fails with no prior cache. Re-dated 2026-07-13 when live discovery
  * (below) was wired up; the entries themselves are still only cross-checked
@@ -237,14 +237,14 @@ interface CopilotModelsResponse {
 /**
  * Fetch GitHub Copilot's live model list: GET /models on the same
  * per-account Copilot API host (and using the same exchanged session token)
- * `resolveCopilotToken` already resolves for chat requests — no new
+ * `resolveCopilotToken` already resolves for chat requests, no new
  * credential source, no new env vars. Verified 2026-07-13 against public,
  * independently-implemented Copilot API proxies (e.g. ericc-ch/copilot-api's
  * `getModels()`, which hits the identical `${baseUrl}/models` endpoint with
  * the same Bearer session token, Editor-Version/User-Agent headers, and a
  * `Copilot-Integration-Id` header) and against GitHub community reports of
  * `curl https://api.githubcopilot.com/models` with that same auth working
- * for the token-exchange flow — no live Copilot subscription was available
+ * for the token-exchange flow, no live Copilot subscription was available
  * in this environment to call the endpoint directly. Response shape is
  * OpenAI-like (`{ data: [{ id, capabilities: { type } }] }`); only
  * `type: 'chat'` entries are kept so embedding-only models don't leak into
@@ -305,7 +305,7 @@ export class GitHubCopilotProvider implements LLMProvider {
    * Re-check Copilot's live model list. Called at boot (background,
    * respects the on-disk TTL cache) and on-demand for a picker-open
    * re-check or an explicit user refresh (`force: true`, bypasses the TTL
-   * cache). Always resolves — falls back to the on-disk cache, then to the
+   * cache). Always resolves, falls back to the on-disk cache, then to the
    * dated-static list, and reports the honest reason when live discovery
    * fails rather than silently keeping stale data with no explanation.
    */

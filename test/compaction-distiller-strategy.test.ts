@@ -23,7 +23,7 @@ import type { CompactionContext } from '../packages/sdk/src/platform/core/compac
 import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 import type { ProviderMessage } from '../packages/sdk/src/platform/providers/interface.js';
 
-// A registry whose provider.chat returns a fixed brief — the distiller's fresh
+// A registry whose provider.chat returns a fixed brief, the distiller's fresh
 // model call. `listModels` advertises the extraction model so resolution finds it.
 function makeBriefRegistry(brief: string): ProviderRegistry {
   return {
@@ -56,7 +56,7 @@ function makeSequencedRegistry(first: string, rest: string): ProviderRegistry {
   } as unknown as ProviderRegistry;
 }
 
-// A registry that never yields a provider — distiller resolution fails, and
+// A registry that never yields a provider, distiller resolution fails, and
 // structured's llmExtract also degrades to rule-based sections.
 const stubRegistry = {
   getForModel() { throw new Error('no provider in test'); },
@@ -104,7 +104,7 @@ function distillerContext(
 
 const GOOD_BRIEF =
   '## Task State\nImplementing the distiller.\n\n## Decisions Made\nUse one fresh call.\n\n'
-  + '## Open Threads\nWire the flag.\n\n## Key References\n`distiller-compaction.ts` — the strategy.';
+  + '## Open Threads\nWire the flag.\n\n## Key References\n`distiller-compaction.ts`, the strategy.';
 
 // ── strategy resolution (config + flag gate) ─────────────────────────────────
 

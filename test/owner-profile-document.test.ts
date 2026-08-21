@@ -70,7 +70,7 @@ describe('§4.2 — the provenance suffix is recognised only when the whole shap
   test('two suffixes on one line resolve to the RIGHTMOST, newest one', () => {
     // Matching from the left swallows the whole tail into the quote and produces
     // a provenance record that is quietly wrong. Rightmost keeps the newest
-    // provenance and leaves the older one visible as ordinary text — nothing is
+    // provenance and leaves the older one visible as ordinary text, nothing is
     // silently destroyed.
     const split = splitProvenanceSuffix('- Two suffixes — tui, 2026-07-01, "first" — agent, 2026-07-27, "second"');
     expect(split.provenance).toEqual({ surface: 'agent', date: '2026-07-27', said: 'second' });

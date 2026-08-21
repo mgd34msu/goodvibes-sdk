@@ -1,5 +1,5 @@
 /**
- * Multi-session Orchestration — Core Types
+ * Multi-session Orchestration, Core Types
  *
  * Global task references across sessions,
  * status/dependency propagation, and scoped cancellation semantics.
@@ -23,7 +23,7 @@ export interface CrossSessionTaskRef {
   readonly taskId: string;
   /** Human-readable title for display in the graph view. */
   readonly title: string;
-  /** Current lifecycle status — propagated on update. */
+  /** Current lifecycle status, propagated on update. */
   status: TaskLifecycleState;
   /** Epoch ms when this ref was created. */
   readonly createdAt: number;
@@ -55,7 +55,7 @@ export interface TaskDependencyEdge {
 // ── Handoff record ────────────────────────────────────────────────────────────
 
 /**
- * Records a task handoff — when a task's continuation is transferred from
+ * Records a task handoff, when a task's continuation is transferred from
  * one session to another. Handoffs preserve causal context across reconnects.
  */
 export interface TaskHandoffRecord {
@@ -82,15 +82,15 @@ export interface TaskHandoffRecord {
 /**
  * Defines the scope of a cross-session cancellation operation.
  *
- * - `task`   — Cancel only the specific task.
- * - `subtree` — Cancel the task and all transitive dependents (tasks that
+ * - `task`  , Cancel only the specific task.
+ * - `subtree`, Cancel the task and all transitive dependents (tasks that
  *               depend on this one directly or indirectly).
- * - `session` — Cancel all tasks owned by the given session.
+ * - `session`, Cancel all tasks owned by the given session.
  */
 export type CancellationScope = 'task' | 'subtree' | 'session';
 
 /**
- * The set of valid cancellation scope values — exported for use in command
+ * The set of valid cancellation scope values, exported for use in command
  * handlers to avoid duplication.
  */
 export const VALID_SCOPES: ReadonlyArray<CancellationScope> = ['task', 'subtree', 'session'] as const;
@@ -103,7 +103,7 @@ export interface CancellationRequest {
   sessionId: string;
   /** Task ID to cancel (required for task/subtree scope; ignored for session scope). */
   taskId?: string | undefined;
-  /** Cancellation scope — defaults to 'task'. */
+  /** Cancellation scope, defaults to 'task'. */
   scope: CancellationScope;
   /** Human-readable reason surfaced to the task owner. */
   reason?: string | undefined;
@@ -133,7 +133,7 @@ export interface CancellationResult {
  * Used for persistence, reconnect hydration, and the `/session graph` display.
  */
 export interface SessionTaskGraphSnapshot {
-  /** Schema version — increment on breaking changes. */
+  /** Schema version, increment on breaking changes. */
   readonly version: 1;
   /** Epoch ms when this snapshot was taken. */
   readonly snapshotAt: number;
@@ -163,14 +163,14 @@ export function makeRefKey(sessionId: string, taskId: string): string {
  * to real runtime session identity.
  *
  * The tool used to take its owning `sessionId` straight from the model's tool
- * input and fall back to the literal `'local'` when it was absent — which it
+ * input and fall back to the literal `'local'` when it was absent, which it
  * almost always was. So a store whose whole purpose is keying work by session
  * ended up with most of its records under one shared, meaningless key.
  *
  * Those records are real user data and they stay readable. What cannot be done
  * is guess which real session each one belonged to: that information was never
  * written down and cannot be recovered. So this namespace is deliberately
- * EXEMPT from owner-existence reaping — asking "does session `local` still
+ * EXEMPT from owner-existence reaping, asking "does session `local` still
  * exist?" is a question with no true answer, and answering it "no" would delete
  * the user's task graph wholesale on the first sweep after upgrading. It is
  * bounded by age and count like everything else, and what it loses is

@@ -1,5 +1,5 @@
 /**
- * alert-gating.ts — the config + focus gate every unfocused-user alert class
+ * alert-gating.ts, the config + focus gate every unfocused-user alert class
  * (budget breach, long task, agent/chain failure, awaiting approval) is decided
  * by.
  *
@@ -29,7 +29,7 @@ export function readBooleanConfig(configGet: ConfigGet, key: string, defaultValu
   return defaultValue;
 }
 
-/** `behavior.notifyOnlyWhenUnfocused` — master gate, default on. */
+/** `behavior.notifyOnlyWhenUnfocused`, master gate, default on. */
 export function readNotifyOnlyWhenUnfocused(configGet: ConfigGet): boolean {
   return readBooleanConfig(configGet, 'behavior.notifyOnlyWhenUnfocused', true);
 }
@@ -58,7 +58,7 @@ export function shouldFireAlert(
 
 /**
  * notifyCompletion (platform/utils) only rings the bell above 5s of
- * "duration" and only pops a desktop notification above 30s — a heuristic
+ * "duration" and only pops a desktop notification above 30s, a heuristic
  * tuned for long-running-turn notifications. The alert classes gated here are
  * point-in-time events with no natural duration, so they pass this constant as
  * the `durationMs` argument to force both the bell and the desktop popup

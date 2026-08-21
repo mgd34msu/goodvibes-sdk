@@ -1,5 +1,5 @@
 /**
- * listener.ts — the wake-word runtime: a device, the engine, and what a wake does.
+ * listener.ts, the wake-word runtime: a device, the engine, and what a wake does.
  *
  * The engine scores frames and the capture layer produces them. Everything
  * between those two facts is policy that would otherwise be written once per
@@ -148,7 +148,7 @@ export class WakeListener {
   #lastFrameAt: number | null = null;
   /**
    * Recorders that opened here and delivered no audio, so `auto` stops choosing
-   * them. Never populated for a PINNED backend — substituting one behind the
+   * them. Never populated for a PINNED backend, substituting one behind the
    * user's back is what the pin prevents. Full reasoning: recorder-command.ts.
    */
   readonly #silentBackends = new Set<Exclude<WakeRuntimeSettings['capture']['backend'], 'auto'>>();
@@ -340,7 +340,7 @@ export class WakeListener {
 
   /**
    * Bound the start. A start that neither resolves nor rejects used to leave the
-   * listener in `starting` forever with nothing written anywhere — and, because
+   * listener in `starting` forever with nothing written anywhere, and, because
    * surfaces drove their indicator off the phase, showing "listening".
    */
   #armStartWatchdog(): void {
@@ -453,7 +453,7 @@ export class WakeListener {
    * Look for the pinned device again and move capture back to it if it returned.
    *
    * Rebinding reopens the stream, which is a real interruption, so it happens
-   * ONLY when the pin has genuinely come back — never while it is still absent,
+   * ONLY when the pin has genuinely come back, never while it is still absent,
    * and never in the middle of recording the utterance after a wake, which
    * would truncate the sentence the user is in the middle of saying.
    */
@@ -493,7 +493,7 @@ export class WakeListener {
     this.#lastFrameAt = this.#now();
     if (this.#firstFrameTimer !== null) this.#clearFirstFrameWatchdog();
     // While the utterance after a wake is being recorded, frames belong to it and
-    // nothing is scored — the phrase just spoken must not be scored again.
+    // nothing is scored, the phrase just spoken must not be scored again.
     const recorder = this.#recorder;
     if (recorder !== null) {
       const stop = recorder.push(frame);
@@ -505,7 +505,7 @@ export class WakeListener {
       // DROPPING IS THE CHEAP PART; SAYING SO EVERY TIME WAS NOT.
       //
       // This warned per dropped frame. A host that fell behind for 23 minutes
-      // wrote 324 identical lines and grew the activity log to 10 MB — and
+      // wrote 324 identical lines and grew the activity log to 10 MB, and
       // because the log line ran per frame, the logging itself competed with
       // the scoring that was already behind. The condition is inherently bursty:
       // every frame in a busy stretch trips it, and the 324th line says exactly
@@ -513,7 +513,7 @@ export class WakeListener {
       //
       // So: the FIRST drop in a burst is reported immediately (that is the
       // signal), and the rest are counted and summarised once the burst ends or
-      // the interval elapses. Nothing is hidden — the count is the whole story.
+      // the interval elapses. Nothing is hidden, the count is the whole story.
       this.#noteDroppedFrame();
       return;
     }
@@ -626,7 +626,7 @@ export class WakeListener {
 
   /**
    * The receipt for one capture. Written from #completeRecording only, so a
-   * capture produces exactly one entry however it ended — including the
+   * capture produces exactly one entry however it ended, including the
    * stream-died path, which completes through the same call.
    *
    * `provider` is the recorder that captured it rather than a transcription
@@ -668,14 +668,14 @@ export class WakeListener {
 
   #onStreamStopped(reason: 'requested' | 'stream-ended' | 'failed', error?: AudioCaptureError): void {
     if (this.#stopping || reason === 'requested') return;
-    // A recording in flight when the device died is still worth transcribing —
+    // A recording in flight when the device died is still worth transcribing,
     // the user spoke, and the audio up to the cut is what they said.
     if (this.#recorder !== null) this.#completeRecording('stream-ended');
     this.#stream = null;
     this.#engine = null;
     // The stream this was watching for is gone; the restart below re-resolves
     // the pin from scratch, which is where the device is re-validated after a
-    // capture failure — a device that vanished mid-session becomes a fallback
+    // capture failure, a device that vanished mid-session becomes a fallback
     // on the next open rather than a restart loop against a dead target.
     this.#disarmDeviceRecheck();
     this.#clearFirstFrameWatchdog();

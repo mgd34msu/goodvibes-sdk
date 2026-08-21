@@ -1,5 +1,5 @@
 /**
- * conversation-host-broker.ts — conversation-scope rewind served by the surface
+ * conversation-host-broker.ts, conversation-scope rewind served by the surface
  * that actually hosts the conversation.
  *
  * WHAT WAS MISSING. Files rewind works from anywhere, because the workspace
@@ -8,7 +8,7 @@
  * clients that process is not the daemon. The daemon's in-process port resolved
  * a session's conversation out of a map nothing outside the daemon could
  * populate, so `rewind.plan` with scope 'conversation' returned "0 messages to
- * drop" for every session hosted anywhere else — a confident answer to a
+ * drop" for every session hosted anywhere else, a confident answer to a
  * question it could not reach.
  *
  * WHAT THIS IS. A surface REGISTERS the conversation it is hosting for a
@@ -18,8 +18,8 @@
  * them, so anyone else's answer would be a guess. A session nobody has
  * registered is reported unavailable with the reason, never as zero.
  *
- * THE SHAPE, and why it is this one. This is a reverse call — the daemon asking
- * a connected client and awaiting an answer — and the platform already has one
+ * THE SHAPE, and why it is this one. This is a reverse call, the daemon asking
+ * a connected client and awaiting an answer, and the platform already has one
  * of those in ApprovalBroker: a record, a resolver held beside it, a bounded
  * deadline, and every outcome RESOLVING rather than rejecting so no caller is
  * ever left holding a promise. The same four apply here. Where it differs is
@@ -34,7 +34,7 @@
  * restart means every claim is stale, and re-reading them from disk would
  * resurrect hosts that no longer exist. Instead a registration carries a lease
  * the host renews by polling, and an unrenewed one is dropped on the next
- * access — so the state is bounded by time rather than by a sweep, and a
+ * access, so the state is bounded by time rather than by a sweep, and a
  * crashed surface stops being consulted without anyone cleaning up after it.
  */
 import { randomUUID } from 'node:crypto';
@@ -115,7 +115,7 @@ export const CONVERSATION_HOST_MAX_PENDING = 8;
 
 export interface ConversationRewindHostBrokerOptions {
   /**
-   * A port for sessions no surface has registered — the daemon's own in-process
+   * A port for sessions no surface has registered, the daemon's own in-process
    * conversation store, when it has one. Consulted only after the registry
    * misses, because a surface that says it is holding the conversation is a
    * better authority on it than a store that merely might be.
@@ -176,7 +176,7 @@ export class ConversationRewindHostBroker implements RewindConversationPort {
    * its outstanding questions are answered unavailable, because they were
    * addressed to a surface that is no longer the one holding the messages.
    * Passing a `hostId` that is not the session's current host is refused rather
-   * than treated as a fresh claim — a surface that believes it is the host and
+   * than treated as a fresh claim, a surface that believes it is the host and
    * is not should learn so, not silently take over.
    */
   registerHost(input: {
@@ -246,7 +246,7 @@ export class ConversationRewindHostBroker implements RewindConversationPort {
   }
 
   /**
-   * Collect the questions waiting for this host, renewing its lease — a surface
+   * Collect the questions waiting for this host, renewing its lease, a surface
    * that is polling is a surface that is alive, so a separate keepalive would
    * be ceremony over the same fact.
    *
@@ -507,7 +507,7 @@ export class ConversationRewindHostBroker implements RewindConversationPort {
   /**
    * Drop registrations whose lease has lapsed, on the way into every access.
    * A surface that stopped polling stopped being able to answer, whether it
-   * crashed, disconnected, or simply moved on — and a stale claim is worse than
+   * crashed, disconnected, or simply moved on, and a stale claim is worse than
    * no claim, because it turns "nobody is hosting this" into a timeout.
    */
   private dropExpiredHosts(): void {

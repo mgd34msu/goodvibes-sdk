@@ -8,7 +8,7 @@
  * content is to ask for some. On an empty mailbox there is nothing to ask for,
  * so `ImapBodyProbe` has a THIRD outcome beyond readable/unreadable: nothing
  * was demonstrated at all. An outcome whose "unproven" case reads as falsy is
- * worse than useless here — it is the exact silent-degradation mistake this
+ * worse than useless here, it is the exact silent-degradation mistake this
  * whole design exists to refuse everywhere else, dressed up as a capability
  * check that looks like it ran.
  *
@@ -19,9 +19,9 @@
  * demonstrated" as its own case or does not compile.
  *
  * The evidence for `unreadable` is a union of its own, and pinned here for the
- * same reason. There are two ways to learn an account cannot read bodies — the
+ * same reason. There are two ways to learn an account cannot read bodies, the
  * server withheld a body it had declared, or it refused and named no condition
- * — and they carry different evidence. Collapsing them would put a declared
+ *, and they carry different evidence. Collapsing them would put a declared
  * octet count on a refusal that never got as far as a declaration.
  *
  * Everything below resolves through the PACKAGE NAME rather than a relative
@@ -37,7 +37,7 @@ import type {
 
 declare const probe: ImapBodyProbe;
 
-// `returnedBytes` does not exist AT ALL on the unproven case — not a
+// `returnedBytes` does not exist AT ALL on the unproven case, not a
 // `returnedBytes` that is present and undefined, which would be falsy and would
 // make the comparison below compile while silently meaning "never asked, treat
 // as fine".
@@ -48,10 +48,10 @@ export function theMistake(): string {
 
 // The exact failure this file exists to catch: degrading the three-outcome
 // union to a plain boolean loses the distinction between "nothing was
-// demonstrated" and "demonstrated it cannot read" — both would read `false`.
+// demonstrated" and "demonstrated it cannot read", both would read `false`.
 // Narrowing `outcome` first is the only way through.
 export function theDegradedMirror(verdict: ImapBodyProbe): boolean {
-  // @ts-expect-error a bare `ImapBodyProbe` is not a `boolean` — the whole
+  // @ts-expect-error a bare `ImapBodyProbe` is not a `boolean`, the whole
   // point is that it cannot be collapsed to one without narrowing first
   const collapsed: boolean = verdict;
   return collapsed;
@@ -68,7 +68,7 @@ export function theEvidenceMistake(): string {
 // its own right rather than a falsy stand-in for "unreadable".
 export function describeBodyProbe(verdict: ImapBodyProbe): string {
   if (verdict.outcome === 'unproven') {
-    return 'nothing demonstrated — the mailbox was empty; the first message settles it';
+    return 'nothing demonstrated, the mailbox was empty; the first message settles it';
   }
   if (verdict.outcome === 'readable') {
     return `confirmed at connect: ${verdict.returnedBytes} byte(s)`;

@@ -1,5 +1,5 @@
 /**
- * model-route.ts — a per-session model selection over one shared registry.
+ * model-route.ts, a per-session model selection over one shared registry.
  *
  * ── Why this exists ────────────────────────────────────────────────────────
  *
@@ -10,7 +10,7 @@
  * picker of any surface reading the same registry.
  *
  * `sessions.hosted.create` takes a model, so the field has to actually route
- * this session — a create argument that configures nothing is worse than no
+ * this session, a create argument that configures nothing is worse than no
  * argument at all. The Orchestrator asks the registry for `getCurrentModel()`
  * once per turn and otherwise treats the registry as shared state, so the
  * narrowest correct change is a VIEW of the shared registry whose answer to
@@ -19,14 +19,14 @@
  *
  * That is what this returns. Credential re-registration, discovery, pricing,
  * context-window reconciliation and every other mutation still land on the one
- * real registry — the view forwards them — so nothing about the shared model
+ * real registry, the view forwards them, so nothing about the shared model
  * stack is duplicated or diverges. Only the selection is per session.
  *
  * ── Refusing beats pretending ──────────────────────────────────────────────
  *
  * The reference is resolved against the live registry at composition time
  * through the same shared resolver the spawn path uses, so an unknown or
- * ambiguous id is refused when the session is created, naming real candidates —
+ * ambiguous id is refused when the session is created, naming real candidates,
  * rather than accepted and quietly ignored at the first turn.
  */
 
@@ -38,7 +38,7 @@ import { resolveModelReference } from '../providers/model-id-resolution.js';
  * against the live registry.
  *
  * @throws when the reference names no model, names several, or names one that
- * is not selectable — with the resolver's own message, which lists candidates.
+ * is not selectable, with the resolver's own message, which lists candidates.
  */
 export function resolveHostedModelDefinition(
   registry: Pick<ProviderRegistry, 'listModels'>,

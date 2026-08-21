@@ -3,7 +3,7 @@
  *
  * Pure attachment-resolution + provider-content helpers for CompanionChatManager.
  * Extracted so the manager file stays within its line budget; behaviour is
- * unchanged — every function takes the artifact store explicitly instead of
+ * unchanged, every function takes the artifact store explicitly instead of
  * reaching through `this`.
  */
 

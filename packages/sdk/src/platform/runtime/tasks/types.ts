@@ -1,5 +1,5 @@
 /**
- * Task manager types — public interfaces for creating, updating, and
+ * Task manager types, public interfaces for creating, updating, and
  * managing RuntimeTask lifecycle through the UnifiedTaskManager.
  */
 import type { TaskKind, TaskLifecycleState, TaskRetryPolicy, RuntimeTask } from '../store/domains/tasks.js';
@@ -88,7 +88,7 @@ export interface TaskFailParams {
 // ---------------------------------------------------------------------------
 
 /**
- * TaskManager — the public interface for the unified task management system.
+ * TaskManager, the public interface for the unified task management system.
  *
  * All task lifecycle transitions and mutations go through this interface.
  * Implementations MUST:

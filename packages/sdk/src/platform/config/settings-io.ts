@@ -1,5 +1,5 @@
 /**
- * settings-io.ts — raw settings-file read/merge/write + frozen-default stripping.
+ * settings-io.ts, raw settings-file read/merge/write + frozen-default stripping.
  *
  * These pure helpers back ConfigManager's per-key persistence model: a set()
  * writes only the touched key into the raw on-disk shape (read-merge-write), a
@@ -20,8 +20,8 @@ const DEFAULT_CONFIG_SNAPSHOT = structuredClone(DEFAULT_CONFIG) as GoodVibesConf
  * This read backs read-merge-write persistence, so a file it cannot parse is
  * about to be overwritten by the merge that follows. Discarding it silently
  * (what the bare `catch` here used to do) destroyed the only copy of whatever
- * the user had on disk. The unparseable file is now quarantined first — moved
- * aside with a `.why` receipt and logged at error level — and the merge starts
+ * the user had on disk. The unparseable file is now quarantined first, moved
+ * aside with a `.why` receipt and logged at error level, and the merge starts
  * from `{}` as before, so the settings the caller is writing still land while
  * the previous file survives for inspection.
  */
@@ -97,7 +97,7 @@ function jsonEqual(a: unknown, b: unknown): boolean {
 
 /**
  * True when a raw settings file looks like a whole-config dump the old save()
- * produced — every top-level default domain is present. This is the provenance
+ * produced, every top-level default domain is present. This is the provenance
  * signal the read-time strip migration keys off: a full dump is the frozen-
  * defaults artifact and is safe to minimize; a sparse, hand-authored file
  * (even one whose lone key happens to equal a default) is deliberate user
@@ -113,7 +113,7 @@ export function isFrozenDefaultDump(
 }
 
 /**
- * Drop every leaf whose value equals the shipped default at the same path —
+ * Drop every leaf whose value equals the shipped default at the same path,
  * the "frozen defaults" a whole-config write used to bake in. Keys absent from
  * the defaults (genuine user data we cannot classify) are kept as-is; a value
  * that DIFFERS from its default is kept; an object emptied by stripping is

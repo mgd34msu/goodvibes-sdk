@@ -1,20 +1,20 @@
 /**
- * rest-transport.ts — the memory-spine's REST `MemoryTransport`.
+ * rest-transport.ts, the memory-spine's REST `MemoryTransport`.
  *
  * A thin REST adapter over the daemon-owned `memory.records.*` HTTP routes,
  * built directly on this platform's own `transport-http` primitives
  * (`buildUrl`, `createJsonRequestInit`, `requestJsonRaw`) rather than a
- * hand-rolled fetch wrapper — this is the SDK's own wire, so it uses the
+ * hand-rolled fetch wrapper, this is the SDK's own wire, so it uses the
  * SDK's own transport helpers.
  *
  * FULL DETACH (SDK 1.2.0 catalog). Implements all fifteen verbs: the five
  * CORE routes (add, search, get, review, delete) plus the ten EXTENDED
  * routes (list, search-semantic, update, links.list, links.add, export,
- * import, review-queue, vector, doctor) — every read/write a consumer needs
+ * import, review-queue, vector, doctor), every read/write a consumer needs
  * to fully detach from its local memory store file once a daemon is adopted.
  *
  * HONESTY. Unlike the session spine (fire-and-forget, folded into a soft
- * 'offline' result), memory reads/writes return data the caller depends on —
+ * 'offline' result), memory reads/writes return data the caller depends on,
  * a transport failure here is NOT swallowed. It propagates as a rejected
  * promise, matching `MemorySpineClient`'s documented contract: a wire client
  * must never silently fall back to a divergent local copy in place of a real
@@ -25,9 +25,9 @@
  * `MEMORY_RECORD_NOT_FOUND`: on a nullable verb (`get`/`updateReview`/
  * `update`/`link`) it maps to the documented `null` "not found"; on a
  * non-nullable verb (`linksFor` etc.) it is not representable as null so it
- * propagates as a thrown error. ANY OTHER 404 — a route-not-found from an
+ * propagates as a thrown error. ANY OTHER 404, a route-not-found from an
  * older daemon that never registered this route, or a bare legacy 404 with no
- * code — is treated as "this daemon does not serve this verb" and rejects
+ * code, is treated as "this daemon does not serve this verb" and rejects
  * with a stated reason on every verb, never a silent `null`.
  *
  * ── Hoist provenance (2026-07-30 daemon/TUI split) ──────────────────────────
@@ -41,7 +41,7 @@
  * platform's own transport-http helpers instead of a bespoke fetch wrapper.
  * Kept out of this hoist: bootstrap-side activation wiring
  * (`syncMemorySpineToHostStatus` in the TUI, the adoption reconciler in the
- * agent) — that is each consumer's own daemon-adoption composition, not part
+ * agent), that is each consumer's own daemon-adoption composition, not part
  * of the transport itself.
  */
 import { buildUrl, createJsonRequestInit, requestJsonRaw } from '@pellux/goodvibes-transport-http';

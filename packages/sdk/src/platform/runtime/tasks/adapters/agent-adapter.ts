@@ -1,5 +1,5 @@
 /**
- * AgentTaskAdapter — bridges agent sessions (AgentOrchestrator / WRFC agents)
+ * AgentTaskAdapter, bridges agent sessions (AgentOrchestrator / WRFC agents)
  * into the unified RuntimeTask registry.
  *
  * Each running agent gets a corresponding RuntimeTask of kind 'agent'. The
@@ -90,7 +90,7 @@ export class AgentTaskAdapter {
    * RuntimeEventBus and propagate them into the task registry.
    *
    * This is the authoritative wire that ensures task records reach terminal state
-   * once their backing agent finishes — without it, tasks stay stuck in 'running'
+   * once their backing agent finishes, without it, tasks stay stuck in 'running'
    * indefinitely (the bug observed in daemon state at 192.168.0.61:3421).
    *
    * @param bus - The active RuntimeEventBus instance.
@@ -98,7 +98,7 @@ export class AgentTaskAdapter {
    */
   attachRuntimeBus(bus: RuntimeEventBus): () => void {
     if (this._busAttached) {
-      logger.warn('[AgentTaskAdapter] attachRuntimeBus called more than once — ignoring duplicate call');
+      logger.warn('[AgentTaskAdapter] attachRuntimeBus called more than once, ignoring duplicate call');
       return () => {};
     }
     this._busAttached = true;

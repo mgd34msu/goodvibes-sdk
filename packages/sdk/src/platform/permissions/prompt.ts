@@ -3,8 +3,8 @@ import type { RememberTier, RememberTierOption } from './approval-rules.js';
 
 /**
  * Attribution for a permission ask that did NOT originate from the foreground
- * turn loop. Populated when a background/subagent tool call — or an MCP server's
- * elicitation request — brokers an ask so a surface can render "who is asking"
+ * turn loop. Populated when a background/subagent tool call, or an MCP server's
+ * elicitation request, brokers an ask so a surface can render "who is asking"
  * instead of an anonymous prompt. Absent on foreground asks (the common case).
  *
  * A discriminated union: every non-foreground origin that reaches the approval
@@ -41,8 +41,8 @@ export interface McpServerAttribution {
 
 /**
  * The active per-command exec sandbox needs host access a boundary-safe command
- * would not — network, a host-privilege escalation, a package install that
- * reaches the network — so it brokers an ASK through the SAME approval broker as
+ * would not, network, a host-privilege escalation, a package install that
+ * reaches the network, so it brokers an ASK through the SAME approval broker as
  * a permission ask (one learned pattern, not five). Every surface's approval UI
  * renders it and background bubbling applies. Names the sandbox and the specific
  * escalation so the prompt can attribute it ("wants-network").
@@ -98,7 +98,7 @@ export interface PermissionPromptRequest {
   attribution?: PermissionAttribution | undefined;
   /**
    * The remember tiers this ask can offer (exact command / command class /
-   * path scope / whole tool / session), most specific first — computed by
+   * path scope / whole tool / session), most specific first, computed by
    * PermissionManager so EVERY surface (TUI, webui, companion) renders the
    * same options. A decision answers with `rememberTier`.
    */
@@ -125,7 +125,7 @@ export interface PermissionPromptDecision {
    * When present, replaces the tool call's original arguments for execution
    * (e.g. a per-hunk-filtered `edits` array for the `edit` tool). Never
    * populated by non-prompt approval paths (auto-approve, policy, session
-   * cache) — only the user-prompt path can set this.
+   * cache), only the user-prompt path can set this.
    */
   modifiedArgs?: Record<string, unknown> | undefined;
 }

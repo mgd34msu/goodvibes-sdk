@@ -8,14 +8,14 @@
  * and threw the return value away.
  *
  * The return value is the whole record that an expectation ended.
- * `InboundExpectationRegistry.sweep()` is the reporting path — the same
+ * `InboundExpectationRegistry.sweep()` is the reporting path, the same
  * `sweepExpired`, but mapped through `describeExpiry`, written through to disk
  * and handed to `onExpired`. Both called the same reaper; only one of them told
  * anybody.
  *
- * The frequencies decided it. The predicate is asked before every poll wait —
+ * The frequencies decided it. The predicate is asked before every poll wait,
  * five seconds apart at the shipped `gmailPollSecondsExpecting`, for as long as
- * an expectation is open — while `startSweeping` arms the reporting sweep every
+ * an expectation is open, while `startSweeping` arms the reporting sweep every
  * thirty seconds at the shipped fifteen-minute window. The fast probe reached
  * the expired row first essentially always, deleted it, and the sweep arrived to
  * an empty book and reported nothing. A verification that never came expired in
@@ -23,7 +23,7 @@
  * make impossible.
  *
  * So the tests below assert the REPORT, not the absence of the row. An
- * assertion that the expectation is gone passes on the defect — the defect is
+ * assertion that the expectation is gone passes on the defect, the defect is
  * that it is gone in a way nobody hears about.
  *
  * The book-level case is the general one. Reads filter; only `sweepExpired`

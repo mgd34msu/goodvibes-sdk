@@ -4,13 +4,13 @@ import type { SecretRefResolutionOptions } from './secret-refs.js';
 import { summarizeError } from '../utils/error-display.js';
 
 /**
- * secret-ref-refusal.ts — telling a malformed reference from a literal secret.
+ * secret-ref-refusal.ts, telling a malformed reference from a literal secret.
  *
  * `resolveSecretInput` asked `normalizeSecretRef` whether a value was a valid
  * reference and, on `null`, concluded it must be a literal secret. That is a
  * rule that succeeds by convention: it is right for every string that was never
  * meant to be a reference, and catastrophically wrong for the one case it
- * cannot distinguish — a reference with a typo in it.
+ * cannot distinguish, a reference with a typo in it.
  *
  * The consequence was not subtle. A mistyped `goodvibes://secrets/...` in a
  * config file became the credential: the reference TEXT was handed to a
@@ -46,7 +46,7 @@ const REFERENCE_SCHEME_PREFIXES: readonly string[] = [
  *
  * The distinction is the whole point. `normalizeSecretRef` answers "is this a
  * valid reference", and `resolveSecretInput` used to read a `null` from it as
- * "then it must be a literal secret" — a rule that succeeds by convention. A
+ * "then it must be a literal secret", a rule that succeeds by convention. A
  * typo in a config reference therefore became the credential: the reference
  * TEXT was handed to a transport as an auth token, sent to a third party, and
  * logged there. What came back was a 401, which sends whoever debugs it hunting
@@ -61,7 +61,7 @@ export function looksLikeSecretRef(input: unknown): boolean {
 /**
  * Describe a malformed reference by SHAPE alone, for a diagnostic.
  *
- * Never returns the value. A malformed reference is usually not a credential —
+ * Never returns the value. A malformed reference is usually not a credential,
  * but "usually" is not a property to log on, and the text may contain whatever
  * the operator meant to paste. Scheme and structure are enough to fix a typo.
  */

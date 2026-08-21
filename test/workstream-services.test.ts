@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// workstream-services.test.ts — phase/work-item orchestration engine
+// workstream-services.test.ts, phase/work-item orchestration engine
 //
 // Integration test against a REAL OrchestrationEngine (not a fake) on a
 // scratch workspace: create -> approve -> launch drives the engine through
@@ -8,7 +8,7 @@
 // orchestration-engine.test.ts harness (bus.emit + createEventEnvelope over
 // a fake PhaseRunnerAgentManagerLike) via the public npm surface this TUI
 // consumes (@/runtime/index.ts re-exports RuntimeEventBus/createEventEnvelope
-// from @pellux/goodvibes-sdk/platform/runtime/state — see
+// from @pellux/goodvibes-sdk/platform/runtime/state, see
 // agents/wrfc-controller.test.ts for the same pattern already in this repo).
 //
 // Command-layer behavior (fake service, no live engine) is covered
@@ -34,12 +34,12 @@ import { makeProjectTempDir } from './_helpers/project-temp.ts';
  * Plain microtask flushing (a loop of `await Promise.resolve()`) is enough
  * for the SDK's own orchestration-engine.test.ts because its harness passes
  * `createWorktree` (a fully-synchronous-resolving fake). This module does
- * NOT expose a createWorktree override (by design — see this file's header
+ * NOT expose a createWorktree override (by design, see this file's header
  * doc: production always gets the engine's real default, a genuine
  * AgentWorktree(projectRoot) using simple-git). Every phase-runner completion
  * unconditionally calls worktree.cleanup(), so even in this scratch,
  * non-git directory (where git-tooling calls fail fast and are swallowed),
- * that failure still round-trips through real subprocess I/O — a macrotask,
+ * that failure still round-trips through real subprocess I/O, a macrotask,
  * not a microtask. setImmediate + a short setTimeout let that I/O actually
  * complete before the next assertion.
  */
@@ -106,7 +106,7 @@ function makeConfigManager(decomposition: 'heuristic' | 'agent' = 'heuristic'): 
   };
   // Values are looked up through an untyped map (like help.test.ts's fakeConfig)
   // so the cast to the generic return type starts from `unknown`, not a
-  // concrete literal — avoids the compiler over-expanding ConfigValue<K>'s
+  // concrete literal, avoids the compiler over-expanding ConfigValue<K>'s
   // large conditional type when comparing it against a literal type.
   const values: Record<string, unknown> = {
     'wrfc.commitScope': 'off',
@@ -217,7 +217,7 @@ describe('createWorkstreamServices — real engine wiring', () => {
       projectRoot,
     });
 
-    // create — the rendered proposal IS the real launchable spec (see
+    // create, the rendered proposal IS the real launchable spec (see
     // workstream-services.ts's buildSpec doc): the canned fromChainSpec
     // engineer -> review pipeline, not a fictional decomposition.
     const draft = await workstreamCommands.proposeDraft('ship the demo feature');
@@ -225,12 +225,12 @@ describe('createWorkstreamServices — real engine wiring', () => {
     expect(draft.provenance.kind).toBe('heuristic-configured');
     expect(draft.approved).toBe(false);
 
-    // approve — flips the draft's own boolean; nothing exists in the engine yet.
+    // approve, flips the draft's own boolean; nothing exists in the engine yet.
     const approved = workstreamCommands.approveDraft(draft.id);
     expect(approved?.approved).toBe(true);
     expect(orchestrationEngine.listWorkstreams()).toHaveLength(0);
 
-    // launch — NOW engine.createWorkstream + start actually run.
+    // launch, NOW engine.createWorkstream + start actually run.
     const result = workstreamCommands.launchDraft(draft.id);
     expect(result).not.toBeNull();
     expect(workstreamCommands.getDraft(draft.id)).toBeUndefined(); // dropped once launched

@@ -1,5 +1,5 @@
 /**
- * submit-turn-quickstart.mjs — Conversation turn walkthrough
+ * submit-turn-quickstart.mjs, Conversation turn walkthrough
  *
  * Demonstrates: create session → subscribe SSE → submit message → stream tokens → exit.
  *
@@ -31,7 +31,7 @@ console.log(`[session] created: ${sessionId}`);
 //    viaSse() returns per-domain feeds. The 'turn' domain carries STREAM_DELTA,
 //    TURN_COMPLETED, TURN_ERROR, and TURN_CANCEL events.
 //
-//    forSession() returns a pre-filtered view of the events object — every
+//    forSession() returns a pre-filtered view of the events object, every
 //    callback only fires for events belonging to the given session. This
 //    removes the need to manually guard each handler with
 //    `if (e.sessionId !== sessionId) return`.

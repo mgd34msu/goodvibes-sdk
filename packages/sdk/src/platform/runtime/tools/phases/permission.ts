@@ -10,7 +10,7 @@ import { buildToolDenial, buildDenialErrorMessage } from '../../../permissions/d
 import { summarizeError } from '../../../utils/error-display.js';
 
 /**
- * permission — Phase 3 of the tool execution pipeline.
+ * permission, Phase 3 of the tool execution pipeline.
  *
  * Delegates to PermissionManager.check(). If permission is denied,
  * the phase aborts and no further phases are run.

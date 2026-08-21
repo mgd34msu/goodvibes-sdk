@@ -84,7 +84,7 @@ function agentExecutionContract(record: AgentRecord) {
 /**
  * Build the child-failure envelope for a terminally-failed/cancelled record so
  * the supervising model receives {agentId, phase, reason, partialOutputs} as the
- * RESULT of its poll — never a bare status. Returns null for non-terminal or
+ * RESULT of its poll, never a bare status. Returns null for non-terminal or
  * cleanly-completed agents. The transcript tail is pulled from the manager's
  * live-or-frozen snapshot (honest partial output, never fabricated).
  */
@@ -439,7 +439,7 @@ export function createAgentTool(config: {
         }
 
         // Non-blocking: return current status immediately if already in a terminal state.
-        // For short polls (timeoutMs > 0), wait at most that duration — capped at 5000ms
+        // For short polls (timeoutMs > 0), wait at most that duration, capped at 5000ms
         // to prevent blocking the main conversation loop.
         const terminalStatuses = new Set(['completed', 'failed', 'cancelled']);
 
@@ -456,7 +456,7 @@ export function createAgentTool(config: {
           };
         }
 
-        // If a timeoutMs is requested, poll briefly — capped at 5000ms to avoid
+        // If a timeoutMs is requested, poll briefly, capped at 5000ms to avoid
         // blocking the main turn loop (sub-agents use small timeouts anyway).
         const requestedTimeout = typeof input.timeoutMs === 'number' ? input.timeoutMs : 0;
         const MAX_BLOCKING_MS = 5_000;
@@ -582,8 +582,8 @@ export function createAgentTool(config: {
             };
           }
           // Part (a): when a requested fan-out was collapsed, state it plainly for
-          // the host to surface to the user — what was requested, what the guard
-          // did, and why — so the collapse is never a silent, confusing rewrite.
+          // the host to surface to the user, what was requested, what the guard
+          // did, and why, so the collapse is never a silent, confusing rewrite.
           const fanout = batchPolicy.ownerInput?.fanoutCollapse;
           const announcement = fanout
             ? `Requested ${fanout.requestedShape}; the WRFC topology guard ran them as one reviewed chain instead (${batchPolicy.reason ?? 'topology enforcement'}).`
@@ -619,7 +619,7 @@ export function createAgentTool(config: {
           return {
             success: false,
             error: spawnDecision.reason
-              ?? `agent capacity reached (${currentCount}/${spawnDecision.maxAgents}) — cap: ${boundCap.key}=${boundCap.value}. No capacity for batch-spawn.`,
+              ?? `agent capacity reached (${currentCount}/${spawnDecision.maxAgents}), cap: ${boundCap.key}=${boundCap.value}. No capacity for batch-spawn.`,
             output: JSON.stringify({ cap: boundCap }),
           };
         }
@@ -665,7 +665,7 @@ export function createAgentTool(config: {
           // the cap and its value both here and in a human-readable note.
           batchOutput.cap = { key: ORCHESTRATION_CAP_KEYS.maxActiveAgents, value: spawnDecision.maxAgents };
           batchOutput.capMessage =
-            `queued ${skipped} task${skipped === 1 ? '' : 's'}: ${spawnDecision.maxAgents}/${spawnDecision.maxAgents} active — cap: ${ORCHESTRATION_CAP_KEYS.maxActiveAgents}=${spawnDecision.maxAgents}`;
+            `queued ${skipped} task${skipped === 1 ? '' : 's'}: ${spawnDecision.maxAgents}/${spawnDecision.maxAgents} active, cap: ${ORCHESTRATION_CAP_KEYS.maxActiveAgents}=${spawnDecision.maxAgents}`;
         }
         return {
           success: true,

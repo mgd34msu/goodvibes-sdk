@@ -9,7 +9,7 @@
  * (deterministic for tests).
  *
  * Split out of CompanionChatManager (see CHANGELOG 1.0.0) to stay under the repo's
- * grandfathered line-cap ceiling (see scripts/check-line-cap.ts) — a pure
+ * grandfathered line-cap ceiling (see scripts/check-line-cap.ts), a pure
  * file-organization move, not a behavior change: same chaining, same
  * best-effort swallow-and-log-on-failure semantics.
  */

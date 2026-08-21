@@ -1,5 +1,5 @@
 /**
- * types.ts — the wake-word engine's boundary types.
+ * types.ts, the wake-word engine's boundary types.
  *
  * The engine is isomorphic: the same code runs in a daemon child process and in
  * a browser tab. That is only possible because it never imports an inference
@@ -20,8 +20,8 @@ export interface WakeTensor {
 
 /**
  * One loaded model, as much of an inference session as this engine uses. Any
- * runtime that can satisfy this — onnxruntime-web in either environment, or a
- * stub — can drive the engine.
+ * runtime that can satisfy this, onnxruntime-web in either environment, or a
+ * stub, can drive the engine.
  */
 export interface WakeInferenceSession {
   readonly inputNames: readonly string[];
@@ -94,7 +94,7 @@ export interface WakeArtifactStatus {
   readonly path: string;
   /** Content-verified, not existence-checked: the file's sha256 matched the pin. */
   readonly verified: boolean;
-  /** Present but failing verification — torn, truncated, or the wrong asset. */
+  /** Present but failing verification, torn, truncated, or the wrong asset. */
   readonly corrupt: boolean;
   readonly bytes: number;
 }

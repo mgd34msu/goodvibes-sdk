@@ -75,7 +75,7 @@ function walkSourceFiles(dir: string): string[] {
 
 // ─── Scan roots ─────────────────────────────────────────────────────────────
 
-// Scan only the package source tree — scripts/ is build tooling, not published source.
+// Scan only the package source tree, scripts/ is build tooling, not published source.
 const SCAN_ROOTS = [
   resolve(REPO_ROOT, 'packages'),
 ];
@@ -129,11 +129,11 @@ for (const root of SCAN_ROOTS) {
 // ─── Report ─────────────────────────────────────────────────────────────────
 
 if (findings.length === 0) {
-  console.log('todo-check: OK — no TODO/FIXME/XXX/HACK/STUB markers in non-exempt source files.');
+  console.log('todo-check: OK, no TODO/FIXME/XXX/HACK/STUB markers in non-exempt source files.');
   process.exit(0);
 }
 
-console.error(`\ntodo-check: FAIL — ${findings.length} marker(s) found in non-exempt source files:\n`);
+console.error(`\ntodo-check: FAIL, ${findings.length} marker(s) found in non-exempt source files:\n`);
 for (const f of findings) {
   console.error(`  ${f.rel}:${f.line}:${f.col}  [${f.marker}]`);
   console.error(`    ${f.text}\n`);

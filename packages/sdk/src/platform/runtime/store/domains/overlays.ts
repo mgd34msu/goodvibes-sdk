@@ -1,5 +1,5 @@
 /**
- * Overlays domain state — tracks which full-screen or floating overlays
+ * Overlays domain state, tracks which full-screen or floating overlays
  * are currently visible and their configuration.
  */
 
@@ -31,7 +31,7 @@ export interface OverlayInstance {
 }
 
 /**
- * OverlayDomainState — manages the overlay stack and focus.
+ * OverlayDomainState, manages the overlay stack and focus.
  */
 export interface OverlayDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

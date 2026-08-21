@@ -3,7 +3,7 @@
  * three FETCH/SEARCH response shapes the client asks for.
  *
  * Split out of `imap-client.ts` so both halves stay under the repository's
- * per-file line cap. Nothing here touches a socket, a clock or the filesystem —
+ * per-file line cap. Nothing here touches a socket, a clock or the filesystem,
  * every function takes text and returns data, which is what lets the
  * top-most-only rules below be tested without a server.
  */
@@ -26,7 +26,7 @@ import type {
 
 /**
  * Which header field a delivery-evidence value was read from.
- * Both names are stamped by the final delivery agent, not by the sender —
+ * Both names are stamped by the final delivery agent, not by the sender,
  * that is what makes them evidence. `to-header` is deliberately absent from
  * this union: the To: header is sender-authored and is never evidence.
  */
@@ -63,7 +63,7 @@ const MAX_HEADER_VALUE_CHARS = 2_000;
  * wrote and every later occurrence arrived with the message.
  *
  * Parsing stops at the first blank line once at least one field has been seen,
- * because everything after it is message body — a sender who pastes
+ * because everything after it is message body, a sender who pastes
  * `Delivered-To: victim@example.com` into the body must not be able to have it
  * read back as a header. Never throws; malformed input yields fewer fields.
  */
@@ -133,7 +133,7 @@ function normalizeDeliveryAddress(rawValue: string): string {
  *
  * Only the TOP-MOST delivery header in the block is returned. A sender can put
  * their own `Delivered-To:`/`X-Original-To:` lines in the message they submit,
- * and those always land BELOW the line the receiving delivery agent prepends —
+ * and those always land BELOW the line the receiving delivery agent prepends,
  * so every occurrence after the first is attacker-reachable and is discarded.
  *
  * Deliberately conservative: we do not additionally trust the second delivery
@@ -180,7 +180,7 @@ export function extractAuthenticationResults(rawHeaders: string): string[] {
  * The numbers in a `* SEARCH ...` response, in the order the server gave them.
  *
  * A server answers `SEARCH` with sequence numbers and `UID SEARCH` with UIDs,
- * in the same untagged `* SEARCH` line either way — the wire shape carries no
+ * in the same untagged `* SEARCH` line either way, the wire shape carries no
  * mark of which it is. The caller knows which command it sent, so the name
  * here says "numbers" rather than claiming one or the other. This client only
  * ever sends `UID SEARCH`.
@@ -215,16 +215,16 @@ export function parseSearchNumbers(searchResponse: readonly string[]): number[] 
  * The second half is the point. A caller that advances a cursor has to tell
  * two things apart that used to look identical from here:
  *
- *   - the server sent NO response for a UID — it was expunged between the
+ *   - the server sent NO response for a UID, it was expunged between the
  *     search and the fetch, and the cursor may move past it;
  *   - the server sent a response for it and this client could not read the
- *     answer — nothing is known about that message, and moving the cursor
+ *     answer, nothing is known about that message, and moving the cursor
  *     would skip mail that is still sitting in the mailbox.
  *
  * So every response that arrives is accounted for: it becomes an envelope, or
  * it becomes an entry in `unreadable` with a plain-language reason. Nothing is
  * dropped on the floor, which is what `parseFetchHeaders` and `parseFetchUids`
- * did between them — a response whose UID could not be located was skipped in
+ * did between them, a response whose UID could not be located was skipped in
  * silence, and read downstream as an expunge.
  */
 export function readEnvelopeBatch(
@@ -276,7 +276,7 @@ export function readEnvelopeBatch(
       mailbox,
       deliveredTo: deliveryEvidence.map((entry) => entry.address),
       deliveryEvidence,
-      // Display only — see the field docs on ImapEnvelope.
+      // Display only, see the field docs on ImapEnvelope.
       unverifiedToHeaderClaim: extractHeader(raw, 'To'),
       authenticationResults: extractAuthenticationResults(raw),
     });
@@ -298,7 +298,7 @@ export function readEnvelopeBatch(
  * already volunteered.
  *
  * Atoms are upper-cased and de-duplicated, order preserved. An empty result
- * means the server said nothing — which is NOT the same as "supports nothing",
+ * means the server said nothing, which is NOT the same as "supports nothing",
  * and callers must not read it that way.
  */
 export function parseCapabilities(lines: readonly string[]): string[] {
@@ -335,16 +335,16 @@ export function parseCapabilities(lines: readonly string[]): string[] {
  * connections has to store this alongside it.
  *
  * Every field is null when the server did not report it. Nothing here is
- * defaulted to zero — a missing UIDVALIDITY is not the same fact as
+ * defaulted to zero, a missing UIDVALIDITY is not the same fact as
  * `UIDVALIDITY 0`, and a caller that has to tell the difference cannot if we
  * invent one.
  */
 export interface ImapMailboxStatus {
-  /** `* n EXISTS` — how many messages the mailbox holds. */
+  /** `* n EXISTS`, how many messages the mailbox holds. */
   readonly exists: number | null;
-  /** `* OK [UIDVALIDITY n]` — the generation the UIDs below belong to. */
+  /** `* OK [UIDVALIDITY n]`, the generation the UIDs below belong to. */
   readonly uidValidity: number | null;
-  /** `* OK [UIDNEXT n]` — the UID the next arriving message will be given. */
+  /** `* OK [UIDNEXT n]`, the UID the next arriving message will be given. */
   readonly uidNext: number | null;
   /** True when the completion carried `[READ-ONLY]`, as EXAMINE's does. */
   readonly readOnly: boolean;

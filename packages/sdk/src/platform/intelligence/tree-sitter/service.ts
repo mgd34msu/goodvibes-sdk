@@ -1,10 +1,10 @@
 /**
- * TreeSitterService — Grammar loading, parsing, and tree caching.
+ * TreeSitterService, Grammar loading, parsing, and tree caching.
  *
  * Grammar WASM files are embedded in the compiled binary via Bun's
  * `with { type: 'file' }` import assertion (see embedded-wasm.ts).
  * Missing grammars are handled gracefully (returns null, logs warning).
- * Never throws — callers receive null on failure.
+ * Never throws, callers receive null on failure.
  */
 import { Parser, Language, Query, Tree } from 'web-tree-sitter';
 import type { QueryMatch } from 'web-tree-sitter';
@@ -20,7 +20,7 @@ const MAX_CACHE_SIZE = 100;
 // it lazily keeps it OUT of the static import graph of `platform/runtime` etc.,
 // so a Node consumer (or the release install-smoke check) can import those
 // surfaces without ever evaluating it. It is only pulled when tree-sitter
-// actually initializes / loads a grammar — a Bun-only code path — so real Bun
+// actually initializes / loads a grammar, a Bun-only code path, so real Bun
 // behavior is unchanged.
 let embeddedWasmPromise: Promise<typeof import('./embedded-wasm.js')> | null = null;
 function loadEmbeddedWasm(): Promise<typeof import('./embedded-wasm.js')> {
@@ -39,7 +39,7 @@ export class TreeSitterService {
   private languages: Map<string, Language> = new Map();
   private treeCache: Map<string, CacheEntry> = new Map();
   /**
-   * Initialize the WASM module. Safe to call multiple times — only runs once.
+   * Initialize the WASM module. Safe to call multiple times, only runs once.
    * Must be called before parse() will work.
    */
   async initialize(): Promise<void> {
@@ -77,7 +77,7 @@ export class TreeSitterService {
     if (cached) return cached;
 
     // Look up the embedded WASM path. If not present, the grammar package is
-    // not installed — return null rather than throwing.
+    // not installed, return null rather than throwing.
     const { GRAMMAR_WASM } = await loadEmbeddedWasm();
     const wasmPath = GRAMMAR_WASM[langId]!;
     if (!wasmPath) {

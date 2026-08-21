@@ -1,5 +1,5 @@
 /**
- * AutoHealer — three-stage pipeline to fix write/edit validation failures.
+ * AutoHealer, three-stage pipeline to fix write/edit validation failures.
  *
  * Pipeline (opt-in via tools.autoHeal config):
  *   1. Formatter: prettier --write or biome format
@@ -36,7 +36,7 @@ function addWarning(warnings: string[], message: string, error?: unknown): void 
 }
 
 /**
- * AutoHealer — attempts to fix content with validation errors via a staged pipeline.
+ * AutoHealer, attempts to fix content with validation errors via a staged pipeline.
  *
  * Usage:
  *   const healer = new AutoHealer();
@@ -55,7 +55,7 @@ export class AutoHealer {
    * @param filePath     Original file path (used to determine extension/context).
    * @param content      File content that failed validation.
    * @param errors       Validation error messages from the failed write/edit.
-   * @returns            Heal result — healed=true means content was fixed.
+   * @returns            Heal result, healed=true means content was fixed.
    */
   async heal(filePath: string, content: string, errors: string[]): Promise<HealResult> {
     const warnings: string[] = [];
@@ -148,7 +148,7 @@ export class AutoHealer {
       const formatted = readFileSync(tmpFile, 'utf-8');
 
       if (formatted === content) {
-        // Formatter made no changes — errors not formatter-related
+        // Formatter made no changes, errors not formatter-related
         return { healed: false, content };
       }
 
@@ -159,7 +159,7 @@ export class AutoHealer {
         return { healed: true, content: formatted, method: 'formatter' };
       }
 
-      // Formatter ran but errors remain — pass updated content to next stage
+      // Formatter ran but errors remain, pass updated content to next stage
       return { healed: false, content: formatted };
     } catch (err) {
       logger.warn('AutoHealer: formatter stage failed', { error: summarizeError(err) });
@@ -193,7 +193,7 @@ export class AutoHealer {
         stdout: 'pipe',
       });
 
-      // eslint --fix exits 1 on remaining errors, 0 on clean — both are acceptable
+      // eslint --fix exits 1 on remaining errors, 0 on clean, both are acceptable
       const fixed = readFileSync(tmpFile, 'utf-8');
 
       if (fixed === content) {

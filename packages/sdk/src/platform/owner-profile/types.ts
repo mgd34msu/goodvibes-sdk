@@ -1,9 +1,9 @@
 /**
- * types.ts — the shapes of the owner profile.
+ * types.ts, the shapes of the owner profile.
  *
  * The owner profile is ONE Markdown file at daemon scope (see docs/owner-profile.md).
  * The file's text is the source of truth; everything here is a projection of it.
- * Nothing in this module is called `Profile` unqualified — `platform/profiles/`
+ * Nothing in this module is called `Profile` unqualified, `platform/profiles/`
  * is an unrelated named-config-preset manager and the two must never be confused
  * by a reader skimming imports.
  */
@@ -75,7 +75,7 @@ export interface ProfileFieldValue {
  * A `<!-- was: … (superseded <date>) -->` history comment.
  *
  * Retained because it is what makes `undo` work and what answers "what did it
- * say before". Deletable by hand, and deleting one destroys that history — the
+ * say before". Deletable by hand, and deleting one destroys that history, the
  * owner's call.
  */
 export interface ProfileSupersededLine {
@@ -120,7 +120,7 @@ export interface ProfileSection {
  */
 export interface ProfileProjection {
   readonly path: string;
-  /** False when the file is simply not there yet — an honest empty, not a failure. */
+  /** False when the file is simply not there yet, an honest empty, not a failure. */
   readonly exists: boolean;
   /** The document's line ending, so a rewritten line matches the file it lives in. */
   readonly eol: '\n' | '\r\n';
@@ -136,7 +136,7 @@ export interface ProfileProjection {
    *
    * The first occurrence wins and these stay prose, so they remain visible. They
    * are tracked because a delete that removed only the ACTIVE line would leave
-   * the value in the file while reporting success — a false receipt on a delete.
+   * the value in the file while reporting success, a false receipt on a delete.
    */
   readonly duplicateFieldLines: ReadonlyMap<string, readonly number[]>;
 }
@@ -148,7 +148,7 @@ export interface ProfileInvalidField {
 }
 
 /**
- * What `profile.status` answers. Never carries a value — counts, names and
+ * What `profile.status` answers. Never carries a value, counts, names and
  * reasons only.
  *
  * The ONLY unavailable conditions are: the file cannot be read, or its bytes are
@@ -169,7 +169,7 @@ export type ProfileLoadState =
   | { readonly kind: 'unavailable'; readonly path: string; readonly reason: string }
   | { readonly kind: 'disabled'; readonly path: string };
 
-/** Which tier a field or section belongs to — see docs/owner-profile.md §11.2. */
+/** Which tier a field or section belongs to, see docs/owner-profile.md §11.2. */
 export type ProfileTier = 'open' | 'closed';
 
 /** One thing a write did, for the disclosure line and the verb's response. */

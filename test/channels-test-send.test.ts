@@ -5,7 +5,7 @@
  * handler attached the same way the daemon attaches it
  * (registerChannelTestGatewayMethods). Proves the descriptor + handler register
  * together and that a delivery FAILURE is an honest delivered:false outcome
- * carrying the real error — never a fabricated success, never a blanket throw.
+ * carrying the real error, never a fabricated success, never a blanket throw.
  */
 import { describe, expect, test } from 'bun:test';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.ts';

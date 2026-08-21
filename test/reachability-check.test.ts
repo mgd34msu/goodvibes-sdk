@@ -10,8 +10,8 @@ import { scanCommandShadows } from '../packages/sdk/src/platform/runtime/path-sh
  * The startup reachability check: does this running build say so when the
  * shell reaches a different copy, and when it is behind the current release?
  *
- * Both failure modes look identical from the outside — an old build answering
- * as if it were the new one — which is how a leftover `~/.bun/bin` link at
+ * Both failure modes look identical from the outside, an old build answering
+ * as if it were the new one, which is how a leftover `~/.bun/bin` link at
  * PATH position 2 kept answering while `~/.local/bin` at position 21 was
  * dutifully upgraded twice. Every host touch is injected here: no PATH is
  * read, no file is stat'ed, no process is spawned, and no release lookup

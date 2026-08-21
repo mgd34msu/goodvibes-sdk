@@ -15,7 +15,7 @@ export type ApprovalReplyBroker = Pick<ApprovalBroker, 'listApprovals' | 'resolv
 
 /**
  * Parse an owner's channel reply as an approval verb. Only explicit verbs are
- * consumed — anything else flows through as a normal message. The text after
+ * consumed, anything else flows through as a normal message. The text after
  * the verb becomes the steering note carried on the resolution.
  */
 export function parseApprovalReplyVerb(
@@ -80,7 +80,7 @@ export async function tryResolveApprovalReplyFromChannel(
     // The reply's trailing text is model-visible guidance, not just an audit
     // note: as `reason` it rides the structured declined/approved decision to
     // the waiting tool call (the same field the in-process deny-with-reason
-    // path uses), so "deny — use the staging database instead" steers the
+    // path uses), so "deny, use the staging database instead" steers the
     // model instead of behaving as a bare deny. `note` keeps the audit trail.
     ...(verb.note ? { note: verb.note, reason: verb.note } : {}),
   });

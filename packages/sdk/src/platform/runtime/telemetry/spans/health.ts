@@ -2,7 +2,7 @@
  * Health cascade span helpers.
  *
  * Creates point-in-time spans for each CASCADE_APPLIED event from the
- * health cascade engine. These are not lifecycle spans but event spans —
+ * health cascade engine. These are not lifecycle spans but event spans,
  * they start and end immediately to record the cascade effect in the trace.
  *
  * Health cascade spans are always root spans (no parent) since they are
@@ -105,7 +105,7 @@ function extractEffectAttributes(effect: CascadeEffect): SpanAttributes {
     case 'BLOCK_NEW':
       return { 'health.cascade.effect.scope': effect.scope };
     default: {
-      // Exhaustive check — TypeScript will error if a new variant is added without handling it
+      // Exhaustive check, TypeScript will error if a new variant is added without handling it
       const _exhaustive: never = effect;
       return {};
     }

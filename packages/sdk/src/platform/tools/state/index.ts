@@ -49,12 +49,12 @@ function sanitizeMemoryKey(key: string): string | null {
  * Deduped per key via a stable `state-memory:<key>` tag, so repeated statements of the same
  * preference UPDATE the single record instead of piling up duplicates. Provenance is a `file` link
  * back to the flat-file twin (honest about where the record came from). The record enters at
- * reviewState 'fresh' with default confidence — visible to retrieval (the confidence>=55 gate) but
+ * reviewState 'fresh' with default confidence, visible to retrieval (the confidence>=55 gate) but
  * NOT stamped 'reviewed'/high-trust, so a self-recorded preference cannot inject itself at unearned
  * trust; the existing confidence-floor/review flow governs it from there.
  *
  * Best-effort: returns true when a record was written, false when there is no registry or the write
- * failed — the caller's flat-file write (the source of truth for `mode=memory list/get`) is
+ * failed, the caller's flat-file write (the source of truth for `mode=memory list/get`) is
  * unaffected either way.
  */
 async function upsertMemoryRecord(
@@ -119,7 +119,7 @@ export interface StateToolOptions {
   /**
    * Project memory registry. When provided, `mode=memory action=set` mirrors the written
    * preference into a retrievable `memory_records` row (deduped per key) so passive per-turn
-   * knowledge injection can surface it — closing the gap where a distilled preference lived only
+   * knowledge injection can surface it, closing the gap where a distilled preference lived only
    * as a flat `.goodvibes/memory/*.json` file that retrieval never read. Best-effort: a registry
    * write that fails never fails the file write itself.
    */
@@ -569,7 +569,7 @@ async function runSet(
     return { success: false, error: 'mode "set" requires a "values" object' };
   }
 
-  // Handle runtime.workingDir specially — delegate to swap manager if available.
+  // Handle runtime.workingDir specially, delegate to swap manager if available.
   if ('runtime.workingDir' in values) {
     const newDir = values['runtime.workingDir'];
     if (typeof newDir !== 'string' || !newDir.trim()) {
@@ -816,7 +816,7 @@ async function runMemory(
       // Write as-is; allow caller to pass JSON string or plain text
       writeFileSync(filePath, value, 'utf-8');
       // Mirror the write into the retrievable memory store so passive per-turn knowledge injection
-      // can surface it. Best-effort and deduped per key — a registry failure never fails the file
+      // can surface it. Best-effort and deduped per key, a registry failure never fails the file
       // write, which remains the source of truth for `mode=memory list/get`.
       const indexed = await upsertMemoryRecord(memoryRegistry, safeKey, value);
       return {

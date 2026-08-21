@@ -3,7 +3,7 @@
  *
  * Shipped default protection for reads of well-known credential files: a read
  * of a credential store is NOT silently auto-allowed in the default prompt
- * posture — it falls through to the ask/prompt path — while ordinary reads and a
+ * posture, it falls through to the ask/prompt path, while ordinary reads and a
  * workspace-local .env stay auto-allowed. These are ordinary permission-settings
  * defaults (managed rules / a read guard), NOT the frozen exec block.
  */

@@ -1,14 +1,14 @@
 # Connecting Gmail and Google Calendar
 
-> This file is generated from the SDK's Google setup plan (`packages/sdk/src/platform/google/setup-plan.ts`). Do not edit it by hand — edit the plan and regenerate, or the test that compares the two will fail. It exists so that when the automation cannot finish a step, there is a written route through the same work that cannot have drifted out of date.
+> This file is generated from the SDK's Google setup plan (`packages/sdk/src/platform/google/setup-plan.ts`). Do not edit it by hand. Edit the plan and regenerate, or the test that compares the two will fail. It exists so that when the automation cannot finish a step, there is a written route through the same work that cannot have drifted out of date.
 
 ## Just ask
 
 Say "connect my Google account". That is the whole of it.
 
-The agent works out the shortest route on its own — a credential already stored, an OAuth client that only needs your consent, or the gcloud CLI for the project and APIs — and asks you for at most one thing: opening a consent link and approving it. It reports what it is doing at every step, hands you only the pages that must genuinely be yours, and finishes by reading your mail and your calendar to prove the connection works.
+The agent works out the shortest route on its own: a credential already stored, an OAuth client that only needs your consent, or the gcloud CLI for the project and APIs. It asks you for at most one thing: opening a consent link and approving it. It reports what it is doing at every step, hands you only the pages that must genuinely be yours, and finishes by reading your mail and your calendar to prove the connection works.
 
-If a step needs a value only you can see — the client id and secret Google shows once when you create the client, an app password, a private calendar address — paste it into the conversation and the agent stores it. You are never asked to type a command to hand a value over.
+If a step needs a value only you can see, such as the client id and secret Google shows once when you create the client, an app password, or a private calendar address, paste it into the conversation and the agent stores it. You are never asked to type a command to hand a value over.
 
 <details><summary>Self-service equivalents</summary>
 
@@ -35,23 +35,23 @@ These exist for anyone who prefers driving it themselves. They are not the inten
 | Credential expires | no | only if you skip the publishing step |
 | Setup time | ~3 min | ~15 min |
 
-Start with the app password path. Add OAuth later if you hit its limits — they coexist, and setting up one does not undo the other.
+Start with the app password path. Add OAuth later if you hit its limits. They coexist, and setting up one does not undo the other.
 
 ## What needs you, and what does not
 
 Everything is automated except 7 points where Google requires a real human action. They are unavoidable: Google blocks automated browsers at sign-in, and consent cannot be granted programmatically by design.
 
-- **Checking you are signed in to Google** ([details](#google-signed-in)) — app password path
-- **Checking 2-Step Verification is on** ([details](#two-step-verification)) — app password path
-- **Signing gcloud in to your Google account** ([details](#gcloud-authenticated)) — OAuth path
-- **Filling in the OAuth consent screen** ([details](#oauth-branding)) — OAuth path
-- **Setting publishing status to In production** ([details](#oauth-audience-production)) — OAuth path
-- **Creating the Desktop app OAuth client** ([details](#oauth-client)) — OAuth path
-- **Authorizing the agent** ([details](#oauth-authorize)) — OAuth path
+- **Checking you are signed in to Google** ([details](#google-signed-in)): app password path
+- **Checking 2-Step Verification is on** ([details](#two-step-verification)): app password path
+- **Signing gcloud in to your Google account** ([details](#gcloud-authenticated)): OAuth path
+- **Filling in the OAuth consent screen** ([details](#oauth-branding)): OAuth path
+- **Setting publishing status to In production** ([details](#oauth-audience-production)): OAuth path
+- **Creating the Desktop app OAuth client** ([details](#oauth-client)): OAuth path
+- **Authorizing the agent** ([details](#oauth-authorize)): OAuth path
 
-A note on sign-in: Google rejects automated browsers with "this browser or app may not be secure". The flow uses a persistent browser profile, so you sign in **once, by hand**, and every later run reuses that session. When a sign-in is needed the flow says so and stops — it never loops or pretends.
+Google rejects automated browsers with "this browser or app may not be secure". The flow uses a persistent browser profile, so you sign in **once, by hand**, and every later run reuses that session. When a sign-in is needed the flow says so and stops. It never loops or pretends.
 
-## Path A — app password (start here)
+## Path A: app password (start here)
 
 This is the fast lane and the default. There is no Google Cloud project, no API to enable, no OAuth client, no consent screen, and no token that expires. One app password, and Gmail works.
 
@@ -59,7 +59,7 @@ This is the fast lane and the default. There is no Google Cloud project, no API 
 
 **What you don't get:** writing calendar events, and Gmail push notifications. Those need the OAuth path below.
 
-A note on calendar, because it is the one place this path is narrower than it looks: Google refuses HTTP Basic authentication on its CalDAV endpoint — its own documentation says "Attempting to connect over HTTP or using Basic Authentication results in an HTTP `401 Unauthorized` status code" ([CalDAV guide](https://developers.google.com/workspace/calendar/caldav/v2/guide)). So an app password cannot reach Google Calendar over CalDAV, no matter how it is configured. The private iCal address is used instead. It works without any credential setup, and it is read-only.
+A note on calendar, because it is the one place this path is narrower than it looks. Google refuses HTTP Basic authentication on its CalDAV endpoint. Its own documentation says "Attempting to connect over HTTP or using Basic Authentication results in an HTTP `401 Unauthorized` status code" ([CalDAV guide](https://developers.google.com/workspace/calendar/caldav/v2/guide)). So an app password cannot reach Google Calendar over CalDAV, no matter how it is configured. The private iCal address is used instead. It works without any credential setup, and it is read-only.
 
 **Time:** about three minutes, most of it waiting for a 2-Step Verification prompt.
 
@@ -67,19 +67,19 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 <a id="browser-ready"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** The app password and the calendar address both live behind pages Google exposes through no API, so they have to be read out of a real browser.
 
 **By hand:**
 
-1. No action needed — this only matters to the automated flow. If you are following this runbook by hand, use whatever browser you normally use.
+1. No action needed. This only matters to the automated flow. If you are following this runbook by hand, use whatever browser you normally use.
 
 ### 2. Checking you are signed in to Google
 
 <a id="google-signed-in"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
 **Why:** Google blocks automated browsers at its sign-in screen ("this browser or app may not be secure"), so the sign-in is done by hand exactly once. The browser profile is persistent, so it stays signed in for every later run.
 
@@ -95,7 +95,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 <a id="two-step-verification"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
 **Why:** Google only offers app passwords on accounts with 2-Step Verification enabled. Without it the app password page is unavailable and this whole path is blocked.
 
@@ -111,7 +111,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 <a id="app-password"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** A 16-character app password lets Gmail be reached over IMAP and SMTP with no Google Cloud project, no OAuth client and no token that expires.
 
@@ -123,13 +123,13 @@ A note on calendar, because it is the one place this path is narrower than it lo
 2. In the "App name" box type: goodvibes-agent
 3. Click "Create".
 4. Google shows a 16-character password in a yellow box. Copy it. You cannot see it again after closing the dialog.
-5. Paste it here and I will put it straight into the encrypted store — Google shows it only in this dialog.
+5. Paste it here and I will put it straight into the encrypted store. Google shows it only in this dialog.
 
 ### 5. Pointing the mail surface at Gmail
 
 <a id="gmail-config"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Writes the Gmail IMAP and SMTP endpoints into config so the mail surface knows where to connect.
 
@@ -143,7 +143,7 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 <a id="gmail-verify"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Proves the credential actually works by opening a real IMAP session and a real authenticated SMTP session. Nothing is sent and nothing is marked read.
 
@@ -151,13 +151,13 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 1. I open a real IMAP session and a real authenticated SMTP session and report both.
 2. A successful run reports both the IMAP and the SMTP stage as connected.
-3. If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped — create a new one and store it again.
+3. If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped. Create a new one and store it again.
 
 ### 7. Capturing the private calendar address
 
 <a id="calendar-ics-address"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Google refuses Basic authentication on its CalDAV endpoint, so an app password cannot reach Calendar that way. The private iCal address is the credential-free route that does work. It is read-only; calendar writes need the OAuth path.
 
@@ -170,13 +170,13 @@ A note on calendar, because it is the one place this path is narrower than it lo
 3. Click "Integrate calendar".
 4. Under "Secret address in iCal format", click the copy button.
 5. Paste it here and I will put it in the encrypted store.
-6. Treat this URL as a password — anyone holding it can read your calendar.
+6. Treat this URL as a password. Anyone holding it can read your calendar.
 
 ### 8. Reading calendar events
 
 <a id="calendar-verify"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Fetches and parses the calendar feed so the run ends having actually read real events, not just stored a URL.
 
@@ -184,15 +184,15 @@ A note on calendar, because it is the one place this path is narrower than it lo
 
 1. I fetch the feed and read the events back, so the run ends having read real events rather than having stored a URL.
 
-## Path B — OAuth (full Gmail and Calendar APIs)
+## Path B: OAuth (full Gmail and Calendar APIs)
 
 Take this path when you need to write calendar events, use Gmail push/watch channels, or run richer queries than IMAP allows.
 
-It is longer because Google exposes no API for two of the steps — the consent screen and creating an OAuth client — so those are done in the browser. Everything else is scripted through `gcloud`.
+It is longer because Google exposes no API for two of the steps: the consent screen and creating an OAuth client. Those are done in the browser. Everything else is scripted through `gcloud`.
 
-**Read this before you start.** An OAuth app left in **Testing** publishing status is issued refresh tokens that expire after **seven days**. Google documents this plainly: "A Google Cloud Platform project with an OAuth consent screen configured for an external user type and a publishing status of 'Testing' is issued a refresh token expiring in 7 days" ([OAuth 2.0 guide](https://developers.google.com/identity/protocols/oauth2)). The exemption for apps requesting only `openid`/`email`/`profile` does not apply here — Gmail and Calendar scopes are sensitive or restricted.
+**Read this before you start.** An OAuth app left in **Testing** publishing status is issued refresh tokens that expire after **seven days**. Google documents this plainly: "A Google Cloud Platform project with an OAuth consent screen configured for an external user type and a publishing status of 'Testing' is issued a refresh token expiring in 7 days" ([OAuth 2.0 guide](https://developers.google.com/identity/protocols/oauth2)). The exemption for apps requesting only `openid`/`email`/`profile` does not apply here. Gmail and Calendar scopes are sensitive or restricted.
 
-The practical consequence: if you skip the publishing-status step, this integration will silently stop working one week later, and the failure looks like an unrelated auth error. Step 6 is the one that matters most.
+Skipping the publishing-status step means this integration silently stops working one week later, and the failure looks like an unrelated auth error. Step 6 is the one that matters most.
 
 **Scopes requested:** `https://www.googleapis.com/auth/gmail.readonly`, `https://www.googleapis.com/auth/gmail.send`, `https://www.googleapis.com/auth/calendar.events`
 
@@ -204,7 +204,7 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="gcloud-installed"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** The project and API-enablement steps are scriptable through gcloud, which keeps the console clicking down to the two things Google exposes no API for.
 
@@ -221,7 +221,7 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="gcloud-authenticated"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
 **Why:** gcloud needs its own sign-in before it can create a project or enable APIs.
 
@@ -235,7 +235,7 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="gcloud-project"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Every OAuth client belongs to a Cloud project. An existing project is reused rather than piling up new ones on re-runs.
 
@@ -250,7 +250,7 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="apis-enabled"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
 **Why:** Without these two services enabled on the project, every API call fails with a service-disabled error rather than an auth error, which is confusing to debug.
 
@@ -263,7 +263,7 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="oauth-branding"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
 **Why:** Google exposes no API for the consent screen, so this is one of the two places the browser has to be driven. Without it the client cannot be created.
 
@@ -283,9 +283,9 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="oauth-audience-production"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
-**Why:** This is the step that decides whether the integration keeps working. An app left in "Testing" is issued refresh tokens that expire after seven days, so the integration dies once a week and does so silently. Moving to "In production" removes that expiry. It is self-certified: no Google review is needed, you just click through an "unverified app" warning once when you authorize.
+**Why:** This is the step that decides whether the integration keeps working. An app left in "Testing" is issued refresh tokens that expire after seven days, so the integration dies once a week and does so silently. Moving to "In production" removes that expiry. It is self-certified. No Google review is needed; you just click through an "unverified app" warning once when you authorize.
 
 **Page:** https://console.cloud.google.com/auth/audience
 
@@ -301,64 +301,64 @@ The practical consequence: if you skip the publishing-status step, this integrat
 
 <a id="oauth-client"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
-**Why:** The one thing in this whole flow that a person genuinely has to do in a browser. Google offers no API and no gcloud command for creating a Desktop app OAuth client — `gcloud iam oauth-clients create` exists but covers workforce identity federation only — so the Cloud console is the sole route. A Desktop app client is the right type: it permits the loopback redirect this product uses and needs no hosted redirect URL.
+**Why:** The one thing in this whole flow that a person genuinely has to do in a browser. Google offers no API and no gcloud command for creating a Desktop app OAuth client. `gcloud iam oauth-clients create` exists, but it covers workforce identity federation only, so the Cloud console is the sole route. A Desktop app client is the right type. It permits the loopback redirect this product uses and needs no hosted redirect URL.
 
 **Page:** https://console.cloud.google.com/auth/clients
 
 **By hand:**
 
 1. Open https://console.cloud.google.com/auth/clients
-2. If it asks you to register your app before continuing, do that first — Google requires it before a client can be created.
+2. If it asks you to register your app before continuing, do that first. Google requires it before a client can be created.
 3. Click "Create client".
 4. Application type: choose "Desktop app".
-5. In the "Name" field type: goodvibes agent — this name is only ever shown in the Cloud console.
+5. In the "Name" field type: goodvibes agent. This name is only ever shown in the Cloud console.
 6. Click "Create".
-7. The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy BOTH now: Google shows the full secret only at this moment and afterwards displays just its last four characters.
-8. Paste both values here and I will register them and continue — Google shows the full secret only in this dialog, so copy it before you close it.
+7. The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy both now. Google shows the full secret only at this moment, and afterward shows only its last four characters.
+8. Paste both values here and I will register them and continue. Google shows the full secret only in this dialog, so copy it before you close it.
 
 ### 8. Authorizing the agent
 
 <a id="oauth-authorize"></a>
 
-**Who does it:** Needs one action from you — the flow opens the page and tells you what to click.
+**Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
-**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser: Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens: Google will show a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong — the app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
+**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser. Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens, expect a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong. The app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
 
 **By hand:**
 
 1. I hand you a consent link. Open it.
-2. Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account" — approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.
-3. Expect a red warning screen saying "Google hasn't verified this app". This is normal for an app you created yourself and are the only user of — there is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".
-4. Leave every permission ticked — mail and calendar are requested together so one approval covers both — then click "Continue".
+2. Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account". Approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.
+3. Expect a red warning screen saying "Google hasn't verified this app". This is normal for an app you created yourself and are the only user of. There is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".
+4. Leave every permission ticked. Mail and calendar are requested together, so one approval covers both. Then click "Continue".
 5. The browser lands on a local page confirming the agent is connected.
 
 ### 9. Reading mail and calendar to prove it works
 
 <a id="oauth-verify"></a>
 
-**Who does it:** Automated — the flow does this for you.
+**Who does it:** Automated. The flow does this for you.
 
-**Why:** Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage — which is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.
+**Why:** Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage. That is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.
 
 **By hand:**
 
 1. I read your mailbox and your calendar with the new credential and report the account it connected as, that both answered, and the publishing status.
-2. If publishing status reads "Testing", publish the app at the audience page and tell me — I will start a fresh consent, because the existing token still expires seven days after it was issued.
+2. If publishing status reads "Testing", publish the app at the audience page and tell me. I will start a fresh consent, because the existing token still expires seven days after it was issued.
 
 ## If something goes wrong
 
 **Re-run the command.** It detects what already exists and skips it, so re-running after fixing something never duplicates work or creates a second project, client, or app password.
 
-**"This browser or app may not be secure"** — Google is refusing the automated browser at sign-in. Sign in by hand in the window that opened, then re-run. The session persists after that.
+**"This browser or app may not be secure"**: Google is refusing the automated browser at sign-in. Sign in by hand in the window that opened, then re-run. The session persists after that.
 
-**IMAP fails with `AUTHENTICATIONFAILED`** — the app password is wrong or was revoked. Google never re-displays an existing app password, so delete the `goodvibes-agent` entry at https://myaccount.google.com/apppasswords and re-run to create a fresh one.
+**IMAP fails with `AUTHENTICATIONFAILED`**: the app password is wrong or was revoked. Google never re-displays an existing app password, so delete the `goodvibes-agent` entry at https://myaccount.google.com/apppasswords and re-run to create a fresh one.
 
-**Everything worked, then broke about a week later** — this is the Testing-publishing-status trap. Check https://console.cloud.google.com/auth/audience: if publishing status reads "Testing", click PUBLISH APP, then re-authorize. The old token cannot be salvaged.
+**Everything worked, then broke about a week later**: this is the Testing-publishing-status trap. Check https://console.cloud.google.com/auth/audience: if publishing status reads "Testing", click PUBLISH APP, then re-authorize. The old token cannot be salvaged.
 
-**"Google hasn't verified this app"** — expected. The app is self-certified, not Google-reviewed. Click "Advanced", then "Go to goodvibes agent (unsafe)". Google allows up to 100 users on an unverified app, which is ample for a personal install.
+**"Google hasn't verified this app"**: expected. The app is self-certified, not Google-reviewed. Click "Advanced", then "Go to goodvibes agent (unsafe)". Google allows up to 100 users on an unverified app, which is ample for a personal install.
 
 ## Where credentials live
 
-Every secret — the app password, the OAuth client secret, the refresh token, and the private calendar address — is written to the encrypted secret store and referenced from config by name only. No secret is written to config files, logs, transcripts, or `/status` output. The private calendar address is treated as a credential because anyone holding it can read the calendar.
+Every secret is written to the encrypted secret store and referenced from config by name only: the app password, the OAuth client secret, the refresh token, and the private calendar address. No secret is written to config files, logs, transcripts, or `/status` output. The private calendar address is treated as a credential because anyone holding it can read the calendar.

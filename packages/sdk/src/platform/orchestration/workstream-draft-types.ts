@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// workstream-draft-types.ts — the not-yet-launched proposal's data shape
+// workstream-draft-types.ts, the not-yet-launched proposal's data shape
 //
 // Held separately from workstream-services.ts so the durable draft store
 // (workstream-draft-store.ts) has a type to persist WITHOUT importing back into
-// the service construction module — that back-edge would form an import cycle
+// the service construction module, that back-edge would form an import cycle
 // the architecture check rejects. workstream-services.ts re-exports both types,
 // so a caller can import them from either place.
 // ---------------------------------------------------------------------------

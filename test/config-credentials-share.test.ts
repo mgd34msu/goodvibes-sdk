@@ -4,13 +4,13 @@
  * Config-sharing bootDaemon proof over real HTTP on an EPHEMERAL port
  * (never 3421/4444). Proves the new admin-scoped `credentials.get` wire method:
  *
- *   1. cross-surface provider visibility — config.get carries provider.* config.
- *   2. admin scoping — no token → 401; a valid admin token → 200.
- *   3. secret-free by construction — NO raw key bytes in any response path, and
+ *   1. cross-surface provider visibility, config.get carries provider.* config.
+ *   2. admin scoping, no token → 401; a valid admin token → 200.
+ *   3. secret-free by construction, NO raw key bytes in any response path, and
  *      CONFIG_SNAPSHOT_SCHEMA still carries no secrets/apiKeys field.
- *   4. external refs — an env:// ref resolves through the read method (usable),
+ *   4. external refs, an env:// ref resolves through the read method (usable),
  *      reported as status only (refSource='env'), never the resolved plaintext.
- *   5. no env dump — enumeration is over STORED keys only, never process.env.
+ *   5. no env dump, enumeration is over STORED keys only, never process.env.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -104,7 +104,7 @@ describe('W6-C1 — credentials.get admin-scoped secret-free read', () => {
     expect(stored!.configured).toBe(true);
     expect(stored!.usable).toBe(true);
     expect(stored!.secure).toBe(true);
-    // Status only — no raw-value field on any record.
+    // Status only, no raw-value field on any record.
     expect('value' in stored!).toBe(false);
   });
 

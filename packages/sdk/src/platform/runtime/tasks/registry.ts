@@ -1,5 +1,5 @@
 /**
- * TaskRegistry — in-memory index for RuntimeTask lookup by ID, kind, status,
+ * TaskRegistry, in-memory index for RuntimeTask lookup by ID, kind, status,
  * and parent/child relationships.
  *
  * This is a pure data structure with no side effects. The UnifiedTaskManager
@@ -9,7 +9,7 @@
 import type { RuntimeTask, TaskKind } from '../store/domains/tasks.js';
 
 /**
- * TaskRegistry — provides O(1) task lookup by ID and O(k) lookup by kind,
+ * TaskRegistry, provides O(1) task lookup by ID and O(k) lookup by kind,
  * running status, and parent task.
  *
  * All mutation methods return `this` for chaining.

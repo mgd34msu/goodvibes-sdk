@@ -1,10 +1,10 @@
 /**
  * Tests for the transcript journal's crash-residue handling:
  *
- *   - reapOrphanedJournals — a session that crashes and is never resumed never
+ *   - reapOrphanedJournals, a session that crashes and is never resumed never
  *     reaches rotate(), so before this sweep existed its journal stayed on disk
  *     permanently.
- *   - the zero-byte-journal header fix — a crash between creating the journal
+ *   - the zero-byte-journal header fix, a crash between creating the journal
  *     file and writing its header used to leave a file that an existence-only
  *     check treated as already initialised, so every later record landed in a
  *     header-less file that the next replay quarantined wholesale.

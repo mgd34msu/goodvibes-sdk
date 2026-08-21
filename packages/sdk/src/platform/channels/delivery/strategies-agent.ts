@@ -1,5 +1,5 @@
 /**
- * strategies-agent.ts — the agent's own conversation as a push destination.
+ * strategies-agent.ts, the agent's own conversation as a push destination.
  *
  * ## Why this is a seam rather than a transport
  *
@@ -9,9 +9,9 @@
  * turn inside the agent product, and the daemon has no way to do that from
  * outside the product's own process.
  *
- * So the split is: the SDK owns the DESTINATION and the CONTRACT — `agent` is a
+ * So the split is: the SDK owns the DESTINATION and the CONTRACT, `agent` is a
  * delivery surface kind, this strategy claims targets addressed to it, and
- * {@link AgentConversationMessage} is the shape it hands over — and the agent
+ * {@link AgentConversationMessage} is the shape it hands over, and the agent
  * product owns the CALLABLE that does the landing, registered through
  * {@link AgentDeliveryRegistry}. That is the same division channel plugins
  * already use for a surface the SDK does not implement itself; the difference is
@@ -48,7 +48,7 @@ export const AGENT_DELIVERY_STRATEGY_ID = 'channel-delivery:agent';
  * means something to a conversation.
  */
 export interface AgentConversationMessage {
-  /** A short subject line. Never empty — derived from the body when absent. */
+  /** A short subject line. Never empty, derived from the body when absent. */
   readonly title: string;
   /** The text to raise. Already composed; the agent renders, it does not rewrite. */
   readonly body: string;
@@ -67,7 +67,7 @@ export interface AgentConversationMessage {
  * conversation.
  *
  * Returning an id is optional and means whatever the product's own transcript
- * calls the message. Throwing is the honest answer when it could not be landed —
+ * calls the message. Throwing is the honest answer when it could not be landed,
  * the router logs the surface, the strategy and the reason, and the caller is
  * told rather than left with a message that went nowhere.
  */
@@ -81,7 +81,7 @@ export interface AgentConversationSender {
  * Where the agent product plugs its sender in.
  *
  * One per router, owned by the router, so a composition root does not have to
- * order "construct the router" and "start the agent" — the destination exists
+ * order "construct the router" and "start the agent", the destination exists
  * from the moment the router does, and a push that arrives before the product
  * has registered fails by NAME ("no sender registered") rather than by looking
  * like an unknown surface.
@@ -128,7 +128,7 @@ export class AgentDeliveryRegistry {
  * The strategy that turns an `agent` delivery target into one sender call.
  *
  * It holds the registry rather than the sender, so registering after the router
- * was built works — which is the ordinary case, since the router is part of the
+ * was built works, which is the ordinary case, since the router is part of the
  * runtime graph the agent product is started from.
  */
 export function createAgentDeliveryStrategy(
@@ -152,7 +152,7 @@ export function createAgentDeliveryStrategy(
         );
       }
       // The same resolution chain every other strategy uses: what the caller
-      // addressed, then what the route binding knows, then nothing — which means
+      // addressed, then what the route binding knows, then nothing, which means
       // the product's default conversation.
       const conversationId = firstNonEmpty(
         request.target.address,

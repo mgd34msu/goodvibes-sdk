@@ -7,7 +7,7 @@
  * setting as not set.
  *
  * Reads therefore follow ownership exactly as writes do, and an unreachable
- * daemon produces `unavailable` — never a default dressed up as the current
+ * daemon produces `unavailable`, never a default dressed up as the current
  * value.
  */
 
@@ -158,7 +158,7 @@ describe('the effective merged listing names the store per key', () => {
     expect(byKey.get('surfaces.telegram.defaultChatId')?.value).toBe('8546431428');
     expect(byKey.get('display.theme')).toMatchObject({ source: 'local', value: 'nord', scope: 'client' });
     expect(byKey.get('provider.model')?.scope).toBe('user');
-    // Every entry names the store it came from — the missing explanation for
+    // Every entry names the store it came from, the missing explanation for
     // why one key read blank in one place and set in another.
     for (const entry of entries) expect(entry.store.length).toBeGreaterThan(0);
   });
@@ -181,7 +181,7 @@ describe('the effective merged listing names the store per key', () => {
     expect('value' in telegram).toBe(false);
     expect(telegram.error).toContain('could not be reached');
 
-    // Client-owned keys are unaffected — they were never the daemon's to answer.
+    // Client-owned keys are unaffected, they were never the daemon's to answer.
     expect(byKey.get('display.theme')).toMatchObject({ status: 'ok', value: 'nord' });
   });
 });

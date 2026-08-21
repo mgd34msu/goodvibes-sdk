@@ -4,7 +4,7 @@
  * The engine's lifecycle and the owner-ruled detach toggle, against REAL client
  * floors (`createClientRuntimeServices`) so a session composes the same tool
  * registry, permission manager and orchestrator a terminal would. Model
- * discovery is skipped — these compositions do not outlive it and no test here
+ * discovery is skipped, these compositions do not outlive it and no test here
  * runs a provider turn.
  *
  * The toggle is checked in BOTH positions, at both levels it can be set:
@@ -235,7 +235,7 @@ test('a live session reports the policy that WOULD apply next, read from the set
 
   policy = 'survive';
   // A policy change applies to the NEXT detach, not to whatever the value was
-  // when the session was created — so the record has to re-read it.
+  // when the session was created, so the record has to re-read it.
   expect(manager.get(created.id)?.effectiveDetachPolicy).toBe('survive');
   expect((await manager.detach(created.id, 'a')).status).toBe('idle');
   await manager.dispose();
@@ -285,7 +285,7 @@ test('a restart brings a survive-policy session back idle, with its transcript a
   const first = buildManager({ detachPolicy: 'survive' });
   await first.init();
   const created = await first.create({ workspaceRoot: workspace, clientId: 'a' });
-  // Attached the whole time, and the daemon stops anyway — the shape an update
+  // Attached the whole time, and the daemon stops anyway, the shape an update
   // or a reboot actually produces.
   await first.dispose();
 
@@ -436,7 +436,7 @@ test('a steer queued on the spine reaches the hosted loop, and the participant s
 
   queued.set(created.id, [{ id: 'input-1', body: 'steer this hosted session' }]);
   // The submit lands first and the delivery/consumption acknowledgements land
-  // on their own later ticks — wait for all three, or the assertions race the
+  // on their own later ticks, wait for all three, or the assertions race the
   // acknowledgements they assert.
   const steerKey = `${created.id}:input-1`;
   for (
@@ -461,7 +461,7 @@ test('a steer queued on the spine reaches the hosted loop, and the participant s
 //
 // An attachment is a claim about a live process, and detach was the only thing
 // that ever ended one. A client that crashed or closed its tab never calls it,
-// so a kill-policy session — the default — waited for a departure that was
+// so a kill-policy session, the default, waited for a departure that was
 // never coming, holding a workspace floor and a model connection for nobody.
 
 test('an attachment nobody renews lapses, and a kill-policy session ends with it', async () => {

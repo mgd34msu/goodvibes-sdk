@@ -11,13 +11,13 @@ of `ApprovalBroker`. Merging them into one primitive would be a natural cleanup
 and it would be a serious defect. Here is the reasoning, so you do not have to
 reconstruct it from a diff.
 
-**Above budget — an approval. Silence means DENIED.**
+**Above budget, an approval. Silence means DENIED.**
 
 > "if i didn't want the approval to expire, I should have just increased the
 > limit... puts it directly in the human's hands, never lets automated spending
 > happen"
 
-**Within budget — a veto. Silence means PROCEEDS.**
+**Within budget, a veto. Silence means PROCEEDS.**
 
 Ten minutes by default, fired once the final total is known and before payment.
 One word cancels.
@@ -26,7 +26,7 @@ The two are not variants of one behaviour with a different default. They answer
 different questions. The approval asks *may this happen at all*, and an
 unanswered question about money above the limit must resolve to no. The veto
 announces *this is about to happen*, and an unanswered announcement about money
-inside a limit the owner already set must resolve to yes — otherwise the limit he
+inside a limit the owner already set must resolve to yes, otherwise the limit he
 set does nothing and every purchase is an approval.
 
 Collapsing them means picking one silence rule for both. Either every
@@ -41,7 +41,7 @@ the default, which produces the first one.
 - A test named *the two windows must never agree* asserts both values
   individually and asserts they differ.
 - Two separate state machine functions. There is deliberately no shared
-  `openTimedPrompt()` — the duplication is load-bearing.
+  `openTimedPrompt()`, the duplication is load-bearing.
 
 ## The other rulings that travel with them
 
@@ -59,5 +59,5 @@ the default, which produces the first one.
 
 ## Where it lives
 
-- `docs/payments.md` — the full design
-- `platform/payments/windows.ts` — the two state machines and the two constants
+- `docs/payments.md`, the full design
+- `platform/payments/windows.ts`, the two state machines and the two constants

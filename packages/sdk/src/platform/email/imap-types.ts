@@ -2,9 +2,9 @@
  * The shapes an IMAP read hands back, and the options a client is built with.
  *
  * Split out of `imap-client.ts` to keep that file under the repository's
- * per-file line cap. These are declarations only: the rules they encode — that
+ * per-file line cap. These are declarations only: the rules they encode, that
  * `uid` is a UID and never a sequence number, that `unverifiedToHeaderClaim`
- * is display-only, that an attachment is described and never downloaded — are
+ * is display-only, that an attachment is described and never downloaded, are
  * enforced by the client and documented on the fields here, where a caller
  * reading the type sees them.
  */
@@ -30,7 +30,7 @@ export interface ImapEnvelope {
   readonly mailbox: string;
   /**
    * Delivery evidence addresses, top-most first. Safe to correlate against.
-   * Empty when the delivery agent stamped nothing we can trust — callers must
+   * Empty when the delivery agent stamped nothing we can trust, callers must
    * then fall back to the mailbox, never to `unverifiedToHeaderClaim`.
    */
   readonly deliveredTo: readonly string[];
@@ -48,7 +48,7 @@ export interface ImapEnvelope {
   /**
    * `Authentication-Results` values, top-most first.
    *
-   * Written by the receiving mail server, so — like the delivery headers —
+   * Written by the receiving mail server, so, like the delivery headers,
    * only the top-most is beyond the sender's reach. Feeds DISPLAY confidence
    * on the sender line and nothing else; no permission anywhere reads it.
    */
@@ -58,7 +58,7 @@ export interface ImapEnvelope {
 /**
  * A FETCH response the server sent and this client could not read.
  *
- * Never carries message content — a reason and, where they were legible, the
+ * Never carries message content, a reason and, where they were legible, the
  * identifiers the response named.
  */
 export interface ImapFetchProblem {
@@ -75,7 +75,7 @@ export interface ImapFetchProblem {
  *
  * `unreadable` being non-empty is a load-bearing fact and not a diagnostic
  * nicety. While it is non-empty, a UID missing from `envelopes` is NOT evidence
- * that the message is gone — one of the responses we could not read may have
+ * that the message is gone, one of the responses we could not read may have
  * been that message's. A caller advancing a cursor has to treat the whole batch
  * as unresolved and ask again, because the alternative is stepping over mail
  * that is still in the mailbox and never looking at it again.
@@ -93,7 +93,7 @@ export interface ImapMessage extends ImapEnvelope {
  * One whole message: everything an envelope carries, plus its readable text.
  *
  * Extends `ImapEnvelope` rather than restating it so the provenance rules that
- * govern a listing govern a full read identically — the mailbox it came from,
+ * govern a listing govern a full read identically, the mailbox it came from,
  * the delivery evidence, the `To:` header still named as an unverified claim,
  * and the sender-authentication results still carrying no authority. A second
  * shape here would be a second, weaker labelling of the same untrusted text.
@@ -107,7 +107,7 @@ export interface ImapMessageDetail extends ImapEnvelope {
   readonly bodyText: string;
   /** Decoded text/html body, '' when the message has none. */
   readonly bodyHtml: string;
-  /** What is attached, described. Never the attached bytes — see `fetchMessage`. */
+  /** What is attached, described. Never the attached bytes, see `fetchMessage`. */
   readonly attachments: readonly ImapAttachmentInfo[];
 }
 
@@ -116,7 +116,7 @@ export interface ImapMessageDetail extends ImapEnvelope {
  *
  * Three outcomes, because there are three things that can happen and the old
  * `ImapMessageDetail | null` could say only two. `null` meant "the UID is not
- * in the mailbox" — a perfectly ordinary answer, the message was deleted — and
+ * in the mailbox", a perfectly ordinary answer, the message was deleted, and
  * a server that ANSWERED for the UID in terms this client could not read
  * arrived as the same `null` and was reported to the caller as "it is no
  * longer there". That is a false statement about the owner's mailbox: the

@@ -1,12 +1,12 @@
 /**
- * activity-logger-durability.test.ts — the shared debug logger's writes land,
+ * activity-logger-durability.test.ts, the shared debug logger's writes land,
  * and when they cannot it says so once instead of forever.
  *
  * Defect class, observed twice in one session:
  *   1. A daemon shutting down never got its final lines to disk. The logger
  *      buffered and appended asynchronously, and the exit paths call
  *      process.exit(), which discards both the buffer and any append still in
- *      flight — so the one event worth reading about was the one missing.
+ *      flight, so the one event worth reading about was the one missing.
  *   2. `[ActivityLogger] flush error: ENOENT …` repeating during teardown: the
  *      destination directory had been removed under a live logger, and every
  *      flush for the rest of the process wrote the same line to stderr while

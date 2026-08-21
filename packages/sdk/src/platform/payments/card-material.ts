@@ -1,5 +1,5 @@
 /**
- * card-material.ts — the one interface that can produce a card number, and the
+ * card-material.ts, the one interface that can produce a card number, and the
  * reason it is not reachable from the control plane.
  *
  * ══ What changed, and what deliberately did not ═══════════════════════════
@@ -7,7 +7,7 @@
  * The original containment made card material WRITE-ONLY: it went in through
  * `payments.cards.create` and no method returned it. That property was aimed at
  * the right thing and stated one step too far. What must never happen is the
- * MODEL — or any surface, or any control-plane response — holding the number.
+ * MODEL, or any surface, or any control-plane response, holding the number.
  * What must happen, or the capability does nothing, is the DAEMON putting the
  * number into a checkout field.
  *
@@ -30,7 +30,7 @@
  * ══ Why a port rather than a direct SecretsManager call ═══════════════════
  *
  * Tests must be able to exercise the entire checkout flow, including the fill,
- * without a real secret store — and much more importantly, the containment
+ * without a real secret store, and much more importantly, the containment
  * assertions must be able to use a sentinel value they can then search every
  * output for. A flow that reached into a concrete secrets module could only be
  * tested with real material or not at all.
@@ -57,7 +57,7 @@ export interface CardMaterial {
  * The daemon's read path to its own secret store.
  *
  * `read` returning null means the card is configured but its material is
- * incomplete — the `materialComplete: false` case `payments.cards.list` already
+ * incomplete, the `materialComplete: false` case `payments.cards.list` already
  * reports. The checkout refuses; it never fills a form partially and hopes.
  */
 export interface CardMaterialStore {

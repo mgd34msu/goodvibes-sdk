@@ -1,5 +1,5 @@
 /**
- * Surface domain state — Slack, Discord, web, ntfy, webhook, and terminal surfaces.
+ * Surface domain state, Slack, Discord, web, ntfy, webhook, and terminal surfaces.
  */
 
 import type { AutomationSurfaceKind } from '../../../automation/types.js';

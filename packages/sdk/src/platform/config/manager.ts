@@ -37,7 +37,7 @@ import { resolveWithProfileFallback, type ConfigProfileFallbackReader } from './
 import { ingestManagerSettings, toConfigLoadFailure, type IngestionNoticeSink, type SettingsIngestionNotice } from './manager-ingestion.js';
 import { persistCategoryKeyRemoval, persistCategoryPatch, type CategoryIoDeps } from './manager-category-io.js';
 
-/** Deep immutable type — prevents mutation of nested objects returned from getAll(). */
+/** Deep immutable type, prevents mutation of nested objects returned from getAll(). */
 export type DeepReadonly<T> = {
   readonly [K in keyof T]: T[K] extends object ? DeepReadonly<T[K]> : T[K];
 };
@@ -85,7 +85,7 @@ interface ConfigRoots {
 
 /**
  * The tier a value resolved from, and the full source report. `daemon` is the
- * daemon's own store — the single home of every daemon-owned key (see
+ * daemon's own store, the single home of every daemon-owned key (see
  * config-ownership.ts), overlaid last so a value left behind in a surface silo
  * can never shadow it. Defined in manager-key-source.ts; re-exported here so
  * existing importers keep working.
@@ -103,10 +103,10 @@ export type ConfigChangeCallback<K extends ConfigKey> = (newValue: ConfigValue<K
 export type ConfigUnsubscribe = () => void;
 
 /**
- * ConfigManager — Layered, mutable, persistent config system.
+ * ConfigManager, Layered, mutable, persistent config system.
  *
  * Load order: defaults < global surface settings < project surface settings < CLI overrides
- * API keys are never persisted — loaded from env vars only.
+ * API keys are never persisted, loaded from env vars only.
  */
 export class ConfigManager {
   private config: GoodVibesConfig;
@@ -119,7 +119,7 @@ export class ConfigManager {
   private readonly sharedTierPath: string | null;
   /** The daemon's own settings store (`~/.goodvibes/daemon/settings.json`), or null. */
   private readonly daemonTierPath: string | null;
-  /** True only in the daemon composition — the runtime allowed to REWRITE that store. */
+  /** True only in the daemon composition, the runtime allowed to REWRITE that store. */
   private readonly daemonTierOwner: boolean;
   /** Shared keys whose value the last load actually sourced from the shared tier file. */
   private readonly sharedKeysPresent = new Set<ConfigKey>();
@@ -171,7 +171,7 @@ export class ConfigManager {
 
     // The daemon tier: every daemon-owned key's single home, shared by every
     // product on this machine. Surface-root-independent, exactly like the
-    // shared tier — the daemon is a peer runtime, not a guest in the TUI's
+    // shared tier, the daemon is a peer runtime, not a guest in the TUI's
     // storage root. A configDir-only construction (no homeDir) has none.
     const daemonTierPath = requireAbsoluteOwnedPath(roots.daemonTierPath, 'daemonTierPath');
     this.daemonTierPath = daemonTierPath ?? (
@@ -260,7 +260,7 @@ export class ConfigManager {
    * Get a config value by dot-path key.
    *
    * An UNSET key may resolve from the owner profile when a fallback reader is
-   * installed — one keyed read by a consumer that needs the value. Deliberately
+   * installed, one keyed read by a consumer that needs the value. Deliberately
    * not applied by `getAll()` or any category/dump path: see ./profile-fallback.ts.
    */
   get<K extends ConfigKey>(key: K): ConfigValue<K> {
@@ -290,7 +290,7 @@ export class ConfigManager {
     const previousValue = parent[field]!;
     parent[field] = value;
     // Ownership decides the store. A daemon-owned key persists to the daemon's
-    // own settings file — never the surface silo — so the runtime that acts on
+    // own settings file, never the surface silo, so the runtime that acts on
     // it reads the value that was just written. Shared keys persist to the
     // surface-root-independent shared tier; everything else stays local.
     const useDaemonTier = this.daemonTierPath !== null && isDaemonOwnedConfigKey(key);
@@ -316,7 +316,7 @@ export class ConfigManager {
   /**
    * Set a single key and persist it to the PROJECT settings overlay (merged
    * into the raw on-disk shape, keeping only explicit keys), leaving the global
-   * file untouched — so an approval like fetch.allowLocalhost scopes to this
+   * file untouched, so an approval like fetch.allowLocalhost scopes to this
    * project and survives restarts. Falls back to set() with no project path.
    */
   setProjectValue<K extends ConfigKey>(key: K, value: ConfigValue<K>, options: ConfigSetOptions = {}): void {
@@ -381,7 +381,7 @@ export class ConfigManager {
   /**
    * Watch the on-disk config files (global, project, shared-tier) for EXTERNAL
    * edits and apply them live through the same subscribe() pipeline an
-   * in-process set() uses — no restart. Returns a stop function.
+   * in-process set() uses, no restart. Returns a stop function.
    */
   watchConfigFiles(options: { intervalMs?: number } = {}): () => void {
     this.stopWatchingConfigFiles();
@@ -498,7 +498,7 @@ export class ConfigManager {
 
   /**
    * Persist current config to the global settings file, writing only the keys
-   * that differ from the shipped defaults (plus unknown keys) — no default is
+   * that differ from the shipped defaults (plus unknown keys), no default is
    * frozen onto disk; resolved config is unchanged on reload.
    */
   save(): void {
@@ -510,7 +510,7 @@ export class ConfigManager {
 
   /**
    * Drop every daemon-owned key from a whole-config dump. A surface file must
-   * never carry a daemon-owned value again — one writer per key means a
+   * never carry a daemon-owned value again, one writer per key means a
    * whole-config save cannot quietly re-seed the duplication the daemon config
    * migration just removed.
    */
@@ -533,7 +533,7 @@ export class ConfigManager {
 
   /**
    * Every setting the last load could not ingest, with the file, the key and
-   * the reason — the owner-visible signal behind the startup notice. Empty when
+   * the reason, the owner-visible signal behind the startup notice. Empty when
    * every settings file was read whole. See ./settings-ingestion.ts.
    */
   getIngestionQuarantine(): readonly SettingsIngestionNotice[] {
@@ -664,7 +664,7 @@ export class ConfigManager {
   /**
    * Report which tier a key's live value resolves from (daemon / shared /
    * project / global / default). Reads the on-disk layers on demand so the
-   * resolution order is inspectable — see manager-key-source.ts.
+   * resolution order is inspectable, see manager-key-source.ts.
    */
   describeConfigKeySource(key: ConfigKey): ConfigKeySource {
     return describeKeySource({
@@ -684,7 +684,7 @@ export class ConfigManager {
   /**
    * Run the load-time settings migrations over a parsed file.
    *
-   * The passes and their ORDER live together in manager-migration-passes.ts —
+   * The passes and their ORDER live together in manager-migration-passes.ts,
    * the sequence is a property of the passes, not of this caller. All this
    * supplies is the receipt sink, which is the one part that needs the manager:
    * a receipt is announce-once, keyed to this config's own announcement file.
@@ -698,7 +698,7 @@ export class ConfigManager {
   }
 
   /**
-   * Merge a partial patch into a config category and auto-save — the correct
+   * Merge a partial patch into a config category and auto-save, the correct
    * way to update array/object fields that cannot be expressed as a scalar
    * dot-path key (e.g. notifications.webhookUrls). Shallow-merged.
    */
@@ -742,7 +742,7 @@ export class ConfigManager {
   reset(key?: ConfigKey): void {
     if (key === undefined) {
       this.config = cloneDefaultConfig();
-      // A full reset means no explicit keys remain — clear the file to defaults.
+      // A full reset means no explicit keys remain, clear the file to defaults.
       this.writeRawGlobal({});
     } else {
       const schema = CONFIG_SCHEMA.find(s => s.key === key);
@@ -773,7 +773,7 @@ export class ConfigManager {
   }
 }
 
-/** Deep-merge source into target. Returns a new object. Source non-objects are ignored — target clone is returned.
+/** Deep-merge source into target. Returns a new object. Source non-objects are ignored, target clone is returned.
  * Non-object source values will not overwrite object target values (type-safe merge). */
 function deepMerge(target: unknown, source: unknown): unknown {
   const result: Record<string, unknown> = isObject(target)
@@ -786,7 +786,7 @@ function deepMerge(target: unknown, source: unknown): unknown {
     if (isObject(sv) && isObject(tv)) {
       result[key] = deepMerge(tv, sv);
     } else if (sv !== undefined && !isObject(tv)) {
-      // Only overwrite non-object target values — never replace an object with a scalar.
+      // Only overwrite non-object target values, never replace an object with a scalar.
       // Clone assigned values so config instances never share mutable references.
       result[key] = structuredClone(sv);
     }

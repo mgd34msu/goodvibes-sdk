@@ -1,23 +1,23 @@
-# GoodVibes SDK Documentation
+# GoodVibes SDK documentation
 
 These documents describe the SDK architecture. The SDK is a monorepo of
-source-of-truth packages plus a main facade package; public imports are explicit
+source-of-truth packages plus a main facade package. Public imports are explicit
 package entrypoints, not arbitrary repo folder paths. [`CHANGELOG.md`](../CHANGELOG.md) remains the
 release-history source.
 
-## Start Here
+## Start here
 
 - [Getting started](./getting-started.md)
 - [Packages and entry points](./packages.md)
 - [Public exports](./exports.md)
-- [Runtime surface architecture](./runtime-surfaces.md) — capability and runtime boundary model.
-- [Published surface matrix](./surfaces.md) — package export entrypoints and supported import surfaces.
+- [Runtime surface architecture](./runtime-surfaces.md): capability and runtime boundary model.
+- [Published surface matrix](./surfaces.md): package export entrypoints and supported import surfaces.
 - [Public surface reference](./public-surface.md)
 
-## Client Integration
+## Client integration
 
-- [Authentication](./authentication.md) — consumer token/session guidance.
-- [Auth architecture](./auth.md) — internal auth plumbing and daemon enforcement.
+- [Authentication](./authentication.md): consumer token and session guidance.
+- [Auth architecture](./auth.md): internal auth plumbing and daemon enforcement.
 - [Browser integration](./browser-integration.md)
 - [Web UI integration](./web-ui-integration.md)
 - [React Native integration](./react-native-integration.md)
@@ -31,7 +31,7 @@ release-history source.
 - [Realtime and telemetry](./realtime-and-telemetry.md)
 - [Retries and reconnect](./retries-and-reconnect.md)
 
-## Daemon and Runtime
+## Daemon and runtime
 
 - [Daemon embedding](./daemon-embedding.md)
 - [Provider and model API](./provider-model-api.md)
@@ -43,7 +43,7 @@ release-history source.
 - [Architecture](./architecture.md)
 - [Platform architecture](./architecture-platform.md)
 
-## Knowledge, Media, and Search
+## Knowledge, media, and search
 
 - [Owner profile](./owner-profile.md)
 - [Knowledge system](./knowledge.md)
@@ -55,7 +55,7 @@ release-history source.
 - [Voice and streaming TTS](./voice.md)
 - [Media and multimodal runtime](./media-and-search.md)
 
-## Surfaces and Automation
+## Surfaces and automation
 
 - [Channel surface details](./channel-surfaces.md)
 - [Home Assistant integration](./homeassistant-integration.md)
@@ -63,32 +63,32 @@ release-history source.
 - [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)
 - [Automation and watchers](./automation.md)
 
-## Configuration and Operations
+## Configuration and operations
 
 - [Configuration defaults](./defaults.md)
 - [Secret references](./secrets.md)
 - [Feature settings](./feature-settings.md)
 - [Security](./security.md)
-- [Payments](./payments.md) — design for the daemon's payment capability: budgets, the approval/veto windows, and the taint boundary around spending.
+- [Payments](./payments.md): design for the daemon's payment capability, covering budgets, the approval/veto windows, and the taint boundary around spending.
 - [Observability](./observability.md)
 - [Performance and tuning](./performance.md)
 - [Transport architecture](./transports.md)
-- [Error architecture](./errors.md) — internal error model and category sources.
-- [Error handling](./error-handling.md) — consumer patterns for catching structured errors.
-- [Error kinds reference](./error-kinds.md) — public `SDKErrorKind` reference table.
+- [Error architecture](./errors.md): internal error model and category sources.
+- [Error handling](./error-handling.md): consumer patterns for catching structured errors.
+- [Error kinds reference](./error-kinds.md): public `SDKErrorKind` reference table.
 - [Troubleshooting](./troubleshooting.md)
-- [Testing and validation](./testing-and-validation.md) — commands and CI gates.
-- [Testing architecture](./testing.md) — suite structure and intent.
+- [Testing and validation](./testing-and-validation.md): commands and CI gates.
+- [Testing architecture](./testing.md): suite structure and intent.
 - [Release policy](./release-and-publishing.md)
 - [Semver policy](./semver-policy.md)
 
-## Generated References
+## Generated references
 
 - [Operator API reference](./reference-operator.md)
 - [Peer API reference](./reference-peer.md)
 - [Runtime events reference](./reference-runtime-events.md)
 
-## Project & Repository Docs
+## Project and repository docs
 
 Operational docs in the repository root, one level up from `docs/`:
 

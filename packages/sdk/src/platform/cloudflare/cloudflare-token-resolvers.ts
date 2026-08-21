@@ -27,7 +27,7 @@ export interface TokenResolverContext {
 }
 
 // ---------------------------------------------------------------------------
-// Resolve helpers — pure functions parameterised by TokenResolverContext
+// Resolve helpers, pure functions parameterised by TokenResolverContext
 // ---------------------------------------------------------------------------
 
 export function resolveAccountId(

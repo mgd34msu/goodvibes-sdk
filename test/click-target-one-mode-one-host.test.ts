@@ -3,7 +3,7 @@
  *
  * Owner ruling: "if it is set to network, it should NOT be exposing local".
  * The effective bind decides the host and nothing else does, so a single run
- * cannot produce two different host forms — which is exactly what the owner
+ * cannot produce two different host forms, which is exactly what the owner
  * observed on the ntfy topic (`http://127.0.0.1:3421/...` and
  * `http://0.0.0.0:3421/...` inside one burst).
  *
@@ -14,12 +14,12 @@
  * SECOND RULING, from the same live run: the discriminator for whether a
  * loopback answer is acceptable at all is WHERE THE LINK IS GOING. A
  * loopback-only daemon was putting `127.0.0.1` in the `Click` header of a
- * notification that is read on a phone — a dead link every time. Off-host
+ * notification that is read on a phone, a dead link every time. Off-host
  * destinations get the LAN address; local destinations may use loopback; a
  * loopback-only daemon has no off-host answer and omits the link.
  *
  * A wildcard bind serves loopback AND the LAN address simultaneously, so both
- * must keep working — which is why the destination, not the mode, chooses.
+ * must keep working, which is why the destination, not the mode, chooses.
  */
 import { describe, expect, test } from 'bun:test';
 import {

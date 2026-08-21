@@ -1,5 +1,5 @@
 /**
- * McpLifecycleManager — drives the MCP server state machine.
+ * McpLifecycleManager, drives the MCP server state machine.
  *
  * Gated by the `mcp-lifecycle` capability gate (runtime.mcpLifecycle). When the gate is off
  * callers should use the standard MCP registry path instead.
@@ -54,7 +54,7 @@ export interface McpLifecycleManagerOptions {
 // ── Manager ───────────────────────────────────────────────────────────────────
 
 /**
- * McpLifecycleManager — manages the full lifecycle of all configured MCP servers.
+ * McpLifecycleManager, manages the full lifecycle of all configured MCP servers.
  *
  * Usage:
  * ```ts
@@ -140,7 +140,7 @@ export class McpLifecycleManager {
   /**
    * Check whether a tool call is permitted for the given server.
    *
-   * Quarantined schemas unconditionally block execution — the freshness check
+   * Quarantined schemas unconditionally block execution, the freshness check
    * runs before the permission check so a quarantined schema cannot be bypassed
    * by a permissive trust level.
    *
@@ -323,7 +323,6 @@ export class McpLifecycleManager {
     });
     this.freshness.registerServer(name);
 
-    // Create entry in configured state
     const entry: McpServerEntry = {
       name,
       config,

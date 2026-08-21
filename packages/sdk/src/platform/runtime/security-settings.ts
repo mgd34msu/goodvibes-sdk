@@ -205,9 +205,9 @@ const SECURITY_FEATURE_SETTINGS: readonly Omit<SecuritySettingReport, 'currentSt
     insecureWhen:
       'At flat, exec command review uses baseline flat segmentation for every command and may provide less precise command verdicts.',
     enablementEffect:
-      'At ast (the default), compound shell commands are decomposed into per-segment verdicts with more specific denial explanations. A parser failure falls back automatically to the baseline flat-segmentation matcher — never a hard error and never a blanket allow — and the frozen catastrophic block is enforced identically in both modes.',
+      'At ast (the default), compound shell commands are decomposed into per-segment verdicts with more specific denial explanations. A parser failure falls back automatically to the baseline flat-segmentation matcher, never a hard error and never a blanket allow, and the frozen catastrophic block is enforced identically in both modes.',
     enablementRequirements: [
-      'None — ast is the default and remains runtime-switchable.',
+      'None, ast is the default and remains runtime-switchable.',
       'Set permissions.commandParser to flat to force the baseline matcher for every command.',
     ],
     operationalNotes: [

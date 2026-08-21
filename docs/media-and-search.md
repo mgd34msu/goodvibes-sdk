@@ -1,4 +1,4 @@
-# Media, Multimodal, And Web Search
+# Media, multimodal, and web search
 
 GoodVibes exposes media, voice, multimodal analysis, artifact, and web-search
 features through the daemon control plane and SDK platform modules.
@@ -50,7 +50,7 @@ disk and memory budget for larger ingestion workflows. Local file paths and
 remote URI fetches are also streamed into the artifact store and enforce the
 same artifact cap.
 
-## Media Providers
+## Media providers
 
 Media providers expose normalized capabilities for:
 
@@ -71,7 +71,7 @@ Operator methods:
 - `media.transform`
 - `media.generate`
 
-## Multimodal Service
+## Multimodal service
 
 The multimodal service provides a higher-level interface over image, audio,
 video, and document analysis. It can build token-efficient packets from
@@ -85,7 +85,7 @@ Operator methods:
 - `multimodal.packet`
 - `multimodal.writeback`
 
-## Voice Providers
+## Voice providers
 
 Voice providers support provider-specific combinations of:
 
@@ -116,7 +116,7 @@ Operator methods:
 
 See [Voice and streaming TTS](./voice.md) for the spoken-output contract.
 
-## Web Search
+## Web search
 
 The web-search service normalizes provider-backed search into ranked results
 with optional evidence fetching and safe-search posture.

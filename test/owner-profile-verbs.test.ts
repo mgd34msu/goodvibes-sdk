@@ -1,5 +1,5 @@
 /**
- * owner-profile-verbs.test.ts — the profile.* control-plane surface.
+ * owner-profile-verbs.test.ts, the profile.* control-plane surface.
  *
  * Covers docs/owner-profile.md §14 items 6 (disclosure fires), 11 (status
  * returns counts, names and reasons and NO values) and 22 (removal is gated,
@@ -40,7 +40,7 @@ const VERB_IDS = [
 /**
  * Mutable array of the narrow union, not `as const`. Bun's scalar `test.each`
  * overload is `each<const T>(table: T[])`, so a readonly tuple matches no
- * overload and the row parameter degrades to `unknown` — the four cases below
+ * overload and the row parameter degrades to `unknown`, the four cases below
  * would then be running against an untyped authority.
  */
 const UNTRUSTED: ('web-page' | 'email' | 'channel-message' | 'document')[] = [
@@ -119,7 +119,7 @@ describe('profile.* verbs — catalog surface', () => {
   test('all nine are cataloged with handlers and the documented scopes', async () => {
     const { catalog } = await harness();
     const expectedScope: Record<string, string> = {
-      // Its own scope on purpose — see the descriptor's note. A composition
+      // Its own scope on purpose, see the descriptor's note. A composition
       // path can be granted read:profile without being granted the bulk read.
       'profile.read': 'read:profile-document',
       'profile.get': 'read:profile',
@@ -157,7 +157,7 @@ describe('profile.* verbs — catalog surface', () => {
     expect(catalog.get('profile.read')?.scopes).not.toContain('read:profile');
     // No profile scope is dotted. `scopeMatches` is exact / `*` / `prefix:*`
     // with no hierarchy, so a dotted name would promise a containment the grant
-    // check does not implement — `read:profile.full` looked like a superset of
+    // check does not implement, `read:profile.full` looked like a superset of
     // `read:profile` and granted none of its verbs.
     for (const id of VERB_IDS) {
       for (const scope of catalog.get(id)?.scopes ?? []) {
@@ -245,7 +245,7 @@ describe('profile.set / append — §14 #6: an autonomous write discloses what i
     }) as ProfileWriteResult;
 
     expect(result.ok).toBe(true);
-    expect(result.disclosure).toBe('Noted — saved your shipping address to your profile.');
+    expect(result.disclosure).toBe('Noted, saved your shipping address to your profile.');
     expect(result.disclosure).not.toContain('200 Office Way');
     expect(result.changes).toHaveLength(1);
     expect(result.changes[0]?.superseded).toBe(true);
@@ -264,7 +264,7 @@ describe('profile.set / append — §14 #6: an autonomous write discloses what i
       },
     }) as ProfileWriteResult;
     expect(result.ok).toBe(true);
-    expect(result.disclosure).toBe('Noted — saved a note under Notes to your profile.');
+    expect(result.disclosure).toBe('Noted, saved a note under Notes to your profile.');
   });
 });
 
@@ -349,7 +349,7 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
   // An omitted `authority` USED to be read as `owner-direct`. It is now a 400 on
   // every write verb. The removal verbs are the reason: §7 gives `forget` and
   // `undo` layer 1 and nothing else, so an omitted authority there was not a
-  // weakened gate, it was no gate at all — a caller that stated no authority
+  // weakened gate, it was no gate at all, a caller that stated no authority
   // deleted the owner's shipping address. Each case asserts the refusal AND
   // that the file is byte-identical, because "400 but it wrote anyway" is the
   // failure that would matter.
@@ -395,7 +395,7 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
       ...ctx,
       body: { fieldId: 'commerce.shippingAddress', authority: 'owner-direct' },
     }) as ProfileWriteResult;
-    // Nothing was superseded in the fixture, so undo has nothing to promote —
+    // Nothing was superseded in the fixture, so undo has nothing to promote,
     // but it was REFUSED by the store's own reasoning, not by the parameter
     // check, which is the distinction this test exists to draw.
     expect(result.reason ?? '').not.toContain('authority is required');
@@ -406,7 +406,7 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
     async (verb) => {
       const { catalog, path } = await harness();
       const before = readFileSync(path);
-      // A complete, otherwise-valid body — including `authority` — so the
+      // A complete, otherwise-valid body, including `authority`, so the
       // refusal can only be the user-request gate and not a missing parameter.
       const body: Record<string, unknown> = verb === 'profile.append'
         ? { section: 'Notes', text: 'x', surface: 'tui', said: 'x', authority: 'owner-direct' }
@@ -612,7 +612,7 @@ describe('§12 — the three owner switches actually govern the runtime', () => 
     }) as ProfileWriteResult;
     expect(result.ok).toBe(true);
     expect(result.disclosure).toBe('');
-    // The write really happened — silenced, not refused.
+    // The write really happened, silenced, not refused.
     expect(readFileSync(path, 'utf-8')).toContain('200 Office Way');
   });
 

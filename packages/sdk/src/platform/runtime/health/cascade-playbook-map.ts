@@ -45,7 +45,7 @@ export const CASCADE_PLAYBOOK_MAP: ReadonlyMap<string, readonly string[]> = new 
 
 /**
  * All cascade rule IDs that must have at least one playbook mapping.
- * Derived from cascade-rules.ts — update when rules are added or removed.
+ * Derived from cascade-rules.ts, update when rules are added or removed.
  */
 export const ALL_CASCADE_RULE_IDS: readonly string[] = [
   'turn-failed-cancels-tools',

@@ -1,10 +1,10 @@
 /**
- * optional-openai.ts — the one place the `openai` package is reached.
+ * optional-openai.ts, the one place the `openai` package is reached.
  *
  * `openai` is declared under `optionalDependencies` in
- * packages/sdk/package.json. Three modules used to import it statically —
+ * packages/sdk/package.json. Three modules used to import it statically,
  * providers/openai.ts, providers/openai-compat.ts and
- * providers/lm-studio-helpers.ts — and the daemon's module graph reaches all
+ * providers/lm-studio-helpers.ts, and the daemon's module graph reaches all
  * three through the provider registry. A static import of an absent optional
  * package does not degrade a feature, it removes the process: see
  * utils/optional-dependency.ts for the measured failure (no binary at compile

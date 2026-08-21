@@ -3,9 +3,9 @@ import type {
   OperatorMethodOutput,
 } from '@pellux/goodvibes-contracts';
 
-/** Response shape returned by `sdk.auth.current()` — the daemon's view of the current principal. */
+/** Response shape returned by `sdk.auth.current()`, the daemon's view of the current principal. */
 export type GoodVibesCurrentAuth = OperatorMethodOutput<'control.auth.current'>;
-/** Input payload for `sdk.auth.login()` — typically `{ username, password }`. */
+/** Input payload for `sdk.auth.login()`, typically `{ username, password }`. */
 export type GoodVibesLoginInput = OperatorMethodInput<'control.auth.login'>;
 /** Successful login response, including the issued token and optional `expiresAt` (Unix ms). */
 export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
@@ -16,18 +16,18 @@ export type GoodVibesLoginOutput = OperatorMethodOutput<'control.auth.login'>;
  * Implement this interface when you need custom token persistence (e.g.
  * encrypted storage, platform keychains, or external secret stores).
  * For common use cases, use the built-in factories:
- * - `createMemoryTokenStore` — in-memory (default when `authToken` is provided)
- * - `createBrowserTokenStore` — `localStorage`-backed (browser)
- * - `createExpoSecureTokenStore` — Expo secure store (React Native Expo)
- * - `createIOSKeychainTokenStore` — iOS Keychain (bare React Native)
- * - `createAndroidKeystoreTokenStore` — Android Keystore (bare React Native)
+ * - `createMemoryTokenStore`, in-memory (default when `authToken` is provided)
+ * - `createBrowserTokenStore`, `localStorage`-backed (browser)
+ * - `createExpoSecureTokenStore`, Expo secure store (React Native Expo)
+ * - `createIOSKeychainTokenStore`, iOS Keychain (bare React Native)
+ * - `createAndroidKeystoreTokenStore`, Android Keystore (bare React Native)
  */
 export interface GoodVibesTokenStore {
   /** Return the stored auth token, or `null` if none is present. */
   getToken(): Promise<string | null>;
   /** Persist a new token, or clear storage when `null` is passed. */
   setToken(token: string | null): Promise<void>;
-  /** Equivalent to `setToken(null)` — removes the stored token. */
+  /** Equivalent to `setToken(null)`, removes the stored token. */
   clearToken(): Promise<void>;
 }
 

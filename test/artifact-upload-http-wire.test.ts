@@ -2,14 +2,14 @@
  * artifact-upload-http-wire.test.ts
  *
  * Real bootDaemon proof that binary/multipart artifact uploads work over the
- * live wire (isolated home, ephemeral port, token auth — the boot-daemon-factory
+ * live wire (isolated home, ephemeral port, token auth, the boot-daemon-factory
  * pattern), not just against a directly-invoked handler:
  *
  *   - a raw binary upload (non-UTF-8 bytes, e.g. a PNG-shaped buffer) round-trips
  *     byte-identical through GET .../content, with the content-type preserved.
  *   - a multipart/form-data upload round-trips the same way.
  *   - an upload past the configured artifact-size cap gets an honest 413 that
- *     states the byte limit — never a silent truncation.
+ *     states the byte limit, never a silent truncation.
  *   - ordinary small JSON artifact-create bodies are unaffected by the upload
  *     hardening, and an oversized JSON body still gets an honest 413 that states
  *     the JSON body's own byte limit.
@@ -60,7 +60,7 @@ describe('raw and multipart artifact uploads round-trip over a real daemon', () 
   });
 
   test('a raw binary upload above the old ~1 MiB JSON cap is retrievable byte-identical with content-type intact', async () => {
-    // 2 MiB — comfortably past the JSON body's 1 MiB cap, proving this path
+    // 2 MiB, comfortably past the JSON body's 1 MiB cap, proving this path
     // does not go through the JSON parser at all.
     const bytes = binaryFixture(2 * 1024 * 1024);
 
@@ -127,7 +127,7 @@ describe('over-cap uploads get an honest 413 that states the limit, never a sile
   let work: string;
   let daemon: BootedDaemon;
   // The config schema enforces a 1 MiB floor on storage.artifacts.maxBytes
-  // (see schema-domain-core.ts intRange(1 MiB, 10 GiB)) — this test uses that
+  // (see schema-domain-core.ts intRange(1 MiB, 10 GiB)), this test uses that
   // floor as the configured cap and uploads comfortably past it.
   const ARTIFACT_MAX_BYTES = 1 * 1024 * 1024;
 
@@ -190,7 +190,7 @@ describe('over-cap uploads get an honest 413 that states the limit, never a sile
   });
 
   test('an oversized JSON body on the same route is refused 413 with its own byte limit stated (the JSON path is unaffected by the artifact cap)', async () => {
-    // dataBase64 padding pushes the JSON body well past the 1 MiB JSON cap —
+    // dataBase64 padding pushes the JSON body well past the 1 MiB JSON cap,
     // this must fail on the JSON body-size guard, NOT the (much smaller, here)
     // artifact-store cap, proving the two limits are independent.
     const oversizedJson = JSON.stringify({

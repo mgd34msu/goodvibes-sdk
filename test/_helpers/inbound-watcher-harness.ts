@@ -1,9 +1,9 @@
 /**
  * The injected halves of the inbound watcher, as things a test can drive.
  *
- * Everything the watcher would otherwise reach for — the clock, the random
+ * Everything the watcher would otherwise reach for, the clock, the random
  * source behind backoff jitter, the cursor store, the sink mail is handed to,
- * the observer its status goes to — arrives as a port, and these are the test
+ * the observer its status goes to, arrives as a port, and these are the test
  * implementations. Nothing here sleeps for real: the 27-minute IDLE re-issue
  * and the 5-minute backoff ceiling are asserted by moving a number.
  */
@@ -141,7 +141,7 @@ export class FakeClock implements WatcherClock {
    * Distinguishing a short wait from a long one matters: the IDLE re-issue
    * timer is armed for twenty-seven minutes and is almost always pending, so
    * "some wait exists" is true before the backoff a test is actually waiting
-   * for has been armed — and advancing past a wait that has not been created
+   * for has been armed, and advancing past a wait that has not been created
    * yet leaves the test hanging on a timer that will never come due.
    */
   async waitForDue(maxMs: number, what = 'a short scheduled wait'): Promise<void> {
@@ -162,7 +162,7 @@ export class FakeClock implements WatcherClock {
  * The REAL `MailboxCursorStore`, with an audit trail wrapped round it.
  *
  * This used to be a hand-written in-memory cursor store, and that was a third
- * implementation of the same rules — after the persisted store landed in its
+ * implementation of the same rules, after the persisted store landed in its
  * own lane there were two production declarations of `MailboxCursor` and two
  * computations of "where does the cursor go next", and they had already
  * disagreed: the store clamps with `Math.max(existing, incoming)` so a cursor
@@ -175,10 +175,10 @@ export class FakeClock implements WatcherClock {
  */
 export class RecordingCursorStore implements MailboxCursorPort {
   private readonly inner: MailboxCursorStore;
-  /** Every `advance`, in call order — the audit for "only after work". */
+  /** Every `advance`, in call order, the audit for "only after work". */
   readonly advances: number[] = [];
   /**
-   * Every `resolve`, in call order — the audit for WHERE a cursor was
+   * Every `resolve`, in call order, the audit for WHERE a cursor was
    * established, as distinct from where it later ended up.
    *
    * The two are easy to confuse, and the difference is the whole of the
@@ -239,7 +239,7 @@ export class RecordingCursorStore implements MailboxCursorPort {
  *
  * `makeCursorStore` used to `mkdtemp` per call and hand the path back for the
  * caller to delete. Every caller forgot, and one night's runs left 53
- * `goodvibes-inbound-cursor-*` directories behind — a share of the leak that
+ * `goodvibes-inbound-cursor-*` directories behind, a share of the leak that
  * exhausted this host's tmpfs inodes (1,046,761 of 1,048,576 used while disk
  * sat at 24%, so `df -h` looked healthy and every write failed anyway).
  *
@@ -247,7 +247,7 @@ export class RecordingCursorStore implements MailboxCursorPort {
  * stores costs one inode instead of thirty.
  *
  * TWO cleanup mechanisms were tried here before this one, and BOTH silently
- * did nothing — which is worth recording, because each looked obviously
+ * did nothing, which is worth recording, because each looked obviously
  * correct:
  *
  *   - an `afterEach` registered at this module's top level does not apply to
@@ -256,7 +256,7 @@ export class RecordingCursorStore implements MailboxCursorPort {
  *     (verified with a probe: the handler does not run).
  *
  * So cleanup is `cleanupInboundScratch`, called from an `afterAll` in each
- * suite that uses this helper — the one place cleanup demonstrably runs. A
+ * suite that uses this helper, the one place cleanup demonstrably runs. A
  * source-level test would be the way to stop a future suite forgetting; for
  * two files, the call plus this note is proportionate.
  */
@@ -307,7 +307,7 @@ export async function makeCursorStore(seed?: {
  * Narrow an `InboundMailboxMessage` to the IMAP variant, or fail loudly.
  *
  * `InboundMailboxMessage` is `ImapInboundMessage | GmailInboundMessage`, and
- * only the IMAP variant carries `uid` and `envelope` — the Gmail variant is
+ * only the IMAP variant carries `uid` and `envelope`, the Gmail variant is
  * keyed on `historyId` and carries a body instead. This harness is UID-shaped
  * throughout (refuse-once by UID, replay by UID, assertions on
  * `envelope.subject`), so it genuinely wants the narrow type.
@@ -330,7 +330,7 @@ export function requireImapMessage(message: InboundMailboxMessage, where: string
  *
  * Written as a factory rather than as an object literal at each call site
  * because the literals that used to be there were of the form
- * `{ uid: 7 } as InboundMailboxMessage['envelope']` — a one-field envelope
+ * `{ uid: 7 } as InboundMailboxMessage['envelope']`, a one-field envelope
  * asserted into a ten-field type. That cast is what let those tests keep
  * compiling while the message shape moved underneath them, and it is exactly
  * the kind of cast that stops a test disagreeing with production out loud.
@@ -372,9 +372,9 @@ export function imapMessageFixture(
 }
 
 export class RecordingSink implements InboundMailSink {
-  /** IMAP messages specifically — see requireImapMessage above for why. */
+  /** IMAP messages specifically, see requireImapMessage above for why. */
   readonly delivered: ImapInboundMessage[] = [];
-  /** UIDs to refuse ONCE, then accept — the crash-mid-processing simulation. */
+  /** UIDs to refuse ONCE, then accept, the crash-mid-processing simulation. */
   readonly refuseOnce = new Set<number>();
   /** Every UID handed over, including the refused attempts. */
   readonly attempts: number[] = [];
@@ -477,8 +477,8 @@ export function wakeRaceProbeMs(): number {
  * WHY THE PROBE LIVES HERE AND NOT IN `idle-watcher.ts`. The sweep was
  * originally run by hand-patching a sleep into the production file, which is
  * both a step nobody repeats and a hook in shipped code. Wrapping the wire
- * from the test side puts the delay at the identical position — the same call,
- * the same await, one frame earlier — with production untouched. The real port
+ * from the test side puts the delay at the identical position, the same call,
+ * the same await, one frame earlier, with production untouched. The real port
  * is returned unwrapped when the probe is off, so an ordinary run pays
  * nothing.
  *
@@ -526,8 +526,8 @@ export function watcherConnectionPort(
  * Wait for `predicate`, re-sending `line` if the original wake was lost.
  *
  * THE RACE THIS EXISTS FOR. `runIdleRound` opens its line COLLECTOR before
- * sending `IDLE`, but the waiter that actually ends the round —
- * `waitForUntagged(isIdleWakeLine, …)` — is not registered until `waitForWake`
+ * sending `IDLE`, but the waiter that actually ends the round,
+ * `waitForUntagged(isIdleWakeLine, …)`, is not registered until `waitForWake`
  * runs, which is after the server's `+ idling` continuation comes back. So
  * there is a window in which an untagged line is seen by the collector and by
  * nobody who can act on it.
@@ -535,8 +535,8 @@ export function watcherConnectionPort(
  * A test that observes `mailbox.commands` to decide the watcher is idling is
  * reading a SERVER-side fact and using it as a proxy for a CLIENT-side one.
  * They are correctly ordered and not simultaneous, and under the I/O pressure
- * of a full-suite run the gap opens. `clock.waitForSleepers(1)` is closer —
- * the re-issue timer IS armed client-side — but it is armed one line BEFORE
+ * of a full-suite run the gap opens. `clock.waitForSleepers(1)` is closer,
+ * the re-issue timer IS armed client-side, but it is armed one line BEFORE
  * the untagged waiter, so it does not close the window either.
  *
  * When the edge is lost the only recovery is the 27-minute IDLE re-issue,
@@ -544,8 +544,8 @@ export function watcherConnectionPort(
  * not present as slowness; it presents as a hard timeout at the deadline.
  *
  * A FALLBACK, NOT A SECOND STIMULUS. Nothing is sent until `intervalMs` has
- * passed with the predicate still false, so in the ordinary case — the edge
- * lands immediately — this behaves exactly like `waitFor` and sends nothing at
+ * passed with the predicate still false, so in the ordinary case, the edge
+ * lands immediately, this behaves exactly like `waitFor` and sends nothing at
  * all. That matters: a test whose cursor deliberately does not advance would
  * re-deliver the same message on a duplicate wake, and the assertion is
  * usually an exact `toEqual`.
@@ -559,7 +559,7 @@ export function watcherConnectionPort(
  *
  * WHETHER ANY TEST STILL NEEDS THIS is a question to answer by running
  * `bun run sweep:wake-race`, never by reading. The race has been swept twice by
- * inspection and both sweeps were incomplete — the second missed a whole suite
+ * inspection and both sweeps were incomplete, the second missed a whole suite
  * that arrived from another branch, and two tests in a file it had already
  * swept, and CI found them on a 2-vCPU runner instead. The sweep widens the
  * window with `watcherConnectionPort` above and reports what stops passing.

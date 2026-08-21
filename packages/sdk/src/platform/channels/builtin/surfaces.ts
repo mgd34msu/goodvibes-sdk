@@ -88,7 +88,7 @@ export async function resolveNtfyToken(deps: BuiltinChannelRuntimeDeps): Promise
  * `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN` is present whether or not
  * that key exists in the store THIS process reads, and the difference between
  * those two is the difference between a channel that can send and one that
- * cannot. Returns null when a reference resolves to nothing — resolveSecretInput
+ * cannot. Returns null when a reference resolves to nothing, resolveSecretInput
  * logs and returns null rather than throwing.
  */
 export async function resolveBuiltinConfigSecret(

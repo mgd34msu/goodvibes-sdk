@@ -6,7 +6,7 @@
  * string in them is chosen by whoever controls the checkout page.
  *
  * These are attack tests, not formatting tests. Each asserts that a hostile
- * string arrives INERT — no clickable link, no mention, no fake affordance —
+ * string arrives INERT, no clickable link, no mention, no fake affordance,
  * rather than asserting that some particular escaping was applied.
  *
  * The class comes from the inbound-mail notice (SDK `140cbcb4`), where
@@ -185,7 +185,7 @@ describe('refusal reasons carry merchant text and must be inert too', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// Proving the tests are really gated — the mail round's discipline
+// Proving the tests are really gated, the mail round's discipline
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('each case is genuinely gated by its trigger', () => {

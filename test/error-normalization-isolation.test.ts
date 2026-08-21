@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Error normalization isolation — verifies that normalizeError and summarizeError
+ * Error normalization isolation, verifies that normalizeError and summarizeError
  * never propagate internal formatting errors and always return usable output.
  */
 describe('error normalization isolation', () => {

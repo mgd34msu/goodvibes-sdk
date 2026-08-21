@@ -38,7 +38,7 @@ export function queryKnowledgeNodes(
   const offset = Math.max(0, input.offset ?? 0);
   const queryTokens = tokenize(input.query ?? '');
   // Honest default: forgotten/superseded ('stale') nodes are not served unless a
-  // caller explicitly asks (status filter or includeStale) — closes the GraphQL
+  // caller explicitly asks (status filter or includeStale), closes the GraphQL
   // serve-surface drift where `forget` hid a node from search but GraphQL still
   // returned it. (Defect 6.)
   const includeStale = input.includeStale === true || input.status !== undefined;

@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — EvalRunner.
+ * Evaluation Harness, EvalRunner.
  *
  * Runs eval suites using production runtime paths:
  * - PerfMonitor for budget evaluation
@@ -80,14 +80,14 @@ export class EvalRunner {
    *
    * The gate fails when EITHER of these holds for any scenario:
    *   1. The scenario is below its absolute floor (`scorecard.passed === false`)
-   *      — checked for every fresh scenario, independently of the baseline.
+   *     , checked for every fresh scenario, independently of the baseline.
    *   2. The scenario regressed more than `regressionThreshold` points versus
    *      its baseline score.
    *
    * Scenarios present in the fresh run but absent from the baseline are NOT
    * silently skipped: they are still floor-checked (rule 1) and surfaced in
    * `unbaselined`. They simply cannot be regression-checked (rule 2) this run
-   * because there is nothing to compare against — they seed the next baseline.
+   * because there is nothing to compare against, they seed the next baseline.
    *
    * @param fresh - Result from a freshly-run suite.
    * @param baseline - Previously stored baseline (may be undefined).
@@ -104,7 +104,7 @@ export class EvalRunner {
       const freshScore = result.scorecard.compositeScore;
       const floorPassed = result.scorecard.passed;
 
-      // Rule 1 — absolute floor, enforced regardless of baseline presence.
+      // Rule 1, absolute floor, enforced regardless of baseline presence.
       if (!floorPassed) {
         floorFailures.push({
           scenarioId: result.scenario.id,
@@ -114,7 +114,7 @@ export class EvalRunner {
         });
       }
 
-      // Rule 2 — regression, only when this scenario has a baseline score.
+      // Rule 2, regression, only when this scenario has a baseline score.
       const baselineScore = baselineSuite?.scenarioScores[result.scenario.id];
       if (baselineScore === undefined) {
         unbaselined.push({

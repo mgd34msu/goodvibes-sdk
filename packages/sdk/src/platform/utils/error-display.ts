@@ -113,7 +113,7 @@ function cleanMessage(msg: string, fallbackMessage?: string): string {
 /**
  * "This account cannot pay for the call", in the wording providers actually
  * use. Anthropic returns it with a 400, OpenAI with a 429 `insufficient_quota`
- * — so the status code alone cannot tell a spent account from a malformed
+ *, so the status code alone cannot tell a spent account from a malformed
  * request or a throughput limit. Keep in sync with the twin in
  * types/errors.ts.
  */
@@ -217,11 +217,11 @@ function extractErrorMessage(error: unknown): string {
 }
 
 /**
- * redactedErrorMessage — extracts and redacts a human-readable message from any thrown value.
+ * redactedErrorMessage, extracts and redacts a human-readable message from any thrown value.
  *
  * Use for user-facing error output where the raw message should never leak
  * bearer tokens, API keys, or other sensitive data. Do NOT use for logger
- * fields, structured result/error fields, or diagnostic context — use
+ * fields, structured result/error fields, or diagnostic context, use
  * `summarizeError` or the structured `normalizeError` for those.
  */
 export function redactedErrorMessage(error: unknown): string {

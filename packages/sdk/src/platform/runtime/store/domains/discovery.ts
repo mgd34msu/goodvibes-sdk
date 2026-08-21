@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Discovery domain state — tracks the project index, file watcher state,
+ * Discovery domain state, tracks the project index, file watcher state,
  * and language server availability for the active project.
  */
 
@@ -39,7 +39,7 @@ export interface FileWatcherStatus {
 }
 
 /**
- * DiscoveryDomainState — project index, file watcher, and LSP state.
+ * DiscoveryDomainState, project index, file watcher, and LSP state.
  */
 export interface DiscoveryDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

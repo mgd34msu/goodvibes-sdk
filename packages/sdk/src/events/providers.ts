@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * ProviderEvent — discriminated union for provider registry and fallback events.
+ * ProviderEvent, discriminated union for provider registry and fallback events.
  */
 export type ProviderEvent =
   | { type: 'PROVIDERS_CHANGED'; added: string[]; removed: string[]; updated: string[] }

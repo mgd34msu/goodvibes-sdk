@@ -5,7 +5,7 @@
  * uses to register companion sessions INTO the one shared session store at write
  * time (S1 item D: companion registers into the broker). Defined structurally so
  * the companion package does not take a hard dependency on the control-plane
- * broker's full surface — the real SharedSessionBroker satisfies this shape.
+ * broker's full surface, the real SharedSessionBroker satisfies this shape.
  *
  * Live registration is the fast path (a created/closed companion session is
  * visible to /api/sessions immediately, same-process); the boot-time importer
@@ -31,7 +31,7 @@ export interface CompanionBrokerRegisterInput {
 
 /**
  * Structural subset of SharedSessionBroker. Return types are intentionally
- * `unknown` — the companion manager fires these for their effect on the store,
+ * `unknown`, the companion manager fires these for their effect on the store,
  * not for their result.
  */
 export interface CompanionSessionBrokerBridge {

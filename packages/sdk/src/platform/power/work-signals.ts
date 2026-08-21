@@ -1,11 +1,11 @@
 /**
- * power/work-signals.ts — binds the runtime event bus to the PowerManager's
+ * power/work-signals.ts, binds the runtime event bus to the PowerManager's
  * work holds, so "real work" holds the sleep inhibitor automatically:
  *
  * - a running turn (TURN_SUBMITTED → terminal turn event),
  * - an active agent/fleet node (AGENT_SPAWNING/RUNNING → terminal agent event),
  * - a queued-or-running scheduled job (AUTOMATION_RUN_QUEUED/STARTED →
- *   terminal run event) — the "schedule due soon" signal at its honest source:
+ *   terminal run event), the "schedule due soon" signal at its honest source:
  *   the scheduler queues the run when it comes due.
  *
  * Every hold is keyed by its work id, so overlapping work refcounts naturally
@@ -17,7 +17,7 @@ import type { PowerManager } from './manager.js';
 /**
  * Structural bus slice, typed against the REAL envelope shape
  * (packages/transport-core/src/event-envelope.ts: `type`/`ts`/optional
- * trace-and-id fields/`payload` — never `event`). RuntimeEventBus.on is
+ * trace-and-id fields/`payload`, never `event`). RuntimeEventBus.on is
  * generic (`on<T extends AnyRuntimeEvent>(eventType: T['type'], callback:
  * EnvelopeListener<T>)`), so it structurally satisfies this non-generic
  * signature without a cast at the call site.
@@ -53,7 +53,7 @@ const RELEASES: ReadonlyArray<{ type: string; key: string }> = [
  * declares its id directly on the payload (verified against events/turn.ts,
  * events/agents.ts, events/automation.ts), so it is always present there.
  * The envelope's own top-level turnId/agentId optionals are checked only as a
- * fallback — callers do not consistently populate them (e.g. TURN_SUBMITTED's
+ * fallback, callers do not consistently populate them (e.g. TURN_SUBMITTED's
  * emitter context never sets a top-level turnId), and the envelope has no
  * top-level `runId` field at all, so that fallback never fires for 'runId'.
  */

@@ -1,12 +1,12 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * hunk-revert.ts — per-hunk reverse-apply on the live working tree.
+ * hunk-revert.ts, per-hunk reverse-apply on the live working tree.
  *
  * The comment-on-hunk review surfaces (the TUI's /review, the webui's
- * SessionChanges) hand back a single unified-diff hunk — one `@@ … @@` block
+ * SessionChanges) hand back a single unified-diff hunk, one `@@ … @@` block
  * copied verbatim out of the SAME diff `checkpoints.diff` / `sessions.changes.get`
- * produced — and ask for exactly that one hunk to be undone. This module reverses
+ * produced, and ask for exactly that one hunk to be undone. This module reverses
  * ONE hunk against the current file content and nothing else.
  *
  * Two hard rules make it safe to expose as a confirm-gated verb:
@@ -14,11 +14,11 @@
  *      new-side lines (context + additions) still match the file exactly, either
  *      at the header's line or at a single unambiguous location. A file that has
  *      drifted since the diff was taken (a stale hunk) yields a conflict result,
- *      never a partial or fuzzy write. `reverseApplyHunk` is pure — it computes
+ *      never a partial or fuzzy write. `reverseApplyHunk` is pure, it computes
  *      the next content or a conflict and touches nothing.
  *   2. SNAPSHOT-BEFORE-MUTATE. `applyHunkRevert` takes a whole-tree checkpoint
  *      (the same safety idiom `checkpoints.restore` uses) before it writes, so
- *      the revert is itself reversible — restore that checkpoint to undo it.
+ *      the revert is itself reversible, restore that checkpoint to undo it.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -40,9 +40,9 @@ export interface RevertHunkSuccess {
   readonly nextContent: string;
   /** The `@@ … @@` header line of the hunk, echoed back for the receipt. */
   readonly hunkHeader: string;
-  /** Count of `+` (added) lines the forward hunk introduced — removed by the revert. */
+  /** Count of `+` (added) lines the forward hunk introduced, removed by the revert. */
   readonly addedLinesRemoved: number;
-  /** Count of `-` (removed) lines the forward hunk deleted — restored by the revert. */
+  /** Count of `-` (removed) lines the forward hunk deleted, restored by the revert. */
   readonly removedLinesRestored: number;
   /** 1-based line where the hunk's new-side block matched the current file. */
   readonly matchedAtLine: number;
@@ -71,7 +71,7 @@ interface ParsedHunk {
 
 /**
  * Parse a single unified-diff hunk. Rejects input with zero or more than one
- * `@@` header — this verb reverts exactly one hunk, so a multi-hunk paste is a
+ * `@@` header, this verb reverts exactly one hunk, so a multi-hunk paste is a
  * caller error, not something to partially honor.
  */
 function parseSingleHunk(hunk: string): ParsedHunk {
@@ -142,7 +142,7 @@ function allMatchOffsets(lines: readonly string[], block: readonly string[]): nu
 
 /**
  * Reverse-apply ONE hunk to `fileContent`, pure. Succeeds only when the hunk's
- * new-side block still matches the file — at the header's line, or (if line
+ * new-side block still matches the file, at the header's line, or (if line
  * numbers drifted from unrelated edits) at a single unambiguous location. Any
  * ambiguity or mismatch is a conflict, never a partial write.
  */
@@ -261,7 +261,7 @@ export interface HunkRevertWorkspace {
   create(opts: { kind: 'manual'; label: string }): Promise<WorkspaceCheckpoint | null>;
 }
 
-/** Receipt of a single applied hunk revert — reversible via the safety checkpoint. */
+/** Receipt of a single applied hunk revert, reversible via the safety checkpoint. */
 export interface HunkRevertReceipt {
   readonly reverted: boolean;
   readonly path: string;
@@ -291,7 +291,7 @@ export async function applyHunkRevert(
   }
   // Snapshot BEFORE mutating so the revert is itself reversible (restore this
   // checkpoint to undo). A null return means the tree already matched the latest
-  // checkpoint — the pre-revert state is already captured, so there is nothing to
+  // checkpoint, the pre-revert state is already captured, so there is nothing to
   // undo-point beyond it.
   const safety = await workspace.create({ kind: 'manual', label: `pre-revertHunk: ${path}` });
   const abs = resolveInsideRoot(workspace.workspaceRoot, path);

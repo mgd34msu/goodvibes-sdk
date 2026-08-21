@@ -1,5 +1,5 @@
 /**
- * daemon-credential-migration.ts — lifting credentials already stranded in a
+ * daemon-credential-migration.ts, lifting credentials already stranded in a
  * surface silo up into the daemon tier.
  *
  * Routing new writes correctly fixes nothing for the person who already ran
@@ -34,7 +34,7 @@
  * home, a full disk, a key mismatch) fails silently enough that steps 1, 2 and
  * 4 alone would delete the only working copy of a credential and leave the
  * operator with nothing. If the read-back does not match, the source is left
- * exactly where it was and the entry is reported as `verification-failed` —
+ * exactly where it was and the entry is reported as `verification-failed`,
  * the credential still works, from the tier it was already in, and the next
  * start tries again.
  *
@@ -70,7 +70,7 @@ export type CredentialMigrationOutcome =
   /** The daemon write itself threw. The source was left in place, untouched. */
   | 'write-failed';
 
-/** One credential's migration result. Key names and tiers only — never a value. */
+/** One credential's migration result. Key names and tiers only, never a value. */
 export interface CredentialMigrationEntry {
   readonly key: string;
   readonly fromScope: SecretScope;
@@ -83,14 +83,14 @@ export interface CredentialMigrationReport {
   readonly entries: readonly CredentialMigrationEntry[];
   readonly migrated: number;
   readonly failed: number;
-  /** True when nothing needed doing — the common case after the first run. */
+  /** True when nothing needed doing, the common case after the first run. */
   readonly noop: boolean;
 }
 
 /**
  * The slice of SecretsManager this needs. Narrow on purpose: the migration is
  * exercised against a fake in tests, and a narrow port is also the honest
- * statement of what it is allowed to do — read, write, delete, list. It cannot
+ * statement of what it is allowed to do, read, write, delete, list. It cannot
  * reach the encryption keys or the store paths.
  */
 export interface MigratableSecretStore {
@@ -107,7 +107,7 @@ export interface MigratableSecretStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string, options?: { scope?: SecretScope; medium?: SecretStorageMedium }): Promise<void>;
   /**
-   * Read one tier — or one exact store FILE when `storePath` is given.
+   * Read one tier, or one exact store FILE when `storePath` is given.
    *
    * The file form is required because two surfaces both report scope `user`:
    * `~/.goodvibes/agent/secrets.enc` and `~/.goodvibes/tui/secrets.enc` are the
@@ -121,7 +121,7 @@ export interface MigratableSecretStore {
    *
    * Deliberately NOT `delete`. `delete` is the revoke verb: for a daemon-needed
    * key it discards the caller's scope and sweeps every tier, which is right
-   * for a revoke and catastrophic here — every key this module touches is
+   * for a revoke and catastrophic here, every key this module touches is
    * daemon-needed by definition, so `delete(key, { scope: source })` destroyed
    * the daemon copy that had just been written and verified, while the report
    * said `migrated: 1, failed: 0`. The port names the narrow operation so the
@@ -171,7 +171,7 @@ async function migrateOne(
 
   const surfaceValue = await store.getFromScope(record.key, fromScope, sourcePath);
   if (surfaceValue === null || surfaceValue.length === 0) {
-    // Nothing readable there after all — another process may have moved it
+    // Nothing readable there after all, another process may have moved it
     // between the listing and now. Leave it alone.
     return { ...base, outcome: 'already-migrated' };
   }
@@ -272,7 +272,7 @@ export async function migrateDaemonNeededCredentials(
  * The owner authorized this migration to run against his live tree, and part of
  * that authorization is that he never has to guess whether it ran. A log line
  * scrolls; this does not. It answers "did it run, when, and what moved" from
- * disk, months later, and it carries key NAMES, tiers and outcomes — never a
+ * disk, months later, and it carries key NAMES, tiers and outcomes, never a
  * value.
  *
  * Rewritten on every run that changed something, so it always describes the
@@ -328,7 +328,7 @@ export function describeCredentialMigration(report: CredentialMigrationReport): 
  * which is the case a fresh install hits: setup happens in a client, and the
  * daemon reads the result later.
  *
- * Safe to call on every start of every product — after the first run it is one
+ * Safe to call on every start of every product, after the first run it is one
  * enumeration and no writes.
  */
 export async function migrateOnSurfaceStart(

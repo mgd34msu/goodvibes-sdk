@@ -19,7 +19,7 @@ const GLOB_REGEX_SPECIALS = new Set(['.', '+', '^', '$', '{', '}', '(', ')', '|'
  * tripping through a placeholder sentinel with `String.replace(/…/g, …)`: a
  * `g`-flagged regex literal reused across many calls can, on some engines,
  * carry `lastIndex` state into a subsequent `replace` and skip the
- * placeholder-restore step — leaving a literal sentinel in the pattern so the
+ * placeholder-restore step, leaving a literal sentinel in the pattern so the
  * `**` case silently stops matching. A character scan holds no state and
  * cannot mis-fire that way.
  *

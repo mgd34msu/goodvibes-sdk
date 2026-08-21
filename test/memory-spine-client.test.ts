@@ -10,7 +10,7 @@ import { createTransportError } from '../packages/transport-http/src/http-core.t
 import type { MemoryBundle, MemoryLink, MemoryRecord, MemorySemanticSearchResult, MemoryVectorStats, MemoryDoctorReport } from '../packages/sdk/src/platform/state/index.js';
 import type { HonestMemorySearchResult } from '../packages/sdk/src/platform/state/index.js';
 // MemoryImportResult is a real exported type (memory-store.ts) but is not
-// re-exported from the state barrel (state/index.ts) — pull it from source.
+// re-exported from the state barrel (state/index.ts), pull it from source.
 import type { MemoryImportResult } from '../packages/sdk/src/platform/state/memory-store.js';
 
 /**
@@ -185,7 +185,7 @@ describe('memory-spine — client-of-adopted-daemon mode', () => {
 
     client.deactivate("daemon mode changed to 'unavailable'");
     const deactivateNote = notes.find((note) => note.message.includes('deactivated'));
-    expect(deactivateNote?.message).toBe('memory spine deactivated — reverting to owned-local memory access');
+    expect(deactivateNote?.message).toBe('memory spine deactivated, reverting to owned-local memory access');
     expect(deactivateNote?.meta).toEqual({ reason: "daemon mode changed to 'unavailable'" });
   });
 });
@@ -241,7 +241,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
     // A surface pinned to an adapter that predates the verb: the transport object
     // literally has no `list`/`searchSemantic`/`exportBundle` function. The client's
     // routeExtended catches the `call === undefined` case. (This is the secondary
-    // guard; the primary — a wired verb whose daemon 404s at runtime — is below.)
+    // guard; the primary, a wired verb whose daemon 404s at runtime, is below.)
     const local = spyLocalStore();
     const wire = spyTransport(); // core-only transport (older/pinned adapter)
     const client = new MemorySpineClient({ local: createLocalMemoryAccess(local.store), transport: wire.transport });
@@ -249,7 +249,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
     await expect(client.list({})).rejects.toThrow(/does not support the 'list' memory verb/);
     await expect(client.searchSemantic({})).rejects.toThrow(/searchSemantic/);
     await expect(client.exportBundle({})).rejects.toThrow(/exportBundle/);
-    // Crucially, the local store was NEVER reached — the single-writer invariant holds.
+    // Crucially, the local store was NEVER reached, the single-writer invariant holds.
     expect(local.calls).toEqual([]);
   });
 
@@ -257,7 +257,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
     // This is what a LIVE older daemon actually produces (not a transport that omits
     // the method): the transport IMPLEMENTS `update`, calls the route, and the daemon
     // answers a route-not-found 404. The transport folds that through the shared
-    // discriminator and rejects with the canonical unavailable-verb message — it does
+    // discriminator and rejects with the canonical unavailable-verb message, it does
     // NOT return null (which the CLI would mislabel as "record not found").
     const local = spyLocalStore();
     const routeNotFound = createTransportError(
@@ -278,7 +278,7 @@ describe('memory-spine — extended catalog (full detach)', () => {
 
   test('RUNTIME signal: a genuine record-missing 404 (current daemon) folds to null, never a false reject', async () => {
     // The other side of the discriminator: the SAME bare 404 status, but the body
-    // carries the record-missing code, so the transport folds it to null — a real
+    // carries the record-missing code, so the transport folds it to null, a real
     // "no such record", correctly distinguished from the version-skew case above.
     const local = spyLocalStore();
     const recordMissing = createTransportError(
@@ -337,7 +337,7 @@ describe('memory-spine — sync-recall snapshot seam', () => {
     const stale = client.recallSnapshot(capturedAt + 5_000);
     expect(stale.stale).toBe(true);
     // Canonical freshness vocabulary: lowercase, hedged "may be stale", humanized
-    // seconds — never uppercase "STALE" or raw milliseconds.
+    // seconds, never uppercase "STALE" or raw milliseconds.
     expect(stale.note).toMatch(/may be stale/);
     expect(stale.note).toMatch(/5s ago/);
     expect(stale.note).not.toMatch(/STALE/);

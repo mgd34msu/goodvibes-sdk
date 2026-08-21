@@ -1,28 +1,28 @@
 /**
- * device-grants.ts — durable "always allow" grants for paired-device capabilities.
+ * device-grants.ts, durable "always allow" grants for paired-device capabilities.
  *
  * The owner's ruling (2026-07-25): "'always allow' is OFFERED on every
- * capability — including front camera, screen capture, precise location, and
- * clipboard — as a durable per-capability, per-node grant, visible and
+ * capability, including front camera, screen capture, precise location, and
+ * clipboard, as a durable per-capability, per-node grant, visible and
  * revocable in the grants surface." This store is that durable record.
  *
  * A grant is a positive authority and nothing else: if no live, unexpired,
  * unrevoked grant is found, the capability is confirmed with the person. There
  * is no cached "yes" anywhere else in the system, so revocation takes effect on
- * the very next request — the store is re-read from disk on every lookup rather
+ * the very next request, the store is re-read from disk on every lookup rather
  * than served from a process-local cache that a second process could not
  * invalidate.
  *
  * Persisted state, so the housekeeping rule applies in full:
- *  1. Reap on recovery — grants for a node that no longer exists, and
+ *  1. Reap on recovery, grants for a node that no longer exists, and
  *     session-scoped grants whose session is gone, are removed at load time.
- *  2. Bound everything — per-node count cap AND an age TTL; the audit ledger
+ *  2. Bound everything, per-node count cap AND an age TTL; the audit ledger
  *     has its own cap and TTL.
- *  3. Validate by content — every record is re-validated against its parsed
+ *  3. Validate by content, every record is re-validated against its parsed
  *     shape and the live capability catalog; a torn or half-written record is
  *     dropped, never honoured.
- *  4. Reap periodically — `sweep()` is safe to call on a timer, not only at boot.
- *  5. Disclose what was reaped — every sweep returns an itemised report, and
+ *  4. Reap periodically, `sweep()` is safe to call on a timer, not only at boot.
+ *  5. Disclose what was reaped, every sweep returns an itemised report, and
  *     the removals are appended to the audit ledger the grants surface renders.
  *
  * Sweeps are idempotent and safe to run from more than one process: each one
@@ -46,7 +46,7 @@ export interface DeviceCapabilityGrant {
   /** Present only for session-scoped grants; reaped when the session is gone. */
   readonly sessionId?: string | undefined;
   readonly grantedAt: number;
-  /** Age TTL. Every grant has one — nothing is granted forever. */
+  /** Age TTL. Every grant has one, nothing is granted forever. */
   readonly expiresAt: number;
   readonly lastUsedAt?: number | undefined;
   readonly useCount: number;
@@ -286,7 +286,7 @@ export class DeviceGrantStore {
    * Find a live grant authorising this capability on this node, or null.
    *
    * Returns null for anything revoked (the record is gone), expired, or scoped
-   * to a session that is no longer active — a revoked or expired grant is never
+   * to a session that is no longer active, a revoked or expired grant is never
    * silently honoured.
    */
   async find(input: {
@@ -378,7 +378,7 @@ export class DeviceGrantStore {
   }
 
   /**
-   * Revoke grants. The matching records are DELETED, not flagged — there is no
+   * Revoke grants. The matching records are DELETED, not flagged, there is no
    * "revoked but present" state a later read could mistake for authority.
    * Returns the itemised removals for disclosure.
    */
@@ -432,7 +432,7 @@ export class DeviceGrantStore {
 
   /**
    * One housekeeping pass. Safe at recovery, safe on a timer, safe concurrently
-   * — it recomputes every removal from the file it just read and writes the
+   *, it recomputes every removal from the file it just read and writes the
    * result atomically, so running it twice removes nothing extra.
    */
   async sweep(): Promise<DeviceGrantSweepReport> {

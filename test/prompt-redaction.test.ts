@@ -110,7 +110,7 @@ describe('end-to-end through TelemetryApiService safe view', () => {
     });
     await new Promise((r) => setImmediate(r));
 
-    // Default view is 'safe' — prompt field must be redacted
+    // Default view is 'safe', prompt field must be redacted
     const safeEvents = telemetry.listEvents({});
     const safeRecord = safeEvents.find((e) => e.type === 'TURN_SUBMITTED')
     expect(safeRecord?.type).toBe('TURN_SUBMITTED');

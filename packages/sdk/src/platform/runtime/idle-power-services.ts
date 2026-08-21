@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
-// idle-power-services.ts — the idle-time / sleep-ownership / live-turn slice of
+// idle-power-services.ts, the idle-time / sleep-ownership / live-turn slice of
 // the runtime composition, extracted from services.ts (file-size hygiene).
 //
 // Mirrors the SDK's own createRuntimeServices wiring: idle-time memory
 // consolidation (learning.consolidation.*), host sleep ownership (power.*), and
 // the per-session live-turn control holder that backs the
 // sessions.toolCalls.cancel / sessions.queuedMessages.* wire verbs. Consolidation
-// receipts ride the SAME attach-time queue every other receipt uses — a run that
+// receipts ride the SAME attach-time queue every other receipt uses, a run that
 // changed something records a one-line notice into the file-backed
 // feature-announcement store, drained on the next surface attach; a quiet run
 // records nothing.
@@ -25,7 +25,7 @@ export interface IdlePowerServicesDeps {
   readonly configManager: ConfigManager;
   readonly memoryRegistry: MemoryRegistry;
   readonly runtimeBus: RuntimeEventBus;
-  /** True when no session is busy — the consolidation scheduler's idle gate. */
+  /** True when no session is busy, the consolidation scheduler's idle gate. */
   readonly isIdle: () => boolean;
   /** Sleep-edge checkpoint + a wake catch-up tick (store snapshots). */
   readonly snapshotTick: () => void;
@@ -33,7 +33,7 @@ export interface IdlePowerServicesDeps {
   readonly heartbeat: () => Promise<void>;
   /**
    * Host power seam. SDK 1.9.0 makes wireRuntimePower default an absent seam to
-   * the REAL host seam (createHostPowerSeam — which spawns systemd-inhibit and a
+   * the REAL host seam (createHostPowerSeam, which spawns systemd-inhibit and a
    * dbus-monitor sleep-edge watcher). That spawn is a host-level side effect, so
    * this fork mirrors the SDK's own createRuntimeServices: when no seam is passed
    * we default to the NON-spawning unavailable seam, keeping test-constructed
@@ -69,7 +69,7 @@ export function wireIdlePowerAndLiveTurn(deps: IdlePowerServicesDeps): IdlePower
     writeConfig: (key, value) => deps.configManager.setDynamic(key as Parameters<typeof deps.configManager.setDynamic>[0], value),
     // Live config subscription: an external edit to power.keepAwake (a settings-
     // modal toggle, a hand-edited settings file) applies LIVE to the in-process
-    // manager — acquires/releases the inhibitor and lights the chip with no
+    // manager, acquires/releases the inhibitor and lights the chip with no
     // restart. This is the config-apply path for the EMBEDDED topology + the
     // local chip; the external daemon is reached separately over the verb.
     subscribeConfig: (key, cb) => (deps.configManager.subscribe as unknown as (k: string, c: (v: unknown) => void) => () => void)(key, (newValue) => cb(newValue)),

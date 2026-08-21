@@ -11,7 +11,7 @@
  * had no entry at all (they resolved to the broad `{ readonly [key: string]:
  * unknown }` / `unknown` fallbacks in OperatorMethodInput/Output, so a consumer
  * got no compile-time shape), and 91 more carried an entry that no longer
- * matched the schema it was written from — a corrected `required` array on a
+ * matched the schema it was written from, a corrected `required` array on a
  * catalog schema reached no consumer type. Both classes are structural, not
  * per-verb: rendering all 443 from the catalog is the fix.
  *
@@ -76,7 +76,7 @@ export function generateFoundationIoEntries(options: { readonly check: boolean }
     console.error(
       '[generate-foundation-io-entries] FAIL: OperatorMethodInputMap/OperatorMethodOutputMap in ' +
         'packages/contracts/src/generated/foundation-client-types.ts do not match the method-catalog ' +
-        'schemas they are rendered from — run `bun run scripts/generate-foundation-io-entries.ts`.',
+        'schemas they are rendered from, run `bun run scripts/generate-foundation-io-entries.ts`.',
     );
     return true;
   }

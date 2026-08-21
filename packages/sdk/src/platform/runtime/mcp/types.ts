@@ -39,11 +39,11 @@ export type McpServerState =
 /**
  * Freshness status of a server's tool/resource schema cache.
  *
- * - `fresh`        — fetched recently, within the TTL window
- * - `stale`        — fetched but TTL has elapsed; re-fetch recommended
- * - `unknown`      — never fetched or record cleared
- * - `fetch_failed` — last fetch attempt returned an error
- * - `quarantined`  — schema is unsupported or stale past threshold; execution
+ * - `fresh`       , fetched recently, within the TTL window
+ * - `stale`       , fetched but TTL has elapsed; re-fetch recommended
+ * - `unknown`     , never fetched or record cleared
+ * - `fetch_failed`, last fetch attempt returned an error
+ * - `quarantined` , schema is unsupported or stale past threshold; execution
  *                    blocked until operator refreshes or explicitly acknowledges
  */
 export type SchemaFreshness = 'fresh' | 'stale' | 'unknown' | 'fetch_failed' | 'quarantined';
@@ -51,9 +51,9 @@ export type SchemaFreshness = 'fresh' | 'stale' | 'unknown' | 'fetch_failed' | '
 /**
  * Reason a schema was placed into quarantine.
  *
- * - `stale_threshold`   — TTL expired and refresh failed repeatedly
- * - `unsupported`      — schema version is unsupported with the runtime
- * - `operator_flagged`  — manually flagged by an operator for review
+ * - `stale_threshold`  , TTL expired and refresh failed repeatedly
+ * - `unsupported`     , schema version is unsupported with the runtime
+ * - `operator_flagged` , manually flagged by an operator for review
  */
 // QuarantineReason is imported from events/mcp.ts (see top of file).
 
@@ -94,10 +94,10 @@ export interface McpSchemaRecord {
 /**
  * Trust level assigned to an MCP server.
  *
- * - `trusted`    — all tools allowed; schema auto-refreshed
- * - `standard`   — all tools allowed; subject to per-tool overrides
- * - `restricted` — only explicitly allow-listed tools may be called
- * - `blocked`    — no tool calls permitted regardless of allow-list
+ * - `trusted`   , all tools allowed; schema auto-refreshed
+ * - `standard`  , all tools allowed; subject to per-tool overrides
+ * - `restricted`, only explicitly allow-listed tools may be called
+ * - `blocked`   , no tool calls permitted regardless of allow-list
  */
 export type McpTrustLevel = 'trusted' | 'standard' | 'restricted' | 'blocked';
 

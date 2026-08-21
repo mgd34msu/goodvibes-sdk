@@ -18,7 +18,7 @@ describe('globToRegex', () => {
 
   test('** without slash matches deep paths via .+ wildcard', () => {
     const re = globToRegex('src/**');
-    // '**' (without preceding slash) expands to .+ — matches any chars
+    // '**' (without preceding slash) expands to .+, matches any chars
     expect(re.test('src/deep/path/file.ts')).toBe(true);
   });
 

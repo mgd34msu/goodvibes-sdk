@@ -1,6 +1,6 @@
 /**
  * The clipboard readers sit here, so the explanation for why they cannot run
- * sits next to them — one answer for every surface that pastes.
+ * sits next to them, one answer for every surface that pastes.
  *
  * A terminal hands a program text, never an image: bracketed paste and OSC 52
  * both carry characters. Reading a pasted image therefore means shelling out to

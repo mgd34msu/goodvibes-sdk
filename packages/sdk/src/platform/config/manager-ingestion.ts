@@ -1,11 +1,11 @@
 /**
- * manager-ingestion.ts — ConfigManager's side of the settings-ingestion rule.
+ * manager-ingestion.ts, ConfigManager's side of the settings-ingestion rule.
  *
  * The rule itself, and the reasoning for skip-versus-refuse per key class, is
  * in settings-ingestion.ts. This is the two-function seam that connects it to a
  * manager: where a notice is recorded, and how a failed file becomes the
  * ConfigError the manager's callers already expect. Split out of manager.ts
- * because that file is at its line cap, and cohesive on its own terms — both
+ * because that file is at its line cap, and cohesive on its own terms, both
  * functions exist only to route a notice to the places an operator can see it.
  */
 
@@ -64,7 +64,7 @@ export function ingestManagerSettings(
  * first said what happened.
  *
  * A refusal announced itself already. Anything else reaching here is a file
- * that could not be parsed at all — also a refusal, because the reader cannot
+ * that could not be parsed at all, also a refusal, because the reader cannot
  * know whether the unreadable bytes held a safety-gate key, and so cannot know
  * that carrying on without them is safe.
  */

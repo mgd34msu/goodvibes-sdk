@@ -1,5 +1,5 @@
 /**
- * PERMANENT REGRESSION GUARD — do not weaken.
+ * PERMANENT REGRESSION GUARD, do not weaken.
  *
  * Sender confidence must stay a display concern. This walks the real source of
  * `platform/email` and fails if it starts being read anywhere that could turn
@@ -8,7 +8,7 @@
  * The check is deliberately a narrow allowlist rather than a clever heuristic:
  * a new file reading `displayedConfidence` has to be added here by hand, which
  * puts a human in front of the question "is this display, or is this becoming
- * authority?" — the exact question that gets skipped otherwise.
+ * authority?", the exact question that gets skipped otherwise.
  *
  * The surface that renders the claim keeps the same guard over its own tree.
  * This is the SDK's half: the mail service now sits between the receiving
@@ -116,7 +116,7 @@ describe('sender confidence never drifts into an authority decision', () => {
 
   test('no credential is interpolated into anything but a protocol write', () => {
     // A resolved password lives for the length of one connection. It belongs on
-    // the wire and nowhere else — not in an Error, not in a returned `error`
+    // the wire and nowhere else, not in an Error, not in a returned `error`
     // field, not in a status object. Checked structurally because the leak
     // would be one template literal, added in one line, by someone making an
     // error message more helpful.

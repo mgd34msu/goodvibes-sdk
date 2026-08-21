@@ -1,5 +1,5 @@
 /**
- * Config emitters — typed wrappers for the ConfigEvent domain.
+ * Config emitters, typed wrappers for the ConfigEvent domain.
  *
  * Used by the config emit-bridge (runtime/config/emit-bridge.ts) to surface
  * key-level setting changes onto the runtime event bus `config` domain, which

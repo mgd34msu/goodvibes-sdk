@@ -1,5 +1,5 @@
 /**
- * daemon-config-migration-io.ts — disk primitives and disclosure shapes for the
+ * daemon-config-migration-io.ts, disk primitives and disclosure shapes for the
  * one-time move of daemon-owned keys into the daemon's own config store.
  *
  * Split from daemon-config-migration.ts so the migration policy (what wins,
@@ -27,7 +27,7 @@ export interface DiscardedConfigKey {
   readonly from: string;
   /** Redacted when the key names a credential; otherwise the literal value. */
   readonly value: unknown;
-  /** 'conflict' — a different value already won; 'duplicate' — same value. */
+  /** 'conflict', a different value already won; 'duplicate', same value. */
   readonly reason: 'conflict' | 'duplicate';
   /** Which store's value won, so the discard is auditable. */
   readonly supersededBy: string;
@@ -49,7 +49,7 @@ export interface DaemonConfigMovedMarker {
   readonly moved: readonly MovedConfigKey[];
   readonly discarded: readonly DiscardedConfigKey[];
   /**
-   * Every key that was daemon-owned when this marker was written — not just the
+   * Every key that was daemon-owned when this marker was written, not just the
    * ones that had a value to move.
    *
    * This is what makes the migration RE-RUNNABLE as ownership grows. A key
@@ -72,7 +72,7 @@ export function daemonConfigMovedPath(daemonConfigStorePath: string): string {
 }
 
 /**
- * Read and VALIDATE the marker by parsing it. Never `existsSync` — a torn or
+ * Read and VALIDATE the marker by parsing it. Never `existsSync`, a torn or
  * truncated marker has already stranded user data once in this codebase, and a
  * file that exists but does not parse into a complete ledger must count as "not
  * migrated" so the migration runs again.
@@ -114,7 +114,7 @@ export function readDaemonConfigMovedMarker(path: string): DaemonConfigMovedMark
 }
 
 /**
- * Read a marker regardless of status — used to carry an interrupted run's
+ * Read a marker regardless of status, used to carry an interrupted run's
  * already-recorded ledger forward so a crash never erases the disclosure of
  * what a previous attempt moved.
  */
@@ -183,7 +183,7 @@ const SECRETISH_LEAF = /(token|secret|password|passphrase|apikey|credential)/i;
 /**
  * Redact a disclosed value when the key names a credential. A
  * `goodvibes://secrets/...` reference is not itself a secret, so it is shown
- * intact — that is exactly the detail a user needs to see when two stores
+ * intact, that is exactly the detail a user needs to see when two stores
  * pointed at DIFFERENT secret names, which is what happened here.
  */
 export function discloseValue(key: string, value: unknown): unknown {

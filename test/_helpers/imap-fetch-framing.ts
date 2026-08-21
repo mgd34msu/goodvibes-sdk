@@ -4,20 +4,20 @@
  * A `BODY[...]` section can reach a client in three shapes, and a client that
  * handles one of them handles none of the others by accident:
  *
- *   - **bare lines** — the section marker, then the payload as ordinary
+ *   - **bare lines**, the section marker, then the payload as ordinary
  *     response lines, then `)`. No RFC 3501 server sends this. Every fake in
  *     this repository sent it exclusively, which is how a parser that
  *     discarded every real header block sat under 8,000 green tests.
- *   - **literal, UID leading** — `UID n BODY[...] {N}` then N bytes. The
+ *   - **literal, UID leading**, `UID n BODY[...] {N}` then N bytes. The
  *     client's reader folds the payload onto the owner line, so the parser
  *     sees one long record rather than a run of lines.
- *   - **literal, UID trailing** — `BODY[...] {N}` then N bytes then ` UID n)`.
+ *   - **literal, UID trailing**, `BODY[...] {N}` then N bytes then ` UID n)`.
  *     Equally legal: RFC 3501 fixes no order for data items, and the automatic
  *     `UID` item routinely comes last.
  *
  * Extracted from `fake-imap-mailbox.ts` rather than copied into each caller.
- * Literal framing is byte arithmetic — `{n}` counts BYTES while the socket is
- * read as utf8 — and a second hand-rolled copy would be a second chance to get
+ * Literal framing is byte arithmetic, `{n}` counts BYTES while the socket is
+ * read as utf8, and a second hand-rolled copy would be a second chance to get
  * that wrong, in a helper whose entire job is to be more correct than the code
  * it tests. Four copies was the alternative.
  */
@@ -33,7 +33,7 @@ export type FakeUidPosition = 'leading' | 'trailing';
  *
  * `literal` is what servers do and is the default everywhere. `bare-lines` is
  * kept only so a test can assert the client still copes with the shape the
- * fakes used to send — it is not a shape to write new tests against.
+ * fakes used to send, it is not a shape to write new tests against.
  */
 export type FakeSectionEncoding = 'literal' | 'bare-lines';
 
@@ -68,7 +68,7 @@ export interface FetchSectionResponseInput {
   readonly uidPosition?: FakeUidPosition;
   readonly sectionEncoding?: FakeSectionEncoding;
   /**
-   * Omit the `UID` item entirely — the shape a server sends when it answers
+   * Omit the `UID` item entirely, the shape a server sends when it answers
    * with a response the client cannot key, which is a different failure from
    * an expunged message and must not be conflated with one.
    */

@@ -1,20 +1,20 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Orchestration engine — the model (see CHANGELOG 0.38.0).
+ * Orchestration engine, the model (see CHANGELOG 0.38.0).
  *
  * A phase/work-item pipeline layered OVER (not replacing) WrfcController. The
  * hard departure from WrfcController is pipeline semantics: an item advances
  * to its next phase the instant its gate passes, claimed by WHATEVER capacity
- * slot is free — there is no pairwise binding of one reviewer to one
+ * slot is free, there is no pairwise binding of one reviewer to one
  * engineer's history (WrfcController binds chain.reviewerAgentId to a single
  * chain in startReview). The controller's fix phase runs THROUGH this engine:
  * startPlannedFix plans a task graph from reviewer findings
  * (review-task-source.ts) and executes it as a workstream here.
  *
  * Float ordinals on Phase are load-bearing: inserting a phase mid-run assigns
- * an ordinal strictly between its neighbors, so existing phase ids — and
- * therefore existing PhaseResult resume-cache keys (itemId,phaseId) — never
+ * an ordinal strictly between its neighbors, so existing phase ids, and
+ * therefore existing PhaseResult resume-cache keys (itemId,phaseId), never
  * shift or invalidate.
  */
 
@@ -36,7 +36,7 @@ export interface PhaseGateSpec {
 /**
  * One pipeline stage. `ordinal` is a float specifically so
  * `engine.insertPhase()` can slot a new phase strictly between two existing
- * ordinals without renumbering anything — renumbering would invalidate every
+ * ordinals without renumbering anything, renumbering would invalidate every
  * PhaseResult cache key already keyed off the old (itemId,phaseId) pairs.
  */
 export interface Phase {
@@ -46,7 +46,7 @@ export interface Phase {
   readonly capacity: number;
   readonly gate: PhaseGateSpec;
   readonly kind: PhaseKind;
-  /** Epoch ms — set only for phases created via insertPhase() mid-run. */
+  /** Epoch ms, set only for phases created via insertPhase() mid-run. */
   readonly insertedAt?: number | undefined;
 }
 
@@ -65,7 +65,7 @@ export type WorkItemState =
   /**
    * Live only while a phase's agent is actually running. `importWorkstream`
    * (engine.ts) reconciles any item persisted in this state back to
-   * 'pending' and clears `agentId` before the workstream is registered — a
+   * 'pending' and clears `agentId` before the workstream is registered, a
    * snapshot can only ever capture 'in-phase' as a crash artifact (the
    * process died mid-run), never a resumable one, since no agent from a
    * prior process is still alive to finish it. Without that reconciliation
@@ -81,7 +81,7 @@ export type WorkItemState =
    * 'blocked-budget' items in its waiting set, so the item is automatically
    * reconsidered on the next tick(). Because usage only grows, in practice
    * that next tick only unblocks the item once the ceiling itself rises (or
-   * is removed) via `engine.updateBudget()` — which calls tick() after
+   * is removed) via `engine.updateBudget()`, which calls tick() after
    * updating `workstream.budget` so the reconsideration happens immediately
    * rather than waiting on some unrelated sibling to complete. `blockedReason`
    * carries the human-readable reason for as long as the item stays blocked
@@ -89,7 +89,7 @@ export type WorkItemState =
    */
   | 'blocked-budget'
   /**
-   * Recoverable, not terminal — the item cannot be claimed yet because at
+   * Recoverable, not terminal, the item cannot be claimed yet because at
    * least one of its `dependsOn` items has not reached 'passed'. This is a
    * REFUSE-not-kill gate (BIG-3 item 2): the item sits here, out of the
    * claimable waiting set (computeClaims excludes it), until the engine's
@@ -98,7 +98,7 @@ export type WorkItemState =
    * recomputed every tick so it stays honest as dependencies change:
    *   - `waiting on: <titles>` while dependencies are still pending/running,
    *   - `dependency failed: <titles>` once a dependency has terminally failed.
-   * A FAILED dependency does NOT terminally fail the dependent — it stays here,
+   * A FAILED dependency does NOT terminally fail the dependent, it stays here,
    * recoverable: if that dependency is later retried (engine.retryItem) and
    * passes, the next tick clears this block and the item proceeds. Only ever
    * set on an item that has not started yet (no phase has run); once an item's
@@ -110,7 +110,7 @@ export type WorkItemState =
    * A best-of-N attempt sibling that has PASSED every phase but is parked
    * pending the winner pick (see attempts.ts). Its worktree is KEPT (not merged,
    * not removed) so its diff can be inspected as a candidate; the engine never
-   * auto-merges a best-of-N attempt. NON-TERMINAL on purpose — a workstream with
+   * auto-merges a best-of-N attempt. NON-TERMINAL on purpose, a workstream with
    * a held sibling is not "done" until a winner is picked (fleet.attempts.pick),
    * at which point the winner integrates and the losers are cleaned. Never in the
    * claimable set (computeClaims excludes it), so it is never re-run.
@@ -121,7 +121,7 @@ export type WorkItemState =
  * Where a usage rollup's priced dollars came from: 'user' (manual/registration
  * price), 'provider' (provider-served rates), 'catalog' (the dated pricing
  * catalog), or 'mixed' when priced contributors disagree. Absent when nothing
- * was priced — or on records committed before provenance stamping existed
+ * was priced, or on records committed before provenance stamping existed
  * (honest absence, never back-filled).
  */
 export type WorkItemCostSource = 'user' | 'provider' | 'catalog' | 'mixed';
@@ -159,7 +159,7 @@ export function emptyWorkItemUsage(): WorkItemUsage {
 
 /**
  * Combine two usage rollups into one running total. The SINGLE canonical merge
- * used everywhere a WorkItemUsage is accumulated — the phase-runner (folding a
+ * used everywhere a WorkItemUsage is accumulated, the phase-runner (folding a
  * completed phase into an item), the engine (same, at the phase boundary), and
  * the fleet rollup adapters (overlaying live in-flight usage onto committed
  * totals). Keeping one implementation is what makes the rollup MONOTONE in
@@ -170,7 +170,7 @@ export function emptyWorkItemUsage(): WorkItemUsage {
  *
  * Cost state stays honest rather than optimistic: 'priced' only when BOTH
  * operands are priced; 'unpriced' only when NEITHER carries a cost; any mix is
- * 'estimated' — a real partial sum, explicitly flagged as incomplete.
+ * 'estimated', a real partial sum, explicitly flagged as incomplete.
  */
 export function mergeWorkItemUsage(a: WorkItemUsage, b: WorkItemUsage): WorkItemUsage {
   const sawReasoning = a.reasoningTokens !== undefined || b.reasoningTokens !== undefined;
@@ -223,7 +223,7 @@ export type PriceProvenanceFn = (model: string | undefined) => PricingProvenance
 
 /**
  * One unit of pipeline work. `visits` bounds re-review cycles the same way
- * WrfcController.retryTransportFailure/evaluateConstraints cap fix attempts —
+ * WrfcController.retryTransportFailure/evaluateConstraints cap fix attempts,
  * keyed by phaseId so a dynamically-inserted 'fix' phase gets its own counter.
  */
 export interface WorkItem {
@@ -248,14 +248,14 @@ export interface WorkItem {
   branch?: string | undefined;
   /** The agent currently (or most recently) driving this item's active phase. */
   agentId?: string | undefined;
-  /** Every agent ever spawned for this item, across all phases/retries — usage rollup roster. */
+  /** Every agent ever spawned for this item, across all phases/retries, usage rollup roster. */
   allAgentIds: string[];
   /** phaseId -> number of times this item has been routed through that phase. */
   readonly visits: Map<string, number>;
   /** Deduped touched-path ledger for scoped commits, mirrors WrfcChain.touchedPaths. */
   touchedPaths: string[];
   usage: WorkItemUsage;
-  /** Separate from `visits` — a transport blip must never eat into the fix-cycle budget. */
+  /** Separate from `visits`, a transport blip must never eat into the fix-cycle budget. */
   transportRetryCount: number;
   readonly createdAt: number;
   completedAt?: number | undefined;
@@ -263,11 +263,11 @@ export interface WorkItem {
   /** Set only while state === 'blocked-budget'; cleared the instant the item reclaims a slot. See the 'blocked-budget' state doc for recovery semantics. */
   blockedReason?: string | undefined;
   /**
-   * Non-fatal bookkeeping notes accrued while the item PASSED its phases — e.g.
+   * Non-fatal bookkeeping notes accrued while the item PASSED its phases, e.g.
    * a scoped commit that could not complete. Warnings NEVER
    * change the item's terminal status (that derives only from phase outcomes
    * plus the explicit negating set, see bookkeeping.ts); they make a
-   * passed-with-caveats outcome legible instead of hiding it — or, worse,
+   * passed-with-caveats outcome legible instead of hiding it, or, worse,
    * misreporting a genuinely-passed item as failed.
    */
   warnings?: string[] | undefined;
@@ -284,21 +284,21 @@ export interface WorkItem {
    * Integration state of the item branch relative to the base branch (worktree
    * mode). `'pending'` from the moment the passed item enters the integration
    * lane until its merge resolves; `'merged'` (with {@link mergeHash} set) on a
-   * clean merge; `'conflict'` when the lane could not merge it — the worktree is
+   * clean merge; `'conflict'` when the lane could not merge it, the worktree is
    * then KEPT and `blockedReason` carries `merge-conflict: <files>`.
    */
   mergeState?: ItemMergeState | undefined;
   /** The merge commit hash recorded on a clean integration (mergeState === 'merged'). */
   mergeHash?: string | undefined;
   /**
-   * True when this item's worktree was deliberately KEPT rather than removed —
+   * True when this item's worktree was deliberately KEPT rather than removed,
    * a merge conflict, or a dirty tree left after fail/kill (data safety, rule
    * 4). A kept worktree still lives at {@link worktreePath} for inspection.
    */
   worktreeKept?: boolean | undefined;
   /**
    * The STRUCTURED conflicting-path list recorded when mergeState becomes
-   * 'conflict' — the same list the item-merge-conflict event carries, persisted
+   * 'conflict', the same list the item-merge-conflict event carries, persisted
    * on the item so a resolution session is seeded from data, never from
    * parsing the blockedReason prose.
    */
@@ -306,7 +306,7 @@ export interface WorkItem {
   /**
    * The real session id of the conflict-resolution session spawned for this
    * item's kept tree (fleet.conflicts.resolve), stamped when the seeded
-   * session starts — the same honest real-id stamping the CI fix flow records.
+   * session starts, the same honest real-id stamping the CI fix flow records.
    */
   conflictSessionId?: string | undefined;
   /**
@@ -325,11 +325,11 @@ export interface WorkItem {
    * The id of the ORIGINAL spec this attempt was expanded from (best-of-N only).
    * Every sibling of a group shares it. It is what lets a NON-LEAF best-of-N work:
    * a dependent declared `dependsOn: [<sourceId>]` no longer dangles once the
-   * source id is rewritten into sibling ids — the dependency gate
+   * source id is rewritten into sibling ids, the dependency gate
    * (scheduler.ts dependencyStatus) resolves the source id back to this group and
    * holds the dependent until the group's winner is picked AND merged. Absent on
    * an ordinary item and on an anonymous (no-id) best-of-N item (which stays a
-   * leaf by construction — nothing can depend on it).
+   * leaf by construction, nothing can depend on it).
    */
   attemptSourceId?: string | undefined;
   /**
@@ -348,7 +348,7 @@ export interface WorkItem {
   /**
    * Per-item budget ceiling (best-of-N attempts, or any item that opts in). When
    * set, the engine refuses a NEW phase claim for THIS item once its own usage
-   * reaches the ceiling — independent of, and in addition to, the workstream
+   * reaches the ceiling, independent of, and in addition to, the workstream
    * ceiling. A budget hint, never a mid-run kill (same semantics as the
    * workstream budget; see budget.ts).
    */
@@ -361,7 +361,7 @@ export interface WorkItem {
   retryCount?: number | undefined;
   /** True once a transitive blocker hard-failed past its retry bound (structured item-orphaned outcome). */
   orphaned?: boolean | undefined;
-  /** Epoch ms of the last observed phase activity — the stalled-tell timestamp. */
+  /** Epoch ms of the last observed phase activity, the stalled-tell timestamp. */
   lastActivityAt?: number | undefined;
 }
 
@@ -382,7 +382,7 @@ export interface WorkItemSpec {
    * attempts.ts), then HOLD the merge and expose the candidates instead of
    * auto-merging. Omitted/1 ⇒ an ordinary single item (unchanged behavior).
    * Values above {@link MAX_ATTEMPTS} are clamped. Only honored when the
-   * workstream is `worktree`-isolated — attempts need isolated trees to compare;
+   * workstream is `worktree`-isolated, attempts need isolated trees to compare;
    * under `shared` isolation the value is ignored (a single item runs).
    *
    * A best-of-N item may be NON-LEAF. It MAY declare its own `dependsOn` (each
@@ -409,12 +409,12 @@ export interface WorkItemSpec {
  * When an edge RELEASES its dependent:
  * - 'passed' (default, legacy): the blocker reached 'passed'.
  * - 'reviewed-and-merged': the blocker passed its adversarial slice review AND
- *   its merge landed in the integration lane (worktree mode). Claimed-done —
- *   or even passed-but-unmerged — releases NOTHING.
+ *   its merge landed in the integration lane (worktree mode). Claimed-done,
+ *   or even passed-but-unmerged, releases NOTHING.
  */
 export type ReleasePolicy = 'passed' | 'reviewed-and-merged';
 
-/** Sensible cap on best-of-N sibling attempts per work item — enough to compare, bounded against runaway fan-out/cost. */
+/** Sensible cap on best-of-N sibling attempts per work item, enough to compare, bounded against runaway fan-out/cost. */
 export const MAX_ATTEMPTS = 5;
 
 /**
@@ -423,7 +423,7 @@ export const MAX_ATTEMPTS = 5;
  * - `shared` (DEFAULT): every item's phases run their agents in the ONE shared
  *   `projectRoot` working tree and scoped-commit straight onto its branch, as
  *   the engine has always behaved. Two items editing the same file serialize
- *   only by luck of scheduling — full behavioral back-compat, every pre-existing
+ *   only by luck of scheduling, full behavioral back-compat, every pre-existing
  *   test passes untouched.
  * - `worktree`: at first claim each item gets its own git worktree branched
  *   from the base branch (see IsolatedWorktree, worktree.ts). Its phases commit
@@ -449,7 +449,7 @@ export interface BudgetCeiling {
 }
 
 /**
- * Workstream-level provenance (BIG-3 item 1) — honest, machine-readable record
+ * Workstream-level provenance (BIG-3 item 1), honest, machine-readable record
  * of where a workstream's items came from when it was assembled from an
  * approved PlanProposal by `fromPlanProposal` (proposal-workstream.ts). Absent
  * on workstreams built the compat way (`fromChainSpec`) or authored directly.
@@ -485,7 +485,7 @@ export interface Workstream {
   budget?: BudgetCeiling | undefined;
   /**
    * Where item phases run their file changes (see {@link WorkstreamIsolation}).
-   * Absent is treated as `'shared'` everywhere — the default that preserves
+   * Absent is treated as `'shared'` everywhere, the default that preserves
    * full behavioral back-compat. Persisted with the workstream and surfaced in
    * events, so a resumed or observed workstream reports its isolation honestly.
    */
@@ -526,7 +526,7 @@ export interface CommitExclusion {
  * Honest record of the scoped-commit bookkeeping step that runs AFTER a
  * phase's gate has already passed (see phase-runner.ts commitPhaseWork). The
  * commit is a POST-gate step: its outcome never decides whether the phase
- * passed — the gate already did that — it only reports what happened to the
+ * passed, the gate already did that, it only reports what happened to the
  * working tree afterward, so the fleet and transcript can state "committed
  * <hash>" or "commit skipped/failed" without ever contradicting the phase
  * verdict. Present on a PhaseResult only when the gate passed
@@ -539,7 +539,7 @@ export interface PhaseCommitOutcome {
   /** Human-readable detail for 'skipped'/'failed', plus any gitignored-path note on 'committed'. */
   readonly reason?: string | undefined;
   /**
-   * True ONLY for a 'failed' commit whose failure belongs to the NEGATING SET —
+   * True ONLY for a 'failed' commit whose failure belongs to the NEGATING SET,
    * a bookkeeping failure (workspace/index corruption) that genuinely
    * invalidates the phase's passed work. A negating commit failure is the one
    * post-gate condition that DOES fail the item; every other commit failure is
@@ -551,7 +551,7 @@ export interface PhaseCommitOutcome {
 /**
  * The resume-cache unit, keyed (itemId,phaseId). On resume, every
  * (itemId,phaseId) present in a snapshot's completedResults is hydrated
- * without re-spawning — this is what makes prefix-replay possible.
+ * without re-spawning, this is what makes prefix-replay possible.
  */
 export interface PhaseResult {
   readonly itemId: string;
@@ -593,7 +593,7 @@ export const CURRENT_WORKSTREAM_SCHEMA_VERSION = 1;
 
 // ── Best-of-N held-merge candidates ─────────────────────────────────────────
 
-/** The diff a best-of-N candidate carries — computed from its worktree branch vs base (the existing worktree diff plumbing). */
+/** The diff a best-of-N candidate carries, computed from its worktree branch vs base (the existing worktree diff plumbing). */
 export interface AttemptCandidateDiff {
   readonly files: readonly string[];
   readonly unifiedDiff: string;
@@ -618,7 +618,7 @@ export interface AttemptCandidate {
 /**
  * A model judge's verdict over a group's candidates. CLEARLY a model judgment,
  * not ground truth: `scoredBy` is always 'model', and the engine PROPOSES this
- * winner — it only auto-picks when the group's item opted into autoAcceptWinner.
+ * winner, it only auto-picks when the group's item opted into autoAcceptWinner.
  */
 export interface AttemptJudgment {
   readonly proposedWinnerItemId: string | null;
@@ -632,7 +632,7 @@ export interface HeldMergeGroup {
   readonly groupId: string;
   readonly workstreamId: string;
   readonly sourceTitle: string;
-  /** True once every sibling is terminal (held-merge or failed) — a winner may be picked. */
+  /** True once every sibling is terminal (held-merge or failed), a winner may be picked. */
   readonly ready: boolean;
   readonly candidates: readonly AttemptCandidate[];
   /** Whether this group opted into judge auto-accept. */
@@ -693,13 +693,13 @@ export type OrchestrationEvent =
    * fires when a previously-blocked item's dependencies all reach passed and it
    * is released back to the claimable set. `item-retried` fires when a
    * terminally-failed item is deliberately reset to re-run via engine.retryItem
-   * — the documented recovery path that lets a failed dependency (and its
+   *, the documented recovery path that lets a failed dependency (and its
    * stuck dependents) recover.
    */
   | { readonly type: 'item-blocked-dependency'; readonly workstreamId: string; readonly itemId: string; readonly phaseId: string; readonly reason: string; readonly deps: readonly string[] }
   | { readonly type: 'item-dependency-cleared'; readonly workstreamId: string; readonly itemId: string }
   | { readonly type: 'item-retried'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
-  /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending' — see the 'in-phase' state doc. */
+  /** Emitted once per item on `importWorkstream` for every item reconciled from a crash-artifact 'in-phase' snapshot back to 'pending', see the 'in-phase' state doc. */
   | { readonly type: 'item-requeued'; readonly workstreamId: string; readonly itemId: string; readonly reason: string }
   | { readonly type: 'workstream-persisted'; readonly workstreamId: string }
   /**
@@ -713,7 +713,7 @@ export type OrchestrationEvent =
   /** A passed item's branch merged cleanly into the base branch through the integration lane. */
   | { readonly type: 'item-merged'; readonly workstreamId: string; readonly itemId: string; readonly branch: string; readonly hash: string }
   /**
-   * The integration lane could not merge a passed item's branch — the base
+   * The integration lane could not merge a passed item's branch, the base
    * merge conflicted. The worktree + branch are KEPT (never auto-resolved,
    * never silently dropped); the lane continues with the next item.
    */
@@ -721,13 +721,13 @@ export type OrchestrationEvent =
   /** An item's worktree + branch were removed (merged item, or a clean tree after fail/kill). */
   | { readonly type: 'item-worktree-removed'; readonly workstreamId: string; readonly itemId: string; readonly path: string }
   /**
-   * An item's worktree was deliberately KEPT rather than removed — a merge
+   * An item's worktree was deliberately KEPT rather than removed, a merge
    * conflict, or a dirty tree left behind by a failed/killed item (data
    * safety). `reason` states which; `path` is where the work still lives.
    */
   | { readonly type: 'item-worktree-kept'; readonly workstreamId: string; readonly itemId: string; readonly path: string; readonly reason: string }
   /**
-   * A KEPT worktree was evicted to stay under the kept-worktree cap —
+   * A KEPT worktree was evicted to stay under the kept-worktree cap,
    * oldest-first, and always announced (never a silent sweep). Eviction bounds
    * DISK usage, never work: any uncommitted state was first committed onto the
    * item branch (`preservedCommit` when such a commit was created), only the
@@ -745,7 +745,7 @@ export type OrchestrationEvent =
   /**
    * Emitted once per engine instance (see CHANGELOG 0.38.0), right after the
    * launch-time dirty-tree snapshot resolves, ONLY when it is non-empty.
-   * Engine-wide, not workstream-scoped — `workstreamId` is absent (unlike
+   * Engine-wide, not workstream-scoped, `workstreamId` is absent (unlike
    * every other variant above) because it fires before any workstream is
    * necessarily even created. See dirty-guard.ts.
    */
@@ -755,7 +755,7 @@ export type OrchestrationEvent =
    * work item declared with attempts:N is expanded into N sibling items (naming
    * their ids and the shared groupId). `item-attempt-held` fires when a sibling
    * PASSES and is parked in held-merge (its worktree kept, not merged).
-   * `attempts-ready` fires once when every sibling in a group is terminal — a
+   * `attempts-ready` fires once when every sibling in a group is terminal, a
    * winner may now be picked. `attempt-judge-proposed` fires when the optional
    * judge pass proposes a winner (always a PROPOSAL). `attempt-winner-picked`
    * fires when a winner is accepted (its branch enters the merge lane; losers'

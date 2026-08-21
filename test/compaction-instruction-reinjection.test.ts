@@ -12,7 +12,7 @@ import { compactMessages } from '../packages/sdk/src/platform/core/context-compa
 import type { CompactionContext } from '../packages/sdk/src/platform/core/compaction-types.js';
 import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/registry.js';
 
-// A registry that never yields a usable provider — llmExtract catches the
+// A registry that never yields a usable provider, llmExtract catches the
 // failure and returns null, so compaction assembles only deterministic
 // rule-based sections. That keeps these tests free of live LLM calls.
 const stubRegistry = {
@@ -81,7 +81,7 @@ describe('compaction — instruction / skill re-injection', () => {
       stubRegistry,
     );
 
-    // The chain must appear exactly once — the fresh re-injected copy — with the
+    // The chain must appear exactly once, the fresh re-injected copy, with the
     // prior copy stripped out of the carried-over message history.
     expect(occurrences(second.summary, CHAIN)).toBe(1);
     expect(second.event.instructionsReinjected).toBe(true);
@@ -95,7 +95,7 @@ describe('compaction — instruction / skill re-injection', () => {
 });
 
 // The handoff-header constant is the transcript renderers' detection contract
-// for folding compaction-continuation messages — it must stay byte-identical
+// for folding compaction-continuation messages, it must stay byte-identical
 // to what buildHandoffHeader() actually emits.
 import { buildHandoffHeader, COMPACTION_HANDOFF_HEADER } from '../packages/sdk/src/platform/core/compaction-sections.js';
 

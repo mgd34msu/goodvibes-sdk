@@ -4,7 +4,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { FavoritesStore, type FavoritesData } from '@pellux/goodvibes-sdk/platform/providers';
 
 // ---------------------------------------------------------------------------
-// Test isolation — redirect favorites to a per-test temp directory
+// Test isolation, redirect favorites to a per-test temp directory
 // ---------------------------------------------------------------------------
 
 const TMP_BASE = join(import.meta.dir, '__favorites_tmp__');
@@ -29,7 +29,7 @@ function makeStore(): FavoritesStore {
 }
 
 // ---------------------------------------------------------------------------
-// load / save — round-trip and empty-file handling
+// load / save, round-trip and empty-file handling
 // ---------------------------------------------------------------------------
 
 describe('FavoritesStore.load', () => {

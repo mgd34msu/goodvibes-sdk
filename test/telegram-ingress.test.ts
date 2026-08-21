@@ -1,11 +1,11 @@
 /**
- * telegram-ingress.test.ts — inbound Telegram actually works.
+ * telegram-ingress.test.ts, inbound Telegram actually works.
  *
  * Background this pins down: registering `POST /webhook/telegram` does not give
  * a daemon inbound Telegram. Telegram pushes nothing until told a webhook URL
  * exists, and delivers nothing until asked via getUpdates. With neither call
  * wired up, a configured bot token produced a surface that could send but never
- * receive — which looked half-working rather than broken.
+ * receive, which looked half-working rather than broken.
  *
  * These tests drive the supervisor through an injected fetch, so they assert
  * the real decisions (which Bot API methods get called, in what order, and what
@@ -100,7 +100,7 @@ function makeHarness(options: {
   readonly registrySecret?: string | null;
   /**
    * The conflict-retry jitter fraction. Defaults to 0 so a test waits for the
-   * backoff floor and nothing else — the production default is `Math.random`,
+   * backoff floor and nothing else, the production default is `Math.random`,
    * and a test that has to wait out an unobservable five-second draw is
    * rolling dice rather than asserting recovery.
    */
@@ -197,7 +197,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
 
       // Mutual exclusion, enforced rather than assumed: Telegram answers
       // getUpdates with 409 while a webhook is registered, so polling must
-      // delete it first — and must never register one itself.
+      // delete it first, and must never register one itself.
       const methods = h.telegram.calls.map((call) => call.method);
       expect(methods[0]).toBe('deleteWebhook');
       expect(methods).toContain('getUpdates');
@@ -217,7 +217,7 @@ describe('telegram ingress — mode selection is explicit and exclusive', () => 
     try {
       const status = await h.supervisor.start();
       expect(status.mode).toBe('webhook');
-      // No loop at all in webhook mode — the other half of mutual exclusion.
+      // No loop at all in webhook mode, the other half of mutual exclusion.
       expect(status.running).toBe(false);
 
       const setWebhook = h.telegram.calls.find((call) => call.method === 'setWebhook');
@@ -397,7 +397,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
   test('a 409 conflict clears the webhook and resumes rather than backing off', async () => {
     // Jitter pinned to zero, so the only wait here is the backoff floor. With
     // the production draw this test raced a 0–5 s random delay against a 5 s
-    // timeout and failed roughly one run in five — indistinguishable, at the
+    // timeout and failed roughly one run in five, indistinguishable, at the
     // moment it mattered, from recovery actually being broken.
     const h = makeHarness({ conflictJitterFraction: () => 0 });
     h.telegram.queue('getUpdates',
@@ -540,7 +540,7 @@ describe('telegram ingress — errors are classified, not blindly retried', () =
   test('a poll that succeeds after a conflict clears the blocked status and delivers the message', async () => {
     const h = makeHarness();
     // Three conflicts, so the exponential backoff (1s, 2s, 4s) plus jitter
-    // stays well inside the ceiling below — the point of this test is the
+    // stays well inside the ceiling below, the point of this test is the
     // recovery, not the wait.
     for (let i = 0; i < 3; i += 1) {
       h.telegram.queue('getUpdates', () => apiError(409, 'Conflict: terminated by other getUpdates request'));
@@ -613,7 +613,7 @@ describe('telegram offset store — the cursor survives restarts', () => {
       }, 'the cursor being written');
     } finally { await first.supervisor.stop(); }
 
-    // A restart must ask Telegram to continue from 501 — not replay, not skip.
+    // A restart must ask Telegram to continue from 501, not replay, not skip.
     const second = makeHarness();
     rmSync(second.offsetPath, { force: true });
     mkdirSync(join(second.offsetPath, '..'), { recursive: true });

@@ -1,5 +1,5 @@
 /**
- * Integration test — exercises auth functionality through the public
+ * Integration test, exercises auth functionality through the public
  * `GoodVibesAuthClient` facade to verify that public auth behavior flows
  * through the client-auth implementation.
  */

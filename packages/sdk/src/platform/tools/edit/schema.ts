@@ -39,7 +39,7 @@ export const editSchema = {
             // anyOf, not oneOf: strict OpenAI-compatible request validators
             // (RouteLLM among them) forbid the oneOf keyword inside tool
             // parameter schemas and 400 the whole chat request. The branches
-            // are disjoint types, so anyOf validates identically — and it is
+            // are disjoint types, so anyOf validates identically, and it is
             // the keyword OpenAI's own function-calling schemas use.
             anyOf: [
               {
@@ -193,7 +193,7 @@ export const editSchema = {
     notebook_operations: {
       type: 'object',
       description:
-        'Jupyter notebook (.ipynb) cell operations. Alternative to edits — provide either edits or notebook_operations, not both.',
+        'Jupyter notebook (.ipynb) cell operations. Alternative to edits, provide either edits or notebook_operations, not both.',
       properties: {
         path: { type: 'string', description: 'Path to .ipynb notebook file' },
         operations: {
@@ -215,7 +215,7 @@ export const editSchema = {
               },
               cell_id: {
                 type: 'string',
-                description: 'Cell ID targeting — takes precedence over cell index for all operations',
+                description: 'Cell ID targeting, takes precedence over cell index for all operations',
               },
               after: {
                 type: 'integer',
@@ -230,7 +230,7 @@ export const editSchema = {
                 type: 'string',
                 enum: ['code', 'markdown', 'raw'],
                 description:
-                  'Cell type (required for insert; optional for replace — if provided, changes the cell type)',
+                  'Cell type (required for insert; optional for replace, if provided, changes the cell type)',
               },
               clear_outputs: {
                 type: 'boolean',

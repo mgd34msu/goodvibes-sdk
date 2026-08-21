@@ -1,4 +1,4 @@
-# Companion App Pairing
+# Companion app pairing
 
 ## Overview
 
@@ -14,7 +14,7 @@ The answer is a QR code displayed by the host surface (the TUI, a web UI, or the
 
 ### Token-based authentication
 
-GoodVibes companion pairing is built on the same bearer token mechanism documented in [authentication.md](./authentication.md). There is no separate pairing protocol at the network level — the companion app ultimately sends:
+GoodVibes companion pairing is built on the same bearer token mechanism documented in [authentication.md](./authentication.md). There is no separate pairing protocol at the network level. The companion app ultimately sends:
 
 ```http
 Authorization: Bearer <companion-token>
@@ -68,7 +68,7 @@ The QR code encodes a `CompanionConnectionInfo` JSON object containing everythin
 
 ---
 
-## QR Code Flow
+## QR code flow
 
 ### Step 1: Host generates a companion token
 
@@ -127,7 +127,7 @@ console.log(qrString);
 // Prints a block-character QR code suitable for terminal output
 ```
 
-For graphical surfaces, iterate `matrix.modules` over `matrix.size` rows and columns — each `matrix.modules[row][col]` is a boolean (`true` = dark cell) — to draw the cells.
+For graphical surfaces, iterate `matrix.modules` over `matrix.size` rows and columns, each `matrix.modules[row][col]` is a boolean (`true` = dark cell), to draw the cells.
 
 ### Step 5: Companion scans the QR, extracts the payload
 
@@ -172,9 +172,9 @@ const status = await sdk.operator.control.status();
 
 For React Native or Expo, prefer the built-in secure token stores rather than rolling a custom adapter:
 
-- **Expo**: `createExpoSecureTokenStore` from `@pellux/goodvibes-sdk/expo` — backed by `expo-secure-store`
-- **iOS**: `createIOSKeychainTokenStore` from `@pellux/goodvibes-sdk/react-native` — backed by iOS Keychain
-- **Android**: `createAndroidKeystoreTokenStore` from `@pellux/goodvibes-sdk/react-native` — backed by Android Keystore
+- **Expo**: `createExpoSecureTokenStore` from `@pellux/goodvibes-sdk/expo`, backed by `expo-secure-store`
+- **iOS**: `createIOSKeychainTokenStore` from `@pellux/goodvibes-sdk/react-native`, backed by iOS Keychain
+- **Android**: `createAndroidKeystoreTokenStore` from `@pellux/goodvibes-sdk/react-native`, backed by Android Keystore
 
 ```ts
 import { createReactNativeGoodVibesSdk, createIOSKeychainTokenStore } from '@pellux/goodvibes-sdk/react-native';
@@ -190,7 +190,7 @@ For `createMemoryTokenStore` (non-persistent, suitable only for ephemeral use or
 
 ---
 
-## Token Lifecycle
+## Token lifecycle
 
 ### Creating a token
 
@@ -217,9 +217,9 @@ There is no dedicated `readCompanionToken` export. To inspect the stored record 
 
 ---
 
-## Security Considerations
+## Security considerations
 
-> These notes are companion-pairing specific. For the daemon's full security model — authentication modes, token management, and secret handling — see [Security Best Practices](./security.md).
+> These notes are companion-pairing specific. For the daemon's full security model, authentication modes, token management, and secret handling, see [Security best practices](./security.md).
 
 ### Token storage on the host
 
@@ -246,14 +246,14 @@ pairing contract, never as a recurring nag):
 
 **Plain http on your LAN works, and is a supported posture.** A phone on the
 same private network (a `10.x`/`172.16-31.x`/`192.168.x` address, a `.local`
-mDNS name, or localhost) uses the full cockpit over http — the transport does
+mDNS name, or localhost) uses the full cockpit over http. The transport does
 not refuse private-network origins. Two things are true about it:
 
 1. The connection is unencrypted on your local network. Anyone who can already
    capture traffic on your LAN can read it, including the bearer token.
 2. Browsers gate a few capabilities on a *secure context* (https, or the
-   localhost loopback): **service worker / PWA install, push notifications,
-   and the microphone**. On plain http over the LAN these are unavailable —
+   localhost loopback): **service worker or PWA install, push notifications,
+   and the microphone**. On plain http over the LAN these are unavailable.
    the daemon reports each one in the pairing/posture contract
    (`pairing.posture.get`, and the `posture` field of `pairing.handoff.create`)
    so surfaces show a "needs https — available via tailscale" label instead of
@@ -264,7 +264,7 @@ daemon never mints certificates and never provisions its own CA. If you
 already run real TLS (a reverse proxy with a real certificate), that works
 as-is via the daemon HTTP policy's TLS configuration.
 
-**Tailscale is the recommended path** — encrypted access and a real https URL
+**Tailscale is the recommended path.** Encrypted access and a real https URL
 with zero certificate handling on your side. Worked example:
 
 ```bash
@@ -280,7 +280,7 @@ tailscale serve --bg 3423
 ```
 
 The daemon offers this as a one-action affordance: `tailscale.get` (read-only
-detection — binary, logged-in state, MagicDNS name; where tailscale is absent,
+detection: binary, logged-in state, MagicDNS name; where tailscale is absent,
 nothing nags) and `tailscale.serve.run` (runs the serve command above for you,
 records an honest receipt, and updates `web.publicBaseUrl` to the https URL).
 
@@ -292,7 +292,7 @@ There is no built-in automatic rotation. Implement an explicit rotation policy a
 
 ---
 
-## Integration Examples
+## Integration examples
 
 ### TUI `/qrcode` command
 
@@ -319,23 +319,23 @@ goodvibes-daemon --qrcode
 
 The output is a block-character QR code followed by the raw JSON payload for debugging.
 
-> **SDK vs host wiring:** The `/qrcode` TUI command and the `goodvibes-daemon --qrcode` flag are host-application wrappers (a TUI slash command and a CLI flag), not SDK exports. The QR primitives they call — `getOrCreateCompanionToken`, `buildCompanionConnectionInfo`, `encodeConnectionPayload`, `generateQrMatrix`, and `renderQrToString` — are exported from `@pellux/goodvibes-sdk/platform/pairing` and can be composed directly by any embedder.
+> **SDK vs host wiring:** The `/qrcode` TUI command and the `goodvibes-daemon --qrcode` flag are host-application wrappers (a TUI slash command and a CLI flag), not SDK exports. The QR primitives they call, `getOrCreateCompanionToken`, `buildCompanionConnectionInfo`, `encodeConnectionPayload`, `generateQrMatrix`, and `renderQrToString`, are exported from `@pellux/goodvibes-sdk/platform/pairing` and can be composed directly by any embedder.
 
 ---
 
-## Building a Companion App
+## Building a companion app
 
 ### What the companion needs
 
 A companion app requires:
 
-1. **A QR scanner** — to capture and decode the pairing QR code displayed by the host surface. Native camera APIs or libraries like `expo-barcode-scanner` work.
+1. **A QR scanner.** To capture and decode the pairing QR code displayed by the host surface. Native camera APIs or libraries like `expo-barcode-scanner` work.
 
-2. **Persistent, secure token storage** — to retain the companion token across app restarts. See the token storage guidance above.
+2. **Persistent, secure token storage.** To retain the companion token across app restarts. See the token storage guidance above.
 
-3. **An HTTP client** — for all request/response interactions. The SDK handles this when used as a client library. For native Kotlin/Swift apps without the SDK, use standard `fetch`/`URLSession`/`OkHttp` with the `Authorization: Bearer <token>` header.
+3. **An HTTP client.** For all request/response interactions. The SDK handles this when used as a client library. For native Kotlin/Swift apps without the SDK, use standard `fetch`, `URLSession`, or `OkHttp` with the `Authorization: Bearer <token>` header.
 
-4. **An SSE or WebSocket connection** — for realtime event delivery. The daemon exposes both:
+4. **An SSE or WebSocket connection.** For realtime event delivery. The daemon exposes both:
    - SSE: suitable for Bun and browser clients.
    - WebSocket: recommended for React Native and Expo because it has broader React Native support.
 

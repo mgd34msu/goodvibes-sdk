@@ -25,7 +25,7 @@ import type {
 // probe never spawns a binary, fetch never reaches the network, the filesystem
 // is a map, and systemctl is a recorded call list. Versions are fixtures
 // ('1.27.1' as the shipped pre-split build, 'v1.28.0' as the first release from
-// the daemon's own repository) — never the live build VERSION.
+// the daemon's own repository), never the live build VERSION.
 
 const PRE_SPLIT_VERSION = '1.27.1';
 const SPLIT_TAG = 'v1.28.0';
@@ -51,7 +51,7 @@ function stubRunCommand(script: {
 /**
  * A fetch stub serving the daemon repository's release: a HEAD redirect naming
  * `tag`, a SHA256SUMS.txt, and the asset bytes themselves. `assets` decides
- * which asset names exist — everything else 404s, which is exactly how a
+ * which asset names exist, everything else 404s, which is exactly how a
  * missing surface binary behaves against the daemon's real releases.
  */
 function stubDaemonReleaseFetch(options: {

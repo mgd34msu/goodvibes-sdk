@@ -135,7 +135,7 @@ export function getCacheCapability(providerName: string): ProviderCacheCapabilit
     }
   }
 
-  // Unknown provider — no caching
+  // Unknown provider, no caching
   return { type: 'none' };
 }
 

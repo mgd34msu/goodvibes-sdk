@@ -1,5 +1,5 @@
 /**
- * cluster-commands.ts — `goodvibes-daemon cluster …`, and a front-end's own
+ * cluster-commands.ts, `goodvibes-daemon cluster …`, and a front-end's own
  * `/cluster` command.
  *
  * The authoritative surface for LAN groups. A homelab node is headless: the
@@ -120,7 +120,7 @@ export function parseClusterCommand(argv: readonly string[]): ParsedClusterComma
     }
     if (subcommand === null) {
       if (!isClusterSubcommand(token)) {
-        errors.push(`'${token}' is not a cluster command — try one of: ${CLUSTER_SUBCOMMANDS.join(', ')}`);
+        errors.push(`'${token}' is not a cluster command, try one of: ${CLUSTER_SUBCOMMANDS.join(', ')}`);
         continue;
       }
       subcommand = token;
@@ -144,10 +144,10 @@ export function parseClusterCommand(argv: readonly string[]): ParsedClusterComma
     }
   }
   if (subcommand === 'forget' && positional === null) {
-    errors.push('forget needs the machine to remove — run `cluster nodes` to see them');
+    errors.push('forget needs the machine to remove, run `cluster nodes` to see them');
   }
   if (subcommand === 'rename' && positional === null && values.get('--name') === undefined) {
-    errors.push('rename needs the new name — `cluster rename "the workshop"`');
+    errors.push('rename needs the new name, `cluster rename "the workshop"`');
   }
 
   return {
@@ -172,7 +172,7 @@ export function parseClusterCommand(argv: readonly string[]): ParsedClusterComma
 export interface ClusterCommandResult {
   readonly lines: readonly string[];
   readonly exitCode: number;
-  /** Written raw to stdout — the OSC 52 clipboard attempt, when there is one. */
+  /** Written raw to stdout, the OSC 52 clipboard attempt, when there is one. */
   readonly rawOutput?: string | undefined;
 }
 
@@ -293,7 +293,7 @@ export async function runClusterCommand(input: RunClusterCommandInput): Promise<
       const result = await call<{ groupId: string; groupName: string }>('/api/cluster/leave', 'POST');
       return result.ok
         ? success(result.data, [`left "${result.data.groupName}" [${result.data.groupId}]`,
-          'this machine no longer coordinates with it. The other machines still list it —',
+          'this machine no longer coordinates with it. The other machines still list it,',
           'run `cluster forget` on one of them to tidy up.'], parsed.json)
         : failure(result.error, result.fix, parsed.json);
     }
@@ -323,7 +323,7 @@ export async function runClusterCommand(input: RunClusterCommandInput): Promise<
  * Two shapes, and both matter. With `--group` and `--key` it is a scriptable
  * one-liner, which is what provisioning a machine from a config-management tool
  * needs. Without them it lists the groups advertising themselves on this
- * network and asks — which is what a person adding their second machine needs,
+ * network and asks, which is what a person adding their second machine needs,
  * because they do not know the group id and should not have to.
  */
 async function runJoin(

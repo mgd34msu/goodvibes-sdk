@@ -144,7 +144,7 @@ export async function persistAnswerGaps(
 
 /**
  * A gap counts as repaired only when there is REAL evidence: the repair pipeline
- * marked it `repaired` AND it carries a concrete signal — one or more promoted
+ * marked it `repaired` AND it carries a concrete signal, one or more promoted
  * facts, or one or more accepted new sources. A node merely going `stale`
  * (superseded) or being marked `not_applicable` (deemed non-repairable) is NOT
  * repair evidence; those gaps stay open honestly instead of being auto-resolved

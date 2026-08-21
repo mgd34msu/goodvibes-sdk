@@ -3,13 +3,13 @@
  * writes, kept beside each store under `snapshots/<db-file-name>/`.
  *
  * Three jobs:
- * - `snapshotStoreFile` — one verified copy (plus -wal/-shm sidecars when
+ * - `snapshotStoreFile`, one verified copy (plus -wal/-shm sidecars when
  *   present), used automatically before schema migrations and by the daily
  *   scheduler;
- * - `restoreStoreSnapshot` — ONE command back to a snapshot: parks the
+ * - `restoreStoreSnapshot`, ONE command back to a snapshot: parks the
  *   current file at `<path>.pre-restore`, then copies the snapshot into
  *   place (latest snapshot when none is named);
- * - `StoreSnapshotScheduler` — a daily snapshot of every registered store
+ * - `StoreSnapshotScheduler`, a daily snapshot of every registered store
  *   with bounded retention through the existing retention engine
  *   (RetentionPolicy + SnapshotPruner deleting real files).
  */
@@ -63,7 +63,7 @@ export function snapshotStoreFile(
   mkdirSync(dir, { recursive: true });
   // Timestamp slugs are millisecond-granular: two snapshots requested within
   // the same millisecond (fast successive sweeps on tmpfs) must not silently
-  // overwrite each other — uniquify instead of clobbering.
+  // overwrite each other, uniquify instead of clobbering.
   let snapshotPath = join(dir, `${timestampSlug(at)}.${reason}${SNAPSHOT_SUFFIX}`);
   for (let counter = 1; existsSync(snapshotPath); counter += 1) {
     snapshotPath = join(dir, `${timestampSlug(at)}-${counter}.${reason}${SNAPSHOT_SUFFIX}`);
@@ -78,7 +78,7 @@ export function snapshotStoreFile(
   // reads createdAt from the filesystem mtime while the scheduler dedups on the
   // injectable clock, so under an injected time the wall-clock mtime would make
   // the day-boundary comparison misfire. A no-op in production (now IS the wall
-  // clock); under injection the two clocks agree. Stamping failure is non-fatal —
+  // clock); under injection the two clocks agree. Stamping failure is non-fatal,
   // the copy is already safe, only dedup precision degrades.
   try {
     const atSeconds = at / 1000;
@@ -135,7 +135,7 @@ export function restoreStoreSnapshot(dbPath: string, snapshotPath?: string): Res
   }
   const source = snapshotPath ?? listStoreSnapshots(dbPath)[0]?.path;
   if (!source) {
-    throw new Error(`no snapshots exist for ${dbPath} under ${storeSnapshotDir(dbPath)} — nothing to restore`);
+    throw new Error(`no snapshots exist for ${dbPath} under ${storeSnapshotDir(dbPath)}, nothing to restore`);
   }
   if (!existsSync(source)) {
     throw new Error(`snapshot not found: ${source}`);
@@ -281,7 +281,7 @@ export class StoreSnapshotScheduler {
   /**
    * Snapshot every registered store NOW using ASYNC (threadpool) file copies.
    * This is the tripwire-exit path: synchronous copyFileSync on a stalled disk
-   * blocks the event loop itself, so no outer timeout could ever fire — async
+   * blocks the event loop itself, so no outer timeout could ever fire, async
    * copyFile keeps the loop free and lets the governor's shutdown ceiling
    * genuinely bound the work. Best-effort per store; no pruning.
    */

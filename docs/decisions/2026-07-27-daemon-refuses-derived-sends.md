@@ -25,8 +25,7 @@ the ergonomics:
 A disclosure is a note in a receipt nobody reads, on the one surface with no
 human watching. An unattended daemon is precisely where a prompt injection pays
 off best, because there is nobody to notice. Ranking the daemon as the most
-permissive surface — a product with a human attached refuses the same send —
-is backwards for this threat.
+permissive surface, a product with a human attached refuses the same send, is backwards for this threat.
 
 **Your disclosure is kept**, for the sends that now pass. It stops being the
 only protection; it does not stop being useful.
@@ -45,8 +44,8 @@ content of this specific outward action derive from untrusted input?**
 - A send whose recipient, subject or body repeats text from a page or a mailbox
   is refused.
 
-Detection is by overlap with the untrusted text actually read — 8 shared
-normalized words, or a 40-character shared span — with the recipient tested by
+Detection is by overlap with the untrusted text actually read, 8 shared
+normalized words, or a 40-character shared span, with the recipient tested by
 exact containment instead, because an address is short and high-signal and a
 length threshold misses it entirely.
 
@@ -60,7 +59,7 @@ outward actions still require confirmation.
 ## The one exemption: a send to the owner himself
 
 Owner ruling. He is the trust root, not a third party, and telling him what
-arrived is the point of an assistant reading his mail — "what came in
+arrived is the point of an assistant reading his mail, "what came in
 overnight" is a summary that necessarily reuses the words of what came in, so
 without an exemption the feature is refused in its most ordinary use.
 
@@ -73,8 +72,8 @@ Deliberately narrow, and each narrowing is tested:
 - **Not partial.** A send to the owner AND anyone else is refused, because
   naming him first and slipping a second recipient in beside him is exactly how
   this would be abused.
-- Identity comes from configuration — `email.fromAddress`, `email.username`,
-  `surfaces.email.from`/`.user`/`.username` — and never from a `From:` header,
+- Identity comes from configuration, `email.fromAddress`, `email.username`,
+  `surfaces.email.from`/`.user`/`.username`, and never from a `From:` header,
   `Reply-To:`, delivery evidence, the ledger, or the body. A recipient the
   content chose is the attack, so content is not consulted.
 - Nothing configured means no identity, so the exemption cannot fire and the
@@ -83,7 +82,7 @@ Deliberately narrow, and each narrowing is tested:
 **To spoof it** an attacker must change the owner's stored mail configuration:
 either an authenticated write to the daemon config API, or inducing the agent
 to call a config-setting tool. Both are strictly stronger capabilities than
-sending mail — anything able to rewrite daemon config can disable this guard
+sending mail, anything able to rewrite daemon config can disable this guard
 outright, repoint SMTP, or read the credential store. The exemption sits behind
 a capability that already implies compromise.
 
@@ -105,9 +104,9 @@ senders' mail.
 
 ## Where it lives
 
-- `platform/security/content-taint.ts` — the derivation check and its thresholds
-- `platform/security/turn-boundary.ts` — what "this turn" means, and why
+- `platform/security/content-taint.ts`, the derivation check and its thresholds
+- `platform/security/turn-boundary.ts`, what "this turn" means, and why
   automated work does not reset it
-- `platform/security/link-validation.ts` — the gate a link must pass before
+- `platform/security/link-validation.ts`, the gate a link must pass before
   anything opens it
-- `control-plane/routes/email.ts` — `refuseTaintedSend`, ahead of the send
+- `control-plane/routes/email.ts`, `refuseTaintedSend`, ahead of the send

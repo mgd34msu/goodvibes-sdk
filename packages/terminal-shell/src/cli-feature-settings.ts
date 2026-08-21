@@ -1,5 +1,5 @@
 /**
- * cli-feature-settings.ts — a front-end's own helpers over the SDK's
+ * cli-feature-settings.ts, a front-end's own helpers over the SDK's
  * FEATURE_SETTINGS surface.
  *
  * Every platform capability is configured through a first-class settings key
@@ -30,10 +30,6 @@ import {
 
 export type { FeatureSetting } from '@pellux/goodvibes-sdk/platform/runtime/state';
 
-// ---------------------------------------------------------------------------
-// Lookups
-// ---------------------------------------------------------------------------
-
 /** Every capability by id, in SDK declaration order. */
 export const FEATURE_SETTINGS_BY_ID: ReadonlyMap<string, FeatureSetting> = new Map(
   FEATURE_SETTINGS.map((feature) => [feature.id, feature]),
@@ -62,10 +58,6 @@ export function featuresForEnablementKey(key: string): readonly FeatureSetting[]
   return FEATURE_SETTINGS.filter((feature) => feature.enablement.key === key);
 }
 
-// ---------------------------------------------------------------------------
-// Enablement derivation
-// ---------------------------------------------------------------------------
-
 /**
  * Whether a raw config value means the feature is on, as a settings surface
  * should display it. Boolean/enum kinds derive exactly as the runtime gate
@@ -79,8 +71,8 @@ export function isFeatureValueEnabled(feature: FeatureSetting, value: unknown): 
   // its settings key says. deriveFeatureState already enforces this for the
   // boolean and enum kinds; stating it once here covers the constant kind too,
   // so no surface can show "on" for something that is doing nothing. The user's
-  // value is untouched — it is kept for the release that wires the capability
-  // up — and `feature.inoperableDetail` is the written reason a surface renders.
+  // value is untouched, it is kept for the release that wires the capability
+  // up, and `feature.inoperableDetail` is the written reason a surface renders.
   if (feature.operable === false) return false;
   if (kind === 'constant') {
     const schema = getConfigSchemaSetting(key);
@@ -107,10 +99,6 @@ export function isFeatureConfigEnabled(
   if (!feature) return false;
   return isFeatureValueEnabled(feature, configManager.get(feature.enablement.key));
 }
-
-// ---------------------------------------------------------------------------
-// Enablement writes
-// ---------------------------------------------------------------------------
 
 export interface FeatureEnablementWrite {
   readonly key: ConfigKey;

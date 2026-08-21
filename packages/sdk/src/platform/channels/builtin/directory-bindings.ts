@@ -3,7 +3,7 @@
  *
  * Every channel adapter upserts a route binding on ingress carrying the
  * originating channel/thread, so an entry exists here for any conversation
- * that has ever sent a message — with no configuration whatsoever. The
+ * that has ever sent a message, with no configuration whatsoever. The
  * optional per-surface config fields (`defaultChatId`, `botUsername`, and
  * their equivalents) exist to INITIATE contact with somewhere nobody has
  * written from; gating the whole provider directory on them is what let a

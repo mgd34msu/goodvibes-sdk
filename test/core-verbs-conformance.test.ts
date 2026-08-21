@@ -1,10 +1,10 @@
 /**
- * core-verbs-conformance.test.ts — the core-verb command spec conformance lint.
+ * core-verbs-conformance.test.ts, the core-verb command spec conformance lint.
  *
  * The forcing function for packages/contracts/src/core-verbs.ts: every id in
  * OPERATOR_METHOD_IDS must classify as either a core verb, an explicitly
  * exempted domain verb (in a documented category), or the test fails and
- * names the offending id(s) — a new ad hoc verb, or a banned verb making a
+ * names the offending id(s), a new ad hoc verb, or a banned verb making a
  * comeback, cannot land silently. See core-verbs.ts's module doc for the
  * design rationale and docs/decisions/2026-07-06-core-verb-spec.md for the
  * ranked worst-class collisions this pass fixed.
@@ -69,7 +69,7 @@ describe('core-verbs conformance', () => {
   // A generic tail is granted per NAMESPACE, so the same word appearing under
   // two scoped categories is the mechanism working. What must never repeat is
   // one namespace+verb pair being decided twice, or a tail carrying both a
-  // repo-wide grant and a scoped one — the scoped entry would then be decoration.
+  // repo-wide grant and a scoped one, the scoped entry would then be decoration.
   test('a scoped exemption is decided exactly once per namespace and verb', () => {
     const seen = new Map<string, string>();
     const conflicts: string[] = [];

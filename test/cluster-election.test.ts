@@ -1,11 +1,11 @@
 /**
- * LAN leader election — the per-surface state machine, exercised with an
+ * LAN leader election, the per-surface state machine, exercised with an
  * in-memory transport and a clock that only moves when a test says so.
  *
  * Every scenario here is a real failure mode the feature exists to prevent:
  * two nodes both consuming one topic, a crashed holder nobody replaces, a
  * laptop that wakes up and resumes a long poll somebody else already took
- * over, and — the case that broke the whole-node design — two machines whose
+ * over, and, the case that broke the whole-node design, two machines whose
  * configured surfaces only partly overlap.
  */
 import { describe, expect, test } from 'bun:test';
@@ -88,7 +88,7 @@ describe('cluster election — taking a surface', () => {
     await startNode(world, bystander);
     await advance(world, 10_000);
 
-    // It joined the group — it can report what it hears — but it never sent a
+    // It joined the group, it can report what it hears, but it never sent a
     // datagram, so it never entered anyone's election.
     expect(bystander.election.status().surfaces).toEqual([]);
     expect(bystander.election.isMaster).toBe(false);
@@ -124,7 +124,7 @@ describe('cluster election — partial overlap between machines', () => {
 
     expect(surfaceState(laptop, 'telegram-bot').running).toBe(true);
     expect(roleOf(laptop, 'telegram-bot')).toBe('master');
-    // The desktop is not in that election at all — not standby, not electing.
+    // The desktop is not in that election at all, not standby, not electing.
     expect(roleOf(desktop, 'telegram-bot')).toBe('stopped');
     expect(desktop.surfaces.has('telegram-bot')).toBe(false);
   });
@@ -159,11 +159,11 @@ describe('cluster election — partial overlap between machines', () => {
 
     // ntfy moved to the other node that can serve it, and only there. The
     // partitioned node is cut off from the LAN, not from ntfy, so its own
-    // island is not part of "exactly one reader" — healing that is the
+    // island is not part of "exactly one reader", healing that is the
     // split-brain reconciliation, exercised in cluster-handoff.test.ts.
     expect(surfaceState(survivor, 'ntfy-main').running).toBe(true);
     expect(holders(world, 'ntfy-main').filter((node) => node !== ntfyHolder)).toEqual([survivor]);
-    // Telegram did not move and was never restarted by the ntfy failover —
+    // Telegram did not move and was never restarted by the ntfy failover,
     // the laptop's Telegram consumer has been up, untouched, throughout.
     expect(surfaceState(laptop, 'telegram-bot').startCount).toBe(telegramStarts);
     expect(surfaceState(laptop, 'telegram-bot').stopCount).toBe(0);
@@ -188,7 +188,7 @@ describe('cluster election — ranking decides, not scheduling', () => {
 
     const busy = { nodeId: 'a', version: '1.0.0', holdings: 3 };
     const idle = { nodeId: 'z', version: '1.0.0', holdings: 1 };
-    // Among equal builds the lighter node wins — this is what spreads work.
+    // Among equal builds the lighter node wins, this is what spreads work.
     expect(compareSpreadRank(idle, busy, surfaceId)).toBeLessThan(0);
   });
 
@@ -200,7 +200,7 @@ describe('cluster election — ranking decides, not scheduling', () => {
       const surfaceId = index.toString(16).padStart(32, '0');
       winners.add(compareSpreadRank(left, right, surfaceId) < 0 ? left.nodeId : right.nodeId);
     }
-    // A nodeId-only tiebreak — the whole-node design's third tier — would hand
+    // A nodeId-only tiebreak, the whole-node design's third tier, would hand
     // every one of these to the same node. Mixing the surface in does not.
     expect(winners.size).toBe(2);
   });
@@ -211,7 +211,7 @@ describe('cluster election — ranking decides, not scheduling', () => {
    * time; it is decided by rank, so it does not.
    */
   async function raceAfterHolderLoss(world: World, holder: TestNode): Promise<void> {
-    // The holder vanishes without a word — the crash path, not a clean stop.
+    // The holder vanishes without a word, the crash path, not a clean stop.
     world.bus.partition(holder.transport, 'gone');
     await advance(world, 6_000);
   }
@@ -354,7 +354,7 @@ describe('cluster election — suspend and wake', () => {
 
     // The wall-clock jump is the whole HOST sleeping, so the holder re-probes
     // too. Both re-enter the protocol from scratch and it settles on exactly
-    // one reader — which is the invariant, not which of the two it is.
+    // one reader, which is the invariant, not which of the two it is.
     await advance(world, 4_000);
     expect(holders(world, 'ntfy-main')).toHaveLength(1);
     expect(roleOf(standby, 'ntfy-main')).not.toBe('probing');

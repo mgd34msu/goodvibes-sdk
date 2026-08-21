@@ -1,8 +1,8 @@
 /**
- * shared-config-tier.ts — the surface-root-independent config tier.
+ * shared-config-tier.ts, the surface-root-independent config tier.
  *
  * A small set of keys (the voice/tts settings) must resolve to the SAME value on
- * every surface — terminal, desktop, and the agent — rather than living in a
+ * every surface, terminal, desktop, and the agent, rather than living in a
  * per-surface silo (`~/.goodvibes/<surface>/settings.json`). Those keys read from
  * and write to one neutral on-disk store, `~/.goodvibes/shared/settings.json`
  * (the E7 shared-tier path; see docs/decisions/2026-07-06-config-sharing-shared-tier-and-secret-read.md
@@ -21,7 +21,7 @@ import { raiseSettingsReaderFloor } from './settings-reader-floor.js';
 
 /**
  * The keys that ride the shared, surface-root-independent tier. Currently the
- * voice/tts settings — one voice across every surface.
+ * voice/tts settings, one voice across every surface.
  */
 export const SHARED_CONFIG_KEYS: readonly ConfigKey[] = [
   'tts.provider',
@@ -81,7 +81,7 @@ function writeDotPath(root: Record<string, unknown>, key: string, value: unknown
  * "absent": the file is moved aside with a receipt and the caller rebuilds. This
  * store is the exception, deliberately.
  *
- * It backs the DAEMON tier, which is where every daemon-owned key lives —
+ * It backs the DAEMON tier, which is where every daemon-owned key lives,
  * permissions, the payment limits, the gates that decide what may run and what
  * may be spent. A reader cannot tell whether the bytes it could not parse held
  * one of those, so it cannot know that starting on the shipped defaults is safe;
@@ -134,7 +134,7 @@ export function persistSharedKey(path: string, key: string, value: unknown): voi
  *
  * Best-effort by construction: a floor that cannot be written must never undo a
  * migration that already succeeded, and a file that does not exist gets no
- * marker — a floor describes a rewrite, so there is nothing to record where
+ * marker, a floor describes a rewrite, so there is nothing to record where
  * nothing was written. Returns true when the floor was raised.
  */
 export function raiseReaderFloorInFile(path: string, minReaderVersion: string, setBy: string): boolean {

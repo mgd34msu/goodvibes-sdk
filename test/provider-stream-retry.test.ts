@@ -1,7 +1,7 @@
 import { describe, expect, test, afterEach } from 'bun:test';
 
 /**
- * Provider-level STREAM_RETRY wiring — verifies that ChatRequest.onRetry (threaded
+ * Provider-level STREAM_RETRY wiring, verifies that ChatRequest.onRetry (threaded
  * through withRetry at the provider's own transport retry point) fires with the
  * right (attempt, maxAttempts, delayMs, error) shape when a retryable transport
  * error is followed by a successful attempt, and that non-retryable errors never
@@ -24,7 +24,7 @@ const SSE_BODY = [
 ].join('\n');
 
 /**
- * Install a fake `globalThis.fetch` that answers — and counts — ONLY requests
+ * Install a fake `globalThis.fetch` that answers, and counts, ONLY requests
  * aimed at `baseURL`.
  *
  * `globalThis.fetch` is process-wide, and this suite runs every file in ONE
@@ -32,7 +32,7 @@ const SSE_BODY = [
  * schedulers) that keeps calling fetch, and a fake that counts every call
  * counts theirs too. Observed in a loaded full-suite run: this file's
  * `expect(callCount).toBe(2)` reported `Received: 4962`. The number is not a
- * property of the provider under test at all — it is a property of what else
+ * property of the provider under test at all, it is a property of what else
  * happened to be running.
  *
  * Scoping by URL keeps the assertions exact (they still pin the provider to an
@@ -75,7 +75,7 @@ describe('provider chat onRetry wiring', () => {
       models: ['claude-test'],
       // Deterministic clock: zero the backoff so the retry fires immediately.
       // maxRetries is left at DEFAULT_CONFIG (3), which the maxAttempts assertion
-      // below still depends on — only the wall-clock delay is removed.
+      // below still depends on, only the wall-clock delay is removed.
       retryConfig: { initialDelayMs: 0, maxDelayMs: 0 },
     });
 

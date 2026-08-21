@@ -1,10 +1,10 @@
 /**
- * transcript-layout.ts — the margin grid every transcript row is measured against.
+ * transcript-layout.ts, the margin grid every transcript row is measured against.
  *
  * The two terminal front-ends each carried this object verbatim in their own
  * `renderer/layout.ts`. The tree geometry in `conversation-tree.ts` reads
  * LEFT_MARGIN and RIGHT_MARGIN out of it to place branch glyphs, so the numbers
- * have to live wherever that geometry lives or the two drift apart silently —
+ * have to live wherever that geometry lives or the two drift apart silently,
  * a one-column disagreement between a renderer and the tree it draws into is
  * invisible in review and obvious on screen.
  *

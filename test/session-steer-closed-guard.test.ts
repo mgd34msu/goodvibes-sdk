@@ -1,14 +1,14 @@
 /**
  * session-steer-closed-guard.test.ts
  *
- * Acceptance re-replay — the HTTP route surface for
+ * Acceptance re-replay, the HTTP route surface for
  * `POST /api/sessions/:id/steer`. The broker (session-broker.ts) now throws
  * `{ code: 'SESSION_CLOSED', status: 409 }` before any mutation when the
  * target session is closed (see session-steer-surface-routing.test.ts for the
  * broker-level no-side-effects proof). This file proves the route handler
- * converts that thrown error into a structured 409 JSON response — the same
+ * converts that thrown error into a structured 409 JSON response, the same
  * shape the messages route already returns for kind='message' on a closed
- * session — instead of letting it propagate as an unhandled rejection, and
+ * session, instead of letting it propagate as an unhandled rejection, and
  * that a normal (non-closed) steer submission still reaches the caller
  * unchanged.
  */

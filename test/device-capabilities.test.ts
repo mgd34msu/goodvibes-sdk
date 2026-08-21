@@ -1,5 +1,5 @@
 /**
- * device-capabilities.test.ts — the paired-device capability contract.
+ * device-capabilities.test.ts, the paired-device capability contract.
  *
  * Covers the owner rulings of 2026-07-25 as behaviour rather than as comments:
  * every capability confirms by default, "always allow" is offered on every one
@@ -830,7 +830,7 @@ describe('device posture runtime', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The control-plane verbs — the path a surface that does NOT host the device
+// The control-plane verbs, the path a surface that does NOT host the device
 // posture runtime reaches a paired phone through. Exercised over a real
 // GatewayMethodCatalog with the handlers attached the way a daemon attaches
 // them, so the descriptors, the required-field arrays and the handler wiring
@@ -904,7 +904,7 @@ describe('device capability verbs', () => {
     expect(result.ok).toBe(true);
     expect(result.authority).toBe('confirmed-once');
     expect(h.prompts).toHaveLength(1);
-    // The caller's stated reason reaches the prompt unaltered — the verb adds
+    // The caller's stated reason reaches the prompt unaltered, the verb adds
     // nothing to it and takes nothing away.
     expect(h.prompts[0]?.reason).toBe('confirming the phone is the one on the desk');
   });

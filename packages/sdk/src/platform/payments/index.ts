@@ -1,5 +1,5 @@
 /**
- * payments/index.ts — the payment capability's public surface.
+ * payments/index.ts, the payment capability's public surface.
  *
  * The SDK owns this capability, the daemon serves it, and surfaces are wiring
  * and UI only. Everything a surface needs to render a settings form, an approval
@@ -150,7 +150,7 @@ export type { CartLine, RequestedLine, CartCheck, RecurringCheck } from './cart.
  */
 export const CVV_PROMPT_TRADEOFF_WARNING =
   'Choosing "prompt" disables unattended purchasing. The card verification value will not be '
-  + 'stored, so every purchase stops and waits for you to type it — including purchases that are '
+  + 'stored, so every purchase stops and waits for you to type it, including purchases that are '
   + 'within budget and would otherwise have gone ahead on their own. The veto window still runs, '
   + 'but nothing completes while you are away.';
 
@@ -249,7 +249,7 @@ export type { MerchantJudgeModel } from './merchant-judge-model.js';
 // The daemon-side service. Exported because a consumer that cannot construct
 // this cannot use the capability at all: it is what binds the verbs to the
 // flow, and it was reachable from source but absent from the published surface
-// — the exact shape of gap that a subpath check keyed on the exports map
+//, the exact shape of gap that a subpath check keyed on the exports map
 // cannot see, since the subpath itself was declared correctly.
 export { PaymentsGatewayServiceImpl } from './payments-gateway-service.js';
 export type {

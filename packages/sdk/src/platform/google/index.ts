@@ -6,7 +6,7 @@
  * reading and writing events.
  *
  * This lives in the SDK rather than in any one product because every surface
- * is equally entitled to it — and because the daemon is one of those surfaces.
+ * is equally entitled to it, and because the daemon is one of those surfaces.
  * While this code sat inside a single product, the daemon had no
  * implementation to call, which is exactly why `email.send` and the calendar
  * methods shipped cataloged but `invokable: false`: there was nothing behind
@@ -15,11 +15,11 @@
  *
  * ── Two setup paths, and they are genuinely different products ─────────────
  *
- *   Path A ("app-password") — no Google Cloud project at all. Gmail over
+ *   Path A ("app-password"), no Google Cloud project at all. Gmail over
  *   IMAP/SMTP with a Google app password; Calendar read-only over the private
  *   iCal address. The fast lane, and the default.
  *
- *   Path B ("oauth") — a Cloud project, the Calendar API, and a Desktop OAuth
+ *   Path B ("oauth"), a Cloud project, the Calendar API, and a Desktop OAuth
  *   client obtained through the console walkthrough, a downloaded client JSON,
  *   or pasted credentials. Needed for calendar writes.
  *
@@ -30,9 +30,9 @@
  * ── Everything is injected ────────────────────────────────────────────────
  *
  * Not a single line here opens a file, binds a port, spawns a process, reads a
- * clock or drives a browser. Those arrive as ports — `GoogleBrowserPort`,
+ * clock or drives a browser. Those arrive as ports, `GoogleBrowserPort`,
  * `GoogleCommandPort`, `GoogleConfigPort`, `GoogleSecretPort`,
- * `GoogleFilePort`, `GoogleFetchPort`, `GoogleLoopbackListenerFactory` — so
+ * `GoogleFilePort`, `GoogleFetchPort`, `GoogleLoopbackListenerFactory`, so
  * the entire connector, including the browser-driven Cloud Console
  * walkthrough, runs against fakes with no machine. The concrete bun/node
  * implementations live in the sibling `google/node` entry and are deliberately
@@ -43,8 +43,8 @@
  * These are structural, not advisory, and each is load-bearing:
  *
  *  - **Delivery evidence is unforgeable.** `DeliveredRecipient` carries an
- *    unexported brand, so a `To:`/`Cc:`/`Bcc:` value — which the sender writes
- *    — cannot be passed where delivery evidence is required. There is no
+ *    unexported brand, so a `To:`/`Cc:`/`Bcc:` value, which the sender writes
+ *   , cannot be passed where delivery evidence is required. There is no
  *    constructor that accepts one. Not a discouraged one. None.
  *  - **Top-most only.** Both `Delivered-To`/`X-Original-To` and
  *    `Authentication-Results` are read from index 0 and nowhere else. A sender
@@ -85,7 +85,7 @@ export type {
 } from './types.js';
 
 // ---------------------------------------------------------------------------
-// The step plan — one list, read by both the executor and the runbook
+// The step plan, one list, read by both the executor and the runbook
 // ---------------------------------------------------------------------------
 
 export {
@@ -147,7 +147,7 @@ export {
 } from './setup-actions.js';
 
 // ---------------------------------------------------------------------------
-// Credentials — intake, adoption, refresh
+// Credentials, intake, adoption, refresh
 // ---------------------------------------------------------------------------
 
 export {
@@ -307,7 +307,7 @@ export {
 } from './connection-proof.js';
 
 // ---------------------------------------------------------------------------
-// Removing a credential — never without an explicit yes
+// Removing a credential, never without an explicit yes
 // ---------------------------------------------------------------------------
 
 export {
@@ -453,7 +453,7 @@ export {
 } from './caldav-parse.js';
 
 // ---------------------------------------------------------------------------
-// Mail trust — the security properties named in the header
+// Mail trust, the security properties named in the header
 // ---------------------------------------------------------------------------
 
 export {

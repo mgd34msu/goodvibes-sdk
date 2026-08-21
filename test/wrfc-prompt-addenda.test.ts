@@ -6,7 +6,7 @@
  * - Is memoized (two calls return the same reference).
  * - Accepts zero arguments and returns a string.
  *
- * These are NOT semantic LLM tests — they only verify the shape of the text.
+ * These are NOT semantic LLM tests, they only verify the shape of the text.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -25,13 +25,13 @@ describe('buildEngineerConstraintAddendum', () => {
 
   test('contains all four calibration examples', () => {
     const result = buildEngineerConstraintAddendum();
-    // First example — no constraints
+    // First example, no constraints
     expect(result).toContain('Write a function that adds two numbers');
-    // Second example — three constraints
+    // Second example, three constraints
     expect(result).toContain('must be pure, no external deps, under 20 lines');
-    // Third example — not a build task
+    // Third example, not a build task
     expect(result).toContain('What does this code do?');
-    // Fourth example — two constraints (hooks + keep public exports)
+    // Fourth example, two constraints (hooks + keep public exports)
     expect(result).toContain('Refactor this file to use hooks, keep public exports identical');
   });
 

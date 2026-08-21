@@ -1,26 +1,26 @@
 /**
- * credential-availability.ts — client-side credential-status read.
+ * credential-availability.ts, client-side credential-status read.
  *
  * When a surface product acts as a CLIENT of an adopted external daemon (the
  * host-service `mode === 'external'` topology), provider/model/secret STATUS is
  * read from that daemon's `credentials.get` wire method rather than from the
  * surface's own scoped store. This module folds a `credentials.get` outcome into
- * an honest availability value — the one contract every surface renders from:
+ * an honest availability value, the one contract every surface renders from:
  *
  *   - a 503 CREDENTIAL_STORE_UNAVAILABLE (matched by machine code), a METHOD_NOT_FOUND
  *     from an older daemon, or ANY transport failure  ->  { available: false, reason }
- *     — an honest, reason-carrying "unavailable" state.
+ *    , an honest, reason-carrying "unavailable" state.
  *   - NEVER a fabricated "configured"; NEVER a secret byte. Only the boolean status
  *     metadata surface (key / configured / usable / source / secure) is carried.
  *
- * STATUS ONLY moves to the daemon path. Secret RESOLUTION — the value-reads provider
- * auth needs, plus the env-only API-key posture — stays local and is untouched by
+ * STATUS ONLY moves to the daemon path. Secret RESOLUTION, the value-reads provider
+ * auth needs, plus the env-only API-key posture, stays local and is untouched by
  * this module. The daemon's `credentials.get` never returns raw key bytes over the
  * wire (see the SDK decision record 2026-07-06-config-sharing-shared-tier-and-secret-read),
  * so no plaintext can reach a caller through this path by construction.
  */
 
-/** One credential's status metadata from the daemon's shared store — never bytes. */
+/** One credential's status metadata from the daemon's shared store, never bytes. */
 export interface CredentialStatusEntry {
   readonly key: string;
   readonly configured: boolean;
@@ -34,7 +34,7 @@ export type CredentialAvailability =
   | { readonly available: true; readonly credentials: readonly CredentialStatusEntry[] }
   | { readonly available: false; readonly reason: string };
 
-/** A `credentials.get` invocation outcome — success value OR a thrown error. */
+/** A `credentials.get` invocation outcome, success value OR a thrown error. */
 export type CredentialStatusOutcome =
   | { readonly ok: true; readonly value: unknown }
   | { readonly ok: false; readonly error: unknown };

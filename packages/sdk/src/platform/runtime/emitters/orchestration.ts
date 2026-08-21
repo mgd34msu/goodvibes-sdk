@@ -1,5 +1,5 @@
 /**
- * Orchestration emitters — typed emission wrappers for OrchestrationEvent domain.
+ * Orchestration emitters, typed emission wrappers for OrchestrationEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

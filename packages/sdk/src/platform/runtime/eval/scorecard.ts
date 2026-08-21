@@ -1,10 +1,10 @@
 /**
- * Evaluation Harness — Scorecard scorer.
+ * Evaluation Harness, Scorecard scorer.
  *
  * Converts a raw EvalRawResult into a structured EvalScorecard with
  * per-dimension scores across safety, quality, latency, cost, and recovery.
  *
- * Scoring rules are deterministic and unit-testable — no I/O.
+ * Scoring rules are deterministic and unit-testable, no I/O.
  */
 
 import type { EvalRawResult, EvalScorecard, DimensionScore, EvalDimension } from './types.js';
@@ -80,7 +80,7 @@ function scoreQuality(raw: EvalRawResult): DimensionScore {
     rationale = 'Run completed cleanly with no errors.';
   }
 
-  // Check perf violations — each active violation deducts 10 points
+  // Check perf violations. Each active violation deducts 10 points
   const violations = raw.perfReport?.violations.length ?? 0;
   if (violations > 0) {
     score = clamp(score - violations * 10);
@@ -131,7 +131,7 @@ function scoreCost(raw: EvalRawResult): DimensionScore {
       dimension: 'cost',
       score: 100,
       weight: DIMENSION_WEIGHT.cost,
-      rationale: 'No token/cost data — full score awarded (not applicable to this scenario).',
+      rationale: 'No token/cost data, full score awarded (not applicable to this scenario).',
     };
   }
 
@@ -189,7 +189,7 @@ function scoreRecovery(raw: EvalRawResult): DimensionScore {
 /**
  * Produce a structured EvalScorecard from a raw scenario result.
  *
- * Scoring is deterministic and has no side effects — safe to call in tests.
+ * Scoring is deterministic and has no side effects, safe to call in tests.
  *
  * @param scenarioId - The scenario's stable identifier.
  * @param scenarioName - The scenario's human-readable name.

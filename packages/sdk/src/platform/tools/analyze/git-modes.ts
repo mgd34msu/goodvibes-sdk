@@ -15,14 +15,14 @@ import {
 } from './shared.js';
 import { instrumentedFetch } from '../../utils/fetch-with-timeout.js';
 
-// 1.2 s — warm `git status` cache response budget; keeps semantic-diff LLM probe non-blocking
+// 1.2 s, warm `git status` cache response budget; keeps semantic-diff LLM probe non-blocking
 const GIT_PROBE_TIMEOUT_MS = 1200;
 
 function parseSemanticDiffResponse(
   llmResponse: string | null,
   changedFiles: string[],
 ): SemanticDiffSummary {
-  let summary = 'LLM unavailable — diff available in raw_diff field.';
+  let summary = 'LLM unavailable, diff available in raw_diff field.';
   let impact: string[] = changedFiles.map((f) => `Changed file: ${f}`);
   let risk: 'low' | 'medium' | 'high' = 'medium';
 

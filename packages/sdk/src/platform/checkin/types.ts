@@ -50,7 +50,7 @@ export type CheckinReceiptOutcome =
   | 'skipped-quiet-hours'
   | 'error';
 
-/** The visible receipt every check-in run leaves — ran / decided-quiet / delivered-what. */
+/** The visible receipt every check-in run leaves, ran / decided-quiet / delivered-what. */
 export interface CheckinReceipt {
   readonly id: string;
   readonly ranAt: number;

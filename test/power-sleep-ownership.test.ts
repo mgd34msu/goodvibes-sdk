@@ -1,5 +1,5 @@
 /**
- * power-sleep-ownership.test.ts — sleep ownership + the owner keep-awake toggle.
+ * power-sleep-ownership.test.ts, sleep ownership + the owner keep-awake toggle.
  *
  * The platform had zero power-management integration (bare setTimeout
  * scheduling; no inhibitors; nothing owned the sleep edge). Now:
@@ -71,7 +71,7 @@ describe('automatic work inhibition', () => {
     const { seam, log } = fixtureSeam();
     const { manager } = makeManager(seam);
 
-    // A fake runtime bus delivering the REAL envelope shape (type/ts/payload —
+    // A fake runtime bus delivering the REAL envelope shape (type/ts/payload,
     // never `event`) so this proves the actual bug: bindPowerWorkSignals used
     // to read envelope.event, which is undefined on a real EventEnvelope.
     const handlers = new Map<string, (env: EventEnvelope<string, Record<string, unknown>>) => void>();
@@ -140,7 +140,7 @@ describe('the owner keep-awake toggle', () => {
     expect(state.keepAwake.held).toBe(true);
     expect(state.keepAwake.grantedClasses).toEqual(['idle', 'sleep', 'handle-lid-switch']);
 
-    // Work comes and goes; the toggle's inhibitor is untouched — that's the
+    // Work comes and goes; the toggle's inhibitor is untouched, that's the
     // point: stay reachable after work finishes.
     manager.holdWork('t1', 'turn');
     await settle();
@@ -360,14 +360,14 @@ describe('live logind proof on this host', () => {
     if (!(await seam.isAvailable())) {
       // Honest fallback: this environment has no logind session bus access;
       // the fixture-backed policy tests above still prove the full contract.
-      console.warn('[power test] logind unavailable in this environment — live proof skipped honestly');
+      console.warn('[power test] logind unavailable in this environment, live proof skipped honestly');
       return;
     }
     // Staging precondition, verified before any assertion: a reachable bus does
     // not guarantee this session may actually take and LIST inhibitors (some CI
     // runner instances answer the bus but scope inhibitor listing away from the
     // job's session). Stage a plain-CLI probe inhibitor and require it to appear
-    // in --list; if the environment cannot stage the fixture, skip honestly —
+    // in --list; if the environment cannot stage the fixture, skip honestly,
     // the proof must be EXERCISED or SKIPPED, never failed by the host.
     const probeWho = `gv-logind-probe-${process.pid}`;
     const probe = spawn('systemd-inhibit', ['--what=idle', `--who=${probeWho}`, '--why=staging probe', '--mode=block', 'sleep', '10'], { stdio: 'ignore' });
@@ -385,13 +385,13 @@ describe('live logind proof on this host', () => {
       try { probe.kill('SIGTERM'); } catch { /* already gone */ }
     }
     if (!probeListed) {
-      console.warn('[power test] logind bus answers but inhibitors are not grantable/listable from this session — live proof skipped honestly');
+      console.warn('[power test] logind bus answers but inhibitors are not grantable/listable from this session, live proof skipped honestly');
       return;
     }
     const handle = await seam.inhibit({ classes: ['idle'], who: 'goodvibes-test-proof', why: 'live test proof' });
     expect(handle).not.toBeNull();
     expect(handle!.grantedClasses).toContain('idle');
-    // The OS actually lists our inhibitor (never sudo — plain user).
+    // The OS actually lists our inhibitor (never sudo, plain user).
     const listed = execFileSync('systemd-inhibit', ['--list', '--no-legend'], { encoding: 'utf-8' });
     expect(listed).toContain('goodvibes-test-proof');
     await handle!.release();
@@ -406,11 +406,11 @@ describe('live sleep-edge watcher on this host (proves the leak fix)', () => {
   test('a real dbus-monitor watcher spawns, carries its owner-pid stamp, and the unsubscribe reaps it — no orphan left', async () => {
     const hasDbusMonitor = spawnSync('sh', ['-c', 'command -v dbus-monitor'], { encoding: 'utf-8' }).status === 0;
     if (!hasDbusMonitor) {
-      console.warn('[power test] dbus-monitor unavailable in this environment — live sleep-edge watcher proof skipped honestly');
+      console.warn('[power test] dbus-monitor unavailable in this environment, live sleep-edge watcher proof skipped honestly');
       return;
     }
     // Our watcher carries this process's pid in its stamp match rule, so pgrep
-    // counts ONLY watchers this test spawned — never the host's own watcher.
+    // counts ONLY watchers this test spawned, never the host's own watcher.
     const stamp = `GoodvibesSleepWatchOwner${process.pid}`;
     const countMine = (): number => {
       const result = spawnSync('pgrep', ['-fc', stamp], { encoding: 'utf-8' });
@@ -450,7 +450,7 @@ describe('live sleep-edge watcher on this host (proves the leak fix)', () => {
 describe('an inhibitor child may never prompt on the user\'s terminal', () => {
   test('every inhibit argv carries --no-ask-password, before the command word', () => {
     // A polkit denial without this flag registers an interactive auth agent on
-    // the CONTROLLING TERMINAL (/dev/tty — stdio \'ignore\' cannot suppress it),
+    // the CONTROLLING TERMINAL (/dev/tty, stdio \'ignore\' cannot suppress it),
     // which painted "authentication is required to inhibit system sleep" over
     // the fullscreen UI on every submitted turn. Denial must be a silent exit.
     for (const cls of ['sleep', 'idle', 'handle-lid-switch'] as const) {

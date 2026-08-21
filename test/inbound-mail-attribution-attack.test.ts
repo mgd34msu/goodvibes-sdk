@@ -8,7 +8,7 @@
  *
  *   **Stepping over.** The cursor advances past a message that is still in the
  *   mailbox. Nobody is ever told it arrived. This is the one that loses mail
- *   and it is unrecoverable — the cursor is a high-water mark, so there is no
+ *   and it is unrecoverable, the cursor is a high-water mark, so there is no
  *   later pass that goes back for it.
  *
  *   **Pinning.** The cursor is held below a UID the server has already said is
@@ -17,7 +17,7 @@
  *   defect the per-UID rule replaced.
  *
  * The earlier tests assert specific scenarios. This file asserts the rule
- * itself, over generated batches, against an independently written oracle — so
+ * itself, over generated batches, against an independently written oracle, so
  * a disagreement is found rather than argued about. The oracle is deliberately
  * a SECOND implementation of the rule rather than a call into the first: an
  * oracle that shares the implementation proves only that the code equals
@@ -83,7 +83,7 @@ interface Scenario {
 /**
  * The rule, written again from its statement rather than from its code.
  *
- * A missing UID is unattributable — and so not provably expunged — when an
+ * A missing UID is unattributable, and so not provably expunged, when an
  * unreadable response named it, or when any unreadable response named no UID
  * at all. Everything else missing is a genuine expunge. Processing is in
  * ascending UID order and the cursor is a high-water mark, so the drain stops

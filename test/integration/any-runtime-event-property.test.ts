@@ -1,5 +1,5 @@
 /**
- * any-runtime-event-property.test.ts — S-ζ Test 3
+ * any-runtime-event-property.test.ts, S-ζ Test 3
  *
  * Property-based tests on `AnyRuntimeEvent` discriminants using `fast-check`.
  *
@@ -53,7 +53,7 @@ function validationError(message: string, received: unknown): EventValidationErr
  * Accepts any plain object with a known `type` discriminant and at least
  * the required fields for that type. Returns `EventValidationError` on failure.
  *
- * This is deliberately not a full JSON schema validator — it checks:
+ * This is deliberately not a full JSON schema validator, it checks:
  *   - `type` is a string and is a known event type
  *   - required discriminant-specific fields are present
  */
@@ -101,7 +101,7 @@ function roundTrip(event: Record<string, unknown>): unknown {
 }
 
 // ---------------------------------------------------------------------------
-// Property: round-trip — parse(serialize(event)) ≡ event (structural equality)
+// Property: round-trip, parse(serialize(event)) ≡ event (structural equality)
 // ---------------------------------------------------------------------------
 
 describe('AnyRuntimeEvent — JSON round-trip property', () => {
@@ -109,7 +109,7 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
     for (const event of FIXTURE_EVENTS) {
       const restored = roundTrip(event);
       // Deep structural equality: all fields present and values match.
-      // Note: undefined-valued optional fields may be dropped by JSON — that is correct
+      // Note: undefined-valued optional fields may be dropped by JSON, that is correct
       // behaviour; we only assert that present fields are preserved.
       expect(restored).toMatchObject(event);
     }
@@ -119,7 +119,7 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
     fc.assert(
       fc.property(
         fc.constantFrom(...FIXTURE_EVENTS),
-        // Extra fields must never collide with the discriminant itself — the
+        // Extra fields must never collide with the discriminant itself, the
         // spread would overwrite it and the property would test the generator,
         // not the round-trip (CI seed found exactly that: extraFields {type:""}).
         fc.dictionary(fc.string({ minLength: 1, maxLength: 16 }).filter((k) => k !== 'type'), jsonValueArb),
@@ -151,7 +151,7 @@ describe('AnyRuntimeEvent — JSON round-trip property', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Property: malformed events — wrong type or missing required field → error
+// Property: malformed events, wrong type or missing required field → error
 // ---------------------------------------------------------------------------
 
 describe('AnyRuntimeEvent — validation rejects malformed events', () => {

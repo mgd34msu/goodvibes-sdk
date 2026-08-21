@@ -1,10 +1,10 @@
 /**
- * attachments.ts — who is watching a hosted session, and for how long.
+ * attachments.ts, who is watching a hosted session, and for how long.
  *
  * An attachment is a claim about a LIVE process, and the only way it used to
  * end was a client calling `sessions.hosted.detach`. A client that crashed, was
  * killed, or simply had its tab closed makes no such call: its attachment stood
- * for as long as the daemon ran, and a `kill`-policy session — the default —
+ * for as long as the daemon ran, and a `kill`-policy session, the default,
  * waited for a departure that was never going to arrive. The session that was
  * supposed to end when the last person left instead outlived everyone watching
  * it, holding a workspace floor and a model connection.
@@ -14,7 +14,7 @@
  * bounded by time rather than by anyone remembering to clean up. Two things
  * renew it, and between them no client has to learn a new call:
  *
- *  1. Attaching again. `sessions.hosted.attach` is idempotent and always was —
+ *  1. Attaching again. `sessions.hosted.attach` is idempotent and always was,
  *    the same client id re-attaching now also renews, which is the same
  *    "polling renews the lease" shape the rewind host uses.
  *  2. The client's control-plane connection still being open. A client that
@@ -35,7 +35,7 @@ export const HOSTED_ATTACHMENT_DEFAULT_LEASE_MS = 10 * 60_000;
 /**
  * How often lapsed attachments are swept, for a given lease.
  *
- * A quarter of the lease, bounded to [15s, 60s] — often enough that a
+ * A quarter of the lease, bounded to [15s, 60s], often enough that a
  * kill-policy session ends promptly after its last watcher vanishes, rarely
  * enough to be invisible on an idle daemon.
  */
@@ -89,7 +89,7 @@ export class HostedSessionAttachments {
    * `isConnected` is the second renewal signal: a client the control plane can
    * still see is renewed in place rather than reaped, so a client that attached
    * under its stream's own id never has to heartbeat at all. A probe that
-   * throws is treated as "cannot tell", which renews — refusing to answer must
+   * throws is treated as "cannot tell", which renews, refusing to answer must
    * not become a reason to end someone's session.
    */
   expire(at: number, leaseMs: number, isConnected?: (clientId: string) => boolean): string[] {

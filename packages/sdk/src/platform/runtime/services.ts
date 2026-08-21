@@ -188,7 +188,7 @@ export interface RuntimeServices {
   /**
    * The `.goodvibes/<surface root>/` segment this composition's own state lives
    * under. Already returned by createRuntimeServices; declaring it here is what
-   * lets a consumer ask for it instead of deriving a second one — the omission
+   * lets a consumer ask for it instead of deriving a second one, the omission
    * that produced the unscoped pre-split control-plane store.
    */
   readonly surfaceRoot: string;
@@ -219,7 +219,7 @@ export interface RuntimeServices {
    * OPTIONAL because hosts hand-compose RuntimeServices: goodvibes-agent builds
    * its own object literal, and a required field here turned "this host has no
    * trigger family" into a TypeError on daemon shutdown. Absence must mean no
-   * triggers, never a crash — the same contract the fleet registry's
+   * triggers, never a crash, the same contract the fleet registry's
    * `triggerSupervisor` dep already honours.
    */
   readonly triggerManager?: TriggerManager | undefined;
@@ -240,7 +240,7 @@ export interface RuntimeServices {
   readonly codeIndexStore: CodeIndexStore;
   /** Stage B tool-site incremental reindex scheduler (bound to codeIndexStore). */
   readonly codeIndexReindexScheduler: CodeIndexReindexScheduler;
-  /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (same lifecycle posture as processRegistry — hosts that tear down a runtime stop() it themselves). */
+  /** Daily snapshots of every SQLite store this runtime writes, with bounded retention; unref'd timers (same lifecycle posture as processRegistry, hosts that tear down a runtime stop() it themselves). */
   readonly storeSnapshotScheduler: StoreSnapshotScheduler;
   /** Periodic re-sweep of every registered append-only store (startup alone never prunes a daemon that stays up for weeks); unref'd timers, stop() on teardown. */
   readonly appendOnlyRetentionScheduler: AppendOnlyRetentionScheduler;
@@ -311,7 +311,7 @@ export interface RuntimeServices {
   /** Orchestration engine (alongside wrfcController; controller-compat.ts): opt-in pipeline scheduler, never auto-started. */
   readonly orchestrationEngine: OrchestrationEngine;
   readonly processManager: ProcessManager;
-  /** Live process registry (fleet aggregation). No dispose seam exists; the unref'd tick runs only while subscribers exist — hosts dispose() themselves. */
+  /** Live process registry (fleet aggregation). No dispose seam exists; the unref'd tick runs only while subscribers exist, hosts dispose() themselves. */
   readonly processRegistry: ArchivableProcessRegistry;
   readonly modeManager: ModeManager;
   readonly fileUndoManager: FileUndoManager;
@@ -325,7 +325,7 @@ export interface RuntimeServices {
    * sweep, knowledge scheduler, retention schedulers) and release their handles.
    *
    * Best-effort, total and idempotent: an owner that throws is logged and the
-   * rest still come down. Dispose only a graph you constructed — a DaemonServer
+   * rest still come down. Dispose only a graph you constructed, a DaemonServer
    * handed runtime services by its caller does not own them.
    */
   dispose(): void;
@@ -378,7 +378,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     secretsManager,
     subscriptionManager,
   });
-  // The model stack — one implementation, shared with the pure-client
+  // The model stack, one implementation, shared with the pure-client
   // composition (provider-stack.ts): stores, registry, the live credential
   // chain, the tool LLM and the optimizer bound to its flag and config mode.
   const {
@@ -408,7 +408,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const sessionManager = new SessionManager(workingDirectory, { surfaceRoot });
   // NOTE: sessionOrchestration is constructed AFTER sessionBroker (below), not
   // here, because its constructor reaps immediately and its owner-existence
-  // predicate closes over the broker — building it here would hit a temporal
+  // predicate closes over the broker, building it here would hit a temporal
   // dead zone on the very first sweep.
   const hookActivityTracker = new HookActivityTracker();
   const watcherRegistry = new WatcherRegistry({
@@ -417,7 +417,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     recoveryWindowMinutes: () => Number(configManager.get('watchers.recoveryWindowMinutes')), // read per restore
   });
   watcherRegistry.attachRuntime({ runtimeStore: options.runtimeStore, runtimeBus: options.runtimeBus });
-  // The agent graph in its one working order — shared with the pure-client
+  // The agent graph in its one working order, shared with the pure-client
   // composition (agent-graph.ts), because the two post-construction links
   // (conversation sink, cancellation source) are easy to omit and silent when
   // omitted.
@@ -444,7 +444,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // `conversationGateConfig` keeps the live-agent handover behind the gate.
   const sessionBroker = new SharedSessionBroker({
     // Surface-SCOPED, like every other store this composition owns. The
-    // default here was `resolveUserPath('control-plane', 'sessions.json')` —
+    // default here was `resolveUserPath('control-plane', 'sessions.json')`,
     // no surface segment, so a composition that did not pass its own path got
     // the unscoped orphan directory. Same omission as the control-plane stores
     // beside it, same resolver now (control-plane-store-paths.ts).
@@ -460,7 +460,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // The broker is the authoritative register of session identity: every surface
   // that opens a session registers it here, and the task tool now keys its refs
   // on that same runtime session id rather than on a model-supplied argument.
-  // Before that binding this predicate could not have been written honestly —
+  // Before that binding this predicate could not have been written honestly,
   // the graph was keyed by a free-form tool parameter that defaulted to the
   // literal 'local', which no register could ever resolve.
   //
@@ -468,8 +468,8 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // deliberately not the only guard: the reaper additionally requires a record
   // to be older than its ownerless grace floor, and it never applies this
   // predicate to the legacy 'local' namespace at all. That way a broker that is
-  // merely late — starting up, mid-reconnect, a session registering in another
-  // process — costs nothing, and only a record that is both unowned AND stale
+  // merely late, starting up, mid-reconnect, a session registering in another
+  // process, costs nothing, and only a record that is both unowned AND stale
   // is collected.
   const sessionOrchestration = new CrossSessionTaskRegistry(
     shellPaths.resolveProjectPath(surfaceRoot, 'sessions', 'task-graph.json'),
@@ -483,12 +483,12 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     const record = agentManager.spawn({
       mode: 'spawn',
       task,
-      // Conversation first: a follow-up gets an answer, not a review chain —
+      // Conversation first: a follow-up gets an answer, not a review chain,
       // only the authorization marker or a local surface opens one.
       ...continuationChainOptions(input, { configReader: configManager }),
       // The tools, the instruction and the bound write authority for a
       // conversational turn. The routing builder sets `restrictTools: true` and
-      // — unless the routing intent named tools — no tool list at all, which
+      //, unless the routing intent named tools, no tool list at all, which
       // AgentManager reads as "only these" over an empty set. The turn then ran
       // with an empty registry and could record nothing the owner told it about
       // himself. Spread FIRST so a routing intent that DID name tools still
@@ -505,7 +505,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     embeddingRegistry: memoryEmbeddingRegistry,
   });
   const memoryRegistry = new MemoryRegistry(memoryStore);
-  // Repo source-tree code index (Stage A) — shares memoryEmbeddingRegistry so
+  // Repo source-tree code index (Stage A), shares memoryEmbeddingRegistry so
   // code + memory embeddings use one provider and one dimensionality. Schema
   // init only; build is not auto-triggered here (see codeIndexStore doc).
   const codeIndexDbPath = join(workingDirectory, '.goodvibes', surfaceRoot, 'code-index.sqlite');
@@ -529,7 +529,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     codeIndexStore.scheduleBuild();
   }
   // Stage B: tool-site incremental reindex. Gated on autoStartCodeIndex AND the
-  // built-state check inside the scheduler — an unbuilt index is a no-op.
+  // built-state check inside the scheduler, an unbuilt index is a no-op.
   const codeInjectionSettingEnabled = (): boolean => options.autoStartCodeIndex === true;
   const codeIndexReindexScheduler = new CodeIndexReindexScheduler({
     target: codeIndexStore,
@@ -545,7 +545,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   storeSnapshotScheduler.start();
   // Start-time janitor: one retention pass over every registered append-only
-  // store (best-effort). Every root the composition knows is passed — omitting
+  // store (best-effort). Every root the composition knows is passed, omitting
   // logDir/telemetryDir/homeDirectory would silently skip the activity-log,
   // telemetry-ledger, and recovery-snapshot stores on every sweep.
   const appendOnlyRetentionRoots = {
@@ -559,7 +559,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   runStartupAppendOnlySweep(appendOnlyRetentionRoots, appendOnlyRetentionConfigGet);
   // ...and again every few hours for as long as this runtime lives. A daemon
   // that stays up for weeks would otherwise never sweep any of those six
-  // stores again after boot — which is precisely the window in which they
+  // stores again after boot, which is precisely the window in which they
   // grow. Unref'd timers; the host that tears a runtime down stop()s it, the
   // same posture as storeSnapshotScheduler above.
   const appendOnlyRetentionScheduler = new AppendOnlyRetentionScheduler({
@@ -568,10 +568,10 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   });
   appendOnlyRetentionScheduler.start();
   // External config edits apply LIVE through the same subscribe() pipeline an
-  // in-process set() uses — a hand-edited settings file needs no restart. The
+  // in-process set() uses, a hand-edited settings file needs no restart. The
   // underlying file watchers are unref'd, so this never pins the event loop.
   const stopConfigWatch = configManager.watchConfigFiles(); // handle kept: dropping it is what left a 250ms poll running forever
-  // Memory consolidation runs HERE — this runtime is the memory store's single
+  // Memory consolidation runs HERE, this runtime is the memory store's single
   // writer. Idle trigger (no busy broker sessions) + slow schedule fallback;
   // reversible outcomes only, receipts retained, learning.consolidation.* tunes it.
   // Announce-once receipts (constructed HERE, before its first consumer): the
@@ -582,7 +582,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     memoryRegistry,
     configSource: configManager,
     // Idle AND not paused by the governor AND admitted at the current memory
-    // tier — memory pressure defers consolidation.
+    // tier, memory pressure defers consolidation.
     isIdle: () => sessionBroker.countBusySessions() === 0 && !pauseController.isPaused('memory-consolidation') && admitExpensiveWork('memory consolidation').allowed,
     // Attach notice per run that DID something: an SDK-composed daemon records
     // what consolidation merged/decayed/proposed without consumer re-wiring.
@@ -786,7 +786,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
   });
   // Eagerly initialize so automatic turn/agent-run snapshot subscriptions are
-  // wired up immediately rather than only on first explicit use — otherwise
+  // wired up immediately rather than only on first explicit use, otherwise
   // the very first TURN_COMPLETED/AGENT_COMPLETED could arrive before any
   // caller has touched the manager.
   void workspaceCheckpointManager.init().catch((err: unknown) => {
@@ -831,7 +831,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   const contextAccountingHolder = new ContextAccountingHolder();
   // The three handlers that must ride the SAME ask seam as a tool permission
   // (sandbox-boundary escalation, a blocked exec prompt, a loopback fetch) plus
-  // the announce-once containment receipt — one implementation, shared with the
+  // the announce-once containment receipt, one implementation, shared with the
   // pure-client composition (permissions/permission-composition.ts).
   // (Announcement store constructed above, before the consolidation scheduler.)
   const {
@@ -890,7 +890,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // Honest-unpriced dollars + provenance over the ONE pricing resolver (pricing-seams.ts).
   const { priceUsage, priceProvenance } = buildPricingSeams(providerRegistry);
 
-  // Orchestration engine — ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
+  // Orchestration engine, ships alongside wrfcController, untouched by this change. See the RuntimeServices interface comment.
   const orchestrationEngine = createOrchestrationEngine({
     agentManager,
     configManager,
@@ -904,7 +904,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   // findings decompose into dependency-graph workstreams run by the ONE engine.
   wrfcController.setFixWorkstreamRunner(createFixWorkstreamRunner({ engine: orchestrationEngine }));
 
-  // Live process registry — narrow structural deps only, constructed
+  // Live process registry, narrow structural deps only, constructed
   // after every source manager exists. See the RuntimeServices interface
   // comment for the dispose story (no RuntimeServices-wide shutdown seam yet).
   // Archive-aware: finished agent/swarm subtrees can be moved out of the
@@ -918,7 +918,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
   })
   // The ONE fleet ceiling's live probe (fleet.maxSize): native + ACP-hosted +
   // elastic fixers; responsibility only, by construction (fleet-count.ts).
-  // Hoisted fn — referenced by the engine above, called only at tick time.
+  // Hoisted fn, referenced by the engine above, called only at tick time.
   function fleetCapacityProbe() {
     return makeRuntimeFleetProbe({ readConfig: (key) => configManager.get(key as never), agentManager, acpHost })();
   }
@@ -1006,7 +1006,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     runtimeBus: options.runtimeBus,
     sleepCheckpoint: () => storeSnapshotScheduler.tick(),
     wakeCatchUp: [() => memoryConsolidationScheduler.tick(), () => storeSnapshotScheduler.tick(), async () => { await automationManager.triggerHeartbeat({ source: 'wake-catchup' }); }] });
-  // Construct + start the MemoryGovernor (default ON — a safety feature) with the
+  // Construct + start the MemoryGovernor (default ON, a safety feature) with the
   // standard KNOWN cache adapters (see wireDaemonMemoryGovernance).
   const { memoryGovernor } = wireDaemonMemoryGovernance({
     config: {
@@ -1027,7 +1027,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     // history pruning; broker GC + bucket truncation).
     knowledgeStores: [knowledgeStore, agentKnowledgeStore, homeGraphKnowledgeStore],
     sessionBroker,
-    // Graceful tripwire shutdown flushes in-flight state via ASYNC store snapshots (fs/promises): sync copyFileSync on a stalled disk would block the event loop, so the governor's 10s shutdown ceiling could never fire — threadpool copies keep it enforceable.
+    // Graceful tripwire shutdown flushes in-flight state via ASYNC store snapshots (fs/promises): sync copyFileSync on a stalled disk would block the event loop, so the governor's 10s shutdown ceiling could never fire, threadpool copies keep it enforceable.
     onTripwireShutdown: async () => { await storeSnapshotScheduler.snapshotAllAsync('tripwire'); },
   });
   // Late-bind the admission gate now that the governor exists: the expensive
@@ -1160,19 +1160,17 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
     integrationHelpers,
     dispose: (): void => disposalScope.dispose(),
     async rerootStores(newWorkingDir: string): Promise<void> {
-      // Step 1: Re-root MemoryStore — close existing SQLite/vector handles, reopen at new path.
       const newMemoryDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'memory.sqlite');
       await memoryStore.reroot(newMemoryDbPath);
 
-      // Step 1b: Re-root the code index alongside memory — otherwise it keeps
+      // Re-root the code index alongside memory. Otherwise it keeps
       // pointing at the old tree after a workspace swap.
       const newCodeIndexDbPath = join(newWorkingDir, '.goodvibes', surfaceRoot, 'code-index.sqlite');
       await codeIndexStore.reroot(newWorkingDir, newCodeIndexDbPath);
 
-      // Step 2: Re-root ProjectIndex — flush current path, reset, load from new directory.
       await projectIndex.reroot(newWorkingDir);
 
-      // Step 3: Subsystems that cannot be live-rerooted emit a warn log.
+      // Subsystems that cannot be live-rerooted emit a warn log.
       // They continue operating at their current root path until the next process restart,
       // at which point --working-dir / daemon-settings.json points to the new path.
       // This is acceptable because: (a) the swap endpoint is daemon-token-gated,
@@ -1180,7 +1178,7 @@ export function createRuntimeServices(options: RuntimeServicesOptions): RuntimeS
       // that is not workspace-scoped, and (c) knowledge/artifact stores resolve paths
       // through configManager which does not hot-reload during a running session.
       const cannotReroot = [
-        'knowledgeStore (SQLite at configManager-resolved path — restart required)',
+        'knowledgeStore (SQLite at configManager-resolved path, restart required)',
         'sessionManager (initialised with fixed workingDirectory)',
         'sessionOrchestration (task-graph.json path fixed at init)',
         'artifactStore (resolves rootDir via configManager.getControlPlaneConfigDir)',

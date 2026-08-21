@@ -15,7 +15,7 @@
  *     conversation, where the reply to it is a sentence.
  *  3. Nothing knew an occasion could be about HIM. He does not need to be told
  *     when his own birthday is.
- *  4. Asked to stop, the conversational turn switched the entire feature off —
+ *  4. Asked to stop, the conversational turn switched the entire feature off,
  *     silencing his wife's gift-giving occasion along with his own birthday.
  *
  * And one delivery defect found alongside them: the nudge was landed in the
@@ -123,7 +123,7 @@ function harness(options: {
   let now = options.now ?? Date.parse('2026-07-30T10:00:00Z');
 
   const service = new OccasionsService({
-    // The same four reads the real composition binds, `ownerNames` included —
+    // The same four reads the real composition binds, `ownerNames` included,
     // that is the whole linkage that lets his own birthday be recognised.
     profile: {
       importantDates: () => profile.importantDates(),
@@ -185,7 +185,7 @@ describe('the two-raise ceiling', () => {
     const h = harness({ now: Date.parse('2026-08-10T10:00:00Z') });
     // Natalie's birthday is 08-20 with a ten-day lead, so the window opens on
     // the 10th. Fourteen sweeps a day for eleven days is 154 passes, ending on
-    // the day itself — one more day and the housekeeping pass would reap the
+    // the day itself, one more day and the housekeeping pass would reap the
     // item as expired, which is correct and would hide what is being asserted.
     await sweepHourly(h, '2026-08-10', 11);
 
@@ -201,7 +201,7 @@ describe('the two-raise ceiling', () => {
     const first = await h.service.sweep();
     expect(first.nudge?.subjects[0]?.title).toBe("Natalie Sons's birthday");
 
-    // Every day in between is silent. Not "quieter" — silent.
+    // Every day in between is silent. Not "quieter", silent.
     for (const day of ['2026-08-11', '2026-08-14', '2026-08-17', '2026-08-19']) {
       h.setNow(Date.parse(`${day}T10:00:00Z`));
       expect((await h.service.sweep()).nudge).toBeNull();
@@ -348,7 +348,7 @@ describe('gift-flow activity acknowledges by itself', () => {
 
     const entry = (await h.state.acknowledgements())
       .find((record) => record.occasionId === "natalie sons's birthday");
-    // A `yes` outranks an acknowledgement and is left alone — it is what opened
+    // A `yes` outranks an acknowledgement and is left alone, it is what opened
     // the interview, and the resume path reads it.
     expect(entry?.answer).toBe('yes');
 
@@ -371,7 +371,7 @@ describe('an occasion about him that he only has to remember is never pushed', (
   test('his own birthday is never sent, through a whole hourly lead window', async () => {
     const h = harness({ now: Date.parse('2026-07-27T10:00:00Z') });
     // His birthday is 08-06; the window opens on 07-27. Eleven days of hourly
-    // sweeps is 154 passes — the exact scenario that produced five pushes.
+    // sweeps is 154 passes, the exact scenario that produced five pushes.
     await sweepHourly(h, '2026-07-27', 11);
     const aboutHim = h.pushes.filter((push) =>
       push.nudge.subjects.some((subject) => subject.occasionId === "mike's birthday"));
@@ -406,7 +406,7 @@ describe('an occasion about him that he only has to remember is never pushed', (
     expect(resolveOccasionSubject(hers, names)).toBe('other');
 
     // The same line on someone else's machine is about someone else. This is
-    // what "not a name match" means: change the file, change the answer — and
+    // what "not a name match" means: change the file, change the answer, and
     // the practical consequence is that it goes back to being pushed normally.
     expect(resolveOccasionSubject(his, ['Priya Raman'])).toBe('other');
     expect(pushableSubject({ ...his, subject: resolveOccasionSubject(his, ['Priya Raman']) }))
@@ -472,7 +472,7 @@ describe('a machine already in the bad state settles on load', () => {
     const store = new OccasionStateStore(statePath);
     const items = await store.openItems();
     expect(items).toHaveLength(1);
-    // Kept open. Not deleted, not resolved — nothing about it was resolved.
+    // Kept open. Not deleted, not resolved, nothing about it was resolved.
     expect(items[0]?.id).toBe("nudge:mike's birthday@2026-08-06");
     expect(items[0]?.servedBoundaries).toEqual(['lead', 'day-of']);
   });

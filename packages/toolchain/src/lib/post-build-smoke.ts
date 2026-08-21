@@ -1,5 +1,5 @@
 /**
- * post-build-smoke — proves a freshly compiled binary boots.
+ * post-build-smoke, proves a freshly compiled binary boots.
  *
  * Runs `<binary> --version`, asserts the expected banner prefix, and rejects
  * output containing packaging-failure sentinels (e.g. `sqlite-vec`,
@@ -10,7 +10,7 @@
  * emits module bodies in a nondeterministic order build-to-build; an eager
  * module-scope read off a lazy namespace object can therefore land before the
  * module that defines the binding, and the binary dies at load with a
- * ReferenceError — on SOME builds and not others. A binary that boots once is
+ * ReferenceError, on SOME builds and not others. A binary that boots once is
  * safe forever (the order is baked at build time), but the pattern itself is a
  * per-build lottery, so its presence fails the smoke even when this particular
  * build happened to boot.
@@ -95,7 +95,7 @@ export function runPostBuildSmoke(options: RunSmokeOptions): SmokeResult {
   if (eagerReads.length > 0) {
     const failed: SmokeResult = {
       ok: false,
-      detail: `artifact contains ${eagerReads.length}${eagerReads.length >= 8 ? '+' : ''} top-level eager namespace read(s) — a build-order lottery that can die at load on the next rebuild: ${eagerReads.slice(0, 3).join('; ')}`,
+      detail: `artifact contains ${eagerReads.length}${eagerReads.length >= 8 ? '+' : ''} top-level eager namespace read(s), a build-order lottery that can die at load on the next rebuild: ${eagerReads.slice(0, 3).join('; ')}`,
     };
     logger.error(`[post-build-smoke] ${failed.detail}`);
     return failed;

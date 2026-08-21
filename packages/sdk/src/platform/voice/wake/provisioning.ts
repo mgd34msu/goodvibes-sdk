@@ -1,11 +1,11 @@
 /**
- * provisioning.ts — managed, checksum-pinned download of the wake-word models.
+ * provisioning.ts, managed, checksum-pinned download of the wake-word models.
  *
  * Two artifacts have to be on disk before the detector can run: our pinned
  * classifier, and the Google `speech_embedding` backbone it sits behind. Both
  * are fetched from the append-only `voice-runtimes-v1` release tag against a
  * pinned byte count and sha256, through the same verified-download path the
- * piper and whisper runtimes use — so a truncated body, a proxy's error page,
+ * piper and whisper runtimes use, so a truncated body, a proxy's error page,
  * or a swapped asset is refused and NOTHING is left at the destination.
  *
  * The classifier is pinned in BOTH runtime formats and both are fetched: the
@@ -17,9 +17,9 @@
  *
  * EVERY ATTRIBUTION NOTICE TRAVELS WITH ITS ARTIFACT
  *
- * Three artifacts are redistributed out of this tree — our classifier, Google's
+ * Three artifacts are redistributed out of this tree, our classifier, Google's
  * Apache-2.0 `speech_embedding` build, and the speech gate `voice.wake.vadThreshold`
- * runs — and each is published with an attribution file a deployment carrying the
+ * runs, and each is published with an attribution file a deployment carrying the
  * artifact must carry with it. All three are therefore fetched, each immediately
  * after the artifact it belongs to, and each is served by the chunk path a browser
  * reads through: an artifact whose attribution is not on disk is not one this tree
@@ -32,7 +32,7 @@
  * {@link WakeProvisionStatus.ready} covers the onnx classifier, the front end and
  * the attribution of each. Two provisioned artifacts are deliberately outside it:
  *
- *  - the tflite twin, because nothing in this SDK loads it — a host that got the
+ *  - the tflite twin, because nothing in this SDK loads it, a host that got the
  *    onnx build, the front end and their NOTICEs can detect, and reporting
  *    otherwise would be a lie in the unhelpful direction. It reports through
  *    `mobileClassifier` / `mobileFormatReady`.
@@ -64,12 +64,12 @@
  * The model ships WITH the installation: the installer and the npm postinstall
  * call the install policy in ./install-provision.ts, and a daemon retries at
  * boot whatever the install could not get. So a fresh machine has the artifacts
- * without the user asking, which is the point — an always-listening feature the
+ * without the user asking, which is the point, an always-listening feature the
  * user has to go and fetch a model for is a feature most people never reach.
  *
  * What did NOT change is the runtime rule. Nothing in this file downloads as a
  * side effect of anything: {@link wakeProvisionStatus} only reads, and turning
- * `voice.wake.enabled` on never fetches — a host missing the artifacts reports
+ * `voice.wake.enabled` on never fetches, a host missing the artifacts reports
  * not-provisioned and names the recovery command. Install-time and boot-time
  * provisioning are sanctioned acts with a receipt; flipping a switch is not.
  */
@@ -122,8 +122,8 @@ export interface ManagedWakePaths {
    * The attribution NOTICE that must travel with the speech-embedding backbone,
    * on exactly the terms the classifier's does.
    *
-   * Three artifacts are redistributed by this tree — the classifier, Google's
-   * Apache-2.0 `speech_embedding` build, and the speech gate — and each carries
+   * Three artifacts are redistributed by this tree, the classifier, Google's
+   * Apache-2.0 `speech_embedding` build, and the speech gate, and each carries
    * an attribution file that a deployment redistributing it must carry with it.
    * The daemon serves the embedding's bytes over the same chunk path it serves
    * the classifier's, so fetching one NOTICE and not the others would leave part
@@ -165,7 +165,7 @@ export function resolveManagedWakePaths(managedRoot: string, version?: string): 
 
 /**
  * Content-verified status of one artifact. `verified` means the bytes on disk
- * hash to the pin — never that the path exists.
+ * hash to the pin, never that the path exists.
  */
 export function wakeArtifactStatus(path: string, spec: VerifiedDownloadSpec): WakeArtifactStatus {
   if (!existsSync(path)) {
@@ -187,7 +187,7 @@ export interface ResolvedWakeModelFile {
   readonly path: string;
   /**
    * True for the managed, checksum-pinned artifact. False for a file loaded from
-   * a custom directory as-is — which `voice.wake.customModelDir`'s description
+   * a custom directory as-is, which `voice.wake.customModelDir`'s description
    * promises explicitly, because it is the difference between a model whose
    * bytes were verified and one that was not.
    */
@@ -199,7 +199,7 @@ export interface ResolvedWakeModelFile {
  *
  * The pinned default id resolves inside the managed tree. Any other id resolves
  * against `voice.wake.customModelDir`, and when that row is EMPTY it falls back
- * to the managed `custom` directory — the fallback the row's description
+ * to the managed `custom` directory, the fallback the row's description
  * promises, implemented here rather than left for each host to re-derive, since
  * a host that skipped it would look for custom models in the process's working
  * directory.
@@ -299,7 +299,7 @@ export function wakeProvisionStatus(options: {
   // travel with bytes this tree hands out, and the daemon hands both the
   // classifier's and the embedding's to browsers. The speech gate's NOTICE is
   // held to the same rule inside `vadReady` rather than here, because the gate
-  // itself is not part of `ready` — see `vadReady`.
+  // itself is not part of `ready`, see `vadReady`.
   const anyCorrupt = classifier.corrupt || notice.corrupt || embedding.corrupt || embeddingNotice.corrupt;
   const allVerified = classifier.verified && notice.verified && embedding.verified && embeddingNotice.verified;
   return {
@@ -325,7 +325,7 @@ export function wakeProvisionStatus(options: {
 /**
  * Which artifact a progress event or outcome is about.
  *
- * `mobile-classifier` is the tflite form of the same classifier — a separate
+ * `mobile-classifier` is the tflite form of the same classifier, a separate
  * component rather than a detail of `classifier`, so a receipt can report one
  * landing and the other not. `embedding-notice` and `vad-notice` are the front
  * end's and the speech gate's attribution files, listed on the same terms as the
@@ -362,8 +362,8 @@ export interface WakeComponentOutcome {
 export interface WakeProvisionResult {
   /**
    * The DETECTOR can run: the onnx classifier, its NOTICE and the embedding all
-   * landed. Deliberately not "every artifact landed" — see
-   * {@link mobileFormatReady} — because this is the field a surface renders as
+   * landed. Deliberately not "every artifact landed", see
+   * {@link mobileFormatReady}, because this is the field a surface renders as
    * "wake works", and the tflite twin is not something the detector loads.
    */
   readonly ready: boolean;
@@ -398,7 +398,7 @@ export interface WakeProvisionOptions {
  *
  * Resumable: re-running after a partial or interrupted provision re-checks each
  * artifact by content and fetches only what does not already match. An artifact
- * present but failing its checksum is REPLACED, never used — a truncated or
+ * present but failing its checksum is REPLACED, never used, a truncated or
  * mismatched download is a re-fetch, and if the re-fetch also fails the result
  * says so rather than reporting success over a bad file.
  */
@@ -428,7 +428,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
   mkdirSync(paths.frontEndDir, { recursive: true });
 
   // Order matters for a partial network: the four the detector needs come first
-  // — each artifact immediately followed by its own attribution file — so an
+  //, each artifact immediately followed by its own attribution file, so an
   // install that loses the connection part-way still leaves a WORKING detector
   // rather than a tflite file and nothing to run. What the detector does not need
   // follows: the speech gate (`voice.wake.vadThreshold` is 0 unless someone turns
@@ -455,7 +455,7 @@ export async function provisionWakeWordModels(options: WakeProvisionOptions): Pr
     outcomes.some((outcome) => outcome.component === component && outcome.state !== 'failed');
   // `ready` is the detector: the onnx classifier, the front end, and the
   // attribution of each. Neither the tflite twin nor the speech gate is part of
-  // it — nothing here loads the twin, and vadThreshold is 0 by default, so the
+  // it, nothing here loads the twin, and vadThreshold is 0 by default, so the
   // detector runs without the gate. Both are reported separately instead.
   const ready = landed('classifier') && landed('notice') && landed('embedding') && landed('embedding-notice');
   return {
@@ -521,8 +521,8 @@ async function provisionOne(
  * that must accompany every surfacing of it.
  *
  * Wherever a surface names the model, it names this too. The recall figures are
- * measured entirely on text-to-speech output — no human has recorded the phrase
- * "hey goodvibes" — so quoting a recall number without this sentence would
+ * measured entirely on text-to-speech output, no human has recorded the phrase
+ * "hey goodvibes", so quoting a recall number without this sentence would
  * present a synthetic result as a real one.
  */
 export function describeWakeModel(model: WakeWordModelManifest): string {
@@ -530,7 +530,7 @@ export function describeWakeModel(model: WakeWordModelManifest): string {
   const recall = `${(measurements.recall * 100).toFixed(1)}%`;
   const minimalPairs = `${(measurements.minimalPairFalseAcceptRate * 100).toFixed(1)}%`;
   const synthetic = measurements.recallIsSyntheticOnly
-    ? ' Recall is measured on synthesised speech only — no human recording of the phrase exists, '
+    ? ' Recall is measured on synthesised speech only, no human recording of the phrase exists, '
       + 'so this figure has no real microphones, rooms, or accents behind it. The false-accept figures '
       + 'ARE measured on real human speech.'
     : '';

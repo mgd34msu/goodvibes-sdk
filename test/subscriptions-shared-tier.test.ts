@@ -2,12 +2,12 @@
  * subscriptions-shared-tier.test.ts
  *
  * Provider subscriptions (OAuth sessions for providers like
- * 'openai-subscriber') used to be stored per surface —
+ * 'openai-subscriber') used to be stored per surface,
  * `~/.goodvibes/<surfaceRoot>/subscriptions.json`. The daemon hosts every
  * conversational turn but had its own store, so a login completed in the TUI
  * was invisible to it: the daemon kept refreshing whatever it already had,
  * and a successful login changed nothing from its point of view. That defect
- * was measured live — a real 401 loop against a revoked token the daemon
+ * was measured live, a real 401 loop against a revoked token the daemon
  * never learned had been replaced.
  *
  * This file pins the fix: subscriptions live in the platform's SHARED tier
@@ -178,7 +178,7 @@ describe('legacy surface store migration', () => {
     expect(onDisk.subscriptions['openai-subscriber'].accessToken).toBe('legacy-fresh');
 
     // A second boot (fresh instance, same paths) must not re-fold: the shared
-    // record is now the newer one, so the legacy value stays where it is —
+    // record is now the newer one, so the legacy value stays where it is,
     // the shared store already reflects it and wins on read.
     const second = new SubscriptionManager(sharedPath, { legacyPath });
     expect(second.get('openai-subscriber')?.accessToken).toBe('legacy-fresh');
@@ -231,7 +231,7 @@ describe('legacy surface store migration', () => {
     expect(existsSync(legacyPath)).toBe(true);
     expect(readFileSync(legacyPath, 'utf-8')).toBe(legacyBytesBefore);
 
-    // A corrupt legacy file: must not be quarantined (renamed) or deleted —
+    // A corrupt legacy file: must not be quarantined (renamed) or deleted,
     // it is not this manager's file to touch, and an older build still
     // pointed at it must find it exactly as it left it.
     const corruptHome = makeHome('gv-sub-migrate-legacy-corrupt');

@@ -33,7 +33,7 @@ function generateId(): string {
 }
 
 /**
- * EventReplayQueue — holds events and replays unacknowledged ones.
+ * EventReplayQueue, holds events and replays unacknowledged ones.
  *
  * Grace period: events are held for 1 full LLM turn after they fire.
  * After the grace period, if unacknowledged, they are replayed as
@@ -41,7 +41,7 @@ function generateId(): string {
  *
  * Delivery semantics: the caller acknowledges an event as soon as its
  * formatted message is injected into the conversation (see the orchestrator's
- * turn-completion hook) — injection IS delivery, so each event reaches the
+ * turn-completion hook), injection IS delivery, so each event reaches the
  * model exactly once. maxReplays remains as a backstop for callers that
  * defer acknowledgment; events exceeding it are dropped with a log line.
  */
@@ -126,7 +126,7 @@ export class EventReplayQueue {
       if (event.replayCount >= this.maxReplays) {
         // Drop: exceeded max replays
         logger.debug(
-          `[EventReplayQueue] Dropping event ${event.id} (${event.eventName}) after ${event.replayCount} replays — model did not acknowledge.`,
+          `[EventReplayQueue] Dropping event ${event.id} (${event.eventName}) after ${event.replayCount} replays, model did not acknowledge.`,
         );
         toRemove.push(event.id);
         this.droppedCount++;
@@ -216,19 +216,19 @@ export class EventReplayQueue {
         const chainId = (payload?.chainId as string) ?? 'unknown';
         const from = (payload?.from as string) ?? '?';
         const to = (payload?.to as string) ?? '?';
-        return `WRFC chain ${chainId} transitioned ${from} \u2192 ${to} — waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
+        return `WRFC chain ${chainId} transitioned ${from} \u2192 ${to}, waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
       }
       case 'WORKFLOW_CHAIN_PASSED': {
         const chainId = (payload?.chainId as string) ?? 'unknown';
-        return `WRFC chain ${chainId} passed — waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
+        return `WRFC chain ${chainId} passed, waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
       }
       case 'WORKFLOW_CHAIN_FAILED': {
         const chainId = (payload?.chainId as string) ?? 'unknown';
         const reason = (payload?.reason as string) ?? 'unknown reason';
-        return `WRFC chain ${chainId} failed: ${reason} — waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
+        return `WRFC chain ${chainId} failed: ${reason}, waiting for action (first notified ${turnsAgo} ${turnWord} ago)`;
       }
       default: {
-        return `Event ${event.eventName} (id: ${event.id}) fired ${turnsAgo} ${turnWord} ago — waiting for acknowledgment`;
+        return `Event ${event.eventName} (id: ${event.id}) fired ${turnsAgo} ${turnWord} ago, waiting for acknowledgment`;
       }
     }
   }

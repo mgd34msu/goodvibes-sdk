@@ -10,7 +10,7 @@ capability** they sit on lives beside them in
 `packages/sdk/src/platform/voice/capture/`, and it serves the whole voice stack
 rather than the wake word alone: push-to-talk speech-to-text and wake detection
 are two consumers of ONE device path, because a wake does not end a capture
-session — it starts one, and re-opening the microphone at that moment would drop
+session. It starts one, and re-opening the microphone at that moment would drop
 the front of the sentence and race whatever still holds the device.
 
 > **Detection runs, and where it runs is stated per surface.** The
@@ -25,7 +25,7 @@ the front of the sentence and race whatever still holds the device.
 > The limits that remain are written in their own settings rows rather than
 > behind one blanket claim: a browser tab has no filesystem for
 > `voice.wake.retainAudio` or a local `voice.wake.activationSoundPath`. Neither
-> the agent surface nor `voice.wake.vadThreshold` is one of them any more — the
+> the agent surface nor `voice.wake.vadThreshold` is one of them any more. The
 > agent captures through the same recorder subprocess the terminal uses, and
 > there is a pinned speech gate now, so a surface refuses a non-zero threshold
 > only when it has not loaded that gate. `resolveWakeRuntimeSettings` reads every
@@ -46,7 +46,7 @@ voice engine bundles, each with a `<asset>.sha256` sidecar.
 | `goodvibes-vad-1.0.0.tflite` | 18,136 | `f8f1903c075b3d8cb0c7998ae613bbbf31ad5c2bd4c090fde3f83cfed588fdcd` |
 | `goodvibes-vad-1.0.0.NOTICE.txt` | 6,786 | `3d8d27800798397e4b1974712e28753f0c149018be733421d84bfe6cc16546d0` |
 
-The three `goodvibes-vad-1.0.0` assets are the speech gate — see
+The three `goodvibes-vad-1.0.0` assets are the speech gate. See
 [The speech gate](#the-speech-gate-is-ours-too-and-it-rides-the-same-front-end).
 Their byte counts and checksums are of the built artifacts and are what the
 upload to the release tag must match; **they land with this round's release**.
@@ -55,16 +55,16 @@ detector itself stays ready, which is why the gate is not part of
 `WakeProvisionStatus.ready`.
 
 The `.onnx` and `.tflite` twins are bit-identical in every decision on every
-evaluation clip — they are the same classifier in two runtime formats.
+evaluation clip. They are the same classifier in two runtime formats.
 
 **The `.tflite` twin is provisioned and served, but not loaded here.** The engine
 runs onnxruntime-web everywhere, including in the browser, so nothing in this
-repository loads the TFLite file and no test scores against it — its
+repository loads the TFLite file and no test scores against it. Its
 bit-identical claim rests on the training-time comparison recorded above, not on
 continuous verification. It IS downloaded alongside the `.onnx` build and served
 by `voice.wake.model.get` (`component=tflite`), so a runtime that cannot load
 onnx has the same access to the model as one that can. It does **not** gate
-`ready` — the only pinned artifact that does not: the detector this SDK runs needs
+`ready`, the only pinned artifact that does not: the detector this SDK runs needs
 the `.onnx` build, the front end, and **both** attribution NOTICEs, so a host that
 got those four and missed the twin is a host that detects, and reporting otherwise
 would be false in the unhelpful direction.
@@ -88,7 +88,7 @@ Three seams, one policy
 
 Four rules hold across all three:
 
-1. **A failed download never fails the installation.** No path throws — not an
+1. **A failed download never fails the installation.** No path throws: not an
    absent network, not DNS, not a proxy serving HTML, not an unwritable home
    directory. A failure degrades to precisely the previous behaviour: status
    reports `not-provisioned` **by content**, and the recovery command works.
@@ -104,7 +104,7 @@ Four rules hold across all three:
    missing, naming the recovery command. Installing and booting are the
    sanctioned acts, each with a receipt; a switch is not one.
 
-`GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD=1` installs without the model — for an
+`GOODVIBES_SKIP_WAKE_MODEL_DOWNLOAD=1` installs without the model, for an
 air-gapped host, a CI image, or a user who does not want the feature. It is
 reported in the same one-line message, so opting out never looks like a silent
 failure.
@@ -133,14 +133,14 @@ that is too low, and the manifest carries `recommendedThreshold: 0.9`.
 | 0.5 (upstream default) | 99.2 % | 34.5 % | 0.83 |
 | **0.9 (recommended)** | **96.8 %** | **24.7 %** | **0.13** |
 
-"Minimal pairs" are near-miss phrases like "hey good vibe check" — ordinary
+"Minimal pairs" are near-miss phrases like "hey good vibe check", ordinary
 English a user will actually say. 0.9 costs about two and a half points of
 recall and removes roughly a third of those false fires.
 
 ## Recall figures are from synthetic speech
 
 **No human recording of the phrase "hey goodvibes" exists yet.** Every positive
-clip used to measure recall — training, golden, adversarial — is text-to-speech
+clip used to measure recall, training, golden, adversarial, is text-to-speech
 output from a single VITS model. The 96.8 % / 99.2 % recall numbers above have
 no real microphones behind them, no real rooms beyond convolved simulated
 impulse responses, no accents outside the LibriTTS-R distribution, no children,
@@ -164,10 +164,10 @@ audio -> melspectrogram -> speech-embedding backbone -> this classifier
 
 A runtime must therefore also provide the two front-end models:
 
-- **Google `speech_embedding`** — Apache 2.0, provided by Google as a TFHub
+- **Google `speech_embedding`.** Apache 2.0, provided by Google as a TFHub
   module. openWakeWord's README states this directly: "This model is provided
   by Google as a TFHub module under an Apache-2.0 license."
-- **Melspectrogram front-end** — an untrained, fixed DSP graph (STFT plus a mel
+- **Melspectrogram front-end.** An untrained, fixed DSP graph (STFT plus a mel
   filterbank and window function). No learned parameters, nothing derived from
   any training corpus.
 
@@ -181,7 +181,7 @@ The classifier was TRAINED against openWakeWord's front end, so re-sourcing it
 is only safe if the replacement reproduces it. Both stages were rebuilt and
 both were measured against the originals.
 
-**Melspectrogram — computed in code, not downloaded.** It is a fixed STFT and
+**Melspectrogram: computed in code, not downloaded.** It is a fixed STFT and
 mel filterbank with no learned parameters, so
 `platform/voice/wake/melspectrogram.ts` computes it directly, removing a
 runtime download entirely. Its constants were not chosen and were not taken
@@ -198,12 +198,12 @@ values, with the residual against those weights:
 | filterbank | 32 bands, Slaney scale, Slaney norm, 60–3800 Hz | 8.1e-10 against a 1.4e-2 peak weight |
 | decibels | power spectrogram, amin 1e-10, ref 1.0, top_db 80 | exact |
 
-**Speech embedding — Google's weights, rebuilt.** Google's TF1 SavedModel was
+**Speech embedding: Google's weights, rebuilt.** Google's TF1 SavedModel was
 read directly (GraphDef for topology, checkpoint for all 332,088 parameters)
 and emitted as ONNX, with each batch normalisation folded into the convolution
 ahead of it. Folding those 19 batch norms reproduces openWakeWord's ONNX
 initializers with a maximum absolute difference of **exactly 0.0 on all 20
-weight tensors and all 19 bias tensors** — openWakeWord's file is Google's
+weight tensors and all 19 bias tensors**. openWakeWord's file is Google's
 checkpoint unmodified, which is the strongest possible provenance check.
 
 One graph note, recorded rather than glossed: Google's graph applies a ReLU
@@ -211,7 +211,7 @@ between the first convolution and its batch normalisation, and openWakeWord's
 re-implementation omits it. The shipped build omits it too, because that is the
 embedding function the classifier was trained against. A faithful Relu-keeping
 build reproduces Google's own TF module to 5.1e-05, and differs from the
-shipped one by up to 13.1 — the ReLU is materially active, so switching to it
+shipped one by up to 13.1. The ReLU is materially active, so switching to it
 would require retraining the classifier.
 
 ### Measured end-to-end divergence
@@ -237,7 +237,7 @@ quality silently.
 
 Hosted at the same append-only `voice-runtimes-v1` tag, with a `.sha256`
 sidecar and its own NOTICE. **Both** rows are provisioned, served, and counted in
-the reported download size — see "Attribution is mandatory" below for why the
+the reported download size. See "Attribution is mandatory" below for why the
 NOTICE is not optional:
 
 | artifact | bytes | sha256 |
@@ -253,7 +253,7 @@ openWakeWord's README carries a blanket sentence licensing "all of the included
 pre-trained models" CC BY-NC-SA 4.0, giving its own reason: "due to the
 inclusion of datasets with unknown or restrictive licensing as part of the
 training data." That reason describes the author's own wake-word classifiers,
-trained on those corpora. GoodVibes does not use them — this classifier was
+trained on those corpora. GoodVibes does not use them. This classifier was
 trained from scratch on attribution-only corpora. The reason cannot apply to an
 untrained DSP graph, nor to Google's Apache-2.0 embedding model.
 
@@ -277,7 +277,7 @@ terms. So both NOTICEs are:
   an afterthought);
 - **counted** in `downloadBytes`, through the manifest's own
   `wakeWordProvisionBytes` and `wakeWordFrontEndProvisionBytes` rather than a
-  hand-written sum at each call site — which is how the front end's NOTICE went
+  hand-written sum at each call site, which is how the front end's NOTICE went
   uncounted and unfetched in the first place;
 - **served** as their own chunk components (`notice`, `embedding-notice`), because
   a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it
@@ -286,7 +286,7 @@ terms. So both NOTICEs are:
   not one this tree may hand to anything; and
 - **kept by the sweeper**, whose pinned-filename set names them explicitly. A file
   the provisioner writes and the sweeper does not recognise gets deleted once an
-  hour, forever — that defect shipped once for the `.tflite`, and the front-end
+  hour, forever. That defect shipped once for the `.tflite`, and the front-end
   directory's NOTICE was the next place it could have happened.
 
 Training data credited in the NOTICE: LibriTTS-R and LibriSpeech (CC BY 4.0),
@@ -298,7 +298,7 @@ because they carry separate upstream terms.
 
 No third-party audio, no third-party model weights, and no training data are
 embedded in the artifacts. Every corpus that shaped the weights is
-attribution-only or public domain — none is NonCommercial, ShareAlike,
+attribution-only or public domain, none is NonCommercial, ShareAlike,
 NoDerivatives, or unstated.
 
 ## How each surface runs it
@@ -307,14 +307,14 @@ One inference runtime serves both surfaces: **`onnxruntime-web` on a WASM
 backend**, which is a plain JavaScript package with a WASM binary rather than a
 native module, so the terminal binary and the browser tab load the same thing.
 Measured on the reference machine with the pinned models: **3.46 ms per 80 ms
-frame, single-threaded** — inside the 3.53 ms budget the engine documents, and
+frame, single-threaded**, inside the 3.53 ms budget the engine documents, and
 more than an order of magnitude inside real time.
 
 **The terminal / daemon host.** A recorder subprocess produces the audio
 (`voice.wake.captureCommand`: pw-record, parecord, arecord, ffmpeg or sox, with
 `auto` probing in that order), and `platform/voice/capture/recorder-command.ts`
 holds the argv. Those arguments were checked against the real tools, not
-recalled — most consequentially, **pw-record needs `--container raw`**, because
+recalled. Most consequentially, **pw-record needs `--container raw`**, because
 writing to `-` without it emits a container header before the samples and
 byte-misaligns the entire stream, which does not fail: it produces a detector
 that never fires. A compiled single-file binary cannot rely on the runtime
@@ -328,7 +328,7 @@ from the release tag: the published assets answer without an
 `access-control-allow-origin` header, so a cross-origin fetch of them from the
 web UI's origin is refused before the bytes arrive. `voice.wake.model` serves the
 artifact in bounded chunks, each restating the pinned sha256, and the tab
-verifies the file it reassembled before creating a session — a truncated transfer
+verifies the file it reassembled before creating a session. A truncated transfer
 then fails at the consumer instead of loading as a model that silently never
 detects.
 
@@ -339,7 +339,7 @@ forever and looks exactly like a microphone that is picking nothing up.
 ## Noise suppression runs in the same place, on both surfaces
 
 `voice.wake.noiseSuppression: "speex"` is **SpeexDSP 1.2.1's preprocessor,
-compiled to WebAssembly and carried in the package** — 53,678 bytes, sha256
+compiled to WebAssembly and carried in the package**, 53,678 bytes, sha256
 `4829d9fa97e648ab9c45e9a685adba7bd762a4f948ec499c59b073bd03cce2bb`, with zero
 imports (no WASI syscalls, no JavaScript glue). It runs wherever `WebAssembly`
 exists, which is both shipped surfaces, for the same reason the inference runtime
@@ -349,8 +349,8 @@ fix. Build inputs, the pinned toolchain and the attribution are in
 `native/speexdsp-wasm/`; `bun scripts/build-speexdsp-wasm.ts` rebuilds it.
 
 **One application point, so no consumer can be missed.**
-`createNoiseSuppressingOpener` wraps whatever a host opens, and both consumers —
-the wake listener and the push-to-talk session — wrap the opener they are given.
+`createNoiseSuppressingOpener` wraps whatever a host opens, and both consumers,
+the wake listener and the push-to-talk session, wrap the opener they are given.
 So the classifier scores filtered frames, the utterance recorded after a wake is
 filtered, the pre-roll carried from before the wake is filtered, and voice input
 is filtered. A host passes the same plain opener it always did. Wrapping is
@@ -367,14 +367,14 @@ overlap-adds a window twice its block length):
 | passthrough | 515.5 rms | 4277.3 rms | 18.38 dB |
 | speex | 112.7 rms | 4097.3 rms | 31.21 dB |
 
-**Noise floor down 13.20 dB, SNR up 12.83 dB, tone correlation 0.9990** — the
+**Noise floor down 13.20 dB, SNR up 12.83 dB, tone correlation 0.9990**. The
 floor comes down by about the 15 dB the filter is asked for while the tone
 survives. `test/voice-noise-suppression.test.ts` asserts those numbers with
 margin, and asserts that `none` is a true passthrough: the same frame objects, so
 the byte path with suppression off is the path that shipped.
 
 **Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms, max 0.285 ms over 1000 frames
-after warm-up) — 0.13 % of one core, beside the detector's own 3.46 ms. Creating a
+after warm-up), 0.13 % of one core, beside the detector's own 3.46 ms. Creating a
 stage costs 5.3 ms the first time (compiling the module) and 0.18 ms per stream
 after that, since the compiled module is shared and only the filter state is per
 stream. Frames are filtered in 20 ms blocks through one continuous state, not in
@@ -382,7 +382,7 @@ stream. Frames are filtered in 20 ms blocks through one continuous state, not in
 block length, and an 80 ms block would track a room four times more slowly than
 SpeexDSP is tuned for.
 
-**What it is not.** The module carries the denoiser and nothing else — no echo
+**What it is not.** The module carries the denoiser and nothing else: no echo
 canceller, no automatic gain control (which would move the loudness the
 classifier was trained against), and no voice-activity gate. Those stages are
 disabled explicitly in the build rather than left at upstream defaults.
@@ -390,7 +390,7 @@ disabled explicitly in the build rather than left at upstream defaults.
 
 **Attribution is mandatory here too.** SpeexDSP is BSD 3-clause, which requires
 its copyright notice, condition list and disclaimer to be reproduced with binary
-redistribution — and the base64 module inside the published package is binary
+redistribution, and the base64 module inside the published package is binary
 redistribution. `native/speexdsp-wasm/NOTICE.txt` is that reproduction and
 `SPEEXDSP_PREPROCESS.noticePath` points at it. Nothing in the chain is
 NonCommercial, ShareAlike or NoDerivatives: SpeexDSP is BSD 3-clause and the
@@ -399,7 +399,7 @@ linked C runtime (wasi-libc) is Apache-2.0-with-LLVM-exception / Apache-2.0 / MI
 ## The speech gate is ours too, and it rides the same front end
 
 `voice.wake.vadThreshold` used to refuse: it named a stage with no model behind
-it. There is a model now, and it is **ours — trained by us**, on the same
+it. There is a model now, and it is **ours, trained by us**, on the same
 commercially-clean corpora class as the wake classifier. It is a
 **speech/non-speech head over the SAME 96-dimension embedding the wake classifier
 consumes**:
@@ -417,22 +417,22 @@ and its own provenance. Architecture: 96 inputs → fixed input standardisation 
 32 units (ReLU) → 16 units (ReLU) → 1 unit (sigmoid). 3,713 parameters, 15.9 kB.
 
 **What it does.** A frame whose speech probability falls below the threshold is
-**withheld from the classifiers** — the 2.4 MB classifier is not run for it — and
+**withheld from the classifiers**, the 2.4 MB classifier is not run for it, and
 the withheld frame breaks any run of above-threshold frames in progress, because
 patience counts consecutive SCORED frames. Cooldown is untouched: withholding a
 frame must not let one utterance fire twice.
 
 **Trained on.** 278,553 frames: LibriSpeech `train-clean-100` and MUSAN speech as
 positives, MUSAN noise and music as negatives, with per-file gain randomisation
-and **half the speech mixed with noise at 0–18 dB SNR** — a head trained on loud
+and **half the speech mixed with noise at 0–18 dB SNR**. A head trained on loud
 clean speech and quiet noise learns "loud", and would then gate the exact case
 the detector has to survive, someone speaking with a fan running. Labels for
 speech recordings are weak, derived from energy over the embedding's own 760 ms
 receptive field (≥60 % of the window above the recording's own floor is speech,
 ≤5 % is non-speech, in between is dropped as ambiguous); the negative class is
 anchored by recordings that contain no speech at all. Every corpus is
-attribution-only or public domain — the same set the wake classifier's NOTICE
-credits — and `goodvibes-vad-1.0.0.NOTICE.txt` carries the attribution.
+attribution-only or public domain, the same set the wake classifier's NOTICE
+credits, and `goodvibes-vad-1.0.0.NOTICE.txt` carries the attribution.
 
 **Measured on 106,390 held-out frames** (44,286 speech), from recordings disjoint
 from training by file and by speaker:
@@ -455,12 +455,12 @@ recordings recorded into `test/fixtures/wake-vad.json`, **0 % of the noise
 recording's frames pass and 95.8 % of the speech recording's do**, and the test
 suite asserts both.
 
-**`voice.wake.vadThreshold` still ships at 0** — the gate off. That is the
+**`voice.wake.vadThreshold` still ships at 0**, the gate off. That is the
 configuration that has been exercised, and a gate can only ever cost a detection;
 0.30 is what to set it to when turning the gate on.
 
 **Cost: 0.025 ms per 80 ms frame** (p50 0.020 ms, p95 0.033 ms over 1000 frames
-after warm-up, measured through onnxruntime-node on the reference machine) —
+after warm-up, measured through onnxruntime-node on the reference machine),
 0.031 % of one core, beside the detector's own 3.46 ms.
 
 **The twins agree.** onnx vs Keras 1.8e-07, tflite vs Keras 5.4e-07 over 2,000
@@ -468,12 +468,12 @@ held-out frames, with **zero gating decisions changed** at thresholds 0.2, 0.3 a
 0.5. The ONNX graph was assembled by hand from the trained weights (eight nodes)
 rather than run through a converter, then verified against Keras.
 
-**Both hosts, one artifact — with one host-side line each.** The gate is a
+**Both hosts, one artifact, with one host-side line each.** The gate is a
 session the host loads and hands to the engine, exactly as it does the classifier
 and the embedding, and the browser tab reads its bytes from the daemon
 (`voice.wake.model` with `component: "vad"`) because the release asset answers
 with no CORS header. A surface that has not loaded it refuses any threshold above
-0 rather than running unscreened frames through a stage the user configured —
+0 rather than running unscreened frames through a stage the user configured.
 `WakeSurfaceCapabilities.vadAvailable` is that declaration.
 
 ## Known weaknesses
@@ -481,7 +481,7 @@ with no CORS header. A surface that has not loaded it refuses any threshold abov
 - **Minimal pairs.** At 0.9 it still fires on 24.7 % of never-trained near-miss
   phrases. "hey good vibes" is made of ordinary English words.
 - **Non-speech audio.** The negative corpus is roughly 98 % English read speech
-  — little music, no television, no non-English. The model has never been
+  little music, no television, no non-English. The model has never been
   taught what those sound like and false-accepts more on them. This is the
   known, bounded reason to prefer the accent-diverse retrain when it lands.
 - **Homophones.** "hay good vibes" fires 100 % of the time. That is unavoidable

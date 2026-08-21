@@ -46,7 +46,7 @@ interface SelfImproveContext {
   readonly enrichSource?: (sourceId: string, options: { readonly force?: boolean; readonly knowledgeSpaceId?: string }) => Promise<unknown>;
   /**
    * Cooperative stop probe (memory-governor pause), consulted at the SAME
-   * yield points as `input.signal` — before/after gap discovery and at the top
+   * yield points as `input.signal`, before/after gap discovery and at the top
    * of every per-gap iteration. This is what makes `stopWhenPaused` real for
    * SPACE-SCOPED runs: without it the pause was only honored between spaces of
    * a whole-store sweep, and every sync-pump round (always space-scoped) ran

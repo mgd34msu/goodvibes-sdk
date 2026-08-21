@@ -7,7 +7,7 @@
  *    synthetic UID for a UID-less event, and honest skip of a DTSTART-less VEVENT.
  *  - RRULE subset: DAILY/WEEKLY/MONTHLY/YEARLY + INTERVAL/COUNT/UNTIL/weekly-BYDAY
  *    expand to correct occurrences; anything outside the subset is marked
- *    `expansion: 'unsupported'` and yields ONLY its seed — never fabricated dates.
+ *    `expansion: 'unsupported'` and yields ONLY its seed, never fabricated dates.
  *  - SubscriptionStore against FAKE feeds + a FAKE clock (no real network, ever):
  *    paste-URL-and-done add() with X-WR-CALNAME-derived name, conditional 304 refresh,
  *    honest unreachable / parse-error / stale-with-age status, validate-by-fetch,
@@ -255,7 +255,7 @@ describe('compareEventDateTime / eventDateTimeEpochMs', () => {
 
   // Reviewer's exact case: a tzid wall-clock reading of 01:00 vs a real UTC instant
   // of 05:00 on the same calendar day. This build ships no tz database, so it cannot
-  // compute the true offset for America/New_York on this date — the documented
+  // compute the true offset for America/New_York on this date, the documented
   // best-effort approximation reads the tzid wall-clock digits AS IF they were UTC.
   // This pins that documented, deterministic behavior (not a claim of true accuracy).
   test('01:00 tzid vs 05:00Z: the documented wall-clock-as-UTC approximation is deterministic', () => {
@@ -452,7 +452,7 @@ describe('purity', () => {
       { name: 'global fetch(...)', pattern: /\bfetch\s*\(/ },
       { name: 'Buffer', pattern: /\bBuffer\b/ },
       // Any import specifier that is neither relative ('./'/'../') nor a type-only
-      // re-export of a relative path — i.e. a bare package/builtin specifier. Every
+      // re-export of a relative path, i.e. a bare package/builtin specifier. Every
       // real import in this module is (and must stay) relative; this catches any
       // new bare specifier (a builtin this list doesn't yet name explicitly, or an
       // npm dependency) the moment it is introduced.

@@ -1,5 +1,5 @@
 /**
- * Workflow emitters — typed emission wrappers for WRFC workflow events.
+ * Workflow emitters, typed emission wrappers for WRFC workflow events.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

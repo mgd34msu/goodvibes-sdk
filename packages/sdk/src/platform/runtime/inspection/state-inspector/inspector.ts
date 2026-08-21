@@ -1,12 +1,12 @@
 /**
- * StateInspectorProvider — enhanced runtime state inspector data provider.
+ * StateInspectorProvider, enhanced runtime state inspector data provider.
  *
  * Extends the basic StateInspectorPanel from diagnostics with:
  * - Bounded transition history via BoundedTransitionLog
  * - Domain-filtered snapshots
  * - Subscription registry showing active consumers with notification metadata
  *
- * This is a DATA PROVIDER — no UI rendering logic.
+ * This is a DATA PROVIDER, no UI rendering logic.
  * State inspector provider implementation.
  */
 import type {
@@ -50,7 +50,7 @@ interface MutableSubscriptionInfo {
 // ── StateInspectorProvider ────────────────────────────────────────────────────
 
 /**
- * StateInspectorProvider — full-featured state inspector data provider.
+ * StateInspectorProvider, full-featured state inspector data provider.
  *
  * ### Usage
  * ```ts
@@ -307,7 +307,7 @@ export class StateInspectorProvider {
    * Seek the cursor to an absolute logical index.
    * Pass `timeline.size` to return to live.
    *
-   * @param index — Target index (size = live).
+   * @param index, Target index (size = live).
    */
   public seekTo(index: number): void {
     this._timeline.seekTo(index);
@@ -316,7 +316,7 @@ export class StateInspectorProvider {
   /**
    * Seek to the nearest event at or before a given epoch ms timestamp.
    *
-   * @param epochMs — Target timestamp.
+   * @param epochMs, Target timestamp.
    */
   public seekToTime(epochMs: number): void {
     this._timeline.seekToTime(epochMs);

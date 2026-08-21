@@ -7,7 +7,7 @@
  * LLM-assisted builders return a string prompt to be sent to the LLM by the
  * orchestrator; the caller assembles the section from the LLM response.
  *
- * Empty sections return null — the orchestrator omits them entirely (no header).
+ * Empty sections return null, the orchestrator omits them entirely (no header).
  */
 
 import type { ProviderMessage, ContentPart } from '../providers/interface.js';
@@ -65,7 +65,7 @@ export const COMPACTION_HANDOFF_HEADER =
   'IMPORTANT: This session is not new! Context was compacted, please read the following for proper handoff so you may resume work!';
 
 /**
- * buildHandoffHeader — always returns the mandatory handoff header.
+ * buildHandoffHeader, always returns the mandatory handoff header.
  * This is the first line of every compacted output.
  */
 export function buildHandoffHeader(): CompactionSection {
@@ -110,7 +110,7 @@ export function stripReinjectedInstructions(text: string): string {
 }
 
 /**
- * buildReinjectedInstructions — re-includes the standing system instruction
+ * buildReinjectedInstructions, re-includes the standing system instruction
  * chain and the frontmatter of any active skill at the compaction boundary so
  * compaction never silently strips them. Returns null when neither is present.
  *
@@ -151,7 +151,7 @@ export function buildReinjectedInstructions(
 // ---------------------------------------------------------------------------
 
 /**
- * buildSessionMemories — format pinned memories.
+ * buildSessionMemories, format pinned memories.
  * Returns null if there are no memories.
  */
 export function buildSessionMemories(
@@ -171,7 +171,7 @@ export function buildSessionMemories(
 // ---------------------------------------------------------------------------
 
 /**
- * buildCurrentTask — one line stating what the user is currently doing.
+ * buildCurrentTask, one line stating what the user is currently doing.
  * Uses plan title if a plan exists, otherwise falls back to the last user message.
  */
 export function buildCurrentTask(
@@ -190,7 +190,7 @@ export function buildCurrentTask(
 // ---------------------------------------------------------------------------
 
 /**
- * buildRunningAgents — list agents in running or pending status.
+ * buildRunningAgents, list agents in running or pending status.
  * Includes WRFC chain ID, agent ID, and task (truncated to 80 chars).
  * Returns null if no agents are running.
  */
@@ -223,9 +223,9 @@ export function buildRunningAgents(
 // ---------------------------------------------------------------------------
 
 /**
- * buildCompletedAgentWork — list standalone (non-WRFC) agents that finished
+ * buildCompletedAgentWork, list standalone (non-WRFC) agents that finished
  * (completed or failed) this session, with a best-effort files-touched summary.
- * Agents that belong to a WRFC chain are excluded — they are already
+ * Agents that belong to a WRFC chain are excluded, they are already
  * summarized per-chain by buildAgentActivityTable, and listing them again
  * here would double-report the same work.
  */
@@ -259,7 +259,7 @@ export function buildCompletedAgentWork(
 /**
  * Best-effort files-touched summary for a plain (non-WRFC) agent, parsed
  * opportunistically from its raw output. Returns null if no structured
- * completion report was found or it reported no file paths — this is a
+ * completion report was found or it reported no file paths, this is a
  * best-effort signal, not a guarantee (plain agents are not required to
  * emit a completion report the way WRFC engineers are).
  */
@@ -283,11 +283,11 @@ function describeAgentFiles(agent: AgentRecord): string | null {
 // ---------------------------------------------------------------------------
 
 /**
- * gatherRecentConversation — collect user/assistant messages backward from most
+ * gatherRecentConversation, collect user/assistant messages backward from most
  * recent, stopping when adding the next message would exceed maxTokens.
  * Returns full messages only (no partial messages).
  *
- * The returned messages are raw — they will be further filtered by the LLM
+ * The returned messages are raw, they will be further filtered by the LLM
  * substance filter in the orchestrator.
  */
 export function gatherRecentConversation(
@@ -353,7 +353,7 @@ function buildDelimitedMessagePrompt(opts: {
 }
 
 /**
- * buildToolResultsPrompt — build the prompt for LLM-assisted tool relevance extraction.
+ * buildToolResultsPrompt, build the prompt for LLM-assisted tool relevance extraction.
  *
  * The caller sends this to the LLM and uses the response as the section content.
  */
@@ -380,7 +380,7 @@ export function buildToolResultsPrompt(toolMessages: ProviderMessage[]): string 
 // ---------------------------------------------------------------------------
 
 /**
- * buildConversationFilterPrompt — build the LLM prompt for filtering gathered
+ * buildConversationFilterPrompt, build the LLM prompt for filtering gathered
  * recent messages for substance.
  *
  * The caller sends this to the LLM; the response replaces the raw gathered messages.
@@ -394,7 +394,7 @@ export function buildConversationFilterPrompt(
       'From these recent messages, remove anything that does not advance the work:',
       'short acknowledgments, agent count updates, repetitive system nudges, status confirmations.',
       'Keep: instructions, planning, decisions, task assignments, requirement changes.',
-      'ALL user messages are high-priority — bias toward keeping them even if short.',
+      'ALL user messages are high-priority, bias toward keeping them even if short.',
       'Keep user-assistant pairs together: if you keep an assistant message, keep the user message that prompted it.',
       'Return only the messages worth preserving, in original order.',
     ],
@@ -413,7 +413,7 @@ export function buildConversationFilterPrompt(
 // ---------------------------------------------------------------------------
 
 /**
- * buildAgentActivityTable — rule-based table from WRFC chain data.
+ * buildAgentActivityTable, rule-based table from WRFC chain data.
  * One row per chain, most recent first. Skips intermediate reviews/fix cycles.
  * Stops when adding the next row would exceed the token budget.
  *
@@ -477,7 +477,7 @@ export function buildAgentActivityTable(
 /**
  * Compact "N files" summary for a chain's touched-paths ledger, or '—' when
  * absent/empty. Degrades gracefully for legacy chains persisted before
- * `touchedPaths` existed (undefined) — this is a cosmetic display gap, not
+ * `touchedPaths` existed (undefined), this is a cosmetic display gap, not
  * a correctness concern; see `WrfcController.collectChainTouchedPaths()` for
  * the fuller fallback-from-reports reconstruction used by auto-commit.
  */
@@ -508,7 +508,7 @@ function terminalResult(state: WrfcChain['state']): string {
 // ---------------------------------------------------------------------------
 
 /**
- * buildOlderAgentSummaryPrompt — build the prompt for LLM-assisted summary of
+ * buildOlderAgentSummaryPrompt, build the prompt for LLM-assisted summary of
  * agents that did not fit in the activity table.
  *
  * Returns empty string if no older chains.
@@ -547,7 +547,7 @@ export function buildOlderAgentSummaryPrompt(olderChains: WrfcChain[]): string {
 // ---------------------------------------------------------------------------
 
 /**
- * buildResolvedProblemsPrompt — build the prompt for LLM-assisted extraction
+ * buildResolvedProblemsPrompt, build the prompt for LLM-assisted extraction
  * of problem → resolution pairs from the conversation.
  *
  * Returns empty string if no messages.
@@ -577,7 +577,7 @@ export function buildResolvedProblemsPrompt(
 // ---------------------------------------------------------------------------
 
 /**
- * buildPlanProgress — rule-based from plan state.
+ * buildPlanProgress, rule-based from plan state.
  * Returns null if no active plan.
  */
 export function buildPlanProgress(
@@ -628,7 +628,7 @@ export function buildPlanProgress(
 // ---------------------------------------------------------------------------
 
 /**
- * buildSessionLineage — format the append-only micro-log.
+ * buildSessionLineage, format the append-only micro-log.
  * Each compaction adds one entry; prior entries are never modified.
  */
 export function buildSessionLineage(

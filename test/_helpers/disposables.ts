@@ -4,11 +4,11 @@
  * The whole suite runs in ONE `bun test` process. A test that constructs a
  * scheduler, manager, listener or watcher and never disposes it leaves that
  * object's `setInterval` / `setTimeout` chain running for the remainder of the
- * run — inside every later test file. That is how `provider-stream-retry.test.ts`
+ * run, inside every later test file. That is how `provider-stream-retry.test.ts`
  * came to count 4962 `fetch` calls where it expected 2: pollers left behind by
  * unrelated, already-finished tests were still firing.
  *
- * Usage — call `trackDisposables()` ONCE at the top level of a test file:
+ * Usage, call `trackDisposables()` ONCE at the top level of a test file:
  *
  *   const disposables = trackDisposables();
  *
@@ -19,7 +19,7 @@
  *
  * `add()` returns its argument, so it wraps a constructor call in place.
  *
- * IMPORTANT — why this is a function you must call, and not an import side
+ * IMPORTANT, why this is a function you must call, and not an import side
  * effect: `bun test` caches modules across test files, so a helper that
  * registered `afterEach` at import time would bind that hook ONLY to the first
  * file that imported it. Every later file would import the cached module,
@@ -46,7 +46,7 @@ export interface DisposableRegistry {
   defer(fn: Disposer): void;
   /** Dispose everything registered so far. Runs automatically; idempotent. */
   flush(): Promise<void>;
-  /** Outstanding registrations — used by this helper's own guard test. */
+  /** Outstanding registrations, used by this helper's own guard test. */
   readonly size: number;
 }
 
@@ -89,8 +89,8 @@ function autoDisposer(value: unknown): Disposer {
 
 export interface TrackOptions {
   /**
-   * `'each'` (default) disposes after every test — right for anything built
-   * inside a test body. `'all'` disposes once at the end of the file — right
+   * `'each'` (default) disposes after every test, right for anything built
+   * inside a test body. `'all'` disposes once at the end of the file, right
    * for something built in `beforeAll` and shared by the file's tests.
    */
   readonly scope?: 'each' | 'all';
@@ -112,7 +112,7 @@ export function trackDisposables(options: TrackOptions = {}): DisposableRegistry
       }
     }
     if (failures.length > 0) {
-      // Surfaced, never swallowed — a teardown that throws is a real defect,
+      // Surfaced, never swallowed, a teardown that throws is a real defect,
       // and hiding it is how a leak survives a green suite.
       throw new Error(`disposal failed for ${failures.length} item(s):\n  ${failures.join('\n  ')}`);
     }

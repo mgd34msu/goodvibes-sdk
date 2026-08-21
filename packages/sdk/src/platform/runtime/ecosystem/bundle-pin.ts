@@ -12,14 +12,14 @@
  * an advisory step a caller can skip; `fetchAndVerifyBundle` throws before it
  * returns bytes unless the pin matches. All three source kinds resolve to the
  * SAME byte space, so one pin convention (hex SHA-256 of the fetched bytes)
- * governs every source — no split hash spaces.
+ * governs every source, no split hash spaces.
  */
 
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-/** A pinned bundle source. `sha256` is REQUIRED — an unpinned source is invalid. */
+/** A pinned bundle source. `sha256` is REQUIRED, an unpinned source is invalid. */
 export interface PinnedBundleSource {
   readonly kind: 'file' | 'url' | 'git';
   /** File path, URL, or git remote (for `git`, combined with `ref`). */
@@ -55,7 +55,7 @@ export function computeSha256(bytes: Uint8Array): string {
 
 /**
  * Verify fetched bytes against an expected pin. A missing/malformed pin is a
- * failure in its own right — the absence of a pin is never "acceptable".
+ * failure in its own right, the absence of a pin is never "acceptable".
  */
 export function verifyBundleBytes(bytes: Uint8Array, expectedSha256: string): PinVerification {
   const expected = (expectedSha256 ?? '').toLowerCase();
@@ -112,7 +112,7 @@ function resolveBytes(source: PinnedBundleSource, deps: BundleFetchDeps): Uint8A
 
 /**
  * Fetch a pinned bundle and verify its pin BEFORE returning. Throws
- * `BundlePinRefusal` on any missing/mismatched pin — there is no path that
+ * `BundlePinRefusal` on any missing/mismatched pin, there is no path that
  * yields bytes for an unverified source.
  */
 export async function fetchAndVerifyBundle(

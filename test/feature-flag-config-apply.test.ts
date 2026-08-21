@@ -2,7 +2,7 @@
  * feature-flag-config-apply.test.ts
  *
  * Covers FeatureFlagManager.applyConfigState() and bindFeatureSettingsBridge()
- * — the live settings -> gate-manager bridge. Every capability derives its
+ *, the live settings -> gate-manager bridge. Every capability derives its
  * state from a per-domain settings key (see feature-settings.ts); a
  * configManager.set on a bound key after boot must reach the manager without
  * a restart for runtime-toggleable gates, and record an honest
@@ -29,7 +29,7 @@ import type { FlagState } from '../packages/sdk/src/platform/runtime/feature-fla
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // A runtime-toggleable capability defaulting OFF and a startup-gated
-// (runtimeToggleable: false) one defaulting OFF — picked from the real
+// (runtimeToggleable: false) one defaulting OFF, picked from the real
 // registry so this test tracks the actual declarations, not a stand-in.
 const TOGGLEABLE_FLAG_ID = 'agent-passive-code-injection';
 const TOGGLEABLE_KEY = 'agents.passiveInjection.code';
@@ -94,10 +94,10 @@ describe('FeatureFlagManager.applyConfigState — direct unit coverage', () => {
     expect(manager.getState(STARTUP_GATED_FLAG_ID)).toBe('disabled');
     manager.applyConfigState(STARTUP_GATED_FLAG_ID, 'enabled');
 
-    // Effective state is untouched — no fake live apply for a startup-only gate.
+    // Effective state is untouched, no fake live apply for a startup-only gate.
     expect(manager.getState(STARTUP_GATED_FLAG_ID)).toBe('disabled');
     expect(manager.isEnabled(STARTUP_GATED_FLAG_ID)).toBe(false);
-    // No transition fired — nothing actually changed.
+    // No transition fired, nothing actually changed.
     expect(seen).toEqual([]);
 
     // But the divergence is honestly visible on the snapshot/read surface.
@@ -208,7 +208,7 @@ describe('bindFeatureSettingsBridge — subscription wiring', () => {
     bindFeatureSettingsBridge(configManager, manager);
 
     // behavior.compactionStrategy carries both the compaction gate and the
-    // distiller-strategy gate — one listener, two derived states.
+    // distiller-strategy gate, one listener, two derived states.
     expect(configManager.listenerCount('behavior.compactionStrategy')).toBe(1);
     expect(manager.isEnabled('session-compaction')).toBe(true);
     expect(manager.isEnabled('compaction-distiller-strategy')).toBe(false);

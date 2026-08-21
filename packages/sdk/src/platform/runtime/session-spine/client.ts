@@ -1,5 +1,5 @@
 /**
- * client.ts — the SDK session-spine surface client.
+ * client.ts, the SDK session-spine surface client.
  *
  * The in-process coordinator that mirrors a surface's OWN session identity
  * (create / resume / heartbeat / close) into the daemon-hosted session spine.
@@ -7,7 +7,7 @@
  * store stays the offline read-model; this client mirrors identity to the daemon
  * and buffers ops when the daemon is unreachable.
  *
- * This is the ONE core extracted from two near-twin implementations — the TUI's
+ * This is the ONE core extracted from two near-twin implementations, the TUI's
  * typed-client version (`goodvibes-tui` src/runtime/session-spine-client.ts) and
  * the agent's raw-REST version (`goodvibes-agent` src/runtime/session-spine-client.ts).
  * The union of their behaviors is the spec; their differences are parameterized:
@@ -17,11 +17,11 @@
  *    {@link SpineTransport}; the adapter performs the real wire call (a typed SDK
  *    sessions client, or a hand-rolled version-tolerant REST mirror) and folds its
  *    result into a {@link SpineResult}. The core NEVER assumes a typed client
- *    exists — that is exactly why the agent, which compiles against a pinned npm
+ *    exists, that is exactly why the agent, which compiles against a pinned npm
  *    SDK that may predate `sessions.register`, can still use this core.
  *  - ACTIVATION MODE is optional. Construct WITH a `transport` for
- *    live-immediately mode (the agent — live for the whole process lifetime), or
- *    WITHOUT one for dormant-until-`activate()` mode (the TUI — activated once its
+ *    live-immediately mode (the agent, live for the whole process lifetime), or
+ *    WITHOUT one for dormant-until-`activate()` mode (the TUI, activated once its
  *    bootstrap adopts a compatible external daemon, deactivated when the mode is
  *    lost).
  *  - PARTICIPANT identity, origin `kind`, queue bound and heartbeat window are
@@ -66,7 +66,7 @@ export const TUI_SPINE_PARTICIPANT: Omit<SharedSessionParticipant, 'lastSeenAt'>
 /**
  * The canonical agent participant (TRANSPORT axis). `surfaceKind` stays 'service';
  * the record origin `kind` ('agent') is stamped by the REST mirror server-side, not
- * here — so the agent leaves `recordKind` unset.
+ * here, so the agent leaves `recordKind` unset.
  */
 export const AGENT_SPINE_PARTICIPANT: Omit<SharedSessionParticipant, 'lastSeenAt'> = {
   surfaceKind: 'service',
@@ -80,10 +80,10 @@ export type SpineReachability = 'unknown' | 'online' | 'offline';
 /**
  * Outcome of a single injected-transport op, folding the two real backends' result
  * vocabularies into one common core:
- *  - `'ok'`       — the daemon applied it. Reachability → online; flush the queue.
- *  - `'offline'`  — a transient connectivity fault (host unreachable). Reachability
+ *  - `'ok'`      , the daemon applied it. Reachability → online; flush the queue.
+ *  - `'offline'` , a transient connectivity fault (host unreachable). Reachability
  *                   → offline; enqueue for idempotent replay on reconnect.
- *  - `'rejected'` — a DURABLE refusal (auth required / route missing / server error).
+ *  - `'rejected'`, a DURABLE refusal (auth required / route missing / server error).
  *                   NOT a connectivity fault: logged, NEVER enqueued (so it can't
  *                   retry-forever), reachability left unchanged.
  */
@@ -127,7 +127,7 @@ interface QueuedOp {
  */
 type SpineLogger = Pick<typeof logger, 'debug' | 'info'> & Partial<Pick<typeof logger, 'warn'>>;
 
-/** Disclose at warn level when the sink has one, otherwise at info — never silently. */
+/** Disclose at warn level when the sink has one, otherwise at info, never silently. */
 function spineWarn(log: SpineLogger, message: string, data?: Record<string, unknown>): void {
   if (log.warn) log.warn(message, data);
   else log.info(message, data);
@@ -136,7 +136,7 @@ function spineWarn(log: SpineLogger, message: string, data?: Record<string, unkn
 export interface SessionSpineClientOptions {
   /**
    * The participant identity stamped onto every register/heartbeat (TRANSPORT axis).
-   * Required — each surface passes its own (e.g. {@link TUI_SPINE_PARTICIPANT} /
+   * Required, each surface passes its own (e.g. {@link TUI_SPINE_PARTICIPANT} /
    * {@link AGENT_SPINE_PARTICIPANT}).
    */
   readonly participant: Omit<SharedSessionParticipant, 'lastSeenAt'>;
@@ -183,13 +183,13 @@ export class SessionSpineClient {
   private lastHeartbeatAt = 0;
   private heartbeatTimer: ReturnType<typeof setTimeout> | null = null;
   private flushing = false;
-  /** The most recently registered/reopened session — the keepalive heartbeat target. */
+  /** The most recently registered/reopened session, the keepalive heartbeat target. */
   private lastSessionId: string | null = null;
   /**
    * Timer-driven keepalive: fires the heartbeat on a fixed cadence INDEPENDENT of
    * render/turn activity, so a live-but-render-silent surface keeps its participant
    * lastSeenAt fresh. Each tick is just a heartbeat() call, so it rides the SAME
-   * bounded offline-queue/reconnect handling as every other op — no new retry loop,
+   * bounded offline-queue/reconnect handling as every other op, no new retry loop,
    * no faster-than-cadence attempts against a dead daemon.
    */
   private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
@@ -235,7 +235,7 @@ export class SessionSpineClient {
    * has register()/reopen()'d and not yet close()'d, regardless of whatever id
    * a caller's own local store separately uses for the same conceptual
    * session. register()/reopen() send exactly the `sessionId` the caller
-   * passes in — this client never assumes that string also matches a local
+   * passes in, this client never assumes that string also matches a local
    * broker's own idea of the session's id. A cross-surface read facade (the
    * SDK's SessionUnionCache) uses this to recognize its own wire mirror by
    * the id ACTUALLY SENT, not by hoping a local reader's id happens to agree.
@@ -251,7 +251,7 @@ export class SessionSpineClient {
    */
   activate(transport: SpineTransport): void {
     this.transport = transport;
-    this.log.info('session spine activated — mirroring session identity to the adopted external daemon', {});
+    this.log.info('session spine activated, mirroring session identity to the adopted external daemon', {});
     this.startKeepalive();
     void this.flush();
   }
@@ -274,7 +274,7 @@ export class SessionSpineClient {
     this.dispatchRegister(this.buildInput(record, { includeTitle: true }));
   }
 
-  /** RESUME: fire-and-forget reopen (reopen:true, no title) — the only reopen path. */
+  /** RESUME: fire-and-forget reopen (reopen:true, no title), the only reopen path. */
   reopen(record: SessionSpineRecord): void {
     this.cacheHeartbeatRecord(record);
     this.dispatchRegister(this.buildInput(record, { includeTitle: false, reopen: true }));
@@ -282,7 +282,7 @@ export class SessionSpineClient {
 
   /**
    * HEARTBEAT: debounced re-register, coalesced to one wire call per window, no title,
-   * no reopen. Safe to call on every turn/render tick — internally a no-op unless the
+   * no reopen. Safe to call on every turn/render tick, internally a no-op unless the
    * window has elapsed.
    */
   heartbeat(sessionId: string): void {
@@ -318,7 +318,7 @@ export class SessionSpineClient {
   /**
    * LEGACY FOLD: register each per-project record; a record whose id is in `closedIds`
    * is registered then closed so a locally-closed session STAYS closed in the daemon
-   * (honest history). Idempotent — register is an upsert; closing an already-closed
+   * (honest history). Idempotent, register is an upsert; closing an already-closed
    * record is a no-op.
    */
   foldLegacyRecords(records: readonly SessionSpineRecord[], closedIds: ReadonlySet<string>): void {
@@ -331,7 +331,7 @@ export class SessionSpineClient {
     void this.flush();
   }
 
-  /** Reachability probe — runs OFF the interactive path (deferred startup). Flushes on
+  /** Reachability probe, runs OFF the interactive path (deferred startup). Flushes on
    * success. A no-op returning the current status when no `probe` option was supplied. */
   async probeReachability(): Promise<SpineReachability> {
     if (!this.probeImpl) return this.reachability;
@@ -436,7 +436,7 @@ export class SessionSpineClient {
       // treated as transient offline and queued for reconnect replay.
       this.reachability = 'offline';
       this.enqueue({ type: 'register', sessionId: input.sessionId, input });
-      this.log.debug('session spine register threw — queued for reconnect', { error: errorMessage(error) });
+      this.log.debug('session spine register threw, queued for reconnect', { error: errorMessage(error) });
     }
   }
 
@@ -459,7 +459,7 @@ export class SessionSpineClient {
     } catch (error) {
       this.reachability = 'offline';
       this.enqueue({ type: 'close', sessionId });
-      this.log.debug('session spine close threw — queued for reconnect', { error: errorMessage(error) });
+      this.log.debug('session spine close threw, queued for reconnect', { error: errorMessage(error) });
     }
   }
 
@@ -495,7 +495,7 @@ export class SessionSpineClient {
         } catch (error) {
           this.reachability = 'offline';
           this.enqueue(op);
-          this.log.debug('session spine flush op threw — re-queued', { error: errorMessage(error) });
+          this.log.debug('session spine flush op threw, re-queued', { error: errorMessage(error) });
         }
       }
     } finally {
@@ -527,7 +527,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * The fold marker's schema version. A marker written by an OLDER schema reads as
- * "not folded" and the fold re-runs — the fold is an upsert-based register pass,
+ * "not folded" and the fold re-runs, the fold is an upsert-based register pass,
  * so repeating it costs one file read, never data. A marker written by a NEWER
  * schema is ACCEPTED: a later build already did at least this much work, and a
  * downgrade must not re-fold on every single boot.
@@ -545,7 +545,7 @@ const FOLD_MARKER_SCHEMA_VERSION = 1;
  * the marker must positively assert its own completion: a JSON object carrying a
  * known schema version and `completed: true`. Unreadable, empty, unparseable, an
  * array, a bare `true`, a missing flag, or an older schema all read as "not
- * folded" and the (idempotent, upsert-based) fold runs again — disclosed, with
+ * folded" and the (idempotent, upsert-based) fold runs again, disclosed, with
  * the reason, rather than silently.
  */
 function hasCompletedFold(markerPath: string, log: SpineLogger): boolean {
@@ -554,41 +554,41 @@ function hasCompletedFold(markerPath: string, log: SpineLogger): boolean {
     if (!existsSync(markerPath)) return false;
     raw = readFileSync(markerPath, 'utf-8');
   } catch (error) {
-    spineWarn(log, 'session spine legacy fold marker unreadable — folding again', {
+    spineWarn(log, 'session spine legacy fold marker unreadable, folding again', {
       marker: markerPath,
       error: errorMessage(error),
     });
     return false;
   }
   if (raw.trim().length === 0) {
-    spineWarn(log, 'session spine legacy fold marker is empty (interrupted write) — folding again', { marker: markerPath });
+    spineWarn(log, 'session spine legacy fold marker is empty (interrupted write), folding again', { marker: markerPath });
     return false;
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw) as unknown;
   } catch {
-    spineWarn(log, 'session spine legacy fold marker is not parseable JSON (torn write) — folding again', {
+    spineWarn(log, 'session spine legacy fold marker is not parseable JSON (torn write), folding again', {
       marker: markerPath,
       bytes: raw.length,
     });
     return false;
   }
   if (!isRecord(parsed)) {
-    spineWarn(log, 'session spine legacy fold marker is not an object — folding again', { marker: markerPath });
+    spineWarn(log, 'session spine legacy fold marker is not an object, folding again', { marker: markerPath });
     return false;
   }
   if (parsed.completed !== true) {
-    spineWarn(log, 'session spine legacy fold marker does not assert completion — folding again', { marker: markerPath });
+    spineWarn(log, 'session spine legacy fold marker does not assert completion, folding again', { marker: markerPath });
     return false;
   }
   const version = parsed.schemaVersion;
   if (typeof version !== 'number' || !Number.isFinite(version)) {
-    spineWarn(log, 'session spine legacy fold marker has no usable schema version — folding again', { marker: markerPath });
+    spineWarn(log, 'session spine legacy fold marker has no usable schema version, folding again', { marker: markerPath });
     return false;
   }
   if (version < FOLD_MARKER_SCHEMA_VERSION) {
-    spineWarn(log, 'session spine legacy fold marker was written by an older schema — folding again', {
+    spineWarn(log, 'session spine legacy fold marker was written by an older schema, folding again', {
       marker: markerPath,
       markerSchemaVersion: version,
       currentSchemaVersion: FOLD_MARKER_SCHEMA_VERSION,
@@ -605,7 +605,7 @@ function hasCompletedFold(markerPath: string, log: SpineLogger): boolean {
  *
  * Written to a sibling temp file and renamed into place, so an interruption
  * leaves either no marker at all (the fold retries next boot) or the complete
- * previous one — never a half-written file a later boot would trust. The temp
+ * previous one, never a half-written file a later boot would trust. The temp
  * name carries the pid so two processes folding the same surface at once cannot
  * scribble over each other's partial file; `rename` onto the final path is
  * atomic and both write the same completion assertion, so whichever lands last
@@ -652,7 +652,7 @@ function writeCompletedFoldMarker(
  * record into the daemon via the client (register upsert; closed records also
  * closed). Writes a marker file so subsequent runs are a no-op. Register is
  * idempotent, so even a marker-less re-run is safe. Only folds the store for the
- * project it is invoked from — the per-project discovery scope is documented, not
+ * project it is invoked from, the per-project discovery scope is documented, not
  * silently "complete" across every project a surface has ever run in.
  *
  * The marker is validated by CONTENT on every boot (see {@link hasCompletedFold})

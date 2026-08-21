@@ -29,7 +29,7 @@ const NOW = 1_800_000_000_000; // fixed clock for every age assertion
 
 /**
  * An `updatedAt` far enough in the past to clear the 24-hour ownerless grace
- * floor, but nowhere near the 30-day TTL — so a record stamped with it is
+ * floor, but nowhere near the 30-day TTL, so a record stamped with it is
  * removable ONLY by the missing-owner rule, never by expiry. That separation is
  * what lets these tests attribute a deletion to the right rule.
  */
@@ -144,7 +144,7 @@ describe('cross-session task graph housekeeping', () => {
         'live:t1': ref('live', 't1'),
         'live:t2': ref('live', 't2'),
         // Older than the ownerless grace floor, so "this session is gone" is
-        // allowed to act on it. A ref this new would be protected — see the
+        // allowed to act on it. A ref this new would be protected, see the
         // grace-floor tests below.
         'gone:t9': ref('gone', 't9', PAST_GRACE),
       },

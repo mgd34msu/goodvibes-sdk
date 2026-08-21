@@ -1,11 +1,11 @@
 /**
- * arbitraries.ts — shared fast-check arbitraries and fixture data for integration tests.
+ * arbitraries.ts, shared fast-check arbitraries and fixture data for integration tests.
  *
  * Exports:
- *   - `jsonValueArb`           — recursive JSON-value arbitrary (null | bool | finite number | string | array | object)
- *   - `KNOWN_EVENT_TYPES`      — Set<string> of all known AnyRuntimeEvent discriminants
- *   - `REQUIRED_FIELDS_BY_TYPE` — required-field map per event type
- *   - `FIXTURE_EVENTS`         — one canonical minimal instance per event kind
+ *   - `jsonValueArb`          , recursive JSON-value arbitrary (null | bool | finite number | string | array | object)
+ *   - `KNOWN_EVENT_TYPES`     , Set<string> of all known AnyRuntimeEvent discriminants
+ *   - `REQUIRED_FIELDS_BY_TYPE`, required-field map per event type
+ *   - `FIXTURE_EVENTS`        , one canonical minimal instance per event kind
  */
 
 import fc from 'fast-check';
@@ -45,7 +45,7 @@ import type { OrchestrationEvent } from '../../../packages/sdk/src/events/orches
  * Generates any JSON-representable value: null, boolean, finite number,
  * string, array of values, or string-keyed object of values.
  *
- * Uses `fc.letrec` for true recursive generation — covers nested structures,
+ * Uses `fc.letrec` for true recursive generation, covers nested structures,
  * mixed types, and edge cases (null/bool/numeric) that bare `fc.string()` misses.
  */
 const jsonNumberArb: fc.Arbitrary<number> = fc.oneof(
@@ -181,7 +181,7 @@ type EventOfType<T extends AnyRuntimeEvent['type']> = Extract<AnyRuntimeEvent, {
  *
  * TYPED against the production union rather than `Record<string, string[]>`.
  * As a loose record this was a second hand-written table that only ever got
- * compared to the fixtures below — two mirrors of each other, both free to
+ * compared to the fixtures below, two mirrors of each other, both free to
  * drift away from the events they describe, and both did: this table said
  * `LLM_RESPONSE_RECEIVED` requires `content` while the event has carried
  * `contentSummary` since it was redacted. The drift guard compared mirror to

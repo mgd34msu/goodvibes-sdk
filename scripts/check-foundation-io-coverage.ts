@@ -14,12 +14,12 @@
  *     InputMap/OutputMap entries from their catalog descriptors.
  *   - count DECREASED -> fail: coverage improved; lower the baseline to lock it
  *     in (a stale, too-high baseline must not silently outlive the debt it
- *     recorded — same discipline as the line-cap grandfather ratchet).
+ *     recorded, same discipline as the line-cap grandfather ratchet).
  *   - unchanged -> pass.
  *
  * This is a companion to check-foundation-io-types.ts (which proves the entries
  * do not DRIFT from their schemas). This script proves the typed SET stays
- * complete. Both run under `contracts:check`, and the baseline is 0 — every
+ * complete. Both run under `contracts:check`, and the baseline is 0, every
  * catalogued verb carries typed IO.
  *
  * Usage:
@@ -64,7 +64,7 @@ if (result.direction === 'increased') {
     `\n[check-foundation-io-coverage] FAIL: untyped operator-method count rose from ` +
       `${result.baseline} to ${result.current}. Every method must ship with typed IO ` +
       `entries in packages/contracts/src/generated/foundation-client-types.ts ` +
-      `(OperatorMethodInputMap + OperatorMethodOutputMap) — run ` +
+      `(OperatorMethodInputMap + OperatorMethodOutputMap), run ` +
       `\`bun run scripts/generate-foundation-io-entries.ts\` to render them from the ` +
       `method-catalog descriptors.\n\nThe ${untyped.length} currently-untyped method ids:`,
   );
@@ -76,7 +76,7 @@ if (result.direction === 'decreased') {
   console.error(
     `\n[check-foundation-io-coverage] FAIL (stale baseline): untyped count is now ` +
       `${result.current}, below the recorded baseline ${result.baseline}. Typed coverage ` +
-      `improved — lower FOUNDATION_IO_COVERAGE_BASELINE in ` +
+      `improved, lower FOUNDATION_IO_COVERAGE_BASELINE in ` +
       `scripts/foundation-io-coverage-baseline.ts to ${result.current} to lock it in.`,
   );
   process.exit(1);

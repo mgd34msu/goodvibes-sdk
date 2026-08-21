@@ -1,10 +1,10 @@
 /**
- * schema-types-values.ts — the ConfigKey -> value-type map.
+ * schema-types-values.ts, the ConfigKey -> value-type map.
  *
  * Split out of schema-types.ts, which had grown to hold three separate things:
  * the config INTERFACES, the ConfigKey union, and this map. The map is the
  * largest of the three and the one nothing but `ConfigManager.get`/`set`
- * consults, so it is the clean seam — the same "move a cohesive block out and
+ * consults, so it is the clean seam, the same "move a cohesive block out and
  * re-export it so import sites are unchanged" split schema-types-network.ts,
  * schema-types-platform.ts, schema-types-daemon.ts and schema-types-surfaces.ts
  * already record.

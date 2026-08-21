@@ -1,5 +1,5 @@
 /**
- * Turn emitters — typed emission wrappers for TurnEvent domain.
+ * Turn emitters, typed emission wrappers for TurnEvent domain.
  *
  * Import and call these instead of emitting raw strings.
  *
@@ -174,10 +174,10 @@ export function emitPostHooksDone(
 /**
  * Emit TURN_COMPLETED when the turn finishes successfully.
  *
- * `memoryRecordIds` — the turn's MEMORY-sourced injected knowledge-record ids
+ * `memoryRecordIds`, the turn's MEMORY-sourced injected knowledge-record ids
  * (TurnInjectionRecord filtered to source 'memory'). When non-empty they are
  * stamped as `metadata.memory.recordIds` (the published provenance convention
- * surfaces read); when absent/empty the event carries NO metadata field —
+ * surfaces read); when absent/empty the event carries NO metadata field,
  * honest absence, never an empty array.
  */
 export function emitTurnCompleted(

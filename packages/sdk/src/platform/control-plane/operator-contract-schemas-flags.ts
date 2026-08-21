@@ -1,7 +1,7 @@
 /**
  * operator-contract-schemas-flags.ts
  *
- * Input/output JSON schemas for flags.graduation.report — the read-only
+ * Input/output JSON schemas for flags.graduation.report, the read-only
  * feature-flag graduation view (see runtime/feature-flags/graduation.ts). The
  * report lists every flag with its graduation state and whatever real
  * validation evidence exists; the release policy fails when any flag sits in

@@ -1,5 +1,5 @@
 /**
- * fixture-snapshot-page.ts — a page object `takeSnapshot` can walk, built from
+ * fixture-snapshot-page.ts, a page object `takeSnapshot` can walk, built from
  * a fixture merchant's real markup.
  *
  * ══ Why this exists rather than a browser ═════════════════════════════════
@@ -7,7 +7,7 @@
  * The leak this suite is chasing is: the daemon types the card, then the model
  * calls `action:"snapshot"` and reads it back out of the reported form values.
  * Proving that closed needs `takeSnapshot` itself, with real field attributes
- * and real filled values — not a hand-written element list, which would prove
+ * and real filled values, not a hand-written element list, which would prove
  * only that the redactor redacts what a test author remembered to hand it.
  *
  * What it must NOT need is a downloaded browser binary. A containment property
@@ -16,14 +16,14 @@
  *
  * So the fixture's own HTML is parsed here into exactly the record shape the
  * in-page collector produces, and the values come from the driver's form state
- * — what the daemon actually typed. Everything downstream of the collector is
+ *, what the daemon actually typed. Everything downstream of the collector is
  * the real code: the card-field classification, the guard, the scrubbing, the
  * element list the model would receive.
  *
  * The two fixtures make this worth doing twice over. Alpha's inputs carry the
  * standard `autocomplete="cc-number"` tokens, so the structural layer catches
- * them. Beta's carry none at all and are named in German — `kreditkartennummer`,
- * `pruefziffer` — so beta exercises the value-based layer instead, which is
+ * them. Beta's carry none at all and are named in German, `kreditkartennummer`,
+ * `pruefziffer`, so beta exercises the value-based layer instead, which is
  * exactly the split the design claims.
  */
 import type { Page } from 'playwright-core';
@@ -54,8 +54,8 @@ interface CollectedElement {
  * Collect every form control in some markup, with the values a form currently
  * holds.
  *
- * `values` is keyed by the same target string the checkout driver fills — the
- * element's id — so a page built here reports what the daemon typed, character
+ * `values` is keyed by the same target string the checkout driver fills, the
+ * element's id, so a page built here reports what the daemon typed, character
  * for character, before any redaction runs.
  */
 export async function collectFixtureControls(
@@ -72,7 +72,7 @@ export async function collectFixtureControls(
       collected.push({
         role: tag === 'button' ? 'button' : 'textbox',
         // A real collector falls back to the placeholder or the name for an
-        // unlabelled input, and both fixtures rely on that — so does the leak
+        // unlabelled input, and both fixtures rely on that, so does the leak
         // this file exists to catch, since a page can echo a typed value into
         // either one.
         name: placeholder.length > 0 ? placeholder : name,
@@ -102,8 +102,8 @@ export async function collectFixtureControls(
 /**
  * A `Page` carrying those controls.
  *
- * Only the four things `takeSnapshot` asks a page for are implemented —
- * `frames`, `mainFrame`, `url` and `title` — because implementing more would
+ * Only the four things `takeSnapshot` asks a page for are implemented,
+ * `frames`, `mainFrame`, `url` and `title`, because implementing more would
  * be inventing browser behaviour this test is in no position to vouch for.
  */
 export function fixtureSnapshotPage(input: {

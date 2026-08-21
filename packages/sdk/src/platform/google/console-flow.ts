@@ -7,12 +7,12 @@
  * The publishing-status flows exist because of one verified fact (see
  * google-setup-plan.ts's header comment): an OAuth app left in "Testing"
  * issues refresh tokens that expire after seven days. `publishApp` never
- * reports success from having clicked "PUBLISH APP" — it re-reads the status
+ * reports success from having clicked "PUBLISH APP", it re-reads the status
  * afterward and only reports success once the re-read confirms the change
  * actually took.
  *
  * The OAuth client's secret is a credential and is returned only in the
- * dedicated `clientSecret` field of the `ok` result — never in `detail`,
+ * dedicated `clientSecret` field of the `ok` result, never in `detail`,
  * `problem`, or `fix`.
  */
 
@@ -112,7 +112,7 @@ export interface ReadPublishingStatusOptions {
    * Overrides the page navigated to. Defaults to the real Google Auth
    * Platform audience page. The only legitimate reason to override it is a
    * test driving this flow's real logic against a local fake page instead of
-   * a live Google Cloud project — production callers never set this.
+   * a live Google Cloud project, production callers never set this.
    */
   readonly pageUrl?: string;
 }
@@ -158,7 +158,7 @@ export async function readPublishingStatus(
 
 /**
  * Clicks "PUBLISH APP", confirms the dialog, then re-reads the status to
- * verify it actually changed. Success is reported only from the re-read —
+ * verify it actually changed. Success is reported only from the re-read,
  * never from having clicked.
  */
 export async function publishApp(
@@ -213,7 +213,7 @@ export async function publishApp(
     };
   }
   if (after.kind === 'ok') {
-    // Status read back as neither "In production" nor "Testing" — the page
+    // Status read back as neither "In production" nor "Testing", the page
     // rendered something this flow does not recognise. Reporting the publish
     // as successful here would be exactly the silent lie this step exists to
     // prevent, since an app left in Testing expires its credentials in seven

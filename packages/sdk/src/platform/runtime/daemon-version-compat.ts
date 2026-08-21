@@ -8,8 +8,8 @@
  * adopting a daemon built from an incompatible SDK band produces silent
  * wire-shape failures (a session method the surface calls that the daemon does
  * not serve, a payload field that moved). This module answers the one question
- * the probe leaves open — "may this surface safely adopt a daemon reporting
- * version X?" — so the adopt path can refuse an incompatible occupant honestly
+ * the probe leaves open, "may this surface safely adopt a daemon reporting
+ * version X?", so the adopt path can refuse an incompatible occupant honestly
  * instead of adopting it and failing later, and without ever starting a second
  * competing daemon on an occupied port.
  *
@@ -19,7 +19,7 @@
  *     but not 0.37.*).
  *   - `>=1.0.0` releases treat MAJOR as the breaking axis, so major must match
  *     (1.4.x adopts any 1.*.* but not 2.*.*).
- *   - A version string that cannot be parsed is treated as INCOMPATIBLE — the
+ *   - A version string that cannot be parsed is treated as INCOMPATIBLE, the
  *     conservative, honest default. An empty/absent remote version is likewise
  *     incompatible: the surface must not adopt something it cannot band-check.
  * Prerelease and build metadata (`-rc.1`, `+sha`) are ignored for banding.
@@ -51,7 +51,7 @@ function parseVersionBand(version: string | undefined | null): ParsedVersion | n
 
 /**
  * True when a surface reporting `localVersion` may safely adopt a daemon
- * reporting `remoteVersion` — see the band policy in the file header.
+ * reporting `remoteVersion`, see the band policy in the file header.
  * Unparseable or absent versions are never compatible.
  */
 export function isDaemonVersionCompatible(
@@ -80,5 +80,5 @@ export function describeVersionIncompatibility(
 ): string {
   const found = (typeof remoteVersion === 'string' && remoteVersion.trim()) ? remoteVersion.trim() : 'unknown';
   const mine = (typeof localVersion === 'string' && localVersion.trim()) ? localVersion.trim() : 'unknown';
-  return `A GoodVibes daemon (version ${found}) is running on ${host}:${port}, but this surface (version ${mine}) speaks an incompatible wire version — not adopting, and not starting a second daemon on the occupied port.`;
+  return `A GoodVibes daemon (version ${found}) is running on ${host}:${port}, but this surface (version ${mine}) speaks an incompatible wire version, not adopting, and not starting a second daemon on the occupied port.`;
 }

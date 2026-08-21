@@ -1,8 +1,8 @@
 /**
- * ConsoleExporter — development-mode span exporter.
+ * ConsoleExporter, development-mode span exporter.
  *
  * Writes formatted span summaries to stderr. Intended for local development
- * and debugging — should not be used in production.
+ * and debugging, should not be used in production.
  */
 import type { ReadableSpan, SpanExporter } from '../types.js';
 import { SpanStatusCode } from '../types.js';
@@ -16,15 +16,15 @@ export type ConsoleVerbosity = 'minimal' | 'standard' | 'verbose';
 export interface ConsoleExporterConfig {
   /**
    * How much detail to include per span.
-   * - `minimal` — span name + status + duration only.
-   * - `standard` — adds attributes (default).
-   * - `verbose` — adds events and full attribute values.
+   * - `minimal`, span name + status + duration only.
+   * - `standard`, adds attributes (default).
+   * - `verbose`, adds events and full attribute values.
    */
   readonly verbosity?: ConsoleVerbosity | undefined;
 }
 
 /**
- * ConsoleExporter — prints span data to stderr for development.
+ * ConsoleExporter, prints span data to stderr for development.
  *
  * Usage:
  * ```ts
@@ -110,7 +110,7 @@ export class ConsoleExporter implements SpanExporter {
       return base + attrStr;
     }
 
-    // verbose — include events
+    // verbose, include events
     const eventsStr =
       span.events.length === 0
         ? ''

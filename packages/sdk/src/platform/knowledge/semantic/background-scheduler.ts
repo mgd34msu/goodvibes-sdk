@@ -1,22 +1,22 @@
 /**
- * background-scheduler.ts — THE governed scheduler for background knowledge
+ * background-scheduler.ts, THE governed scheduler for background knowledge
  * self-improvement. Every trigger (enrichment tails, answer refinement, Home
  * Graph ingest, knowledge-service ingest) routes through here so five guards
- * apply to all of them — no caller can schedule a bare-0ms run (the hot loop
+ * apply to all of them, no caller can schedule a bare-0ms run (the hot loop
  * that fanned control-plane events until the 2026-07-14 daemon OOM):
  *
- *  1. FLOOR — a background run is never scheduled sooner than the minimum
+ *  1. FLOOR, a background run is never scheduled sooner than the minimum
  *     delay, even when a caller asks for 0ms.
- *  2. COALESCING — one pending slot per scope+reason; a same-scope burst
+ *  2. COALESCING, one pending slot per scope+reason; a same-scope burst
  *     yields one run, and a later trigger's gapIds MERGE into the queued run
  *     instead of being dropped.
- *  3. CARDINALITY BOUND — a burst across more distinct scopes than the pending
+ *  3. CARDINALITY BOUND, a burst across more distinct scopes than the pending
  *     cap collapses into ONE queued global sweep; scheduling state is evicted
  *     so the map never accretes.
- *  4. ZERO-GAP BACKOFF — a run that found no candidate gaps parks its scope
+ *  4. ZERO-GAP BACKOFF, a run that found no candidate gaps parks its scope
  *     until the backoff lapses; a new trigger carrying concrete gapIds is
  *     EVIDENCE and clears the window instead of being swallowed.
- *  5. GOVERNOR PRESSURE — pause is rechecked at fire time (a timer queued
+ *  5. GOVERNOR PRESSURE, pause is rechecked at fire time (a timer queued
  *     before the pause re-arms instead of executing), and the critical-tier
  *     admission gate refuses the run with an honest logged reason.
  */
@@ -51,7 +51,7 @@ export function selfImprovementRunKey(input: KnowledgeSemanticSelfImproveInput):
 interface BackgroundRunState {
   pending: boolean;
   zeroGapUntil: number;
-  /** The queued run's merged input — later triggers' gapIds merge in rather than being dropped. */
+  /** The queued run's merged input, later triggers' gapIds merge in rather than being dropped. */
   pendingInput?: KnowledgeSemanticSelfImproveInput | undefined;
 }
 
@@ -100,7 +100,7 @@ export class BackgroundSelfImproveScheduler {
     // silently swallow it.
     if (input.gapIds?.length && existing) existing.zeroGapUntil = 0;
     if (existing?.pending) {
-      // Coalesce — but PRESERVE the later trigger's payload: merge its gapIds
+      // Coalesce, but PRESERVE the later trigger's payload: merge its gapIds
       // into the queued run's input instead of dropping them.
       if (input.gapIds?.length) {
         const prior = existing.pendingInput ?? input;
@@ -168,7 +168,7 @@ export class BackgroundSelfImproveScheduler {
       if (st) st.pendingInput = undefined;
       // If new input (gap evidence) merged in while the run executed, the
       // completion re-queues it through the full guard set instead of wiping
-      // it — and a zero-gap RESULT must not park the scope over that fresh
+      // it, and a zero-gap RESULT must not park the scope over that fresh
       // evidence (the run that just finished never looked at it).
       const settle = (result: { candidateGaps?: number | undefined } | null): void => {
         const next = this.state.get(key) ?? { pending: false, zeroGapUntil: 0 };

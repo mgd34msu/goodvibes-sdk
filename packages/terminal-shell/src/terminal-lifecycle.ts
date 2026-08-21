@@ -1,10 +1,10 @@
 /**
- * terminal-lifecycle.ts — shared terminal enter/restore sequencing for GoodVibes
+ * terminal-lifecycle.ts, shared terminal enter/restore sequencing for GoodVibes
  * daemon front-ends.
  *
  * Both front-ends drive a full-screen terminal UI and must enter and later
  * restore the terminal identically. When these sequences diverge between them,
- * exit teardown leaves the wrong screen active or wipes the user's scrollback —
+ * exit teardown leaves the wrong screen active or wipes the user's scrollback,
  * a defect class that recurs whenever the two copies drift. This module is the
  * single home for the escape sequences and the enter/restore ordering, so both
  * front-ends share one implementation.
@@ -149,13 +149,13 @@ export function createTerminalLifecycle(deps: TerminalLifecycleDeps): TerminalLi
   const restoreTerminal = (): void => {
     if (terminalRestored) return;
     terminalRestored = true;
-    // Alt-screen path: just leave the alt screen — 1049l restores the primary
+    // Alt-screen path: just leave the alt screen, 1049l restores the primary
     // screen and cursor exactly as they were at launch. Clearing first is
     // pointless (the alt screen is discarded) and actively harmful: a clear
     // with ESC[3J wipes the PRIMARY scrollback on several emulators even when
     // issued from the alt screen.
     // No-alt path: the compositor painted over the primary screen, so clear
-    // the viewport and home the cursor — but WITHOUT 3J, the user's scrollback
+    // the viewport and home the cursor, but WITHOUT 3J, the user's scrollback
     // is theirs. CURSOR_SHOW goes AFTER the screen switch so visibility
     // applies to the screen the shell prompt lands on.
     const exitScreen = deps.noAltScreen ? escapes.CLEAR_VIEWPORT_HOME : escapes.ALT_SCREEN_EXIT;

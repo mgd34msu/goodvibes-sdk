@@ -1,10 +1,10 @@
 /**
- * device-capability-contract.ts — the paired-device capability contract.
+ * device-capability-contract.ts, the paired-device capability contract.
  *
  * This is the peer-facing contract for using a PAIRED device (today a phone)
  * as an agent tool: its cameras, its screen, its location, its clipboard, and
  * a small set of device commands. It is a NATIVE contract carried over the
- * existing distributed-runtime peer transport — deliberately not an MCP
+ * existing distributed-runtime peer transport, deliberately not an MCP
  * server, per the owner's standing design constraint.
  *
  * Node-kind neutrality is the point of this file. A node announces which
@@ -13,12 +13,12 @@
  * ('web-pwa'); a native node ('android-native') is a drop-in peer that
  * announces the same ids over the same endpoints and needs no code here.
  * `KNOWN_DEVICE_NODE_KINDS` is a documentation aid for surfaces that want a
- * friendly label — `isDeviceNodeKind()` accepts any well-formed slug, so an
+ * friendly label, `isDeviceNodeKind()` accepts any well-formed slug, so an
  * unlisted kind pairs and works without a contract change.
  *
  * Confirmation posture (owner ruling 2026-07-25): "default is ask-every-time
  * for every capture/effect, but 'always allow' is OFFERED on every capability
- * — including front camera, screen capture, precise location, and clipboard —
+ *, including front camera, screen capture, precise location, and clipboard,
  * as a durable per-capability, per-node grant, visible and revocable in the
  * grants surface." Every descriptor below therefore carries
  * `defaultDecision: 'ask-every-time'` and `allowAlwaysOffered: true`. There is
@@ -65,7 +65,7 @@ export type DeviceArtifactKind = 'image' | 'video' | 'text' | 'geo' | 'none';
 
 /**
  * How intrusive the capability is for the person holding the device. Purely
- * descriptive — it drives copy and ordering in the grants surface, never
+ * descriptive, it drives copy and ordering in the grants surface, never
  * whether "always allow" is offered (the ruling offers it on everything).
  */
 export type DeviceCapabilitySensitivity = 'standard' | 'elevated';
@@ -89,9 +89,9 @@ export interface DeviceCapabilityDescriptor {
   readonly effect: DeviceCapabilityEffect;
   readonly artifactKind: DeviceArtifactKind;
   readonly producesArtifact: boolean;
-  /** Always 'ask-every-time' — the owner-ruled default for every capture/effect. */
+  /** Always 'ask-every-time', the owner-ruled default for every capture/effect. */
   readonly defaultDecision: 'ask-every-time';
-  /** Always true — "always allow" is offered on every capability. */
+  /** Always true, "always allow" is offered on every capability. */
   readonly allowAlwaysOffered: true;
   readonly sensitivity: DeviceCapabilitySensitivity;
   /**
@@ -104,16 +104,16 @@ export interface DeviceCapabilityDescriptor {
 }
 
 const CAMERA_FIELDS: readonly DeviceCapabilityField[] = [
-  { name: 'reason', type: 'string', required: true, description: 'Why the picture is needed — shown verbatim on the confirmation prompt.' },
+  { name: 'reason', type: 'string', required: true, description: 'Why the picture is needed, shown verbatim on the confirmation prompt.' },
   { name: 'maxWidth', type: 'number', required: false, description: 'Longest-edge pixel cap applied on the device before upload.' },
 ];
 
 const SCREEN_FIELDS: readonly DeviceCapabilityField[] = [
-  { name: 'reason', type: 'string', required: true, description: 'Why the screen image is needed — shown verbatim on the confirmation prompt.' },
+  { name: 'reason', type: 'string', required: true, description: 'Why the screen image is needed, shown verbatim on the confirmation prompt.' },
 ];
 
 const LOCATION_FIELDS: readonly DeviceCapabilityField[] = [
-  { name: 'reason', type: 'string', required: true, description: 'Why the location is needed — shown verbatim on the confirmation prompt.' },
+  { name: 'reason', type: 'string', required: true, description: 'Why the location is needed, shown verbatim on the confirmation prompt.' },
   { name: 'maxAgeSeconds', type: 'number', required: false, description: 'Accept a cached fix no older than this instead of taking a new reading.' },
 ];
 
@@ -123,7 +123,7 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     id: 'device.camera.rear.capture',
     family: 'camera',
     title: 'Rear camera picture',
-    purpose: 'Take one still picture with the phone\'s rear camera and hand it to the agent — for reading a label, a screen, a whiteboard, or a part number in front of you.',
+    purpose: 'Take one still picture with the phone\'s rear camera and hand it to the agent, for reading a label, a screen, a whiteboard, or a part number in front of you.',
     effect: 'capture',
     artifactKind: 'image',
     producesArtifact: true,
@@ -137,7 +137,7 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     id: 'device.camera.front.capture',
     family: 'camera',
     title: 'Front camera picture',
-    purpose: 'Take one still picture with the phone\'s front (selfie) camera. Points at whoever is holding the phone, so it is treated as elevated — but "always allow" is offered here exactly as it is everywhere else.',
+    purpose: 'Take one still picture with the phone\'s front (selfie) camera. Points at whoever is holding the phone, so it is treated as elevated, but "always allow" is offered here exactly as it is everywhere else.',
     effect: 'capture',
     artifactKind: 'image',
     producesArtifact: true,
@@ -202,7 +202,7 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     sensitivity: 'elevated',
     secureContextRequired: true,
     inputFields: [
-      { name: 'reason', type: 'string', required: true, description: 'Why the clipboard text is needed — shown verbatim on the confirmation prompt.' },
+      { name: 'reason', type: 'string', required: true, description: 'Why the clipboard text is needed, shown verbatim on the confirmation prompt.' },
     ],
   },
   {
@@ -219,14 +219,14 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     secureContextRequired: true,
     inputFields: [
       { name: 'text', type: 'string', required: true, description: 'The text to place on the clipboard.' },
-      { name: 'reason', type: 'string', required: true, description: 'Why the text is being placed — shown verbatim on the confirmation prompt.' },
+      { name: 'reason', type: 'string', required: true, description: 'Why the text is being placed, shown verbatim on the confirmation prompt.' },
     ],
   },
   {
     id: 'device.command.notify',
     family: 'command',
     title: 'Show a notification',
-    purpose: 'Show a notification on the phone — how the agent gets your attention on the device you are actually holding.',
+    purpose: 'Show a notification on the phone, how the agent gets your attention on the device you are actually holding.',
     effect: 'actuate',
     artifactKind: 'none',
     producesArtifact: false,
@@ -237,7 +237,7 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     inputFields: [
       { name: 'title', type: 'string', required: true, description: 'Notification title.' },
       { name: 'body', type: 'string', required: false, description: 'Notification body text.' },
-      { name: 'reason', type: 'string', required: true, description: 'Why the notification is being sent — shown verbatim on the confirmation prompt.' },
+      { name: 'reason', type: 'string', required: true, description: 'Why the notification is being sent, shown verbatim on the confirmation prompt.' },
     ],
   },
   {
@@ -254,14 +254,14 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     secureContextRequired: false,
     inputFields: [
       { name: 'url', type: 'string', required: true, description: 'The http(s) URL to open.' },
-      { name: 'reason', type: 'string', required: true, description: 'Why the link is being opened — shown verbatim on the confirmation prompt.' },
+      { name: 'reason', type: 'string', required: true, description: 'Why the link is being opened, shown verbatim on the confirmation prompt.' },
     ],
   },
   {
     id: 'device.command.vibrate',
     family: 'command',
     title: 'Vibrate the phone',
-    purpose: 'Buzz the phone — a silent nudge when a run finishes or an approval is waiting.',
+    purpose: 'Buzz the phone, a silent nudge when a run finishes or an approval is waiting.',
     effect: 'actuate',
     artifactKind: 'none',
     producesArtifact: false,
@@ -271,7 +271,7 @@ export const DEVICE_CAPABILITY_CATALOG: readonly DeviceCapabilityDescriptor[] = 
     secureContextRequired: false,
     inputFields: [
       { name: 'durationMs', type: 'number', required: false, description: 'Buzz length in milliseconds (device may clamp it).' },
-      { name: 'reason', type: 'string', required: true, description: 'Why the phone is being buzzed — shown verbatim on the confirmation prompt.' },
+      { name: 'reason', type: 'string', required: true, description: 'Why the phone is being buzzed, shown verbatim on the confirmation prompt.' },
     ],
   },
 ];
@@ -302,7 +302,7 @@ export function listDeviceCapabilitiesByFamily(
 }
 
 // ---------------------------------------------------------------------------
-// Node kinds — open by design so Path B slots in without a contract change.
+// Node kinds, open by design so Path B slots in without a contract change.
 // ---------------------------------------------------------------------------
 
 /**
@@ -315,7 +315,7 @@ export const KNOWN_DEVICE_NODE_KINDS: readonly string[] = [
   'ios-native',
 ];
 
-/** A node kind slug. Any lowercase slug is valid — the list above is advisory. */
+/** A node kind slug. Any lowercase slug is valid, the list above is advisory. */
 export type DeviceNodeKind = string;
 
 const NODE_KIND_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
@@ -381,7 +381,7 @@ export type DeviceNodeResolution =
  *
  * Node-kind neutral: the only thing checked about `nodeKind` is that it is a
  * well-formed slug. A second node type (a native Android node, say) resolves
- * through this exact path with no branch of its own — which is what makes it a
+ * through this exact path with no branch of its own, which is what makes it a
  * peer rather than a special case.
  */
 export function resolveDeviceNodeProfile(

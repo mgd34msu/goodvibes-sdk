@@ -274,7 +274,7 @@ describe('the browser and the mailbox write to one ledger', () => {
     // ledgers would each see one half and neither would see the composition.
     //
     // The send below composes nothing from the page, so it PROCEEDS and the
-    // origin travels with the receipt. Disclosure is still here — it is simply
+    // origin travels with the receipt. Disclosure is still here, it is simply
     // no longer the only protection.
     const ledger = new UntrustedContentLedger();
     const port = createUntrustedContentPort({ surface: 'web-page', toolName: 'browser', ledger });
@@ -323,8 +323,8 @@ describe('the browser and the mailbox write to one ledger', () => {
     const port = createUntrustedContentPort({ surface: 'web-page', toolName: 'browser', ledger });
     port.recordIngest({ origin: port.originOf('https://news.example/x'), at: new Date().toISOString() });
 
-    // The refusal now says WHY the question could not be answered — nothing read
-    // this turn kept its text — instead of the bare "not available here" it used
+    // The refusal now says WHY the question could not be answered, nothing read
+    // this turn kept its text, instead of the bare "not available here" it used
     // to give. Same decision, and a reader can now tell this apart from a
     // derivation finding, which is the difference between a refusal they can act
     // on and one they can only obey.
@@ -336,7 +336,7 @@ describe('the browser and the mailbox write to one ledger', () => {
 
   test('the coarse refusal names a web page as a web page', async () => {
     // It used to say "which anyone able to write to those pages controls" about
-    // every surface, mailboxes included. The noun now follows the surface — see
+    // every surface, mailboxes included. The noun now follows the surface, see
     // security/untrusted-surface-language.ts for why that is not cosmetic.
     const ledger = new UntrustedContentLedger();
     const port = createUntrustedContentPort({ surface: 'web-page', toolName: 'browser', ledger });

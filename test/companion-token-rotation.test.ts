@@ -7,7 +7,7 @@
  * (<daemonHomeDir>/operator-tokens.json): it issues a fresh token + peerId and
  * overwrites the file, so the previously-issued token is no longer present in
  * the store and is honestly rejected on the next auth. Rotation reuses the
- * exact machinery getOrCreateCompanionToken persists through — no second store.
+ * exact machinery getOrCreateCompanionToken persists through, no second store.
  */
 
 import { describe, expect, test, afterEach } from 'bun:test';
@@ -46,7 +46,7 @@ describe('regenerateCompanionToken (rotation)', () => {
     expect(rotated.peerId).not.toBe(original.peerId);
     expect(rotated.token.startsWith('gv_')).toBe(true);
 
-    // The store now holds ONLY the rotated token — the old token is gone.
+    // The store now holds ONLY the rotated token, the old token is gone.
     const stored = readStore(daemonHomeDir);
     expect(stored.token).toBe(rotated.token);
     expect(stored.token).not.toBe(original.token);

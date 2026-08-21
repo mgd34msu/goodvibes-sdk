@@ -4,8 +4,8 @@
  * ## What the race is
  *
  * `runIdleRound` opens its untagged COLLECTOR before it sends `IDLE`, but the
- * waiter that actually ends the round — `waitForUntagged(isIdleWakeLine, …)`
- * inside `waitForWake` — is not registered until the server's `+ idling`
+ * waiter that actually ends the round, `waitForUntagged(isIdleWakeLine, …)`
+ * inside `waitForWake`, is not registered until the server's `+ idling`
  * continuation has come back. The fake server records `IDLE` in `commands` when
  * it RECEIVES the command, one round trip earlier. So a test that decides the
  * watcher is listening by reading `commands` and then pushes a one-shot wake
@@ -13,7 +13,7 @@
  * only by the collector, which cannot end the round.
  *
  * The recovery is the 27-minute IDLE re-issue, which these suites run on a
- * `FakeClock` they never advance. So a lost wake is not slow — it never
+ * `FakeClock` they never advance. So a lost wake is not slow, it never
  * completes at all, and presents as a hard timeout at whatever deadline the
  * test set. Raising the deadline does nothing. `nudgeUntil` is the fix: it
  * re-sends the stimulus if, and only if, the predicate is still false after an
@@ -29,14 +29,14 @@
  * Both sweeps were run by hand-patching a sleep into `idle-watcher.ts`, which
  * is why neither was repeatable. The patch now lives in the harness as
  * `watcherConnectionPort`, and `scripts/sweep-wake-race.ts` runs it over every
- * suite that drives the fake mailbox — so "is this race present anywhere" is a
+ * suite that drives the fake mailbox, so "is this race present anywhere" is a
  * command rather than a technique somebody has to already know.
  *
  * A sweep is worth exactly what its probe is worth. These two tests assert, on
  * every ordinary run, that the widening still produces a lost wake and that
  * `nudgeUntil` still recovers one. If the watcher is ever restructured so that
- * the waiter registers before the round is observable — closing the window for
- * real — the first test here fails, and that failure is the notice that the
+ * the waiter registers before the round is observable, closing the window for
+ * real, the first test here fails, and that failure is the notice that the
  * sweep has become a no-op and this file should go.
  */
 
@@ -119,7 +119,7 @@ async function build(): Promise<Harness> {
   return harness;
 }
 
-/** Deliver on the strength of the SERVER's command log — the racy pattern. */
+/** Deliver on the strength of the SERVER's command log, the racy pattern. */
 async function startAndDeliver(harness: Harness): Promise<void> {
   harness.watcher.start();
   await waitFor(
@@ -150,7 +150,7 @@ describe('the lost-wake probe still reproduces the race it sweeps for', () => {
 
     expect(failure).toBeInstanceOf(Error);
     expect((failure as Error).message).toContain('the delivered message');
-    // And nothing arrived — the wake was dropped, not merely late.
+    // And nothing arrived, the wake was dropped, not merely late.
     expect(harness.sink.delivered).toEqual([]);
   });
 

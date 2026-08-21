@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * graph-dynamics.ts — the runtime-dynamic dependency-graph muscles added to
+ * graph-dynamics.ts, the runtime-dynamic dependency-graph muscles added to
  * the ONE workstream engine (the fix-phase rework; never a sibling
  * scheduler):
  *
@@ -12,7 +12,7 @@
  *   conflicted item's files wait for its resolution);
  * - deepest-remaining-path priority (the critical path never idles);
  * - orphan detection (a blocker hard-failed past its retry bound orphans its
- *   transitive dependents — surfaced immediately, structured);
+ *   transitive dependents, surfaced immediately, structured);
  * - the graph snapshot surfaces render (nodes, edges, states, pool state,
  *   stalled tells).
  */
@@ -58,8 +58,8 @@ export function wouldCreateCycle(workstream: Workstream, fromItemId: string, toI
 
 /**
  * Add a dependency edge live (`itemId` now waits on `dependsOnId`). Refuses a
- * self-edge, an unknown endpoint, a duplicate (idempotent success), and — the
- * structured outcome — a cycle: the refusal emits `graph-cycle` naming the
+ * self-edge, an unknown endpoint, a duplicate (idempotent success), and, the
+ * structured outcome, a cycle: the refusal emits `graph-cycle` naming the
  * path, so the discovery is immediate and visible, never a stuck node.
  */
 export function addDependencyEdge(
@@ -88,7 +88,7 @@ export function addDependencyEdge(
 /**
  * Integration-conflict serialization: when `conflicted` could not merge, every
  * LATER non-terminal item that shares any of its files gains a serialization
- * edge on the conflicted item — they wait for the resolution instead of piling
+ * edge on the conflicted item, they wait for the resolution instead of piling
  * more merges onto a known-conflicted base region.
  */
 export function addConflictSerializationEdges(
@@ -148,7 +148,7 @@ export function remainingDepths(workstream: Workstream): Map<string, number> {
 /**
  * Orphan pass: an item is ORPHANED when a blocker it (transitively) waits on
  * has hard-failed past its retry bound. Surfaced immediately as a structured
- * outcome (`item-orphaned`, once per item) with the blocker named — never a
+ * outcome (`item-orphaned`, once per item) with the blocker named, never a
  * silently-never-ready node. Returns the ids orphaned by this pass.
  */
 export function detectOrphans(

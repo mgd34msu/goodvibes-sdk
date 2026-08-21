@@ -167,7 +167,7 @@ function readNumeric(reader: ProtoReader, wireType: WireType): number | undefine
  * Return uint64 fields as string (via BigInt) to preserve nanosecond
  * precision. Year-2026 timestamps (~1.78e18 ns) exceed Number.MAX_SAFE_INTEGER
  * (~9e15), so Number conversion loses the low ~7 digits.
- * OTLP JSON spec §3.4 encodes int64 fields as strings — this matches the spec.
+ * OTLP JSON spec §3.4 encodes int64 fields as strings, this matches the spec.
  */
 function readNumericBigIntAsString(reader: ProtoReader, wireType: WireType): string | undefined {
   if (wireType === 0) return String(reader.readVarint());

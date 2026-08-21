@@ -2,7 +2,7 @@
  * compaction-default-on-receipts.test.ts
  *
  * Auto-compaction ships default-on, guarded by the quality scorer, and every
- * automatic path leaves a visible receipt — a compaction is never silent.
+ * automatic path leaves a visible receipt, a compaction is never silent.
  * Pins: the default-on threshold, the scorer boundary, the guarded compactor's
  * applied vs kept-original (honest fallback) outcomes + receipt, the receipt
  * event shape, and the live context-usage readable for a context chip.
@@ -21,7 +21,7 @@ import type { RuntimeServices } from '../packages/sdk/src/platform/runtime/servi
 
 /**
  * A minimal RuntimeEventBus whose emit() records (channel, payload) into the
- * supplied sink — the repo's standard bus-fixture bridge (a typed factory,
+ * supplied sink, the repo's standard bus-fixture bridge (a typed factory,
  * not an `any` suppression).
  */
 function makeCapturingBus(sink: Array<{ channel: string; payload: unknown }>): RuntimeEventBus {
@@ -44,7 +44,7 @@ function makeReadModelServices(state: unknown): RuntimeServices {
   } as unknown as RuntimeServices;
 }
 
-// Registry that never yields a provider — llmExtract catches and returns null,
+// Registry that never yields a provider, llmExtract catches and returns null,
 // so compaction assembles only deterministic rule-based sections (no live LLM).
 const stubRegistry = {
   getForModel() { throw new Error('no provider in test'); },

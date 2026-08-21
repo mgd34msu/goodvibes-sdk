@@ -40,7 +40,7 @@ function scoreResult(
 /**
  * Run the requested compaction strategy, falling back from `distiller` to the
  * structured strategy when the distillation is unavailable or scores below the
- * quality floor. The SAME quality scorer gates both — a low-quality
+ * quality floor. The SAME quality scorer gates both, a low-quality
  * distillation never replaces the conversation on its own; it defers to
  * structured, and the fallback is named on the returned info.
  */
@@ -87,7 +87,7 @@ async function produceCompaction(
  * Resolve the effective compaction strategy from the `behavior.compactionStrategy`
  * config value and the `compaction-distiller-strategy` feature-flag state.
  *
- * The distiller only runs when BOTH the config selects it AND the flag is on —
+ * The distiller only runs when BOTH the config selects it AND the flag is on,
  * the flag is the graduation gate, so a `distiller` config value with a dark
  * flag honestly resolves back to `structured` (the un-graduated default). Any
  * unrecognized config value also resolves to `structured`.
@@ -134,14 +134,14 @@ export async function compactConversation(
       contextWindow: 0,
     };
     // Select and run the compaction strategy. The distiller (fresh-context)
-    // strategy falls back to structured — through the SAME quality scorer —
+    // strategy falls back to structured, through the SAME quality scorer,
     // when its distillation is unavailable or scores below the floor; the
     // fallback is named on the receipt.
     const produced = await produceCompaction(llmMessages, compactionContext, registry);
     const { result } = produced;
 
     // Quality guard: score the compaction before committing it. A low-quality
-    // result (e.g. no compression, or a destroyed handoff) is rejected — the
+    // result (e.g. no compression, or a destroyed handoff) is rejected, the
     // full conversation is kept and the failure is surfaced honestly rather
     // than silently swapping in a bad summary.
     const quality = scoreResult(llmMessages, result, compactionContext.contextWindow);
@@ -166,8 +166,8 @@ export async function compactConversation(
 
     // Fail honestly when the scorer flags low quality OR the compaction bought
     // nothing (output no smaller than input). The latter is a real failed
-    // compaction the composite score can miss — it rewards the compression axis
-    // even when a broken/empty extraction technically "shrank" tokens — so a
+    // compaction the composite score can miss, it rewards the compression axis
+    // even when a broken/empty extraction technically "shrank" tokens, so a
     // no-net-reduction result is treated as a failure and the conversation is
     // kept rather than swapping in a summary that did not help.
     const noReduction = result.tokensAfterEstimate >= result.tokensBeforeEstimate;
@@ -175,7 +175,7 @@ export async function compactConversation(
       const detail = quality.isLowQuality
         ? `Compaction quality ${quality.score.toFixed(2)} (${quality.grade}) below threshold ${LOW_QUALITY_THRESHOLD}; conversation retained. ${quality.description}`
         : `Compaction produced no token reduction (${result.tokensBeforeEstimate} -> ${result.tokensAfterEstimate}); conversation retained.`;
-      logger.warn('Compaction rejected by quality guard — conversation kept', { detail, trigger });
+      logger.warn('Compaction rejected by quality guard, conversation kept', { detail, trigger });
       throw new CompactionQualityError({ ...receiptBase, lowQuality: true, outcome: 'kept-original', detail });
     }
 

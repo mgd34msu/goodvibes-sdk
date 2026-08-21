@@ -1,5 +1,5 @@
 /**
- * facade-cluster-sockets.ts — contesting a socket surface under its REAL name.
+ * facade-cluster-sockets.ts, contesting a socket surface under its REAL name.
  *
  * Slack and Discord are the awkward pair. An ntfy topic and a Telegram bot id
  * are in the configuration, so a node knows what it is contesting before it
@@ -7,7 +7,7 @@
  * config holds a token, and the workspace that token belongs to is a fact only
  * the provider can tell you.
  *
- * The tempting shortcut is a fixed placeholder — every node contesting
+ * The tempting shortcut is a fixed placeholder, every node contesting
  * "the Slack surface". That is a starvation bug, not a conservatism. Two nodes
  * configured for two DIFFERENT workspaces would contest one election, one of
  * them would lose, and its workspace would go unanswered with nothing anywhere
@@ -20,7 +20,7 @@
  * therefore contested under its true name from the first datagram, and there
  * is never a window in which this node is reading a workspace it has not won.
  *
- * Two failure shapes are handled here, both of which end in the same place —
+ * Two failure shapes are handled here, both of which end in the same place,
  * this node stops contesting a surface it cannot serve:
  *
  *   - The identity does not resolve (no token, a revoked token, the provider
@@ -32,15 +32,15 @@
  *     consumer stops, a RESIGN goes out, and another machine can take the
  *     workspace immediately instead of waiting out the crash timeout.
  *
- * Both retry, because neither is necessarily permanent — a provider outage
- * ends, a network comes back — and a node that gave up permanently on a
+ * Both retry, because neither is necessarily permanent, a provider outage
+ * ends, a network comes back, and a node that gave up permanently on a
  * transient failure would leave a surface unread the moment the last other
  * node went away.
  *
  * Retrying forever is not the same as complaining forever. A workspace whose
  * token was revoked and never replaced is a permanent condition, and a fixed
  * retry timer that restates the same ERROR every minute buries the log it is
- * trying to make legible — the same failure the activity logger has already
+ * trying to make legible, the same failure the activity logger has already
  * been taught not to commit. So two things are separated here:
  *
  *   - The RETRY interval backs off, base delay doubling up to a ceiling, with
@@ -49,7 +49,7 @@
  *
  *   - The ERROR is stated ONCE per unbroken run of failures. Later attempts in
  *     the same run go to debug with the attempt count, and the run is closed
- *     out by an info line when the identity finally resolves — so the operator
+ *     out by an info line when the identity finally resolves, so the operator
  *     sees both the onset and the recovery, and nothing in between.
  *
  * A socket that drops is deliberately NOT put behind the same backoff: the
@@ -72,8 +72,8 @@ const DEFAULT_MAX_RETRY_MS = 15 * 60_000;
 export interface SocketSurfaceSupervisorOptions {
   readonly kind: 'slack' | 'discord';
   /**
-   * The provider's own name for what this token reads — a Slack team id, a
-   * Discord application id — or null when that cannot be established.
+   * The provider's own name for what this token reads, a Slack team id, a
+   * Discord application id, or null when that cannot be established.
    */
   readonly resolveIdentity: () => Promise<string | null>;
   /** Register the gate for a surface; returns the withdraw function. */
@@ -176,8 +176,8 @@ export class SocketSurfaceSupervisor {
   /**
    * The socket dropped. Stand down from the surface and try to get it back.
    *
-   * Withdrawing runs the ordered stand-down inside the registry — the consumer
-   * is stopped and only then is the RESIGN broadcast — so the successor never
+   * Withdrawing runs the ordered stand-down inside the registry, the consumer
+   * is stopped and only then is the RESIGN broadcast, so the successor never
    * starts against a consumer that is still running.
    */
   onSocketLost(reason: string): void {

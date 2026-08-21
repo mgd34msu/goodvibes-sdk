@@ -1,12 +1,12 @@
 /**
- * ci-watch/poller.ts — the daemon polls registered CI watches.
+ * ci-watch/poller.ts, the daemon polls registered CI watches.
  *
- * checkWatch (service.ts) does the whole job — status source, persisted
- * store, notifier, fix-session offer/starter — but used to be invoked ONLY by
+ * checkWatch (service.ts) does the whole job, status source, persisted
+ * store, notifier, fix-session offer/starter, but used to be invoked ONLY by
  * the manual `ci.watches.run` verb, so a "standing watch" stood still unless
  * someone poked it. This module registers the recurring check on the daemon's
- * EXISTING scheduling machinery — the watcher registry's polling watcher
- * (the same host the daemon heartbeat runs on) — so the fleet/watcher surface
+ * EXISTING scheduling machinery, the watcher registry's polling watcher
+ * (the same host the daemon heartbeat runs on), so the fleet/watcher surface
  * shows it, its heartbeat/failure states are the registry's own, and stop
  * semantics come for free.
  *
@@ -21,7 +21,7 @@ import type { CiWatchService } from './service.js';
 
 /** Default poll cadence. */
 export const DEFAULT_CI_POLL_INTERVAL_MS = 60_000;
-/** The cadence floor — polls faster than this hammer the status source's rate limits. */
+/** The cadence floor, polls faster than this hammer the status source's rate limits. */
 export const MIN_CI_POLL_INTERVAL_MS = 15_000;
 /** The polling watcher's stable id on the watcher registry. */
 export const CI_WATCH_POLLER_ID = 'ci-watch-poller';
@@ -50,7 +50,7 @@ export interface CiPollingHost {
 export type CiWatchPollTarget = Pick<CiWatchService, 'listWatches' | 'checkWatch'>;
 
 /**
- * One poll pass: check every registered watch, sequentially, never throwing —
+ * One poll pass: check every registered watch, sequentially, never throwing,
  * a single repo's failure must not starve the rest. Returns a one-line
  * checkpoint summary for the watcher registry's heartbeat trail. Exported so
  * tests drive passes directly without timers.
@@ -102,7 +102,7 @@ export function registerCiWatchPolling(
     },
     intervalMs,
     run: async (): Promise<string> => {
-      if (inFlight) return 'previous pass still running — skipped (overlap guard)';
+      if (inFlight) return 'previous pass still running, skipped (overlap guard)';
       inFlight = true;
       try {
         return await runCiWatchPollPass(service);

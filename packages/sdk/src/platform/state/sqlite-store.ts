@@ -175,7 +175,7 @@ export class SQLiteStore {
       // The base schema always runs (it is IF NOT EXISTS-idempotent) so a
       // store already at the target version still gets any session tables.
       schema(this.getDb());
-      // Persist a freshly-stamped version so the next open skips migration —
+      // Persist a freshly-stamped version so the next open skips migration,
       // but only for a store that already lived on disk: a brand-new store
       // keeps the long-standing contract of touching disk on first save().
       if (result.applied.length > 0 && existedOnDisk) {
@@ -192,7 +192,7 @@ export class SQLiteStore {
 
   private getDb(): SqlDatabase {
     if (!this.db) {
-      throw new Error('SQLiteStore: not initialized — call init() first');
+      throw new Error('SQLiteStore: not initialized, call init() first');
     }
     return this.db;
   }

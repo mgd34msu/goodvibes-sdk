@@ -1,9 +1,9 @@
 /**
  * Tests for UX-first enhancements:
- *  Task 1 — Typed connection-state events (ConnectionState, ReconnectAttemptInfo)
- *  Task 2 — Backpressure visibility (BackpressureInfo, onBackpressure callback)
- *  Task 3 — WS error envelope parity (createWebSocketRemoteError)
- *  Task 4 — Granular progress event contracts (BATCH_JOB_PROGRESS, EXPORT_PROGRESS, KNOWLEDGE_INGEST_PROGRESS)
+ *  Task 1, Typed connection-state events (ConnectionState, ReconnectAttemptInfo)
+ *  Task 2, Backpressure visibility (BackpressureInfo, onBackpressure callback)
+ *  Task 3, WS error envelope parity (createWebSocketRemoteError)
+ *  Task 4, Granular progress event contracts (BATCH_JOB_PROGRESS, EXPORT_PROGRESS, KNOWLEDGE_INGEST_PROGRESS)
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -103,7 +103,7 @@ function firstInstance(instances: MockWebSocketHandle[]): MockWebSocketHandle {
 }
 
 /**
- * DomainEventConnector's declared return type is `void | Promise<() => void>` —
+ * DomainEventConnector's declared return type is `void | Promise<() => void>`,
  * the WebSocket branch always resolves a real stop function, but the type
  * doesn't promise that. Assert it before calling, so a real regression (the
  * connector silently returning nothing) fails loudly instead of leaking an
@@ -115,7 +115,7 @@ function stopOrThrow(stop: (() => void) | void): void {
 }
 
 // ---------------------------------------------------------------------------
-// Task 1 — Typed connection-state events
+// Task 1, Typed connection-state events
 // ---------------------------------------------------------------------------
 describe('Task 1: typed connection-state events', () => {
   test('ConnectionState type is exported and covers all expected literals', () => {
@@ -158,7 +158,7 @@ describe('Task 1: typed connection-state events', () => {
     await settleEvents(10);
 
     // Exact sequence: connecting (from connect()) then connected (after auth).
-    // onOpen must NOT emit 'connecting' — that would be a dedup-suppressed no-op
+    // onOpen must NOT emit 'connecting', that would be a dedup-suppressed no-op
     // but semantically wrong. The sequence must be exactly [connecting, connected].
     expect(states).toEqual(['connecting', 'connected']);
 
@@ -271,7 +271,7 @@ describe('Task 1: typed connection-state events', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 2 — Backpressure visibility
+// Task 2, Backpressure visibility
 // ---------------------------------------------------------------------------
 describe('Task 2: backpressure visibility', () => {
   test('BackpressureInfo type carries all required fields', () => {
@@ -306,7 +306,7 @@ describe('Task 2: backpressure visibility', () => {
     await settleEvents(10);
 
     // onEmitter fires synchronously (before socket open) so backpressure callbacks fire
-    // before any WebSocket is instantiated — only the queue saturation matters here.
+    // before any WebSocket is instantiated, only the queue saturation matters here.
     // The first overflow fires at item 1025
     expect(bpEvents.length).toBeGreaterThanOrEqual(1);
     const bp = bpEvents[0]!;
@@ -362,7 +362,7 @@ describe('Task 2: backpressure visibility', () => {
     firstInstance(instances).simulateClose(1006);
     await settleEvents(10);
 
-    // Flood again — the overflow counter was reset on the previous flush, so the
+    // Flood again, the overflow counter was reset on the previous flush, so the
     // first overflow in this disconnected session should fire a new backpressure event.
     for (let i = 0; i < 1025; i++) emitter(smallMsg);
     expect(bpEvents.length).toBeGreaterThan(beforeReconnect);
@@ -370,7 +370,7 @@ describe('Task 2: backpressure visibility', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 3 — WS error envelope parity
+// Task 3, WS error envelope parity
 // ---------------------------------------------------------------------------
 describe('Task 3: WS error envelope parity', () => {
   test('createWebSocketRemoteError falls back to fallbackMessage for non-structured body', () => {
@@ -436,7 +436,7 @@ describe('Task 3: WS error envelope parity', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 4 — Granular progress event contracts
+// Task 4, Granular progress event contracts
 // ---------------------------------------------------------------------------
 describe('Task 4: granular progress event contracts', () => {
   test('BATCH_JOB_PROGRESS event shape satisfies TaskEvent union', () => {
@@ -561,7 +561,7 @@ describe('Task 4: granular progress event contracts', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Task 5 — onTransportEvent: typed events dispatched by connector
+// Task 5, onTransportEvent: typed events dispatched by connector
 // ---------------------------------------------------------------------------
 describe('Task 5: onTransportEvent typed event dispatch', () => {
   test('onTransportEvent receives TRANSPORT_CONNECTION_STATE on each state transition', async () => {
@@ -679,7 +679,7 @@ describe('Task 5: onTransportEvent typed event dispatch', () => {
     firstInstance(instances).simulateClose(1005, '');
     await settleEvents(20);
 
-    // 1005 is NOT a clean close — connector must schedule a reconnect
+    // 1005 is NOT a clean close, connector must schedule a reconnect
     expect(states).toContain('reconnecting');
     const reconnectEvents = events.filter((e) => e.type === 'TRANSPORT_RECONNECT_ATTEMPT');
     expect(reconnectEvents.length).toBeGreaterThanOrEqual(1);

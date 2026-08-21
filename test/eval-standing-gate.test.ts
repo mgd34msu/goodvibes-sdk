@@ -1,8 +1,8 @@
 /**
  * eval-standing-gate.test.ts
  *
- * Locks the standing-gate suite (GATE_SUITES) as an all-floors-passing set — the
- * property that lets `bun run eval:gate` be honestly green — and proves the gate
+ * Locks the standing-gate suite (GATE_SUITES) as an all-floors-passing set, the
+ * property that lets `bun run eval:gate` be honestly green, and proves the gate
  * still flags a real floor failure and a real regression. Unlike BUILTIN_SUITES
  * (which deliberately contain floor-failing branch-exercising fixtures),
  * GATE_SUITES must clear every absolute floor on a clean run.

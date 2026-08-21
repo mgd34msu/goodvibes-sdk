@@ -1,24 +1,24 @@
 /**
- * cli-parser-engine.ts — the argument engine.
+ * cli-parser-engine.ts, the argument engine.
  *
  * It knows about tokens, values, arity, `--`, and refusals. It knows nothing
  * about any one product's commands or flags: every command name, alias, flag
  * and kind it works with arrives from a `CliCatalog` (./cli-catalog-types.ts).
  * A daemon-shaped front-end and a terminal-shaped front-end drive the SAME
- * engine over two different catalogs — see cli-command-catalog.ts for this
+ * engine over two different catalogs, see cli-command-catalog.ts for this
  * package's own instance and cli-parser.ts for the thin wrapper built on it.
  *
  * THE TWO RULES A STRICT CATALOG ASKS THIS FILE TO ENFORCE
  *
  * 1. An unmatched first token can be made to refuse rather than quietly
- *    become the default command's positional argument — a bare invocation
+ *    become the default command's positional argument, a bare invocation
  *    (or a fully passthrough one) is one thing; a plain typo that silently
  *    started the default behavior anyway is the defect class this exists to
  *    end. `CliCatalog.unmatchedFirstToken` decides which a given catalog
  *    wants; a catalog earns the strict behavior by declaring `'reject'`.
  * 2. Every refusal is a refusal. A flag that belongs to another surface, a
  *    flag this command does not take (unless the command opts into lenient
- *    unknown-flag passthrough), a missing value — each produces an error
+ *    unknown-flag passthrough), a missing value, each produces an error
  *    line, never an accept-and-ignore.
  */
 import {
@@ -44,7 +44,7 @@ function isOptionToken(token: string): boolean {
  * Stricter than `isOptionToken` by exactly one token: a bare `-` is the stdin
  * convention, a positional in its own right, and swallowing it as `--fork`'s or
  * `--resume`'s value would turn "resume the latest session, reading stdin" into
- * "resume the session named `-`". A REQUIRED value is a different question — a
+ * "resume the session named `-`". A REQUIRED value is a different question, a
  * flag that must have one and is handed `-` gets `-`, because refusing it would
  * only produce a "requires a value" error over a token the user did supply.
  */
@@ -69,7 +69,7 @@ function splitOption(token: string): { readonly name: string; readonly value: st
  * neighbour as the command word. `boolean` and `const` never consume;
  * `string-optional` consumes only what {@link canBeOptionalValue} allows; every
  * other kind consumes only a token that is really there and is not itself
- * option-shaped — a flag whose value is missing is refused, and refusing it does
+ * option-shaped, a flag whose value is missing is refused, and refusing it does
  * not eat the next token.
  */
 function kindConsumesNextValue(kind: CliFlagKind, argv: readonly string[], index: number): boolean {
@@ -90,7 +90,7 @@ function kindConsumesNextValue(kind: CliFlagKind, argv: readonly string[], index
  *
  * `keepLooking` is what separates the two catalog postures. A catalog that
  * REJECTS an unmatched word is answered by the first non-flag token and nothing
- * after it — that token is either the command or the refusal. A catalog that
+ * after it, that token is either the command or the refusal. A catalog that
  * lets an unmatched word pass through as an ordinary positional has to keep
  * looking, because in `run a-file.txt` the word that names the command may not
  * be the first one: stopping at the first token would silently start the
@@ -154,7 +154,7 @@ type FieldRecord<TField extends string> = Record<TField, CliFlagValue>;
  *
  * Cast, not `any`: the engine is generic over TFlags (a product's own
  * interface, e.g. `GoodVibesCliFlags`), so it cannot know that interface's
- * exact shape — only that a catalog's flag specs name fields that exist on
+ * exact shape, only that a catalog's flag specs name fields that exist on
  * it, which is the whole contract a catalog makes. `TField` is the type-safe
  * half of that contract; this cast is what lets one engine assign to any
  * product's differently-shaped record without a hardcoded switch over field
@@ -249,7 +249,7 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
       }
       // 'passthrough': the token stands as an ordinary positional below; the
       // command stays the catalog default and sawCommand stays false, so the
-      // REST of argv is also parsed in the pre-command (strict) posture —
+      // REST of argv is also parsed in the pre-command (strict) posture,
       // matching a single unmatched word never partially unlocking anything.
     } else {
       command = resolved;
@@ -303,7 +303,7 @@ export function parseWithCatalog<TCommand extends string, TField extends string,
     if (!flagSpec) {
       const rejected = catalog.rejectedFlags?.[name];
       if (rejected) {
-        errors.push(`${name} is not a ${binary} flag — ${rejected.reason} belongs to another surface.`);
+        errors.push(`${name} is not a ${binary} flag, ${rejected.reason} belongs to another surface.`);
         if (inlineValue === undefined && rejected.takesValue) index += 1;
         continue;
       }

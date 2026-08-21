@@ -78,7 +78,7 @@ function commandResult(stdout: string, code = 0): GoogleCommandResult {
   return { code, stdout, stderr: '', timedOut: false, spawnError: null };
 }
 
-/** A gcloud that is absent — every invocation fails to spawn. */
+/** A gcloud that is absent, every invocation fails to spawn. */
 const noGcloud: GoogleCommandPort = {
   run: async () => ({ code: null, stdout: '', stderr: '', timedOut: false, spawnError: 'ENOENT' }),
 };
@@ -194,7 +194,7 @@ describe('discovery decides before anything runs', () => {
       secrets: secretPort(),
       commands: noGcloud,
       // Any real file access would have to come through a port, and discovery
-      // is not given one at all — its dependencies do not include a file port.
+      // is not given one at all, its dependencies do not include a file port.
       homeDirectory: HOME,
     });
 
@@ -222,7 +222,7 @@ describe('discovery decides before anything runs', () => {
 describe('zero friction is the bar, not an aspiration', () => {
   // The anti-example is the session this work came from: 20+ minutes, three
   // logins, ten dialogs. The standard is that from "connect google" to working
-  // mail AND calendar the person does AT MOST ONE thing — open a consent link
+  // mail AND calendar the person does AT MOST ONE thing, open a consent link
   // and approve it. Anything more needs a stated reason, and the only reason
   // that survives review is a fact about Google.
 
@@ -254,7 +254,7 @@ describe('zero friction is the bar, not an aspiration', () => {
   test('any route asking for more than one thing states why, and names Google', async () => {
     // The reason has to be a fact about Google rather than a convenience for
     // us. Creating a Desktop app OAuth client has no API and no gcloud command
-    // — verified against Google's live docs on 2026-08-05 — so the console is
+    //, verified against Google's live docs on 2026-08-05, so the console is
     // unavoidable exactly once, on a machine that has no client yet.
     for (const commands of [noGcloud, liveGcloud('agent@example.com')]) {
       const plan = await planGoogleConnection({
@@ -713,7 +713,7 @@ describe('no setup string tells the user to type anything', () => {
   // used to end at "Hand both values over with: /google client <id> <secret>",
   // which is a chore handed over at the exact moment the platform had
   // everything it needed to do the work itself. The gap underneath it was real
-  // — the google tool had no action that could register pasted values — so the
+  //, the google tool had no action that could register pasted values, so the
   // string had no honest alternative until connect.client existed.
   //
   // `mentionsUserTypedCommand` is the platform's own predicate, the same one
@@ -803,8 +803,8 @@ describe('every command named in Google-flow text exists', () => {
    *
    * URLs are stripped first, so `console.cloud.google.com/auth/audience`
    * cannot be mistaken for a command. Only the three commands this connector
-   * ever names are matched, and only where a slash starts a token — never
-   * after a word character, a dot, a colon, a backslash or another slash —
+   * ever names are matched, and only where a slash starts a token, never
+   * after a word character, a dot, a colon, a backslash or another slash,
    * which excludes import specifiers, file paths, regex literals and HTML.
    *
    * A bare `/google` with no subcommand is normalised to `/google status`,

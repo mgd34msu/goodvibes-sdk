@@ -17,7 +17,7 @@ export interface TaskToolOptions {
    * user is actually in.
    *
    * When absent, the tool falls back to the legacy namespace and every ref it
-   * writes is unowned — see {@link LEGACY_TASK_NAMESPACE}. Hosts that care
+   * writes is unowned, see {@link LEGACY_TASK_NAMESPACE}. Hosts that care
    * about owner-existence reaping must pass this.
    */
   readonly resolveSessionId?: (() => string) | undefined;
@@ -40,8 +40,8 @@ function summarizeRef(ref: CrossSessionTaskRef | null) {
  * The `task` tool.
  *
  * OWNERSHIP IS NOT A TOOL INPUT. The owning `sessionId` on every ref this tool
- * writes comes from `options.resolveSessionId` — the host's real runtime session
- * identity — and the model's `input.sessionId` is IGNORED for all of them. It
+ * writes comes from `options.resolveSessionId`, the host's real runtime session
+ * identity, and the model's `input.sessionId` is IGNORED for all of them. It
  * used to be the authority, defaulting to the literal `'local'`, which meant an
  * ownership key the model could set to anything (or, overwhelmingly, forget to
  * set at all). A field the caller can spoof cannot be the key a store reaps by:
@@ -54,7 +54,7 @@ function summarizeRef(ref: CrossSessionTaskRef | null) {
  * no ownership, so it stays available and simply defaults to the caller's own
  * session. Naming another session as a dependency target
  * (`dependsOnSessionId`) or a handoff destination (`toSessionId`) likewise
- * still works — those are references to a counterparty, not a claim about who
+ * still works, those are references to a counterparty, not a claim about who
  * owns the record being written.
  */
 export function createTaskTool(registry: CrossSessionTaskRegistry, options: TaskToolOptions = {}): Tool {
@@ -73,7 +73,7 @@ export function createTaskTool(registry: CrossSessionTaskRegistry, options: Task
       }
       const input = args as TaskToolInput;
       // The one authoritative identity. Every WRITE below keys on this and
-      // never on input.sessionId — see the createTaskTool doc comment.
+      // never on input.sessionId, see the createTaskTool doc comment.
       const sessionId = options.resolveSessionId?.().trim() || LEGACY_TASK_NAMESPACE;
       // Read-only selector: which session's refs to display. Defaults to ours.
       const readSessionId = input.sessionId?.trim() || sessionId;

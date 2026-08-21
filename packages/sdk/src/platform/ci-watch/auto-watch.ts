@@ -1,14 +1,14 @@
 /**
- * ci-watch/auto-watch.ts — CI watches mint themselves at the push/PR seam.
+ * ci-watch/auto-watch.ts, CI watches mint themselves at the push/PR seam.
  *
  * Work done through the platform that pushes a branch (or opens a PR) in a CI
- * repo creates its own watch — no ceremony. The seam is tool execution: a
+ * repo creates its own watch, no ceremony. The seam is tool execution: a
  * successful exec run whose commands include `git push` or `gh pr create`
  * mints a watch for the pushed branch (fire-and-forget; the tool-result path
  * is never blocked, mirroring the code-index reindex scheduler's contract).
  * A GitService-driven push can call `onGitPushed` directly for the same mint.
  *
- * Delivery defaults to the daemon's own operator-surface channel ('web' — the
+ * Delivery defaults to the daemon's own operator-surface channel ('web', the
  * control-plane delivery the existing push-notification path rides), and the
  * red-run "fix this?" offer plus verdict-retirement behavior come free from
  * CiWatchService: the watch EXPIRES once its terminal verdict is delivered.
@@ -34,7 +34,7 @@ const PUSH_FLAG_WITH_VALUE = new Set(['-o', '--push-option', '--receive-pack', '
 
 /**
  * Detect a CI-relevant push in one exec command line: `git push ...` or
- * `gh pr create ...`. Only simple top-level forms are matched — a compound
+ * `gh pr create ...`. Only simple top-level forms are matched, a compound
  * line still matches when a segment starts with the command.
  */
 export function detectCiPushInCommand(command: string): DetectedCiPush | null {
@@ -116,7 +116,7 @@ export interface CiWatchAutoMintDeps {
 /**
  * The self-minting tap. `onToolExecuted` has the exact shape of the shared
  * tool-execution observer seam; `onGitPushed` serves GitService-path callers.
- * Minting is asynchronous and best-effort — it never blocks or fails the
+ * Minting is asynchronous and best-effort, it never blocks or fails the
  * caller, and a repo that is not a GitHub remote is a silent no-op (the gh
  * status source could not watch it honestly).
  */

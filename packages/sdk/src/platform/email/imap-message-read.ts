@@ -12,7 +12,7 @@
  * ──────────────────────────────────────────
  * `fetchMessage` returned `ImapMessageDetail | null`, and `null` carried both
  * facts. Its one caller turns `null` into the sentence "no message with UID n
- * is in the mailbox — it may have been moved or deleted since it was listed",
+ * is in the mailbox, it may have been moved or deleted since it was listed",
  * which is true for an expunge and a false statement about the owner's mailbox
  * for an unreadable answer: the message is sitting in it, and we have just told
  * him it is gone. Same shape as `ImapEnvelopeBatch.unreadable` draws for a
@@ -47,14 +47,14 @@ import type { ImapFetchProblem, ImapMessageRead } from './imap-types.js';
  * The FETCH responses in a single-message header fetch that could not be read.
  *
  * Empty means one of two ordinary things: the server said nothing about this
- * UID (an expunge — the caller's `gone`), or the header block came back and can
+ * UID (an expunge, the caller's `gone`), or the header block came back and can
  * be read. Non-empty is the third case, which used to have nowhere to go: the
  * server ANSWERED and this client cannot say what it answered.
  *
  * The test for that third case is deliberately "a response arrived and no
  * header text came out of it", not "the response reader reported an error".
- * Two parsers read these lines — `extractFetchSection`, which the payload comes
- * from, and `parseFetchResponses`, which is stricter — and they do not agree on
+ * Two parsers read these lines, `extractFetchSection`, which the payload comes
+ * from, and `parseFetchResponses`, which is stricter, and they do not agree on
  * every conformant shape a server sends. Refusing a message because the
  * stricter one objected while the actual payload extracted fine would turn
  * readable mail into "could not be read", which is the same class of false
@@ -125,20 +125,20 @@ async function fetchTextSection(
  *
  * **Read-only.** Every section is fetched with `BODY.PEEK[...]`. Plain
  * `BODY[...]` sets `\Seen`, which would mean reading the owner's mail marked it
- * read behind their back — for a daemon answering mail unattended, that is a
+ * read behind their back, for a daemon answering mail unattended, that is a
  * visible change to their mailbox nobody asked for.
  *
  * **Attachments are described, never downloaded.** The parts list comes from
  * BODYSTRUCTURE and only the text/plain and text/html sections are fetched. A
  * message with a 30 MB archive on it costs the same to read as one without.
  *
- * The three outcomes are `read`, `gone` and `unreadable` — see
+ * The three outcomes are `read`, `gone` and `unreadable`, see
  * `unreadableHeaderResponses` for how the last two are told apart, which is the
  * whole reason this returns a result rather than a nullable message.
  *
  * `enforceBodyReadable` adds a FOURTH answer that is not an outcome at all: it
  * raises. See the block at the end of the function for why a withheld body is
- * not one of the three — it is a fact about the account rather than about this
+ * not one of the three, it is a fact about the account rather than about this
  * message, and returning it as a `read` with an empty body is exactly the
  * "quiet mailbox" impostor `imap-body-probe.ts` exists to catch. Off unless a
  * caller asks, because the ordinary mail reader leaves a section it could not
@@ -167,7 +167,7 @@ export async function readMessageDetail(
   if (parts.length === 0) {
     // The server's own description of the message was unreadable. Falling back
     // to BODY.PEEK[TEXT] is safe ONLY when the headers say the message is a
-    // single text part — on a multipart message that section is every part
+    // single text part, on a multipart message that section is every part
     // concatenated, including the encoded attachments this function exists not
     // to download, so it stays unfetched and the body reads empty.
     const contentType = extractHeader(rawHeaders, 'Content-Type').toLowerCase();
@@ -213,7 +213,7 @@ export async function readMessageDetail(
       mailbox,
       deliveredTo: deliveryEvidence.map((entry) => entry.address),
       deliveryEvidence,
-      // Display only — see the field docs on ImapEnvelope.
+      // Display only, see the field docs on ImapEnvelope.
       unverifiedToHeaderClaim: extractHeader(rawHeaders, 'To'),
       authenticationResults: extractAuthenticationResults(rawHeaders),
       bodyText,

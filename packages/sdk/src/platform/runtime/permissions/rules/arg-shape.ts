@@ -19,7 +19,7 @@ export interface ArgShapeRuleResult {
 }
 
 /**
- * toolMatchesArgPattern — Returns true if `toolName` is matched by the rule's
+ * toolMatchesArgPattern, Returns true if `toolName` is matched by the rule's
  * `toolPattern` field (which may be a single string, `'*'`, or an array).
  */
 function toolMatchesArgPattern(
@@ -33,14 +33,14 @@ function toolMatchesArgPattern(
 }
 
 /**
- * matchArgValue — Tests a single argument value against an expected matcher.
+ * matchArgValue, Tests a single argument value against an expected matcher.
  *
  * - If `expected` is a string starting with `/`, it is treated as a regex
  *   pattern (the trailing `/` and flags are parsed out if present).
  * - Otherwise, strict equality is used.
  *
- * @param actual   — The actual argument value.
- * @param expected — The expected matcher value from the rule.
+ * @param actual  , The actual argument value.
+ * @param expected, The expected matcher value from the rule.
  */
 function matchArgValue(actual: unknown, expected: unknown): boolean {
   if (typeof expected === 'string' && expected.startsWith('/')) {
@@ -52,7 +52,7 @@ function matchArgValue(actual: unknown, expected: unknown): boolean {
       const re = compileSafeRegExp(source, flags, { operation: 'permission arg-shape', maxPatternChars: 256 });
       return safeRegExpTest(re, String(actual), { operation: 'permission arg-shape', maxInputChars: 4_096 });
     } catch {
-      // Invalid regex — treat as literal string match
+      // Invalid regex, treat as literal string match
       return actual === expected;
     }
   }
@@ -60,15 +60,15 @@ function matchArgValue(actual: unknown, expected: unknown): boolean {
 }
 
 /**
- * evaluateArgShapeRule — Evaluates a single ArgShapeRule against a tool call.
+ * evaluateArgShapeRule, Evaluates a single ArgShapeRule against a tool call.
  *
  * Returns `matched: true` only when:
  *   1. The tool name matches the rule's `toolPattern`, AND
  *   2. ALL key/value matchers in `argMatchers` match the corresponding arg values.
  *
- * @param rule     — The ArgShapeRule to evaluate.
- * @param toolName — Name of the tool being called.
- * @param args     — Arguments passed to the tool.
+ * @param rule    , The ArgShapeRule to evaluate.
+ * @param toolName, Name of the tool being called.
+ * @param args    , Arguments passed to the tool.
  */
 export function evaluateArgShapeRule(
   rule: ArgShapeRule,
@@ -91,7 +91,7 @@ export function evaluateArgShapeRule(
 
   const matchers = Object.entries(rule.argMatchers);
   if (matchers.length === 0) {
-    // Empty matchers — matches any args for the tool
+    // Empty matchers, matches any args for the tool
     return {
       matched: true,
       step: {

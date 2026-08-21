@@ -40,9 +40,9 @@ interface SelectorState {
 }
 
 /**
- * SelectorHotspotSampler — sliding-window latency + frequency tracker.
+ * SelectorHotspotSampler, sliding-window latency + frequency tracker.
  *
- * Thread-safety note: synchronous JS — no concurrency concerns.
+ * Thread-safety note: synchronous JS, no concurrency concerns.
  */
 export class SelectorHotspotSampler {
   private readonly _windowMs: number;
@@ -50,7 +50,7 @@ export class SelectorHotspotSampler {
   private readonly _selectors = new Map<string, SelectorState>();
 
   /**
-   * @param config — Optional sampler configuration.
+   * @param config, Optional sampler configuration.
    */
   constructor(config: HotspotSamplerConfig = {}) {
     this._windowMs = config.windowMs ?? DEFAULT_HOTSPOT_WINDOW_MS;
@@ -67,8 +67,8 @@ export class SelectorHotspotSampler {
   /**
    * Record a selector invocation.
    *
-   * @param key — Selector name / identifier.
-   * @param durationMs — Execution time in milliseconds (may be 0 for sync).
+   * @param key, Selector name / identifier.
+   * @param durationMs, Execution time in milliseconds (may be 0 for sync).
    */
   public record(key: string, durationMs: number): void {
     const now = Date.now();
@@ -123,7 +123,7 @@ export class SelectorHotspotSampler {
   /**
    * Return the hotspot for a single selector key, or undefined if never recorded.
    *
-   * @param key — Selector identifier.
+   * @param key, Selector identifier.
    */
   public getHotspot(key: string): SelectorHotspot | undefined {
     const state = this._selectors.get(key);
@@ -136,7 +136,7 @@ export class SelectorHotspotSampler {
   /**
    * Return the top N selectors by call count in the current window.
    *
-   * @param n — Maximum number of hotspots to return.
+   * @param n, Maximum number of hotspots to return.
    */
   public getTopHotspots(n: number): SelectorHotspot[] {
     return this.getReport().hotspots.slice(0, n);

@@ -8,7 +8,7 @@
  *   1. resolve the bundle's declared security capabilities against the trust
  *      tier (via the plugin model's `resolveCapabilityManifest`), so a bundle
  *      never receives more than its tier permits;
- *   2. decide quarantine — if the bundle declared high-risk capabilities the
+ *   2. decide quarantine, if the bundle declared high-risk capabilities the
  *      tier does not grant, the bundle activates QUARANTINED with those
  *      capabilities revoked (the same posture the runtime quarantine engine
  *      applies to a live plugin), rather than being granted them;
@@ -67,7 +67,7 @@ function toPluginManifestV2(manifest: CapabilityBundleManifest): PluginManifestV
 /**
  * Plan the activation of a verified bundle at a given trust tier. Pure: it makes
  * the grant/quarantine decision and returns a guard, but performs no IO. The
- * guard it returns is scoped to the GRANTED security capabilities — a bundle
+ * guard it returns is scoped to the GRANTED security capabilities, a bundle
  * whose high-risk capability was withheld cannot exercise it even if declared.
  */
 export function planBundleActivation(
@@ -87,7 +87,7 @@ export function planBundleActivation(
       }
     : { required: false, revokedCapabilities: [] };
 
-  // The guard reflects only the GRANTED security capabilities — withheld caps
+  // The guard reflects only the GRANTED security capabilities, withheld caps
   // are removed so `mayUseCapability` denies them even though they were declared.
   const grantedGuard = createBundleCapabilityGuard({
     ...manifest,

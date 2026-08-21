@@ -1,8 +1,8 @@
 /**
  * wrfc-reviewer-contract-verification.test.ts
  *
- * The WRFC reviewer must verify the CONTRACT — that the work that was done is
- * the work that SHOULD have been done and that it is correct — not merely that
+ * The WRFC reviewer must verify the CONTRACT, that the work that was done is
+ * the work that SHOULD have been done and that it is correct, not merely that
  * activity happened. These policy-contract tests pin every requirement in the
  * reviewer's task/policy text, the anti-gaming clause, and the acceptance-
  * checklist review record; a companion controller test proves a valid-but-

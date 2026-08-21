@@ -24,15 +24,15 @@ const DEFAULT_QUARANTINE_THRESHOLD = 3;
  * Tracks schema freshness for every registered MCP server.
  *
  * Lifecycle:
- *   1. `registerServer(name)` — initialised with `unknown` freshness.
- *   2. `markFresh(name)`      — called after a successful schema fetch.
- *   3. `markFailed(name, err)` — called after a failed fetch attempt.
- *   4. `markStale(name)`      — called when a server reconnects (cache invalidated).
- *   5. `getFreshness(name)`   — returns current freshness, accounting for TTL.
- *   6. `removeServer(name)`   — drops the record on permanent disconnection.
- *   7. `markQuarantined(name, reason, detail)` — places schema into quarantine;
+ *   1. `registerServer(name)`, initialised with `unknown` freshness.
+ *   2. `markFresh(name)`     , called after a successful schema fetch.
+ *   3. `markFailed(name, err)`, called after a failed fetch attempt.
+ *   4. `markStale(name)`     , called when a server reconnects (cache invalidated).
+ *   5. `getFreshness(name)`  , returns current freshness, accounting for TTL.
+ *   6. `removeServer(name)`  , drops the record on permanent disconnection.
+ *   7. `markQuarantined(name, reason, detail)`, places schema into quarantine;
  *      execution is blocked until `approveQuarantine` or a successful refresh.
- *   8. `approveQuarantine(name, operatorId)` — operator override: acknowledges
+ *   8. `approveQuarantine(name, operatorId)`, operator override: acknowledges
  *      the quarantine and temporarily unblocks execution.
  */
 export class McpSchemaFreshnessTracker {
@@ -53,7 +53,7 @@ export class McpSchemaFreshnessTracker {
 
   /**
    * Register a new server with `unknown` freshness.
-   * Idempotent — calling again for an already-registered server is a no-op.
+   * Idempotent, calling again for an already-registered server is a no-op.
    *
    * @param serverName - Server identifier
    */
@@ -182,7 +182,7 @@ export class McpSchemaFreshnessTracker {
       record.quarantine.overrideAcknowledgedAt = now;
     }
 
-    // Transition to stale — fresh requires a real schema fetch.
+    // Transition to stale, fresh requires a real schema fetch.
     // Reset consecutiveFailures so the next transient error does not immediately
     // re-quarantine and undo the operator's override.
     record.freshness = 'stale';
@@ -205,12 +205,12 @@ export class McpSchemaFreshnessTracker {
     const record = this.records.get(serverName);
     if (!record) return 'unknown';
 
-    // Quarantine is sticky — it takes precedence over any TTL check
+    // Quarantine is sticky, it takes precedence over any TTL check
     if (record.freshness === 'quarantined') return 'quarantined';
 
     if (record.freshness === 'fresh' && record.expiresAt !== undefined) {
       if (Date.now() > record.expiresAt) {
-        // TTL elapsed — transition to stale in-place
+        // TTL elapsed, transition to stale in-place
         record.freshness = 'stale';
         delete record.expiresAt;
         logger.debug('McpSchemaFreshnessTracker: TTL elapsed, marked stale', { serverName });

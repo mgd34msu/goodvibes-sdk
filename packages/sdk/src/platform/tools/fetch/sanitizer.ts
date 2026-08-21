@@ -9,11 +9,11 @@
  * was applied.
  *
  * Modes:
- *   - `none`      — No sanitization. Content is returned as-is. Use only for
+ *   - `none`     , No sanitization. Content is returned as-is. Use only for
  *                   trusted internal hosts.
- *   - `safe-text` — Default. Strips HTML script/style blocks and control
+ *   - `safe-text`, Default. Strips HTML script/style blocks and control
  *                   characters. Safe for general external content.
- *   - `strict`    — Aggressive: allows only printable ASCII and common Unicode
+ *   - `strict`   , Aggressive: allows only printable ASCII and common Unicode
  *                   whitespace. Strips all HTML tags, script/style, and non-
  *                   printable characters. Use for untrusted or unknown hosts.
  */
@@ -25,9 +25,9 @@
 /**
  * Sanitization mode applied to an HTTP response body.
  *
- * - `none`      — No sanitization; content returned verbatim.
- * - `safe-text` — Strips script/style blocks and control characters.
- * - `strict`    — Strips all HTML, allows only printable ASCII + whitespace.
+ * - `none`     , No sanitization; content returned verbatim.
+ * - `safe-text`, Strips script/style blocks and control characters.
+ * - `strict`   , Strips all HTML, allows only printable ASCII + whitespace.
  */
 export type SanitizeMode = 'none' | 'safe-text' | 'strict';
 
@@ -48,14 +48,14 @@ export interface SanitizeResult {
 // ---------------------------------------------------------------------------
 
 /**
- * `none` mode — returns content verbatim.
+ * `none` mode, returns content verbatim.
  */
 function sanitizeNone(content: string): SanitizeResult {
   return { content, mode: 'none', modified: false };
 }
 
 /**
- * `safe-text` mode — strips script/style elements and C0 and C1 control
+ * `safe-text` mode, strips script/style elements and C0 and C1 control
  * characters (except tab, newline, carriage return).
  *
  * This mode is appropriate for general external content where HTML injection
@@ -85,7 +85,7 @@ function sanitizeSafeText(content: string): SanitizeResult {
 }
 
 /**
- * `strict` mode — strips all HTML tags, script/style blocks, and any
+ * `strict` mode, strips all HTML tags, script/style blocks, and any
  * character outside printable ASCII (0x20-0x7E) plus tab (0x09),
  * newline (0x0A), and carriage return (0x0D).
  *
@@ -141,7 +141,7 @@ export function applySanitizer(content: string, mode: SanitizeMode): SanitizeRes
     case 'strict':
       return sanitizeStrict(content);
     default: {
-      // Exhaustiveness guard — TypeScript ensures this is unreachable
+      // Exhaustiveness guard, TypeScript ensures this is unreachable
       const _exhaustive: never = mode;
       return sanitizeSafeText(content as string);
     }
@@ -151,7 +151,7 @@ export function applySanitizer(content: string, mode: SanitizeMode): SanitizeRes
 /**
  * Resolve the effective sanitize mode, applying the rollback default.
  *
- * When no explicit mode is requested, defaults to `'safe-text'` — the
+ * When no explicit mode is requested, defaults to `'safe-text'`, the
  * rollback-safe default for fetch sanitization.
  *
  * @param requested - Caller-supplied mode (may be undefined).

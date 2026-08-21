@@ -2,9 +2,9 @@
  * narrowed-constraints.test.ts
  *
  * Seven constraints that were applied one layer too wide, or hardcoded tables
- * that went stale. Each test asserts the REAL behaviour the narrowing is for —
+ * that went stale. Each test asserts the REAL behaviour the narrowing is for,
  * that credentials are still masked, that unrelated env names still never
- * reach the wire, that a model's cap matches what the provider publishes —
+ * reach the wire, that a model's cap matches what the provider publishes,
  * rather than merely asserting the constraint is gone.
  *
  * The browser submit path is deliberately absent: its coarse taint branch was
@@ -43,7 +43,7 @@ afterEach(() => {
   }
 });
 
-/** Not a real key — the shape the credential patterns look for, as a fixture. */
+/** Not a real key, the shape the credential patterns look for, as a fixture. */
 const FIXTURE_API_KEY = 'sk-ABCDEFGHIJKLMNOPQRSTUVWX';
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ describe('at-rest redaction masks credentials without anonymising the owner', ()
     expect(out).not.toContain(FIXTURE_API_KEY);
     expect(out).toContain('[REDACTED_API_KEY]');
     expect(out).toContain('[REDACTED_TOKEN]');
-    // Still a parseable line — a redacted record must not become unreadable.
+    // Still a parseable line, a redacted record must not become unreadable.
     expect(() => JSON.parse(out) as unknown).not.toThrow();
     // …and the path is still there alongside the masked secret.
     expect(out).toContain('/home/mike/Projects/goodvibes-sdk');
@@ -110,8 +110,8 @@ describe('MCP upsert preserves env it was not asked to change', () => {
       env: { BILLING_TOKEN: 'secret-value', REGION: 'eu' },
     });
 
-    // The admin changes an allowed host. They never saw the env values — the
-    // read path only ever showed envKeys — so they could not have resent them.
+    // The admin changes an allowed host. They never saw the env values, the
+    // read path only ever showed envKeys, so they could not have resent them.
     const after = upsertMcpServerConfig(r, 'project', {
       name: 'billing',
       command: 'billing-mcp',
@@ -150,7 +150,7 @@ describe('MCP upsert preserves env it was not asked to change', () => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 4. Anthropic max output — the real published cap, live-first
+// 4. Anthropic max output, the real published cap, live-first
 // ───────────────────────────────────────────────────────────────────────────
 
 describe('Anthropic max_tokens matches what the provider publishes', () => {
@@ -313,7 +313,7 @@ describe('resume repair truncates against the real window', () => {
   });
 
   test('the manager passes its own contextWindow, so a 1M model keeps its messages', () => {
-    // repair() reads only _lastCommit/override and _contextWindow — bus and
+    // repair() reads only _lastCommit/override and _contextWindow, bus and
     // flags are never touched on this path, so minimal stubs are honest here.
     const stub = {} as unknown as ConstructorParameters<typeof CompactionManager>[0]['bus'];
     const manager = new CompactionManager({
@@ -362,7 +362,7 @@ describe('per-model capabilities come from catalog data', () => {
     const registry = new ProviderCapabilityRegistry();
     const before = registry.getCapability('anthropic', 'claude-opus-5');
     // No per-model entry existed for any current model, so the whole fleet
-    // landed on the provider-wide default — 8_192 output against a real
+    // landed on the provider-wide default, 8_192 output against a real
     // 128_000, and a 200_000 context against a real 1_000_000.
     expect(before.maxOutputTokens).toBe(8_192);
     expect(before.maxContextTokens).toBe(200_000);

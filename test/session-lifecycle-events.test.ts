@@ -82,7 +82,7 @@ async function readUntil(
   try {
     while (Date.now() < deadline) {
       // The deadline side of this race is re-armed on every iteration. When the
-      // read wins — the normal path — an uncleared handle would be stranded per
+      // read wins, the normal path, an uncleared handle would be stranded per
       // loop, and this whole suite shares one process, so they accumulate.
       let deadlineTimer: ReturnType<typeof setTimeout> | undefined;
       const chunk = await Promise.race([
@@ -167,7 +167,7 @@ describe('S2c — the session-update channel is contract-declared', () => {
 });
 
 // ---------------------------------------------------------------------------
-// S2c re-point — session mutators reference the session_update descriptor
+// S2c re-point, session mutators reference the session_update descriptor
 //
 // S2 deferred wiring the sessions.* methods' `events:[...]` to control.session_update
 // (the descriptor lives in method-catalog-events.ts, the sessions catalog in the
@@ -231,7 +231,7 @@ describe('S2c re-point — session mutators advertise control.session_update', (
     // Sanity: the merge really did fold in the write-side session surface (create,
     // register, close, reopen, messages.create, steer, followUp, inputs.cancel).
     expect(writeSessionMethods.length).toBeGreaterThanOrEqual(8);
-    // Every write:sessions method must advertise at least one event channel — a
+    // Every write:sessions method must advertise at least one event channel, a
     // session mutator that broadcasts nothing is the silent-drift defect this gate
     // exists to catch.
     const advertisesNothing = writeSessionMethods
@@ -242,7 +242,7 @@ describe('S2c re-point — session mutators advertise control.session_update', (
     // must advertise control.session_update. sessions.permissionMode.set is the one
     // write:sessions mutator that drives a DIFFERENT channel: a permission-mode change
     // flows through the runtime.permissions domain (PERMISSION_MODE_CHANGED via the
-    // config-change binding — see permissions/mode-change-emitter.ts), NOT a
+    // config-change binding, see permissions/mode-change-emitter.ts), NOT a
     // session-update broadcast, so it honestly advertises that channel instead.
     // Forcing it to claim control.session_update would be the over-claim the read-only
     // test just below guards against.
@@ -252,7 +252,7 @@ describe('S2c re-point — session mutators advertise control.session_update', (
       // session records: a per-call cancel settles as tool events on the
       // runtime.tools domain, and a queued-message edit/delete broadcasts
       // QUEUED_MESSAGES_CHANGED on runtime.session (core/orchestrator.ts
-      // emitQueueChange) — each advertises its real channel, never a
+      // emitQueueChange), each advertises its real channel, never a
       // session-update broadcast it does not drive.
       'sessions.toolCalls.cancel': 'runtime.tools',
       'sessions.queuedMessages.edit': 'runtime.session',
@@ -403,7 +403,7 @@ describe('S2c — broadcast reach and honest failure modes', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Mapping guard — a broker rename must fail loudly
+// Mapping guard, a broker rename must fail loudly
 // ---------------------------------------------------------------------------
 
 describe('S2c — intent→event mapping stays contract-aligned', () => {

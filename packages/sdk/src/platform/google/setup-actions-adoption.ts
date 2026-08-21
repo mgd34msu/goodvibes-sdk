@@ -1,7 +1,7 @@
 /**
  * Taking up Google credentials that already exist as files on this machine.
  *
- * Split out of `setup-actions.ts` because it is not a step in any flow — no
+ * Split out of `setup-actions.ts` because it is not a step in any flow, no
  * runner calls it and it appears in no path. It is a route a PERSON asks for,
  * by naming a path or running the adopt command, and it is reached directly
  * from a command surface and from `connection-repair.ts`.
@@ -46,7 +46,7 @@ export interface GoogleAdoptionOutcome {
 /**
  * Take up credentials from a file layout on this machine.
  *
- * Only ever reached because someone asked for it — by naming a path or by
+ * Only ever reached because someone asked for it, by naming a path or by
  * running the adopt command. Nothing calls this from a discovery or status
  * path; see discovery.ts for why there is no scan.
  *
@@ -62,7 +62,7 @@ export async function adoptExistingGoogleCredentials(deps: {
   /**
    * The owner's explicit yes to REPLACING a credential that is already stored.
    * Absent by default, so an adoption can never quietly destroy a working
-   * refresh token — which is the same protection credential-removal.ts gives
+   * refresh token, which is the same protection credential-removal.ts gives
    * deletion, applied to the other way of losing a credential.
    */
   readonly confirmReplace?: boolean;

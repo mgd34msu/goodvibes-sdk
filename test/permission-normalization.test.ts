@@ -51,8 +51,8 @@ describe('platform/runtime/permissions/normalization — smoke', () => {
 
   /**
    * This case used `echo $(whoami)` and asserted it was obfuscation. That is
-   * the same shape as `curl -H "Bearer $(cat token)"` — a substitution supplying
-   * a value to an argument — which was refused during real debugging and is
+   * the same shape as `curl -H "Bearer $(cat token)"`, a substitution supplying
+   * a value to an argument, which was refused during real debugging and is
    * ordinary shell. The classifier now distinguishes reading a value from
    * assembling a command, so the assertion moves to the shape that is actually
    * obfuscation: the command being run is itself produced by the substitution.

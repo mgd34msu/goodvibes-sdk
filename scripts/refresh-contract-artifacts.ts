@@ -12,7 +12,7 @@
  *   - packages/contracts/src/generated/peer-endpoint-ids.ts
  *
  * Source of truth:
- *   - Operator: buildOperatorContract(new GatewayMethodCatalog()) — built-in methods/events
+ *   - Operator: buildOperatorContract(new GatewayMethodCatalog()), built-in methods/events
  *     auto-registered from the method-catalog-* modules, product.version overridden with
  *     the SDK's current VERSION.
  *   - Peer: the authoritative PEER_CONTRACT constant exported from the contracts package
@@ -121,7 +121,7 @@ function renderMockDaemonFixturesTs(contract: OperatorContractManifest): string 
     `import type { MockDaemonFixtureMap } from '../testing/mock-daemon.js';`,
     ``,
     `/**`,
-    ` * GENERATED — do not edit. Regenerate with \`bun run refresh:contracts\`.`,
+    ` * GENERATED, do not edit. Regenerate with \`bun run refresh:contracts\`.`,
     ` *`,
     ` * A schema-valid sample response per cataloged operator method, generated`,
     ` * from the contract's own output schemas (see testing/mock-daemon.ts). The`,

@@ -4,7 +4,7 @@
  * Exercises the SDK Embedding API 1.0 facade (`createEmbeddedSession`) against a
  * real in-process daemon: the exposed seams (runtime bus, session broker,
  * approval broker), the injected permission-callback bridge, and idempotent
- * shutdown. LLM-free — it drives the brokers directly rather than a full turn.
+ * shutdown. LLM-free, it drives the brokers directly rather than a full turn.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';

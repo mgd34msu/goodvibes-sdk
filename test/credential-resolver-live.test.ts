@@ -1,6 +1,6 @@
 /**
- * One request-time credential resolver — env -> secrets store -> subscription
- * accounts — and live re-registration on secrets changes.
+ * One request-time credential resolver, env -> secrets store -> subscription
+ * accounts, and live re-registration on secrets changes.
  *
  * Acceptance bar:
  *   - write key to secrets store -> provider usable in the SAME process, no
@@ -59,7 +59,7 @@ function makeRegistry(root: string, secretsManager: SecretsManager): ProviderReg
     } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['subscriptionManager'],
     // No bare `as unknown as` on this double any more. The cast was hiding that
     // it does not implement setModelFactsSource, which the registry CALLS on
-    // every catalog update — the omission surfaced only as a runtime TypeError
+    // every catalog update, the omission surfaced only as a runtime TypeError
     // once a test reached that path. The `satisfies` clause makes the next
     // missing method a compile error instead.
     capabilityRegistry: {
@@ -151,7 +151,7 @@ describe('request-time credential resolution', () => {
 
       const provider = registry.getRegistered('groq');
       const runtime = await registry.describeRuntime('groq');
-      // Green badge if and only if the chat path is configured — one source.
+      // Green badge if and only if the chat path is configured, one source.
       expect(runtime?.auth?.configured).toBe(provider.isConfigured?.());
       expect(provider.isConfigured?.()).toBe(true);
     } finally {

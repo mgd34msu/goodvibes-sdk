@@ -1,4 +1,4 @@
-# Tool Safety
+# Tool safety
 
 > **Surface scope:** This document describes tool-call behavior for the **full surface (Bun runtime)**. See [Published Surface Matrix](./surfaces.md) for companion-surface constraints.
 
@@ -6,13 +6,13 @@ This guide covers how tool-call arguments move from raw streaming output through
 
 ---
 
-## Tool-Call Lifecycle
+## Tool-call lifecycle
 
 When a provider streams a response that includes a tool call, the SDK processes it in three stages:
 
 ### 1. Delta accumulation
 
-Each streaming chunk may carry a partial tool name or a partial argument string. The provider's stream assembler accumulates these deltas into a single buffer as they arrive — for Anthropic-style streams this is `anthropic-sse-assembler.ts`, which appends each `input_json_delta` fragment onto the per-block argument buffer (`block.args += event.delta.partial_json`). `tool-formats.ts` is the wire-format parser, not a delta accumulator: it converts and parses already-assembled buffers. No JSON parsing occurs at this accumulation stage.
+Each streaming chunk may carry a partial tool name or a partial argument string. The provider's stream assembler accumulates these deltas into a single buffer as they arrive. For Anthropic-style streams this is `anthropic-sse-assembler.ts`, which appends each `input_json_delta` fragment onto the per-block argument buffer (`block.args += event.delta.partial_json`). `tool-formats.ts` is the wire-format parser, not a delta accumulator: it converts and parses already-assembled buffers. No JSON parsing occurs at this accumulation stage.
 
 ### 2. JSON parse with malformed-call drop
 
@@ -41,7 +41,7 @@ export function parseToolCallArguments(
 
 **Key behavior:** an empty accumulated argument string is treated as `{}` for no-argument tools. If the accumulated string is truncated or syntactically invalid JSON, the SDK emits a `warn`-level log and drops that malformed tool call. The tool handler is not called with manufactured empty arguments.
 
-**Text-token tool calls:** Some models (for example `kimi-k2-thinking` via `ollama-cloud`) emit tool calls as text tokens inside the content stream — using `<|tool_call_begin|>`-style delimiters — rather than as structured streaming deltas. `extractTextToolCalls()` in `tool-formats.ts` parses those delimited spans once the text content is assembled and routes each argument span through the same `parseToolCallArguments` boundary. A span whose JSON fails to parse is dropped exactly like a malformed structured call: the extractor skips it instead of emitting a tool call with manufactured arguments.
+**Text-token tool calls:** Some models (for example `kimi-k2-thinking` via `ollama-cloud`) emit tool calls as text tokens inside the content stream, using `<|tool_call_begin|>`-style delimiters, rather than as structured streaming deltas. `extractTextToolCalls()` in `tool-formats.ts` parses those delimited spans once the text content is assembled and routes each argument span through the same `parseToolCallArguments` boundary. A span whose JSON fails to parse is dropped exactly like a malformed structured call: the extractor skips it instead of emitting a tool call with manufactured arguments.
 
 ### 3. Handler dispatch
 
@@ -60,7 +60,7 @@ Built-in batch tools also cap fanout to avoid accidental resource exhaustion:
 
 ---
 
-## Why Argument Validation Still Matters
+## Why argument validation still matters
 
 Most tool argument failures fall into two categories:
 
@@ -75,7 +75,7 @@ The SDK rejects malformed JSON before tool dispatch, but it does not schema-vali
 
 ---
 
-## Recommendations for Tool Authors
+## Recommendations for tool authors
 
 ### Always validate tool input
 
@@ -132,23 +132,23 @@ async function handleSearch(rawArgs: Record<string, unknown>) {
 }
 ```
 
-### Fail Loudly
+### Fail loudly
 
 Avoiding `throw` in handler code is reasonable (prevents unhandled promise rejections from aborting the turn), but returning a meaningful error payload is always better than ignoring missing fields. Returning `{}` or `null` gives the model nothing to act on.
 
 ---
 
-## Detecting Dropped Parse Failures
+## Detecting dropped parse failures
 
 When the SDK drops a malformed tool call due to a parse error, a log entry is emitted at `warn` level. To catch this in production:
 
 - Configure your observability stack to alert on `tool-formats: failed to parse JSON tool arguments; dropping malformed tool call`
 - Review malformed-stop-reason reconciliation events when a provider reported tool use but no parseable tool calls remained
-- Note that `UserAuthManager.inspect()` returns a `LocalAuthSnapshot` whose `sessionCount` counts authenticated auth sessions, not chat/tool-call sessions — it does not correlate with dropped tool calls and should not be used to diagnose parse regressions
+- Note that `UserAuthManager.inspect()` returns a `LocalAuthSnapshot` whose `sessionCount` counts authenticated auth sessions, not chat or tool-call sessions. It does not correlate with dropped tool calls and should not be used to diagnose parse regressions
 
 ---
 
-## Tool Contract Verification
+## Tool contract verification
 
 Tool contract verification is implemented at registration time. Built-in tool
 registration goes through `registerToolWithContractGate`, and the
@@ -172,7 +172,7 @@ command, this command class (e.g. every `git ...`), edits under the asked
 path's directory, always for this tool in this project, or session-only.
 A generalizing tier writes a durable user-origin rule
 (`UserPermissionRuleStore`, one JSON file per project) that the permission
-manager consults before ever prompting — the tenth `git commit` never
+manager consults before ever prompting. The tenth `git commit` never
 re-asks once "git commands" was granted, across restarts. Rules are listed
 and deleted through the `permissions.rules.list` / `permissions.rules.delete`
 gateway verbs (deleting a grant makes matching asks prompt again).
@@ -182,7 +182,7 @@ in a call must be covered, so a mixed batch never rides in on a partial
 grant. Deny rules fire on any covered element.
 
 Denials are feedback, not turn-enders: a declined tool call resolves with a
-structured user-declined result — including the user's optional reason
-("The user said: ...") — in a continuing turn, so the model adapts instead
+structured user-declined result, including the user's optional reason
+("The user said: ..."), in a continuing turn, so the model adapts instead
 of dying. Duplicate in-flight asks coalesce to one prompt, and a remembered
 decision sweeps every queued ask its rule covers.

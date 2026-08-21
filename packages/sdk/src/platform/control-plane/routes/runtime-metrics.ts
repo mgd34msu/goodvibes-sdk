@@ -3,7 +3,7 @@
  *
  * Handler for runtime.metrics.get. Reads the process-wide RuntimeMeter
  * snapshot (platformMeter's counters/gauges/histograms) and the per-model
- * tool-format telemetry singleton — both already-live process state, no
+ * tool-format telemetry singleton, both already-live process state, no
  * runtime dependency needed. Registered from register-gateway-verb-groups.ts;
  * always registered, exactly like flags.graduation.report (never a cataloged-
  * but-unhandled 501).

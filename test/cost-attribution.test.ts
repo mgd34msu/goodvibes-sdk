@@ -16,7 +16,7 @@ import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane
 import { registerCostGatewayMethods } from '../packages/sdk/src/platform/control-plane/routes/cost.ts';
 
 const ctx = { context: { admin: true } } as const;
-// $3/1M input, $15/1M output — an Anthropic-shaped model so cache multipliers apply.
+// $3/1M input, $15/1M output, an Anthropic-shaped model so cache multipliers apply.
 const anthropicPricing: ResolvePricing = (model) => (model === 'claude-x' ? { input: 3, output: 15 } : null);
 
 describe('CostAttributionService', () => {

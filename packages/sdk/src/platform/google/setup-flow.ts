@@ -2,8 +2,8 @@
  * The flow executor.
  *
  * Walks the steps of one path in order, reporting honestly as it goes: what it
- * is about to do, what it just achieved, and — when Google requires a real
- * person — exactly what to click. It never grinds silently, never loops on a
+ * is about to do, what it just achieved, and, when Google requires a real
+ * person, exactly what to click. It never grinds silently, never loops on a
  * sign-in wall, and never reports success it did not verify.
  *
  * This module is deliberately free of Google specifics. It knows how to
@@ -63,7 +63,7 @@ function failureFromThrow(spec: GoogleSetupStepSpec, error: unknown): GoogleStep
     outcome: 'failed',
     detail: `${spec.title} did not complete.`,
     problem: `This step stopped unexpectedly: ${message}`,
-    fix: `Say the word and I will lay out the written steps for "${spec.title}" and pick up where this left off — completed work is detected and skipped.`,
+    fix: `Say the word and I will lay out the written steps for "${spec.title}" and pick up where this left off, completed work is detected and skipped.`,
   };
 }
 
@@ -83,13 +83,13 @@ export async function runGoogleSetupFlow(
 
   for (const [index, spec] of specs.entries()) {
     // Once the flow has handed off to the human or hit a failure, the rest of
-    // the path is recorded as skipped rather than attempted — running steps
+    // the path is recorded as skipped rather than attempted, running steps
     // whose prerequisites are missing produces confusing errors.
     if (halted) {
       const skipped: GoogleStepResult = {
         id: spec.id,
         outcome: 'skipped',
-        detail: 'Not attempted yet — an earlier step is still outstanding.',
+        detail: 'Not attempted yet, an earlier step is still outstanding.',
         elapsedMs: 0,
       };
       outcomes.set(spec.id, 'skipped');
@@ -175,13 +175,13 @@ function summarize(
 
   if (ok) {
     if (changed === 0) {
-      return `Nothing to do — ${label} were already connected.`;
+      return `Nothing to do, ${label} were already connected.`;
     }
     return `Connected ${label}. ${changed} step${changed === 1 ? '' : 's'} completed${skipped > 0 ? `, ${skipped} already done` : ''}.`;
   }
 
   if (waitingOn !== null) {
-    return `Paused — one thing needs you. Do it, then re-run; the ${changed + skipped} completed step${changed + skipped === 1 ? '' : 's'} will be skipped.`;
+    return `Paused, one thing needs you. Do it, then re-run; the ${changed + skipped} completed step${changed + skipped === 1 ? '' : 's'} will be skipped.`;
   }
 
   const failed = results.find((result) => result.outcome === 'failed');
@@ -210,7 +210,7 @@ export function renderGoogleSetupReport(report: GoogleSetupReport): string {
             : step.outcome === 'failed'
               ? ' fail '
               : '  --  ';
-    lines.push(`[${marker}] ${step.id} — ${step.detail}`);
+    lines.push(`[${marker}] ${step.id}, ${step.detail}`);
     if (step.problem !== undefined) {
       lines.push(`          ${step.problem}`);
     }

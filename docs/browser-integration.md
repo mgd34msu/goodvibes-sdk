@@ -1,8 +1,8 @@
-# Browser Integration
+# Browser integration
 
 This is the **companion surface** for browser runtimes. See [Runtime Surfaces](./surfaces.md).
 
-Browser apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide is the shared foundation for every browser entrypoint: auth, transport, realtime events, error handling, and observability. For web-UI-application patterns built on this foundation — entrypoint selection, companion chat, attachments, and voice playback — see [Web UI Integration](./web-ui-integration.md).
+Browser apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP). Those require Bun. This guide is the shared foundation for every browser entrypoint: auth, transport, realtime events, error handling, and observability. For web-UI-application patterns built on this foundation, entrypoint selection, companion chat, attachments, and voice playback, see [Web UI integration](./web-ui-integration.md).
 
 Use `@pellux/goodvibes-sdk/browser` when a browser app needs the complete
 operator route contract. Use scoped browser entrypoints when an app owns one
@@ -10,7 +10,7 @@ extension surface:
 
 - `@pellux/goodvibes-sdk/browser/knowledge` for the base knowledge/wiki WebUI.
 - `@pellux/goodvibes-sdk/browser/homeassistant` for Home Assistant panels.
-- `@pellux/goodvibes-sdk/browser/agent` (`createBrowserAgentSdk`) for the GoodVibes Agent surface — the agent's own knowledge/wiki space under `/api/goodvibes-agent/knowledge`, plus work-plan, artifact, and companion-chat routes.
+- `@pellux/goodvibes-sdk/browser/agent` (`createBrowserAgentSdk`) for the GoodVibes Agent surface: the agent's own knowledge/wiki space under `/api/goodvibes-agent/knowledge`, plus work-plan, artifact, and companion-chat routes.
 
 ```ts
 import { createBrowserGoodVibesSdk } from '@pellux/goodvibes-sdk/browser';

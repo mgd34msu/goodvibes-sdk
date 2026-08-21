@@ -5,7 +5,7 @@ import type { AutomationRun } from './runs.js';
 /**
  * Records a scheduled occurrence that never fired as a first-class `missed` run.
  *
- * A missed run is not a failure of execution — it is a run that never started
+ * A missed run is not a failure of execution, it is a run that never started
  * because the automation host was down or asleep when its planned time passed
  * the catch-up window. It is captured as a durable run record so it surfaces in
  * run history and flows the same delivery path as a failure, rather than being
@@ -22,8 +22,8 @@ export interface AutomationMissedRunContext {
 /**
  * An honest, observable description of why a run was missed. The scheduler
  * cannot positively distinguish a stopped daemon from a sleeping host, so the
- * reason states the fact it can vouch for — the host was not running the job at
- * its planned time — and how far past due the occurrence is.
+ * reason states the fact it can vouch for, the host was not running the job at
+ * its planned time, and how far past due the occurrence is.
  */
 export function describeMissedRunReason(plannedRunAt: number, now: number): string {
   const overdueMinutes = Math.max(0, Math.round((now - plannedRunAt) / 60_000));
@@ -35,8 +35,8 @@ export function recordAutomationMissedRun(
   job: AutomationJob,
   plannedRunAt: number,
 ): AutomationRun {
-  // A given planned slot is missed once. Repeated (re)scheduling passes — boot
-  // then heartbeat — must not mint duplicate records for the same occurrence.
+  // A given planned slot is missed once. Repeated (re)scheduling passes, boot
+  // then heartbeat, must not mint duplicate records for the same occurrence.
   for (const existing of context.runs.values()) {
     if (existing.jobId === job.id && existing.status === 'missed' && existing.queuedAt === plannedRunAt) {
       return existing;

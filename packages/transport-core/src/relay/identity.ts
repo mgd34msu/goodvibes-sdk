@@ -4,7 +4,7 @@
 // asymmetric daemon identity (identities were random UUIDs and shared-secret
 // tokens), so this mints one, modelled on the existing VapidManager pattern:
 // generate once, persist the whole key pair through the daemon's SecretsManager
-// (custody is the caller's responsibility — this module only (de)serializes),
+// (custody is the caller's responsibility, this module only (de)serializes),
 // and expose the public half for pinning in pairing payloads.
 //
 // The private key never leaves the daemon process. Its public key is what a
@@ -14,7 +14,7 @@
 
 import {
   exportRawPublicKey,
-  generateEcdhKeyPair,
+  RELAY_CURVE,
   toBase64Url,
   type RelayKeyPair,
 } from './crypto.js';
@@ -24,9 +24,9 @@ import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 export interface SerializedRelayIdentity {
   /** Format version. */
   readonly v: 1;
-  /** Full private key in JWK form (contains the `d` scalar — treat as a secret). */
+  /** Full private key in JWK form (contains the `d` scalar, treat as a secret). */
   readonly privateKeyJwk: JsonWebKey;
-  /** Raw uncompressed public key, base64url — safe to publish in pairing payloads. */
+  /** Raw uncompressed public key, base64url, safe to publish in pairing payloads. */
   readonly publicKeyRaw: string;
 }
 
@@ -42,9 +42,21 @@ function subtle(): SubtleCrypto {
   return c.subtle;
 }
 
-/** Generate a fresh daemon relay identity key pair. */
+/**
+ * Generate a fresh daemon relay identity key pair.
+ *
+ * Generated here rather than through crypto.ts's `generateEcdhKeyPair` because
+ * this is the one relay key whose private half must be extractable:
+ * `serializeRelayIdentity` exports it as a JWK so the identity survives a
+ * daemon restart. Ephemeral handshake keys stay non-extractable.
+ */
 export async function generateRelayIdentity(): Promise<RelayKeyPair> {
-  return generateEcdhKeyPair();
+  const pair = (await subtle().generateKey(
+    { name: 'ECDH', namedCurve: RELAY_CURVE },
+    true,
+    ['deriveBits'],
+  )) as CryptoKeyPair;
+  return { publicKey: pair.publicKey, privateKey: pair.privateKey };
 }
 
 /** Serialize an identity for durable storage (JWK private + raw public). */

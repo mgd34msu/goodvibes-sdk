@@ -1,11 +1,11 @@
-# Secret References
+# Secret references
 
 GoodVibes config values can point at secrets without embedding secret material
 directly in config files. The SDK-owned URI form is `goodvibes://`.
 
 **Public subpath:** `@pellux/goodvibes-sdk/platform/config` (daemon embedders).
 
-## Supported Sources
+## Supported sources
 
 | Source | Purpose |
 |---|---|
@@ -21,7 +21,7 @@ directly in config files. The SDK-owned URI form is `goodvibes://`.
 The removed generic `secret://` scheme is not supported. Use
 `goodvibes://secrets/...` for SDK-owned secret references.
 
-## URI Shape
+## URI shape
 
 ```text
 goodvibes://secrets/<source>/<id-or-path>?key=value
@@ -56,7 +56,7 @@ CLI-backed refs support timeouts and provider-specific options. Command
 execution is host-owned so embedders can apply their own permission prompts,
 logging, and sandboxing.
 
-## Config Usage
+## Config usage
 
 Secret refs are used by provider keys, surface credentials, Cloudflare tokens,
 Worker/client tokens, Tunnel tokens, Access service tokens, webhook secrets,
@@ -72,7 +72,7 @@ variable → secrets store → subscription accounts. Writing, rotating, or
 deleting a key in the secrets store re-registers the affected providers in
 the same process (`SecretsManager.onDidChange` →
 `ProviderRegistry.refreshProviderCredentials()`), so a provider becomes
-usable the moment its key is stored — no restart anywhere. Status badges,
+usable the moment its key is stored. No restart anywhere. Status badges,
 the model picker, and chat all read the same refreshed provider instances,
 so status can never be green while chat fails auth. Every registered
 provider must declare how its credentials are obtained

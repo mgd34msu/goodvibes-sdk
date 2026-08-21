@@ -1,10 +1,10 @@
-// context_accounting — the model reading its OWN context composition honestly.
+// context_accounting, the model reading its OWN context composition honestly.
 //
 // STANDING RULE: recall-contract fields (floors, exclusions, degraded modes) and
 // per-turn injection records already exist; this tool exposes them to the MODEL
 // (not just the user) so it can distinguish "no memory exists" from "recall was
 // floored" from "the index is unavailable." Everything reported is drawn from
-// real recorded state — measured token counts are reported as fact; anything
+// real recorded state, measured token counts are reported as fact; anything
 // estimated (block token cost, context-used percent) is flagged as an estimate,
 // never presented as measured.
 import type { Tool, ToolDefinition, ToolResult } from '../../types/tools.js';
@@ -28,7 +28,7 @@ export interface ContextTokenState {
 
 /**
  * A reader onto ONE session's live context state. The interactive Orchestrator
- * binds itself as the source; the tool never fabricates — an unbound tool says
+ * binds itself as the source; the tool never fabricates, an unbound tool says
  * so rather than inventing an accounting.
  */
 export interface ContextAccountingSource {
@@ -74,7 +74,7 @@ function summarizeLatestInjection(record: TurnInjectionRecord | undefined) {
 function buildRecallContract(record: TurnInjectionRecord | undefined) {
   if (!record) {
     return {
-      note: 'No per-turn injection has been recorded yet — nothing has been passively injected this session.',
+      note: 'No per-turn injection has been recorded yet, nothing has been passively injected this session.',
     };
   }
   const degraded = record.embeddingBackend === 'fallback-lexical';

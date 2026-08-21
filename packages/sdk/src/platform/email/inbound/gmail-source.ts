@@ -1,5 +1,5 @@
 /**
- * gmail-source.ts — Gmail as a first-class inbound source
+ * gmail-source.ts, Gmail as a first-class inbound source
  * (docs/inbound-email.md §3.4d).
  *
  * A user who has already adopted Google credentials should not have to find an
@@ -15,13 +15,13 @@
  * `users.watch` + Pub/Sub needs a public HTTPS endpoint and a GCP topic, which
  * a daemon on someone's own machine behind NAT does not have. `latency`
  * therefore always answers `poll`, and it answers with the interval CURRENTLY
- * IN FORCE rather than a constant — a five-second worst case while a signup is
+ * IN FORCE rather than a constant, a five-second worst case while a signup is
  * mid-flight and a sixty-second one when nothing is pending are different
  * promises, and a status line that showed the wrong one would be describing a
  * mode the daemon is not in.
  *
  * **A body-less grant is a refusal, never a quiet mailbox.** `gmail.metadata`
- * authorizes `users.history.list` and excludes the message body — Google's own
+ * authorizes `users.history.list` and excludes the message body, Google's own
  * scope description says "but not the email body". A delta fetched under it
  * would come back `ok` with every body empty, which is indistinguishable from
  * a mailbox on a slow day and is the worst shape a defect can take in a
@@ -33,28 +33,28 @@
  * **The position never moves past a message that was not read.** Gmail's
  * history is a forward-only log: records at or below a `startHistoryId` are
  * never returned again, so a cursor that advances over an unfetched message
- * does not postpone it, it makes it permanently unreachable — silently, and
+ * does not postpone it, it makes it permanently unreachable, silently, and
  * under a `healthy` verdict, which is the worst shape this delivery path can
  * take. `collectHistoryDelta` separates a message that is GONE (deleted
  * between `history.list` and `messages.get`) from one we FAILED TO FETCH (a
  * rate limit, a server fault, a refused token, a dead socket) and reports the
  * second in `GmailHistoryDelta.unreadable`. This file refuses to advance while
  * that is non-empty. It is the same rule, on the same contract, that
- * `ImapEnvelopeBatch.unreadable` gives the IMAP drain — one idea, expressed
+ * `ImapEnvelopeBatch.unreadable` gives the IMAP drain, one idea, expressed
  * twice only where the identifier differs.
  *
  * **Losing our place is the same event on both sources.** A 404 on a
  * `startHistoryId` that aged out of Gmail's retention window means exactly what
  * a changed `UIDVALIDITY` means: the stored position names nothing. It goes
  * through `MailboxCursorStore.resolveGmail`, which is the same
- * establish-at-the-current-high-water-mark path `uid-validity-changed` uses —
+ * establish-at-the-current-high-water-mark path `uid-validity-changed` uses,
  * discard, re-establish, disclose, and do NOT replay the mailbox. There is one
  * implementation of that rule and this file does not add a second.
  *
  * What this file cannot do
  * ────────────────────────
  * It cannot open, hydrate, widen or extend an expectation. Whether one is open
- * arrives as an INJECTED PREDICATE — a function returning a boolean — and
+ * arrives as an INJECTED PREDICATE, a function returning a boolean, and
  * nothing that could create an expectation is imported here, which is §2.1's
  * structural removal of the spawn capability applied to the other capability an
  * arriving message must never reach. A source that could register what it is
@@ -105,8 +105,8 @@ import {
  * A plain predicate, injected. Deliberately NOT the expectation registry, not
  * a narrowed view of it, and not anything that transitively imports it: the
  * registry can open an expectation, and a type that names it would let this
- * file be handed the thing it must not have. The caller — the supervisor, which
- * is already authorized — answers the question.
+ * file be handed the thing it must not have. The caller, the supervisor, which
+ * is already authorized, answers the question.
  */
 export type ExpectationPresence = () => boolean;
 
@@ -116,7 +116,7 @@ export type ExpectationPresence = () => boolean;
  * A `Pick` rather than a hand-written interface, and that is the rule this
  * round keeps re-learning rather than a preference. Two structurally-identical
  * `MailboxCursor` declarations in separate lanes had already drifted in
- * BEHAVIOUR — one clamped with `Math.max`, the other assigned unconditionally —
+ * BEHAVIOUR, one clamped with `Math.max`, the other assigned unconditionally,
  * while everything still compiled. A `Pick` cannot drift from what it picks,
  * and if `resolveGmail` gains an argument this stops compiling in the ordinary
  * build.
@@ -135,7 +135,7 @@ export interface GmailMailSourceDeps {
   readonly account: string;
   /** The watched Gmail label, e.g. `INBOX`. Keyed the same way an IMAP mailbox is. */
   readonly mailbox: string;
-  /** Scopes, one history page, one message — the same narrow I/O `collectHistoryDelta` takes. */
+  /** Scopes, one history page, one message, the same narrow I/O `collectHistoryDelta` takes. */
   readonly history: HistoryDeltaDeps;
   /**
    * The mailbox's CURRENT `historyId`, as Google sent it.
@@ -143,7 +143,7 @@ export interface GmailMailSourceDeps {
    * Injected rather than called here, so this file stays free of any Google
    * client: it is handed I/O, exactly as `history` is. The composition fills it
    * with `GoogleApiClient.currentHistoryId()`, which reads
-   * `users.getProfile().historyId` — "the ID of the mailbox's current history
+   * `users.getProfile().historyId`, "the ID of the mailbox's current history
    * record", Google's own words for the field, and the reason that call is the
    * right one for a path that establishes without backfilling. Needed on
    * exactly two paths, both of which establish rather than replay: a first run,
@@ -165,8 +165,8 @@ export interface GmailMailSourceDeps {
    * `surfaces.email.inbound.onInsufficientCapability`, read at source-create
    * time by `source-factory.ts`.
    *
-   * Optional, defaulting to `INBOUND_CAPABILITY_POLICY_DEFAULT` — the value the
-   * schema ships — so an omitted dependency produces the shipped behaviour
+   * Optional, defaulting to `INBOUND_CAPABILITY_POLICY_DEFAULT`, the value the
+   * schema ships, so an omitted dependency produces the shipped behaviour
    * rather than the permissive one. That direction matters: the weaker policy
    * announces mail it can never act on, and nothing should be able to select it
    * by forgetting to pass a field.
@@ -213,7 +213,7 @@ export class GmailMailSource implements InboundMailSource {
    * nothing is.
    *
    * The predicate is asked every time rather than sampled once, because an
-   * expectation opening is exactly the moment the answer has to change — a
+   * expectation opening is exactly the moment the answer has to change, a
    * signup starts mid-run and the next wait is the short one.
    */
   get intervalMs(): number {
@@ -260,7 +260,7 @@ export class GmailMailSource implements InboundMailSource {
    * Sleeps FIRST: `start()` has already made one pass, and asking again
    * immediately would spend a call to learn what was just learned. An
    * `insufficient` verdict waits `capabilityRecheckMs` instead of the poll
-   * interval — a grant does not change in five seconds, and re-asking on the
+   * interval, a grant does not change in five seconds, and re-asking on the
    * poll interval would turn a refusal into a request loop.
    */
   async run(signal: AbortSignal): Promise<void> {
@@ -273,8 +273,8 @@ export class GmailMailSource implements InboundMailSource {
           await this.pollOnce(combined.signal);
         } catch (error) {
           // A store write or an injected dependency that threw. Not a
-          // capability verdict — nothing about the grant is known to have
-          // changed — so it is degraded, disclosed, and tried again.
+          // capability verdict, nothing about the grant is known to have
+          // changed, so it is degraded, disclosed, and tried again.
           this.record(capabilityVerdict('reconnecting', errorText(error)));
           this.note('delivery-failed', `The Gmail poll did not complete: ${errorText(error)}`);
         }
@@ -309,8 +309,8 @@ export class GmailMailSource implements InboundMailSource {
       labelId: this.deps.mailbox,
       historyTypes: ['messageAdded'],
       // The one place the owner's policy changes what is ASKED FOR rather than
-      // what is done with the answer. Under `refuse-and-notify` — the shipped
-      // value — this stays `'refuse'` and `collectHistoryDelta` never calls
+      // what is done with the answer. Under `refuse-and-notify`, the shipped
+      // value, this stays `'refuse'` and `collectHistoryDelta` never calls
       // Google at all for a body-less grant, exactly as before.
       onMetadataOnlyGrant: this.capabilityPolicy === 'notice-only' ? 'fetch-metadata' : 'refuse',
     });
@@ -378,7 +378,7 @@ export class GmailMailSource implements InboundMailSource {
    * whole batch: advancing to it after the first message would put the cursor
    * above messages two onwards, and a crash there would lose them silently.
    * So a refused delivery leaves the whole delta above the cursor and it is
-   * fetched again — dedup turns the re-delivery into a suppressed duplicate,
+   * fetched again, dedup turns the re-delivery into a suppressed duplicate,
    * which is the failure this design chooses.
    *
    * A delta carrying `unreadable` entries takes the same exit for the same
@@ -386,7 +386,7 @@ export class GmailMailSource implements InboundMailSource {
    * forward-only history log the cursor moving past them is not a delay, it is
    * a permanent loss. The one case that DOES let the position move is a
    * message deleted between `history.list` and `messages.get`, and
-   * `collectHistoryDelta` has already removed those — nothing here has to
+   * `collectHistoryDelta` has already removed those, nothing here has to
    * re-decide it.
    */
   private async deliver(
@@ -424,7 +424,7 @@ export class GmailMailSource implements InboundMailSource {
           + `was and the whole delta will be fetched again: ${errorText(error)}`);
         // Deliberately no backoff. The stated worst case is the poll interval,
         // and stretching the interval because a sink refused would make that
-        // number untrue — the sink's problem is not a reason to notice the
+        // number untrue, the sink's problem is not a reason to notice the
         // NEXT message later.
         return this.verdict;
       }
@@ -432,7 +432,7 @@ export class GmailMailSource implements InboundMailSource {
 
     if (delta.unreadable.length > 0) {
       // Messages this delta named and Google would not hand over. NOT messages
-      // that are gone — `collectHistoryDelta` has already separated those out
+      // that are gone, `collectHistoryDelta` has already separated those out
       // and dropped them. These are still in the mailbox, and Gmail's history
       // is forward-only, so advancing to `delta.historyId` here would put the
       // cursor above records that can never be requested again. That is the
@@ -440,7 +440,7 @@ export class GmailMailSource implements InboundMailSource {
       // a `healthy` verdict.
       //
       // So the position stays exactly where it was and the delta is fetched
-      // again on the next pass — the same choice the delivery-failure path
+      // again on the next pass, the same choice the delivery-failure path
       // above makes, for the same reason, with dedup absorbing the duplicates
       // among whatever DID come back this time.
       this.note('fetch-unreadable', this.unreadableDetail(delta));
@@ -458,7 +458,7 @@ export class GmailMailSource implements InboundMailSource {
     }
     // A drained metadata-only delta is NOT healthy. Mail is moving and nothing
     // it carries can complete a signup, so the verdict says `degraded` with the
-    // reason that names why — not `polling-configured`, which is the verdict for
+    // reason that names why, not `polling-configured`, which is the verdict for
     // a source doing exactly what it was asked to do.
     if (delta.bodies === 'withheld-metadata-only') return this.record(this.noticeOnlyVerdict());
     return this.record(capabilityVerdict('polling-configured', this.pollingDetail()));
@@ -515,13 +515,13 @@ export class GmailMailSource implements InboundMailSource {
    *
    * The FIRST rather than a summary, because the verdict turns on the status
    * and a synthesised "several things went wrong" would carry no status to
-   * turn on — a 401 and a 429 need opposite answers (a new grant versus
+   * turn on, a 401 and a 429 need opposite answers (a new grant versus
    * waiting), and collapsing them would pick neither.
    *
    * `fix` is carried through rather than blanked, because `transientVerdict`
    * reads it directly on the `credentials-rejected` branch. Blanked, a token
    * refused mid-delta would reach the owner as "your mail has stopped" with no
-   * remedial step attached — which is this file's own failure mode (`refuse`
+   * remedial step attached, which is this file's own failure mode (`refuse`
    * carries Google's `problem` and `fix` verbatim for exactly this reason)
    * reproduced on the neighbouring path.
    */
@@ -542,13 +542,13 @@ export class GmailMailSource implements InboundMailSource {
    * quotes Google's own scope descriptions. Rewriting them here would be a
    * second explanation of the same condition, and the two would drift.
    *
-   * The two reasons are distinct on purpose — the state tracker announces on a
+   * The two reasons are distinct on purpose, the state tracker announces on a
    * change of state OR reason, so collapsing them into one would mean a token
    * that lost its last body scope, leaving only `gmail.metadata`, produced no
    * new announcement at all.
    */
   private refuse(result: HistoryDeltaUnavailable): InboundCapabilityVerdict {
-    // `no-gmail-scope` keeps `mailbox-unreadable` — "signed in and this mailbox
+    // `no-gmail-scope` keeps `mailbox-unreadable`, "signed in and this mailbox
     // cannot be read at all" is exactly what it is, and there is no Gmail-shaped
     // distinction to draw. `metadata-scope-only` no longer borrows
     // `fetch-refused`: it has its own reason now, because the two are opposite
@@ -560,8 +560,8 @@ export class GmailMailSource implements InboundMailSource {
     const reason = result.unavailable === 'no-gmail-scope'
       ? 'mailbox-unreadable'
       : 'gmail-metadata-only';
-    // What the owner's setting actually selected for THIS condition, and — when
-    // it selected nothing — the sentence saying so. Appended rather than
+    // What the owner's setting actually selected for THIS condition, and, when
+    // it selected nothing, the sentence saying so. Appended rather than
     // branched on: `statusSentence` is never empty, so the owner is told which
     // policy is in force whether or not it degraded, and there is no `if` here
     // that could be written the wrong way round.
@@ -605,7 +605,7 @@ export class GmailMailSource implements InboundMailSource {
   /**
    * An ordinary API failure, classified by what Google answered.
    *
-   * A refused credential is `insufficient` — nothing clears it but a new grant.
+   * A refused credential is `insufficient`, nothing clears it but a new grant.
    * A rate limit or a server fault is `degraded`: it is "not yet", not
    * "cannot", and the delta is still above the cursor when it clears.
    */
@@ -638,7 +638,7 @@ export class GmailMailSource implements InboundMailSource {
    * Sniffing the property instead would decide "does this have a body" from
    * whether a field happens to be present, and a body-capable grant returning a
    * genuinely empty message would then be indistinguishable from a metadata-only
-   * one — which is the confusion the whole round exists to remove.
+   * one, which is the confusion the whole round exists to remove.
    */
   private toInboundMessage(
     message: GmailMessageMetadata,
@@ -653,7 +653,7 @@ export class GmailMailSource implements InboundMailSource {
       mailbox: this.deps.mailbox,
       from: message.from,
       subject: message.subject,
-      // Sender-written, so display only, and never an ordering key — the
+      // Sender-written, so display only, and never an ordering key, the
       // historyId is the ordering authority on this source.
       claimedDate: message.date,
       // The `Message-ID` header, which Gmail's `messages.get` mapping does not
@@ -667,7 +667,7 @@ export class GmailMailSource implements InboundMailSource {
       unverifiedToHeaderClaim: message.to,
       resourceId: message.id,
       historyId,
-      // `''` on the metadata arm because there is no text to put there — the
+      // `''` on the metadata arm because there is no text to put there, the
       // argument type has no field for one. `bodyAvailability` below is what
       // tells every downstream reader which of the two an empty string means.
       body: body.availability === 'full' ? body.text : '',

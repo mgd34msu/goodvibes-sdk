@@ -3,10 +3,10 @@
  *
  * The server-side turn stop (companion.chat.turns.cancel):
  * C1: cancel mid-stream persists the honest partial (deliveryState 'cancelled')
- *     and publishes the terminal turn.cancelled — never turn.completed
- * C2: the NEXT turn after a cancel runs normally (per-turn abort controller —
+ *     and publishes the terminal turn.cancelled, never turn.completed
+ * C2: the NEXT turn after a cancel runs normally (per-turn abort controller,
  *     a stop must never poison the session's future turns)
- * C3: refusal semantics — 404 NO_ACTIVE_TURN, 404 SESSION_NOT_FOUND,
+ * C3: refusal semantics, 404 NO_ACTIVE_TURN, 404 SESSION_NOT_FOUND,
  *     409 TURN_MISMATCH; repeat cancel is an idempotent success
  * C4: cancel before any content → partialPersisted false, no phantom message,
  *     terminal event still emitted
@@ -47,7 +47,7 @@ function makeGate(): { open: () => void; wait: Promise<void> } {
 /**
  * A provider that yields `firstChunks`, then blocks on the gate, then yields
  * `afterGateChunks`. The abort signal is deliberately NOT honored by the
- * provider itself — the manager's own per-chunk abort check is under test.
+ * provider itself, the manager's own per-chunk abort check is under test.
  */
 function makeGatedProvider(
   gate: { wait: Promise<void> },
@@ -91,7 +91,7 @@ async function waitForEvent(events: CapturedEvent[], name: string, tries = 50): 
 }
 
 // ---------------------------------------------------------------------------
-// C1: cancel mid-stream — honest partial + terminal turn.cancelled
+// C1: cancel mid-stream, honest partial + terminal turn.cancelled
 // ---------------------------------------------------------------------------
 
 describe('Cancel mid-stream', () => {
@@ -162,7 +162,7 @@ describe('Next turn after a cancel', () => {
     await cancelPromise;
     await waitForEvent(events, 'companion-chat.turn.cancelled');
 
-    // Second turn must stream and COMPLETE — a session-level abort would have
+    // Second turn must stream and COMPLETE, a session-level abort would have
     // left the signal permanently aborted and killed this turn instantly.
     await manager.postMessage(session.id, 'second');
     const completed = await waitForEvent(events, 'companion-chat.turn.completed');
@@ -211,7 +211,7 @@ describe('Refusals are honest machine codes', () => {
       status: 409,
     });
 
-    // The guard refusal must not have touched the turn — it completes.
+    // The guard refusal must not have touched the turn, it completes.
     gate.open();
     await waitForEvent(events, 'companion-chat.turn.completed');
   });
@@ -360,7 +360,7 @@ describe('Partial-in-history', () => {
     await waitForEvent(events, 'companion-chat.turn.completed');
 
     // The second turn's provider messages include the interrupted partial AND
-    // an explicit interruption marker — the model can reason about the true
+    // an explicit interruption marker, the model can reason about the true
     // chain of events ("hello???" refers to the visible interruption).
     const secondTurnMessages = seenByModel[1]!;
     const joined = secondTurnMessages.join('\n');

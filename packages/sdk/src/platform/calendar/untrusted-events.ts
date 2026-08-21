@@ -1,5 +1,5 @@
 /**
- * untrusted-events.ts — externally-sourced calendar event content is untrusted
+ * untrusted-events.ts, externally-sourced calendar event content is untrusted
  * content, with the same shape mail already uses.
  *
  * ## What was missing
@@ -16,7 +16,7 @@
  * See docs/decisions/2026-07-27-calendar-start-sort-is-not-the-defect.md, which
  * ruled that the risk in a calendar is ACTION, not ordering, and named this.
  *
- * ## Arrival is not ingest — the rule this module is shaped around
+ * ## Arrival is not ingest, the rule this module is shaped around
  *
  * `docs/decisions/2026-07-27-arrival-is-not-ingest.md` applies here unchanged
  * and is the reason this module exports a recorder rather than calling one.
@@ -25,7 +25,7 @@
  * poll happens whenever the interval says so. The turn ledger is one instance
  * per process, scoped by a watermark that `startTurn()` advances, so a
  * recording made at the moment a feed body arrives lands in whatever turn
- * happened to be open — and would refuse that turn's outward action on the
+ * happened to be open, and would refuse that turn's outward action on the
  * basis of an event no turn read and nobody asked for. Anyone who knew the feed
  * URL, or could get an event onto a calendar the owner subscribes to, would own
  * a remote off switch for his agent's outward actions.
@@ -34,7 +34,7 @@
  * `SubscriptionStore.readEvents()` / `readAllEvents()` record; the plain
  * accessors `events()` / `allEvents()` do not, because a consumer already
  * calls `events()` from a timer-driven refresh to count what arrived; and
- * `refresh()` / `applyFetch()` — which are arrival — record nothing, and must
+ * `refresh()` / `applyFetch()`, which are arrival, record nothing, and must
  * not start.
  * The same rule puts the gateway's recording in `listEvents` / `getEvent` /
  * `exportIcs` / `importIcs`, each of which runs because a turn asked.
@@ -54,7 +54,7 @@
  * anything. An invite legitimately changes where a meeting lands in an agenda;
  * the accepted decision record rejected touching the sort. This module labels
  * provenance and records reads. Nothing here can initiate work, and nothing
- * under `platform/calendar/` may gain a path that can — see
+ * under `platform/calendar/` may gain a path that can, see
  * `test/security-calendar-trust.test.ts`'s source scan, which fails if one
  * appears.
  */
@@ -76,7 +76,7 @@ export type CalendarEventProvenance =
    *
    * The URL arrives ALREADY MASKED. A Google/Outlook "secret address" feed URL
    * grants read access to the calendar, so it is secrets-adjacent and the
-   * ledger — which surfaces into refusal text an operator reads — must not
+   * ledger, which surfaces into refusal text an operator reads, must not
    * carry the raw value. `SubscriptionStore.maskFeedUrl` owns the masking.
    */
   | { readonly kind: 'subscription'; readonly name: string; readonly maskedUrl: string }
@@ -102,7 +102,7 @@ export interface UntrustedCalendarEventFields {
   /** Attendee display names or addresses, as the source supplied them. */
   readonly attendees?: readonly string[] | undefined;
   /**
-   * The organizer as the source CLAIMED it — an address or a display name.
+   * The organizer as the source CLAIMED it, an address or a display name.
    *
    * A useful label for a reader, never an identity check. Nothing verifies that
    * the party named here sent the invitation, exactly as nothing verifies a
@@ -110,7 +110,7 @@ export interface UntrustedCalendarEventFields {
    */
   readonly organizer?: string | undefined;
   /**
-   * True only when the SOURCE ITSELF states the owner organized this event —
+   * True only when the SOURCE ITSELF states the owner organized this event,
    * Google's `organizer.self`, Graph's `isOrganizer`, both read-only and both
    * relative to the calendar the copy appears on.
    *
@@ -137,7 +137,7 @@ export type CalendarUntrustedIngestRecorder = (ingest: {
    * Without it the guard downstream can only ask "has this process read a
    * calendar", which in a daemon is permanently true and therefore decides
    * nothing. With it, an outward action can be checked for DERIVATION from the
-   * invitation — which is the threat: an instruction planted in an event title
+   * invitation, which is the threat: an instruction planted in an event title
    * or description that a summary then repeats into a send.
    */
   readonly content?: string | undefined;
@@ -158,7 +158,7 @@ export type CalendarUntrustedIngestRecorder = (ingest: {
  *    a provider account is: external unless the caller established that the
  *    organizer is the configured account. It used to be unconditional, which
  *    meant the owner reading his own calendar recorded an ingest and every
- *    later outward action in that turn was refused — `evaluateOutwardEffect`
+ *    later outward action in that turn was refused, `evaluateOutwardEffect`
  *    is called by `createUntrustedContentPort` with no `content` at all, so
  *    port consumers take the coarse "any origin -> refuse" branch and no
  *    derivation check ever runs.
@@ -186,7 +186,7 @@ export function calendarEventIsExternallySourced(
  * Strip a `mailto:` prefix and surrounding whitespace from an organizer value.
  *
  * Exported so the CalDAV gateway compares an ORGANIZER against the configured
- * account through the SAME normalisation the origin string is built with — a
+ * account through the SAME normalisation the origin string is built with, a
  * second, slightly different copy of this is how the two would drift.
  */
 export function organizerLabel(organizer: string | undefined): string {
@@ -251,7 +251,7 @@ export function calendarEventOrigin(
 
 /**
  * The retained text of one event: every field an inviter writes, and nothing
- * else. Ids, hrefs and timestamps are excluded — they are ours or the server's,
+ * else. Ids, hrefs and timestamps are excluded, they are ours or the server's,
  * and putting them here would make ordinary machine-generated strings look like
  * derivation the moment an outward action mentioned an event id.
  */
@@ -274,12 +274,12 @@ export function calendarEventIngestText(event: UntrustedCalendarEventFields): st
  *
  * CALL THIS FROM A READ. Never from a poll, a refresh, a webhook receipt, or
  * anything else that runs because time passed rather than because someone
- * asked — see the module header.
+ * asked, see the module header.
  *
  * One entry per event rather than one per batch: origins are per-inviter, and
  * collapsing a list into "the calendar" would lose the name of the party whose
  * text an outward action turns out to repeat. Events that are not externally
- * sourced, and events whose readable fields are all empty, record nothing —
+ * sourced, and events whose readable fields are all empty, record nothing,
  * there is no exposure to record.
  */
 export function recordCalendarEventIngest(input: {

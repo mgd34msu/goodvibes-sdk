@@ -1,5 +1,5 @@
 /**
- * credentials-client.ts — writing a credential the DAEMON will use.
+ * credentials-client.ts, writing a credential the DAEMON will use.
  *
  * ── The pair that must not split ───────────────────────────────────────────
  *
@@ -10,13 +10,13 @@
  *
  * As a pure client it does not. The reference belongs with the daemon (the key
  * is daemon-owned) and so does the value, or the daemon resolves the reference
- * and finds nothing — the mailbox password that reports saved and never polls,
+ * and finds nothing, the mailbox password that reports saved and never polls,
  * the card that is not there at purchase time.
  *
  * ── Why this is ONE verb and not two writes from here ─────────────────────
  *
- * `credentials.set` takes the CONFIG KEY — `surfaces.telegram.botToken`, not
- * `GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN` — and does the whole sequence itself,
+ * `credentials.set` takes the CONFIG KEY, `surfaces.telegram.botToken`, not
+ * `GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN`, and does the whole sequence itself,
  * in an order this client could not enforce from the outside:
  *
  *   1. derive the secret-store name from the config path (one derivation,
@@ -33,13 +33,13 @@
  * would reintroduce exactly that window.
  *
  * The verb also refuses a key that is not a credential-bearing setting, with a
- * message naming `config.set` as the right call — so a mistake here is a
+ * message naming `config.set` as the right call, so a mistake here is a
  * refusal, not a config value quietly replaced by a reference nobody can read.
  *
  * ── What never comes back ─────────────────────────────────────────────────
  *
  * The value. Not on success, not in an error, not in a log line. The response
- * names the config key, the store key, the scope and the reference — everything
+ * names the config key, the store key, the scope and the reference, everything
  * needed to verify the write and nothing that repeats the credential.
  *
  * ── No silent local fallback ──────────────────────────────────────────────

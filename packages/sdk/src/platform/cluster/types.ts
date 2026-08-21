@@ -1,5 +1,5 @@
 /**
- * types.ts — the contract surface for LAN leader election.
+ * types.ts, the contract surface for LAN leader election.
  *
  * One goodvibes install commonly ends up running more than once: a laptop and a
  * desktop on the same network, a daemon plus a second daemon started by an
@@ -7,19 +7,19 @@
  * one of those processes independently long-polls Telegram and subscribes to
  * ntfy, so one inbound message is consumed twice and answered twice.
  *
- * The fix is an election over the LAN — one election PER INBOUND SURFACE.
+ * The fix is an election over the LAN, one election PER INBOUND SURFACE.
  *
  * Per surface, not per node, because a node is rarely the same shape as its
  * neighbour. A laptop configured for Telegram and ntfy and a desktop
  * configured for ntfy alone cannot share a single whole-node election: whoever
- * won it would own Telegram too, and if that was the desktop — which has no bot
- * token — Telegram would simply stop being read by anybody. Each surface
+ * won it would own Telegram too, and if that was the desktop, which has no bot
+ * token, Telegram would simply stop being read by anybody. Each surface
  * therefore runs its own election among the nodes that can ACTUALLY serve it,
  * and failover is granular: losing the node that holds ntfy moves ntfy, and
  * touches nothing else.
  *
  * Outbound sends, sessions, the control plane and HTTP are untouched on every
- * node — leadership gates what a node LISTENS to, never what it can do.
+ * node, leadership gates what a node LISTENS to, never what it can do.
  *
  * Everything here is transport- and clock-injectable so the state machine can
  * be exercised deterministically with no sockets and no real time.
@@ -52,8 +52,8 @@ export const CLUSTER_PROTOCOL_VERSION = 1;
 /**
  * A protocol datagram, before signing.
  *
- * `surfaceId` is a DIGEST — see surface-id.ts for why a topic name never
- * travels — and is null on a group-level datagram that is not about any one
+ * `surfaceId` is a DIGEST, see surface-id.ts for why a topic name never
+ * travels, and is null on a group-level datagram that is not about any one
  * surface. This module sends no group-level datagrams of its own; the field is
  * null-capable so datagrams from the group's other traffic decode and are
  * routed past the per-surface machinery rather than mistaken for it.
@@ -74,7 +74,7 @@ export interface ClusterMessage {
   readonly ts: number;
 }
 
-/** A datagram as it appears on the wire — `sig` present only when signing. */
+/** A datagram as it appears on the wire, `sig` present only when signing. */
 export interface SignedClusterMessage extends ClusterMessage {
   readonly sig?: string | undefined;
 }
@@ -108,7 +108,7 @@ export interface ClusterTransport {
  *
  * `now()` is wall clock (what a replay cursor is expressed in) and
  * `monotonicNow()` is a monotonic source that does NOT advance across a host
- * suspend — the difference between the two is exactly how a woken node
+ * suspend, the difference between the two is exactly how a woken node
  * discovers it was asleep.
  *
  * `setTimer` returns its own cancel function so no handle type has to be
@@ -138,7 +138,7 @@ export interface ClusterConsumerStartContext {
  *
  * `stop()` MUST NOT resolve until the consumer has genuinely stopped
  * consuming: a Telegram long-poll closed with its offset committed, an ntfy
- * stream aborted. The ordered handoff depends on that promise being honest —
+ * stream aborted. The ordered handoff depends on that promise being honest,
  * the successor starts only after this resolves.
  */
 export interface ClusterConsumerGate {
@@ -199,7 +199,7 @@ export interface ClusterSurfaceStatus {
  *
  * Lives here rather than in the group layer because the per-surface election
  * is what establishes the fact; the group layer only reports it. `surfaceId` is
- * always a digest — a raw topic or chat id must never reach here.
+ * always a digest, a raw topic or chat id must never reach here.
  */
 export interface ClusterSurfaceHolding {
   readonly surfaceId: string;

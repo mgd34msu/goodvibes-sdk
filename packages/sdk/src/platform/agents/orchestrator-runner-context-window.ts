@@ -11,7 +11,7 @@
  *  - WHICH model definition is actually in play. A route can name its model
  *    provider-qualified (`provider:key`) or bare, and the requested id and the
  *    resolved id can differ after a fallback, so the registry is searched by
- *    exact provider+registryKey first and only then by bare model id — a bare
+ *    exact provider+registryKey first and only then by bare model id, a bare
  *    match on the wrong provider would report someone else's context window.
  *  - WHETHER this turn still fits, and what to drop when it does not. The
  *    estimate covers messages, system prompt and tool schemas together, because
@@ -45,7 +45,7 @@ const CONTEXT_COMPACT_THRESHOLD = 0.85;
 const MIN_WINDOW_FOR_LLM_COMPACT = 12_000;
 
 /**
- * Fraction of the context window at which compaction is triggered — from config
+ * Fraction of the context window at which compaction is triggered, from config
  * (agents.contextCompactThreshold) when a config source is present, else the
  * module default (identical value, so behaviour is unchanged by default).
  */

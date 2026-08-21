@@ -14,7 +14,7 @@ import { summarizeError } from '../../utils/error-display.js';
 
 /**
  * Start a one-shot fix-session pre-briefed with the failing CI jobs, and
- * return the REAL spawned session's id — the id session attach/resume
+ * return the REAL spawned session's id, the id session attach/resume
  * resolves. The automation job id ('auto-…') is a scheduling handle no
  * attach can resolve and must never be surfaced as the fix session; this is
  * pinned by test (job-id vs session-id confusion).
@@ -57,14 +57,14 @@ export async function startCiFixSession(
     if (run.sessionId) return { sessionId: run.sessionId };
     return { error: `the fix run started without an attachable session (run ${run.id}, status ${run.status})` };
   } catch (error) {
-    // Automation subsystem disabled, concurrency ceiling, or spawn failure —
+    // Automation subsystem disabled, concurrency ceiling, or spawn failure,
     // the honest failure travels instead of a dead id.
     return { error: summarizeError(error) };
   }
 }
 
 /**
- * Start a merge-conflict resolution session INSIDE the kept worktree — the
+ * Start a merge-conflict resolution session INSIDE the kept worktree, the
  * same seeded-session machinery as startCiFixSession, seeded with the tree
  * path, item branch, and the STRUCTURED conflict list. Returns the REAL
  * session id plus the job id (the run-completion hook keys on it to
@@ -86,9 +86,9 @@ export async function startConflictResolutionSession(
     `Kept worktree: ${seed.worktreePath}`,
     ...(seed.branch ? [`Item branch: ${seed.branch}`] : []),
     `Conflicting files:`,
-    ...(seed.files.length > 0 ? seed.files.map((file) => `- ${file}`) : ['- (unknown — inspect the tree)']),
+    ...(seed.files.length > 0 ? seed.files.map((file) => `- ${file}`) : ['- (unknown, inspect the tree)']),
     '',
-    `Work INSIDE the kept worktree at ${seed.worktreePath}. Resolve the conflicts against the base branch, keep both sides' intent, and commit the resolution onto the item branch. Do not delete the branch or the worktree — once your resolution lands, the merge is re-attempted and the tree is reclaimed automatically.`,
+    `Work INSIDE the kept worktree at ${seed.worktreePath}. Resolve the conflicts against the base branch, keep both sides' intent, and commit the resolution onto the item branch. Do not delete the branch or the worktree, once your resolution lands, the merge is re-attempted and the tree is reclaimed automatically.`,
   ].join('\n');
   try {
     const job = await automation.createJob({

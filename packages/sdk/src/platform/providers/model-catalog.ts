@@ -30,7 +30,7 @@ export interface CatalogModel {
   provider: string;
   providerId: string;
   providerEnvVars: string[];
-  /** Null when the catalog carried no cost for this model — honestly unpriced, never $0. */
+  /** Null when the catalog carried no cost for this model, honestly unpriced, never $0. */
   pricing: CatalogModelPricing | null;
   tier: 'free' | 'paid' | 'subscription';
   contextWindow?: number | undefined;
@@ -43,7 +43,7 @@ export interface CatalogModel {
    */
   reasoningOptions?: ModelsDevReasoningOption[] | undefined;
   /**
-   * The feed's per-model `modalities.input` list, carried verbatim — e.g.
+   * The feed's per-model `modalities.input` list, carried verbatim, e.g.
    * `['text', 'image', 'pdf']`. This is the catalog's own answer to "does this
    * model accept images", which is what `multimodal` should be read from.
    * Absent means the entry carried no modality block at all.
@@ -58,7 +58,7 @@ export interface PricingCatalog {
 
 /**
  * Legacy string-keyed catalog price lookup. Returns null when the model is
- * absent from the catalog or its entry carries no cost — absent must never
+ * absent from the catalog or its entry carries no cost, absent must never
  * look free. Prefer ProviderRegistry.resolveModelPricing (model-pricing.ts),
  * which resolves per (provider, model) with manual/provider/catalog
  * precedence and an explicit source.
@@ -193,7 +193,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
     // Same principle as `reasoning` below, applied to image input: the
     // catalog's own per-model answer decides. This used to read
     // `isGoogle || isOpenAI`, which called every Anthropic model text-only
-    // and every OpenAI embedding model multimodal — vendors ship both kinds.
+    // and every OpenAI embedding model multimodal, vendors ship both kinds.
     // `modalities.input` is populated for every entry in the live feed, so
     // the undefined branch is a malformed-entry fallback rather than a
     // routine path; a fallback that guessed by vendor would reintroduce the
@@ -222,7 +222,7 @@ export function getCatalogModelDefinitionsFrom(models: readonly CatalogModel[]):
       provider: model.providerId,
       registryKey: `${model.providerId}:${model.id}`,
       displayName: model.name,
-      description: `${model.name} — sourced from model catalog.`,
+      description: `${model.name}, sourced from model catalog.`,
       capabilities: {
         toolCalling: true,
         codeEditing: true,

@@ -3,8 +3,8 @@
  * `serverWrite` / `connectSocket` harness the client protocol tests already
  * drive. No real network, no TLS: a plain loopback pair on 127.0.0.1:0.
  *
- * It speaks the subset the inbound watcher needs — LOGIN, CAPABILITY, EXAMINE,
- * IDLE/DONE, UID SEARCH, UID FETCH — with the knobs the watcher's failure
+ * It speaks the subset the inbound watcher needs, LOGIN, CAPABILITY, EXAMINE,
+ * IDLE/DONE, UID SEARCH, UID FETCH, with the knobs the watcher's failure
  * modes require: refuse the login, refuse the mailbox, refuse IDLE, stop
  * answering mid-handshake, drop the socket, deliver mail while nobody is
  * connected.
@@ -22,19 +22,19 @@
  *   - **`BODY[HEADER.FIELDS ...]` comes back as a `{n}` literal.** RFC 3501
  *     §4.3: the count is a BYTE count on the end of the line, and exactly that
  *     many bytes follow. This fake used to write the header block as ordinary
- *     lines, which no server does — and that one shortcut is why a client that
+ *     lines, which no server does, and that one shortcut is why a client that
  *     discarded every folded literal, and therefore built envelopes with every
  *     field empty, passed the whole suite.
  *   - **The automatic `UID` item may come last.** `uidPosition` switches
  *     between `UID 307 BODY[…]` and `BODY[…]… UID 307)`; both are conformant,
  *     both are in the wild, and in the second the UID is not on the
- *     `* n FETCH` line at all — it is on the line that closes the response.
+ *     `* n FETCH` line at all, it is on the line that closes the response.
  *   - **FETCH answers come back in SEQUENCE order, not in the order asked.**
  *     A server walks the mailbox once. A client that lines envelopes up
  *     positionally instead of by the `UID` data item therefore reads the wrong
  *     message as soon as a caller asks for UIDs out of order.
  *
- * Subjects are whatever the caller passes and are NOT restricted to ASCII —
+ * Subjects are whatever the caller passes and are NOT restricted to ASCII,
  * `{n}` is a byte count while the socket is read as utf8, so a non-ASCII
  * subject is the only thing that exercises that arithmetic end to end.
  */
@@ -57,8 +57,8 @@ export interface FakeMessage {
    * The `Message-ID` header. Defaults to `<uid-N@example.test>`, which is
    * distinct per UID.
    *
-   * Overridable because the default made §12 gate #14 — "a `Message-ID`
-   * collision cannot suppress a message" — UNCONSTRUCTIBLE: minting one id per
+   * Overridable because the default made §12 gate #14, "a `Message-ID`
+   * collision cannot suppress a message", UNCONSTRUCTIBLE: minting one id per
    * UID meant a collision could not be built, so the gate could never be
    * satisfied and the property it protects went untested. `Message-ID` is
    * sender-controlled, and a harness that cannot forge it cannot exercise the
@@ -85,7 +85,7 @@ export type FakeIdleAdvertisement =
  *
  * `leading` writes `* 3 FETCH (UID 307 BODY[…] {n}`; `trailing` writes
  * `* 3 FETCH (BODY[…] {n}` and closes with ` UID 307)`. RFC 3501 §6.4.8 says
- * the server includes the item, not where — so a client has to read both.
+ * the server includes the item, not where, so a client has to read both.
  */
 export type FakeUidPosition = 'leading' | 'trailing';
 
@@ -93,8 +93,8 @@ export type FakeUidPosition = 'leading' | 'trailing';
  * How the header block comes back.
  *
  * `literal` is what servers do and the default. `bare-lines` is the shape this
- * harness used to hard-code — the header block written as ordinary response
- * lines with no `{n}` count — kept only so a test can assert that the client
+ * harness used to hard-code, the header block written as ordinary response
+ * lines with no `{n}` count, kept only so a test can assert that the client
  * still reads a scripted response of that shape. Nothing on a real socket
  * produces it.
  */
@@ -120,21 +120,21 @@ export interface FakeMailboxOptions {
    * `empty` answers every `UID SEARCH` with `OK` and no matches.
    *
    * Not the same as `refused`, which is a `NO` the client raises as an error.
-   * This is the server cooperating and naming nothing — the shape that
+   * This is the server cooperating and naming nothing, the shape that
    * contradicts a non-zero `EXISTS`, and the only way to reach it is a server
    * that answers successfully while saying the mailbox is empty.
    */
   readonly search?: 'ok' | 'refused' | 'empty';
   /**
-   * How the server answers the connect-time body probe — the sequence-number
+   * How the server answers the connect-time body probe, the sequence-number
    * `FETCH n (UID BODYSTRUCTURE)` / `FETCH n BODY.PEEK[]<0.N>` pair.
    *
-   *   - `ok` — a text/plain part of 120 octets, and 120-odd bytes back.
-   *   - `refused` — `NO` with wording that names nothing about itself, which
+   *   - `ok`, a text/plain part of 120 octets, and 120-odd bytes back.
+   *   - `refused`, `NO` with wording that names nothing about itself, which
    *     is what a server that will not show message content actually sends.
-   *   - `withheld` — declares the same 120 octets and returns NIL. The quiet
+   *   - `withheld`, declares the same 120 octets and returns NIL. The quiet
    *     mailbox impostor: every command succeeds and nothing comes back.
-   *   - `zero-octet-body` — declares 0 octets and returns NIL. A legitimately
+   *   - `zero-octet-body`, declares 0 octets and returns NIL. A legitimately
    *     empty message, which is NOT a capability failure.
    */
   readonly bodyProbe?: 'ok' | 'refused' | 'withheld' | 'zero-octet-body';
@@ -174,11 +174,11 @@ export interface FakeMailboxServer {
   /**
    * Add a message; announce it with `* n EXISTS` to anyone connected.
    *
-   * `messageId` forges the `Message-ID` header — pass the SAME one twice to
+   * `messageId` forges the `Message-ID` header, pass the SAME one twice to
    * build the collision gate #14 demands.
    */
   deliver(subject?: string, messageId?: string): FakeMessage;
-  /** Add a message WITHOUT announcing it — mail that arrived while down. */
+  /** Add a message WITHOUT announcing it, mail that arrived while down. */
   deliverQuietly(subject?: string, messageId?: string): FakeMessage;
   /** Remove a message and announce `* n EXPUNGE` with its sequence number. */
   expunge(uid: number): void;
@@ -358,7 +358,7 @@ export async function makeFakeMailbox(
         serverWrite(socket, `${tag} NO Server error fetching message data`);
         return;
       }
-      // The probe's BODY fetch, addressed by UID — the same form the real
+      // The probe's BODY fetch, addressed by UID, the same form the real
       // drain uses, which is exactly why the probe sends it. `options.fetch`
       // above already refused it: a server that will not answer UID-addressed
       // fetches refuses this one too, and that is the point of asking in this
@@ -383,7 +383,7 @@ export async function makeFakeMailbox(
         .map((part) => parseInt(part, 10))
         .filter((value) => Number.isFinite(value));
       // Answered in SEQUENCE order, not in the order asked. That is what a
-      // real server does — it walks the mailbox once — and a client that lines
+      // real server does, it walks the mailbox once, and a client that lines
       // envelopes up positionally rather than by the UID data item reads the
       // wrong message the moment a caller asks out of order.
       const answering = messages
@@ -425,7 +425,7 @@ export async function makeFakeMailbox(
    * The literal count is `Buffer.byteLength`, not `payload.length`: `{n}` is a
    * byte count, and a fake that counted characters would read correctly only
    * for pure-ASCII mail and desynchronize the client's reader on anything else
-   * — which is the same arithmetic the client itself has to get right, so
+   *, which is the same arithmetic the client itself has to get right, so
    * getting it wrong here would hide getting it wrong there.
    */
   const writeFetchResponse = (

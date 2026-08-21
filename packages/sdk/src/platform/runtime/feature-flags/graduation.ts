@@ -1,12 +1,12 @@
 /**
- * graduation.ts — feature-flag graduation as a release policy.
+ * graduation.ts, feature-flag graduation as a release policy.
  *
  * Capabilities ship default-OFF ("dark") until validated, then default on.
  * Nothing forced a per-release DECISION about the ones that had earned their
- * way on — so validated work could sit dark indefinitely. This module is the
+ * way on, so validated work could sit dark indefinitely. This module is the
  * lightweight bookkeeping that forces that decision: every capability carries
  * an owner-facing graduation state, and the release gate FAILS if any sits in
- * `graduate-candidate` — judged ready but neither defaulted on nor given a
+ * `graduate-candidate`, judged ready but neither defaulted on nor given a
  * dated reason it is being held.
  *
  * It is bookkeeping, NOT a new simulation system. Evidence is wired in from the
@@ -19,13 +19,13 @@ import type { FeatureFlag, FlagState } from './types.js';
 
 /**
  * The graduation lane a flag sits in.
- * - `graduated`         — the flag's default flipped ON (it graduated).
- * - `dark`              — default OFF, no graduation evidence gathered.
- * - `soaking`           — default OFF, an owner has it accumulating evidence.
+ * - `graduated`        , the flag's default flipped ON (it graduated).
+ * - `dark`             , default OFF, no graduation evidence gathered.
+ * - `soaking`          , default OFF, an owner has it accumulating evidence.
  * - `graduate-candidate`— judged ready to flip, awaiting a release decision.
  *   THIS is the only release-blocking state: it must resolve to `graduated`
  *   (flip it) or `blocked` (record a dated reason) every release.
- * - `blocked`           — held OFF on purpose, with a dated recorded reason.
+ * - `blocked`          , held OFF on purpose, with a dated recorded reason.
  */
 export type GraduationState = 'dark' | 'soaking' | 'graduate-candidate' | 'graduated' | 'blocked';
 
@@ -60,7 +60,7 @@ export interface FlagDivergenceEvidence {
   readonly gateStatus: 'allowed' | 'blocked' | 'no_data';
 }
 
-/** The evidence bundle for one flag — real data, or an explicit absence of it. */
+/** The evidence bundle for one flag, real data, or an explicit absence of it. */
 export interface FlagGraduationEvidence {
   readonly instrumentation: GraduationInstrumentation;
   /** Divergence readings when a live provider supplied them; null otherwise. */
@@ -110,7 +110,7 @@ export interface GraduationEvidenceProvider {
 /**
  * Which flags have real validation instrumentation wired today. Only the
  * permissions simulation pair carries the shadow/divergence machinery; every
- * other flag has `none` and reports "no evidence collected" — never a
+ * other flag has `none` and reports "no evidence collected", never a
  * fabricated readiness. Extend this map as instrumentation is added.
  */
 const FLAG_INSTRUMENTATION: Readonly<Record<string, GraduationInstrumentation>> = {
@@ -119,7 +119,7 @@ const FLAG_INSTRUMENTATION: Readonly<Record<string, GraduationInstrumentation>> 
 };
 
 /**
- * Owner-set graduation annotations. HONEST DEFAULT: empty — no flag is asserted
+ * Owner-set graduation annotations. HONEST DEFAULT: empty, no flag is asserted
  * ready without recorded evidence. Owners add soaking/candidate/blocked entries
  * here as real evidence arrives; the release gate then forces each candidate to
  * flip or record a dated blocker.
@@ -132,7 +132,7 @@ function instrumentationFor(flagId: string): GraduationInstrumentation {
 
 /** Derive the graduation state from the flag default and any owner annotation. */
 function deriveState(flag: FeatureFlag, annotation: FlagGraduationAnnotation | undefined): GraduationState {
-  // A flipped-on default IS graduation — it wins over any stale annotation.
+  // A flipped-on default IS graduation, it wins over any stale annotation.
   if (flag.defaultState === 'enabled') return 'graduated';
   if (!annotation) return 'dark';
   return annotation.state;

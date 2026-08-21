@@ -1,17 +1,17 @@
 /**
- * ingress-alarm.ts — a message from the owner that the daemon failed to process
+ * ingress-alarm.ts, a message from the owner that the daemon failed to process
  * is an INCIDENT, not a log line.
  *
  * The failure this exists for, in full: a route binding pointed at a closed
  * session, every inbound Telegram update threw `Session is closed`, and the
- * poller did the only sensible thing with a poison update — logged it at warn
+ * poller did the only sensible thing with a poison update, logged it at warn
  * and advanced the cursor past it. That warn went into a multi-megabyte debug
  * file. Nothing else happened. Channel health went on reporting the surface
  * fine, because health watches whether the poll LOOP is running and the loop
  * was running perfectly; it was the processing behind it that was eating
  * messages. The owner found out by noticing silence.
  *
- * Advancing the cursor is still right — a wedged cursor redelivering one poison
+ * Advancing the cursor is still right, a wedged cursor redelivering one poison
  * update forever is the worse failure, and it takes the whole channel down
  * rather than one message. What changes here is that advancing past is LOUD:
  *
@@ -25,7 +25,7 @@
  *
  * The rollover in session-broker-intent.ts means the closed-session class
  * should not reach here at all any more. This is for the classes nobody has
- * predicted yet — which is the point, since the predicted one is exactly the
+ * predicted yet, which is the point, since the predicted one is exactly the
  * one that went unnoticed for a day.
  */
 
@@ -37,7 +37,7 @@ export const DEFAULT_INGRESS_ALARM_WINDOW_MS = 30 * 60 * 1000;
 
 /** What the owner is told, and what the health observation reports. */
 export interface ChannelIngressFailureState {
-  /** The named reason processing failed — carried verbatim into health. */
+  /** The named reason processing failed, carried verbatim into health. */
   readonly detail: string;
   /** When the CURRENT run of failures started. */
   readonly since: number;
@@ -52,7 +52,7 @@ export interface ChannelIngressFailureState {
 export interface ChannelIngressAlarmDeps {
   /**
    * Put one line in front of the owner. The implementation picks a channel
-   * that still works — deliberately not necessarily `surface`, because the
+   * that still works, deliberately not necessarily `surface`, because the
    * surface that just failed to RECEIVE may well still SEND (Telegram's sends
    * worked throughout the incident this exists for), and if it cannot, another
    * connected channel can.
@@ -125,9 +125,9 @@ export class ChannelIngressAlarm {
     this.send(
       surface,
       state.count === 1
-        ? `Heads up: a message that arrived on ${surface} could not be processed and was skipped — ${detail}. `
+        ? `Heads up: a message that arrived on ${surface} could not be processed and was skipped, ${detail}. `
           + `${surface} is being treated as degraded until one goes through.`
-        : `${surface} is still failing to process arriving messages (${state.count} skipped since this started) — ${detail}.`,
+        : `${surface} is still failing to process arriving messages (${state.count} skipped since this started), ${detail}.`,
     );
     return true;
   }
@@ -174,8 +174,8 @@ export class ChannelIngressAlarm {
  * separate from "am I receiving?".
  *
  * Those are different questions and conflating them is the entire defect. The
- * Telegram poll loop was turning over perfectly — mode polling, running true,
- * reason "long-polling" — while every update it handed on threw, and the
+ * Telegram poll loop was turning over perfectly, mode polling, running true,
+ * reason "long-polling", while every update it handed on threw, and the
  * surface reported `healthy` for a day. So the failure is held HERE rather than
  * on the supervisor's own status object, which the mode transitions replace
  * wholesale and would have quietly erased it on the next refresh.
@@ -204,7 +204,7 @@ export class IngressProcessingHealth {
   /**
    * One inbound message could not be processed and was skipped past.
    *
-   * Skipping is still right — a cursor wedged on one poison message redelivers
+   * Skipping is still right, a cursor wedged on one poison message redelivers
    * it forever and takes the whole channel down instead of one message. What
    * changed is that it is loud: ERROR rather than the warn line that sat unread
    * in a multi-megabyte debug file, plus degraded health, plus the alarm.

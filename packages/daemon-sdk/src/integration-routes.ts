@@ -121,7 +121,7 @@ export function createDaemonIntegrationRouteHandlers(
     getIntelligence: () => withHelpers(context.integrationHelpers, (helpers) => Response.json(helpers.getIntelligenceSnapshot())),
     getMemoryDoctor: async () => Response.json(await context.memoryRegistry.doctor()),
     getMemoryConsolidationReceipts: () => {
-      // What consolidation DID (retained run receipts) and what it PROPOSED —
+      // What consolidation DID (retained run receipts) and what it PROPOSED,
       // judgment outcomes a human acts on via the confirmation-gated review
       // route. Pending = proposals carried by the retained receipts (the
       // scheduler ring bounds them); the referenced records are already
@@ -239,7 +239,7 @@ export function createDaemonIntegrationRouteHandlers(
       const input = parseMemoryLinkBody(body);
       if (input instanceof Response) return input;
       const link = await context.memoryRegistry.link(id, input.toId, input.relation);
-      // link() returns null when either endpoint id is unknown — an honest 404, not a
+      // link() returns null when either endpoint id is unknown, an honest 404, not a
       // 200 that pretends a link was made between records that do not both exist.
       return link
         ? Response.json({ link }, { status: 201 })
@@ -352,7 +352,7 @@ function withHelpers<T>(
  * Handle GET /api/sessions.
  *
  * Returns the session broker snapshot from the integration helper service.
- * Pagination (`?limit=` / `?cursor=`) is not supported on this endpoint —
+ * Pagination (`?limit=` / `?cursor=`) is not supported on this endpoint,
  * `IntegrationHelperServiceLike` is a consumer-supplied structural interface
  * whose concrete implementation lives outside daemon-sdk and cannot be
  * range-queried here.  Requests containing pagination params receive the

@@ -41,7 +41,7 @@ describe('WRFC owner agent orchestration', () => {
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
     // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // with a per-key conditional return type, a by-string-key stub can't be typed
     // against that generic signature directly (TypeScript hits its own recursion
     // limit, "Excessive stack depth", comparing two such generic conditional
     // signatures). Casting the whole mock once at the boundary sidesteps that
@@ -151,7 +151,7 @@ describe('WRFC owner agent orchestration', () => {
 
     const passed = waitForWorkflowEvent(bus, 'WORKFLOW_CHAIN_PASSED');
     // Structured review: the mechanical gate requires a recorded acceptance
-    // checklist — a prose-only score line can no longer pass, by design.
+    // checklist, a prose-only score line can no longer pass, by design.
     reviewer.fullOutput = ['```json', JSON.stringify({
       version: 1, archetype: 'reviewer', summary: 'Review passed.',
       score: 10, passed: true, dimensions: [], issues: [], constraintFindings: [],
@@ -188,7 +188,7 @@ describe('WRFC owner agent orchestration', () => {
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
     // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // with a per-key conditional return type, a by-string-key stub can't be typed
     // against that generic signature directly (TypeScript hits its own recursion
     // limit, "Excessive stack depth", comparing two such generic conditional
     // signatures). Casting the whole mock once at the boundary sidesteps that
@@ -252,7 +252,7 @@ describe('WRFC owner agent orchestration', () => {
     // Cast (workaround, not a narrowing bug fix): TS narrows `owner.status` to
     // the literal 'completed' from the direct assignment above and does not
     // account for the WrfcController reverting it back to 'running' via the
-    // AGENT_COMPLETED event handled during `flushMicrotasks` — a function-call
+    // AGENT_COMPLETED event handled during `flushMicrotasks`, a function-call
     // side effect its flow analysis can't see.
     expect(owner.status as AgentRecord['status']).toBe('running');
     expect(owner.completedAt).toBeUndefined();
@@ -270,7 +270,7 @@ describe('WRFC owner agent orchestration', () => {
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
     // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // with a per-key conditional return type, a by-string-key stub can't be typed
     // against that generic signature directly (TypeScript hits its own recursion
     // limit, "Excessive stack depth", comparing two such generic conditional
     // signatures). Casting the whole mock once at the boundary sidesteps that
@@ -338,7 +338,7 @@ describe('WRFC owner agent orchestration', () => {
     const runRecords: AgentRecord[] = [];
     const messageBus = { registerAgent: () => {} };
     // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // with a per-key conditional return type, a by-string-key stub can't be typed
     // against that generic signature directly (TypeScript hits its own recursion
     // limit, "Excessive stack depth", comparing two such generic conditional
     // signatures). Casting the whole mock once at the boundary sidesteps that
@@ -410,7 +410,7 @@ describe('WRFC owner agent orchestration', () => {
     const bus = new RuntimeEventBus();
     const messageBus = { registerAgent: () => {} };
     // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-    // with a per-key conditional return type — a by-string-key stub can't be typed
+    // with a per-key conditional return type, a by-string-key stub can't be typed
     // against that generic signature directly (TypeScript hits its own recursion
     // limit, "Excessive stack depth", comparing two such generic conditional
     // signatures). Casting the whole mock once at the boundary sidesteps that

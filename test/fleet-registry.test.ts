@@ -189,7 +189,7 @@ function nodeById(registry: ProcessRegistry, id: string): ProcessNode {
 
 const emitterCtx: EmitterContext = { sessionId: 'sess-1', traceId: 'trace-1', source: 'test' };
 
-/** RuntimeEventBus dispatches listeners via queueMicrotask — flush before asserting. */
+/** RuntimeEventBus dispatches listeners via queueMicrotask, flush before asserting. */
 function flushBus(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -333,7 +333,7 @@ describe('fleet registry — adapter mapping', () => {
       llmCallCount: 1, turnCount: 1,
     };
     const agents = [
-      // Owner usage mirrors children at completion — must NOT be double-counted.
+      // Owner usage mirrors children at completion, must NOT be double-counted.
       makeAgent({ id: 'owner-2', wrfcId: 'ch-2', usage: { ...usage }, toolCallCount: 5 }),
       makeAgent({ id: 'eng-1', wrfcId: 'ch-2', usage: { ...usage }, toolCallCount: 5, model: 'm1' }),
     ];
@@ -377,7 +377,7 @@ describe('fleet registry — adapter mapping', () => {
 
   // Chain terminal truth: WrfcController has no cancel/abort of
   // its own, so a cascade kill (registry.ts kill('chain:<id>')) only cancels
-  // the member agents — chain.state never leaves whatever active phase it was
+  // the member agents, chain.state never leaves whatever active phase it was
   // in when killed. Before the fix this rendered 'executing-tool' forever
   // with elapsedMs climbing on every query() (the replay-found leak).
   // Regression: two registries at very different `now` values over the SAME
@@ -422,7 +422,7 @@ describe('fleet registry — adapter mapping', () => {
 
   // wo/chain-state-honesty fix: 'gating' and 'committing' are run by
   // WrfcController itself (gate checks, git commit/merge) with zero live
-  // member agents BY DESIGN — every phase-worker member already finished
+  // member agents BY DESIGN, every phase-worker member already finished
   // before the chain advanced here. Before the fix, the killed-derivation
   // fired on this exact shape (all known members terminal) and reported a
   // healthy chain mid-commit as 'killed' with a frozen synthetic
@@ -515,7 +515,7 @@ describe('fleet registry — adapter mapping', () => {
     expect(trgNode.capabilities.resumable).toBe(false); // already armed — nothing to resume
     const schNode = nodeById(registry, 'schedule:nightly');
     expect(schNode.kind).toBe('schedule');
-    // A disabled schedule entry is 'paused', NOT 'killed' — the entry
+    // A disabled schedule entry is 'paused', NOT 'killed', the entry
     // still exists and ScheduleManager.enable() can re-arm it.
     expect(schNode.state).toBe('paused');
     expect(schNode.capabilities.resumable).toBe(true);
@@ -1028,7 +1028,7 @@ describe('fleet registry — subscribe/tick/dispose', () => {
 
 describe('fleet registry — control dispatch', () => {
   // Registry routing must pass the termination intent through
-  // to AgentManager.cancel(id, kind) — kill() always 'kill' (direct agent
+  // to AgentManager.cancel(id, kind), kill() always 'kill' (direct agent
   // kill, and chain/subtask cascade via cancelAgents), interrupt() always
   // 'interrupt'. Spy on the exact args cancel() receives.
   test('agent kill passes cancel(id, "kill"); agent interrupt passes cancel(id, "interrupt")', () => {
@@ -1214,8 +1214,8 @@ describe('fleet registry — control dispatch', () => {
     // A real AgentManager.cancel() is NOT idempotent-true: once an agent is
     // cancelled, a second cancel() call on it returns false. Model that here
     // (unlike the mock above, which never actually transitions status) so the
-    // cascade path's ordering bug — descendants cancelled first, then the
-    // chain's own cancelAgents() finds them all already-cancelled — surfaces.
+    // cascade path's ordering bug, descendants cancelled first, then the
+    // chain's own cancelAgents() finds them all already-cancelled, surfaces.
     const cancelledOnce = new Set<string>();
     const chain = makeChain({
       id: 'ch-casc',

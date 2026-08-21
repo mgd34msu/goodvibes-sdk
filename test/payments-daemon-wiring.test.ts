@@ -1,5 +1,5 @@
 /**
- * payments-daemon-wiring.test.ts — the two links between "the flow exists" and
+ * payments-daemon-wiring.test.ts, the two links between "the flow exists" and
  * "the flow runs".
  *
  * Both were the same shape of gap as the one that made `runCheckout`

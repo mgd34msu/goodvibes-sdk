@@ -1,4 +1,4 @@
-# Knowledge Refinement
+# Knowledge refinement
 
 Knowledge refinement is a base knowledge capability. Home Graph uses it through
 an extension; it is not a separate refinement system.
@@ -18,7 +18,7 @@ an extension; it is not a separate refinement system.
 7. The task closes only after usable evidence was applied, or it defers with a
    retryable reason and `nextRepairAttemptAt`.
 
-## Ask Behavior
+## Ask behavior
 
 Ask may wait for bounded repair when the subject is concrete and the gap is
 high-value. If bounded repair cannot complete, the answer must show refinement
@@ -28,7 +28,7 @@ Returned refinement metadata can include status, repair status, task ids,
 accepted source ids, promoted fact count, waited time, defer reason, next repair
 attempt, and page refresh state.
 
-## Operator Surface
+## Operator surface
 
 Refinement is part of the base knowledge operator contract, not a separate
 service. The operator method ids are `knowledge.refinement.run`,
@@ -47,7 +47,7 @@ See [Knowledge system](./knowledge.md) for the broader knowledge data model and
 operator surface, and [Home Graph extension](./home-graph.md) for the Home
 Assistant extension.
 
-## Quality Gates
+## Quality gates
 
 Facts are rejected when they are raw snippets, URL/title-only fragments,
 truncated table debris, affiliate/comparison boilerplate, contradicted by a

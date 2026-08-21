@@ -1,5 +1,5 @@
 /**
- * retention-user-saved-exemption.test.ts — the session-conversations append-only
+ * retention-user-saved-exemption.test.ts, the session-conversations append-only
  * store (runtime/retention/append-only-registry.ts) never reclaims a session the
  * user explicitly saved.
  *
@@ -8,8 +8,8 @@
  * was an automatic save" would eventually delete a saved conversation out from
  * under the user. saveSource ('user' | 'auto', sessions/manager.ts SessionManager.save)
  * is the signal; a file with saveSource 'auto' is reclaimable under the bounded
- * default policy, a file with saveSource 'user' — or any pre-upgrade file with no
- * saveSource at all — is exempt, permanently, regardless of age or size pressure.
+ * default policy, a file with saveSource 'user', or any pre-upgrade file with no
+ * saveSource at all, is exempt, permanently, regardless of age or size pressure.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdirSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
@@ -92,7 +92,7 @@ describe('session-conversations store: user-saved sessions are exempt from recla
       model: 'legacy-model',
       provider: 'legacy-provider',
       titleSource: 'system',
-      // No saveSource field — this file predates the saveSource concept.
+      // No saveSource field, this file predates the saveSource concept.
     });
     writeFileSync(legacyPath, `${legacyMeta}\n${JSON.stringify({ type: 'message', role: 'user', content: 'hi' })}\n`, 'utf-8');
     ageFile(legacyPath, 400);
@@ -127,7 +127,7 @@ describe('session-conversations store: user-saved sessions are exempt from recla
 describe('session-journals store: a user session whose NAME collides with a journal filename shape', () => {
   /**
    * The legacy-journal sweep matched on filename alone, and
-   * SessionManager.sanitizeName keeps underscores and the `agent-` prefix —
+   * SessionManager.sanitizeName keeps underscores and the `agent-` prefix,
    * so a conversation the user saved as "release_workmap" or "agent-deadbeef"
    * produced a file indistinguishable BY NAME from a pre-repoint agent
    * journal, and the sweep deleted it. Classification is now name AND
@@ -200,7 +200,7 @@ describe('session-journals store: a user session whose NAME collides with a jour
     ageFile(empty, 90);
 
     runAppendOnlyRetentionSweep({ workingDirectory, surfaceRoot: 'tui' });
-    // "When in doubt, leave it" — enforced, not merely promised.
+    // "When in doubt, leave it", enforced, not merely promised.
     expect(statSync(garbled).isFile()).toBe(true);
     expect(statSync(empty).isFile()).toBe(true);
   });

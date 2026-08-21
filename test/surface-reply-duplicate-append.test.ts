@@ -6,8 +6,8 @@
  * completed agent as unhandled, called `completeAgent` a second time, and
  * appended the same assistant answer to the shared session again.
  *
- * These tests assert the STORE, not just the calls — the duplicate rows in
- * sessions.json are the thing the owner saw — plus the ledger and log behaviour
+ * These tests assert the STORE, not just the calls, the duplicate rows in
+ * sessions.json are the thing the owner saw, plus the ledger and log behaviour
  * that makes a dropped reply visible instead of silent.
  *
  * Surface choice is deliberate: telegram/slack, never ntfy. The ntfy render

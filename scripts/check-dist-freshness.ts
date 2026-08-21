@@ -3,7 +3,7 @@
  *
  * Walks each compiled package's src/ tree and compares the newest mtime found
  * there against the newest mtime in the corresponding dist/ tree. Exits
- * non-zero if any src file is newer than every dist file — indicating the
+ * non-zero if any src file is newer than every dist file, indicating the
  * package has not been rebuilt since the last source change.
  *
  * Usage:
@@ -91,7 +91,7 @@ for (const pkg of targetPackages) {
 
 if (missing.length > 0) {
   for (const pkg of missing) {
-    console.error(`check-dist-freshness: MISSING dist for ${pkg} — run \`bun run build\``);
+    console.error(`check-dist-freshness: MISSING dist for ${pkg}, run \`bun run build\``);
   }
 }
 

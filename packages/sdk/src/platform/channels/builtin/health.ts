@@ -7,7 +7,7 @@
  * - Telegram runs a supervisor on this node, which already tracks its own mode
  *   and the named reason it is not receiving. That supervisor's status is the
  *   answer to "is Telegram working", and until this file existed nothing read
- *   it — `BuiltinChannelRuntime.telegramIngressStatus()` had no caller while
+ *   it, `BuiltinChannelRuntime.telegramIngressStatus()` had no caller while
  *   the reported state was computed from the token's presence instead.
  * - Slack, Discord and ntfy hold a long-lived connection managed by
  *   `ChannelProviderRuntimeManager`, which knows whether it is up and what
@@ -31,7 +31,7 @@ import type {
  * Surfaces whose inbound path is a webhook this daemon merely registers.
  *
  * Kept as a predicate over the surface rather than a list of names so a surface
- * added later is unobservable by default — the safe direction. A new surface
+ * added later is unobservable by default, the safe direction. A new surface
  * that CAN be observed has to say so by getting its own branch in
  * `observeBuiltinRuntime`, which is a change a reader will notice.
  */
@@ -43,14 +43,14 @@ function describeUnobservableSurface(surface: ChannelSurface): string {
 /**
  * Telegram's supervisor state, read as health.
  *
- * `running` is false in webhook mode by design — the supervisor runs no loop
- * once Telegram has been told where to POST — so mode, not the loop flag,
+ * `running` is false in webhook mode by design, the supervisor runs no loop
+ * once Telegram has been told where to POST, so mode, not the loop flag,
  * decides. Reading the flag alone would report a correctly armed webhook as
  * dead, which is the same class of wrong answer in the other direction.
  *
  * `status.lastError` is carried into every RUNNING branch, and that is the
  * whole point of it. A poll loop can be turning over perfectly while every
- * update it hands on fails to be processed — which is precisely what happened:
+ * update it hands on fails to be processed, which is precisely what happened:
  * mode 'polling', running true, reason "long-polling", reported healthy, and
  * every message the owner sent was being skipped. Running is not the same
  * question as working, so a supervisor that is receiving but not processing now
@@ -139,7 +139,7 @@ export interface BuiltinSnapshotInput {
   readonly surface: ChannelSurface;
   readonly label: string;
   readonly enabled: boolean;
-  /** The account record, read for credential presence — never for health. */
+  /** The account record, read for credential presence, never for health. */
   readonly account: ChannelAccountRecord;
   readonly runtime: ChannelRuntimeObservation;
   readonly metadata: Record<string, unknown>;
@@ -151,7 +151,7 @@ export interface BuiltinSnapshotInput {
  * Deliberately NOT `account.configured`: that flag is true for every surface,
  * because the account id falls back to the literal `surface:<name>` when no
  * real identifier is set, so `Boolean(accountId || ...)` can never be false.
- * `linked` is the honest reading — at least one secret is declared somewhere.
+ * `linked` is the honest reading, at least one secret is declared somewhere.
  * The two surfaces with nothing to configure are named, rather than being swept
  * in by a rule that would also sweep in a surface that failed to resolve.
  */
@@ -196,8 +196,8 @@ export function buildBuiltinStatusSnapshot(input: BuiltinSnapshotInput): Channel
     credentialResolves: resolves,
     runtime: input.runtime,
   });
-  // An unresolvable credential IS an observation — we looked in the store and
-  // the secret was not there — so it replaces the live-path reason rather than
+  // An unresolvable credential IS an observation, we looked in the store and
+  // the secret was not there, so it replaces the live-path reason rather than
   // leaving the reader with "nothing watches this surface" as the account of a
   // channel that provably cannot send.
   const runtime = state === 'unresolved'

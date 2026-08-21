@@ -7,8 +7,8 @@
  *   POST   /api/companion/chat/sessions
  *   GET    /api/companion/chat/sessions/:sessionId
  *   PATCH  /api/companion/chat/sessions/:sessionId
- *   POST   /api/companion/chat/sessions/:sessionId/close   (soft close — history preserved)
- *   DELETE /api/companion/chat/sessions/:sessionId         (hard delete — record permanently removed)
+ *   POST   /api/companion/chat/sessions/:sessionId/close   (soft close, history preserved)
+ *   DELETE /api/companion/chat/sessions/:sessionId         (hard delete, record permanently removed)
  *   POST   /api/companion/chat/sessions/:sessionId/messages
  *   GET    /api/companion/chat/sessions/:sessionId/messages
  *   POST   /api/companion/chat/sessions/:sessionId/turns/cancel (stop the in-flight turn)
@@ -16,7 +16,7 @@
  *   GET    /api/companion/chat/sessions/:sessionId/events  (SSE)
  *
  * All routes require the existing daemon bearer-token auth (enforced by the
- * caller — DaemonHttpRouter.handleRequest already validates auth before
+ * caller, DaemonHttpRouter.handleRequest already validates auth before
  * dispatching to API routes).
  */
 
@@ -34,7 +34,7 @@ import type {
 import type { CompanionChatRouteContext } from './companion-chat-route-types.js';
 
 // ---------------------------------------------------------------------------
-// Route dispatch — called from DaemonHttpRouter.dispatchApiRoutes
+// Route dispatch, called from DaemonHttpRouter.dispatchApiRoutes
 // ---------------------------------------------------------------------------
 
 /**
@@ -305,7 +305,7 @@ async function handleUpdateSession(
 
   try {
     const session = context.chatManager.updateSession(sessionId, input);
-    // Drain the best-effort broker mirror before responding — an update
+    // Drain the best-effort broker mirror before responding, an update
     // heartbeats the shared record (see CompanionBrokerSync.registerSession).
     await context.chatManager.flushBrokerSync();
     return Response.json({ session });
@@ -363,7 +363,7 @@ async function handleDeleteSession(
 
 /**
  * Read the message content from an incoming POST body.
- * Returns empty string when neither field is present — the caller must
+ * Returns empty string when neither field is present, the caller must
  * check for empty and return 400 INVALID_ARGUMENT.
  *
  * @param body - Parsed JSON body from the request.
@@ -466,8 +466,8 @@ async function handlePostMessage(
       ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
       // This route sits behind the daemon's bearer-token auth, validated by
       // DaemonHttpRouter.handleRequest before any API route is dispatched (see
-      // this file's header). Holding that token IS being the owner — it is the
-      // same credential the TUI and the operator API use — so the daemon can
+      // this file's header). Holding that token IS being the owner, it is the
+      // same credential the TUI and the operator API use, so the daemon can
       // honestly attest this message is his, and does.
       //
       // This is what gives the webui a turn boundary. Without it the window
@@ -623,7 +623,7 @@ async function handleCancelTurn(
 
 /**
  * Steer: send a message that runs immediately, interrupting the in-flight
- * turn (cancelled through the same finalization path as an explicit stop —
+ * turn (cancelled through the same finalization path as an explicit stop,
  * honest partial + terminal turn.cancelled). Accepts the same payload as the
  * message-post route (`body`/`content`, `attachments`, `metadata`).
  */
@@ -651,7 +651,7 @@ async function handleSteerMessage(
         ? (body['metadata'] as Record<string, unknown>)
         : undefined,
       // Same bearer-token auth as the post route above, so the same attestation.
-      // A steer is the owner speaking with more urgency, not less authority —
+      // A steer is the owner speaking with more urgency, not less authority,
       // wiring one and not the other would leave him a way to start a turn that
       // silently did not end the previous one.
       ownerDirect: true,

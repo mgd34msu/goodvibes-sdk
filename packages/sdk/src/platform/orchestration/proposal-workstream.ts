@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Proposal → workstream assembly (BIG-3 item 1) — the final stage of the
+ * Proposal → workstream assembly (BIG-3 item 1), the final stage of the
  * WRFC→orchestration migration. `fromPlanProposal()` maps an APPROVED
  * PlanProposal (platform/core/plan-proposal.ts, produced by the BIG-2 planner
  * decomposition pipeline) into a `CreateWorkstreamInput` the engine can run
@@ -10,12 +10,12 @@
  *
  * The mapping, one honest step at a time:
  *  - ONE work item per proposal work item. The proposal item's `title` becomes
- *    the work item's title and its `brief` becomes the work item's `task` — the
+ *    the work item's title and its `brief` becomes the work item's `task`, the
  *    prompt/context the phase agents actually run against (the phase-runner
  *    prepends "Work item: <title>" to review/fix prompts, so both survive into
  *    the agent's context). The proposal item's id is preserved so provenance,
  *    dependencies, and fleet nodes all line up 1:1.
- *  - Every item runs the SAME standard role-phase pipeline — engineer→review,
+ *  - Every item runs the SAME standard role-phase pipeline, engineer→review,
  *    the exact `engineerReviewPhases` template `fromChainSpec` uses
  *    (controller-compat.ts). The only per-assembly parameter is phase
  *    `capacity`: it defaults to the item count so independent items run
@@ -34,12 +34,12 @@
  *    supports it, so the planner may propose it and a consumer's plan format may
  *    re-enable the field. A best-of-N item may be NON-LEAF: it may declare its own
  *    `dependsOn` (each attempt inherits it) and other items may depend on it (they
- *    gate on the group's picked-and-merged winner — see WorkItemSpec.attempts and
+ *    gate on the group's picked-and-merged winner, see WorkItemSpec.attempts and
  *    scheduler.ts dependencyStatus). Only expanded under `worktree` isolation.
  *
  * ASSERT-AT-ASSEMBLY (BIG-3 item 2): even though `assemblePlanProposal` already
  * rejects dangling dependencies and cycles, this function re-checks both and
- * THROWS on violation rather than quietly building a broken workstream — a
+ * THROWS on violation rather than quietly building a broken workstream, a
  * dangling dependency would gate an item on nothing, and a cycle would deadlock
  * every item in it forever in 'blocked-dependency'. Belt-and-braces, because a
  * caller could hand us a hand-built or mutated proposal that never went through
@@ -71,7 +71,7 @@ function assertAcyclicAndResolved(proposal: PlanProposal): void {
     for (const dep of wi.dependsOn) {
       if (!ids.has(dep)) {
         throw new Error(
-          `fromPlanProposal: work item "${wi.title}" (${wi.id}) depends on unknown item id "${dep}" — the proposal is not internally consistent`,
+          `fromPlanProposal: work item "${wi.title}" (${wi.id}) depends on unknown item id "${dep}", the proposal is not internally consistent`,
         );
       }
     }
@@ -81,7 +81,7 @@ function assertAcyclicAndResolved(proposal: PlanProposal): void {
   const state = new Map<string, 'visiting' | 'done'>();
   const onCycle = (id: string): never => {
     const title = byId.get(id)?.title ?? id;
-    throw new Error(`fromPlanProposal: dependency cycle detected involving work item "${title}" (${id}) — cannot assemble a workstream that would deadlock`);
+    throw new Error(`fromPlanProposal: dependency cycle detected involving work item "${title}" (${id}), cannot assemble a workstream that would deadlock`);
   };
   const visit = (start: string): void => {
     const stack: Array<{ id: string; deps: string[]; i: number }> = [{ id: start, deps: byId.get(start)?.dependsOn ?? [], i: 0 }];
@@ -113,7 +113,7 @@ function assertAcyclicAndResolved(proposal: PlanProposal): void {
 /**
  * Approve-and-launch as ONE confirmed act: assemble the proposal into a
  * workstream, create it, and START it in a single call. The `confirm: true`
- * flag is the explicit confirmation — without it nothing is created (a
+ * flag is the explicit confirmation, without it nothing is created (a
  * structured refusal, not a throw), so a surface renders proposal -> confirm ->
  * running through this one function instead of shelling the user through
  * approve-then-assemble-then-create-then-start ceremony.

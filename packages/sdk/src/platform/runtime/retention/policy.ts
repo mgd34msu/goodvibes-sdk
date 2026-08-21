@@ -1,16 +1,16 @@
 /**
  * policy.ts
  *
- * `RetentionPolicy` — tracks registered checkpoints and decides which ones
+ * `RetentionPolicy`, tracks registered checkpoints and decides which ones
  * must be pruned to satisfy the configured retention limits.
  *
  * Each retention class (`short`, `standard`, `forensic`) has independent
  * age, count, and size ceilings. Pruning candidates are determined in the
  * following order:
  *
- *  1. Age limit  — any record older than `maxAgeMs` is a candidate.
- *  2. Count limit — oldest records beyond `maxCount` are candidates.
- *  3. Size limit  — oldest records are candidates until total size fits.
+ *  1. Age limit , any record older than `maxAgeMs` is a candidate.
+ *  2. Count limit, oldest records beyond `maxCount` are candidates.
+ *  3. Size limit , oldest records are candidates until total size fits.
  *
  * The actual file deletion is delegated to `SnapshotPruner`.
  */
@@ -180,7 +180,7 @@ export class RetentionPolicy {
    * violate its class's age/count/size limits and thus need pruning?
    *
    * Runs the same candidate-collection pass as `prune()` but touches no I/O
-   * and mutates nothing — safe to call on a hot path (e.g. after every
+   * and mutates nothing, safe to call on a hot path (e.g. after every
    * checkpoint create) to decide whether an actual `prune()` is worth running.
    */
   needsPrune(): boolean {
@@ -291,7 +291,7 @@ export class RetentionPolicy {
       }
     }
 
-    // 2. Count limit — retain only the newest `maxCount` records.
+    // 2. Count limit, retain only the newest `maxCount` records.
     const retained = sorted.filter((r) => !pruneSet.has(r.id));
     if (retained.length > config.maxCount) {
       const overflow = retained.length - config.maxCount;
@@ -302,7 +302,7 @@ export class RetentionPolicy {
       }
     }
 
-    // 3. Size limit — trim oldest until total size fits.
+    // 3. Size limit, trim oldest until total size fits.
     const afterCount = retained.filter((r) => !pruneSet.has(r.id));
     let totalSize = afterCount.reduce((sum, r) => sum + r.sizeBytes, 0);
     for (const record of afterCount) {

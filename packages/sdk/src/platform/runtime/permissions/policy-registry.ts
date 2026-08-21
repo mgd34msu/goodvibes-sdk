@@ -9,9 +9,9 @@
  *   loaded → simulating → promoting (gate check) → active (enforced)
  *
  * At any time:
- *   - `current`   — the bundle whose rules are actively enforced
- *   - `candidate` — a loaded bundle awaiting simulation before promotion
- *   - `history`   — previous active bundles, kept for rollback
+ *   - `current`  , the bundle whose rules are actively enforced
+ *   - `candidate`, a loaded bundle awaiting simulation before promotion
+ *   - `history`  , previous active bundles, kept for rollback
  */
 
 import type { PolicyRule } from './types.js';
@@ -26,10 +26,10 @@ import type { EnforceGateResult } from './divergence-dashboard.js';
 /**
  * Lifecycle state of a policy bundle version.
  *
- * - `loaded`     — Bundle loaded as candidate; not yet simulated.
- * - `simulating` — Simulation pipeline is active; divergence being collected.
- * - `promoting`  — Gate check in progress; simulation evidence collected.
- * - `active`     — Bundle is the enforced policy.
+ * - `loaded`    , Bundle loaded as candidate; not yet simulated.
+ * - `simulating`, Simulation pipeline is active; divergence being collected.
+ * - `promoting` , Gate check in progress; simulation evidence collected.
+ * - `active`    , Bundle is the enforced policy.
  * - `rolled-back`— Bundle was superseded by a rollback operation.
  */
 export type BundleLifecycleState =
@@ -128,7 +128,7 @@ export interface PolicyRegistryConfig {
 // ── PolicyRegistry ─────────────────────────────────────────────────────────────
 
 /**
- * PolicyRegistry — Versioned policy bundle manager.
+ * PolicyRegistry, Versioned policy bundle manager.
  *
  * Maintains the full bundle lifecycle: loaded → simulating → promoting → active.
  * Enforces that promotion to `active` (enforcement mode) requires:
@@ -170,12 +170,12 @@ export class PolicyRegistry {
   // ── Loading ──────────────────────────────────────────────────────────────────
 
   /**
-   * loadCandidate — Load a signed policy bundle as the pending candidate.
+   * loadCandidate, Load a signed policy bundle as the pending candidate.
    *
    * Replaces any existing candidate. The candidate must be simulated and
    * have its gate checked before it can be promoted to active.
    *
-   * @param bundle  — The signed bundle to load.
+   * @param bundle , The signed bundle to load.
    * @returns `PolicyLoadResult` indicating success or validation failure.
    */
   public loadCandidate(
@@ -202,7 +202,7 @@ export class PolicyRegistry {
   // ── Simulation evidence ───────────────────────────────────────────────────────
 
   /**
-   * markSimulating — Transition candidate to `simulating` state.
+   * markSimulating, Transition candidate to `simulating` state.
    *
    * Called by the `/policy simulate` command when a simulation pipeline
    * is started. Validates that a candidate is loaded and in `loaded` state.
@@ -218,13 +218,13 @@ export class PolicyRegistry {
   }
 
   /**
-   * attachSimulationReport — Attach divergence report and gate result to candidate.
+   * attachSimulationReport, Attach divergence report and gate result to candidate.
    *
    * Advances the candidate to `promoting` state, which is a prerequisite for
    * calling `promote()`.
    *
-   * @param report     — The divergence report from the simulation run.
-   * @param gateResult — The gate evaluation at report time.
+   * @param report    , The divergence report from the simulation run.
+   * @param gateResult, The gate evaluation at report time.
    * @returns true if the evidence was attached.
    */
   public attachSimulationReport(
@@ -246,7 +246,7 @@ export class PolicyRegistry {
   // ── Promotion ─────────────────────────────────────────────────────────────────
 
   /**
-   * promote — Promote the candidate bundle to active enforcement.
+   * promote, Promote the candidate bundle to active enforcement.
    *
    * Blocked unless:
    *   - A candidate exists in `promoting` state (simulation evidence attached).
@@ -254,7 +254,7 @@ export class PolicyRegistry {
    *
    * On success, the previous active bundle moves to history.
    *
-   * @param force — Skip gate check. Use only for testing; not for production use.
+   * @param force, Skip gate check. Use only for testing; not for production use.
    */
   public promote(force = false): PromoteResult {
     if (!this._candidate) {
@@ -333,7 +333,7 @@ export class PolicyRegistry {
   // ── Rollback ──────────────────────────────────────────────────────────────────
 
   /**
-   * rollback — Restore the previous active bundle.
+   * rollback, Restore the previous active bundle.
    *
    * Moves the current active bundle to history and restores the most recent
    * previously-active bundle from history.
@@ -370,13 +370,13 @@ export class PolicyRegistry {
   // ── Diff ──────────────────────────────────────────────────────────────────────
 
   /**
-   * diff — Produce a structural diff between two bundle rule sets.
+   * diff, Produce a structural diff between two bundle rule sets.
    *
    * Compares `from` (defaults to current active) and `to` (defaults to candidate).
    * Rules are matched by `id` field.
    *
-   * @param fromRules — Override the "from" rule set (defaults to current active).
-   * @param toRules   — Override the "to" rule set (defaults to candidate).
+   * @param fromRules, Override the "from" rule set (defaults to current active).
+   * @param toRules  , Override the "to" rule set (defaults to candidate).
    */
   public diff(
     fromRules?: PolicyRule[],
@@ -400,7 +400,6 @@ export class PolicyRegistry {
     const changed: Array<{ ruleId: string; from: PolicyRule; to: PolicyRule }> = [];
     const unchanged: PolicyRule[] = [];
 
-    // Check from → to (removed, changed, unchanged)
     for (const [id, fromRule] of fromMap) {
       const toRule = toMap.get(id);
       if (!toRule) {
@@ -415,7 +414,6 @@ export class PolicyRegistry {
       }
     }
 
-    // Check to → from (added)
     for (const [id, toRule] of toMap) {
       if (!fromMap.has(id)) {
         added.push(toRule);
@@ -451,7 +449,7 @@ export class PolicyRegistry {
   }
 
   /**
-   * getSimulationMode — Returns the recommended simulation mode based on
+   * getSimulationMode, Returns the recommended simulation mode based on
    * whether the candidate has simulation evidence.
    *
    * This is a hint for the command handler; callers choose the actual mode.

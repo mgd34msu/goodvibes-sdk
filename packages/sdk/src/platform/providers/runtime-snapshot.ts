@@ -13,7 +13,7 @@ export interface ProviderModelSnapshot {
     readonly inputPerMillionTokens: number;
     readonly outputPerMillionTokens: number;
     readonly currency: 'USD';
-    /** Where the rates came from: 'user' (manual/registration — "your price"), 'provider' (served rates), 'catalog' (dated catalog). */
+    /** Where the rates came from: 'user' (manual/registration, "your price"), 'provider' (served rates), 'catalog' (dated catalog). */
     readonly source: 'user' | 'provider' | 'catalog';
     /** ISO date (YYYY-MM-DD) of the catalog/provider pricing snapshot; absent for user prices. */
     readonly asOf?: string | undefined;
@@ -34,7 +34,7 @@ export interface ProviderUsageSnapshot {
   readonly currentModelRegistryKey?: string | undefined;
   /**
    * Where the served prices came from: a single source when every priced
-   * model agrees ('user' = manual/registration — "your price"; 'provider' =
+   * model agrees ('user' = manual/registration, "your price"; 'provider' =
    * provider-served rates; 'catalog' = the dated catalog), 'mixed' when they
    * disagree, or 'none' when no model carries pricing.
    */
@@ -51,7 +51,7 @@ function toModelSnapshot(
 ): ProviderModelSnapshot {
   // The ONE pricing resolver (manual -> registration -> provider-served ->
   // catalog -> honest unknown), so the price a surface renders here is the
-  // price the platform actually charges with — carrying its provenance.
+  // price the platform actually charges with, carrying its provenance.
   const resolved = providerRegistry.resolveModelPricing(model.id, model.provider);
   return {
     id: model.id,

@@ -21,7 +21,7 @@ const defaultModel = String(DEFAULT_CONFIG.provider.model);
 describe('getProviderIdFromModel', () => {
   test('splits a qualified value at the first colon', () => {
     expect(getProviderIdFromModel('anthropic:claude-fable-5')).toBe('anthropic');
-    // A model id that itself carries a colon keeps it — only the FIRST colon separates.
+    // A model id that itself carries a colon keeps it, only the FIRST colon separates.
     expect(getProviderIdFromModel('bedrock:us.anthropic.claude-fable-5-v1:0')).toBe('bedrock');
   });
 
@@ -100,7 +100,7 @@ describe('tolerant readers vs the strict registry-key reader', () => {
 
   test('differ exactly where they are meant to: the strict one refuses what config may hold', () => {
     // A bare value is a legitimate config state and a defect at a registry-key
-    // call site — that difference is the reason both exist.
+    // call site, that difference is the reason both exist.
     expect(() => splitModelRegistryKey('ollama')).toThrow();
     expect(getProviderIdFromModel('ollama')).toBe('ollama');
 

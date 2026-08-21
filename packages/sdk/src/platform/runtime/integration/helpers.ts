@@ -58,7 +58,7 @@ export interface IntegrationHelpersServices {
  * pair, passed straight through to session-persistence's legacy call form.
  * Unchanged, byte-for-byte, for every existing caller. `surface` is declared
  * as `undefined` here purely so this shape and the surface shape below are
- * mutually exclusive at the type level — the same discriminated-union pattern
+ * mutually exclusive at the type level, the same discriminated-union pattern
  * session-persistence-scope.ts uses for its own options.
  */
 export interface IntegrationHelpersLegacyScope {
@@ -70,7 +70,7 @@ export interface IntegrationHelpersLegacyScope {
 /**
  * Surface construction scope: a declare-once `SessionSurface`. Every
  * persistence read this service performs then resolves through the SAME
- * surface-scoped paths the product writes with — which is the whole point.
+ * surface-scoped paths the product writes with, which is the whole point.
  * A surface-scoped product constructed with the loose fields instead got its
  * continuity answers from the unscoped legacy directories, i.e. from paths
  * nothing had written to.
@@ -118,7 +118,7 @@ export interface ContinuitySnapshot {
   readonly recoveryState: string;
   readonly lastSessionPointer: string | null;
   /**
-   * Whether a crash snapshot would be OFFERED right now — `checkRecoveryFile`'s
+   * Whether a crash snapshot would be OFFERED right now, `checkRecoveryFile`'s
    * answer, not a bare `existsSync`. A snapshot a live process is still
    * rewriting, or one its own session already superseded with a clean save,
    * reports false while its file sits on disk. That is the question worth

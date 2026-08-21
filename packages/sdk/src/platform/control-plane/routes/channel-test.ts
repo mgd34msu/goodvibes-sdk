@@ -1,16 +1,16 @@
 /**
  * routes/channel-test.ts
  *
- * Handler for `channels.test.send` — a live per-channel test-message probe over
+ * Handler for `channels.test.send`, a live per-channel test-message probe over
  * the daemon's own `ChannelDeliveryRouter`. Registered from
  * register-gateway-verb-groups when the delivery router is present (the same
- * composition root that wires ci and checkin), so the daemon — which owns the
- * delivery/retest lifecycle — is authoritative over whether a channel actually
+ * composition root that wires ci and checkin), so the daemon, which owns the
+ * delivery/retest lifecycle, is authoritative over whether a channel actually
  * sends.
  *
  * Honesty contract: the router throws when a target is unsupported (no strategy
  * for the surface) or a strategy's delivery fails. Those are caught and surfaced
- * as a structured `delivered:false` outcome carrying the real error string — a
+ * as a structured `delivered:false` outcome carrying the real error string, a
  * 200 body the caller can branch on, NOT a fabricated success and NOT a blanket
  * 500. Only a missing/invalid `surface` argument is a thrown 400.
  */
@@ -21,7 +21,7 @@ import type { ChannelDeliveryTarget } from '../../channels/delivery/types.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
-/** The delivery surface `channels.test.send` needs — just `deliver`. */
+/** The delivery surface `channels.test.send` needs, just `deliver`. */
 export type ChannelTestDeliveryRouter = Pick<ChannelDeliveryRouter, 'deliver'>;
 
 const DEFAULT_TEST_TITLE = 'GoodVibes channel test';

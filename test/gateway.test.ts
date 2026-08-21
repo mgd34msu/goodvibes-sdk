@@ -25,7 +25,7 @@ function makeGatewayWithBus(): { gateway: ControlPlaneGateway; bus: RuntimeEvent
 }
 
 // ---------------------------------------------------------------------------
-// describe: ControlPlaneGateway — construction
+// describe: ControlPlaneGateway, construction
 // ---------------------------------------------------------------------------
 describe('ControlPlaneGateway — construction', () => {
   test('initializes with empty client list and zero totals', () => {
@@ -77,7 +77,7 @@ describe('ControlPlaneGateway — construction', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: ControlPlaneGateway — end-to-end emit
+// describe: ControlPlaneGateway, end-to-end emit
 // ---------------------------------------------------------------------------
 describe('ControlPlaneGateway — end-to-end emit', () => {
   test('publishEvent delivers to a registered WebSocket client', () => {
@@ -193,7 +193,7 @@ describe('ControlPlaneGateway — end-to-end emit', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: ControlPlaneGateway — invariants
+// describe: ControlPlaneGateway, invariants
 // ---------------------------------------------------------------------------
 describe('ControlPlaneGateway — invariants', () => {
   test('recentEvents ring buffer never exceeds 500 entries', () => {

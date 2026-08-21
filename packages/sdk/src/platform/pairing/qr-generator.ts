@@ -7,7 +7,7 @@ import { qrcodegen } from './vendor/qrcodegen.js';
 // The vendored file uses TypeScript namespaces with nested classes.
 // Access QrCode and its Ecc inner class through the namespace.
 const QrCodeClass = qrcodegen.QrCode;
-// Ecc is a static nested class — cast to access it through the @ts-nocheck boundary.
+// Ecc is a static nested class, cast to access it through the @ts-nocheck boundary.
 const Ecc = (QrCodeClass as unknown as { Ecc: { LOW: unknown; MEDIUM: unknown; QUARTILE: unknown; HIGH: unknown } }).Ecc;
 
 export interface QrMatrix {

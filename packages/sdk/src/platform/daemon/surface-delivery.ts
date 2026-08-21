@@ -123,7 +123,7 @@ export interface SurfaceDeliveryLedgerEntry {
 
 export type SurfaceDeliveryLedgerRecorder = (entry: SurfaceDeliveryLedgerEntry) => void;
 
-/** Why a surface reply could not be created — carried into the log line. */
+/** Why a surface reply could not be created, carried into the log line. */
 type SurfaceReplyRefusal =
   | 'no-route-binding'
   | 'unsupported-delivery-surface'
@@ -137,8 +137,8 @@ export class DaemonSurfaceDeliveryHelper {
    * Track the reply an agent owes a conversation.
    *
    * Idempotent by agent id. Several paths legitimately reach here for the same
-   * agent — the broker announces the pairing centrally and the adapter that
-   * spawned it also asks — and re-tracking would reset the pipeline's event
+   * agent, the broker announces the pairing centrally and the adapter that
+   * spawned it also asks, and re-tracking would reset the pipeline's event
    * buffer and republish everything already sent. First writer wins.
    */
   queueSurfaceReplyFromBinding(binding: RouteBinding | undefined, input: SurfaceReplyInput): boolean {
@@ -167,7 +167,7 @@ export class DaemonSurfaceDeliveryHelper {
    * arrived over a channel, so make sure its answer has somewhere to go.
    *
    * Wired to SharedSessionBroker.setSurfaceReplyBinder, which announces the
-   * pairing from inside the broker — the one place every ingress converges on.
+   * pairing from inside the broker, the one place every ingress converges on.
    * Fixing it here rather than in an adapter is what makes a message landing in
    * an EXISTING live session get an answer, on all fifteen delivery surfaces,
    * without each adapter having to remember.
@@ -191,7 +191,7 @@ export class DaemonSurfaceDeliveryHelper {
       });
     }
     // 'no-route-binding' for a surface we cannot deliver to at all (a local
-    // terminal, a surface with no egress) is not a failure — there was never a
+    // terminal, a surface with no egress) is not a failure, there was never a
     // conversation to answer into. Everything else is a dropped reply.
     if (refusal === 'unsupported-delivery-surface' && !binding.routeId) return false;
     logger.error('An answer was produced for a channel message but no delivery could be created', {
@@ -255,7 +255,7 @@ export class DaemonSurfaceDeliveryHelper {
 
   /**
    * Fall back to the session's own route bindings when the announcement did not
-   * carry one — a follow-up typed into a session that a channel is attached to
+   * carry one, a follow-up typed into a session that a channel is attached to
    * still belongs to that channel.
    */
   private resolveBindingFromSession(binding: SharedSessionSurfaceReplyBinding): RouteBinding | undefined {
@@ -289,13 +289,13 @@ export class DaemonSurfaceDeliveryHelper {
    * its accept/decline acknowledgement) on the channel the message arrived on.
    *
    * It sends through the SAME channel render path a conversational reply takes
-   * — `channelPlugins.render` -> the surface's renderEvent -> the channel
-   * delivery router — which is why a proposal is deliverable on every surface
+   *, `channelPlugins.render` -> the surface's renderEvent -> the channel
+   * delivery router, which is why a proposal is deliverable on every surface
    * the platform can already talk to. Telegram is the case that proves it: the
    * bot could always answer a chat message, because that answer went through
    * the router's `sendMessage` strategy, while the gate's notice went through
    * `deliverSurfaceProgress`, which is implemented for slack/discord/ntfy only.
-   * A gated surface with no notice path is a black hole — the owner is asked
+   * A gated surface with no notice path is a black hole, the owner is asked
    * nothing and the daemon waits for an answer to a question never posed.
    *
    * `deliverSurfaceProgress` remains only as the fallback for a surface whose
@@ -309,7 +309,7 @@ export class DaemonSurfaceDeliveryHelper {
    * and the reason it exists rather than leaving callers to render first is
    * that the destination is not knowable at the call site. The binding is
    * resolved here, so the escaper is chosen from the surface the message will
-   * actually land on — a caller cannot pick the wrong one, and cannot skip
+   * actually land on, a caller cannot pick the wrong one, and cannot skip
    * escaping, because it never holds a string to pass.
    *
    * That is the same structural-over-conventional rule the inbound-mail path
@@ -317,7 +317,7 @@ export class DaemonSurfaceDeliveryHelper {
    * channel-formatted string, and this is the only place one is made.
    *
    * A surface with no verified escaper gets fully-neutralized plain text, not
-   * the raw span concatenation — see `noticeChannelForSurface`.
+   * the raw span concatenation, see `noticeChannelForSurface`.
    */
   async deliverStructuredNotice(
     binding: RouteBinding | undefined,
@@ -402,9 +402,9 @@ export class DaemonSurfaceDeliveryHelper {
   /**
    * A surface that ran the turn in ITS OWN process reports the answer.
    *
-   * `pollPendingSurfaceReplies` below is the same three steps — write the
+   * `pollPendingSurfaceReplies` below is the same three steps, write the
    * answer into the shared session, push it down the reply pipeline, drop the
-   * pending entry — driven by this daemon's own AgentManager. That loop can
+   * pending entry, driven by this daemon's own AgentManager. That loop can
    * only ever see agents THIS process spawned, so an answer produced by a TUI
    * or agent process that collected the input over `sessions.inputs.list` was
    * invisible to it: the pending reply sat until the pipeline's own retention
@@ -412,7 +412,7 @@ export class DaemonSurfaceDeliveryHelper {
    *
    * Returns whether a channel delivery was attempted. `false` is the ordinary
    * outcome for a session with no channel behind it (a local terminal), and is
-   * not an error — the session message is still written.
+   * not an error, the session message is still written.
    */
   async completeSurfaceReplyFromSurface(input: {
     readonly agentId: string;
@@ -435,7 +435,7 @@ export class DaemonSurfaceDeliveryHelper {
         keepTracking: pending.surfaceKind === 'ntfy' && typeof pending.workflowChainId === 'string',
       });
     } catch (error) {
-      logger.error('Agent reply delivery failed — the answer did not reach its conversation', {
+      logger.error('Agent reply delivery failed, the answer did not reach its conversation', {
         surface: pending.surfaceKind,
         agentId: input.agentId,
         sessionId: sessionId ?? null,
@@ -468,7 +468,7 @@ export class DaemonSurfaceDeliveryHelper {
       if (record && (record.status === 'pending' || record.status === 'running')) {
         // `record.progress` ONLY, on every surface, and only the lines written
         // for the person on the other end. `streamingContent` is the raw model
-        // output accumulated so far — both a growing transcript and a fragment
+        // output accumulated so far, both a growing transcript and a fragment
         // of the answer, so sending it made every notification a superset of
         // the previous one and leaked the reply a piece at a time. The answer
         // goes out once, complete, in the final message.
@@ -476,8 +476,8 @@ export class DaemonSurfaceDeliveryHelper {
         // The audience test is what this route was missing. `record.progress`
         // is mostly the running tool and a scrap of its arguments, kept for the
         // TUI's activity surfaces. The channel renderer strips the `Turn 3 · `
-        // prefix, so those arrived on the owner's phone as bare tool traces —
-        // `registry — email send`, `exec — standard` — in the middle of a
+        // prefix, so those arrived on the owner's phone as bare tool traces,
+        // `registry, email send`, `exec, standard`, in the middle of a
         // conversation. Only lines the orchestrator marked `owner` (a retry, a
         // model fallback, a stall the reader can act on) travel this way now.
         // See agents/progress-audience.ts.
@@ -513,10 +513,10 @@ export class DaemonSurfaceDeliveryHelper {
         });
       } catch (error) {
         // The reply exists, the conversation is known, and it did not arrive.
-        // Error level with the binding in hand, plus a ledger entry — silence
+        // Error level with the binding in hand, plus a ledger entry, silence
         // here is what made a dropped answer look like a message that was
         // never sent.
-        logger.error('Agent reply delivery failed — the answer did not reach its conversation', {
+        logger.error('Agent reply delivery failed, the answer did not reach its conversation', {
           surface: pending.surfaceKind,
           agentId: pending.agentId,
           sessionId: pending.sessionId ?? null,
@@ -558,7 +558,7 @@ export class DaemonSurfaceDeliveryHelper {
   }
 
   /**
-   * Push a one-line status to a surface directly. slack/discord/ntfy only —
+   * Push a one-line status to a surface directly. slack/discord/ntfy only,
    * every other surface throws by name. This is the FALLBACK; the general path
    * is the channel delivery router. See surface-direct-delivery.ts.
    */
@@ -769,7 +769,7 @@ export class DaemonSurfaceDeliveryHelper {
   ): string {
     // ntfy used to take a branch of its own here that never looked at the
     // agent's output at all: a completed run was announced as
-    // `Agent agent-1a2b3c completed.` — an id and a past-tense verb, on the
+    // `Agent agent-1a2b3c completed.`, an id and a past-tense verb, on the
     // owner's primary surface, in place of the answer he asked for. Every
     // other surface was already handed `record.fullOutput`. There is no reason
     // for the answer to depend on which app is displaying it, so the branch is
@@ -777,7 +777,7 @@ export class DaemonSurfaceDeliveryHelper {
     //
     // The rule itself lives in agents/completion-answer.ts, because a surface
     // that ran a dispatched turn in its own process renders the same answer
-    // before reporting it back — see runtime/client/session-dispatch.ts.
+    // before reporting it back, see runtime/client/session-dispatch.ts.
     return renderAgentCompletionAnswer(record);
   }
 }

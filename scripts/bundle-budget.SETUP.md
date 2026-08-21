@@ -3,11 +3,10 @@
 ## Current CI Gate
 
 The repo runs `bun run bundle:check` as a step inside the consolidated `validate`
-job (via `bun run validate`) in `.github/workflows/ci.yml` — there is no
+job (via `bun run validate`) in `.github/workflows/ci.yml`, there is no
 standalone `bundle-budget-check` job. Generated artifact drift is covered by the
 `bun run contracts:check` step in that same `validate` job; there is no separate
-`contract-artifact-check` job. The standalone job YAML below is illustrative —
-add it only if the bundle gate ever needs to be isolated.
+`contract-artifact-check` job. The standalone job YAML below is illustrative, add it only if the bundle gate ever needs to be isolated.
 
 ```yaml
   bundle-budget-check:
@@ -34,16 +33,16 @@ add it only if the bundle gate ever needs to be isolated.
 
 - The job runs `bun run bundle:check` which invokes `scripts/bundle-budget.ts`.
 - The script auto-builds (`bun run build`) only when `dist/` is missing; if `dist/`
-  exists but is stale it warns and does NOT rebuild — pass `--build` to force a
+  exists but is stale it warns and does NOT rebuild, pass `--build` to force a
   rebuild, or run `bun run build` first.
 - `bun run bundle:check:strict` runs the same check with `--no-build`, which
-  errors (instead of building) if `dist/` is missing — use it in CI after a
+  errors (instead of building) if `dist/` is missing, use it in CI after a
   separate build step.
 - The job exits non-zero if any entry exceeds its budget, has no budget entry in
   `bundle-budgets.json`, OR has a stale budget entry whose key no longer matches
-  a package export. All three are hard failures — when you remove an export, also
+  a package export. All three are hard failures, when you remove an export, also
   remove its `bundle-budgets.json` entry (see *Removing an entry-point* below).
-- Timeout is set to 5 minutes (`timeout-minutes: 5`) — the build + check should
+- Timeout is set to 5 minutes (`timeout-minutes: 5`), the build + check should
   complete in under 2 minutes on a cold runner.
 
 ---
@@ -70,7 +69,7 @@ Budget-entry objects may carry extra human-readable fields that the size check i
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `<export-key>` | `string` | — | Must exactly match a key from `packages/sdk/package.json` `exports` map (e.g. `"."`, `"./auth"`, `"./browser"`). |
+| `<export-key>` | `string` |, | Must exactly match a key from `packages/sdk/package.json` `exports` map (e.g. `"."`, `"./auth"`, `"./browser"`). |
 | `gzip_bytes` | `number` | yes | Maximum allowed gzipped size in bytes for the built `.js` file. |
 | `rationale` | `string` | no | Human-readable explanation of the budget value (recommended). |
 
@@ -101,7 +100,7 @@ When a new key is added to `packages/sdk/package.json` `exports`:
 3. Set budget: `Math.ceil(measured * 1.2)`
 4. Add entry to `bundle-budgets.json` with a `rationale` string.
 
-The CI job will fail with `! NO BUDGET` until a budget is registered — this is
+The CI job will fail with `! NO BUDGET` until a budget is registered, this is
 intentional to force explicit registration of every new entry point.
 
 ### Removing an entry-point

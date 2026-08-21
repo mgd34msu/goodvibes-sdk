@@ -1,18 +1,18 @@
 /**
- * hosted-exec-containment.test.ts — a hosted conversational turn does not get
+ * hosted-exec-containment.test.ts, a hosted conversational turn does not get
  * the host, and it does not get the owner's terminal.
  *
  * Three layers, pinned separately so a regression says which one moved:
  *
- *  1. The containment decision (exec/containment.ts) — pure. Whether a
+ *  1. The containment decision (exec/containment.ts), pure. Whether a
  *     composition that REQUIRES the boundary may run a command given the plan
  *     the sandbox layer resolved, and whether an omitted posture changes
  *     anything (it must not).
- *  2. The owner-terminal guard (exec/owner-terminal-guard.ts) — pure, in
+ *  2. The owner-terminal guard (exec/owner-terminal-guard.ts), pure, in
  *     benign/malicious pairs per the guard discipline: for every refusal there
  *     is a neighbouring command that must still be allowed, so the guard cannot
  *     pass by refusing everything.
- *  3. The exec tool end to end — a real `createExecTool` under each posture,
+ *  3. The exec tool end to end, a real `createExecTool` under each posture,
  *     because the decision functions being right is not the same claim as the
  *     tool consulting them on every path (foreground, retried, background).
  */
@@ -345,7 +345,7 @@ describe('exec tool under a hosted conversational posture', () => {
  * was measured on a real host under the daemon's own service environment: one
  * witness command reported 5 processes and a masked $HOME in the foreground,
  * and 581 processes with $HOME readable in the background. The boundary never
- * failed — this path never entered it.
+ * failed, this path never entered it.
  *
  * The boundary exemption is legitimate and stays (a bwrap boundary is
  * --die-with-parent; wrapping a detached command would kill it). What must not

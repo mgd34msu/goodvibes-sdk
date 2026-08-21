@@ -87,7 +87,7 @@ export interface SurfaceRegistryLike {
  *
  * `kind` is the discriminant. It was declared on `InboundMailHealthEntry` and
  * documented as distinguishing this entry "from a channel's in a mixed list",
- * and there was no mixed list — the two functions that produce it had zero
+ * and there was no mixed list, the two functions that produce it had zero
  * callers repo-wide, so email appeared in no health surface at all. This is
  * the list it was named for.
  */
@@ -107,7 +107,7 @@ export interface DaemonChannelRouteContext {
    * Inbound mail's health, when this daemon watches a mailbox.
    *
    * Optional because an embedder composing routes without the builtin channel
-   * runtime has no mailbox to report on — not because the answer is optional
+   * runtime has no mailbox to report on, not because the answer is optional
    * when there IS one.
    */
   readonly inboundMailHealth?: (() => InboundMailHealthLike | null) | undefined;

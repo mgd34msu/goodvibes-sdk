@@ -6,7 +6,7 @@
  * never at fault: the reasoning did not arrive on the reasoning channel at
  * all. Cerebras (like other OpenAI-compatible endpoints serving qwen-3 /
  * gpt-oss) wraps chain-of-thought in a tag inside `content`, so downstream it
- * is indistinguishable from the answer — it reaches the transcript, the
+ * is indistinguishable from the answer, it reaches the transcript, the
  * session export and every channel body as `assistant_text`.
  *
  * The split belongs at the provider boundary, where the wire format is already
@@ -17,7 +17,7 @@
  * everywhere else.
  *
  * `buildRenderedText` keeps a backstop for provider paths not yet taught the
- * wire format — one place for all channel surfaces, not per surface.
+ * wire format, one place for all channel surfaces, not per surface.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -171,7 +171,7 @@ describe('the channel backstop honours reasoningVisibility on assistant text', (
     );
     expect(body).not.toContain('still working through it');
     // And nothing takes its place. The `status` event carrying "Completed" is
-    // operator telemetry — see channels/render-audience.ts — and the owner's
+    // operator telemetry, see channels/render-audience.ts, and the owner's
     // ruling on a bare acknowledgement is that it is not a message: "work with
     // nothing to report reports nothing". A suppressed surface handed only
     // reasoning therefore sends nothing at all.

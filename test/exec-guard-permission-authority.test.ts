@@ -1,5 +1,5 @@
 /**
- * Exec guard — permission-settings authority pins.
+ * Exec guard, permission-settings authority pins.
  *
  * Background (2026-07-07): the baseline exec guard hard-denied every
  * destructive/escalation-CLASS command (kill, docker, sudo, rm on project
@@ -15,7 +15,7 @@
  *      destruction, filesystem wipes, fork bombs. That list must not grow
  *      without an explicit owner ruling.
  *   3. Callers that pass a narrow allowedClasses set (default
- *      DEFAULT_ALLOWED_CLASSES) still get class gating — the parameter is
+ *      DEFAULT_ALLOWED_CLASSES) still get class gating, the parameter is
  *      honored in baseline mode, not just AST mode.
  */
 import { describe, expect, test } from 'bun:test';
@@ -144,7 +144,7 @@ describe('exec guard — degenerate input stays safe under the default AST path'
   // The parser is total: it never throws and always returns a tree, so the
   // parseError→baseline fallback and the try/catch fallback in guardExecCommand
   // are defense-in-depth for a parser regression, not reachable by a crafted
-  // string today. These tests pin the observable contract instead — malformed
+  // string today. These tests pin the observable contract instead, malformed
   // input never hard-errors, never blanket-allows, and the frozen catastrophic
   // block still fires.
   test('a malformed command never throws and returns a decision', async () => {

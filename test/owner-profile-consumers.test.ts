@@ -1,12 +1,12 @@
 /**
- * owner-profile-consumers.test.ts — docs/owner-profile.md §13.
+ * owner-profile-consumers.test.ts, docs/owner-profile.md §13.
  *
  * Covers test-plan item 20 (consumer fallback direction) and the three
  * properties the design attaches to it that are easy to get backwards:
  *
  *  - the fallback fills an UNSET key and never overrides a configured one;
- *  - it applies to `ConfigManager.get()` and to NOTHING else — not `getAll()`,
- *    not `getCategory()`, not `getRaw()` — because a config dump resolving
+ *  - it applies to `ConfigManager.get()` and to NOTHING else, not `getAll()`,
+ *    not `getCategory()`, not `getRaw()`, because a config dump resolving
  *    through the profile would put a shipping address in front of a caller that
  *    asked for "the settings" and never triggered the closed-tier disclosure
  *    rule (§13.1);
@@ -79,7 +79,7 @@ function mkTemp(): string {
 }
 // installOwnerProfileConsumers registers three PROCESS-level readers, and the
 // suite runs every test file in one process. Leaving them installed would let
-// this file's fixture profile redact strings in a later file's assertions — a
+// this file's fixture profile redact strings in a later file's assertions, a
 // cross-file failure that looks like a defect in whichever file ran next.
 afterEach(() => {
   registerSignupBaseAddressFallback(null);
@@ -238,8 +238,8 @@ describe('§13.1 — rows for keys that do not exist yet are inert', () => {
     // These two rows WERE inert, and are not any more: the payments lane has
     // merged, so schema-domain-payments.ts declares payments.currency and
     // schema-domain-daemon-location.ts declares daemon.timezone. The row set
-    // above is unchanged — which was the point of declaring rows ahead of the
-    // keys — and the rows simply went live when their keys arrived.
+    // above is unchanged, which was the point of declaring rows ahead of the
+    // keys, and the rows simply went live when their keys arrived.
     const schemaKeys = new Set(CONFIG_SCHEMA.map((entry) => entry.key as string));
     expect(schemaKeys.has('daemon.timezone')).toBe(true);
     expect(schemaKeys.has('payments.currency')).toBe(true);
@@ -357,7 +357,7 @@ describe('the two halves of "inert until the payments branch merges", now that i
 
     // This row used to read `undefined` because the key was undeclared and
     // `resolvePath` only walked as far as the `daemon` section. It is a real
-    // schema key now, with an empty-string default meaning UTC — and the note
+    // schema key now, with an empty-string default meaning UTC, and the note
     // this test carried predicted exactly that: "the day daemon.timezone lands
     // with an empty default, nothing changes." Nothing did. `isUnsetConfigValue`
     // treats '' as unset, so the fallback still fires; only the spelling of

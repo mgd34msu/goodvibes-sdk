@@ -1,5 +1,5 @@
 /**
- * ProcessTaskAdapter — bridges ProcessManager background processes into the
+ * ProcessTaskAdapter, bridges ProcessManager background processes into the
  * unified RuntimeTask registry.
  *
  * Each spawned background process gets a corresponding RuntimeTask of kind
@@ -8,7 +8,7 @@
  *
  * NOTE: This adapter writes directly to the Zustand store for performance,
  * bypassing TaskManager. Lifecycle validation is the caller's responsibility.
- * This is intentional — adapters are authoritative sources for their subsystem.
+ * This is intentional, adapters are authoritative sources for their subsystem.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -163,7 +163,6 @@ export class ProcessTaskAdapter {
         this.wrapProcess(proc.id, proc.pid, proc.cmd, defaultOwner);
       }
 
-      // Check if the process has finished
       const entry = this._manager.getStatus(proc.id);
       if (entry?.done) {
         const taskId = this._idToTask.get(proc.id);

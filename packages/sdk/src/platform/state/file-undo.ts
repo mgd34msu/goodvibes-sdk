@@ -30,7 +30,7 @@ export class FileUndoManager {
   private redoStack: FileOperation[] = [];
 
   // ---------------------------------------------------------------------------
-  // Snapshot — called by write/edit tools after a successful write
+  // Snapshot, called by write/edit tools after a successful write
   // ---------------------------------------------------------------------------
 
   /**
@@ -41,7 +41,7 @@ export class FileUndoManager {
     const entry: FileOperation = { ...op, timestamp: new Date().toISOString() };
 
     this.undoStack.push(entry);
-    // Trim to max stack size — remove oldest entries first
+    // Trim to max stack size, remove oldest entries first
     if (this.undoStack.length > MAX_STACK_SIZE) {
       this.undoStack.shift();
     }
@@ -63,7 +63,7 @@ export class FileUndoManager {
 
     try {
       if (op.beforeContent === null) {
-        // File was created by this op — restoring means deleting it,
+        // File was created by this op, restoring means deleting it,
         // but we do a safe approach: write empty string + push to redo.
         // Full deletion would be destructive; leave as empty file instead.
         writeFileSync(op.path, '', 'utf-8');

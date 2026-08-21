@@ -1,5 +1,5 @@
 /**
- * manager.ts — the hosted-session engine: lifecycle, policy, durability.
+ * manager.ts, the hosted-session engine: lifecycle, policy, durability.
  *
  * ── What a hosted session is ───────────────────────────────────────────────
  *
@@ -34,8 +34,8 @@
  * ── Restart ────────────────────────────────────────────────────────────────
  *
  * A daemon restart is reconciled honestly, never silently. Every restored
- * session is either resumable — restored idle, with a system line in its
- * transcript saying its turn was interrupted — or it is terminated with a named
+ * session is either resumable, restored idle, with a system line in its
+ * transcript saying its turn was interrupted, or it is terminated with a named
  * reason. Nothing comes back pretending it never stopped, and nothing
  * disappears without a record.
  */
@@ -74,18 +74,18 @@ export interface HostedSessionEventPublisher {
   publishEvent(event: string, payload: unknown, filter?: { clientId?: string }): void;
   /**
    * Live control-plane clients, when the publisher is the gateway. Read as the
-   * second renewal signal for an attachment lease — see ./attachments.ts.
+   * second renewal signal for an attachment lease, see ./attachments.ts.
    */
   listClients?(): readonly { readonly id: string }[];
 }
 
 /** The live settings this engine reads. Read on every use, never cached. */
 export interface HostedSessionSettings {
-  /** `hostedSessions.detachPolicy` — the default when a session carries no override. */
+  /** `hostedSessions.detachPolicy`, the default when a session carries no override. */
   detachPolicy(): HostedDetachPolicy;
-  /** `hostedSessions.maxSessions` — the cap on LIVE (non-terminated) sessions. */
+  /** `hostedSessions.maxSessions`, the cap on LIVE (non-terminated) sessions. */
   maxSessions(): number;
-  /** `hostedSessions.attachmentTtlMs` — how long an attachment stands unrenewed. */
+  /** `hostedSessions.attachmentTtlMs`, how long an attachment stands unrenewed. */
   attachmentTtlMs?(): number;
 }
 
@@ -99,7 +99,7 @@ export interface HostedSessionManagerOptions {
   readonly floorFactory: HostedWorkspaceFloorFactory;
   readonly store: HostedSessionStore;
   readonly settings: HostedSessionSettings;
-  /** The runtime bus turn events are observed on — the daemon's own. */
+  /** The runtime bus turn events are observed on, the daemon's own. */
   readonly runtimeBus: RuntimeEventBus;
   /** The base system prompt for a hosted turn, per session. */
   readonly systemPrompt: (input: { readonly sessionId: string; readonly workspaceRoot: string }) => string;
@@ -111,7 +111,7 @@ export interface HostedSessionManagerOptions {
   readonly isWorkspaceUsable?: ((workspaceRoot: string) => boolean) | undefined;
   /**
    * How often queued inputs are collected and each live session's participant
-   * heartbeat is refreshed. Default 750ms — the same order as every other
+   * heartbeat is refreshed. Default 750ms, the same order as every other
    * inbound-dispatch client here, and the reason a steer reaches a hosted turn
    * in well under a second rather than on some slower sweep.
    */
@@ -151,7 +151,7 @@ export class HostedSessionManager {
   private lastLoadReport: HostedSessionLoadReport | null = null;
   /** The spine half: registration, heartbeats, and collecting queued inputs. */
   private readonly spine: HostedSessionSpineIntake;
-  /** Sweeps attachments whose lease ran out — see ./attachments.ts. */
+  /** Sweeps attachments whose lease ran out, see ./attachments.ts. */
   private attachmentTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly options: HostedSessionManagerOptions) {
@@ -408,7 +408,7 @@ export class HostedSessionManager {
   /**
    * Detach a client and apply the policy when it was the last one.
    *
-   * Returns the record as it stands afterwards — terminated when the policy
+   * Returns the record as it stands afterwards, terminated when the policy
    * said kill, idle and reattachable when it said survive.
    */
   async detach(sessionId: string, clientId: string): Promise<HostedSessionRecord> {
@@ -565,7 +565,7 @@ export class HostedSessionManager {
    *
    * The capture is the load-bearing half: `persist` reads the conversation off
    * the live runtime, so disposing first and persisting after would write an
-   * empty transcript over a real one — a session that came back from a restart
+   * empty transcript over a real one, a session that came back from a restart
    * with nothing in it, which is the silent loss this engine exists to avoid.
    */
   private teardownRuntime(live: LiveSession): void {

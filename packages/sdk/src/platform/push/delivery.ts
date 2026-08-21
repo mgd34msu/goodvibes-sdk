@@ -1,8 +1,8 @@
 /**
  * push/delivery.ts
  *
- * The single place a push message is actually encrypted and sent. Every send —
- * a `push.subscriptions.verify` test, or an approval/completion fan-out — flows
+ * The single place a push message is actually encrypted and sent. Every send,
+ * a `push.subscriptions.verify` test, or an approval/completion fan-out, flows
  * through `deliverToSubscription`, so the honesty rules live in one spot:
  *
  *  - A push service that answers 404/410 means the browser subscription is gone;
@@ -133,7 +133,7 @@ export async function deliverToSubscription(
   }
 
   if (GONE_STATUSES.has(httpStatus)) {
-    // The subscription is gone at the push service — prune it (delete means
+    // The subscription is gone at the push service, prune it (delete means
     // delete) and report the prune with the status that proved it dead.
     await deps.store.remove(subscription.id);
     return {
@@ -184,7 +184,7 @@ async function prunedOrFailed(
 
 /**
  * Fan one message out to every stored subscription, delivering (and pruning) in
- * sequence. Returns one receipt per subscription — an empty array when there
+ * sequence. Returns one receipt per subscription, an empty array when there
  * are no subscriptions at all (the honest "nobody to notify" result, not a
  * silent success).
  */

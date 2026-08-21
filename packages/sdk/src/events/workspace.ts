@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * WorkspaceEvent — discriminated union covering workspace swap lifecycle events.
+ * WorkspaceEvent, discriminated union covering workspace swap lifecycle events.
  *
  * Emitted under the 'workspace' domain on the RuntimeEventBus.
  * Subscribers can react to working-directory changes without polling config.
@@ -49,7 +49,7 @@ export type WorkspaceEvent =
       reason: string;
     }
   /**
-   * A unified rewind was PREVIEWED (rewind.plan) — a surface can render that a
+   * A unified rewind was PREVIEWED (rewind.plan), a surface can render that a
    * rewind to this turn anchor is staged and awaiting confirmation. Read-only:
    * nothing has changed yet.
    */
@@ -61,7 +61,7 @@ export type WorkspaceEvent =
       scope: 'files' | 'conversation' | 'both';
     }
   /**
-   * A unified rewind was APPLIED (rewind.apply) — the receipt surfaces render.
+   * A unified rewind was APPLIED (rewind.apply), the receipt surfaces render.
    * `undoAvailable` is true when the apply recorded an undo point (a pre-restore
    * safety checkpoint and/or a captured conversation snapshot) so the rewind can
    * be reversed.
@@ -77,7 +77,7 @@ export type WorkspaceEvent =
     }
   /**
    * A single unified-diff hunk was reverse-applied to its file in the working
-   * tree (checkpoints.revertHunk) — the per-hunk counterpart to a whole-checkpoint
+   * tree (checkpoints.revertHunk), the per-hunk counterpart to a whole-checkpoint
    * restore. `undoAvailable` is true when a pre-revert whole-tree safety
    * checkpoint was recorded (restore it to reverse the revert).
    */

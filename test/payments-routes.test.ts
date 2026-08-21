@@ -3,7 +3,7 @@
  *
  * The daemon serving `payments.*`. The property that matters most here is the
  * one the whole storage design rests on: card material goes IN and can never
- * come back out — not in a response, not in an error, not through a service
+ * come back out, not in a response, not in an error, not through a service
  * that hands back more than it should.
  */
 import { describe, test, expect } from 'bun:test';

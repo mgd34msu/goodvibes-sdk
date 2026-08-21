@@ -184,7 +184,7 @@ describe('sessions.register — idempotency + heartbeat + honest closed semantic
         participant: participant('agent', 'surf:agent', 'user-1'),
       });
 
-      // Exactly one record — no data-loss-by-duplication.
+      // Exactly one record, no data-loss-by-duplication.
       expect(broker.listSessions(100).filter((s) => s.id === 'reg-1')).toHaveLength(1);
       expect(second.record.participants).toHaveLength(1);
       expect(second.record.participants[0]!.lastSeenAt).toBeGreaterThan(firstSeen);

@@ -13,7 +13,7 @@
  *    reflect real numbers once the executor finishes. This test spawns an
  *    agent with a stub executor that mimics orchestrator-runner's real
  *    behaviour (accumulate usage, then flip status to 'completed') and
- *    asserts the manager's own read path sees it — no SDK change needed here.
+ *    asserts the manager's own read path sees it, no SDK change needed here.
  *
  * 2. The WRFC owner path is covered separately in wrfc-controller.test.ts,
  *    where the owner AgentRecord never runs an LLM turn itself and needs its

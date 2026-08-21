@@ -68,7 +68,7 @@ async function drain(): Promise<void> {
 
 /**
  * Harness whose fake sink keeps "playing" after all bytes are written until
- * the test releases it — models a real player process that is still draining
+ * the test releases it, models a real player process that is still draining
  * its audio buffer. Used to pin the exit-path (bounded drain) and preemption
  * (instant cut) semantics.
  */
@@ -218,7 +218,7 @@ describe('SpokenTurnController request pipeline', () => {
     expect(h.controller.submitNextTurn('quick weather answer')).toBe(true);
     h.controller.handleTurnEvent(turn({ type: 'TURN_SUBMITTED', turnId: 't-one', prompt: 'quick weather answer' }));
     // Three sentence-boundary deltas plus completion, all in one synchronous
-    // burst — the whole answer arrived before the first request could fire,
+    // burst, the whole answer arrived before the first request could fire,
     // so everything merges into ONE request (not one per sentence).
     h.controller.handleTurnEvent(turn({ type: 'STREAM_DELTA', turnId: 't-one', content: 'Tonight will be cool and clear. ', accumulated: '' }));
     h.controller.handleTurnEvent(turn({ type: 'STREAM_DELTA', turnId: 't-one', content: 'Expect a low around fifteen degrees. ', accumulated: '' }));

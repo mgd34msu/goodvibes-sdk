@@ -1,5 +1,5 @@
 /**
- * Remote Substrate — Observability Panel Data Provider
+ * Remote Substrate, Observability Panel Data Provider
  *
  * Provides introspection data about remote connections for display in
  * diagnostic panels. Follows the same panel data provider pattern used
@@ -80,7 +80,7 @@ export interface RemoteObservabilitySnapshot {
 // ── RemoteObservabilityProvider ───────────────────────────────────────────────
 
 /**
- * RemoteObservabilityProvider — aggregates remote session state for panel rendering.
+ * RemoteObservabilityProvider, aggregates remote session state for panel rendering.
  *
  * Register active RemoteSessions via `trackSession()` and unregister via
  * `untrackSession()`. Subscribe to changes with `subscribe()`. Retrieve

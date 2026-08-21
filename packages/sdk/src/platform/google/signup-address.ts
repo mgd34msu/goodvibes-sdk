@@ -29,7 +29,7 @@
  *
  * Caveat that is NOT hypothetical: a meaningful share of signup forms reject `+` in the
  * email field, either by regex or by silently stripping it. When that happens the caller
- * must fall back to a catch-all local part on a domain the owner controls — see
+ * must fall back to a catch-all local part on a domain the owner controls, see
  * `mintCatchAllAddressFor`, which produces the same encoded tag as a bare local part
  * (`gv-github-com-k3n9x2p4@example.com`) and parses back identically.
  *
@@ -67,7 +67,7 @@ export interface SignupAlias {
 }
 
 export interface ParsedSignupAlias {
-  /** The address with the signup tag removed — the owner's real inbox. */
+  /** The address with the signup tag removed, the owner's real inbox. */
   readonly baseAddress: string;
   /**
    * The decoded service domain, or null when the alias was minted with a truncated
@@ -107,7 +107,7 @@ const NONCE_PATTERN = /^[a-z0-9]{8}$/;
  * Normalize an address for comparison: strip any display name / angle brackets, trim,
  * lowercase.
  *
- * The `+tag` is deliberately preserved — it IS the correlation key. Lowercasing the
+ * The `+tag` is deliberately preserved, it IS the correlation key. Lowercasing the
  * local part is technically stricter than RFC 5321 (local parts are case-sensitive on
  * the wire) but matches how Gmail, Workspace and Cloudflare Email Routing actually
  * deliver, and being case-insensitive here can only widen what compares equal, never
@@ -300,7 +300,7 @@ function parseTag(tag: string): Omit<ParsedSignupAlias, 'baseAddress'> | null {
 
 /**
  * Parse an address minted by `mintAddressFor` / `mintCatchAllAddressFor` back to the
- * service it belongs to. Returns null for any address this module did not mint — a
+ * service it belongs to. Returns null for any address this module did not mint, a
  * non-alias address is never treated as belonging to a service.
  */
 export function parseAlias(address: string): ParsedSignupAlias | null {

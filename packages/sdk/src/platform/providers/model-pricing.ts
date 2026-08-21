@@ -1,18 +1,18 @@
 /**
- * Model pricing resolution — ONE resolver for every (provider, model) pair.
+ * Model pricing resolution, ONE resolver for every (provider, model) pair.
  *
  * Precedence (first hit wins):
  *   1. User-set manual price from config (`pricing.modelPrices`, keyed
- *      `provider:model`) — always wins when present. Negotiated or
+ *      `provider:model`), always wins when present. Negotiated or
  *      self-hosted rates outrank every catalog.
  *   2. Registration-supplied price on the model definition (custom
- *      provider/model files, runtime provider registration) — also
+ *      provider/model files, runtime provider registration), also
  *      user-origin: the person who registered the model stated the rate.
  *   3. The provider's own machine-readable pricing where its API serves one
  *      (OpenRouter's /v1/models today), stamped with the fetch date.
  *   4. The models.dev catalog entry for that exact provider+model, stamped
  *      with the fetch date.
- *   5. Honest UNKNOWN — a distinct state, never $0, never inferred-free.
+ *   5. Honest UNKNOWN, a distinct state, never $0, never inferred-free.
  *
  * Subscription-tier surfaces resolve to `subscription` (no fake per-token
  * price). All rates are USD per 1,000,000 tokens.
@@ -62,7 +62,7 @@ export type UsageCostSource = ModelPricingSource | 'subscription' | 'unknown';
 /**
  * Published per-provider cache ratios relative to the fresh input rate, used
  * only when the pricing source carried no explicit cache rates. Keyed by a
- * provider substring (matched case-insensitively). Default 1.0/1.0 — cache
+ * provider substring (matched case-insensitively). Default 1.0/1.0, cache
  * tokens priced at the full input rate, the conservative honest choice.
  * Kept in sync with runtime/cost/attribution.ts CACHE_MULTIPLIERS (that module
  * cannot be imported here without inverting the providers -> runtime layering).
@@ -93,7 +93,7 @@ export interface UsageTokenCounts {
 
 /**
  * usage x resolved price -> USD. Null when the pricing is not `priced`
- * (unknown/subscription) — callers must carry the unpriced state forward,
+ * (unknown/subscription), callers must carry the unpriced state forward,
  * never coerce to $0. Cache tokens use the source's explicit cache rates when
  * present, else the published per-provider ratio over the input rate.
  */
@@ -177,7 +177,7 @@ export interface ProviderServedPricing {
   readonly fetchedAt?: number | undefined;
 }
 
-/** Everything the resolver reads. All lookups are live — no snapshot is taken. */
+/** Everything the resolver reads. All lookups are live, no snapshot is taken. */
 export interface ModelPricingDeps {
   /** Manual prices from config, keyed `provider:model`. Read per call so config edits apply live. */
   readonly getManualPrices: () => Readonly<Record<string, ManualModelPrice>> | undefined;
@@ -235,7 +235,7 @@ function resolveFromCatalog(
   const agree = priced.every((entry) =>
     entry.pricing!.input === first.input &&
     entry.pricing!.output === first.output);
-  // Without a provider, conflicting per-provider entries are honestly unknown —
+  // Without a provider, conflicting per-provider entries are honestly unknown,
   // picking one silently would price usage against the wrong provider's rate.
   if (!agree) return UNKNOWN_MODEL_PRICING;
   return {
@@ -266,7 +266,7 @@ export function resolveModelPricing(
   const colon = modelRef.indexOf(':');
   if (colon > 0) {
     const prefix = modelRef.slice(0, colon);
-    // OpenRouter-style ids carry ':free'/':extended' suffixes — only treat the
+    // OpenRouter-style ids carry ':free'/':extended' suffixes, only treat the
     // prefix as a provider when it actually names one.
     if (deps.isKnownProviderId(prefix)) {
       provider = prefix;
@@ -300,7 +300,7 @@ export function resolveModelPricing(
   return resolveFromCatalog(deps, provider, modelId);
 }
 
-/** Narrow accessors a registry hands the resolver — keeps the registry glue tiny. */
+/** Narrow accessors a registry hands the resolver, keeps the registry glue tiny. */
 export interface RegistryModelPricingInput {
   readonly getManualPrices: ModelPricingDeps['getManualPrices'];
   readonly findModelPricing: (providerId: string | undefined, modelId: string) => ManualModelPrice | null;

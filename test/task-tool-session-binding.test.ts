@@ -1,11 +1,11 @@
 /**
- * task-tool-session-binding.test.ts — the task tool's owning `sessionId` comes
+ * task-tool-session-binding.test.ts, the task tool's owning `sessionId` comes
  * from real runtime identity, not from the model's tool input.
  *
  * The defect this covers: `createTaskTool(registry)` bound no identity at all.
  * The owning session on every ref came from `input.sessionId`, a free-form
  * string in the tool schema that the model could set to anything and almost
- * always omitted — in which case it fell back to the literal `'local'`. So the
+ * always omitted, in which case it fell back to the literal `'local'`. So the
  * cross-session task registry, whose entire purpose is keying work by session,
  * kept nearly everything in one shared bucket under a name no session register
  * could ever resolve.
@@ -13,7 +13,7 @@
  * That is what made owner-existence reaping impossible to write honestly: any
  * predicate asked "does session 'local' exist?" must answer no, and reaping on
  * that answer would have deleted the whole graph on the first sweep. The fix is
- * upstream — bind the key to identity — and these tests pin it.
+ * upstream, bind the key to identity, and these tests pin it.
  */
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync } from 'node:fs';
@@ -165,7 +165,7 @@ describe('an unbound host falls back to the legacy namespace, visibly', () => {
   });
 
   test('an unbound host still cannot be spoofed into another namespace', async () => {
-    // The fallback is the legacy bucket, NOT whatever the model asked for —
+    // The fallback is the legacy bucket, NOT whatever the model asked for,
     // otherwise removing the binding would silently restore the old defect.
     const registry = makeRegistry();
     try {

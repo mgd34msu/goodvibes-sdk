@@ -1,5 +1,5 @@
 /**
- * UnifiedTaskManager — central task lifecycle management for all subsystem
+ * UnifiedTaskManager, central task lifecycle management for all subsystem
  * task kinds (exec, agent, acp, scheduler, daemon, mcp, plugin, integration).
  *
  * Responsibilities:
@@ -100,7 +100,7 @@ export class TaskNotCancellableError extends GoodVibesSdkError {
 // ---------------------------------------------------------------------------
 
 /**
- * UnifiedTaskManager — implements TaskManager using a TaskRegistry for
+ * UnifiedTaskManager, implements TaskManager using a TaskRegistry for
  * in-memory lookup and a Zustand store + RuntimeEventBus for persistence
  * and event emission.
  */
@@ -232,7 +232,6 @@ export class UnifiedTaskManager implements TaskManager {
     const now = Date.now();
     const durationMs = task.startedAt !== undefined ? now - task.startedAt : 0;
 
-    // Check retry policy
     if (task.retryPolicy) {
       const { maxAttempts, currentAttempt, delayMs, backoff } = task.retryPolicy;
       if (currentAttempt < maxAttempts) {
@@ -267,7 +266,7 @@ export class UnifiedTaskManager implements TaskManager {
       }
     }
 
-    // No retry — mark as permanently failed
+    // No retry, mark as permanently failed
     const updated = this._applyTransition(task, 'failed', {
       endedAt: now,
       error: params.error,

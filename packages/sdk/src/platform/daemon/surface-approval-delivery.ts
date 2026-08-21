@@ -1,15 +1,15 @@
 /**
- * surface-approval-delivery.ts — per-surface rendering of an approval update.
+ * surface-approval-delivery.ts, per-surface rendering of an approval update.
  *
  * Split out of surface-delivery.ts, which was over the 800-line cap. These
  * four are a cohesive block: each takes the same approval + route binding and
  * differs only in how that surface expresses "approve / deny / here is the
- * console link". Nothing here decides WHICH surface to use — that stays in
+ * console link". Nothing here decides WHICH surface to use, that stays in
  * DaemonSurfaceDeliveryHelper.notifyApprovalUpdate, the one router.
  *
  * Every function takes its collaborators as an object rather than a bound
  * method. Passing `configManager.get` on its own would lose the receiver and
- * throw inside the ConfigManager (`this.resolvePath` is undefined) — the same
+ * throw inside the ConfigManager (`this.resolvePath` is undefined), the same
  * defect class this round fixed in the control-plane gateway registration.
  */
 import type { ConfigManager } from '../config/manager.js';

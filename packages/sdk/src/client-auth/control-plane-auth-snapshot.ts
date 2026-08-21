@@ -3,10 +3,10 @@
 /**
  * Authentication mode reported by the daemon control plane.
  *
- * - `'anonymous'` — no credentials were supplied.
- * - `'invalid'` — credentials were supplied but are not recognised.
- * - `'session'` — authenticated via a session cookie.
- * - `'shared-token'` — authenticated via a shared bearer token.
+ * - `'anonymous'`, no credentials were supplied.
+ * - `'invalid'`, credentials were supplied but are not recognised.
+ * - `'session'`, authenticated via a session cookie.
+ * - `'shared-token'`, authenticated via a shared bearer token.
  */
 export type ControlPlaneAuthMode = 'anonymous' | 'invalid' | 'session' | 'shared-token';
 

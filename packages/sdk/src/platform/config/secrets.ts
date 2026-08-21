@@ -1,5 +1,5 @@
 /**
- * SecretsManager — hierarchy-aware secret resolution and persistence.
+ * SecretsManager, hierarchy-aware secret resolution and persistence.
  *
  * Resolution order:
  *   1. Environment variable (process.env[key])
@@ -22,11 +22,11 @@
  *   - require_secure     → never read/write plaintext
  *
  * Encryption keys come from a random keyfile (~/.goodvibes/secrets.key,
- * 0600 in a 0700 directory), generated on first need — never from host
+ * 0600 in a 0700 directory), generated on first need, never from host
  * identity, so stores survive hostname/username changes and machine moves.
  * Stores written by older SDKs (host-identity key, no version field) are
  * migrated to the keyfile format on first successful read. A store that
- * exists but cannot be decrypted is a distinct, surfaced error state — it is
+ * exists but cannot be decrypted is a distinct, surfaced error state, it is
  * never treated as empty and never overwritten.
  *
  * Secret values are never logged.
@@ -185,7 +185,7 @@ function loadConfiguredSecretPolicy(configManager?: Pick<ConfigManager, 'get'>):
  * Where a write lands when the caller did not name a scope.
  *
  * A credential a daemon-owned config path names is one the daemon executes
- * with, so its home is the daemon tier — the same rule config-ownership.ts
+ * with, so its home is the daemon tier, the same rule config-ownership.ts
  * applies to the setting that points at it. Getting this wrong is not cosmetic:
  * a replicated surface token written to the project store lands under whatever
  * directory the daemon happened to start in, and the next start from a
@@ -201,15 +201,15 @@ function defaultScopeForKey(key: string): SecretScope {
  * Where a write to `key` will actually go, given what the caller asked for.
  *
  * **Daemon ownership beats an explicit scope, deliberately.** It used to be the
- * other way round — an explicit `scope` won — and that made the routing above
+ * other way round, an explicit `scope` won, and that made the routing above
  * defeatable by the ordinary path a person takes to store a credential:
  * `/secrets set` passes a scope on every call, so a daemon-owned password went
  * into a client silo the daemon never reads. The credential reported success
  * and did nothing, which is the exact failure the ownership rule exists to
  * prevent.
  *
- * The alternative — refusing the write and telling the caller to pick a
- * different scope — was rejected: it turns a storage bug into a wall in front
+ * The alternative, refusing the write and telling the caller to pick a
+ * different scope, was rejected: it turns a storage bug into a wall in front
  * of the credentials people most need to set, and the caller's scope argument
  * is nearly always a default it never thought about rather than an intent.
  *
@@ -234,7 +234,7 @@ export function describeSecretWriteScope(key: string): string {
 }
 
 export class SecretsManager {
-  /** Change listeners — fired after a successful set() or delete() so credential consumers (e.g. the provider registry) re-resolve LIVE, no restart. */
+  /** Change listeners, fired after a successful set() or delete() so credential consumers (e.g. the provider registry) re-resolve LIVE, no restart. */
   private readonly changeListeners = new Set<(key: string) => void>();
 
   /** Subscribe to secret writes/deletes. Returns an unsubscribe function. */
@@ -291,7 +291,7 @@ export class SecretsManager {
       ?? resolveSharedDirectory(this.options.globalHome, 'secrets.key');
   }
 
-  /** Load the encryption key, generating a fresh one exclusively on first need — see secrets-keyfile.ts. */
+  /** Load the encryption key, generating a fresh one exclusively on first need, see secrets-keyfile.ts. */
   private getEncryptionKey(): Buffer {
     this.encKey ??= loadOrCreateKeyfile(this.keyFilePath);
     return this.encKey;
@@ -311,9 +311,9 @@ export class SecretsManager {
    * `get()` answers "what value would be used", which is the right question
    * almost everywhere and the wrong one for migration: a surface copy read
    * through `get()` returns whatever the DAEMON tier holds, because the daemon
-   * tier leads. Moving a credential needs to see each tier separately — read
+   * tier leads. Moving a credential needs to see each tier separately, read
    * the surface copy, write the daemon copy, read the daemon copy BACK and
-   * compare — and a resolver that transparently prefers one tier makes that
+   * compare, and a resolver that transparently prefers one tier makes that
    * comparison meaningless.
    *
    * Returns the value exactly as stored. A `goodvibes://` reference is NOT
@@ -431,7 +431,7 @@ export class SecretsManager {
   /**
    * Load a store's current contents ahead of a write. A missing file is a
    * legitimately empty store; a file that exists but cannot be read refuses
-   * the write outright — overwriting it would destroy every secret it holds.
+   * the write outright, overwriting it would destroy every secret it holds.
    */
   private readStoreForWrite(target: SecretStorePath): Record<string, string> {
     const result = target.secure
@@ -537,7 +537,7 @@ export class SecretsManager {
    *
    * For a daemon-needed key the caller's `scope` is deliberately DISCARDED and
    * every tier is swept, because a revoke narrowed to one tier reports success
-   * while leaving a live copy behind — a credential the operator believes is
+   * while leaving a live copy behind, a credential the operator believes is
    * gone and is not.
    *
    * That makes this the wrong method for moving a credential between tiers, and
@@ -630,7 +630,7 @@ export class SecretsManager {
 
   /**
    * Read an encrypted store with three distinct outcomes: `ok` (decrypted),
-   * `missing` (no file — a legitimately empty store), and `unreadable` (a file
+   * `missing` (no file, a legitimately empty store), and `unreadable` (a file
    * exists but cannot be decrypted or parsed). Unreadable is never collapsed
    * into empty: writes to an unreadable store are refused so its contents are
    * never destroyed.
@@ -679,7 +679,7 @@ export class SecretsManager {
     if (typeof envelope.keyId === 'string' && envelope.keyId !== currentKeyId) {
       return {
         status: 'unreadable',
-        reason: `store was written with encryption key ${envelope.keyId}, but the current keyfile is ${currentKeyId} — the keyfile changed after this store was written`,
+        reason: `store was written with encryption key ${envelope.keyId}, but the current keyfile is ${currentKeyId}, the keyfile changed after this store was written`,
       };
     }
 
@@ -745,7 +745,7 @@ export class SecretsManager {
 
   private writeEncryptedFile(filePath: string, secrets: Record<string, string>): void {
     const key = this.getEncryptionKey();
-    // Never encrypt with a cached key the keyfile no longer backs — the
+    // Never encrypt with a cached key the keyfile no longer backs, the
     // resulting store would be unreadable by every other process (and by this
     // one after restart). A missing keyfile is restored from the cached key.
     assertCachedKeyIsCurrent(this.keyFilePath, key);

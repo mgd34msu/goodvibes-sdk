@@ -213,7 +213,7 @@ describe('Parser purity — does not mutate caller\'s object', () => {
     // Result should have constraints:[] (added by applyConstraintDefaults)
     expect(result.constraints).toEqual([]);
 
-    // The original sourceObj is NOT mutated — still no 'constraints' key
+    // The original sourceObj is NOT mutated, still no 'constraints' key
     expect('constraints' in sourceObj).toBe(false);
   });
 

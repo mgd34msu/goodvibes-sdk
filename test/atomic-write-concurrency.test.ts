@@ -1,5 +1,5 @@
 /**
- * atomic-write-concurrency.test.ts — the crash that killed a running agent
+ * atomic-write-concurrency.test.ts, the crash that killed a running agent
  * process, reproduced and then held shut.
  *
  * The observed failure, from the live machine:
@@ -72,7 +72,7 @@ describe('atomic write under a concurrent writer of the same store', () => {
     chmodSync(tempA, 0o600);
     renameSync(tempA, storePath);
 
-    // Both writes landed whole and the later rename won — nothing mixed.
+    // Both writes landed whole and the later rename won, nothing mixed.
     const landed = JSON.parse(readFileSync(storePath, 'utf-8')) as { watchers: string[] };
     expect(landed.watchers).toEqual(['from-writer-a']);
     expect(tempFiles(dir, storePath)).toEqual([]);
@@ -164,7 +164,7 @@ describe('atomic write under a concurrent writer of the same store', () => {
     expect(secondExit).toBe(0);
 
     // Whoever renamed last owns the file, and it is one writer's whole
-    // snapshot — never a mixture and never a truncated one.
+    // snapshot, never a mixture and never a truncated one.
     const landed = JSON.parse(readFileSync(storePath, 'utf-8')) as { writer: string; watchers: string[] };
     expect(['alpha', 'beta']).toContain(landed.writer);
     expect(landed.watchers.length).toBe(400);
@@ -201,7 +201,7 @@ describe('writeJsonFileAtomicSafe', () => {
     expect(outcome.error).toBeInstanceOf(Error);
     expect(outcome.code).toBe('ENOTDIR');
     expect(existsSync(storePath)).toBe(false);
-    // The blocking file is untouched — a failed write destroys nothing.
+    // The blocking file is untouched, a failed write destroys nothing.
     expect(statSync(blocked).isFile()).toBe(true);
   });
 });

@@ -1,12 +1,12 @@
 /**
  * session-followup-closed-guard-routes.test.ts
  *
- * Final-batch fix — HTTP route surface proof that BOTH follow-up
+ * Final-batch fix, HTTP route surface proof that BOTH follow-up
  * entry points (`POST /api/sessions/:id/follow-up` and
  * `POST /api/sessions/:id/messages` with `kind:'followup'`) and the submit
  * entry points (`POST /task` and `POST /api/sessions/:id/messages` with
  * `kind:'task'`) convert the broker's closed-session guard throw
- * (`{ code: 'SESSION_CLOSED', status: 409 }`, thrown before any mutation —
+ * (`{ code: 'SESSION_CLOSED', status: 409 }`, thrown before any mutation,
  * see session-followup-submit-closed-guard.test.ts for the broker-level
  * no-side-effects proof) into the same structured 409 JSON response the
  * steer route already returns (session-steer-closed-guard.test.ts), instead

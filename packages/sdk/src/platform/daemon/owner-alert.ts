@@ -1,5 +1,5 @@
 /**
- * owner-alert.ts — reaching the owner when the thing that broke is a channel.
+ * owner-alert.ts, reaching the owner when the thing that broke is a channel.
  *
  * The ordinary notice path takes a binding and sends on it. That is not enough
  * for an alert whose SUBJECT is a channel failing, because the obvious binding
@@ -8,11 +8,11 @@
  *
  * 1. Inbound and outbound fail independently. Telegram's sends worked all day
  *    while its receives were being dropped. So the failing surface's own
- *    conversation is still the FIRST choice — it is where the owner is already
+ *    conversation is still the FIRST choice, it is where the owner is already
  *    looking, and it usually still works.
  * 2. But it might not. So a refusal is not the end: the alert falls back to the
  *    most recently used conversation on any OTHER surface, which is what "ntfy
- *    exists as a fallback" means in practice without naming ntfy specifically —
+ *    exists as a fallback" means in practice without naming ntfy specifically,
  *    whatever the owner actually has connected and has used most recently.
  *
  * Never silent: if nothing accepted it, that is logged at error with every
@@ -29,7 +29,7 @@ import { logger } from '../utils/logger.js';
 
 /**
  * THE per-surface ingress alarm for a daemon: one instance shared by every
- * inbound path there is — the Telegram poller, the shared webhook seam in
+ * inbound path there is, the Telegram poller, the shared webhook seam in
  * `ChannelPluginRegistry` (which covers the eleven webhook-delivered surfaces
  * at a stroke), the three streaming surfaces in
  * `ChannelProviderRuntimeManager`, and the two detached slash-command paths.
@@ -55,7 +55,7 @@ function byMostRecentlySeen(bindings: readonly AutomationRouteBinding[]): Automa
  * The conversations to try, in order: the failing surface's own newest first,
  * then every other surface's, newest first.
  *
- * `preferred` is null when the alert is not ABOUT a channel — the daemon
+ * `preferred` is null when the alert is not ABOUT a channel, the daemon
  * failing to update itself, for instance. There is no surface to try first
  * then, so the order is simply newest-used first, which is the same
  * "best available proxy for works" the rest of this file runs on.
@@ -88,8 +88,8 @@ export async function deliverOwnerAlert(
     candidates = orderOwnerAlertRoutes(routeBindings.listBindings(), preferred);
   } catch (error) {
     // Route binding can be switched off entirely, in which case listing throws
-    // rather than returning nothing. That is a real answer — there is no route
-    // to alert on — and it must not take down the caller reporting a failure.
+    // rather than returning nothing. That is a real answer, there is no route
+    // to alert on, and it must not take down the caller reporting a failure.
     logger.error('An alert for the owner could not be routed: route bindings are unavailable', {
       preferred,
       error: error instanceof Error ? error.message : String(error),

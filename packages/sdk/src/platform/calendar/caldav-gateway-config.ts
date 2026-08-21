@@ -1,5 +1,5 @@
 /**
- * caldav-gateway-config.ts — where the daemon's CalDAV connection comes from,
+ * caldav-gateway-config.ts, where the daemon's CalDAV connection comes from,
  * and how a logical calendar id becomes a collection URL.
  *
  * Config keys (all daemon-owned, all real `CONFIG_SCHEMA` entries, all
@@ -70,7 +70,7 @@ export function createCalDavSecretPort(
   return {
     async resolveRef(ref: string): Promise<string | null> {
       const normalized = ref.trim();
-      // `goodvibes://secrets/<provider>/<key>` — the key is the last segment,
+      // `goodvibes://secrets/<provider>/<key>`, the key is the last segment,
       // percent-decoded, exactly as `buildGoodVibesSecretRef` wrote it. Any
       // other string is taken as a bare store key.
       const key = normalized.startsWith('goodvibes://secrets/')

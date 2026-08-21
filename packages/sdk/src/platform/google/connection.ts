@@ -1,8 +1,8 @@
 /**
  * Turning credentials on this machine into a usable Google client.
  *
- * This is the composition root the connector never had. Every piece existed —
- * adoption, the token manager, the API client, the refresh call — and nothing
+ * This is the composition root the connector never had. Every piece existed,
+ * adoption, the token manager, the API client, the refresh call, and nothing
  * assembled them, so the agent held working credentials it could not reach.
  *
  * Precedence is native-first and deliberate:
@@ -14,9 +14,9 @@
  *      written back over them.
  *
  * The fallback is what makes the owner's machine work without a setup run. It
- * is not a substitute for connecting an account — `/google adopt` copies the
+ * is not a substitute for connecting an account, `/google adopt` copies the
  * credentials into the encrypted store so they survive the other tool being
- * removed — but it means the capability is genuinely usable rather than
+ * removed, but it means the capability is genuinely usable rather than
  * merely explainable.
  */
 
@@ -85,7 +85,7 @@ function readString(value: unknown): string | null {
 
 /**
  * Credentials from the agent's own encrypted store, when a complete set is
- * there. A partial set is treated as absent — a client id with no refresh
+ * there. A partial set is treated as absent, a client id with no refresh
  * token cannot call anything, and reporting it as present would produce a
  * capability that claims to be ready and then fails on first use.
  */
@@ -126,7 +126,7 @@ async function storeCredentials(sources: GoogleConnectionSources): Promise<Googl
  * such directory, and a connector that quietly picks up credentials it found
  * lying around is doing something nobody requested.
  *
- * Adoption is still fully supported and still works exactly as it did — it is
+ * Adoption is still fully supported and still works exactly as it did, it is
  * just user-directed now. Someone names a path (or runs the adopt command),
  * the credentials are copied into the encrypted store, and the reply says what
  * was taken up and where it now lives. `readDiskCredentials` exists for those
@@ -224,8 +224,8 @@ export interface GoogleConnection {
    * allowed to do", and it is only correct AFTER a refresh: credentials read
    * from the encrypted secret store are constructed with `scopes: []` (the
    * store records no scope list), and the real set arrives on the refresh
-   * response. A caller that gates on scopes — `collectHistoryDelta` does, and
-   * refuses with `no-gmail-scope` when it sees none — therefore has to be able
+   * response. A caller that gates on scopes, `collectHistoryDelta` does, and
+   * refuses with `no-gmail-scope` when it sees none, therefore has to be able
    * to force that refresh first, or it would read an empty list as a revoked
    * capability and report a working mailbox as unreadable.
    *
@@ -249,7 +249,7 @@ export async function openGoogleConnection(
   ports: {
     readonly fetch: GoogleFetchPort & GoogleApiFetchPort;
     /**
-     * The account this machine is signed in as, when something knows it —
+     * The account this machine is signed in as, when something knows it,
      * normally gcloud's active account. Supplied so an `invalid_grant` can be
      * diagnosed as an account mix-up instead of a shrug.
      */

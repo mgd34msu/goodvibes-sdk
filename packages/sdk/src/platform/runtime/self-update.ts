@@ -6,14 +6,14 @@
  * client-side update commands in consuming apps) shares these semantics:
  *   - release assets are named `goodvibes[-daemon]-{linux|macos}-{x64|arm64}`,
  *     verified against SHA256SUMS.txt; an artifact with NO manifest entry is
- *     as unverified as a mismatching one — both refuse to install;
+ *     as unverified as a mismatching one, both refuse to install;
  *   - ALL artifacts download and verify BEFORE any file is touched, so a
  *     failure never leaves a mismatched pair installed;
  *   - every swap writes beside the target then renames over it (atomic on
  *     the same filesystem; a running process keeps its old inode) and parks
  *     the outgoing file at `<path>.previous`;
  *   - rollback EXCHANGES each file with its kept `.previous` counterpart in
- *     three same-directory renames — one command back, one more forward.
+ *     three same-directory renames, one command back, one more forward.
  *
  * All I/O (fetch, filesystem) is injectable so the policy is provable under
  * test without a network or a real install.
@@ -89,7 +89,7 @@ export interface UpdateFetchLike {
 /**
  * Resolves the latest release tag via a HEAD request with redirects NOT
  * followed, reading the tag out of the redirect Location header. Throws if
- * no tag can be resolved — callers must not silently fall back to
+ * no tag can be resolved, callers must not silently fall back to
  * "already current".
  */
 export async function resolveLatestReleaseTag(fetchImpl: UpdateFetchLike, releasesLatestUrl: string): Promise<string> {
@@ -179,7 +179,7 @@ export function parseChecksumFile(contents: string): Map<string, string> {
 /**
  * Verify a downloaded artifact's checksum against the parsed manifest.
  * An artifact with no entry in the manifest is a hard failure, identical
- * in severity to a mismatching entry — never treated as "unverifiable, so
+ * in severity to a mismatching entry, never treated as "unverifiable, so
  * skip the check". Throws naming the artifact and the manifest.
  */
 export function verifyChecksum(
@@ -189,7 +189,7 @@ export function verifyChecksum(
   manifestName: string = CHECKSUM_MANIFEST_NAME,
 ): void {
   if (expected === undefined) {
-    throw new Error(`no checksum entry for ${artifactName} in ${manifestName} — refusing to install an unverified binary`);
+    throw new Error(`no checksum entry for ${artifactName} in ${manifestName}, refusing to install an unverified binary`);
   }
   if (expected !== actual) {
     throw new Error(`checksum mismatch for ${artifactName}: expected ${expected}, got ${actual}`);
@@ -226,7 +226,7 @@ export const realUpdateFileIo: UpdateFileIo = {
 };
 
 /**
- * Writes the new file beside the target, then renames over it — an atomic
+ * Writes the new file beside the target, then renames over it, an atomic
  * replace on the same filesystem, so a currently-running process that
  * already opened the old file keeps its old inode instead of executing a
  * half-written file. Before the replace, the outgoing file is parked at
@@ -299,7 +299,7 @@ export async function applyVerifiedUpdate(options: ApplyVerifiedUpdateOptions): 
     verified.push({ target, buffer });
   }
 
-  // All downloads verified before any write — an update must not apply partially.
+  // All downloads verified before any write, an update must not apply partially.
   for (const { target, buffer } of verified) {
     swapFileAtomically(target.path, buffer, {
       executable: target.executable,
@@ -323,7 +323,7 @@ export interface RollbackResult {
 
 /**
  * One-command rollback: every target with a kept `.previous` counterpart is
- * EXCHANGED with it — the previous version becomes live, and the version
+ * EXCHANGED with it, the previous version becomes live, and the version
  * being rolled back is itself kept at `.previous`, so a second rollback
  * rolls forward again. Three same-directory renames per file (atomic on
  * POSIX), never a copy; nothing is downloaded.

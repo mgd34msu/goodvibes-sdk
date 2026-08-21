@@ -3,9 +3,9 @@
  *
  * Reads policy.bundleSource / policy.bundlePath and, when the policy-as-code
  * gate is on (policy.registryEnabled) and a file source is configured, loads that bundle into
- * the registry as a CANDIDATE at startup — making the config keys live without
+ * the registry as a CANDIDATE at startup, making the config keys live without
  * requiring a /policy command. The bundle is never auto-promoted: promotion still
- * requires simulation evidence and a passing divergence gate. Never throws — a
+ * requires simulation evidence and a passing divergence gate. Never throws, a
  * missing or invalid bundle file is logged and skipped (registry stays empty).
  */
 import { readFileSync } from 'node:fs';

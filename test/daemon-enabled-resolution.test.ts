@@ -5,7 +5,7 @@
  * (`daemon.enabled`, default true, loopback-bound). The deprecated
  * `danger.daemon` alias was removed from the schema (a config migration in
  * ConfigManager.load honors any existing explicit `danger.daemon = false`
- * by rewriting it onto `daemon.enabled = false` — see
+ * by rewriting it onto `daemon.enabled = false`, see
  * config-migrations.test.ts for that contract).
  *
  * See docs/decisions/2026-07-05-daemon-by-default.md.

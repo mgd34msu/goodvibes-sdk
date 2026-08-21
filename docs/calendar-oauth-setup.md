@@ -3,7 +3,7 @@
 GoodVibes ships **no OAuth client id of its own**. To connect a Google or Microsoft
 calendar, whoever sets up the environment registers an OAuth app with the provider
 and puts its client id in config. Until that is done, a connect attempt refuses and
-names the key to set — it never falls back to a built-in default and never reports a
+names the key to set. It never falls back to a built-in default and never reports a
 connection it does not have.
 
 This is the whole setup. There is no "advanced" path and no basic one; there is one
@@ -13,13 +13,13 @@ path, and it is this.
 
 An earlier design carried a project-level client id in the provider profiles, on the
 plan that real ids would be filled in later. They will not be. A client id baked into
-the product is one the operator cannot audit, cannot rotate, and did not agree to —
-their calendar access would run through somebody else's provider app, under somebody
+the product is one the operator cannot audit, cannot rotate, and did not agree to.
+Their calendar access would run through somebody else's provider app, under somebody
 else's consent screen and quota. Registering your own takes a few minutes and the
 credential stays yours.
 
 Native-app client ids are not secrets (RFC 8252), so nothing here needs guarding the
-way a password does — but it is still your registration, in your provider account.
+way a password does, but it is still your registration, in your provider account.
 
 ## The config keys
 
@@ -32,7 +32,7 @@ way a password does — but it is still your registration, in your provider acco
 
 The `...ClientSecretRef` keys hold a **reference**, not a secret. The secret itself
 lives in the secret store under the platform-derived name
-(`GOODVIBES_CALENDAR_GOOGLE_CLIENT_SECRET_REF` and its Microsoft counterpart) — the
+(`GOODVIBES_CALENDAR_GOOGLE_CLIENT_SECRET_REF` and its Microsoft counterpart), the
 same derivation the daemon uses to decide which credentials it owns, which is what
 lets a connection set up on any surface keep working after a handover.
 
@@ -52,7 +52,7 @@ confidential registration only if you specifically want one.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** →
    application type **Desktop app**.
 5. Copy the generated **Client ID**. A Desktop-app client needs no client secret with
-   PKCE — leave the secret field alone unless you deliberately created a Web-app
+   PKCE. Leave the secret field alone unless you deliberately created a Web-app
    client.
 6. Set it:
 
@@ -63,7 +63,7 @@ confidential registration only if you specifically want one.
    If you registered a Web-app (confidential) client instead, also store its secret
    and point `calendar.google.clientSecretRef` at it.
 
-The scopes requested are `calendar.readonly` and `calendar.events` — read plus event
+The scopes requested are `calendar.readonly` and `calendar.events`: read plus event
 creation. Narrow them by supplying your own scope list if you want read-only access.
 
 ## Microsoft
@@ -91,7 +91,7 @@ creation. Narrow them by supplying your own scope list if you want read-only acc
 
 ## What you see before it is configured
 
-A connect attempt with no client id set fails immediately — before any network call —
+A connect attempt with no client id set fails immediately, before any network call,
 with reason `client-not-configured` and a message naming the exact key:
 
 ```
@@ -111,10 +111,10 @@ goodvibes config get calendar.google.clientId
 ```
 
 Then run the connect flow. The authorization URL it opens carries your client id in
-its `client_id` parameter — if you see the id you registered, the flow is running on
+its `client_id` parameter. If you see the id you registered, the flow is running on
 your app.
 
 ## Related
 
-- `docs/google-setup-runbook.md` — the wider Google connector setup, including mail.
-- `docs/secrets.md` — how secret references and the secret store work.
+- `docs/google-setup-runbook.md`: the wider Google connector setup, including mail.
+- `docs/secrets.md`: how secret references and the secret store work.

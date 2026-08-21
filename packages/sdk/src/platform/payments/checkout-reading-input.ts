@@ -1,18 +1,18 @@
 /**
- * checkout-reading-input.ts — accepting a checkout reading from the model.
+ * checkout-reading-input.ts, accepting a checkout reading from the model.
  *
  * ══ Why the model reads the page ══════════════════════════════════════════
  *
  * Browser control is general. The model reads a page, decides, clicks and
  * types; a checkout is the same primitive as a signup form. A table of
  * per-merchant selectors would be scaffolding that thinks for the model, and it
- * is brittle in the way that matters most — merchants rewrite their markup
+ * is brittle in the way that matters most, merchants rewrite their markup
  * constantly, so a selector table is a permanent maintenance tax that buys
  * nothing the model cannot already do.
  *
- * So the model reports what it read as STRUCTURED VALUES — per-line label,
+ * So the model reports what it read as STRUCTURED VALUES, per-line label,
  * quantity and unit price, the tax line, each fee, each delivery option, the
- * currency — and the daemon does everything the model cannot be trusted to do
+ * currency, and the daemon does everything the model cannot be trusted to do
  * with them.
  *
  * ══ What "cannot be trusted" means here, precisely ════════════════════════
@@ -20,7 +20,7 @@
  * Not that the model is adversarial. That the numbers came off a page, and a
  * page is written by whoever runs it. By the time a value reaches this module
  * it has been through a process that read attacker-chosen text, so it carries
- * that text's authority — which is none.
+ * that text's authority, which is none.
  *
  * The split that follows from it:
  *
@@ -89,7 +89,7 @@ function readRecord(value: unknown): Record<string, unknown> | null {
 /**
  * Validate a checkout reading supplied over the control plane.
  *
- * Shape and bounds only — this does not interpret a single value. Meaning is
+ * Shape and bounds only, this does not interpret a single value. Meaning is
  * `extractCheckout`'s job, and keeping the two apart is what lets the parser be
  * strict without this layer having to guess what a caller meant.
  */

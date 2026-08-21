@@ -1,5 +1,5 @@
 /**
- * Classifier — assigns a CommandClassification to each command segment
+ * Classifier, assigns a CommandClassification to each command segment
  * and computes the highest-risk classification for a full command.
  *
  * Classification priority (highest → lowest):
@@ -167,7 +167,7 @@ const DANGEROUS_PATTERNS: DangerousPattern[] = [
 // ── Catastrophic command detection ─────────────────────────────────────────────
 
 /**
- * Returns a denial reason when the segment is catastrophic — an operation so
+ * Returns a denial reason when the segment is catastrophic, an operation so
  * irreversible (root filesystem deletion, raw disk destruction, fork bomb)
  * that it is blocked unconditionally, regardless of permission settings.
  *
@@ -290,7 +290,7 @@ export function classifySegment(seg: CommandSegment): CommandClassification {
       // git reset --hard is always destructive; other git destructive cmds need flags
       if (sub === 'reset' && flags.includes('--hard')) return 'destructive';
       if (sub === 'clean') return 'destructive';
-      // git reflog delete etc — treat as destructive
+      // git reflog delete etc, treat as destructive
       if (sub === 'gc' || sub === 'prune') return 'destructive';
       // fallthrough to write for other cases (e.g. git reflog alone = read)
       if (sub === 'reflog' && args.length === 1) return 'read';
@@ -308,9 +308,9 @@ export function classifySegment(seg: CommandSegment): CommandClassification {
     const sub = args[0]! ?? '';
     if (NPM_NETWORK_SUBCOMMANDS.has(sub)) return 'network';
     if (NPM_WRITE_SUBCOMMANDS.has(sub)) return 'write';
-    // run, exec, x, dlx — treat as write (executes code)
+    // run, exec, x, dlx, treat as write (executes code)
     if (sub === 'run' || sub === 'exec' || sub === 'x' || sub === 'dlx') return 'write';
-    // info, view, list, ls, audit, outdated — read
+    // info, view, list, ls, audit, outdated, read
     if (['info', 'view', 'list', 'ls', 'audit', 'outdated'].includes(sub)) return 'read';
     return 'write'; // conservative default
   }
@@ -332,7 +332,7 @@ export function classifySegment(seg: CommandSegment): CommandClassification {
     return seg.tokens.some((t) => t.type === 'redirect') ? 'write' : 'read';
   }
 
-  // Unknown command: conservative default — write
+  // Unknown command: conservative default, write
   return 'write';
 }
 

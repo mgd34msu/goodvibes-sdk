@@ -7,7 +7,7 @@ import { summarizeError } from '../../../utils/error-display.js';
 const DEFAULT_EXECUTE_TIMEOUT_MS = 30_000;
 
 /**
- * execute — Phase 4 of the tool execution pipeline.
+ * execute, Phase 4 of the tool execution pipeline.
  *
  * Calls `tool.execute(args)` and injects the callId into the result.
  * Respects the phase timeout and the budget.maxMs constraint.
@@ -34,7 +34,7 @@ export async function executePhase(
 
   // The exec tool accepts its own `timeout_ms` input for long-running commands
   // (e.g. a full test suite). Never let the phase deadline undercut a caller-
-  // requested exec timeout — otherwise the phase times out the call while the
+  // requested exec timeout, otherwise the phase times out the call while the
   // underlying command legitimately still has time left to run.
   if (call.name === 'exec') {
     const requestedTimeoutMs = (effectiveArgs as Record<string, unknown>)['timeout_ms'];

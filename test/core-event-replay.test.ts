@@ -121,7 +121,7 @@ describe('EventReplayQueue', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // onTurnComplete — turn mechanics
+  // onTurnComplete, turn mechanics
   // ---------------------------------------------------------------------------
   describe('onTurnComplete', () => {
     test('no replays returned within grace period (turn 1, grace=1)', async () => {
@@ -201,7 +201,7 @@ describe('EventReplayQueue', () => {
       queue.enqueue('AGENT_COMPLETED', { id: 'a1' });
       queue.onTurnComplete(); // grace
       for (let i = 0; i < 5; i++) queue.onTurnComplete(); // exhaust and drop
-      // Many more turns — should never return this event again
+      // Many more turns, should never return this event again
       const late = queue.onTurnComplete();
       expect(late).toHaveLength(0);
     });
@@ -461,7 +461,7 @@ describe('EventReplayQueue', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // formatReplays — low maxReplays
+  // formatReplays, low maxReplays
   // ---------------------------------------------------------------------------
   describe('formatReplays with low maxReplays', () => {
     test('maxReplays=1: first replay has [Replay] prefix (replayCount=1 >= URGENT threshold)', async () => {
@@ -477,7 +477,7 @@ describe('EventReplayQueue', () => {
 
     test('maxReplays=2: first replay has [Replay] prefix, second has [Action Required]', async () => {
       // With maxReplays=2: URGENT threshold=2, Action Required=ceil(2*2/3)=ceil(1.33)=2
-      // Both equal 2 — first replay (replayCount=1) gets plain [Replay]
+      // Both equal 2, first replay (replayCount=1) gets plain [Replay]
       const twoQueue = new EventReplayQueue(2, 1);
       twoQueue.enqueue('AGENT_COMPLETED', { id: 'a1' });
       twoQueue.onTurnComplete(); // grace

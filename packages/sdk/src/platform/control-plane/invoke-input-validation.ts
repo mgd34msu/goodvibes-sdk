@@ -10,8 +10,8 @@
  * Scope is deliberately the TYPED subset only:
  *   - Object schemas that declare `properties` are structurally validated.
  *   - Generic object schemas (object with no `properties`, e.g. an
- *     additionalProperties-only "any JSON object") pass through unchanged — the
- *     status quo — so no verb is falsely rejected for extra fields.
+ *     additionalProperties-only "any JSON object") pass through unchanged, the
+ *     status quo, so no verb is falsely rejected for extra fields.
  *   - A verb with no `inputSchema` is untyped and passes through.
  *
  * The validator is lenient on unknown keys (does NOT enforce
@@ -22,7 +22,7 @@
 
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
 
-/** Structured result of a rejected invocation — same 400 shape the router uses. */
+/** Structured result of a rejected invocation, same 400 shape the router uses. */
 export interface InvokeValidationError {
   readonly code: 'INVALID_INPUT';
   readonly detail: string;
@@ -43,9 +43,9 @@ function isGenericObjectSchema(schema: Record<string, unknown> | undefined): boo
 
 /**
  * Classify an inputSchema for both the validate gate and coverage accounting:
- *   - 'validated' — an object schema with declared properties (structurally checked)
- *   - 'generic'   — an object schema with no properties (skipped)
- *   - 'untyped'   — absent, or a non-object root we do not structurally validate (skipped)
+ *   - 'validated', an object schema with declared properties (structurally checked)
+ *   - 'generic'  , an object schema with no properties (skipped)
+ *   - 'untyped'  , absent, or a non-object root we do not structurally validate (skipped)
  */
 export function classifyInputSchema(schema: Record<string, unknown> | undefined): InvokeValidationDisposition {
   if (schema === undefined) return 'untyped';
@@ -70,8 +70,8 @@ function childPath(path: string, key: string): string {
  */
 function validateValue(value: unknown, schema: Record<string, unknown>, path: string): string | null {
   // `anyOf` is a constraint ALONGSIDE the rest of the schema, not an
-  // alternative to it. Treating a matching branch as the whole answer — which
-  // this did — meant a schema carrying both `required` and `anyOf` had its
+  // alternative to it. Treating a matching branch as the whole answer, which
+  // this did, meant a schema carrying both `required` and `anyOf` had its
   // `required` silently skipped for every value that satisfied any branch.
   // `knowledge.ingest.connector` is exactly that shape: it declares
   // `required: ['connectorId']` plus an `anyOf` over input/content/path, and
@@ -90,7 +90,7 @@ function validateValue(value: unknown, schema: Record<string, unknown>, path: st
   return validateBase(value, schema, path);
 }
 
-/** Every schema keyword except `anyOf` — see validateValue for why they split. */
+/** Every schema keyword except `anyOf`, see validateValue for why they split. */
 function validateBase(value: unknown, schema: Record<string, unknown>, path: string): string | null {
   if (Array.isArray(schema.enum) && !schema.enum.includes(value)) {
     return `${schemaLabel(path)} must be one of ${JSON.stringify(schema.enum)}`;

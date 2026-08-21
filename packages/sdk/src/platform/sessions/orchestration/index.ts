@@ -1,5 +1,5 @@
 /**
- * Multi-session orchestration — barrel exports.
+ * Multi-session orchestration, barrel exports.
  */
 
 export type {

@@ -34,7 +34,7 @@ function wrapDispatchWithStepUp(
     const viaRelay = isRelayTunneledRequest(req);
     const mutating = isMutatingMethod(req.method);
     // Bootstrap exemption: minting a step-up challenge is the prerequisite for
-    // producing an assertion, so it cannot itself require one — otherwise a relay
+    // producing an assertion, so it cannot itself require one, otherwise a relay
     // client could never obtain a challenge (a deadlock). It creates only an
     // ephemeral, single-use challenge and returns no privileged data. Credential
     // registration is deliberately NOT exempt: it is an admin/local-only
@@ -69,7 +69,7 @@ const STEP_UP_CHALLENGE_MINT_PATH = '/api/stepup/challenge';
 /**
  * Compose a {@link RelayReachability} from daemon collaborators. The daemon's
  * relay identity is persisted through the SecretsManager (JSON), and tunneled
- * requests are replayed through `dispatch` — the daemon's own request handler —
+ * requests are replayed through `dispatch`, the daemon's own request handler,
  * so a relayed call is indistinguishable from a LAN call save for the via-relay
  * marker header.
  */

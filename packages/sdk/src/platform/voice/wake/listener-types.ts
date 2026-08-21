@@ -1,5 +1,5 @@
 /**
- * listener-types.ts — the wake listener's public contract, split from
+ * listener-types.ts, the wake listener's public contract, split from
  * listener.ts so the runtime file stays under the line cap. Pure declarations:
  * nothing here executes, and listener.ts re-exports every name so consumers
  * keep their import path.
@@ -64,7 +64,7 @@ export interface WakeListenerState {
    *
    * A surface showed "listening for the wake phrase" through an entire boot on a
    * machine with zero capture streams, no recorder process, and not one line in
-   * the log — because the indicator was driven by the listener's INTENT (it had
+   * the log, because the indicator was driven by the listener's INTENT (it had
    * reached `starting`) rather than by audio. Intent is not evidence.
    */
   readonly framesFlowing: boolean;
@@ -85,7 +85,7 @@ export type WakeStartRefusal =
   /** Capture could not be opened; `detail` carries the reason. */
   | 'capture-unavailable'
   /**
-   * This host has no microphone — no input sources, or only output monitors.
+   * This host has no microphone, no input sources, or only output monitors.
    * Distinct from `capture-unavailable` because nothing is broken and nothing
    * will fix itself: showing a listening indicator here would be a lie.
    */
@@ -118,7 +118,7 @@ export interface WakeListenerHandlers {
   /** Capture failed or ended. `restarting` false means the supervisor latched. */
   readonly onFailure?: ((error: AudioCaptureError, restarting: boolean, detail: string) => void) | undefined;
   /**
-   * The input device binding resolved or CHANGED — the pinned device was
+   * The input device binding resolved or CHANGED, the pinned device was
    * missing and capture fell back, or it came back and capture moved to it.
    * One line, shown to the user: a device rollover that happens silently is
    * indistinguishable from a detector that stopped working.
@@ -130,7 +130,7 @@ export interface WakeListenerOptions {
   readonly settings: WakeRuntimeSettings;
   /**
    * Opens the device. The listener wraps it so `voice.wake.noiseSuppression` is
-   * applied here rather than per surface — see createNoiseSuppressingOpener in
+   * applied here rather than per surface, see createNoiseSuppressingOpener in
    * capture/noise-suppression.ts. A host therefore passes the same unfiltered
    * opener it always did.
    */
@@ -142,7 +142,7 @@ export interface WakeListenerOptions {
   readonly createNoiseSuppression?: NoiseSuppressionFactory | undefined;
   /**
    * Builds the engine, models loaded. Called on every start INCLUDING a restart,
-   * because a restart exists to recover from a runtime that died — reusing the
+   * because a restart exists to recover from a runtime that died, reusing the
    * session that just failed would restart nothing.
    */
   readonly createEngine: () => Promise<WakeWordEngine>;
@@ -150,7 +150,7 @@ export interface WakeListenerOptions {
   /**
    * Lists this host's input devices, so `voice.wake.inputDevice` can be checked
    * rather than believed. Omitted, the pin is used exactly as written and the
-   * binding reports itself unverified — the behaviour every surface had before
+   * binding reports itself unverified, the behaviour every surface had before
    * this seam existed.
    */
   readonly enumerateInputDevices?: AudioInputDeviceEnumerator | undefined;
@@ -164,7 +164,7 @@ export interface WakeListenerOptions {
    *
    * There was no such bound. Opening builds an inference engine and a capture
    * stream, and an await that never settles left the listener in `starting`
-   * forever — silently, because nothing reports a start that neither succeeds
+   * forever, silently, because nothing reports a start that neither succeeds
    * nor fails. A stall is now a failure like any other.
    */
   readonly startTimeoutMs?: number | undefined;
@@ -182,7 +182,7 @@ export interface WakeListenerOptions {
    * A capture that ran to the ceiling and one that ended on silence are the same
    * event from outside: an utterance arrived. Which of them happened, and what
    * the floor was doing when it did, is the whole diagnosis of "it kept
-   * listening after I stopped talking" — and it was not written down anywhere.
+   * listening after I stopped talking", and it was not written down anywhere.
    * Omitted, nothing is recorded and the listener behaves exactly as before.
    */
   readonly recordDiagnostic?: ((entry: VoiceDiagnosticEntry) => void) | undefined;

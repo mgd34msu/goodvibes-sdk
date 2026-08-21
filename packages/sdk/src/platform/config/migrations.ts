@@ -7,7 +7,7 @@
  * `CONFIG_SCHEMA`/`ConfigKey`, a stray `danger.daemon` value in an existing
  * settings.json would otherwise be silently ignored by the deep-merge (the
  * default config's `danger` object no longer declares a `daemon` field to
- * merge onto) — which would flip a user's explicit two-year off-switch
+ * merge onto), which would flip a user's explicit two-year off-switch
  * (`danger.daemon = false`) back to daemon-ON the moment they upgrade. This
  * migration closes that hazard by rewriting the explicit choice onto
  * `daemon.enabled` BEFORE the merge, so the alias is honored exactly once
@@ -25,7 +25,7 @@ export interface DangerDaemonMigrationResult {
   readonly config: Record<string, unknown>;
   /**
    * Present only when an explicit `danger.daemon = false` was rewritten onto
-   * `daemon.enabled = false` — the one case that changes resolved behavior.
+   * `daemon.enabled = false`, the one case that changes resolved behavior.
    * Callers can use this to report the migration honestly (e.g. a log line).
    */
   readonly rewroteDaemonEnabledFalse: boolean;
@@ -42,7 +42,7 @@ export interface DangerDaemonMigrationResult {
  * file, because the alias historically took precedence.
  *
  * Idempotent: config that has already been migrated (or never had the alias)
- * comes back unchanged — `migrated: false`, same reference.
+ * comes back unchanged, `migrated: false`, same reference.
  *
  * - `danger.daemon === false` -> `daemon.enabled = false` (rewritten), alias removed.
  * - `danger.daemon === true`  -> alias removed, no rewrite (daemon.enabled
@@ -66,7 +66,7 @@ export function migrateDangerDaemonAlias(parsed: Record<string, unknown>): Dange
     return { migrated: true, config: nextConfig, rewroteDaemonEnabledFalse: true };
   }
 
-  // alias === true, or non-boolean junk: nothing to preserve — daemon.enabled
+  // alias === true, or non-boolean junk: nothing to preserve, daemon.enabled
   // already defaults true, and a non-boolean value was never a valid override.
   return { migrated: true, config: nextConfig, rewroteDaemonEnabledFalse: false };
 }
@@ -253,7 +253,7 @@ export function migrateLegacyFeatureToggles(parsed: Record<string, unknown>): Le
       write('behavior.compactionStrategy', 'distiller');
     } else if (off('compaction-distiller-strategy') && readDot(parsed, 'behavior.compactionStrategy') === 'distiller') {
       // Legacy resolved a distiller selection back to structured while the
-      // distiller toggle was off — preserve that resolution explicitly.
+      // distiller toggle was off, preserve that resolution explicitly.
       write('behavior.compactionStrategy', 'structured');
     }
   }
@@ -323,7 +323,7 @@ export interface FleetMaxSizeMigrationResult {
 /**
  * Invisible key migration for the owner-named cap ("Maximum fleet size"):
  * an explicit legacy `orchestration.maxActiveAgents` moves onto
- * `fleet.maxSize` (which wins if BOTH are present — the new key is the one
+ * `fleet.maxSize` (which wins if BOTH are present, the new key is the one
  * the user can see) and the legacy key is removed. Idempotent; a file with
  * no legacy key is returned untouched.
  */
@@ -360,7 +360,7 @@ export interface ControlPlaneBaseUrlMigrationResult {
  *
  * The key had no writers: every site that configured the daemon set
  * `hostMode`/`host`/`port` and left this string untouched, so it drifted from
- * the real bind on three axes at once — the port, the scheme (TLS on, stored
+ * the real bind on three axes at once, the port, the scheme (TLS on, stored
  * value still http), and a host typed in once and passed through verbatim
  * afterwards. The URL is now DERIVED from the bind (see
  * `control-plane-base-url.ts`), so there is nothing left for a stored copy to
@@ -369,7 +369,7 @@ export interface ControlPlaneBaseUrlMigrationResult {
  * The old value is deliberately NOT carried over to `controlPlane.publicBaseUrl`.
  * That key means "an external address the bind cannot describe", and silently
  * promoting a stale mirror into an explicit declaration would preserve exactly
- * the drift this removes — the owner's own loopback string would have become a
+ * the drift this removes, the owner's own loopback string would have become a
  * declared external address. The removed value is quoted in the receipt instead,
  * so anyone who genuinely meant a tunnel or proxy address can re-declare it.
  *
@@ -411,14 +411,14 @@ export interface DaemonEmbedInProcessMigrationResult {
  *
  * The key offered a choice no shipped surface could act on. Every product starts
  * host services in adopt-only mode, and the adoption policy answers adopt-only
- * before it ever looks at the embed preference — so a settings file with
+ * before it ever looks at the embed preference, so a settings file with
  * `embedInProcess: true` produced exactly the same behaviour as one without it.
  * A toggle the settings UI presented as live, with a "NOT RECOMMENDED" warning
  * attached, for a branch that could not run, is worse than an inert key: it
  * described a topology the product does not have.
  *
- * Hosting a daemon inside another process is still possible — it is how an
- * embedder composes one and how tests build one without a port — but that is an
+ * Hosting a daemon inside another process is still possible, it is how an
+ * embedder composes one and how tests build one without a port, but that is an
  * argument to the composition API, not a preference a user files in settings.
  *
  * The value is not carried anywhere. There is no setting left that means what it
@@ -466,8 +466,8 @@ export interface DaemonConnectedHostSplitMigrationResult {
  * connected to. Turning it off to decline the first silently declined the
  * second, so on such a machine the session-inputs poll, the rewind host
  * registration, the approvals stream and the hosted-conversation handoff all
- * refused, while the session spine, the memory spine and the operator tools —
- * which never read the flag — dialed the same live host without trouble.
+ * refused, while the session spine, the memory spine and the operator tools,
+ * which never read the flag, dialed the same live host without trouble.
  *
  * The new key defaults to `true`, so the behaviour is already right the moment
  * this build loads such a file, with or without this pass. What the pass adds
@@ -481,13 +481,13 @@ export interface DaemonConnectedHostSplitMigrationResult {
  *    that never mentioned the key was never affected by the conflation and gets
  *    nothing added to it.
  *  - The value written is `true`, NOT the old `false`. Carrying the old value
- *    over would preserve the exact defect — the old `false` was never a
+ *    over would preserve the exact defect, the old `false` was never a
  *    decision about dialing, because there was no way to make one.
  *  - `daemon.enabled` itself is left exactly as the user wrote it. It still
  *    means something, and this pass is a split, not a removal.
  *
- * Idempotent: a file that already states `daemon.connectedHost.enabled` — at
- * either value — is returned untouched, so a user who turns dialing off keeps
+ * Idempotent: a file that already states `daemon.connectedHost.enabled`, at
+ * either value, is returned untouched, so a user who turns dialing off keeps
  * it off across every later load.
  */
 export function migrateDaemonConnectedHostSplit(
@@ -543,7 +543,7 @@ export interface PaymentsBudgetMigrationResult {
  * The four payments budget amounts, old name to new.
  *
  * Exported because the settings-honesty screen has to recognise the old names
- * as keys that are ON THEIR WAY somewhere rather than keys nobody knows — a
+ * as keys that are ON THEIR WAY somewhere rather than keys nobody knows, a
  * file being migrated must not also be reported as carrying unknown settings.
  */
 export const PAYMENTS_BUDGET_RENAMES: ReadonlyArray<readonly [string, string]> = [
@@ -563,7 +563,7 @@ export const LEGACY_PAYMENTS_BUDGET_KEYS: readonly string[] =
  * What was stored was the count of the currency's smallest division: `10000`
  * meant a hundred. What is stored now is the amount itself, written the way the
  * owner would say it, so `10000` becomes `100` and `1999` becomes `19.99`. The
- * new number is the simplest exact form of the old one — a whole amount stays
+ * new number is the simplest exact form of the old one, a whole amount stays
  * whole, and one that needs a decimal keeps exactly the decimal it needs.
  *
  * A value already sitting under the new name is left alone and the old key is
@@ -636,16 +636,16 @@ export const RETIRED_OCCASIONS_FINAL_STRETCH_KEY = 'occasions.finalStretchDays';
  * Remove the stored `occasions.finalStretchDays`.
  *
  * The key set how many days before a date the reminder rhythm went DAILY. That
- * rhythm no longer exists. An occasion now speaks at two fixed moments — the day
- * it enters its runway, and the day itself — and a count of two has nothing to
+ * rhythm no longer exists. An occasion now speaks at two fixed moments, the day
+ * it enters its runway, and the day itself, and a count of two has nothing to
  * tune. Keeping the key would leave a number in the settings UI that changed
  * nothing, which is the inert-toggle failure the platform has a rule against.
  *
  * The rhythm it described is the one the owner ended: with an hourly sweep, "go
  * daily near the date" plus a due date that could never move past the occurrence
  * meant he was told about his own birthday every hour. Nothing unresolved was
- * dropped in the fix — an occasion still gets its two touches and still answers
- * when he asks what is coming up — so there is no behaviour left for this
+ * dropped in the fix, an occasion still gets its two touches and still answers
+ * when he asks what is coming up, so there is no behaviour left for this
  * setting to govern and no value worth carrying to a new name.
  *
  * The value is not moved anywhere. There is no setting that means what it meant,

@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/forensics
+ * Coverage-gap smoke test, platform/runtime/forensics
  * Verifies that classifier, collector, and registry modules load correctly.
  * Closes coverage gap: platform/runtime/forensics
  */

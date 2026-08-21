@@ -1,5 +1,5 @@
 /**
- * Stage B — turn-knowledge-injection.ts code-injection unit suite.
+ * Stage B, turn-knowledge-injection.ts code-injection unit suite.
  *
  * buildPerTurnKnowledgeInjection now optionally merges repo code-index hits into the
  * SAME token budget / relevance floor as memory records, tagging each injected line with
@@ -159,7 +159,7 @@ describe('code injection — never injects from an unhealthy index (stats gates)
   });
 
   test('provider-space mismatch => skipped with the store’s own message, never injects', () => {
-    const code = fakeCodeIndex([makeCodeHit('src/x.ts', 0.9)], { embeddingProviderMismatch: 'embeddings built with X, current provider Y — rebuild to re-embed' });
+    const code = fakeCodeIndex([makeCodeHit('src/x.ts', 0.9)], { embeddingProviderMismatch: 'embeddings built with X, current provider Y, rebuild to re-embed' });
     const result = buildPerTurnKnowledgeInjection(baseInput({ codeIndex: code, codeInjectionEnabled: true }));
     expect(result.block).toBeNull();
     expect(result.record.codeInjectionSkipped).toContain('rebuild to re-embed');

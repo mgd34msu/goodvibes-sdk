@@ -1,5 +1,5 @@
 /**
- * OpenTelemetry observer — in-memory collector integration tests.
+ * OpenTelemetry observer, in-memory collector integration tests.
  *
  * Verifies that createOpenTelemetryObserver emits the correct spans and
  * metric increments for every SDKObserver callback:
@@ -8,7 +8,7 @@
  *   - onTransportActivity (recv only) → sdk.transport.duration_ms histogram
  *   - onEvent           → no-op (no metric emitted; verified by absence)
  *
- * All assertions run against in-memory collector mocks — no real OTEL
+ * All assertions run against in-memory collector mocks, no real OTEL
  * infrastructure required.
  */
 

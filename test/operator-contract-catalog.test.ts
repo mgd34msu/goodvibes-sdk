@@ -25,7 +25,7 @@ function propertySchema(schema: Record<string, unknown>, path: readonly string[]
 // ---------------------------------------------------------------------------
 
 function makeMinimalCatalog(options: { methods: number; events: number }): GatewayMethodCatalog {
-  // includeBuiltins: false — clean slate so we control the exact counts
+  // includeBuiltins: false, clean slate so we control the exact counts
   const catalog = new GatewayMethodCatalog({ includeBuiltins: false });
 
   for (let i = 0; i < options.methods; i++) {
@@ -93,7 +93,7 @@ describe('buildOperatorContract uses catalog parameter', () => {
     const contractB = buildOperatorContract(catalogB);
     expect(contractA.operator.methods).toHaveLength(2);
     expect(contractB.operator.methods).toHaveLength(6);
-    // The counts must differ — if both returned the static contract, they'd be equal
+    // The counts must differ, if both returned the static contract, they'd be equal
     expect(contractA.operator.methods.length).not.toBe(contractB.operator.methods.length);
   });
 
@@ -170,7 +170,7 @@ describe('built-in operator contract method schemas', () => {
     expect(Array.isArray(required) ? required : []).toEqual(expect.arrayContaining(['kind', 'lastActivityAt']));
     // ...but per docs/decisions/2026-07-05-session-wire-mixed-version.md, readers must
     // tolerate a mixed-version daemon that omits it, so it is NOT contractually
-    // required on the wire response — the schema-level gate must not preempt
+    // required on the wire response, the schema-level gate must not preempt
     // normalizeSharedSessionRecord's backfill to 'unknown'.
     expect(Array.isArray(required) ? required : []).not.toContain('project');
   });

@@ -46,7 +46,7 @@ describe('goodvibes-toolchain dispatcher', () => {
   });
 
   test('the goodvibes- prefixed form dispatches the same as the bare tool name', () => {
-    // per-job-green with no --repo/--sha exits 2 with its own named error —
+    // per-job-green with no --repo/--sha exits 2 with its own named error,
     // proof the dispatcher reached the real tool with a clean argv.
     for (const name of ['per-job-green', 'goodvibes-per-job-green']) {
       const res = spawnSync('bun', [DISPATCHER_DIST, name], {

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Agents domain state — tracks all spawned agent sessions including
+ * Agents domain state, tracks all spawned agent sessions including
  * subagents, WRFC chain agents, and orchestrator agents.
  */
 
@@ -81,7 +81,7 @@ export interface RuntimeAgent {
   toolCallCount: number;
   /**
    * Accumulated token usage for this agent's run. Undefined means no usage
-   * data has landed yet — never fabricated as zeros (honest-UX: an agent
+   * data has landed yet, never fabricated as zeros (honest-UX: an agent
    * that hasn't reported usage is distinct from one that used zero tokens).
    */
   usage?: AgentUsage | undefined;
@@ -110,7 +110,7 @@ export interface RuntimeAgent {
 }
 
 /**
- * AgentDomainState — all spawned agents across all subsystems.
+ * AgentDomainState, all spawned agents across all subsystems.
  */
 export interface AgentDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

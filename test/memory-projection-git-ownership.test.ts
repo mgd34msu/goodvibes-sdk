@@ -78,7 +78,7 @@ describe('memory projection commits only to a repository it owns (real git)', ()
       git: createMemoryProjectionGit(),
     });
 
-    // The projection completed and committed — honestly, to its OWN repo.
+    // The projection completed and committed, honestly, to its OWN repo.
     expect(report.committed).toBe(true);
     expect(report.written.length).toBe(1);
 

@@ -11,7 +11,7 @@
  *   - Owned instance: wire a `SessionLineageTracker` through bootstrap/services.
  *   - Session-scoped: call `reset()` when starting a new session.
  *   - Append-only: entries are never modified or removed after being added.
- *   - `setOriginalTask()` is idempotent — only the first call takes effect.
+ *   - `setOriginalTask()` is idempotent, only the first call takes effect.
  */
 export class SessionLineageTracker {
   private originalTask: string | null = null;
@@ -19,7 +19,7 @@ export class SessionLineageTracker {
 
   /**
    * Set the original task for this session.
-   * Idempotent — if called more than once only the first call takes effect.
+   * Idempotent, if called more than once only the first call takes effect.
    * Safe to call from multiple init paths.
    */
   setOriginalTask(task: string): void {

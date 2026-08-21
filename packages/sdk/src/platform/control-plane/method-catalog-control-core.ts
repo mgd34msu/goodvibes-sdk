@@ -92,7 +92,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'control.status',
     title: 'Daemon Status',
-    description: 'Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact\'s own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.',
+    description: 'Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact\'s own release version, what a person installed, and what the auto-update loop compares against release tags, and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered, exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.',
     category: 'control-plane',
     scopes: ['read:control-plane'],
     http: { method: 'GET', path: '/status' },
@@ -367,7 +367,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.register',
     title: 'Register Shared Session',
-    description: 'Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.',
+    description: 'Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it, the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/register' },
@@ -424,7 +424,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.delete',
     title: 'Delete Shared Session',
-    description: 'Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb — NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.',
+    description: 'Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb, NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'DELETE', path: '/api/sessions/{sessionId}' },
@@ -440,7 +440,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   // the operator wire. The daemon answers only for the live LOCAL runtime it
   // hosts; any other session id is an honest 404 (SESSION_NOT_LOCAL). A mode
   // change flows to surfaces as runtime.permissions (PERMISSION_MODE_CHANGED)
-  // via the config-change binding — see routes/session-runtime.ts and
+  // via the config-change binding, see routes/session-runtime.ts and
   // permissions/mode-change-emitter.ts. The context-usage figures derive from
   // the token ESTIMATOR (estimatedContextTokens), not a measured provider
   // count; the field name and the `estimated` flag keep that honest.
@@ -588,7 +588,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.inputs.deliver',
     title: 'Mark Shared Session Input Delivered',
-    description: 'A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with — the daemon writes it into the session and delivers it to the channel.',
+    description: 'A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session, where steer/follow-up inputs queue for the surface rather than spawn a daemon executor, closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with, the daemon writes it into the session and delivers it to the channel.',
     category: 'sessions',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/sessions/{sessionId}/inputs/{inputId}/deliver' },
@@ -608,7 +608,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   // the session-spine list-filter shape (project/kind/includeClosed) with free-text
   // `query`, `surfaceKind`, `status`, and opaque cursor pagination. Handler:
   // routes/session-search.ts (registered directly on the catalog with no
-  // `http` REST binding — see the transport note below).
+  // `http` REST binding, see the transport note below).
   //
   // TRANSPORT NOTE (applies to sessions.search + the whole fleet.*/
   // checkpoints.* block below): `transport: ['ws']` with no `http` binding is
@@ -616,19 +616,19 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   // sanctioned category for a catalog method dispatchable ONLY via the
   // generic invoke-by-id mechanism (`gatewayMethods.hasHandler`/`invoke`,
   // daemon/control-plane.ts `invokeGatewayMethodCall`) rather than a
-  // dedicated REST path — reachable today over HTTP via
+  // dedicated REST path, reachable today over HTTP via
   // `POST /api/control-plane/methods/{methodId}/invoke` AND over WebSocket
   // via a `{type:'call', methodId}` frame (both converge on the same
   // invokeGatewayMethodCall). A typed client wrapper (operator-sdk
   // client-core.ts's invokeContractRoute, which dispatches by literal
-  // http.method/http.path) is NOT wired for these verbs by this brief —
+  // http.method/http.path) is NOT wired for these verbs by this brief,
   // that is curated, consumer-side work for whichever later stage first
   // needs a typed wrapper (W1/W2/T2), not a requirement of landing the SDK
   // contract itself.
   methodDescriptor({
     id: 'sessions.search',
     title: 'Search Shared Sessions',
-    description: 'Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default — pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.',
+    description: 'Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default, pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.',
     category: 'sessions',
     scopes: ['read:sessions'],
     transport: ['ws'],
@@ -636,7 +636,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: SESSIONS_SEARCH_OUTPUT_SCHEMA,
   }),
   // Session-scoped aggregate workspace file changes, joined over the session's
-  // sessionId-stamped WorkspaceCheckpoints — "what changed in THIS session" for
+  // sessionId-stamped WorkspaceCheckpoints, "what changed in THIS session" for
   // a remote surface, computed from one diff spanning the session's earliest
   // (its parent, or the empty tree) to its latest checkpoint. Handler:
   // routes/checkpoints.ts (over the same workspaceCheckpointManager the
@@ -646,7 +646,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'sessions.changes.get',
     title: 'Get Session Workspace Changes',
-    description: 'Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session\'s earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY") — an honest "nothing recorded", not an error.',
+    description: 'Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session\'s earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY"), an honest "nothing recorded", not an error.',
     category: 'sessions',
     scopes: ['read:sessions'],
     transport: ['ws'],
@@ -715,7 +715,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
     outputSchema: TASK_STATUS_OUTPUT_SCHEMA,
   }),
   // fleet.* + checkpoints.* descriptors moved to method-catalog-fleet.ts
-  // (see CHANGELOG 1.0.0) — this file was already at the 800-line cap; see that file's
+  // (see CHANGELOG 1.0.0), this file was already at the 800-line cap; see that file's
   // header comment for the full design rationale, merged in by
   // method-catalog-control.ts alongside method-catalog-control-automation.ts.
   methodDescriptor({
@@ -731,7 +731,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'approvals.raise',
     title: 'Raise Approval',
-    description: 'Raise a permission ask INTO the shared broker from a surface that is not in the daemon\'s process — the write counterpart to approvals.list/claim/approve/deny/cancel, which could only ever act on asks the daemon\'s own in-process callers had created. The ask becomes a record every surface can see and decide, and the daemon\'s attention machinery (web push, blocked-on-user) fans it out. Returns the PENDING record immediately and does NOT block waiting for an answer: the decision arrives on the control.approval_update event (SSE/WS, `permissions` domain), which is the channel to watch using the returned id. An identical ask already in flight (same session, tool and args) coalesces onto the existing record — one prompt, one decision, `coalesced: true`, and the returned record is that earlier one. Optional timeoutMs expires the ask if nobody answers (clamped to 12h); optional waitMs waits inline for a decision for callers that want one round trip (clamped to 60s) and reports `decided: false` with the record still pending when it runs out, never a decision that was not made. ws-only invoke verb; no REST binding.',
+    description: 'Raise a permission ask INTO the shared broker from a surface that is not in the daemon\'s process, the write counterpart to approvals.list/claim/approve/deny/cancel, which could only ever act on asks the daemon\'s own in-process callers had created. The ask becomes a record every surface can see and decide, and the daemon\'s attention machinery (web push, blocked-on-user) fans it out. Returns the PENDING record immediately and does NOT block waiting for an answer: the decision arrives on the control.approval_update event (SSE/WS, `permissions` domain), which is the channel to watch using the returned id. An identical ask already in flight (same session, tool and args) coalesces onto the existing record, one prompt, one decision, `coalesced: true`, and the returned record is that earlier one. Optional timeoutMs expires the ask if nobody answers (clamped to 12h); optional waitMs waits inline for a decision for callers that want one round trip (clamped to 60s) and reports `decided: false` with the record still pending when it runs out, never a decision that was not made. ws-only invoke verb; no REST binding.',
     category: 'approvals',
     scopes: ['write:approvals'],
     transport: ['ws'],
@@ -751,7 +751,7 @@ export const builtinGatewayControlCoreMethodDescriptors: readonly GatewayMethodD
   methodDescriptor({
     id: 'approvals.approve',
     title: 'Approve Approval',
-    description: 'Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval\'s own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command\'s terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response\'s recorded block reports what the broker actually recorded.',
+    description: 'Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval\'s own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval, e.g. the typed answer to a command\'s terminal prompt, to the waiting call (selectedHunks supersedes it when both are present). The response\'s recorded block reports what the broker actually recorded.',
     category: 'approvals',
     scopes: ['write:approvals'],
     http: { method: 'POST', path: '/api/approvals/{approvalId}/approve' },

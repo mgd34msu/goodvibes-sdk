@@ -2,7 +2,7 @@
  * host-binding-resolver.test.ts
  *
  * Bind-honesty seams: resolveHostBinding has an explicit posture for
- * unrecognized hostMode values (safe local fallback + recognized:false —
+ * unrecognized hostMode values (safe local fallback + recognized:false,
  * consumers no longer invent their own handling), and the web endpoint has a
  * real binding resolver (validated port with explicit fallback semantics)
  * that surface-registry / announcements / the tailscale verb anchor to.
@@ -53,7 +53,7 @@ describe('resolveWebBinding — the web endpoint truth', () => {
       expect(binding.port, `port ${String(raw)} must fall back`).toBe(3423);
       if (raw !== undefined) expect(binding.recognized).toBe(raw === undefined);
     }
-    // undefined = simply unset — the documented default applies and stays honest.
+    // undefined = simply unset, the documented default applies and stays honest.
     expect(resolveWebBinding({}).port).toBe(3423);
   });
 

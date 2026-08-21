@@ -8,8 +8,8 @@
  *
  * THE HONESTY CONTRACT (this is the whole point of the module):
  * neither operation ever deletes or overwrites message history. A regenerate or
- * an edit marks the affected messages as SUPERSEDED — they stay in the message
- * list and on disk, flagged with `supersededAt`/`supersededReason` — and then a
+ * an edit marks the affected messages as SUPERSEDED, they stay in the message
+ * list and on disk, flagged with `supersededAt`/`supersededReason`, and then a
  * fresh turn runs from the fork point. The "active" conversation is the chain of
  * messages WITHOUT a `supersededAt`; everything behind a fork remains
  * retrievable. Nothing is silently lost, mirroring the delete-means-delete
@@ -62,7 +62,7 @@ function supersedeFrom(
   return superseded;
 }
 
-/** The active (non-superseded) messages, in order — the live conversation chain. */
+/** The active (non-superseded) messages, in order, the live conversation chain. */
 export function activeMessages(messages: readonly CompanionChatMessage[]): CompanionChatMessage[] {
   return messages.filter((m) => m.supersededAt === undefined);
 }
@@ -158,7 +158,7 @@ export interface EditBranchPlan {
 /**
  * Apply an edit-and-branch: the target must be an active user message. It and
  * everything after it are superseded (retained), then a new user message with
- * the edited content — carrying `revisionOf` back to the original — is appended.
+ * the edited content, carrying `revisionOf` back to the original, is appended.
  * The caller then rebuilds the conversation from the active chain and runs a
  * turn.
  *

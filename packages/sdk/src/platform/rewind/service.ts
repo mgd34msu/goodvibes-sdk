@@ -1,5 +1,5 @@
 /**
- * service.ts — UnifiedRewindService.
+ * service.ts, UnifiedRewindService.
  *
  * One coordinator over the platform's existing history stores. `plan()` is a
  * dry-run preview of exactly what a rewind to a turn anchor would change, plus
@@ -200,7 +200,7 @@ export class UnifiedRewindService {
         undoFiles: null,
       };
     }
-    // safetyCheckpoint: true records the pre-restore state — the undo point that
+    // safetyCheckpoint: true records the pre-restore state, the undo point that
     // makes this rewind reversible (restore that checkpoint to reverse it).
     const result = await this.workspace.restore(checkpoint.id, { safetyCheckpoint: true });
     return {

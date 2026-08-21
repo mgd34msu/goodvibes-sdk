@@ -1,5 +1,5 @@
 /**
- * WorkspaceCheckpointManager — root guard, git-root preference, first-snapshot
+ * WorkspaceCheckpointManager, root guard, git-root preference, first-snapshot
  * size guard, and automatic retention wiring.
  *
  * Pins the protections added after an orphaned multi-GiB checkpoint store
@@ -42,7 +42,7 @@ describe('WorkspaceCheckpointManager — broad-root guard', () => {
 
     expect(message).toContain('user home directory');
     expect(message).toContain('allowBroadRoot');
-    // No snapshot was recorded for the refused root — the guard blocks the
+    // No snapshot was recorded for the refused root, the guard blocks the
     // actual checkpoint commit/objects (the thing that regrows the store), not
     // the tiny empty side-repo scaffolding init lays down.
     expect(await manager.list()).toHaveLength(0);
@@ -169,7 +169,7 @@ describe('WorkspaceCheckpointManager — automatic retention wiring', () => {
       await manager.create({ kind: 'turn', label: `turn ${i}`, retentionClass: 'standard' });
     }
 
-    // No automatic sweep fired — the store is over-limit but untouched until manual gc().
+    // No automatic sweep fired, the store is over-limit but untouched until manual gc().
     expect(gcCalls).toBe(0);
     const before = await manager.list();
     expect(before.length).toBe(3);

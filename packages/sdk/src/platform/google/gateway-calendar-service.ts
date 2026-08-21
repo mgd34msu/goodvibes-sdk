@@ -4,7 +4,7 @@
  * This is the piece that was missing. `calendar.events.list`,
  * `calendar.events.get`, `calendar.events.create`, `calendar.ics.export` and
  * `calendar.ics.import` were cataloged with `invokable: false` because no
- * daemon-reachable implementation existed — the connector lived inside one
+ * daemon-reachable implementation existed, the connector lived inside one
  * product. This adapts the hoisted connector onto the service slice the verb
  * handlers are written against, so the daemon serves them for real, with no
  * product process attached.
@@ -18,7 +18,7 @@
  *
  * Every failure the connector reports carries a `problem` and a `fix`, and both
  * survive into the `GatewayVerbError` a caller sees. A missing scope answers
- * "the credential lacks the required permission — re-authorize with the needed
+ * "the credential lacks the required permission, re-authorize with the needed
  * scope", not a bare 500.
  */
 
@@ -55,8 +55,8 @@ export interface GoogleCalendarGatewayServiceOptions {
    *
    * An event whose organizer is somebody other than the owner was written by
    * that somebody, and reading it is the same exposure as reading their mail.
-   * Recorded from the READ paths — `listEvents`, `getEvent`, `exportIcs` and
-   * `importIcs` — each of which runs because a caller asked. An event Google
+   * Recorded from the READ paths, `listEvents`, `getEvent`, `exportIcs` and
+   * `importIcs`, each of which runs because a caller asked. An event Google
    * says the owner organized (`organizer.self`) records nothing: he wrote it.
    * See calendar/untrusted-events.ts.
    */
@@ -274,7 +274,7 @@ export function createGoogleCalendarGatewayService(
       }
       const parsed = parseIcs(icsContent);
       // Somebody else's text, read because the caller asked for it to be
-      // imported — recorded before anything is written to a real calendar.
+      // imported, recorded before anything is written to a real calendar.
       recordCalendarEventIngest({
         record: options.recordUntrustedIngest,
         provenance: { kind: 'ics-import' },

@@ -1,10 +1,10 @@
 /**
- * types.ts — the vocabulary of a daemon-hosted session.
+ * types.ts, the vocabulary of a daemon-hosted session.
  *
  * A hosted session is a conversation whose loop runs INSIDE the daemon process
  * rather than inside the client that started it. That is the whole difference:
  * the same orchestrator, the same tool registry, the same permission manager a
- * terminal runs — composed on the other side of the wire, so the conversation
+ * terminal runs, composed on the other side of the wire, so the conversation
  * does not end when the client that opened it goes away.
  *
  * Whether it actually survives that departure is a POLICY, not a property of
@@ -16,9 +16,9 @@
 /**
  * What happens to a hosted session when the last attached client detaches.
  *
- * - `kill` — the session is terminated with the reason `detached`. This is the
+ * - `kill`, the session is terminated with the reason `detached`. This is the
  *   DEFAULT, and it is the behavior every surface has always had.
- * - `survive` — the session stays alive, idle, and reattachable; a later
+ * - `survive`, the session stays alive, idle, and reattachable; a later
  *   `sessions.hosted.attach` resumes it with its history.
  *
  * The effective policy for a session is its own override when it was created
@@ -40,7 +40,7 @@ export type HostedSessionStatus =
  *
  * Every terminal transition carries one of these. A session that vanished for a
  * reason nobody recorded is the failure mode the durability treatment exists to
- * remove — a restart that cannot resume a session reports `restart-unresumable`
+ * remove, a restart that cannot resume a session reports `restart-unresumable`
  * rather than quietly dropping the record.
  */
 export type HostedSessionTerminationReason =
@@ -73,7 +73,7 @@ export interface HostedSessionRecord {
    * `hostedSessions.detachPolicy` setting. Null is the normal case.
    */
   readonly detachPolicy: HostedDetachPolicy | null;
-  /** The policy that WOULD apply right now — the override, else the setting. */
+  /** The policy that WOULD apply right now, the override, else the setting. */
   readonly effectiveDetachPolicy: HostedDetachPolicy;
   /** Client ids currently attached. A session with none is not necessarily dead. */
   readonly attachedClients: readonly string[];
@@ -81,7 +81,7 @@ export interface HostedSessionRecord {
   readonly modelId?: string | undefined;
   readonly createdAt: number;
   readonly updatedAt: number;
-  /** Turns completed, errored or cancelled — every turn that ran. */
+  /** Turns completed, errored or cancelled, every turn that ran. */
   readonly turnCount: number;
   /** Messages in the conversation, including the ones restored from disk. */
   readonly messageCount: number;
@@ -96,7 +96,7 @@ export interface HostedSessionRecord {
   readonly restoredFromDisk: boolean;
   /**
    * The surface this session was created for. Persisted so a session restored
-   * after a daemon restart keeps the identity it was created with — rebuilding
+   * after a daemon restart keeps the identity it was created with, rebuilding
    * it as the host's own surface would move its client-owned settings to a
    * different file halfway through its life.
    */
@@ -148,7 +148,7 @@ export interface CreateHostedSessionInput {
   /** The client creating it, attached immediately when given. */
   readonly clientId?: string | undefined;
   /**
-   * The surface this session was created FOR — `agent`, `tui`, `webui`.
+   * The surface this session was created FOR, `agent`, `tui`, `webui`.
    *
    * A hosted session is composed inside the host, but it does not BELONG to the
    * host. Its client-owned settings (rendering, transcript display, wake-word

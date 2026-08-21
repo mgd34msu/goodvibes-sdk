@@ -44,7 +44,7 @@ const ANTHROPIC_API_BASE = 'https://api.anthropic.com/v1';
 const ANTHROPIC_API_VERSION = '2023-06-01';
 
 /**
- * Dated fallback model list — used when no API key is configured (so a live
+ * Dated fallback model list, used when no API key is configured (so a live
  * /v1/models call isn't possible) and as the offline baseline when a live
  * call fails with no prior cache. Live-verified against a real Anthropic
  * API key's GET /v1/models response on 2026-07-12; update this list (and
@@ -76,8 +76,8 @@ interface AnthropicResponseBody {
  *
  * The authoritative source is the provider: GET /v1/models reports `max_tokens`
  * per model, and `refreshModels()` reads it (see `_liveMaxOutput`). This table
- * exists for the same case as ANTHROPIC_DATED_STATIC_MODELS — no API key, so
- * no live call is possible — and as the baseline when a live call fails.
+ * exists for the same case as ANTHROPIC_DATED_STATIC_MODELS, no API key, so
+ * no live call is possible, and as the baseline when a live call fails.
  *
  * Order matters: the first match wins, so the newest and most specific arms
  * come first. Left un-updated, this table had no arm covering claude-opus-5,
@@ -113,7 +113,7 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'getHitRate' | 'recordTurn'>
   recordTurn: () => {},
 };
 
-/** This model's max output tokens per the offline table. Live limits win — see `clampMaxTokens`. */
+/** This model's max output tokens per the offline table. Live limits win, see `clampMaxTokens`. */
 function staticMaxOutput(model: string): number {
   for (const { match, cap } of ANTHROPIC_MAX_OUTPUT) {
     if (match(model)) return cap;
@@ -122,7 +122,7 @@ function staticMaxOutput(model: string): number {
 }
 
 /**
- * AnthropicProvider — calls the Anthropic Messages API directly via fetch.
+ * AnthropicProvider, calls the Anthropic Messages API directly via fetch.
  * System message is a top-level field (not a message). Tool results are
  * `tool_result` content blocks inside `user` messages.
  * Supports SSE streaming when onDelta is provided.
@@ -148,7 +148,7 @@ export class AnthropicProvider implements LLMProvider {
    * `refreshModels()` from GET /v1/models.
    *
    * Empty until a live refresh succeeds, which is why the offline table still
-   * has to be correct — but once populated it is authoritative, so a model
+   * has to be correct, but once populated it is authoritative, so a model
    * released after this build shipped is capped at its real limit instead of
    * whatever the table happens to guess.
    */
@@ -252,7 +252,7 @@ export class AnthropicProvider implements LLMProvider {
           }
         }
 
-        // BP2: Conversation history prefix — last assistant message before the final user message.
+        // BP2: Conversation history prefix, last assistant message before the final user message.
         const bp2 = strategy.breakpoints.find(b => b.position === 'conversation_prefix');
         let bp2MessageIdx = -1;
         if (bp2 && anthropicMessages.length >= 3) {
@@ -468,7 +468,7 @@ export class AnthropicProvider implements LLMProvider {
    * Re-check Anthropic's live model list. Called at boot (background,
    * respects the on-disk TTL cache) and on-demand for a picker-open
    * re-check or an explicit user refresh (`force: true`, bypasses the TTL
-   * cache). Always resolves — falls back to the on-disk cache, then to the
+   * cache). Always resolves, falls back to the on-disk cache, then to the
    * dated-static list, and reports the honest reason when live discovery
    * fails rather than silently keeping stale data with no explanation.
    */
@@ -500,8 +500,8 @@ export class AnthropicProvider implements LLMProvider {
    * Clamp a requested max_tokens to what this model actually allows.
    *
    * Live limit first (what the provider says), offline table second. A model
-   * the live call did not cover — because there is no API key, or because the
-   * call failed — still gets a real cap rather than the generic default,
+   * the live call did not cover, because there is no API key, or because the
+   * call failed, still gets a real cap rather than the generic default,
    * provided the table has an arm for it.
    */
   private clampMaxTokens(model: string, requested: number): number {

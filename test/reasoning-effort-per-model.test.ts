@@ -59,7 +59,7 @@ import { BUILTIN_COMPAT_PROVIDERS } from '../packages/sdk/src/platform/providers
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 
 // ---------------------------------------------------------------------------
-// 1. models.dev reasoning_options parser — all four published shapes
+// 1. models.dev reasoning_options parser, all four published shapes
 // ---------------------------------------------------------------------------
 
 describe('models.dev reasoning_options parser', () => {
@@ -225,7 +225,7 @@ describe('resolveEffortForModel', () => {
       source: 'catalog',
     };
     // Snapping 'low' down the ladder would land on 'none' and silently disable
-    // reasoning — the opposite of what a light-reasoning request means.
+    // reasoning, the opposite of what a light-reasoning request means.
     expect(resolveEffortForModel('low', { id: 'm', reasoningEffort: toggle }).value).toBe('high');
     expect(resolveEffortForModel('none', { id: 'm', reasoningEffort: toggle }).value).toBe('none');
   });
@@ -270,7 +270,7 @@ describe('resolveEffortForModel', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Anthropic adapters — the live 400 defect
+// 4. Anthropic adapters, the live 400 defect
 // ---------------------------------------------------------------------------
 
 function anthropicBody(model: string, effort: string): Record<string, unknown> {
@@ -455,13 +455,13 @@ describe('request-time rejections name the effort level', () => {
     const unresolved: Record<string, unknown> = {};
     applyAnthropicReasoning(unresolved, { model: '', reasoningEffort: 'high' }, Infinity);
     // An empty id matches no family and lands on the labelled guess, which is
-    // exactly the wrong answer for a real Claude model — hence the fix.
+    // exactly the wrong answer for a real Claude model, hence the fix.
     expect(unresolved['thinking']).toBeUndefined();
   });
 });
 
 // ---------------------------------------------------------------------------
-// 5. Gemini — thinking_level vs thinking_budget, never both
+// 5. Gemini, thinking_level vs thinking_budget, never both
 // ---------------------------------------------------------------------------
 
 describe('Gemini reasoning wire shape', () => {
@@ -543,7 +543,7 @@ describe('OpenAI-compatible reasoning wiring', () => {
 
   test('DeepSeek only accepts high and max, so medium resolves to the model default', () => {
     // Requesting medium has nothing at or below it, and DeepSeek's own default
-    // is high — omitting the field is correct and is not a promotion we chose.
+    // is high, omitting the field is correct and is not a promotion we chose.
     expect(resolveEffortForRequest('medium', { modelId: 'deepseek-chat' }).value).toBeUndefined();
     expect(resolveEffortForRequest('max', { modelId: 'deepseek-chat' }).value).toBe('max');
     expect(resolveEffortForRequest('high', { modelId: 'deepseek-reasoner' }).value).toBeUndefined();
@@ -610,7 +610,7 @@ describe('catalog model definitions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. Config schema — set-time validation against the model in use
+// 8. Config schema, set-time validation against the model in use
 // ---------------------------------------------------------------------------
 
 describe('provider.reasoningEffort config validation', () => {
@@ -655,7 +655,7 @@ describe('provider.reasoningEffort config validation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. Source precedence — a spec attached to the model outranks the family table
+// 9. Source precedence, a spec attached to the model outranks the family table
 // ---------------------------------------------------------------------------
 
 describe('a declared spec outranks the prefix-matched family table', () => {

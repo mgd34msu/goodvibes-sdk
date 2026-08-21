@@ -4,16 +4,16 @@
  * One defect, twelve stores.
  *
  * `PersistentStore.persist` replaces a file atomically, so no reader ever sees
- * a torn write — but it says nothing about ORDER. A caller that serialises its
+ * a torn write, but it says nothing about ORDER. A caller that serialises its
  * whole store from a snapshot and starts two of those writes at once finishes
  * them in whatever order their renames land, so the write that STARTED first
  * can FINISH last and put its older view back on disk. CI demonstrated it on
  * `ApprovalBroker` (approval-broker-persist-ordering.test.ts): an approved
  * payment approval read back as pending after a restart.
  *
- * Every test here forces the same interleaving with the same harness — a real
+ * Every test here forces the same interleaving with the same harness, a real
  * store with a delay knob, so the overlap happens deterministically on an idle
- * machine — and asserts the REAL consequence of the defect rather than a
+ * machine, and asserts the REAL consequence of the defect rather than a
  * general statement about ordering: a revoked permission rule that comes back,
  * a cancelled batch job that reads back queued, a deleted CI watch that keeps
  * notifying. Each one fails if its store's write queue is removed.
@@ -69,7 +69,7 @@ function tempDir(prefix: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// 1. UserPermissionRuleStore — a revoked always-allow rule must stay revoked.
+// 1. UserPermissionRuleStore, a revoked always-allow rule must stay revoked.
 // ---------------------------------------------------------------------------
 
 interface UserRuleFileShape extends Record<string, unknown> {
@@ -101,7 +101,7 @@ describe('UserPermissionRuleStore — a revoked rule does not come back', () => 
       replaceInternalStore(rules, 'store', store);
       await rules.init();
 
-      // The remembered decision's write is the slow one — it is the one the
+      // The remembered decision's write is the slow one, it is the one the
       // revocation overtakes. The record is in the in-memory list the moment
       // `add` is called, so a settings surface can revoke it while that write
       // is still in flight, which is the whole window.
@@ -127,7 +127,7 @@ describe('UserPermissionRuleStore — a revoked rule does not come back', () => 
 });
 
 // ---------------------------------------------------------------------------
-// 2. DaemonBatchManager — a cancelled job is never submitted to the provider.
+// 2. DaemonBatchManager, a cancelled job is never submitted to the provider.
 // ---------------------------------------------------------------------------
 
 function makeBatchProvider(): LLMProvider & { readonly submitted: string[] } {
@@ -212,7 +212,7 @@ describe('DaemonBatchManager — a cancelled job does not read back queued', () 
       await waitFor(() => store.finished >= 3);
 
       // What the next daemon start reads. 'queued' here is a job the next tick
-      // submits to the provider — a paid request the operator called off.
+      // submits to the provider, a paid request the operator called off.
       expect(readOnDisk<BatchStoreShape>(path)?.jobs[job.id]?.status).toBe('cancelled');
     } finally {
       cleanup();
@@ -222,7 +222,7 @@ describe('DaemonBatchManager — a cancelled job does not read back queued', () 
 });
 
 // ---------------------------------------------------------------------------
-// 3. SharedSessionBroker — a cancelled input does not read back queued.
+// 3. SharedSessionBroker, a cancelled input does not read back queued.
 // ---------------------------------------------------------------------------
 
 interface SessionStoreShape extends Record<string, unknown> {
@@ -279,7 +279,7 @@ describe('SharedSessionBroker — a cancelled input does not read back queued', 
       await broker.createSession({ id: 'sess-idle' });
 
       // The sweep's write is the slow one, and it is fired without being
-      // awaited — exactly as the 60-second timer fires it.
+      // awaited, exactly as the 60-second timer fires it.
       const before = store.started;
       store.delayNextMs = 250;
       broker.trimRetained('floor');
@@ -300,7 +300,7 @@ describe('SharedSessionBroker — a cancelled input does not read back queued', 
 });
 
 // ---------------------------------------------------------------------------
-// 4. ChannelPolicyManager — a "disable this surface" ruling does not revert.
+// 4. ChannelPolicyManager, a "disable this surface" ruling does not revert.
 // ---------------------------------------------------------------------------
 
 interface ChannelPolicyShape extends Record<string, unknown> {
@@ -318,7 +318,7 @@ describe('ChannelPolicyManager — a disabled surface stays disabled', () => {
       await manager.upsertPolicy('telegram' as never, { allowlistUserIds: ['owner'] });
 
       // One inbound message. Its audit entry is written by the debounced flush
-      // a second later — the write that races every policy change.
+      // a second later, the write that races every policy change.
       await manager.evaluateIngress({
         surface: 'telegram',
         userId: 'owner',

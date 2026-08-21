@@ -1,11 +1,11 @@
 /**
  * session-changes.ts
  *
- * Pure computation for `WorkspaceCheckpointManager.sessionChanges` — the
+ * Pure computation for `WorkspaceCheckpointManager.sessionChanges`, the
  * aggregate file changes a single session made, joined over its
  * sessionId-stamped checkpoints. Split out of manager.ts (at the 800-line cap)
  * as a self-contained helper; the manager calls it while holding its index
- * lock, so the caller — not this function — is responsible for serialization.
+ * lock, so the caller, not this function, is responsible for serialization.
  */
 
 import type { SideGitRunner } from './side-git.js';
@@ -17,7 +17,7 @@ import type { WorkspaceCheckpoint, CheckpointSessionChanges } from './types.js';
  * session's earliest checkpoint (that checkpoint's parent, or the empty tree
  * when the session opened the store) to the session's LATEST checkpoint. A
  * session with no stamped checkpoints yields `checkpointCount: 0` with an empty
- * diff (from/to === 'EMPTY') — an honest "nothing recorded", never an error.
+ * diff (from/to === 'EMPTY'), an honest "nothing recorded", never an error.
  */
 export async function computeSessionChanges(
   checkpoints: ReadonlyMap<string, WorkspaceCheckpoint>,

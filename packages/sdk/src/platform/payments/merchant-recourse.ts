@@ -1,5 +1,5 @@
 /**
- * merchant-recourse.ts — is there real recourse if this purchase goes wrong?
+ * merchant-recourse.ts, is there real recourse if this purchase goes wrong?
  *
  * ══ His correction ════════════════════════════════════════════════════════
  *
@@ -9,7 +9,7 @@
  * This module previously shipped a curated allowlist and matched against it.
  * That was wrong three ways: it is not what he asked for, it fails closed on
  * every established retailer nobody thought to enumerate, and it is the same
- * shape as the site-specific adapters this platform already rejected —
+ * shape as the site-specific adapters this platform already rejected,
  * scaffolding that thinks for the model instead of letting the model think.
  *
  * So the mechanism is **judgement against a profile**, and the list is gone.
@@ -33,12 +33,12 @@
  *
  * Two things look similar and are not:
  *
- *   REading the page to decide whether it looks legitimate — **injectable, and
+ *   REading the page to decide whether it looks legitimate, **injectable, and
  *   still banned.** A storefront built to look trustworthy is trivial to
  *   produce, and a gate reading page signals is a gate the page controls.
  *
  *   Judging a VALIDATED REGISTRABLE DOMAIN against what is already known about
- *   the world — **not page-derived at all.** The domain comes from the URL that
+ *   the world, **not page-derived at all.** The domain comes from the URL that
  *   passed link validation and is reduced by `registrableDomain()`. Whether
  *   that retailer is established and offers recourse is a fact about the world,
  *   not a claim the page makes.
@@ -52,7 +52,7 @@
  *
  * A fast-path list of obviously-established domains was considered and dropped.
  * Purchases are infrequent and already sit inside a checkout flow with a human
- * notification window, so a judgement call is not on any hot path — the cache
+ * notification window, so a judgement call is not on any hot path, the cache
  * would buy nothing measurable. What it would cost is a second source of truth
  * that can disagree with the judgement and rot exactly as the old allowlist
  * would have. The owner overrides below are a different thing entirely: they are
@@ -78,8 +78,8 @@ export type { SaleType } from './marketplace-listing.js';
  * gives his anchoring examples rather than enumerating anybody.
  */
 export const MERCHANT_RECOURSE_CRITERION = [
-  'Judging only the registrable domain given — not any page content, and not anything the',
-  'merchant says about itself — is this an established retailer where a buyer would have real',
+  'Judging only the registrable domain given, not any page content, and not anything the',
+  'merchant says about itself, is this an established retailer where a buyer would have real',
   'recourse if the purchase went wrong: consumer protections, a returns process, an accountable',
   'business with something to lose?',
   '',
@@ -96,9 +96,9 @@ export const MERCHANT_RECOURSE_CRITERION = [
 export type MarketplaceKind =
   /** Not a marketplace. */
   | 'none'
-  /** The platform's own buyer protection covers the purchase — his Etsy case. */
+  /** The platform's own buyer protection covers the purchase, his Etsy case. */
   | 'buyer-protection'
-  /** Recourse depends on the individual seller — his eBay case. */
+  /** Recourse depends on the individual seller, his eBay case. */
   | 'per-seller';
 
 /**
@@ -120,7 +120,7 @@ export interface MerchantJudgement {
    */
   readonly confident: boolean;
   /**
-   * Why, in the judge's own words — a phrase like "buyer protection applies" or
+   * Why, in the judge's own words, a phrase like "buyer protection applies" or
    * "established electronics retailer with a returns process". Rendered to the
    * owner so the notification names the recourse rather than a verdict.
    */
@@ -136,9 +136,9 @@ export interface MerchantJudgePort {
 export type MarketplacePolicy = 'major' | 'requires-approval' | 'first-party-only';
 
 export interface MerchantPolicy {
-  /** Owner additions — authoritative, and his alone. */
+  /** Owner additions, authoritative, and his alone. */
   readonly additional?: string | undefined;
-  /** Owner removals — authoritative. */
+  /** Owner removals, authoritative. */
   readonly excluded?: string | undefined;
   readonly marketplaces?: MarketplacePolicy | undefined;
   readonly listingThresholds?: MarketplaceListingThresholds | undefined;
@@ -160,7 +160,7 @@ export interface MerchantIdentity {
 
 export interface MerchantVerdict {
   readonly isMajor: boolean;
-  /** Set when the listing itself is refused outright — an auction, say. */
+  /** Set when the listing itself is refused outright, an auction, say. */
   readonly refused?: boolean | undefined;
   readonly registrable: string | null;
   /** Where the verdict came from, for the audit record. */
@@ -178,7 +178,7 @@ export function parseDomainList(raw: string | undefined): readonly string[] {
 }
 
 /**
- * Apply the marketplace policy — the same question whatever kind of marketplace
+ * Apply the marketplace policy, the same question whatever kind of marketplace
  * it is. `unknown` counts as third-party, because the field is page-derived and
  * a hostile listing would simply claim otherwise.
  */
@@ -331,7 +331,7 @@ export async function classifyMerchant(
       registrable,
       basis: 'unconfident',
       reason:
-        `I am not confident enough about ${registrable} to buy without checking — I could not `
+        `I am not confident enough about ${registrable} to buy without checking, I could not `
         + 'establish what recourse you would have if it went wrong. That is not a mark against '
         + 'them, it just means I ask first.',
     };
@@ -342,7 +342,7 @@ export async function classifyMerchant(
       registrable,
       basis: 'judgement',
       reason:
-        `${registrable}: ${verdict.recourse}. That is not a mark against them — it just means I ask `
+        `${registrable}: ${verdict.recourse}. That is not a mark against them, it just means I ask `
         + 'before buying rather than assume.',
     };
   }

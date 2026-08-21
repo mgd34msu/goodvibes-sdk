@@ -43,7 +43,7 @@ export interface OperatorMethodContract {
   /**
    * Intentionally open bag for generator-supplied extension fields (e.g.
    * plugin manifests, analytics tags, UI hints). Consumers must not rely on any
-   * specific key being present — treat as advisory display metadata only.
+   * specific key being present, treat as advisory display metadata only.
    * Narrowing this type would require a versioned generator ABI bump.
    */
   readonly metadata?: Record<string, unknown> | undefined;

@@ -1,4 +1,4 @@
-// OrchestratorRunner — single-agent turn loop coordinator.
+// OrchestratorRunner, single-agent turn loop coordinator.
 //
 // This module implements the coordinator pattern: it orchestrates agent runs
 // (LLM call → tool execution → loop) but delegates domain logic to imported
@@ -100,7 +100,7 @@ export interface AgentOrchestratorRunContext {
    * Conversation-snapshot bridge (Part C6): register the running
    * agent's live snapshot accessor with AgentManager so
    * AgentManager.getConversationSnapshot(agentId) can serve a full-fidelity
-   * live transcript to a fleet tab. Optional — contexts that don't wire a
+   * live transcript to a fleet tab. Optional, contexts that don't wire a
    * manager (e.g. isolated tests) simply skip the bridge.
    */
   readonly registerConversationSource?: ((agentId: string, source: () => ConversationMessageSnapshot[]) => void) | undefined;
@@ -116,7 +116,7 @@ export interface AgentOrchestratorRunContext {
    * Threaded into `toolRegistry.execute` opts so opted-in tools (exec,
    * fetch) can abort an in-flight child process/request the instant
    * `engine.kill(itemId)` fires, instead of waiting for the next turn
-   * boundary's `record.status === 'cancelled'` poll below. Optional —
+   * boundary's `record.status === 'cancelled'` poll below. Optional,
    * contexts that don't wire an orchestration engine simply omit it and
    * every tool call runs with `opts` undefined, unchanged from before.
    */
@@ -126,7 +126,7 @@ export interface AgentOrchestratorRunContext {
   readonly knowledgeService?: Pick<KnowledgeService, 'buildPromptPacketSync'> | undefined;
   readonly memoryRegistry?: Pick<import('../state/index.js').MemoryRegistry, 'getAll' | 'searchSemantic' | 'vectorStats'> | undefined;
   /**
-   * Stage B — repo code index for per-turn code injection in a spawned agent run.
+   * Stage B, repo code index for per-turn code injection in a spawned agent run.
    * Undefined is a hard no-op. Actual injection additionally requires the
    * `agent-passive-code-injection` flag (DEFAULT OFF) and `isCodeInjectionSettingEnabled`.
    */
@@ -134,12 +134,12 @@ export interface AgentOrchestratorRunContext {
   /** Live gate for the embedder's storage.codeIndexEnabled setting. Undefined defaults to allowed. */
   readonly isCodeInjectionSettingEnabled?: (() => boolean) | undefined;
   /**
-   * Stage B — called once per executed tool (toolName, args, success) so a code-index
+   * Stage B, called once per executed tool (toolName, args, success) so a code-index
    * reindex scheduler can debounce an incremental reindex of touched files. Never awaited.
    */
   readonly onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
   /**
-   * Per-turn passive-injection knobs (see CHANGELOG 0.38.0). Both optional —
+   * Per-turn passive-injection knobs (see CHANGELOG 0.38.0). Both optional,
    * undefined means "use the derived default" (see turn-knowledge-injection.ts:
    * defaultTurnKnowledgeBudgetTokens / DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR).
    * Setting passiveKnowledgeInjectionBudgetTokens to 0 is the config-level
@@ -153,7 +153,7 @@ export interface AgentOrchestratorRunContext {
    * budget ceiling / relevance floor / code-chunk limit (agents.passiveInjection.*)
    * and the context-window compaction threshold (agents.contextCompactThreshold).
    * Explicit passiveKnowledgeInjection* context fields still override, and the
-   * module constants remain the final fallback when no config source is supplied —
+   * module constants remain the final fallback when no config source is supplied,
    * the config defaults equal those constants, so behaviour is unchanged by default.
    */
   readonly configManager?: Pick<import('../config/manager.js').ConfigManager, 'get'> | undefined;
@@ -412,7 +412,7 @@ export async function runAgentTask(
 
     session = new AgentSession(record.id, modelId, record.provider ?? currentModel.provider ?? 'unknown', {
       // Agent journals live under sessions/agents/, a sibling of the user
-      // conversation files in sessions/ — never mixed with them, so a
+      // conversation files in sessions/, never mixed with them, so a
       // conversation-scoped sweep can never touch an agent transcript and
       // vice versa (see append-only-registry.ts's session-journals store).
       sessionsDir: resolveScopedDirectory(context.workingDirectory, context.surfaceRoot, 'sessions', 'agents'),
@@ -454,7 +454,7 @@ export async function runAgentTask(
     // call above) and grows with every id a later turn injects, so no record is ever listed
     // twice across the whole run. `priorTurnKnowledgeBlock` is the last successfully-built
     // block, reused verbatim on turns where nothing new arrived (see newUserInputThisTurn
-    // below) — it is composed onto the CURRENT `systemPrompt` fresh every turn (see
+    // below), it is composed onto the CURRENT `systemPrompt` fresh every turn (see
     // composeTurnSystemPrompt), never written back into the cached `systemPrompt` let itself.
     const knowledgeIdsAlreadySurfaced = new Set<string>((record.knowledgeInjections ?? []).map((entry) => entry.id));
     let priorTurnKnowledgeBlock: string | null = null;
@@ -513,11 +513,11 @@ export async function runAgentTask(
       session.appendMessage({ type: 'llm_request', turn, messageCount: conversation.getMessagesForLLM().length, timestamp: new Date().toISOString() });
       const pending = context.messageBus.getMessages(record.id);
       // Steers drained into the conversation THIS turn, awaiting the "consumed"
-      // signal below — deferred until the turn's chat call actually succeeds.
+      // signal below, deferred until the turn's chat call actually succeeds.
       // See the comment at the emission site for why this can't fire here.
       const drainedSteerMessageIds: string[] = [];
       // True when this turn actually added new content to the
-      // conversation the model will see — turn 1 (the initial task) or any steer/directive
+      // conversation the model will see, turn 1 (the initial task) or any steer/directive
       // drained just above. Gates per-turn knowledge re-retrieval: no new input means the
       // evolving-conversation query would be identical to last turn's, so the prior turn's
       // block is reused verbatim instead of re-running retrieval for no behavioral gain.
@@ -531,7 +531,7 @@ export async function runAgentTask(
         newUserInputThisTurn = true;
         if (msg.kind === 'steer') {
           // A human steer (ProcessRegistry.steer) is a genuine user turn, not
-          // an inter-agent directive — inject it verbatim, with none of the
+          // an inter-agent directive, inject it verbatim, with none of the
           // "[Kind from sender]" framing used for agent-to-agent messages.
           conversation.addUserMessage(msg.content);
           drainedSteerMessageIds.push(msg.id);
@@ -570,7 +570,7 @@ export async function runAgentTask(
       // flag AND on there being new conversation input this turn; otherwise
       // priorTurnKnowledgeBlock (unchanged) is reused. `priorTurnKnowledgeBlock` and
       // `systemPrompt` are combined into a request-time-only string just below
-      // (composeTurnSystemPrompt) — the block is NEVER written back into the `systemPrompt`
+      // (composeTurnSystemPrompt), the block is NEVER written back into the `systemPrompt`
       // let, so it cannot compound turn over turn even across the emergency-compaction
       // retry path (which DOES reassign `systemPrompt`) inside the chat-retry loop.
       if (passiveKnowledgeInjectionEnabled && newUserInputThisTurn && context.memoryRegistry) {
@@ -620,7 +620,7 @@ export async function runAgentTask(
         } else {
           // Hard no-op: no budget headroom this turn. Never call into retrieval for a
           // budget that's already known to be zero, and never claim a block that can't
-          // exist — no record, no session message, prior block cleared so the composed
+          // exist, no record, no session message, prior block cleared so the composed
           // prompt below falls back to the base systemPrompt exactly.
           priorTurnKnowledgeBlock = null;
         }
@@ -631,11 +631,11 @@ export async function runAgentTask(
       // instead of hoisting a single `const turnSystemPrompt` computed once before the
       // retry loop. This matters because the emergency-compaction retry path inside that
       // loop reassigns the outer `systemPrompt` let (buildLayeredOrchestratorSystemPrompt)
-      // — a hoisted const would go stale and keep resubmitting the pre-compaction prompt,
+      //, a hoisted const would go stale and keep resubmitting the pre-compaction prompt,
       // silently defeating that retry. Composing here also re-validates fit on every call:
       // if base+block would exceed the SAME 85% compaction threshold applyContextWindowAwareness
       // enforces (using live, current-call token counts, not turn-start estimates), the block
-      // is dropped for that call only — this is the safety net for a REUSED block (one that
+      // is dropped for that call only, this is the safety net for a REUSED block (one that
       // was sized against a headroom estimate one or more turns ago and may no longer fit,
       // e.g. after several no-new-input turns of tool-result growth). It never mutates
       // `priorTurnKnowledgeBlock` or the stored TurnInjectionRecord, both of which honestly
@@ -793,9 +793,9 @@ export async function runAgentTask(
       // call is KNOWN to have succeeded. If the call above exhausted its
       // retries/fallbacks, it throws and unwinds out of this function (caught
       // by the outer try/catch → handleAgentRunFailure) without ever reaching
-      // this line — so a steer drained into a turn whose chat then fails
+      // this line, so a steer drained into a turn whose chat then fails
       // never gets a consumed signal it didn't earn. Never emit this from
-      // AgentMessageBus.send() itself — that fires eagerly, before the agent
+      // AgentMessageBus.send() itself, that fires eagerly, before the agent
       // has any chance to see the message.
       if (context.runtimeBus) {
         for (const messageId of drainedSteerMessageIds) {
@@ -888,12 +888,12 @@ export async function runAgentTask(
           }
         }
         if (worstCount >= LOOP_USER_THRESHOLD) {
-          logger.warn(`Agent ${record.id}: loop detected — ${worstTool} called ${worstCount} times with identical args`);
+          logger.warn(`Agent ${record.id}: loop detected, ${worstTool} called ${worstCount} times with identical args`);
           conversation.addUserMessage(
             `You are repeating the same tool call. ${worstTool} has been called ${worstCount} times with identical arguments and results. Do NOT call ${worstTool} with these arguments again. Identify what you were trying to accomplish and take a different action.`,
           );
         } else if (worstCount >= LOOP_SYSTEM_THRESHOLD) {
-          logger.warn(`Agent ${record.id}: possible loop — ${worstTool} called ${worstCount} times with identical args`);
+          logger.warn(`Agent ${record.id}: possible loop, ${worstTool} called ${worstCount} times with identical args`);
           conversation.addSystemMessage(
             `You have already executed this exact call (${worstTool}) ${worstCount} times with identical arguments. The results from your previous calls are already in your conversation history. Review them and proceed to the next step.`,
           );

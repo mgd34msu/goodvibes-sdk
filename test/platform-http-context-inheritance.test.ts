@@ -8,7 +8,7 @@
  * The key property tested:
  *   When a new method is added to automationManager (or any other field) in the
  *   canonical daemon-sdk DaemonRuntimeRouteContext, the platform-HTTP type
- *   automatically requires it — because the platform-HTTP interface extends the
+ *   automatically requires it, because the platform-HTTP interface extends the
  *   canonical via Omit<CanonicalDaemonRuntimeRouteContext, 'trySpawnAgent'>.
  *
  * These are compile-time structural tests. At runtime they just confirm the
@@ -29,7 +29,7 @@ import type {
 
 /**
  * A value assignable to PlatformHttpContext must satisfy the canonical
- * automationManager shape — every method except the two this layer refines.
+ * automationManager shape, every method except the two this layer refines.
  *
  * This FAILS TO COMPILE if the platform-HTTP type stops requiring any method
  * the canonical defines on automationManager.
@@ -43,9 +43,9 @@ import type {
  * through `parseCreateAutomationJobInput` between the two.
  *
  * This exclusion is new, and it is the reason the file did not compile: nothing
- * ever compiled it. The two shapes are UNRELATED types — an interface with no
+ * ever compiled it. The two shapes are UNRELATED types, an interface with no
  * index signature is not assignable to `Record<string, unknown>` in either
- * direction — so `ctx.automationManager` was never assignable to the canonical
+ * direction, so `ctx.automationManager` was never assignable to the canonical
  * and this assertion could not have held on any day since it was written. The
  * same absence of compilation had let AutomationRunLike lose a field the
  * canonical copy carries; both are fixed now.
@@ -66,7 +66,7 @@ function assertPlatformInheritsAutomationManager(
  *
  * `createJob` here must take the VALIDATED input type. If someone "fixes" the
  * divergence by widening this layer back to `Record<string, unknown>`, the
- * Omit above would still pass — this does not.
+ * Omit above would still pass, this does not.
  */
 function assertRefinedAutomationInputs(
   ctx: PlatformHttpContext,
@@ -96,7 +96,7 @@ function assertPlatformInheritsAgentManager(
 }
 
 // ---------------------------------------------------------------------------
-// Runtime smoke test — validates the structural assertions compile
+// Runtime smoke test, validates the structural assertions compile
 // ---------------------------------------------------------------------------
 
 describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', () => {
@@ -129,13 +129,13 @@ describe('platform-HTTP DaemonRuntimeRouteContext inherits canonical shapes', ()
     const inherited = assertPlatformInheritsAutomationManager(ctx);
     expect(inherited.listJobs()).toEqual([]);
     expect(inherited.getSchedulerCapacity()).toMatchObject({ slotsTotal: 4, slotsInUse: 0 });
-    // runNow and triggerHeartbeat are async stubs — verify they return thenables
+    // runNow and triggerHeartbeat are async stubs, verify they return thenables
   });
 
   test('sessionBroker shape is inherited from canonical, not inlined', async () => {
     const ctx = buildMinimalContext();
     const inherited = assertPlatformInheritsSessionBroker(ctx);
-    // Stubs throw — verify they are callable methods (not undefined)
+    // Stubs throw, verify they are callable methods (not undefined)
     expect(typeof inherited.submitMessage).toBe('function');
     expect(typeof inherited.steerMessage).toBe('function');
     expect(typeof inherited.followUpMessage).toBe('function');

@@ -1,8 +1,8 @@
 # Decision: OAuth 2.0 calendar provider connectivity in the SDK (One-Platform Wave 4, A10)
 
-Status: accepted — 2026-07-06
-Scope: goodvibes-sdk (`packages/sdk`) — new machinery under the existing public subpath `@pellux/goodvibes-sdk/platform/calendar`
-Wave: One-Platform Wave 4 — Calendar (A10), sibling of A9 (ICS files + feeds)
+Status: accepted, 2026-07-06
+Scope: goodvibes-sdk (`packages/sdk`), new machinery under the existing public subpath `@pellux/goodvibes-sdk/platform/calendar`
+Wave: One-Platform Wave 4, Calendar (A10), sibling of A9 (ICS files + feeds)
 
 ## Decision
 
@@ -12,45 +12,44 @@ and writes calendars through the Google Calendar API v3 and Microsoft Graph, the
 normalizes everything into the SAME merged event model A9's `.ics` path produces so a
 single `/calendar` view renders every source labeled.
 
-New source files (all ≤800 lines, all within the module's existing purity contract —
-no `node:*`, no `process.*`, no bare `fetch(`):
+New source files (all ≤800 lines, all within the module's existing purity contract, no `node:*`, no `process.*`, no bare `fetch(`):
 
-1. `oauth-types.ts` — the OAuth/connector/merged-model type surface. Re-exports A9's
+1. `oauth-types.ts`, the OAuth/connector/merged-model type surface. Re-exports A9's
    `Clock` rather than redefining it (one clock type, no barrel clash).
-2. `oauth-providers.ts` — the fixed Google + Microsoft profiles, client-config
+2. `oauth-providers.ts`, the fixed Google + Microsoft profiles, client-config
    resolution (bundled default vs user override), and the verbatim provider-console
    setup steps (`PROVIDER_SETUP_STEPS`) shared by the wizard help and these docs.
-3. `oauth-flow.ts` — authorization-code + PKCE (S256), device-code (RFC 8628) with
+3. `oauth-flow.ts`, authorization-code + PKCE (S256), device-code (RFC 8628) with
    `authorization_pending`/`slow_down`/expiry handling, token exchange, refresh, and
    revocation. Every network call goes through the injected `HttpFetch`; PKCE reuses
    the SDK's runtime-neutral `crypto-adapter`.
-4. `oauth-token-store.ts` — `CalendarTokenStore`: tokens persisted ONLY through the
+4. `oauth-token-store.ts`, `CalendarTokenStore`: tokens persisted ONLY through the
    injected secret-store slice, an honest `ConnectionState` computed from the stored
    set + clock, auto-refresh on expiry, and a durable `reconnect-needed` marker when a
    refresh fails (never hands back a stale token as if valid).
-5. `merged-calendar-model.ts` — `normalizeGoogleEvent` / `normalizeGraphEvent` into
+5. `merged-calendar-model.ts`, `normalizeGoogleEvent` / `normalizeGraphEvent` into
    `MergedCalendarEvent` (A9's `CalendarEvent` + a `source` label + provider ids),
    following A9's time-anchoring honesty (fixed-offset → real UTC is arithmetic and
    allowed; a named zone with no offset is kept as `tzid`, never converted).
-6. `calendar-api-shared.ts` — bearer-auth request helper + honest degraded-state
+6. `calendar-api-shared.ts`, bearer-auth request helper + honest degraded-state
    mapping: 401 → `reconnect-needed`, 403 → `insufficient-scope` naming the scope,
    429 → `rate-limited` with the honored Retry-After, else `provider-error`.
-7. `google-calendar-api.ts` — `calendarList.list`, `events.list` (paginated,
+7. `google-calendar-api.ts`, `calendarList.list`, `events.list` (paginated,
    `singleEvents=true`, `timeMin`/`timeMax`), `events.insert`.
-8. `microsoft-graph-api.ts` — `me/calendars`, `me/calendars/{id}/calendarView`
+8. `microsoft-graph-api.ts`, `me/calendars`, `me/calendars/{id}/calendarView`
    (paged `@odata.nextLink`, `Prefer: outlook.timezone="UTC"`), event create.
-9. `calendar-connector.ts` — `CalendarConnector`, the high-level surface the agent
+9. `calendar-connector.ts`, `CalendarConnector`, the high-level surface the agent
    drives (connect via auth-code or device-code, disconnect, list accounts/state,
    list calendars, list events over a window, create event routed to a chosen
    provider).
-10. `http-fetch-adapter.ts` — a pure adapter from a WHATWG `fetch` to `HttpFetch`
+10. `http-fetch-adapter.ts`, a pure adapter from a WHATWG `fetch` to `HttpFetch`
     (references only global fetch, so the module stays pure; the real `fetch` is
     supplied by the caller/tests).
 
 ## What shipped (SDK side; the agent wizard + the real loopback listener are A10's agent half)
 
 - New exports appended to `packages/sdk/src/platform/calendar/index.ts` under A9's
-  existing exports. No new subpath — A9 already added `./platform/calendar` to
+  existing exports. No new subpath, A9 already added `./platform/calendar` to
   `package.json` exports; this rides the same barrel.
 - The node-touching pieces are deliberately NOT in this module: the real loopback
   redirect listener (`platform/config/oauth-local-listener.ts`, `node:http`) and the
@@ -62,7 +61,7 @@ no `node:*`, no `process.*`, no bare `fetch(`):
   The bundled id ships as an honest PLACEHOLDER; `resolveClientConfig` reports
   `isPlaceholder:true` until it is replaced, and a flow refuses with
   `client-not-configured` rather than faking success. A user MAY override with their
-  own id (+ secret for a confidential registration) — never a required step.
+  own id (+ secret for a confidential registration), never a required step.
 
 ## Divergence ruling: bundled default vs user-registered app
 
@@ -75,16 +74,15 @@ pending below). Until then the placeholders keep the flow honest, not broken.
 
 ## Rejected alternatives
 
-- Reusing `platform/runtime/auth/oauth-core.ts` for the network calls — rejected: it
+- Reusing `platform/runtime/auth/oauth-core.ts` for the network calls, rejected: it
   calls `instrumentedFetch` directly (not injectable), so it cannot be exercised
   against a fake server without stubbing global fetch. A10 needs zero-network tests,
   so it uses an injected `HttpFetch` throughout.
-- Expanding provider recurrence locally — rejected: the API clients request expanded
+- Expanding provider recurrence locally, rejected: the API clients request expanded
   single instances (Google `singleEvents=true`, Graph `calendarView`), so each event
   is a concrete occurrence and no rule is fabricated. This mirrors A9's "never
   fabricate an occurrence" contract.
-- Storing tokens in config with a secret reference (the email path's pattern) —
-  rejected for the SDK layer: tokens are written straight into the injected secret
+- Storing tokens in config with a secret reference (the email path's pattern), rejected for the SDK layer: tokens are written straight into the injected secret
   store, so the SDK module has no config dependency; the agent maps its own config
   keys as needed.
 
@@ -107,9 +105,9 @@ revoke/disconnect; paginated calendar + event listing normalized and source-labe
 event creation; and the 401/403/429 degraded states each named. A9's existing
 `test/platform-calendar.test.ts` purity test now also covers these files.
 
-## Addendum — 2026-07-31: no first-party client ids; the operator brings their own app
+## Addendum (2026-07-31): no first-party client ids; the operator brings their own app
 
-Owner ruling: *"i will not be shipping first-party oauth ids — that is for whoever is
+Owner ruling: *"i will not be shipping first-party oauth ids, that is for whoever is
 setting up their goodvibes environment to do."*
 
 This supersedes the "Divergence ruling: bundled default vs user-registered app"
@@ -122,7 +120,7 @@ What changed in the code:
 
 - `OAuthProviderProfile` no longer carries `bundledClientId` or
   `placeholderClientId`. It carries `clientIdConfigKey` and
-  `clientSecretRefConfigKey` — the names of the config keys the operator's own
+  `clientSecretRefConfigKey`, the names of the config keys the operator's own
   credentials are read from. The `GOOGLE_PLACEHOLDER_CLIENT_ID` and
   `MICROSOFT_PLACEHOLDER_CLIENT_ID` constants are gone, along with their exports.
 - `ResolvedClientConfig` replaces `usingBundledDefault` / `isPlaceholder` with
@@ -130,7 +128,7 @@ What changed in the code:
   them without rebuilding the strings.
 - `calendar.google.clientId` and `calendar.microsoft.clientId` (with the
   `...clientSecretRef` keys beside them) are the configured credentials. The first
-  pair already existed — the Google connector's setup flow writes them — so this
+  pair already existed, the Google connector's setup flow writes them, so this
   threads an existing key family into the OAuth layer rather than inventing one.
   `calendar.microsoft.clientId` was added to the daemon-owned config paths, closing a
   split where Microsoft's client SECRET was daemon-owned while its client ID was not.
@@ -143,5 +141,5 @@ What changed in the code:
 
 What did not change: the honesty contract, the injected boundaries, the purity of the
 module, and the fact that a flow never fakes a success. The reason the refusal exists
-is simply different — not "the project has not registered its apps yet" but "this
+is simply different, not "the project has not registered its apps yet" but "this
 environment's operator registers their own app, and has not yet."

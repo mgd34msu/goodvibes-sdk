@@ -8,9 +8,9 @@
  * registration, not new machinery: every call is a direct pass-through to
  * `registry.query()`, the registry's own cheap aggregate-on-read scan.
  *
- * Wired via `GatewayMethodCatalog.register(descriptor, handler)` — the SAME
+ * Wired via `GatewayMethodCatalog.register(descriptor, handler)`, the SAME
  * mechanism the plugin API already uses (../../plugins/api.ts
- * `registerGatewayMethod`) — rather than a new REST path in the external
+ * `registerGatewayMethod`), rather than a new REST path in the external
  * `@pellux/goodvibes-daemon-sdk` package or a change to
  * ../../daemon/http/router.ts (both out of this brief's file ownership).
  * The registered handler is reached over real HTTP today via the existing
@@ -43,7 +43,7 @@ import { readInvocationParams } from './invocation-params.js';
  * `fleet.snapshot` payload cap: the registry's
  * `query()` is a cheap O(n) in-memory scan, but the wire response must not
  * grow unbounded with fleet size. Nodes beyond this cap are dropped (newest
- * activity first is NOT guaranteed here — see `truncated`/`totalCount` so a
+ * activity first is NOT guaranteed here, see `truncated`/`totalCount` so a
  * caller that needs the full set knows to page via `fleet.list` instead).
  */
 export const FLEET_SNAPSHOT_NODE_CAP = 2000;
@@ -124,7 +124,7 @@ function clampLimit(raw: unknown, fallback: number, max: number): number {
   return Math.min(Math.floor(n), max);
 }
 
-/** Structural dep — only the read surface `fleet.*` needs. */
+/** Structural dep, only the read surface `fleet.*` needs. */
 export type FleetQueryOnlyRegistry = Pick<ProcessRegistry, 'query'>;
 
 export function createFleetSnapshotHandler(registry: FleetQueryOnlyRegistry): GatewayMethodHandler {
@@ -157,7 +157,7 @@ export function createFleetListHandler(registry: FleetQueryOnlyRegistry): Gatewa
     // two nodes share a timestamp, or neither has started), and paginateItems
     // is handed that SAME startedAt extractor with { descending: true }. A
     // node's `startedAt` is optional (not-yet-started processes), so absent
-    // values are normalized to 0 for both the sort and the recovery key —
+    // values are normalized to 0 for both the sort and the recovery key,
     // otherwise `paginateItems`' deleted-cursor recovery (which does a
     // findIndex assuming the array is actually ordered by the field it is
     // given) would search a startedAt-ordered predicate over an array that
@@ -185,14 +185,14 @@ export function createFleetListHandler(registry: FleetQueryOnlyRegistry): Gatewa
   };
 }
 
-/** Registry surface for the archive verbs — optional so a runtime without the archive layer degrades honestly. */
+/** Registry surface for the archive verbs, optional so a runtime without the archive layer degrades honestly. */
 export type FleetArchiveCapableRegistry = FleetQueryOnlyRegistry & Partial<FleetArchiveView>;
 
-/** Registry surface fleet.observed.steer needs — read one node, steer it. */
+/** Registry surface fleet.observed.steer needs, read one node, steer it. */
 export type FleetSteerCapableRegistry = Pick<ProcessRegistry, 'getNode' | 'steer'>;
 
 /**
- * fleet.observed.steer handler — the drill-in steer of an observed foreign
+ * fleet.observed.steer handler, the drill-in steer of an observed foreign
  * agent. Scoped to 'observed-external' rows by construction: an unknown id is a
  * 404, and steering a non-observed kind through this verb is refused (400) so it
  * can never become a back door to a native agent's steer path. The steer itself
@@ -258,17 +258,17 @@ export function createFleetArchivedListHandler(registry: FleetArchiveCapableRegi
 }
 
 /**
- * The best-of-N surface the fleet verbs need — the orchestration engine's held-
+ * The best-of-N surface the fleet verbs need, the orchestration engine's held-
  * merge methods. Optional at registration: a runtime with no orchestration
  * engine simply doesn't register the fleet.attempts.* verbs (graceful degrade).
  */
 export interface FleetAttemptsController {
   listHeldMergeGroups(workstreamId?: string): Promise<HeldMergeGroup[]>;
-  /** The task-graph snapshot (fleet.graph.get) — nodes/edges/pool/stalled tells. Optional for narrower embeds. */
+  /** The task-graph snapshot (fleet.graph.get), nodes/edges/pool/stalled tells. Optional for narrower embeds. */
   getGraphSnapshot?(workstreamId: string): import('../../orchestration/graph-dynamics.js').WorkstreamGraphSnapshot | null;
   pickAttemptWinner(groupId: string, winnerItemId: string): Promise<AttemptPickResult>;
   proposeAttemptWinner(groupId: string): Promise<AttemptJudgment>;
-  /** Conflict surface (optional — narrower embeds may wire attempts without conflicts). */
+  /** Conflict surface (optional, narrower embeds may wire attempts without conflicts). */
   listWorkstreams?(): ReadonlyArray<{ readonly id: string; readonly items: readonly ConflictWorkItemSlice[] }>;
   stampConflictSession?(itemId: string, sessionId: string): boolean;
   retryItemIntegration?(itemId: string): Promise<'merged' | 'conflict' | 'not-conflicted'>;
@@ -300,7 +300,7 @@ export function createFleetAttemptsPickHandler(controller: FleetAttemptsControll
     const winnerItemId = typeof params.winnerItemId === 'string' ? params.winnerItemId.trim() : '';
     if (!groupId) throw new GatewayVerbError('groupId is required', 'INVALID_ARGUMENT', 400, 'groupId');
     if (!winnerItemId) throw new GatewayVerbError('winnerItemId is required', 'INVALID_ARGUMENT', 400, 'winnerItemId');
-    // ONE-act pick: without confirm this is the structured confirm PREVIEW —
+    // ONE-act pick: without confirm this is the structured confirm PREVIEW,
     // the group (candidates, diffs, any judge proposal) comes back with the
     // refusal so a surface completes choice -> confirm -> applied through this
     // single verb, no list->diff->pick-id transcription ceremony. confirm:true
@@ -323,7 +323,7 @@ export function createFleetAttemptsPickHandler(controller: FleetAttemptsControll
   };
 }
 
-// ── fleet.conflicts.* — merge-conflict rows and their one-action resolution ──
+// ── fleet.conflicts.*, merge-conflict rows and their one-action resolution ──
 
 /** The conflicted-item slice the conflicts verbs read (the engine satisfies it structurally). */
 export interface ConflictWorkItemSlice {
@@ -431,10 +431,10 @@ export function createFleetAttemptsJudgeHandler(controller: FleetAttemptsControl
  * ../method-catalog-fleet.ts's static builtin array. Call once, at
  * RuntimeServices construction time, after `processRegistry` exists.
  * A missing descriptor (contract/registration drift) is a silent no-op
- * rather than a throw — construction must never fail because a wire verb
+ * rather than a throw, construction must never fail because a wire verb
  * failed to register; the operator-contract gates catch a real drift.
  */
-/** fleet.graph.get — the surface-facing task graph of one workstream. */
+/** fleet.graph.get, the surface-facing task graph of one workstream. */
 export function createFleetGraphGetHandler(controller: FleetAttemptsController): GatewayMethodHandler {
   return (invocation) => {
     const params = readInvocationParams(invocation);
@@ -466,7 +466,7 @@ export function registerFleetGatewayMethods(
   attach('fleet.unarchive', createFleetUnarchiveHandler(registry));
   attach('fleet.archiveFinished', createFleetArchiveFinishedHandler(registry));
   attach('fleet.archived.list', createFleetArchivedListHandler(registry));
-  // fleet.attempts.* (best-of-N held-merge) — registered only when an
+  // fleet.attempts.* (best-of-N held-merge), registered only when an
   // orchestration engine is wired; absent, the verbs stay cataloged-but-
   // unhandled rather than a facade (graceful degrade, like the archive verbs).
   if (attempts) {

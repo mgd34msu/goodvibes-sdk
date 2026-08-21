@@ -1,4 +1,4 @@
-# Local voice engines — free, offline STT + TTS
+# Local voice engines: free, offline STT and TTS
 
 The `local` voice provider runs speech-to-text and text-to-speech entirely on
 your machine, behind the exact same seams as the cloud providers (the voice
@@ -15,20 +15,20 @@ engine: install it, download a model, set the `voice.local.*` keys below.
 
 Chosen from current comparative evidence, not from memory:
 
-- **STT — whisper.cpp** (default): a pure C/C++ Whisper port; CPU-first,
-  realtime-capable, no Python dependency; on Apple Silicon it runs ~10× real
+- **STT: whisper.cpp** (default): a pure C/C++ Whisper port. CPU-first,
+  realtime-capable, no Python dependency. On Apple Silicon it runs ~10× real
   time on large-v3 with Metal. **faster-whisper** is the alternative when an
   NVIDIA GPU is present (CTranslate2 int8, ~4× original-Whisper throughput).
-  Sources: [promptquorum — whisper.cpp vs faster-whisper 2026 benchmarks](https://www.promptquorum.com/power-local-llm/local-whisper-stt-comparison-2026),
-  [codersera — faster-whisper vs whisper.cpp vs OpenAI Whisper (2026)](https://codersera.com/blog/faster-whisper-vs-whisper-cpp-speech-to-text-2026/),
-  [modal — choosing Whisper variants](https://modal.com/blog/choosing-whisper-variants).
-- **TTS — Piper** (default): ~0.03 real-time factor, first audio in ~40–50 ms,
+  Sources: [promptquorum: whisper.cpp vs faster-whisper 2026 benchmarks](https://www.promptquorum.com/power-local-llm/local-whisper-stt-comparison-2026),
+  [codersera: faster-whisper vs whisper.cpp vs OpenAI Whisper (2026)](https://codersera.com/blog/faster-whisper-vs-whisper-cpp-speech-to-text-2026/),
+  [modal: choosing Whisper variants](https://modal.com/blog/choosing-whisper-variants).
+- **TTS: Piper** (default): ~0.03 real-time factor, first audio in ~40–50 ms,
   MIT-licensed, runs on CPU-only and edge hardware. **Kokoro-82M** is the
   quality alternative (Apache 2.0, 54 voices, beats XTTS v2 in blind listening
   tests at a fraction of the size).
-  Sources: [contracollective — Kokoro vs Piper vs XTTS v2 (2026)](https://contracollective.com/blog/kokoro-vs-piper-vs-xtts-local-text-to-speech-m5-max-2026),
-  [localaimaster — best local TTS models 2026](https://localaimaster.com/blog/best-local-tts-models),
-  [codesota — TTS leaderboard 2026](https://www.codesota.com/text-to-speech).
+  Sources: [contracollective: Kokoro vs Piper vs XTTS v2 (2026)](https://contracollective.com/blog/kokoro-vs-piper-vs-xtts-local-text-to-speech-m5-max-2026),
+  [localaimaster: best local TTS models 2026](https://localaimaster.com/blog/best-local-tts-models),
+  [codesota: TTS leaderboard 2026](https://www.codesota.com/text-to-speech).
 
 ## Worked setup path (Linux x86_64; the one used for the measurement below)
 
@@ -72,7 +72,7 @@ Engine invocation contracts (what the provider runs):
 ## Measured end-to-end latency (real run, this repo's development host)
 
 Hardware class: AMD Ryzen 9 5900X (12C/24T), CPU-only, Linux. Measured
-2026-07-14 with the exact setup above (process spawn + model load included —
+2026-07-14 with the exact setup above (process spawn + model load included,
 the provider's real per-call path, no warm daemon):
 
 | Leg | Engine / model | Input | Wall clock |
@@ -86,11 +86,11 @@ voice engine. This is a real end to end synthesis measurement."). Larger
 models trade latency for accuracy; GPU hosts should prefer faster-whisper for
 STT per the sources above.
 
-## Managed engine bundles: hosting + stability contract
+## Managed engine bundles: hosting and stability contract
 
 `voice.local.install` provisions the STT engine (whisper.cpp) from a
 goodvibes-built, checksum-pinned bundle. Those bundles are hosted at ONE
-append-only GitHub release tag — **`voice-runtimes-v1`** on the SDK repo — with a
+append-only GitHub release tag, **`voice-runtimes-v1`** on the SDK repo, with a
 `<asset>.sha256` sidecar next to every asset.
 
 Stability contract (relied on by the pinned manifest and every referencing
@@ -102,13 +102,13 @@ script):
   without `--clobber`, so an attempt to replace a pinned asset fails loudly.
 - **Move-in-lockstep.** If an asset location ever must change, every script/doc
   that references it (the manifest `bundle.url`, this doc, the build script's
-  printed URL) is updated in the **same commit** — a pinned URL is never left
+  printed URL) is updated in the **same commit**. A pinned URL is never left
   dangling.
 - **Reproducible.** `scripts/build-whisper-bundle.ts` produces a byte-reproducible
   tarball (`tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner`,
   `gzip -n`), so a clean rebuild of identical inputs matches the pinned `sha256`.
-  A user can therefore build the bundle themselves and sideload it — dropping it
-  at `<managedRoot>/engines/whisper.tar.gz` — and it verifies against the same
+  A user can therefore build the bundle themselves and sideload it, dropping it
+  at `<managedRoot>/engines/whisper.tar.gz`, and it verifies against the same
   pin whether or not a hosted URL is set.
 
 Building + publishing a new bundle: run `scripts/build-whisper-bundle.ts` (it
@@ -125,7 +125,7 @@ uploaded to the same tag.
   into cost attribution under a voice-scoped model key
   (`elevenlabs:voice-tts:characters`). It reports honestly UNPRICED until the
   one-key manual price names your plan's rate:
-  `pricing.modelPrices["elevenlabs:voice-tts:characters"] = { "input": <USD per 1M characters> }` —
+  `pricing.modelPrices["elevenlabs:voice-tts:characters"] = { "input": <USD per 1M characters> }`,
   after which sessions show real dollars with `user` pricing provenance.
-- **Local**: no billing dimension at all. Local calls record nothing — the
+- **Local**: no billing dimension at all. Local calls record nothing. The
   cost surfaces show an honest absence, never a fake $0.00.

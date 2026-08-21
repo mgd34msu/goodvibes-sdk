@@ -55,7 +55,7 @@ function summarizePayload(type: string, payload: unknown): string {
 }
 
 /**
- * EventsPanel — diagnostic data provider for the full event timeline.
+ * EventsPanel, diagnostic data provider for the full event timeline.
  *
  * Captures every envelope emitted across all domains, building a chronological
  * log with full tracing context. The buffer is bounded to prevent unbounded

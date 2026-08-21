@@ -3,14 +3,14 @@
  *
  * `0.0.0.0` (and `::`) is a BIND address, not a destination. When the control
  * plane is configured to bind every interface, the configured base URL can end
- * up carrying that wildcard verbatim — and a notification whose click target is
+ * up carrying that wildcard verbatim, and a notification whose click target is
  * `http://0.0.0.0:3421/...` goes nowhere when it is tapped on a phone.
  *
  * The rule this module implements:
  *
  * 1. A configured URL with a real host is used as-is.
  * 2. A wildcard host is replaced with the machine's own routable LAN address,
- *    keeping the scheme, port, and path — that is the address a phone on the
+ *    keeping the scheme, port, and path, that is the address a phone on the
  *    same network can actually reach.
  * 3. With no LAN address to substitute, the URL is dropped and the caller omits
  *    the click target entirely. A missing link beats a broken one.
@@ -30,13 +30,13 @@
  *     a LAN address the daemon does not answer on.
  *
  * Because the host is a pure function of the mode, one run cannot emit both
- * forms — the state the owner observed (127.0.0.1 and 0.0.0.0 in the same
+ * forms, the state the owner observed (127.0.0.1 and 0.0.0.0 in the same
  * burst) is not representable from a single configuration.
  *
  * WHY LOOPBACK IS CONDITIONAL
  *
  * `http://127.0.0.1:3421` is the shipped default posture and it is correct for
- * a link opened on the host itself — and dead for the same notification tapped
+ * a link opened on the host itself, and dead for the same notification tapped
  * on a phone, which is where these notifications are actually read. Rewriting
  * it unconditionally would trade a link that works in one place for a link
  * that works nowhere, because a daemon bound to 127.0.0.1 does not answer on
@@ -49,7 +49,7 @@
  *
  * A wildcard bind serves loopback AND the LAN address at the same time, so
  * both keep working: the destination picks which one this particular link
- * needs. `0.0.0.0` itself is never emitted — it is a bind address, not a
+ * needs. `0.0.0.0` itself is never emitted, it is a bind address, not a
  * destination.
  */
 import { networkInterfaces as osNetworkInterfaces } from 'node:os';
@@ -129,7 +129,7 @@ export function findRoutableHostAddress(readInterfaces: NetworkInterfaceReader =
 export type ClickTargetMode = 'network' | 'local';
 
 /**
- * Where the link is GOING — the discriminator, per the owner's ruling.
+ * Where the link is GOING, the discriminator, per the owner's ruling.
  *
  * - `off-host` the link will be opened somewhere else: a notification tapped
  *   on a phone, a manifest handed to Home Assistant, an attachment URL posted
@@ -160,11 +160,11 @@ export function resolveClickTargetMode(bindHost: string | undefined): ClickTarge
  * |-----------|-------------|---------------------------------------------|
  * | network   | off-host    | this machine's routable LAN address, or null |
  * | network   | local       | loopback                                     |
- * | local     | off-host    | **null** — nothing off-host can reach it     |
+ * | local     | off-host    | **null**, nothing off-host can reach it     |
  * | local     | local       | loopback                                     |
  *
  * Never the wildcard: `0.0.0.0` is a bind address, not a destination, and is
- * not emitted in any mode. Null means the caller OMITS the link — a missing
+ * not emitted in any mode. Null means the caller OMITS the link, a missing
  * link beats a broken one.
  *
  * Note the `network` + `local` cell: loopback is served by a wildcard bind, so
@@ -191,7 +191,7 @@ const WILDCARD_BIND_HOST = '0.0.0.0';
  * A URL carrying a REAL host (a hostname, a LAN address, a tunnel) is the
  * operator's declared destination and passes through untouched in either mode.
  * A loopback or wildcard host is derived, not declared, and the mode decides
- * it — see {@link resolveClickTargetHost}. Returns null when the result would
+ * it, see {@link resolveClickTargetHost}. Returns null when the result would
  * not be reachable, and the caller omits the click target.
  */
 export function normalizeReachableBaseUrl(

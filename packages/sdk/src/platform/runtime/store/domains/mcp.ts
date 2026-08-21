@@ -1,5 +1,5 @@
 /**
- * MCP domain state — tracks all MCP server connections, their lifecycle
+ * MCP domain state, tracks all MCP server connections, their lifecycle
  * state, and available tools per server.
  */
 
@@ -72,7 +72,7 @@ export interface McpServerRecord {
 }
 
 /**
- * McpDomainState — all MCP server connections and tool registry.
+ * McpDomainState, all MCP server connections and tool registry.
  */
 export interface McpDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

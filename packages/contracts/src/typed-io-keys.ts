@@ -3,7 +3,7 @@
 // Key-manipulation helpers for the generated typed-IO shapes in
 // generated/foundation-client-types.ts.
 //
-// THE TRAP THESE EXIST FOR — read before reaching for `Omit` or `keyof` on an
+// THE TRAP THESE EXIST FOR, read before reaching for `Omit` or `keyof` on an
 // operator method input:
 //
 // A catalog schema with `additionalProperties: true` renders as
@@ -25,7 +25,7 @@
 //
 // Both were found in production: `Omit<OperatorMethodInput<M>, K>` in the SDK's
 // browser facade, and `WithoutKeys`/`RequiredKeys` in transport-http's client
-// plumbing. Strip the index signature FIRST — that is what `NamedProps` does —
+// plumbing. Strip the index signature FIRST, that is what `NamedProps` does,
 // then apply the key operation, then re-add the index signature if the open
 // envelope should stay open.
 
@@ -43,7 +43,7 @@ export type NamedProps<T> = {
 export type IndexPart<T> = string extends keyof T ? { readonly [key: string]: unknown } : unknown;
 
 /**
- * The keys of `T` that are genuinely required — correct for open envelopes,
+ * The keys of `T` that are genuinely required, correct for open envelopes,
  * where a bare `RequiredKeys`-style mapped type collapses to `never`.
  */
 export type RequiredNamedKeys<T> = {
@@ -60,8 +60,8 @@ export type RequiredNamedKeys<T> = {
  * same reason `RequiredNamedKeys` is homomorphic. A branched input renders as
  * `(Base & A) | (Base & B)` (method-catalog-shared.ts `branchedSchema`, for the
  * verbs whose required set is conditional). Applied to the whole union at once,
- * `keyof` sees only the keys the branches SHARE — which for requirement
- * branches is nothing — so every branch's requiredness is dropped and the
+ * `keyof` sees only the keys the branches SHARE, which for requirement
+ * branches is nothing, so every branch's requiredness is dropped and the
  * helper's parameter accepts `{}` again. Distributing maps each branch
  * separately and rejoins them, so `create(id, {})` stays an error.
  *

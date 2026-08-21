@@ -26,7 +26,7 @@ const ICANN_END = '// ===END ICANN DOMAINS===';
  * The private section is thousands of entries that churn constantly, so
  * bundling all of it would make the drift check permanently red. These are the
  * hosting suffixes where getting it wrong makes two unrelated sites compare
- * equal — the failure that actually matters for link validation.
+ * equal, the failure that actually matters for link validation.
  */
 const CURATED_PRIVATE = [
   'github.io', 'gitlab.io', 'pages.dev', 'workers.dev', 'vercel.app', 'netlify.app',
@@ -79,7 +79,7 @@ const file = `// GENERATED FILE — do not edit by hand.
 //
 // Snapshot taken: ${new Date().toISOString().slice(0, 10)}
 
-/** Multi-label public suffixes. Single-label suffixes need no rule — see the module header. */
+/** Multi-label public suffixes. Single-label suffixes need no rule, see the module header. */
 export const PUBLIC_SUFFIX_MULTI_LABEL: readonly string[] = [
 ${serialize(multiLabel)}
 ];

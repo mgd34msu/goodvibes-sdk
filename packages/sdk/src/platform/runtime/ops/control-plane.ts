@@ -1,5 +1,5 @@
 /**
- * OpsControlPlane — central dispatch point for all operator interventions.
+ * OpsControlPlane, central dispatch point for all operator interventions.
  *
  * All task and agent control actions flow through this class. It:
  * - Validates that the requested action is legal given the current state
@@ -76,7 +76,7 @@ export class OpsTargetNotFoundError extends GoodVibesSdkError {
 const RETRYABLE_STATES: ReadonlySet<TaskLifecycleState> = new Set(['failed', 'cancelled']);
 
 /**
- * Terminal agent lifecycle states — agents in these states cannot be cancelled.
+ * Terminal agent lifecycle states, agents in these states cannot be cancelled.
  */
 const TERMINAL_AGENT_STATES: ReadonlySet<AgentLifecycleState> = new Set([
   'completed',

@@ -44,7 +44,7 @@ export interface HostedSessionsSettings {
    * front of this surface presses enter.
    *
    * Turning it off forces every turn to run locally. With no connected daemon
-   * reachable, turns run locally regardless — and say so, once, in the
+   * reachable, turns run locally regardless, and say so, once, in the
    * transcript.
    */
   routeConversationTurns: boolean;
@@ -110,6 +110,6 @@ export const hostedSessionsConfigSettings: ConfigSettingDefinition[] = [
     key: 'hostedSessions.routeConversationTurns',
     type: 'boolean',
     default: true,
-    description: 'Run this surface\'s own conversation turns inside the connected daemon rather than in this process. On (the default) and with a connected daemon reachable: the first message of a conversation creates a daemon-hosted session rooted at this surface\'s working directory, every later message is steered into it, and this surface renders the turn from the daemon\'s event stream — so the turn survives this process closing and every surface sees one conversation. The daemon holds the authoritative transcript; this surface still keeps its own local record of what the stream delivered. Off: every turn runs in this process, as it always did. With no connected daemon reachable the turn runs locally regardless, and the transcript says so in one line naming the reason — it is never silent about where a turn ran. This is about what happens when you press enter; hostedSessions.promoteInboundConversations is the same question for messages arriving from a channel.',
+    description: 'Run this surface\'s own conversation turns inside the connected daemon rather than in this process. On (the default) and with a connected daemon reachable: the first message of a conversation creates a daemon-hosted session rooted at this surface\'s working directory, every later message is steered into it, and this surface renders the turn from the daemon\'s event stream, so the turn survives this process closing and every surface sees one conversation. The daemon holds the authoritative transcript; this surface still keeps its own local record of what the stream delivered. Off: every turn runs in this process, as it always did. With no connected daemon reachable the turn runs locally regardless, and the transcript says so in one line naming the reason, it is never silent about where a turn ran. This is about what happens when you press enter; hostedSessions.promoteInboundConversations is the same question for messages arriving from a channel.',
   },
 ];

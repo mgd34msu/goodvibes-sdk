@@ -40,7 +40,7 @@ export type OrchestratorCoreServices = {
   /**
    * Narrow injection seam for the MAIN interactive session's per-turn
    * passive knowledge injection (see core/orchestrator-turn-loop.ts). Optional/undefined
-   * is a hard no-op — the feature never runs and the base system prompt is
+   * is a hard no-op, the feature never runs and the base system prompt is
    * byte-identical, matching the agent path's `memoryRegistry` semantics. Wired
    * in post-construction via `Orchestrator.setCoreServices({ memoryRegistry })` since,
    * like `sessionMemoryStore`/`planManager` above, it is not required at construction
@@ -51,12 +51,12 @@ export type OrchestratorCoreServices = {
    * Stage B code-index injection seam for the MAIN interactive session. Optional/
    * undefined is a hard no-op (memory-only injection, base prompt byte-identical). Whether code
    * hits are actually injected is additionally gated by the `agent-passive-code-injection`
-   * gate (off by default via agents.passiveInjection.code) and `isCodeInjectionSettingEnabled` below — both must hold.
+   * gate (off by default via agents.passiveInjection.code) and `isCodeInjectionSettingEnabled` below, both must hold.
    */
   codeIndex?: TurnCodeIndexSource | undefined;
   /**
    * Live gate for the embedder's storage.codeIndexEnabled setting. Undefined defaults to
-   * "allowed" — the capability gate alone then governs. ANDed with the gate each turn so a runtime
+   * "allowed", the capability gate alone then governs. ANDed with the gate each turn so a runtime
    * toggle of either takes effect without reconstructing the orchestrator.
    */
   isCodeInjectionSettingEnabled?: (() => boolean) | undefined;

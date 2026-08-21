@@ -4,7 +4,7 @@
  * Provides stable SHA-256 fingerprints derived from the sorted key set of a
  * tool result object. The same output mode / input class always produces the
  * same fingerprint because the hash is computed from the sorted key names, not
- * from the values — making it a schema-level identity rather than a content hash.
+ * from the values, making it a schema-level identity rather than a content hash.
  *
  * Integration pattern:
  *   1. After a mode-specific result is produced, call `appendSchemaFingerprint`.

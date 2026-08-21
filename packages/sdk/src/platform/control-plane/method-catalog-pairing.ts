@@ -31,7 +31,7 @@ const PUSH_SUBSCRIPTION_KEYS_SCHEMA = objectSchema({
   auth: STRING_SCHEMA,
 }, ['p256dh', 'auth']);
 
-/** The redacted, wire-safe view of a pairing token — name/created/last-seen, never the secret. */
+/** The redacted, wire-safe view of a pairing token, name/created/last-seen, never the secret. */
 const PUBLIC_PAIRING_TOKEN_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   name: STRING_SCHEMA,
@@ -39,7 +39,7 @@ const PUBLIC_PAIRING_TOKEN_SCHEMA = objectSchema({
   lastSeenAt: NUMBER_SCHEMA,
 }, ['id', 'name', 'createdAt']);
 
-/** The minted token — the ONE shape that carries the plaintext secret, returned once. */
+/** The minted token, the ONE shape that carries the plaintext secret, returned once. */
 const MINTED_PAIRING_TOKEN_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   name: STRING_SCHEMA,
@@ -50,7 +50,7 @@ const MINTED_PAIRING_TOKEN_SCHEMA = objectSchema({
 /**
  * The honest TLS/capability posture of a web origin: whether plain http on a
  * private network applies (the supported LAN posture, with its ONE notice line
- * stated at pairing — never a nag), and which browser-gated capabilities the
+ * stated at pairing, never a nag), and which browser-gated capabilities the
  * origin can support, each unavailable one labeled with why and the supported
  * path (tailscale) so surfaces render labels instead of dead buttons. The
  * daemon never mints certificates; https comes from the user's own TLS or
@@ -115,7 +115,7 @@ export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'pairing.tokens.migrate',
     title: 'Migrate Off The Shared Token',
-    description: 'A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once — the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).',
+    description: 'A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once, the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).',
     category: 'pairing',
     scopes: ['write:control-plane'],
     transport: ['ws'],
@@ -134,7 +134,7 @@ export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'pairing.handoff.create',
     title: 'Create Pairing Hand-off',
-    description: 'Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin\'s honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https — available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.',
+    description: 'Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications, carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes, token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin\'s honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https, available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.',
     category: 'pairing',
     scopes: ['write:control-plane'],
     transport: ['ws'],
@@ -157,7 +157,7 @@ export const builtinGatewayPairingMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'pairing.posture.get',
     title: 'Get Origin TLS/Capability Posture',
-    description: 'The honest TLS/capability posture of a web origin — pass your surface\'s current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https — available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.',
+    description: 'The honest TLS/capability posture of a web origin, pass your surface\'s current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https, available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.',
     category: 'pairing',
     scopes: ['read:control-plane'],
     transport: ['ws'],

@@ -1,21 +1,21 @@
 /**
- * secrets-keyfile.ts — keyfile lifecycle + envelope crypto for SecretsManager.
+ * secrets-keyfile.ts, keyfile lifecycle + envelope crypto for SecretsManager.
  *
  * Extracted from secrets.ts and hardened after a real incident (2026-07):
  * a keyfile went missing, several long-lived processes each minted their own
  * replacement key (non-exclusive generation, last write wins), and the losers
- * kept encrypting stores with cached keys nobody else had — surfacing days
+ * kept encrypting stores with cached keys nobody else had, surfacing days
  * later as generic GCM auth failures with no way to tell which key wrote the
  * store. Three guards close that class:
  *
- *  1. Exclusive generation — the keyfile is created with the `wx` flag; a
+ *  1. Exclusive generation, the keyfile is created with the `wx` flag; a
  *     process that loses the creation race adopts the winner's key instead of
  *     keeping a private in-memory one.
- *  2. Pre-write revalidation — every store write re-reads the keyfile and
+ *  2. Pre-write revalidation, every store write re-reads the keyfile and
  *     refuses to encrypt with a cached key that no longer matches (and
  *     restores a missing keyfile from the cached key, which at that point is
  *     the only surviving copy).
- *  3. Key fingerprints — every envelope records a short hash of the key that
+ *  3. Key fingerprints, every envelope records a short hash of the key that
  *     wrote it, so a mismatched read reports "written with key X, current is
  *     Y" instead of a bare authentication failure. The fingerprint reveals
  *     nothing about the key (8 hex chars of a SHA-256).
@@ -136,7 +136,7 @@ export function loadOrCreateKeyfile(keyFilePath: string): Buffer {
   if (existsSync(keyFilePath)) return readKeyfile(keyFilePath);
   const key = randomBytes(32);
   if (!writeKeyfileExclusive(keyFilePath, key)) {
-    // Another process won the creation race — its key is the canonical one.
+    // Another process won the creation race, its key is the canonical one.
     return readKeyfile(keyFilePath);
   }
   logger.info('SecretsManager: generated new secrets keyfile', { path: keyFilePath });
@@ -145,7 +145,7 @@ export function loadOrCreateKeyfile(keyFilePath: string): Buffer {
 
 /**
  * Guard a store write against the on-disk key state. A cached key that no
- * longer matches the keyfile must never encrypt a store — every other process
+ * longer matches the keyfile must never encrypt a store, every other process
  * (and this one, after restart) would be unable to read it. A MISSING keyfile
  * is restored from the cached key: at that moment the cache is the only
  * surviving copy, and persisting it keeps every store written so far readable.
@@ -169,7 +169,7 @@ export function assertCachedKeyIsCurrent(keyFilePath: string, cachedKey: Buffer)
     return;
   }
   // Lost the restore race. Only accept the winner if it minted the same key
-  // (impossible in practice) — otherwise refuse the write with the same
+  // (impossible in practice), otherwise refuse the write with the same
   // precise mismatch error as above.
   const onDisk = readKeyfile(keyFilePath);
   if (!onDisk.equals(cachedKey)) {

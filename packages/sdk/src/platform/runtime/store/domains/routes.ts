@@ -1,5 +1,5 @@
 /**
- * Route binding domain state — external conversation, thread, and session mappings.
+ * Route binding domain state, external conversation, thread, and session mappings.
  */
 
 import type { AutomationRouteBinding } from '../../../automation/routes.js';

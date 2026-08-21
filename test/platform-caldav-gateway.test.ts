@@ -1,6 +1,6 @@
 /**
  * Tests for the CalDAV-backed implementation of the daemon's `calendar.*`
- * verbs — the port of the calendar surface that used to live inside one
+ * verbs, the port of the calendar surface that used to live inside one
  * product.
  *
  * Everything runs against injected ports: a fake `CalDavHttpPort` (no socket),

@@ -1,5 +1,5 @@
 /**
- * MCP server configuration — scans multiple locations in precedence order.
+ * MCP server configuration, scans multiple locations in precedence order.
  */
 import { existsSync } from 'fs';
 import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
@@ -233,7 +233,7 @@ export function loadWritableMcpConfig(roots: McpConfigRoots, scope: McpConfigSco
  * `env` is the one field an omitted value PRESERVES rather than clears.
  *
  * Every other field is a full replacement, which is right: the caller can see
- * what it is replacing. `env` it cannot — the read side reports `envKeys` and
+ * what it is replacing. `env` it cannot, the read side reports `envKeys` and
  * never the values, so an admin editing an unrelated field (a URL, an
  * allowedHost) round-trips the server object with `env` missing and silently
  * destroys credentials nobody could have known to resend. That is a wipe

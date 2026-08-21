@@ -6,7 +6,7 @@
  *
  * 1. A CONSUMING MATCH REACHES DISK (docs/inbound-email.md §9.2).
  *    `expectation-store.ts`'s header names the three book mutations that must
- *    be mirrored — "open, close, **consuming match**". The registry wrote
+ *    be mirrored, "open, close, **consuming match**". The registry wrote
  *    through on open, cancel, sweep and hydrate, and on nothing at all on the
  *    match path: `matchCandidate` deleted from the in-memory book and the file
  *    still held the record. The daemon checks for updates hourly and restarts
@@ -18,7 +18,7 @@
  * 2. A PASS THAT DOES NOT COMPLETE SPENDS NOTHING.
  *    `matchCandidate` defaults to `consume: true`, so the intake deleted the
  *    expectation before it had tried to send the notice. On `delivery-failed`
- *    — the one failure the design explicitly retries — the intake threw with
+ *   , the one failure the design explicitly retries, the intake threw with
  *    the grant already gone: the sink released its claim, the message was
  *    redelivered exactly as intended, and pass 2 found an empty book and
  *    recorded `no-expectation`. The retry recovered the notice and destroyed
@@ -57,8 +57,8 @@ function scratch(): string {
   return dir;
 }
 
-// Returns the IMAP variant specifically. It builds one — uidValidity, uid, an
-// envelope — so the narrow type is the true one; typing it as the union meant
+// Returns the IMAP variant specifically. It builds one, uidValidity, uid, an
+// envelope, so the narrow type is the true one; typing it as the union meant
 // every read of `.uid` or `.envelope` downstream needed a cast.
 function mail(uid: number): ImapInboundMessage {
   return {
@@ -162,7 +162,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
   test('an expiry the match path deleted is cleared from the FILE, not just from memory', async () => {
     // The other mutation `matchCandidate` makes: an expectation past its window
     // is deleted on the way to reporting it `expired`, and the no-match path
-    // sweeps the rest. Asserted against the raw file on purpose — the store's
+    // sweeps the rest. Asserted against the raw file on purpose, the store's
     // own read path filters expired records, so every API-level view of this
     // agrees whether or not the write ever happened, and only the bytes on
     // disk distinguish a mirror that is current from one that is stale.
@@ -195,7 +195,7 @@ describe('a consuming match is written through, so a restart cannot resurrect it
 
   test('an unspent grant still survives the restart it was persisted for', async () => {
     // The write-through must not have turned into "clear the file on every
-    // message" — the store exists because an expectation opened at 14:58 has
+    // message", the store exists because an expectation opened at 14:58 has
     // to survive a 15:00 restart.
     const dir = scratch();
     const path = join(dir, 'expectations.json');
@@ -230,7 +230,7 @@ describe('a pass that does not complete leaves the book exactly as it found it',
       records,
       send: async () => {
         attempt += 1;
-        // Pass 1: the transport is down — the documented retryable case.
+        // Pass 1: the transport is down, the documented retryable case.
         return attempt === 1
           ? { delivered: false, reason: 'delivery-failed', error: 'socket hang up' }
           : { delivered: true };
@@ -245,13 +245,13 @@ describe('a pass that does not complete leaves the book exactly as it found it',
     // Pass 2: the same message, redelivered exactly as designed.
     await intake(mail(101));
     expect((await records.list())[0]?.outcome).toBe('matched-expectation');
-    // And NOW it is spent — once, by the pass that finished.
+    // And NOW it is spent, once, by the pass that finished.
     expect(registry.list()).toHaveLength(0);
   });
 
   test('a failed record write also leaves the grant open for the retry', async () => {
     // The other throw on this path. The file header says a failed store write
-    // throws "because a retry can genuinely do better" — which is only true if
+    // throws "because a retry can genuinely do better", which is only true if
     // the retry still has the expectation to match against.
     const dir = scratch();
     const registry = registryAt(join(dir, 'expectations.json'));
@@ -311,7 +311,7 @@ describe('the port the inbound path holds', () => {
       serviceDomain: 'service.test', recipientAddress: ALIAS, purpose: 'Create an account',
     });
 
-    // Every non-match kind is a no-op — the caller cannot spend a grant by
+    // Every non-match kind is a no-op, the caller cannot spend a grant by
     // handing back a verdict that never named one.
     await registry.matcher.consumeMatch({ kind: 'no-expectation', reason: 'none open' });
     expect(registry.list()).toHaveLength(1);

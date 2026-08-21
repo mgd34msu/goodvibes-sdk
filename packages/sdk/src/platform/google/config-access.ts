@@ -3,7 +3,7 @@
  *
  * `ConfigManager.resolvePath()` walks the live config object and THROWS
  * `Invalid config path` for a section that does not exist. Every path this
- * connector reads is app-layer — `email.*`, `calendar.google.*`, `google.*` —
+ * connector reads is app-layer, `email.*`, `calendar.google.*`, `google.*`,
  * and none of them is in the base schema, so on a machine where nobody has run
  * setup the sections are simply absent and the very first read throws.
  *
@@ -17,7 +17,7 @@
  * `ensureGoogleConfigDefaults` seeds the sections and is the right thing to
  * call where a real `ConfigManager` is in hand, but it cannot be the only
  * defence: it is a step a caller must remember, on a code path that only fails
- * on machines where the feature was never used — which is precisely where
+ * on machines where the feature was never used, which is precisely where
  * nobody is looking. So every read in this module goes through here instead,
  * and an absent section reads as absent.
  *
@@ -32,7 +32,7 @@ import type { GoogleConfigPort } from './types.js';
  * Read one config value, treating an unreachable path as unset.
  *
  * Returns `undefined` both when the value is genuinely absent and when reading
- * it threw — the two are the same fact to every caller here, and neither is an
+ * it threw, the two are the same fact to every caller here, and neither is an
  * error worth propagating.
  */
 export function safeConfigGet(config: Pick<GoogleConfigPort, 'get'>, key: string): unknown {

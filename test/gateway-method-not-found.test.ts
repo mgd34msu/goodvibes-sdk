@@ -10,15 +10,15 @@
  * TUI daemon's `register.ts:114` UNKNOWN_METHOD).
  *
  * Covers every place an uncataloged id is actually observed:
- *  (a) `GatewayMethodCatalog.invoke()` (method-catalog.ts) — thrown for a
+ *  (a) `GatewayMethodCatalog.invoke()` (method-catalog.ts), thrown for a
  *      direct caller bypassing the HTTP dispatch gate.
  *  (b) `DaemonControlPlaneHelper.invokeGatewayMethodCall` (daemon/control-
- *      plane.ts) — the internal call path used by the WS 'call' frame.
+ *      plane.ts), the internal call path used by the WS 'call' frame.
  *  (c) real HTTP, over a live bootDaemon instance (port 0, isolated home):
  *      `GET /api/control-plane/methods/{unknownId}` and
  *      `POST /api/control-plane/methods/{unknownId}/invoke`
  *      (packages/daemon-sdk/src/control-routes.ts getGatewayMethod /
- *      invokeGatewayMethod) — what webui/TUI actually see on the wire.
+ *      invokeGatewayMethod), what webui/TUI actually see on the wire.
  *  (d) regression: NOT_INVOKABLE is unchanged and the two codes never collide.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';

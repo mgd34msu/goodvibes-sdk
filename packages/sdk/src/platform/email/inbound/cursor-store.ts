@@ -1,5 +1,5 @@
 /**
- * cursor-store.ts — the durable per-mailbox cursor, for both sources
+ * cursor-store.ts, the durable per-mailbox cursor, for both sources
  * (docs/inbound-email.md §4, §3.4d).
  *
  * `EXAMINE` + `BODY.PEEK` means the daemon never marks anything `\Seen`, so
@@ -9,7 +9,7 @@
  * mail traffic.
  *
  * The record is a discriminated union, because IMAP's position and Gmail's are
- * not the same kind of thing — `UIDVALIDITY` + highest UID against a decimal
+ * not the same kind of thing, `UIDVALIDITY` + highest UID against a decimal
  * uint64 `historyId` STRING. `source-cursor.ts` holds the shapes and the
  * validators and states the reasoning; this file holds the custody rules over
  * them. Both sources' write paths are here, and both go through ONE
@@ -18,18 +18,18 @@
  * when we lost our place.
  *
  * Follows the same five-rule shape as `platform/devices/device-grants.ts`:
- *  1. Reap on recovery — cursors for an account no longer configured are
+ *  1. Reap on recovery, cursors for an account no longer configured are
  *     dropped at load. The "is this account configured" predicate is an
  *     injected dependency (`isAccountConfigured`); this module never reads
- *     config directly. It answers THREE things, not two — `true`, `false` and
- *     `'unknown'` — because "the config has not loaded yet" is not the same
+ *     config directly. It answers THREE things, not two, `true`, `false` and
+ *     `'unknown'`, because "the config has not loaded yet" is not the same
  *     claim as "this account is not configured", and reading the first as the
  *     second reaps a live cursor. See `AccountConfiguredAnswer`.
- *  2. Bound everything — one record per mailbox already bounds the file with
+ *  2. Bound everything, one record per mailbox already bounds the file with
  *     traffic; `maxCursors` is a defensive count cap on top of that, in case a
  *     bug or a hand-edited config ever produced more distinct (account,
  *     mailbox) pairs than could plausibly be real.
- *  3. Validate by content — on an IMAP record, `uidValidity` and `lastSeenUid`
+ *  3. Validate by content, on an IMAP record, `uidValidity` and `lastSeenUid`
  *     must be integers inside the 32-bit range RFC 3501 §2.3.1.1 defines,
  *     positive / non-negative respectively (see the note on `lastSeenUid`
  *     below, and `MAX_IMAP_UID` on why the UPPER bound is the load-bearing
@@ -39,8 +39,8 @@
  *     discarded, not repaired: a corrupt cursor silently coerced to 0 would
  *     replay the entire mailbox at the owner. A record naming a source this
  *     build does not know is discarded rather than read as either shape.
- *  4. Reap periodically — `sweep()` is safe to call on a timer, not only at boot.
- *  5. Disclose what was reaped — every sweep returns an itemised report.
+ *  4. Reap periodically, `sweep()` is safe to call on a timer, not only at boot.
+ *  5. Disclose what was reaped, every sweep returns an itemised report.
  *
  * The UIDVALIDITY rule and first-run behaviour (§4) live in `resolve()`:
  * establishing or re-establishing a cursor NEVER replays past mail. It always
@@ -51,7 +51,7 @@
  * §9.1 says "`uidValidity` and `lastSeenUid` must be positive integers".
  * `uidValidity` is always positive under IMAP (RFC 3501: a 32-bit
  * non-zero value). `lastSeenUid`, however, is legitimately `0` on first run
- * against a mailbox that currently holds no messages — there is no highest
+ * against a mailbox that currently holds no messages, there is no highest
  * UID to establish, and `0` is the only honest value meaning "nothing seen
  * yet". Requiring `lastSeenUid > 0` would make that record fail its own
  * validation on the very next load, immediately after being written. This
@@ -81,7 +81,7 @@ import {
  * `file-unreadable` is rule 3 applied to the FILE rather than to a record: a
  * cursor file that will not parse is discarded and disclosed, exactly as a torn
  * record inside it would be. Reading it as a permanent hard failure instead
- * would take every reader of this store down with it — including the sweep of
+ * would take every reader of this store down with it, including the sweep of
  * the two stores that are fine, and including the disclosure verb whose whole
  * job is to explain this state.
  */
@@ -111,7 +111,7 @@ export interface CursorSweepReport {
    *
    * Disclosed rather than silent: a cursor kept for an unknown reason is
    * persisted state that nothing has justified, and a sweep whose count never
-   * falls to zero means a caller is permanently unable to answer — which is a
+   * falls to zero means a caller is permanently unable to answer, which is a
    * fault worth seeing rather than a leak worth ignoring.
    */
   readonly unresolvedAccounts: number;
@@ -124,7 +124,7 @@ export type CursorResolutionKind = 'resumed' | 'first-run' | 'uid-validity-chang
  * `uid-validity-changed` stands on the IMAP side.
  *
  * Gmail answers `users.history.list` with a 404 when the requested
- * `startHistoryId` has aged out of its retention window — typically about a
+ * `startHistoryId` has aged out of its retention window, typically about a
  * week, sometimes hours. That means the same thing a changed `UIDVALIDITY`
  * means: the stored position names nothing. Both go through
  * `establishCursor()` below, so there is one implementation of "what to do
@@ -137,7 +137,7 @@ export interface GmailCursorResolution {
   readonly kind: GmailCursorResolutionKind;
   /** The cursor to use going forward. Already persisted when this is returned. */
   readonly cursor: GmailMailboxCursor;
-  /** The discarded cursor, present only for `history-expired` — disclose this to the owner. */
+  /** The discarded cursor, present only for `history-expired`, disclose this to the owner. */
   readonly previous?: GmailMailboxCursor | undefined;
 }
 
@@ -154,7 +154,7 @@ export interface CursorResolution {
   readonly cursor: MailboxCursor;
   /** Messages that existed before this mailbox was watched (or before its UIDVALIDITY changed) and were deliberately NOT replayed. Always 0 for `resumed`. */
   readonly skippedMessageCount: number;
-  /** The discarded cursor, present only for `uid-validity-changed` — disclose this to the owner. */
+  /** The discarded cursor, present only for `uid-validity-changed`, disclose this to the owner. */
   readonly previous?: MailboxCursor | undefined;
 }
 
@@ -192,7 +192,7 @@ export function validateMailboxCursor(value: unknown): MailboxCursor | null {
  * Where the record for a (account, mailbox) pair sits, REGARDLESS of source.
  *
  * The key is the pair, not the pair plus the source, because a mailbox is
- * served by exactly one source at a time — `surfaces.email.inbound.source`
+ * served by exactly one source at a time, `surfaces.email.inbound.source`
  * picks one, and the two never run against the same mailbox concurrently.
  */
 /**
@@ -202,7 +202,7 @@ export function validateMailboxCursor(value: unknown): MailboxCursor | null {
  * The load-time check in `source-cursor.ts` is what stops a bad value being
  * HONOURED; this is what stops one being WRITTEN. Without it the two disagree
  * in the worst possible direction: the store would accept `9007199254740991`,
- * persist it, and then silently discard it as malformed on the next load — so
+ * persist it, and then silently discard it as malformed on the next load, so
  * the daemon would look like it held a position and hold none, and every
  * mailbox would re-establish at its high-water mark on every restart. That is
  * the same reasoning `resolveGmail` states for `isHistoryId`, applied to the
@@ -251,7 +251,7 @@ function indexOfKey(
  * UIDs are done and a UID cannot say which history records are. Keeping both
  * would mean the file carried a position no code path can honour, and a later
  * switch back would resume from a mark that has been stale for however long
- * the other source ran — which is a silent skip. Replacing is disclosed
+ * the other source ran, which is a silent skip. Replacing is disclosed
  * instead: the resolution comes back as `first-run`, so the caller tells the
  * owner the mailbox is being started fresh at the current high-water mark.
  */
@@ -272,7 +272,7 @@ function establishAt(
  * the same, positive when `a` is later.
  *
  * A `historyId` is a uint64, and `Number('18446744073709551615')` is
- * `18446744073709552000` — so `<` and `>` on parsed values would report two
+ * `18446744073709552000`, so `<` and `>` on parsed values would report two
  * distinct positions as equal, or the wrong one as later, precisely at the top
  * of the range. Both operands have already passed `isHistoryId`, which means
  * each is decimal digits only, no sign, no exponent and NO LEADING ZEROS. For
@@ -297,7 +297,7 @@ function compareHistoryIds(a: string, b: string): number {
  * watching", and why the third one has to exist.
  *
  * `true` and `false` are the answers a caller that KNOWS can give. `'unknown'`
- * is the answer a caller gives when it cannot know yet — the config file has
+ * is the answer a caller gives when it cannot know yet, the config file has
  * not been read, the manager is mid-reload, the account list is a promise that
  * has not settled. Without it, such a caller has to pick one of the two, and
  * both choices are wrong in a way that costs mail:
@@ -305,7 +305,7 @@ function compareHistoryIds(a: string, b: string): number {
  *  - answering `false` reaps every stored cursor. The next `resolve()` then
  *    answers `first-run` at the mailbox's CURRENT high-water mark, so every
  *    message between the discarded position and that mark is silently skipped
- *    — not replayed, skipped — and the owner is told the mailbox "started
+ *   , not replayed, skipped, and the owner is told the mailbox "started
  *    fresh", which is indistinguishable from a genuine first run. Seeded at
  *    UID 900 with the mailbox at 1500, that is 600 messages nobody ever sees
  *    and no line anywhere saying so.
@@ -327,7 +327,7 @@ export interface MailboxCursorStoreOptions {
    * inert (nothing is dropped on that basis) rather than defaulting to "drop
    * everything" or "read config directly".
    *
-   * A caller that cannot answer yet returns `'unknown'` rather than guessing —
+   * A caller that cannot answer yet returns `'unknown'` rather than guessing,
    * see `AccountConfiguredAnswer`.
    */
   readonly isAccountConfigured?: ((account: string) => AccountConfiguredAnswer) | undefined;
@@ -393,7 +393,7 @@ export class MailboxCursorStore {
   ): Promise<T> {
     // The chain orders writers inside THIS process; the lock orders them
     // across processes. Both, because neither alone is "one writer at a time"
-    // — see store-write-lock.ts for why a second daemon is reachable here.
+    //, see store-write-lock.ts for why a second daemon is reachable here.
     const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { cursors, malformed, corrupt } = await this.readWithDrops();
       const { next, result } = await fn(cursors, malformed, corrupt);
@@ -406,7 +406,7 @@ export class MailboxCursorStore {
 
   /**
    * Live, content-validated cursors, filtered to configured accounts when
-   * `isAccountConfigured` was supplied. Read-time filter — does not persist
+   * `isAccountConfigured` was supplied. Read-time filter, does not persist
    * the drop; `sweep()` is what removes it from disk.
    *
    * `'unknown'` keeps the cursor, for the same reason `sweep()` keeps it:
@@ -424,7 +424,7 @@ export class MailboxCursorStore {
    * The IMAP cursor for a mailbox.
    *
    * A stored GMAIL cursor under the same key answers `null` here rather than
-   * being read as an IMAP one — a `historyId` is not a UID and there is no
+   * being read as an IMAP one, a `historyId` is not a UID and there is no
    * honest conversion between them, so the position is treated as absent and
    * re-established at the high-water mark, which is the same rule a torn
    * record gets.
@@ -461,7 +461,7 @@ export class MailboxCursorStore {
    *    disclosure.
    *
    * A stored GMAIL cursor under the same key is treated as absent, so this
-   * answers `first-run` and REPLACES it — see `establishAt()` for why the
+   * answers `first-run` and REPLACES it, see `establishAt()` for why the
    * record is replaced rather than kept alongside.
    */
   async resolve(input: {
@@ -511,7 +511,7 @@ export class MailboxCursorStore {
    * establishing or re-establishing NEVER replays.
    *
    *  - No stored Gmail cursor -> `first-run`: established AT
-   *    `currentHistoryId`. Deliberately not backfilled — the daemon starts
+   *    `currentHistoryId`. Deliberately not backfilled, the daemon starts
    *    listening now, it does not retroactively decide about mail that arrived
    *    before it was asked to. There is no skip count to report because
    *    `users.history.list` cannot say how many records lie below a historyId
@@ -527,7 +527,7 @@ export class MailboxCursorStore {
    * condition itself. Only Gmail can, by answering `users.history.list` with a
    * 404 for a `startHistoryId` that has aged out of its retention window, and
    * the caller is holding that answer. What the caller then needs is the same
-   * thing it needed at start-up — "where do I resume from" — so it asks the
+   * thing it needed at start-up, "where do I resume from", so it asks the
    * same question and gets a `GmailCursorResolution` it has to handle. A
    * separate reset method would be a second entry point into establishing a
    * position, callable without ever reading its result, and this file's whole
@@ -539,7 +539,7 @@ export class MailboxCursorStore {
     readonly mailbox: string;
     /**
      * The mailbox's current `historyId`, as a decimal string exactly as Google
-     * sent it — from `users.getProfile` or from the last delta. Never a number.
+     * sent it, from `users.getProfile` or from the last delta. Never a number.
      */
     readonly currentHistoryId: string;
     /**
@@ -585,7 +585,7 @@ export class MailboxCursorStore {
   }
 
   /**
-   * Advance the cursor after a message is FULLY processed — matched,
+   * Advance the cursor after a message is FULLY processed, matched,
    * recorded, and notice dispatched or deliberately suppressed (§4). A crash
    * between fetch and this call means the cursor never moves, so the same
    * message is fetched again on recovery; dedup (§6) is what turns that
@@ -655,7 +655,7 @@ export class MailboxCursorStore {
       }
       // Never backwards, for the same reason `advance()` takes the max: a
       // cursor that moved down would re-deliver everything between the two
-      // positions. The comparison is on the digit STRINGS — see
+      // positions. The comparison is on the digit STRINGS, see
       // `compareHistoryIds`.
       const historyId = compareHistoryIds(position.historyId, existing.historyId) >= 0
         ? position.historyId
@@ -673,7 +673,7 @@ export class MailboxCursorStore {
   /**
    * One housekeeping pass: drop malformed records, drop cursors for accounts
    * no longer configured, and enforce the defensive count cap (oldest by
-   * `updatedAt` first). Idempotent and safe concurrently — recomputes every
+   * `updatedAt` first). Idempotent and safe concurrently, recomputes every
    * removal from the file it just read.
    *
    * Deliberately source-BLIND. Every rule here reads only `account`, `mailbox`

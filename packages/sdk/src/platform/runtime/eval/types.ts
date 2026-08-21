@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — core type definitions.
+ * Evaluation Harness, core type definitions.
  *
  * Defines the contracts for eval scenarios, scorecards, run results,
  * baselines, and CI gate outcomes.
@@ -31,7 +31,7 @@ export interface EvalScenario {
    * scorer converts into dimension scores.
    *
    * The function should use production runtime paths (PerfMonitor, SloCollector,
-   * RuntimeTracer, etc.) — not mocks — so results reflect real behaviour.
+   * RuntimeTracer, etc.), not mocks, so results reflect real behaviour.
    */
   run(): Promise<EvalRawResult>;
 }
@@ -180,7 +180,7 @@ export interface EvalGateResult {
    * explicitly rather than silently skipped: each is still floor-checked (a
    * below-floor unbaselined scenario appears in `floorFailures` too and fails
    * the gate), but its absence of a baseline score means it cannot be
-   * regression-checked this run — it becomes the baseline for next time.
+   * regression-checked this run, it becomes the baseline for next time.
    */
   unbaselined: UnbaselinedScenario[];
 }

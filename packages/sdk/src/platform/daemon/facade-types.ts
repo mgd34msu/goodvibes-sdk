@@ -67,7 +67,7 @@ export interface ResolvedDaemonFacadeRuntime {
   readonly channelPolicy: ChannelPolicyManager;
   readonly channelPlugins: ChannelPluginRegistry;
   readonly watcherRegistry: WatcherRegistry;
-  /** Trigger family supervisor — the facade starts and stops it with the daemon. Optional: a host that composes its own services without one simply gets no triggers. */
+  /** Trigger family supervisor, the facade starts and stops it with the daemon. Optional: a host that composes its own services without one simply gets no triggers. */
   readonly triggerManager?: RuntimeServices['triggerManager'];
   readonly platformServiceManager: PlatformServiceManager;
   readonly distributedRuntime: RuntimeServices['distributedRuntime'];
@@ -88,7 +88,7 @@ export interface ResolvedDaemonFacadeRuntime {
   /**
    * The hosted-session engine, or null when this daemon was not told how to
    * build a workspace floor. Null is the honest state, not a missing wire: the
-   * verbs are cataloged, unhandled, and refuse — see
+   * verbs are cataloged, unhandled, and refuse, see
    * daemon/hosted-sessions-composition.ts.
    */
   readonly hostedSessions: HostedSessionManager | null;

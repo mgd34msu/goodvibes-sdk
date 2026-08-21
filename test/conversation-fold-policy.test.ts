@@ -1,7 +1,7 @@
 /**
  * The shared fold policy: one row per folded block, and the exact rules the
  * TUI and Agent renderers both read. These tests pin the decisions the two
- * products previously each carried a copy of — the copies drifted four times;
+ * products previously each carried a copy of, the copies drifted four times;
  * the policy lives here now so a change is visible to every consumer at once.
  */
 import { describe, expect, test } from 'bun:test';

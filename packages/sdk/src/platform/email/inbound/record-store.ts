@@ -1,26 +1,26 @@
 /**
- * record-store.ts — the durable inbound-mail record store (docs/inbound-email.md §9.3).
+ * record-store.ts, the durable inbound-mail record store (docs/inbound-email.md §9.3).
  *
- * Every arriving message the watcher looks at is recorded here — structured
+ * Every arriving message the watcher looks at is recorded here, structured
  * fields (sender, subject, delivery evidence, link verdicts, outcome, notice
- * status, receivedAt) plus a bounded body excerpt — so the owner can later ask
+ * status, receivedAt) plus a bounded body excerpt, so the owner can later ask
  * "why did I get that message" and so `email.inbound.status` has something to
  * disclose. This is NOT the turn-scoped untrusted-content ledger
  * (`platform/security/untrusted-content.ts`): recording here happens at
  * arrival, has no watermark, and never feeds `evaluateOutwardEffect`. See
- * docs/inbound-email.md §5.1 — arrival is not ingest.
+ * docs/inbound-email.md §5.1, arrival is not ingest.
  *
  * Follows the same five-rule shape as `platform/devices/device-grants.ts`:
- *  1. Reap on recovery — records past their retention window, or past the
+ *  1. Reap on recovery, records past their retention window, or past the
  *     count cap, are dropped at load.
- *  2. Bound everything — BOTH `retentionDays` (age) and `maxRecords` (count)
+ *  2. Bound everything, BOTH `retentionDays` (age) and `maxRecords` (count)
  *     apply; whichever binds first wins. The body excerpt itself is capped at
  *     `MAX_BODY_EXCERPT_CHARS` so a single message cannot make the store an
  *     unbounded copy of the mailbox.
- *  3. Validate by content — every field is re-validated on load; a record
+ *  3. Validate by content, every field is re-validated on load; a record
  *     failing any check is discarded, not repaired.
- *  4. Reap periodically — `sweep()` is safe to call on a timer, not only at boot.
- *  5. Disclose what was reaped — every sweep returns an itemised report.
+ *  4. Reap periodically, `sweep()` is safe to call on a timer, not only at boot.
+ *  5. Disclose what was reaped, every sweep returns an itemised report.
  */
 import { randomUUID } from 'node:crypto';
 import { PersistentStore, type PersistentStoreCorruption } from '../../state/persistent-store.js';
@@ -73,35 +73,35 @@ export type InboundMailOutcome =
   | 'no-delivery-evidence';
 
 /**
- * `delivered` / `suppressed` / `pending` — the three outcomes that never come
- * back from the transport — plus every reason `deliverSurfaceNotice` refuses
+ * `delivered` / `suppressed` / `pending`, the three outcomes that never come
+ * back from the transport, plus every reason `deliverSurfaceNotice` refuses
  * with, PROJECTED off `SurfaceNoticeRefusal` rather than restated (§7.3).
  *
  * It was restated, and it had already drifted: the hand-written list omitted
  * `empty-text` and `unsupported-delivery-surface`, both of which
  * `deliverSurfaceNotice` really does return. A notice refused for either of
- * them could not be recorded — `validateInboundMailRecord` would reject the
- * record on load and drop it — so the one case the owner most needs to see
+ * them could not be recorded, `validateInboundMailRecord` would reject the
+ * record on load and drop it, so the one case the owner most needs to see
  * ("mail arrived and could not be announced") was the case that vanished.
  * A projection cannot drift, because there is nothing to keep in sync.
  *
  * `pending` is the state a record is written in BEFORE the notice is attempted,
  * and it is what makes the ordering in `intake.ts` possible: the record is the
- * thing that can fail, so it goes first, and the notice — the one step nothing
- * can undo — goes after it. A record sitting at `pending` means exactly what it
+ * thing that can fail, so it goes first, and the notice, the one step nothing
+ * can undo, goes after it. A record sitting at `pending` means exactly what it
  * says: the message was recorded and the notice for it has not resolved. It is
- * reached in two real situations — the transport is refusing with
+ * reached in two real situations, the transport is refusing with
  * `delivery-failed` and the message is being retried, or the daemon died
- * between the record and the send — and in both of them `pending` is the true
+ * between the record and the send, and in both of them `pending` is the true
  * answer where `suppressed` or `delivered` would be a guess.
  */
 export type InboundNoticeStatus = 'delivered' | 'suppressed' | 'pending' | SurfaceNoticeRefusal;
 
-/** A link's registrable domain plus verdict only — never the raw URL the message assembled (§7). */
+/** A link's registrable domain plus verdict only, never the raw URL the message assembled (§7). */
 export interface InboundLinkVerdict {
   readonly registrableDomain: string;
   readonly verdict: 'allowed' | 'refused' | 'unresolved';
-  /** Bounded at `MAX_LINK_REASON_CHARS` — sixty-four unbounded strings is an unbounded record. */
+  /** Bounded at `MAX_LINK_REASON_CHARS`, sixty-four unbounded strings is an unbounded record. */
   readonly reason?: string | undefined;
 }
 
@@ -122,7 +122,7 @@ export interface InboundMailRecordCommon {
   readonly outcome: InboundMailOutcome;
   readonly noticeStatus: InboundNoticeStatus;
   readonly noticeFailureReason?: string | undefined;
-  /** Bounded to MAX_BODY_EXCERPT_CHARS. Never rendered to the owner (§7) — retained for the owner's own later inspection / debugging only. */
+  /** Bounded to MAX_BODY_EXCERPT_CHARS. Never rendered to the owner (§7), retained for the owner's own later inspection / debugging only. */
   readonly bodyExcerpt: string;
   readonly receivedAt: string;
 }
@@ -157,7 +157,7 @@ export interface GmailInboundMailRecord extends InboundMailRecordCommon {
  * A union rather than a widened record with optional `uid` / `historyId`, and
  * the reason is the defect this replaced: `validateInboundMailRecord` required
  * a positive `uidValidity` and `uid` unconditionally, so EVERY Gmail message
- * failed validation and was dropped — on the path automatic selection makes
+ * failed validation and was dropped, on the path automatic selection makes
  * the default once Google is adopted. Mail arrived, matched, was announced,
  * and nothing was ever written. §9.3's retention had nothing to retain,
  * §11.0's card redaction had nothing to redact, and `email.inbound.status`
@@ -172,7 +172,7 @@ export type InboundMailRecord = ImapInboundMailRecord | GmailInboundMailRecord;
  * A record's identity as one readable string, for disclosure only.
  *
  * `imap:<uidValidity>:<uid>` / `gmail:<resourceId>`. Never a key and never
- * parsed back apart — a sweep report exists to tell the owner WHICH message
+ * parsed back apart, a sweep report exists to tell the owner WHICH message
  * went, and a report that carried `uid: 0` for every Gmail record (which is
  * what an IMAP-shaped field would have to do) tells him nothing while looking
  * like it told him something.
@@ -199,7 +199,7 @@ type DistributivePick<T, K extends PropertyKey> = T extends unknown
  *
  * Projected off `InboundMailRecord` rather than restated, so it cannot describe
  * a field the record does not have. This is the key `record()` upserts on and
- * `findByMessage()` looks up — deliberately NOT the record `id`, which is a
+ * `findByMessage()` looks up, deliberately NOT the record `id`, which is a
  * fresh UUID per write and therefore identifies a WRITE rather than a MESSAGE.
  *
  * Never the `Message-ID` header, for the reason `sink.ts` states at length: the
@@ -222,7 +222,7 @@ function isSameMessage(record: InboundMailRecord, key: InboundMailMessageKey): b
     && record.uid === key.uid;
 }
 
-/** `file-unreadable` is the whole-file counterpart of `malformed` — see `CursorDiscardReason`. */
+/** `file-unreadable` is the whole-file counterpart of `malformed`, see `CursorDiscardReason`. */
 export type InboundMailDiscardReason = 'malformed' | 'file-unreadable' | 'expired' | 'over-cap';
 
 
@@ -257,7 +257,7 @@ export interface InboundMailRecordPolicy {
  * What write-time bounding has removed since this process started.
  *
  * §9 rule 5 is "disclose what was reaped", and applying the bounds on write
- * would otherwise delete records with nothing anywhere saying so — the sweep
+ * would otherwise delete records with nothing anywhere saying so, the sweep
  * report itemises what IT removed, and a record the write already dropped is a
  * record the sweep never sees. This is the counterpart disclosure.
  *
@@ -273,7 +273,7 @@ export interface InboundMailWriteReapTally {
   readonly expired: number;
   /** Records a write dropped for being past `maxRecords`. */
   readonly overCap: number;
-  /** When this tally started counting — this store's construction. */
+  /** When this tally started counting, this store's construction. */
   readonly since: number;
 }
 
@@ -299,7 +299,7 @@ export interface InboundMailStoreOptions {
  *
  * A plain `Omit<InboundMailRecord, …>` on a union collapses to the keys the
  * variants SHARE, which would silently drop `uid`, `resourceId` and
- * `historyId` from the input type — every caller would then compile while
+ * `historyId` from the input type, every caller would then compile while
  * passing an identity the store cannot use. Distributing keeps each arm whole.
  */
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
@@ -370,7 +370,7 @@ export class InboundMailStore {
   ): Promise<T> {
     // The chain orders writers inside THIS process; the lock orders them
     // across processes. Both, because neither alone is "one writer at a time"
-    // — see store-write-lock.ts for why a second daemon is reachable here.
+    //, see store-write-lock.ts for why a second daemon is reachable here.
     const run = this.writeChain.then(async () => withInboundStoreWriteLock(this.store.lockPath, async () => {
       const { records, malformed, corrupt } = await this.readWithDrops();
       const { next, result } = await fn(records, malformed, corrupt);
@@ -388,13 +388,13 @@ export class InboundMailStore {
    * counting a VIEW: with `maxRecords: 2`, ten writes left ten records on disk
    * and `list()` answered 2. `email.inbound.status` computed its
    * `retention.records.kept` that way, so the owner was told his store was
-   * bounded while the file grew without limit — a disclosure that reads as
+   * bounded while the file grew without limit, a disclosure that reads as
    * reassurance and is not one.
    *
    * `stored` counts EVERY entry in the file, malformed ones included: they
    * occupy the file, so a count that skipped them would be the same class of
    * comfortable answer. `live` is what a read serves. Both are returned
-   * because the GAP between them is itself the fact worth disclosing —
+   * because the GAP between them is itself the fact worth disclosing,
    * records past their window that no write or sweep has reached yet.
    */
   async count(): Promise<{ readonly stored: number; readonly live: number }> {
@@ -409,12 +409,12 @@ export class InboundMailStore {
    *
    * This is the fix for the finding this store existed for six weeks without:
    * `record()` wrote `[...records, entry]` and nothing else, so the bounds
-   * lived only in `sweep()` — and `facade-inbound-mail.ts` runs the sweep every
+   * lived only in `sweep()`, and `facade-inbound-mail.ts` runs the sweep every
    * SIX HOURS. Between two sweeps the file was unbounded in both axes, and
    * every read hid it.
    *
    * Age first, then count, so the reason a record went is the bound that
-   * actually bound first — the same order and the same precedence `sweep()`
+   * actually bound first, the same order and the same precedence `sweep()`
    * uses, because two orders would mean two answers to "why is this gone".
    */
   private applyBounds(
@@ -436,7 +436,7 @@ export class InboundMailStore {
 
   /**
    * Live, content-validated records, newest first. Read-time filter for age
-   * and count (does not persist the drop — `sweep()` does that), so a read
+   * and count (does not persist the drop, `sweep()` does that), so a read
    * between sweeps never serves a record past either bound.
    */
   async list(input?: { readonly account?: string | undefined; readonly limit?: number | undefined }): Promise<readonly InboundMailRecord[]> {
@@ -460,7 +460,7 @@ export class InboundMailStore {
    * The record of ONE message, by the identity the receiving server assigned.
    *
    * This is the store's answer to "have I already dealt with this message, and
-   * what happened to it" — a question the in-memory dedup cache cannot answer
+   * what happened to it", a question the in-memory dedup cache cannot answer
    * across a restart, because it is a `Map` in a process that just died. The
    * intake asks it before announcing, so a message redelivered because the
    * cursor had not advanced when the daemon restarted is not announced to the
@@ -473,7 +473,7 @@ export class InboundMailStore {
    * Note the consequence of write-time bounding, stated rather than left to be
    * discovered: a record written already past `retentionMs` is bounded out by
    * the same write that made it, so this answers `null` for it. That is the
-   * policy working — a record too old to keep is too old to have kept — not an
+   * policy working, a record too old to keep is too old to have kept, not an
    * inconsistency between two methods.
    */
   async findByMessage(key: InboundMailMessageKey): Promise<InboundMailRecord | null> {
@@ -494,7 +494,7 @@ export class InboundMailStore {
    * Redaction happens BEFORE the truncation, over the WHOLE body rather than
    * a window. Truncating first and redacting the result would leave a card
    * number straddling the cap as a still-readable prefix of up to eighteen
-   * digits — a shorter leak, not a redaction. A window sized to one span is
+   * digits, a shorter leak, not a redaction. A window sized to one span is
    * not enough either, because redaction shortens and several of them slide
    * later text back inside the cap; see the note at the call site.
    *
@@ -502,7 +502,7 @@ export class InboundMailStore {
    * that row in place and keeps its `id`; it does not append a second row. That
    * is not tidiness, it is what makes the intake's ordering safe to retry: the
    * record now goes in BEFORE the notice, in a `pending` state, and every
-   * retried pass — a `delivery-failed` transport, a daemon restarted mid-pass —
+   * retried pass, a `delivery-failed` transport, a daemon restarted mid-pass,
    * writes the same message again. Appending would turn each retry into another
    * row, and `email.inbound.status` would report five arrivals for one message
    * while the owner's phone had buzzed once. The `id` is kept so a reference
@@ -519,11 +519,11 @@ export class InboundMailStore {
       id: randomUUID(),
       // Clamped, like every other persisted string. These two were bounded on
       // the load path and nowhere on the write path, so an oversized one was
-      // written in full and then discarded whole on the next load — see
+      // written in full and then discarded whole on the next load, see
       // `clampRecordScope`, which `findByMessage` applies to its key for the
       // same reason.
       ...clampRecordScope(input),
-      // `From:`'s display name is written by whoever sent the message — the
+      // `From:`'s display name is written by whoever sent the message, the
       // same standing the subject has, and the same handling. It was left raw
       // while the subject beside it was redacted, so `"4111111111111111"
       // <a@b.test>` put a card number on disk for `retentionDays` and into the
@@ -532,13 +532,13 @@ export class InboundMailStore {
       // The subject is persisted alongside the excerpt AND rendered to the
       // owner in the notice, so it is the same exposure by a different field.
       // Re-clamped after redacting because a marker is longer than the digits
-      // it replaces, and a subject over 998 chars fails validation on load —
+      // it replaces, and a subject over 998 chars fails validation on load,
       // taking the whole record with it.
       subject: redactCardShapes(input.subject).slice(0, MAX_SUBJECT_CHARS),
       // Sender-chosen too, on the catch-all domain the aliases live on (§7.1):
       // the local part is whatever the message was addressed to, so a PAN can
       // arrive as the alias itself. Clamped by `clampDeliveryAddress` rather
-      // than a plain slice — see there for why this one field cannot use the
+      // than a plain slice, see there for why this one field cannot use the
       // subject's re-clamp.
       deliveredToAddress: input.deliveredToAddress === null
         ? null
@@ -547,7 +547,7 @@ export class InboundMailStore {
       // Clamped, not trusted: `reason` is bounded per entry and the array is
       // bounded by count, because sixty-four unbounded strings is an unbounded
       // record. Clamping at write rather than rejecting at load is the same
-      // choice the subject and the delivery address make — an oversized field
+      // choice the subject and the delivery address make, an oversized field
       // must not take the whole message down with it on the next load.
       links: clampLinkVerdicts(input.links),
       outcome: input.outcome,
@@ -560,7 +560,7 @@ export class InboundMailStore {
       ...(input.noticeFailureReason
         ? { noticeFailureReason: input.noticeFailureReason.slice(0, MAX_NOTICE_FAILURE_REASON_CHARS) }
         : {}),
-      // SCAN, THEN TRUNCATE — and scan everything that could reach the
+      // SCAN, THEN TRUNCATE, and scan everything that could reach the
       // excerpt, not a window sized to one span.
       //
       // This used to scan `cap + MAX_CARD_SPAN_CHARS` and slice to `cap`, on
@@ -569,14 +569,14 @@ export class InboundMailStore {
       // wrong for several, because redaction SHORTENS: `[redacted:pan]` is
       // fourteen characters against a nineteen-digit grouped PAN's
       // thirty-seven, so every redaction pulls everything after it leftwards.
-      // Enough of them and a span that sat beyond the window — seen only in
-      // part, so not matched, so left raw — slides back inside the final
+      // Enough of them and a span that sat beyond the window, seen only in
+      // part, so not matched, so left raw, slides back inside the final
       // `slice(0, cap)` and is persisted verbatim. Fifteen digits of a
       // sixteen-digit number, with the sixteenth recoverable by check digit.
       //
       // REACHABLE TODAY, on the Gmail path. `intake.ts` passes `''` for the
       // IMAP envelope pass, which fetches no body, and the real body for a
-      // Gmail history delta — so this runs on the source automatic selection
+      // Gmail history delta, so this runs on the source automatic selection
       // prefers once Google is adopted, which is the owner's own path.
       // `inbound-mail-intake.test.ts` drives a card number through it. The
       // body-fetch round extends this to IMAP; it does not switch it on.
@@ -587,7 +587,7 @@ export class InboundMailStore {
       // recorded rather than quietly corrected because it is the fault class
       // this file already carries a note about: a comment asserting a property
       // the code does not have, which is precisely what stops the next reader
-      // checking — and this one would also have read as licence to relax the
+      // checking, and this one would also have read as licence to relax the
       // double pass on the grounds that nothing exercises it.
       //
       // The rule that generalises, because this arrived from a MERGE
@@ -595,14 +595,14 @@ export class InboundMailStore {
       // claim about the whole tree, and the tree moves under it. The sentence
       // was accurate against the tree it was written for and false against the
       // tree it landed in, and nothing about the line itself changed. So a
-      // reachability claim is something to VERIFY, never to inherit — kept
+      // reachability claim is something to VERIFY, never to inherit, kept
       // wording carries the same obligation as kept code.
       //
       // Verified rather than asserted this time: the multi-span slide below now
       // has a test. `inbound-mail-card-redaction.test.ts` builds a body whose
       // second card straddles the removed window and, measured against the
       // windowed implementation, put ELEVEN readable digits on disk. Restore
-      // the window and that test — and only that test — reddens.
+      // the window and that test, and only that test, reddens.
       //
       // The fix is to remove the window, not to widen it. The body is already
       // bounded upstream by the fetch's own byte cap, and `MAX_BODY_EXCERPT_CHARS`

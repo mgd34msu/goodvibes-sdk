@@ -1,5 +1,5 @@
 /**
- * Tests for cli-config-overrides.ts — applyRuntimeConfigDefault regression +
+ * Tests for cli-config-overrides.ts, applyRuntimeConfigDefault regression +
  * core behaviour.
  *
  * applyRuntimeConfigDefault reads BOTH global (configPath) and project
@@ -74,7 +74,7 @@ describe('applyRuntimeConfigDefault', () => {
   });
 
   test('applies default when neither global nor project file contains the key', () => {
-    // No settings files on disk — key is absent everywhere
+    // No settings files on disk, key is absent everywhere
     applyRuntimeConfigDefault(cm, 'display.stream', true);
     expect(cm.get('display.stream')).toBe(true);
   });
@@ -84,16 +84,16 @@ describe('applyRuntimeConfigDefault', () => {
     const manager = cm as unknown as { configPath?: string };
     const configPath = manager.configPath;
     expect(typeof configPath).toBe('string'); // loud failure if SDK renamed the accessor
-    if (typeof configPath !== 'string') throw new Error('configPath accessor missing from ConfigManager — SDK may have renamed it');
+    if (typeof configPath !== 'string') throw new Error('configPath accessor missing from ConfigManager, SDK may have renamed it');
     // Write explicit false to the global settings file
     writeSettingsFile(configPath, { display: { stream: false } });
-    // Default wants to set it to true — must be blocked
+    // Default wants to set it to true, must be blocked
     applyRuntimeConfigDefault(cm, 'display.stream', true);
     // The in-memory config was loaded at construction time with the default
     // (true). After applyRuntimeConfigDefault the key should NOT have been
     // overridden because the file says false explicitly.
     // NOTE: The function does NOT update the in-memory config when it
-    // short-circuits — so the config stays at its loaded value, not at the
+    // short-circuits, so the config stays at its loaded value, not at the
     // defaultValue argument. The key test is that applyRuntimeConfigValue
     // is NOT called, meaning the in-memory value is whatever the CM loaded.
     // Since the file existed when CM was created, CM may or may not have read
@@ -101,10 +101,10 @@ describe('applyRuntimeConfigDefault', () => {
     // overwrite it to `true` blindly.
     //
     // To make this deterministic: set the in-memory value to false first,
-    // then call applyRuntimeConfigDefault — it must NOT change it to true.
+    // then call applyRuntimeConfigDefault, it must NOT change it to true.
     applyRuntimeConfigValue(cm, 'display.stream', false);
     applyRuntimeConfigDefault(cm, 'display.stream', true);
-    // Must still be false — global file has the key, so default is skipped.
+    // Must still be false, global file has the key, so default is skipped.
     expect(cm.get('display.stream')).toBe(false);
   });
 
@@ -121,7 +121,7 @@ describe('applyRuntimeConfigDefault', () => {
     const manager = cm as unknown as { projectConfigPath?: string; configPath?: string };
     const projectConfigPath = manager.projectConfigPath;
     expect(typeof projectConfigPath).toBe('string'); // loud failure if SDK renamed the accessor
-    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager — SDK may have renamed it');
+    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager, SDK may have renamed it');
     // Ensure global settings file does NOT contain the key
     const globalPath = manager.configPath;
     if (typeof globalPath === 'string') {
@@ -133,7 +133,7 @@ describe('applyRuntimeConfigDefault', () => {
     // Pre-set in-memory value to false (simulates the CM having loaded it)
     applyRuntimeConfigValue(cm, 'display.stream', false);
 
-    // A front-end startup wants to flip the default to true — must be blocked
+    // A front-end startup wants to flip the default to true, must be blocked
     // because the project file explicitly has stream: false.
     applyRuntimeConfigDefault(cm, 'display.stream', true);
 
@@ -145,7 +145,7 @@ describe('applyRuntimeConfigDefault', () => {
     const manager = cm as unknown as { projectConfigPath?: string };
     const projectConfigPath = manager.projectConfigPath;
     expect(typeof projectConfigPath).toBe('string'); // loud failure if SDK renamed the accessor
-    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager — SDK may have renamed it');
+    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager, SDK may have renamed it');
     // Project file exists but does not contain display.stream
     writeSettingsFile(projectConfigPath, { display: { theme: 'dark' } });
 
@@ -157,7 +157,7 @@ describe('applyRuntimeConfigDefault', () => {
     const manager = cm as unknown as { projectConfigPath?: string };
     const projectConfigPath = manager.projectConfigPath;
     expect(typeof projectConfigPath).toBe('string'); // loud failure if SDK renamed the accessor
-    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager — SDK may have renamed it');
+    if (typeof projectConfigPath !== 'string') throw new Error('projectConfigPath accessor missing from ConfigManager, SDK may have renamed it');
     const dir = projectConfigPath.substring(0, projectConfigPath.lastIndexOf('/'));
     mkdirSync(dir, { recursive: true });
     writeFileSync(projectConfigPath, '{ INVALID JSON', 'utf-8');
@@ -208,7 +208,7 @@ describe('applyRuntimeConfigValue', () => {
 
 /**
  * The bare-value reader shared by `--config key=value` and a `config set
- * <key> <value>` command. Both must coerce identically — otherwise the same
+ * <key> <value>` command. Both must coerce identically, otherwise the same
  * text typed two ways writes two different values into one key. These pin the
  * coercion order rather than any one call site.
  */

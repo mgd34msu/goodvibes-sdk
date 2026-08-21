@@ -11,7 +11,7 @@
  *  - `KVState`, which hands its writer a live object rather than a copy;
  *  - the inbound-mail housekeeping disclosure log, the one store here where
  *    ordering the WRITE alone is not enough, because each write is the file's
- *    own previous contents plus one entry — so the READ has to be inside the
+ *    own previous contents plus one entry, so the READ has to be inside the
  *    serialised unit too.
  */
 import { describe, test, expect } from 'bun:test';
@@ -33,7 +33,7 @@ function tempDir(prefix: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// The distributed-runtime store — a rejected pair request stays rejected.
+// The distributed-runtime store, a rejected pair request stays rejected.
 // ---------------------------------------------------------------------------
 
 interface DistributedFileShape extends Record<string, unknown> {
@@ -71,7 +71,7 @@ describe('distributed runtime store — a rejected pair request does not read ba
 });
 
 // ---------------------------------------------------------------------------
-// CheckinReceiptStore — no receipt is lost.
+// CheckinReceiptStore, no receipt is lost.
 // ---------------------------------------------------------------------------
 
 interface ReceiptsFileShape extends Record<string, unknown> {
@@ -97,7 +97,7 @@ describe('CheckinReceiptStore — a delivered check-in leaves a receipt', () => 
 
       // A check-in run reads a state snapshot, asks a model to judge it and
       // delivers over a channel, so the scheduled run and the manual verb
-      // overlap readily — and the earlier one's snapshot does not contain the
+      // overlap readily, and the earlier one's snapshot does not contain the
       // later one's receipt.
       store.delayNextMs = 250;
       const first = receipts.append(receipt('checkin-quiet', 'quiet'));
@@ -119,11 +119,11 @@ describe('CheckinReceiptStore — a delivered check-in leaves a receipt', () => 
 });
 
 // ---------------------------------------------------------------------------
-// KVState — a cleared key does not come back on the next session load.
+// KVState, a cleared key does not come back on the next session load.
 // ---------------------------------------------------------------------------
 
 /**
- * The same knob as the ControllableStore, over `JsonFileStore` — which is what
+ * The same knob as the ControllableStore, over `JsonFileStore`, which is what
  * KVState writes through. The capture is taken before the delay for the same
  * reason: KVState hands its writer the LIVE data object, so a real slow write
  * is slow after its bytes exist.
@@ -183,7 +183,7 @@ describe('KVState — a cleared key does not come back', () => {
 });
 
 // ---------------------------------------------------------------------------
-// InboundMailHousekeeper — every sweep's reap reaches the disclosure log.
+// InboundMailHousekeeper, every sweep's reap reaches the disclosure log.
 // ---------------------------------------------------------------------------
 
 interface DisclosureFileShape extends Record<string, unknown> {
@@ -230,7 +230,7 @@ describe('InboundMailHousekeeper — no sweep goes undisclosed', () => {
       await waitFor(() => store.finished >= 2);
 
       // Files were removed on both passes. A missing entry is a reap with
-      // nothing anywhere saying it happened — which is the one thing this log
+      // nothing anywhere saying it happened, which is the one thing this log
       // exists to prevent.
       expect((readOnDisk<DisclosureFileShape>(path)?.reports ?? []).map((entry) => entry.trigger))
         .toEqual(['recovery', 'periodic']);

@@ -41,7 +41,7 @@ export function runAutocompact(input: StrategyInput): StrategyOutput {
           '[Session Auto-Compaction]',
           `${dropped} earlier message(s) compacted to reduce context size.`,
           `Retaining the ${keepCount} most recent messages.`,
-          'Context window pressure was above threshold — automatic compaction applied.',
+          'Context window pressure was above threshold, automatic compaction applied.',
         ].join('\n'),
       },
     ],

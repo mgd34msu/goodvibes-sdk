@@ -70,7 +70,7 @@ describe('principals.* gateway verbs', () => {
       body: { name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }, { channel: 'email', value: 'mike@example.com' }] },
     });
 
-    // Same principal reached from a different channel — continuity survives the hop.
+    // Same principal reached from a different channel, continuity survives the hop.
     const viaEmail = await catalog.invoke('principals.resolve', {
       ...ctx,
       body: { channel: 'email', value: 'mike@example.com' },

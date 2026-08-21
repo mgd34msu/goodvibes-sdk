@@ -5,7 +5,7 @@
  * up a real daemon (isolated home, ephemeral port, token auth) without hand-
  * mirroring cli.ts's construction graph, and take it down cleanly. Also folds in
  * the HTTP-level assertions for R1 (unknown-kind 400 + honest closed-register
- * conflict), R2 (isolated home — nothing under the real home is touched), R3
+ * conflict), R2 (isolated home, nothing under the real home is touched), R3
  * (companion session visible via /api/sessions same-process), and m7 (companion
  * SSE 401 without auth).
  */
@@ -119,7 +119,7 @@ describe('Operator provider/account snapshots serve JSON, never 500 HTML', () =>
   // synchronous fallback for well-known builtin-provider models, so 'openrouter'
   // correctly shows active:true even before any network catalog fetch completes.
   // The read-only snapshot builders must still tolerate a *genuinely* unresolvable
-  // current model (any other provider) and answer with JSON — never let an
+  // current model (any other provider) and answer with JSON, never let an
   // exception fall through to Bun's 500 SPA-fallback HTML.
   for (const path of ['/api/accounts', '/api/providers']) {
     test(`GET ${path} returns 200 application/json (not 500, not HTML)`, async () => {
@@ -186,9 +186,9 @@ describe('m7 — companion SSE requires auth', () => {
 // subscription profile over a REAL operator SSE stream. useRealtimeInvalidation
 // connects with ?domains=tasks,permissions,providers,knowledge,control-plane and
 // declares no `session` domain (it drops session-update as inert). After the
-// domain-scope fix the webui must (a) STOP receiving session-update — even though
+// domain-scope fix the webui must (a) STOP receiving session-update, even though
 // the operator token is admin and bypasses the read:sessions scope gate, the
-// domain filter still excludes it — while (b) STILL receiving events in the five
+// domain filter still excludes it, while (b) STILL receiving events in the five
 // domains it subscribed to (control-plane here, emitted when a second client
 // connects). Domain and scope are AND-ed, so this could only pass with the domain
 // filter in place.
@@ -235,7 +235,7 @@ describe('W3-S1 — webui SSE compatibility (domain-scoped delivery)', () => {
         }
       }
     } catch {
-      // aborted / closed — expected at window end
+      // aborted / closed, expected at window end
     } finally {
       clearTimeout(timer);
       ac.abort();
@@ -246,7 +246,7 @@ describe('W3-S1 — webui SSE compatibility (domain-scoped delivery)', () => {
 
   test('webui profile receives its subscribed domains but NOT session-update', async () => {
     const events = await readSse(WEBUI_DOMAINS, 900, async () => {
-      // (a) publishEvent('session-update') — tagged `session`, absent from the webui domain set.
+      // (a) publishEvent('session-update'), tagged `session`, absent from the webui domain set.
       await fetch(`${daemon.url}/api/sessions/register`, {
         method: 'POST',
         headers: auth(),

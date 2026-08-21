@@ -5,7 +5,7 @@
  *
  * Coverage:
  *
- * CM1: ConfigManager.subscribe() — keyed listener map, fires on set(), returns unsubscribe
+ * CM1: ConfigManager.subscribe(), keyed listener map, fires on set(), returns unsubscribe
  * CM2: ConfigManager.subscribe() fires with correct (newValue, oldValue) arguments
  * CM3: Unsubscribe stops receiving further notifications
  * CM4: Unrelated key change does not trigger a listener for a different key
@@ -13,7 +13,7 @@
  * HL1: HttpListener restarts when httpListener.port changes while running
  * HL2: HttpListener does NOT restart when stopped (watcher not attached)
  * HL3: HttpListener does NOT restart for unrelated config key change
- * HL4: stop() unsubscribes — subsequent config changes do not trigger another start
+ * HL4: stop() unsubscribes, subsequent config changes do not trigger another start
  * HL5: Re-entrancy guard prevents overlapping restart cycles
  * HL6: hostMode change triggers rebind (local -> custom with explicit host)
  */
@@ -174,7 +174,7 @@ describe('HL1: HttpListener restarts when httpListener.port changes while runnin
     expect(mock.calls).toHaveLength(1);
     expect(mock.calls[0]!.port).toBe(port1);
 
-    // Change port — should trigger async restart
+    // Change port, should trigger async restart
     cm.set('httpListener.port', port2);
     await listener.waitForRestart();
 
@@ -227,7 +227,7 @@ describe('HL4: stop() unsubscribes — no restart after explicit stop', () => {
     await startListener(listener);
     await listener.stop();
 
-    // Now change config — should be silent
+    // Now change config, should be silent
     cm.set('httpListener.port', nextTestPort());
     await new Promise<void>((r) => setImmediate(r));
 
@@ -245,7 +245,7 @@ describe('HL5: Re-entrancy guard — dirty-flag ensures both changes are applied
     await startListener(listener);
     expect(serveMock.calls).toHaveLength(1);
 
-    // Fire two changes back-to-back synchronously — the re-entrancy guard absorbs
+    // Fire two changes back-to-back synchronously, the re-entrancy guard absorbs
     // the second trigger into _restartDirty=true, then the finally block loops back
     // and triggers a second restart so both changes are applied.
     cm.set('httpListener.port', nextTestPort());
@@ -391,7 +391,7 @@ describe('HW5: createHostModeRestartWatcher — getIsRunning gate and multi-key 
     cm.set('httpListener.hostMode', 'network');
     expect(onRestart).toHaveBeenCalledTimes(0);
 
-    // Now flip running=true — subsequent changes should fire
+    // Now flip running=true, subsequent changes should fire
     running = true;
     cm.set('httpListener.port', nextTestPort());
     expect(onRestart).toHaveBeenCalledTimes(1);

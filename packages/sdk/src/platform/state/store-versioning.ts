@@ -60,7 +60,7 @@ export interface StoreMigration {
   readonly migrate: () => void;
 }
 
-/** An older binary refusing a newer store — data is left untouched. */
+/** An older binary refusing a newer store, data is left untouched. */
 export class StoreSchemaDowngradeError extends Error {
   constructor(
     readonly storeName: string,
@@ -72,7 +72,7 @@ export class StoreSchemaDowngradeError extends Error {
     // this through summarizeError, which clips at MAX_ERROR_LENGTH: with the
     // path first, a store under a per-run temp directory pushed the
     // explanation past the limit and the operator saw
-    // "... uses schema v9, but this bu…" — cut mid-word, before the sentence
+    // "... uses schema v9, but this bu…", cut mid-word, before the sentence
     // that says what to do. Every fact is still here; only the order changed,
     // so what survives the clip is the part a reader can act on.
     super(
@@ -99,7 +99,7 @@ export class StoreMigrationError extends Error {
       + (restored && snapshotPath
         ? `The store was restored from its pre-migration snapshot (${snapshotPath}); no data was lost.`
         : snapshotPath
-          ? `A pre-migration snapshot exists at ${snapshotPath} but automatic restore also failed — restore it manually.`
+          ? `A pre-migration snapshot exists at ${snapshotPath} but automatic restore also failed, restore it manually.`
           : 'No pre-migration snapshot was available (the store had no on-disk file before this open).'),
     );
     this.name = 'StoreMigrationError';
@@ -183,7 +183,7 @@ export function openVersionedSchema(options: OpenVersionedSchemaOptions): OpenVe
   const last = pending[pending.length - 1];
   if (!last || last.toVersion !== options.targetVersion) {
     throw new Error(
-      `${options.storeName}: no migration path from schema v${current} to v${options.targetVersion} — this is a defect in the store's migration list`,
+      `${options.storeName}: no migration path from schema v${current} to v${options.targetVersion}, this is a defect in the store's migration list`,
     );
   }
 

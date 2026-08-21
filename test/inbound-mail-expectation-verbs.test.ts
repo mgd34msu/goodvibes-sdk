@@ -4,8 +4,8 @@
  *
  * These sit on top of `InboundExpectationRegistry`, and the split matters:
  * the handlers read arguments and refuse the malformed ones with honest
- * statuses, and every RULE — the window ceiling, the open cap, the refusal
- * when email holds command authority — stays in the book underneath. So these
+ * statuses, and every RULE, the window ceiling, the open cap, the refusal
+ * when email holds command authority, stays in the book underneath. So these
  * tests check argument handling and pass-through, and deliberately do not
  * re-assert the bounds that `inbound-mail-expectation-registry.test.ts`
  * already covers at their source.
@@ -46,7 +46,7 @@ function newRegistry(): InboundExpectationRegistry {
 
 function invocation(body: Record<string, unknown>): GatewayMethodInvocation {
   // A real GatewayMethodInvocation: `body` plus the required `context`. There
-  // is no `method` field on it — the old literal asserted a shape the type
+  // is no `method` field on it, the old literal asserted a shape the type
   // never had, which is why the cast was needed to compile it.
   return { body, context: {} };
 }
@@ -110,7 +110,7 @@ describe('email.expectation.open', () => {
 
   test('a refusal because email gained command authority is a 409, not a 400', async () => {
     // That is a statement about the platform's configuration, not about this
-    // request — a caller cannot fix it by sending different arguments.
+    // request, a caller cannot fix it by sending different arguments.
     const dir = mkdtempSync(join(tmpdir(), 'goodvibes-expectation-verbs-'));
     dirs.push(dir);
     const registry = new InboundExpectationRegistry({

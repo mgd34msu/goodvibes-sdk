@@ -16,7 +16,7 @@ import {
 } from '@pellux/goodvibes-sdk/platform/providers';
 
 // ---------------------------------------------------------------------------
-// resolveContextWindow — unit tests (pure function, no network)
+// resolveContextWindow, unit tests (pure function, no network)
 // ---------------------------------------------------------------------------
 
 describe('resolveContextWindow — provenance ladder', () => {

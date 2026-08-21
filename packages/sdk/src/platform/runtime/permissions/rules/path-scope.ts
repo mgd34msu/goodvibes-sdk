@@ -1,5 +1,5 @@
 /**
- * Permissions v2 — Path scope restriction policy rule evaluator.
+ * Permissions v2, Path scope restriction policy rule evaluator.
  *
  * PathScopeRule matches tool calls that operate on file paths, restricting
  * or allowing access based on whether the path argument matches any of the
@@ -21,7 +21,7 @@ export interface PathScopeRuleResult {
 }
 
 /**
- * toolMatchesPathPattern — Returns true if `toolName` matches the rule's toolPattern.
+ * toolMatchesPathPattern, Returns true if `toolName` matches the rule's toolPattern.
  */
 function toolMatchesPathPattern(
   toolName: string,
@@ -34,7 +34,7 @@ function toolMatchesPathPattern(
 }
 
 /**
- * extractPathArgs — Extracts EVERY path string from args.
+ * extractPathArgs, Extracts EVERY path string from args.
  * Understands the edit tool's real shape (`edits: [{ path }, ...]`) as well
  * as flat `path`/`file`/`target` strings.
  */
@@ -55,14 +55,14 @@ export function extractPathArgs(args: Record<string, unknown>): string[] {
 }
 
 /**
- * globToRegex — Converts a simple glob pattern to a RegExp.
+ * globToRegex, Converts a simple glob pattern to a RegExp.
  *
  * Supports:
- *   - `**` — matches any sequence of characters including path separators
- *   - `*`  — matches any sequence of characters within a single path component
- *   - `?`  — matches any single character
+ *   - `**`, matches any sequence of characters including path separators
+ *   - `*` , matches any sequence of characters within a single path component
+ *   - `?` , matches any single character
  *
- * This is intentionally minimal — for full micromatch support, replace this
+ * This is intentionally minimal, for full micromatch support, replace this
  * with a micromatch dependency if needed.
  */
 function globToRegex(pattern: string): RegExp {
@@ -74,7 +74,7 @@ function globToRegex(pattern: string): RegExp {
 }
 
 /**
- * pathMatchesPattern — Returns true if `absolutePath` matches `pattern`.
+ * pathMatchesPattern, Returns true if `absolutePath` matches `pattern`.
  *
  * Relative patterns are resolved against cwd before matching.
  */
@@ -88,16 +88,16 @@ function pathMatchesPattern(absolutePath: string, pattern: string, projectRoot?:
 }
 
 /**
- * evaluatePathScopeRule — Evaluates a single PathScopeRule against a tool call.
+ * evaluatePathScopeRule, Evaluates a single PathScopeRule against a tool call.
  *
  * Returns `matched: true` when:
  *   1. The tool name matches the rule's `toolPattern`, AND
  *   2. A path argument is found, AND
  *   3. The normalized absolute path matches at least one of the rule's `pathPatterns`.
  *
- * @param rule     — The PathScopeRule to evaluate.
- * @param toolName — Name of the tool being called.
- * @param args     — Arguments passed to the tool.
+ * @param rule    , The PathScopeRule to evaluate.
+ * @param toolName, Name of the tool being called.
+ * @param args    , Arguments passed to the tool.
  */
 export function evaluatePathScopeRule(
   rule: PathScopeRule,

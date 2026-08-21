@@ -54,7 +54,7 @@ const fakeArtifactStore = {} as unknown as ArtifactStore;
 
 /**
  * A resolver that holds no secrets. Every strategy that can read a
- * `goodvibes://secrets/...` credential now requires one — a composition that
+ * `goodvibes://secrets/...` credential now requires one, a composition that
  * omits it fails at construction rather than silently dropping replies on the
  * surfaces that use secret references. Cases below that supply a real value
  * build their own.
@@ -160,7 +160,7 @@ describe('ntfy delivery resolves the topic from the binding (item 1)', () => {
     // Measured as a DELTA around the call, not as an absolute count.
     // `fetchWithTimeout` is a module-level function and the spy is patched onto
     // the module, so any other file's work running in this process lands on the
-    // same mock — this assertion was seen receiving 10 calls it did not make,
+    // same mock, this assertion was seen receiving 10 calls it did not make,
     // green on rerun. The property under test is "this strategy fetched
     // nothing", which a delta states exactly and an absolute count only
     // approximates when nothing else is running.

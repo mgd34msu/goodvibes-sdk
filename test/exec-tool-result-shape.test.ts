@@ -5,7 +5,7 @@
  * populate a top-level `error` summary whenever any command fails, so that
  * consumers keying off `.error` alone (not just `.output`) get a coherent
  * signal. `output` already carried the full per-command diagnostics before
- * this fix — this only adds the top-level summary.
+ * this fix, this only adds the top-level summary.
  */
 
 import { describe, expect, test } from 'bun:test';

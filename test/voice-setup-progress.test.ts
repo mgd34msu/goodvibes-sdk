@@ -1,5 +1,5 @@
 /**
- * voice-setup-progress.test.ts — live install progress through the status read.
+ * voice-setup-progress.test.ts, live install progress through the status read.
  *
  * voice.local.install is plain request/response, so during a ~209MB provision a
  * surface can only render busy→receipt UNLESS status carries the active run's
@@ -56,7 +56,7 @@ describe('voice.local.status carries live install progress (polling shape)', () 
       const whisper = { version: 'w1', bundle: { ...pinned(whisperBytes, 'https://w.test/whisper.tar.gz'), url: 'https://w.test/whisper.tar.gz' as string | null }, binaryRelPath: 'whisper/whisper-cli' };
       const model = { id: 'fixture-model', bin: pinned(modelBytes, 'https://w.test/model.bin') };
 
-      // GATED fetch: every URL serves immediately EXCEPT the whisper model —
+      // GATED fetch: every URL serves immediately EXCEPT the whisper model,
       // it blocks until the test releases it, holding the install mid-flight
       // at a deterministic point (piper fully landed, model still downloading).
       let releaseModel: (() => void) | undefined;
@@ -102,7 +102,7 @@ describe('voice.local.status carries live install progress (polling shape)', () 
         }),
         // Provisioning ENDS by speaking a phrase with the engine it installed
         // and reading it back with the recogniser it installed. These fixtures
-        // are byte fakes, not runnable engines, so the proof is injected —
+        // are byte fakes, not runnable engines, so the proof is injected,
         // without this seam the install would run the real binaries and, quite
         // correctly, report itself unproven.
         prove: async () => ({
@@ -137,7 +137,7 @@ describe('voice.local.status carries live install progress (polling shape)', () 
       expect(byComponent.get('piper-voice-onnx')?.phase).toBe('done');
       expect(byComponent.get('piper-voice-onnx')?.bytesTotal).toBe(onnxBytes.length);
       expect(byComponent.get('piper-voice-onnx')?.bytesDone).toBe(onnxBytes.length);
-      // The piper engine's LATEST phase is extract — and the byte totals from
+      // The piper engine's LATEST phase is extract, and the byte totals from
       // its download events persist through the byte-less extract event.
       expect(byComponent.get('piper-engine')?.phase).toBe('extract');
       expect(byComponent.get('piper-engine')?.bytesTotal).toBe(engineBytes.length);
@@ -161,7 +161,7 @@ describe('voice.local.status carries live install progress (polling shape)', () 
       expect(a.proof?.proved).toBe(true);
       expect(a.notes.join(' ')).toContain('heard it back');
 
-      // After completion the section is DROPPED — absent, not stale.
+      // After completion the section is DROPPED, absent, not stale.
       expect(service.status().installInProgress).toBeUndefined();
     } finally {
       rmSync(dir, { recursive: true, force: true });
@@ -177,7 +177,7 @@ describe('voice.local.status carries live install progress (polling shape)', () 
         setConfig: () => {},
         resetLocalEngineFailureState: () => {},
         admitExpensiveWork: () => ({ allowed: true }),
-        // Every download 404s — the provision fails fast.
+        // Every download 404s, the provision fails fast.
         provision: (options) => provisionLocalVoiceRuntime({
           ...options,
           platform: 'linux-x64',

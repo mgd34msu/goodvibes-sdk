@@ -1,13 +1,13 @@
 /**
- * integration-helpers-surface-scope.test.ts — IntegrationHelperService can be
+ * integration-helpers-surface-scope.test.ts, IntegrationHelperService can be
  * constructed with a `SessionSurface`.
  *
  * Defect class: `getContinuitySnapshot()` always called checkRecoveryFile /
  * readLastSessionPointer with the loose `workingDirectory` / `homeDirectory`
  * pair the service was constructed with. A product that writes surface-scoped
  * (`<work>/.goodvibes/<surface>/…`) and then asked the integration helper for
- * continuity got its answers from the unscoped legacy directories — paths
- * nothing had written to — which is how the consuming TUI's /health continuity
+ * continuity got its answers from the unscoped legacy directories, paths
+ * nothing had written to, which is how the consuming TUI's /health continuity
  * reported an empty pointer against a live session.
  *
  * The service now takes either shape, mutually exclusively, and routes every
@@ -108,7 +108,7 @@ describe('IntegrationHelperService: surface-scoped construction', () => {
     const { workingDirectory, homeDirectory } = tempDirs();
     const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
 
-    // Written to the LEGACY (unscoped) location only — a different file from
+    // Written to the LEGACY (unscoped) location only, a different file from
     // `<work>/.goodvibes/tui/sessions/last-session.json`.
     writeLastSessionPointer('legacy-session', { workingDirectory, homeDirectory });
 

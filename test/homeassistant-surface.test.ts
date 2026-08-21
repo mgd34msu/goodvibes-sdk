@@ -124,7 +124,7 @@ describe('Home Assistant channel surface', () => {
       {} as ArtifactStore,
       // Required: surfaces whose credential is a goodvibes://secrets/... reference
       // resolve it through this. HA's token here comes from the config manager above,
-      // so an empty resolver is enough — but one must be supplied.
+      // so an empty resolver is enough, but one must be supplied.
       { get: async () => null, getGlobalHome: () => '/home/test' } as never,
     );
     const request: ChannelDeliveryRequest = {

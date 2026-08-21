@@ -1,9 +1,9 @@
 /**
- * client.ts — the SDK memory-spine surface client (host-vs-client access mode).
+ * client.ts, the SDK memory-spine surface client (host-vs-client access mode).
  *
  * The daemon-owned memory service makes the daemon the SINGLE WRITER of its
  * canonical sql.js store. sql.js has no row locking and rewrites the whole file on
- * every save(), so two live processes writing the same file clobber each other —
+ * every save(), so two live processes writing the same file clobber each other,
  * a whole-file lost update that would DELETE memory. One process must own the
  * store; every other surface reaches it over the wire.
  *
@@ -12,11 +12,11 @@
  *
  *  - HOST / OFFLINE-EMBEDDED mode (transport NOT attached): the surface IS the only
  *    process touching its own store file, so it reads/writes the LOCAL embedded
- *    store directly. This is the offline fallback the agent and TUI keep — a daemon
+ *    store directly. This is the offline fallback the agent and TUI keep, a daemon
  *    is not required for them to work.
  *  - CLIENT-OF-ADOPTED-DAEMON mode (transport attached): the daemon owns the store;
  *    the surface routes EVERY memory op through the injected wire transport and
- *    NEVER opens the file. Enforced structurally here — the active branch only ever
+ *    NEVER opens the file. Enforced structurally here, the active branch only ever
  *    touches `this.transport`, never `this.local`.
  *
  * FULL DETACH (SDK 1.2.0). The 1.1.0 wire family covered five verbs (add,
@@ -29,19 +29,19 @@
  *
  * ONE-WRITER ENFORCEMENT RULING. The platform's convention (see canonical-memory.ts
  * and the session spine) is honest sequential/owned access plus stated posture, NOT
- * an OS advisory lock — sql.js exposes no lock and a cross-process flock would be a
+ * an OS advisory lock, sql.js exposes no lock and a cross-process flock would be a
  * new, unenforceable-on-every-OS mechanism the rest of the store does not rely on.
- * So the invariant is enforced two ways, both honest: (1) mode exclusivity — a
+ * So the invariant is enforced two ways, both honest: (1) mode exclusivity, a
  * client in wire mode provably cannot reach the local file because the code routes
  * exclusively to the transport; (2) a documented single-writer contract for the
- * embedded case — the daemon host and an offline surface are each the sole process
+ * embedded case, the daemon host and an offline surface are each the sole process
  * for their own file. `mode()` reports the current posture so a surface can surface
  * it rather than guess.
  *
  * HONEST FAILURE. Unlike the fire-and-forget session mirror, memory reads/writes
  * return data, so this client is request/response. In client mode a transport
  * failure is SURFACED to the caller (the promise rejects); it is deliberately NOT
- * silently served from the local store — a wire client must not open the
+ * silently served from the local store, a wire client must not open the
  * daemon-owned file, and returning a divergent local copy as if it were canonical
  * would be the exact dishonest-recall failure this whole design exists to prevent.
  * A sustained daemon loss is handled by `deactivate()`, which returns the surface
@@ -51,7 +51,7 @@
  * EXTENDED verbs are OPTIONAL on the transport (`MemoryTransport`) so a surface
  * pinned to an older SDK/daemon pair that predates a verb still satisfies the type.
  * When a client in wire mode calls an extended verb its adopted daemon does not
- * implement, the call REJECTS with a stated reason — it never silently reaches into
+ * implement, the call REJECTS with a stated reason, it never silently reaches into
  * the local file, which would break the one-writer invariant and lie about which
  * store answered.
  */
@@ -87,7 +87,7 @@ import { memoryVerbUnavailableError } from './wire-verb-availability.js';
  * For validFrom/validUntil the three states are distinct and all reachable over
  * the wire: omitted (`undefined`) leaves the bound unchanged, a number sets it,
  * and `null` clears it. This is what lets a memory-projection proposal that
- * changes ONLY the temporal window be applied — without these fields the patch
+ * changes ONLY the temporal window be applied, without these fields the patch
  * carried no window and such a proposal could not round-trip.
  */
 export interface MemoryUpdatePatch {
@@ -100,7 +100,7 @@ export interface MemoryUpdatePatch {
 }
 
 /**
- * The five CORE verbs, shipped in 1.1.0. Every transport must implement all five —
+ * The five CORE verbs, shipped in 1.1.0. Every transport must implement all five,
  * they are the minimum that lets a surface store and recall a fact over the wire.
  */
 export interface MemoryCoreAccess {
@@ -114,20 +114,20 @@ export interface MemoryCoreAccess {
 /**
  * The EXTENDED verbs added in 1.2.0 so a wire client can fully detach from the file.
  * Each maps to a MemoryRegistry read/write the consumers were still doing locally:
- *  - `list`          — bulk read (getAll / literal browse): knowledge injection + agent `list`.
+ *  - `list`         , bulk read (getAll / literal browse): knowledge injection + agent `list`.
  *  - `searchSemantic`— scored semantic recall: agent semantic path + TUI `/recall --semantic`.
- *  - `update`        — edit scope/summary/detail/tags (a scope edit is how a record is "promoted" project→team).
- *  - `link`/`linksFor` — relate records / read a record's links.
- *  - `reviewQueue`   — records prioritised for review (the curator/queue surface).
- *  - `exportBundle`/`importBundle` — the no-loss bundle seam over the wire.
- *  - `vectorStats`/`doctor` — read the daemon's canonical index diagnostics.
+ *  - `update`       , edit scope/summary/detail/tags (a scope edit is how a record is "promoted" project→team).
+ *  - `link`/`linksFor`, relate records / read a record's links.
+ *  - `reviewQueue`  , records prioritised for review (the curator/queue surface).
+ *  - `exportBundle`/`importBundle`, the no-loss bundle seam over the wire.
+ *  - `vectorStats`/`doctor`, read the daemon's canonical index diagnostics.
  *
  * DELIBERATELY NOT HERE (host-only, ruled in the full-detach decision record):
  * `rebuildVectors`/`rebuildVectorsAsync`. Rebuilding the vector index is maintenance
  * a store performs on its OWN index; the daemon keeps its canonical index current on
  * every add/import and exposes an admin `POST /api/memory/vector/rebuild` for a forced
  * rebuild. A wire client owns no index to rebuild, so a client-initiated rebuild is an
- * admin/diagnostic action against a store it does not own — it stays out of band, not
+ * admin/diagnostic action against a store it does not own, it stays out of band, not
  * a per-record detach need.
  */
 export interface MemoryExtendedAccess {
@@ -153,7 +153,7 @@ export interface MemoryAccess extends MemoryCoreAccess, MemoryExtendedAccess {}
 /**
  * The injected wire transport. A consumer builds a thin adapter over the daemon's
  * memory.records.* routes. The five CORE verbs are required; the EXTENDED verbs are
- * optional so a surface pinned to an older SDK/daemon still satisfies the type — a
+ * optional so a surface pinned to an older SDK/daemon still satisfies the type, a
  * client calling an extended verb the adopted daemon lacks gets an honest rejection,
  * never a silent local-file read.
  */
@@ -204,7 +204,7 @@ export function createLocalMemoryAccess(store: LocalMemoryStore): MemoryAccess {
   };
 }
 
-/** Current access posture — honest, reportable, never guessed. */
+/** Current access posture, honest, reportable, never guessed. */
 export type MemoryAccessMode = 'local' | 'client';
 
 type SpineLogger = Pick<typeof logger, 'debug' | 'info'>;
@@ -230,7 +230,7 @@ export type { MemoryRecallSnapshot, MemoryRecallRefreshOptions } from './recall-
 
 /**
  * Routes memory access to the LOCAL embedded store or, when a daemon has been
- * adopted, THROUGH the wire — never both. Implements {@link MemoryAccess} so a
+ * adopted, THROUGH the wire, never both. Implements {@link MemoryAccess} so a
  * caller uses one object regardless of mode.
  */
 export class MemorySpineClient implements MemoryAccess {
@@ -261,19 +261,19 @@ export class MemorySpineClient implements MemoryAccess {
 
   /**
    * Adopt a daemon: route every memory op through the wire from now on. The local
-   * store is left untouched for the lifetime of client mode — the daemon is the
+   * store is left untouched for the lifetime of client mode, the daemon is the
    * single writer.
    */
   activate(transport: MemoryTransport): void {
     this.transport = transport;
-    this.log.info('memory spine activated — routing memory through the adopted external daemon (single writer)', {});
+    this.log.info('memory spine activated, routing memory through the adopted external daemon (single writer)', {});
   }
 
   /** Release the daemon (mode lost / daemon stopped): return to owned-local access. */
   deactivate(reason: string): void {
     if (this.transport === null) return;
     this.transport = null;
-    this.log.info('memory spine deactivated — reverting to owned-local memory access', { reason });
+    this.log.info('memory spine deactivated, reverting to owned-local memory access', { reason });
   }
 
   // ── Core verbs (routed local-or-wire) ─────────────────────────────────────────
@@ -364,7 +364,7 @@ export class MemorySpineClient implements MemoryAccess {
    * opens the file and never awaits: it returns whatever the last async refresh
    * captured, with a freshly-computed age, a `stale` flag, and an HONEST `note`. If
    * no refresh has happened yet it returns an EMPTY snapshot whose note says exactly
-   * that — never a silent empty that reads as "nothing was ever stored."
+   * that, never a silent empty that reads as "nothing was ever stored."
    */
   recallSnapshot(now: number = Date.now()): MemoryRecallSnapshot {
     const cached = this.snapshot;
@@ -389,12 +389,12 @@ export class MemorySpineClient implements MemoryAccess {
    * TWO honesty layers, both landing on the same {@link memoryVerbUnavailableError}
    * message:
    *  1. COMPILE-TIME omission (here): a transport object that literally does not
-   *     implement the verb (`call === undefined`) — a surface pinned to an adapter
+   *     implement the verb (`call === undefined`), a surface pinned to an adapter
    *     that predates the verb. Rejects immediately.
    *  2. RUNTIME signal (the transports): a transport that DOES implement the verb but
    *     whose adopted daemon route answers a route-not-found 404 folds that 404
    *     through `foldMemoryWireExtendedError` in its own catch and rejects with the
-   *     same message. That path — not this one — is what a live older daemon
+   *     same message. That path, not this one, is what a live older daemon
    *     actually produces; this branch alone never sees it, because a real transport
    *     supplies a concrete function for every verb.
    */

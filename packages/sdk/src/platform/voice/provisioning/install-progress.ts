@@ -1,5 +1,5 @@
 /**
- * install-progress.ts — live per-component progress for the ACTIVE
+ * install-progress.ts, live per-component progress for the ACTIVE
  * voice.local.install run.
  *
  * The install verb is plain request/response, so during a ~209MB provision a
@@ -7,8 +7,8 @@
  * provisioner's existing onProgress stream into a poll-able snapshot: the
  * daemon composition begins/ends it around the single-flight install (a second
  * concurrent install caller already joins the in-flight run), and
- * voice.local.status carries the snapshot as `installInProgress` while — and
- * only while — an install is active. Surfaces poll status during install; no
+ * voice.local.status carries the snapshot as `installInProgress` while, and
+ * only while, an install is active. Surfaces poll status during install; no
  * streaming infrastructure involved.
  */
 import type { ProvisionPhase, VoiceProvisionProgress } from './provisioner.js';
@@ -20,7 +20,7 @@ export interface VoiceInstallComponentProgress {
   readonly message?: string | undefined;
   /** The component's pinned size in bytes, where the manifest knows it. */
   readonly bytesTotal?: number | undefined;
-  /** Bytes landed on disk, where known (completion boundaries — downloads verify whole-file). */
+  /** Bytes landed on disk, where known (completion boundaries, downloads verify whole-file). */
   readonly bytesDone?: number | undefined;
 }
 
@@ -35,7 +35,7 @@ export interface VoiceInstallProgressSnapshot {
 export interface VoiceInstallProgressTracker {
   /** Mark an install active (clears any previous run's components). */
   begin(): void;
-  /** Mark the install finished — snapshot() returns null again. */
+  /** Mark the install finished, snapshot() returns null again. */
   end(): void;
   /** Wire this as (or from) the provisioner's onProgress. */
   onProgress(progress: VoiceProvisionProgress): void;
@@ -45,7 +45,7 @@ export interface VoiceInstallProgressTracker {
 
 /**
  * Composition-scoped tracker: one per daemon (matching the single-flight
- * install guard — concurrent installs never run in parallel).
+ * install guard, concurrent installs never run in parallel).
  */
 export function createVoiceInstallProgressTracker(now: () => number = Date.now): VoiceInstallProgressTracker {
   let active: { startedAt: number; components: Map<string, VoiceInstallComponentProgress> } | null = null;

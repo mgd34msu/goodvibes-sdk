@@ -64,7 +64,7 @@ describe('terminal output guard — double install', () => {
     const guard1 = installTerminalOutputGuard({ stdout, active: true });
     const guard2 = installTerminalOutputGuard({ stdout, active: true });
 
-    // Dispose guard2 — should fully restore stdout.write to the original.
+    // Dispose guard2, should fully restore stdout.write to the original.
     guard2.dispose();
 
     // After disposing guard2, writes should go to the underlying stream.

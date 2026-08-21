@@ -1,12 +1,12 @@
-# Semver Policy
+# Semver policy
 
 This document defines what constitutes a breaking change, a minor addition, or a patch fix for `@pellux/goodvibes-sdk` and its published sub-packages. It is the authoritative reference used when tagging releases and reviewing CHANGELOG entries.
 
-Violations of this policy are a release gate failure — a version bump that misclassifies a breaking change as minor or patch must be corrected before publish.
+Violations of this policy are a release gate failure. A version bump that misclassifies a breaking change as minor or patch must be corrected before publish.
 
 ---
 
-## Major bump — breaking changes
+## Major bump: breaking changes
 
 The following changes require a major version bump:
 
@@ -15,13 +15,13 @@ The following changes require a major version bump:
 - **Renaming or changing the value of an `SDKErrorKind` union member** (e.g. renaming `'auth'` to `'authentication'`, or `'not-found'` to `'notFound'`). The full current union is: `'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'` (12 values, verified against `packages/errors/src/index.ts:37-49`)
 - **Renaming an SDK factory function** (e.g. renaming `createGoodVibesSdk`, `createBrowserGoodVibesSdk`, `createWebGoodVibesSdk`, `createReactNativeGoodVibesSdk`, `createExpoGoodVibesSdk`, `createPeerSdk`, or `createGoodVibesAuthClient`)
 - **Changing the resolution target of a subpath export** in a way that breaks consumers (e.g. moving `./browser` to resolve to a different module without a redirect, or replacing `./web` with `./browser` in the exports map)
-- **Changing wire-format or transport defaults** in a way that breaks existing consumers without opt-in (e.g. shortening the default realtime reconnect backoff cap of 30 s, changing default retry counts, or changing default headers). Note: the HTTP transport has no built-in default request timeout — cancellation is caller-driven via `AbortSignal` — so there is no timeout default to break here
-- **Removing a supported runtime from the runtime matrix** (currently: `bun`, `browser`, `react-native` / Hermes, `workers`). Note: `node` as a standalone target is not a documented supported runtime — the `engines.node` field in `packages/sdk/package.json` reflects the build/Bun host requirement, not a tested Node consumer surface. See `docs/packages.md` for the full surface split.
+- **Changing wire-format or transport defaults** in a way that breaks existing consumers without opt-in (e.g. shortening the default realtime reconnect backoff cap of 30 s, changing default retry counts, or changing default headers). Note: the HTTP transport has no built-in default request timeout, cancellation is caller-driven via `AbortSignal`, so there is no timeout default to break here
+- **Removing a supported runtime from the runtime matrix** (currently: `bun`, `browser`, `react-native` / Hermes, `workers`). Note: `node` as a standalone target is not a documented supported runtime. The `engines.node` field in `packages/sdk/package.json` reflects the build/Bun host requirement, not a tested Node consumer surface. See `docs/packages.md` for the full surface split.
 - **Adding a new required config field** to `GoodVibesSdkOptions` or any public options interface, or promoting an existing optional field to required
 
 ---
 
-## Minor bump — additive, non-breaking changes
+## Minor bump: additive, non-breaking changes
 
 The following changes require a minor version bump:
 
@@ -31,11 +31,11 @@ The following changes require a minor version bump:
 - Adding a new subpath export entry (e.g. a new `./workers` entry)
 - Widening a return type in a direction that does not remove or narrow existing members (e.g. adding a new property to a returned object type)
 - Adding a new runtime to the supported runtime matrix
-- Bumping the minimum supported TypeScript version — see [TypeScript support](#typescript-support)
+- Bumping the minimum supported TypeScript version: see [TypeScript support](#typescript-support)
 
 ---
 
-## Patch bump — fixes and internal changes
+## Patch bump: fixes and internal changes
 
 The following changes are patch-level:
 
@@ -51,10 +51,10 @@ The following changes are patch-level:
 
 The following are explicitly out of scope and may change at any time without a major or minor bump:
 
-- **Repository source file paths** — these are not part of the public surface and are subject to change without notice. Do not bypass the package export map.
-- **`dist/` internal file paths** — consume the SDK via the package exports map (e.g. `@pellux/goodvibes-sdk`, `@pellux/goodvibes-sdk/browser`), not by importing from `dist/` file paths directly.
-- **Error `.message` strings** — these are human-readable and may be improved across releases. Use `err.kind` (an `SDKErrorKind` value) and `err.code` for programmatic handling, not `err.message`.
-- **`GoodVibesSdkError` subclass identity** — do not use `instanceof ConfigurationError`, `instanceof ContractError`, etc. for control flow; use `err.kind` instead. Subclass structure is internal.
+- **Repository source file paths.** These are not part of the public surface and are subject to change without notice. Do not bypass the package export map.
+- **`dist/` internal file paths.** Consume the SDK via the package exports map (e.g. `@pellux/goodvibes-sdk`, `@pellux/goodvibes-sdk/browser`), not by importing from `dist/` file paths directly.
+- **Error `.message` strings.** These are human-readable and may be improved across releases. Use `err.kind` (an `SDKErrorKind` value) and `err.code` for programmatic handling, not `err.message`.
+- **`GoodVibesSdkError` subclass identity.** Do not use `instanceof ConfigurationError`, `instanceof ContractError`, etc. for control flow. Use `err.kind` instead. Subclass structure is internal.
 
 ---
 
@@ -84,7 +84,7 @@ export function createBrowserGoodVibesSdk(/* ... */) { /* ... */ }
 
 The minimum supported TypeScript version is **6.0**. This is the lowest version against which the SDK's type signatures are tested. The repository pins `typescript: 6.0.3` (an exact version, not a range); CI validates types against that pin.
 
-Bumping the minimum supported TypeScript version is treated as a **minor bump**, not a major bump. This follows common practice in the TypeScript ecosystem (see e.g. the DefinitelyTyped policy) — most consumers upgrade TypeScript frequently and a minimum TypeScript bump rarely requires application code changes.
+Bumping the minimum supported TypeScript version is treated as a **minor bump**, not a major bump. This follows common practice in the TypeScript ecosystem (see e.g. the DefinitelyTyped policy). Most consumers upgrade TypeScript frequently and a minimum TypeScript bump rarely requires application code changes.
 
 If a TypeScript version bump requires consumers to change their application-level type annotations, that case will be assessed individually and may be treated as major.
 

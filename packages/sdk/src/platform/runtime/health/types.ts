@@ -83,7 +83,7 @@ export type CascadeEffect =
 /**
  * A single declarative cascade rule.
  * When the source domain reaches sourceState, the effect is applied to the target domain.
- * Rules are data-driven — adding a new rule requires only adding to the rules array.
+ * Rules are data-driven, adding a new rule requires only adding to the rules array.
  */
 export interface CascadeRule {
   /** Unique rule identifier */
@@ -144,9 +144,9 @@ export interface CascadeResult {
  * Separates actionable cascades from those still awaiting recovery.
  */
 export interface EvaluateResult {
-  /** Cascades that are actionable — apply these effects now */
+  /** Cascades that are actionable, apply these effects now */
   cascades: CascadeResult[];
-  /** Recovery still in progress — do not apply these effects yet */
+  /** Recovery still in progress, do not apply these effects yet */
   pendingRecovery: CascadeResult[];
 }
 

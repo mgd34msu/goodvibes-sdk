@@ -142,7 +142,7 @@ function protobufMetricsPayload(): Uint8Array<ArrayBuffer> {
 }
 
 // ---------------------------------------------------------------------------
-// Happy path — JSON
+// Happy path, JSON
 // ---------------------------------------------------------------------------
 
 describe('OTLP POST ingest: happy path (application/json)', () => {
@@ -175,7 +175,7 @@ describe('OTLP POST ingest: happy path (application/json)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Happy path — Protobuf
+// Happy path, Protobuf
 // ---------------------------------------------------------------------------
 
 describe('OTLP POST ingest: happy path (application/x-protobuf)', () => {
@@ -340,7 +340,7 @@ describe('OTLP POST ingest: sink forwarding', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Router dispatch wiring — E2E via dispatchDaemonApiRoutes
+// Router dispatch wiring, E2E via dispatchDaemonApiRoutes
 // ---------------------------------------------------------------------------
 
 describe('OTLP POST ingest: router dispatch wiring', () => {

@@ -34,13 +34,13 @@ export interface TransportPaths {
 }
 
 /**
- * Whether a URL hostname addresses a private network — loopback, an RFC 1918
+ * Whether a URL hostname addresses a private network, loopback, an RFC 1918
  * range (10/8, 172.16/12, 192.168/16), or an mDNS `.local` name.
  *
  * Plain-http origins on these hosts are a DELIBERATE, SUPPORTED posture (a
  * phone on the same LAN talking to the daemon), not a mistake to wall off:
  * TLS on a home network is the user's own responsibility and the daemon never
- * mints certificates, so the transport must work over http here — in a browser
+ * mints certificates, so the transport must work over http here, in a browser
  * bundle too, where no process.env escape hatch exists. Genuinely public http
  * origins keep the insecure-transport wall.
  *
@@ -91,7 +91,7 @@ export function normalizeBaseUrl(baseUrl: string): string {
     });
   }
   // Private-network origins (loopback, RFC 1918, .local mDNS) are a supported
-  // plain-http posture — no throw, and no env escape hatch needed (which would
+  // plain-http posture, no throw, and no env escape hatch needed (which would
   // not exist in a browser bundle anyway). Only a genuinely PUBLIC http origin
   // keeps the wall; the server-side env override remains for an intentional
   // public-http deployment.

@@ -70,7 +70,7 @@ describe('listener_errors_total counter', () => {
       throw new Error('-repeated');
     });
 
-    // Emit three times — each emit triggers one catch, so counter should go up by 3.
+    // Emit three times, each emit triggers one catch, so counter should go up by 3.
     bus.emit('session', makeSessionEnvelope());
     bus.emit('session', makeSessionEnvelope());
     bus.emit('session', makeSessionEnvelope());
@@ -119,7 +119,7 @@ describe('OPS_LISTENER_MISBEHAVING OpsEvent emission', () => {
       throw new Error('misbehave-repeat');
     });
 
-    // Emit 5 times from the same listener — dedup should suppress after the first.
+    // Emit 5 times from the same listener, dedup should suppress after the first.
     for (let i = 0; i < 5; i++) {
       bus.emit('session', makeSessionEnvelope());
     }

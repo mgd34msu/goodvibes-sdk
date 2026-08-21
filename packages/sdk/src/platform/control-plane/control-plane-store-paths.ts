@@ -4,7 +4,7 @@
  * The one resolver every control-plane store file path goes through.
  *
  * `ShellPathService.resolveUserPath(...segments)` (platform/runtime/shell-
- * paths.ts) never adds a surface segment on its own — the segment is always
+ * paths.ts) never adds a surface segment on its own, the segment is always
  * the CALLER's to pass. A set of control-plane stores (workspace
  * registrations, principals, channel profiles, channel sync, check-in
  * receipts, tailscale serve receipts, CI watches, occasions state, push
@@ -12,7 +12,7 @@
  * file)` directly and forgot it, so every one of them wrote to
  * `~/.goodvibes/control-plane/` while every other daemon-owned store sits
  * under the surface-scoped `~/.goodvibes/<surfaceRoot>/control-plane/`. That
- * unscoped directory is the pre-split orphan a missing segment produces —
+ * unscoped directory is the pre-split orphan a missing segment produces,
  * `~/.goodvibes/control-plane/` on a real machine held live, unread state
  * (occasions-state.json, workspace-registrations.json) that nothing serving
  * the scoped path ever saw.
@@ -22,7 +22,7 @@
  * there, so a new store is one omitted argument away from writing to the same
  * orphan directory. Routing every one of them through this single function
  * instead makes the omission a compile error (`surfaceRoot` is required, not
- * optional-with-a-default — a default is exactly what let this happen) rather
+ * optional-with-a-default, a default is exactly what let this happen) rather
  * than a silent divergence discovered on a live machine.
  */
 
@@ -37,7 +37,7 @@ export interface ControlPlaneStorePathShellPaths {
  *
  * `surfaceRoot` is REQUIRED. A blank or whitespace-only value throws rather
  * than silently falling through to the unscoped `resolveUserPath('control-
- * plane', file)` path — an empty segment reproduces the exact defect this
+ * plane', file)` path, an empty segment reproduces the exact defect this
  * function exists to end, and it would do so silently, which is worse than
  * the original bug: at least the original wrote to a directory that existed
  * and someone eventually noticed.

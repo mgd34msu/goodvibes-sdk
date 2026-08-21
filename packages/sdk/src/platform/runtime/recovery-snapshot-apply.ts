@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * recovery-snapshot-apply.ts — restoring a crash-recovery snapshot the user
+ * recovery-snapshot-apply.ts, restoring a crash-recovery snapshot the user
  * explicitly asked for.
  *
  * transcript-journal-replay.ts (this file's sibling) folds a journal tail onto
@@ -17,7 +17,7 @@
  * and report how many messages ended up there.
  *
  * Not here: WHETHER to restore. That is a question for the user, asked in
- * whatever idiom a surface has — a terminal modal, a chat reply, an operator
+ * whatever idiom a surface has, a terminal modal, a chat reply, an operator
  * verb. A surface writes its own ask and calls this with the answer.
  *
  * Why the ask cannot be skipped
@@ -34,7 +34,7 @@
  *     {@link RecoveryRestoreConfirmation}, and the only way to obtain one is
  *     {@link confirmRecoveryRestore}, whose single argument is the answer the
  *     user gave. There is no flag, no config key, and no default that produces
- *     one — a caller that has not asked has nothing to pass.
+ *     one, a caller that has not asked has nothing to pass.
  *  2. Retirement happens INSIDE this function, via `consumeRecovery`'s
  *     load-then-delete. A caller cannot apply a snapshot and keep it: applying
  *     is the same operation as retiring it. That closes the hand-rolled
@@ -55,7 +55,7 @@ declare const recoveryRestoreConfirmationBrand: unique symbol;
 
 /**
  * Proof that a user was asked whether to restore a recovery snapshot and said
- * yes. Cannot be constructed by a literal — {@link confirmRecoveryRestore} is
+ * yes. Cannot be constructed by a literal, {@link confirmRecoveryRestore} is
  * the only source.
  */
 export interface RecoveryRestoreConfirmation {
@@ -89,7 +89,7 @@ export type RestorableConversation =
   };
 
 export interface ApplyRecoverySnapshotOptions {
-  /** The surface that owns the session's storage — where the snapshot and journal live. */
+  /** The surface that owns the session's storage, where the snapshot and journal live. */
   readonly surface: SessionSurface;
   /** The session whose recovery snapshot is being restored. */
   readonly sessionId: string;
@@ -97,7 +97,7 @@ export interface ApplyRecoverySnapshotOptions {
   readonly conversation: RestorableConversation;
   /**
    * Persist the restored conversation so the gap is durably closed. Best-effort
-   * — a failure here does not fail the restore, the same contract journal
+   *, a failure here does not fail the restore, the same contract journal
    * replay keeps.
    */
   readonly persistSnapshot: (messages: ConversationMessageSnapshot[]) => void;
@@ -121,7 +121,7 @@ export interface ApplyRecoverySnapshotResult {
   readonly refusal?: RecoveryApplyRefusal | undefined;
   /**
    * True once the snapshot file is gone. Always true after a successful apply,
-   * and true for the refusals that follow a successful load — the read is what
+   * and true for the refusals that follow a successful load, the read is what
    * retires the file, so a snapshot that loaded is retired whether or not its
    * contents turned out to be usable.
    */
@@ -142,12 +142,12 @@ const NOTHING_REPLAYED: ReplayIntoConversationResult = { replayed: 0, hadCorrupt
  * `consumeRecovery` already guarantees the file parsed as JSON. This is the
  * next question: is what parsed actually a conversation? A snapshot truncated
  * mid-write parses into an object with no usable `messages`, and applying that
- * resets a live conversation to nothing — the restore would destroy exactly
+ * resets a live conversation to nothing, the restore would destroy exactly
  * what the user asked to get back.
  *
  * An EMPTY messages array counts as unusable, not as an empty conversation:
  * `writeRecoveryFile` refuses to write a snapshot with no messages, so zero
- * messages can only mean the file lost them — the parser yields `[]` for a
+ * messages can only mean the file lost them, the parser yields `[]` for a
  * file too short to hold a meta line plus one message.
  */
 function readRestorableMessages(snapshot: unknown): ConversationMessageSnapshot[] | null {
@@ -176,8 +176,8 @@ function readOptionalNumber(snapshot: unknown, key: string): number | undefined 
 /**
  * Restore the recovery snapshot the user asked for, retiring it in the process.
  *
- * The sequence is the one a normal resume runs — reset, fromJSON,
- * rebuildHistory, then fold in journal records newer than the snapshot — with
+ * The sequence is the one a normal resume runs, reset, fromJSON,
+ * rebuildHistory, then fold in journal records newer than the snapshot, with
  * the messages coming from the retired recovery file instead of the session
  * store.
  *
@@ -198,7 +198,7 @@ export function applyRecoverySnapshot(options: ApplyRecoverySnapshotOptions): Ap
 
   const messages = readRestorableMessages(snapshot);
   if (!messages) {
-    logger.warn('[Recovery] Snapshot loaded but carried no conversation — nothing was applied', { sessionId });
+    logger.warn('[Recovery] Snapshot loaded but carried no conversation, nothing was applied', { sessionId });
     return {
       applied: false,
       refusal: 'unusable-snapshot',

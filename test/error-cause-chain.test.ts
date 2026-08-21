@@ -7,7 +7,7 @@ import {
 } from '../packages/sdk/src/platform/utils/error-display.js';
 
 /**
- * Error cause chain — verifies that NormalizedError preserves all
+ * Error cause chain, verifies that NormalizedError preserves all
  * error metadata fields and that normalizeError correctly maps AppError cause chains.
  * AppError constructor: (message: string, code: string, recoverable: boolean, options?: AppErrorOptions)
  */

@@ -1,19 +1,19 @@
 /**
  * API key resolution for all supported providers.
  *
- * Platform-level code — no surface/TUI dependencies.
+ * Platform-level code, no surface/TUI dependencies.
  * Used by every GoodVibes surface (TUI, CLI, web, etc.).
  *
  * Provides:
- * - getConfiguredApiKeys()  — synchronous env-var scan, returns configured keys
- * - resolveApiKeys()        — three-tier async resolution: env → SecretsManager → skip
+ * - getConfiguredApiKeys() , synchronous env-var scan, returns configured keys
+ * - resolveApiKeys()       , three-tier async resolution: env → SecretsManager → skip
  */
 
 import { SecretsManager } from './secrets.js';
 
 /**
  * Returns all provider API keys that are currently set in the environment.
- * Pure env-var read — synchronous, no I/O.
+ * Pure env-var read, synchronous, no I/O.
  */
 export function getConfiguredApiKeys(): Record<string, string> {
   const keys: Record<string, string> = {};
@@ -70,7 +70,7 @@ export function getConfiguredApiKeys(): Record<string, string> {
 }
 
 /**
- * resolveApiKeys — three-tier async resolution for all provider API keys.
+ * resolveApiKeys, three-tier async resolution for all provider API keys.
  *
  * Resolution order per key:
  *   1. Environment variable (process.env)

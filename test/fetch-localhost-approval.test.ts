@@ -5,7 +5,7 @@
  * once through the approval seam with one-tap "allow for this project"
  * semantics, persists fetch.allowLocalhost in the project settings, never
  * re-asks (including across a restart), while private-IP / cloud-metadata
- * blocking stays silent and absolute — an honest tool-result reason for the
+ * blocking stays silent and absolute, an honest tool-result reason for the
  * model, no ask, no other surface.
  */
 import { afterEach, describe, expect, test } from 'bun:test';

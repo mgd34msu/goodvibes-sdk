@@ -1,12 +1,12 @@
 /**
- * facade-cluster.ts — leadership gating for the daemon's INBOUND consumers,
+ * facade-cluster.ts, leadership gating for the daemon's INBOUND consumers,
  * one gate per surface.
  *
  * Several things start listening when the daemon comes up: the Telegram
  * ingress supervisor, a subscription per ntfy topic, the Slack Socket Mode
  * connection, the Discord Gateway. Each is registered here as its OWN gate on
  * the cluster coordinator instead of being started directly, so on a network
- * where this install runs more than once exactly one node reads each of them —
+ * where this install runs more than once exactly one node reads each of them,
  * and different nodes may read different ones.
  *
  * That per-surface split is the whole point. The previous shape registered one
@@ -17,13 +17,13 @@
  *
  * A gate is registered only for a surface this node can ACTUALLY serve: the
  * surface is enabled in config and its credential resolves. That is what stops
- * a node winning an election for something it cannot read — which would starve
+ * a node winning an election for something it cannot read, which would starve
  * the node that could.
  *
  * What is deliberately NOT gated: outbound delivery, sessions, the control
  * plane, the HTTP listener, watchers, triggers, and every other daemon
  * subsystem. A standby node is a fully functional daemon that simply is not the
- * one reading a particular inbox — it can still send, still serve the web UI,
+ * one reading a particular inbox, it can still send, still serve the web UI,
  * still run agents. Gating anything else would turn "we are not the reader"
  * into "we are degraded", which is not what leadership means here.
  *
@@ -57,7 +57,7 @@ export { ClusterCoordinator } from '../cluster/index.js';
  * `replayFromMs` is threaded into the subscription because ntfy has no
  * server-side per-subscriber cursor: a takeover that subscribed "from now"
  * would drop everything published between the previous holder's last heartbeat
- * and this start. Telegram needs no equivalent — its backlog lives on
+ * and this start. Telegram needs no equivalent, its backlog lives on
  * Telegram's servers and the persisted offset already covers the gap.
  */
 function ntfyTopicGate(
@@ -82,7 +82,7 @@ function ntfyTopicGate(
  * identity the provider itself reported.
  *
  * The discriminator is the real workspace or application id, resolved before
- * anything is contested — see facade-cluster-sockets.ts for why a placeholder
+ * anything is contested, see facade-cluster-sockets.ts for why a placeholder
  * would starve one of two differently-configured workspaces.
  */
 function socketProviderGate(
@@ -166,8 +166,8 @@ export function buildDaemonClusterCoordinator(
  * One inbound surface the operator enabled cannot be served, so this node will
  * not contest it and will not read it.
  *
- * This is the single most expensive state the daemon can be in — the config
- * reads correct, the process is healthy, and messages disappear — so it is
+ * This is the single most expensive state the daemon can be in, the config
+ * reads correct, the process is healthy, and messages disappear, so it is
  * stated at ERROR with the operator's next action in it, not left to a status
  * endpoint nobody queries. It matters more under leadership than it did
  * before: a node that quietly declines a surface looks exactly like a node
@@ -181,7 +181,7 @@ function reportInert(surface: string, action: string): void {
  * Inbound mail as a leadership gate.
  *
  * Clustering defaults off, but when the owner opts in, two nodes both holding
- * an IDLE connection to the same mailbox would both fetch and both notify —
+ * an IDLE connection to the same mailbox would both fetch and both notify,
  * the same message announced twice by a capability whose entire value is being
  * told exactly once. `stopInboundMail()` does not resolve until the source has
  * genuinely stopped and released its connection, which is the property the
@@ -215,7 +215,7 @@ function inboundMailGate(
  * with an early `return`, and while that `return` sat in the middle of the
  * top-level function it also skipped every surface registered AFTER Telegram.
  * A new gate added below it would have been silently unregistered on any
- * machine whose Telegram token failed to resolve — a condition that produces
+ * machine whose Telegram token failed to resolve, a condition that produces
  * no error and looks exactly like a healthy node. Inside its own function the
  * `return` can only end Telegram's registration, which is all it ever meant.
  */
@@ -235,7 +235,7 @@ async function registerTelegramSurface(
   coordinator.register(telegramIngressGate(collaborators.builtinChannels, surface));
   // Late-bound because the runtime is built before the coordinator exists: a
   // Telegram 409 naming another consumer has to reach leadership, not a log.
-  // Routed at the Telegram surface specifically — a conflict over one bot
+  // Routed at the Telegram surface specifically, a conflict over one bot
   // token is no reason to give up an unrelated ntfy topic.
   collaborators.builtinChannels.setConsumerConflictHandler(
     (detail) => coordinator.reportConsumerConflict(detail, surface),
@@ -283,7 +283,7 @@ export async function registerDaemonClusterSurfaces(
   }
 
   // Slack and Discord are contested under the identity the provider reports,
-  // never under a placeholder — a placeholder would put two different
+  // never under a placeholder, a placeholder would put two different
   // workspaces into one election and starve whichever lost.
   const supervisors = new Map<'slack' | 'discord', SocketSurfaceSupervisor>();
   for (const kind of ['slack', 'discord'] as const) {

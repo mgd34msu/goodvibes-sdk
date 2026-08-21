@@ -47,7 +47,7 @@ function makeTransport(fetch: (input: string | URL | Request, init?: RequestInit
 }
 
 // ---------------------------------------------------------------------------
-// createOperatorRemoteClient — contract/manifest inspection
+// createOperatorRemoteClient, contract/manifest inspection
 // ---------------------------------------------------------------------------
 
 describe('createOperatorRemoteClient — listOperations / getOperation', () => {
@@ -107,7 +107,7 @@ describe('createOperatorRemoteClient — invoke throws for missing HTTP binding'
 });
 
 // ---------------------------------------------------------------------------
-// createOperatorRemoteClient — shorthand method coverage
+// createOperatorRemoteClient, shorthand method coverage
 // ---------------------------------------------------------------------------
 
 describe('createOperatorRemoteClient — shorthand methods', () => {
@@ -339,7 +339,7 @@ describe('createOperatorRemoteClient — shorthand methods', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createOperatorSdk — validateResponses option
+// createOperatorSdk, validateResponses option
 // ---------------------------------------------------------------------------
 
 describe('createOperatorSdk — validateResponses option', () => {
@@ -349,7 +349,7 @@ describe('createOperatorSdk — validateResponses option', () => {
       validateResponses: false,
       fetch: withPreconnect(async () => createJsonResponse({ custom_field: 'no_zod_here', capturedAt: 0, providers: [], configuredCount: 0, issueCount: 0 })),
     });
-    // Should not throw even if response shape is unexpected — Zod is bypassed
+    // Should not throw even if response shape is unexpected, Zod is bypassed
     const result = await sdk.accounts.snapshot();
     expect(result).not.toBeNull(); // presence-only: validateResponses:false bypasses schema, no guaranteed shape
   });
@@ -377,7 +377,7 @@ describe('createOperatorSdk — validateResponses option', () => {
 
 
 // ---------------------------------------------------------------------------
-// createOperatorRemoteClient (src) — shorthand methods via src client
+// createOperatorRemoteClient (src), shorthand methods via src client
 // These cover the arrow-function method bindings in client-core.ts
 // ---------------------------------------------------------------------------
 
@@ -434,7 +434,7 @@ describe('createOperatorRemoteClient (src) — shorthand method bindings', () =>
     // an older/mixed-version daemon may omit `project` on a shared-session record.
     // The JSON-schema response gate in validateJsonSchemaResponse (client-core.ts)
     // must not reject the response before normalizeSharedSessionRecord gets a
-    // chance to backfill `project` to 'unknown' — i.e. `project` must not be in
+    // chance to backfill `project` to 'unknown', i.e. `project` must not be in
     // SHARED_SESSION_RECORD_SCHEMA's required list.
     const createdAt = Date.now();
     const client = createOperatorRemoteClient(

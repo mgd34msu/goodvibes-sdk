@@ -5,7 +5,7 @@
  *    excluded from the final body, so the owner's phone received
  *    "Agent completed in Nms" and never the reply.
  * 2. The final body ignored the delivery watermark and replayed every buffered
- *    event, making it a strict superset of the progress updates before it —
+ *    event, making it a strict superset of the progress updates before it,
  *    one trivial message arrived as three notifications, each repeating the
  *    previous one plus a little more.
  * 3. An agent's internal completion-report JSON reached the channel verbatim:
@@ -60,7 +60,7 @@ function harness(surfaceKind: string) {
     /**
      * Owner-audience by default: these tests are about pacing and delta, and
      * they use prose statuses a reader can act on. Tool-activity progress is
-     * `operator` and is dropped before any of this machinery runs — that rule
+     * `operator` and is dropped before any of this machinery runs, that rule
      * has its own tests, above and in
      * channel-internal-diagnostics-never-delivered.test.ts.
      */
@@ -108,7 +108,7 @@ describe('ntfy delivers the answer, not just the duration', () => {
     await waitFor(() => h.published.length > 0);
     const body = h.bodies().join('\n');
     expect(body).toContain('The build is green and the tag is pushed.');
-    // The duration line no longer rides along at all — the answer is the whole
+    // The duration line no longer rides along at all, the answer is the whole
     // notification.
     expect(body).not.toContain('Agent completed in');
     expect(body.trim()).toBe('The build is green and the tag is pushed.');
@@ -129,7 +129,7 @@ describe('ntfy delivers the answer, not just the duration', () => {
     await waitFor(() => h.published.length === 2);
     // The leg still arrives; it no longer quotes the chain id. This harness
     // never emits the opening event that carries the task, so the workstream
-    // has no name to be known by — and it says so in words rather than falling
+    // has no name to be known by, and it says so in words rather than falling
     // back to the identifier. See channel-workstream-labels.test.ts.
     expect(h.published[1]?.text).toBe('The workstream is done');
     expect(h.published[1]?.text).not.toContain('chain-9');
@@ -152,7 +152,7 @@ describe('the final body is a delta, not a replay', () => {
     await h.pipeline.deliverFinal('agent-tg', '');
 
     // The defect this pins: the final body was `[...state.events, statusEvent]`
-    // — every line the two progress updates had just delivered, plus
+    //, every line the two progress updates had just delivered, plus
     // "Completed". Nothing here is new, so under the owner's ruling nothing is
     // sent: the two progress notifications stand and no third arrives.
     expect(h.published).toHaveLength(2);
@@ -204,7 +204,7 @@ describe('the final body is a delta, not a replay', () => {
 
     // This used to send a synthesised "Completed". Owner ruling: a bare
     // acknowledgement is not a message. Silence is the honest outcome, and the
-    // run still ends — the pipeline is not left waiting on this agent.
+    // run still ends, the pipeline is not left waiting on this agent.
     expect(h.bodies()).toEqual(['only line']);
     expect(h.pipeline.has('agent-empty')).toBe(false);
   });
@@ -265,7 +265,7 @@ describe('internal completion-report JSON never reaches the channel body', () =>
 });
 
 describe('the report reaches nobody in its prose form either', () => {
-  // What the owner actually received for "Hey, are you there?" — the JSON form
+  // What the owner actually received for "Hey, are you there?", the JSON form
   // was already stripped, so the agent filed the same report as prose and it
   // shipped verbatim.
   test('a filled-in report template is reduced to the answer it carries', async () => {
@@ -402,9 +402,9 @@ describe('progress notifications carry a status line, never the answer', () => {
     expect(h.published[0]!.text).not.toContain('Turn 3');
   });
 
-  // The owner received `registry — email send`, `exec — standard` and
-  // `find` as Telegram messages. Those are `record.progress` — the running tool
-  // and a scrap of its arguments — and no surface may carry them, whatever the
+  // The owner received `registry, email send`, `exec, standard` and
+  // `find` as Telegram messages. Those are `record.progress`, the running tool
+  // and a scrap of its arguments, and no surface may carry them, whatever the
   // pacing says. See channels/render-audience.ts.
   test.each(['ntfy', 'telegram', 'slack'])('a tool-activity status is dropped on %s however old the run', async (surface) => {
     const h = harness(surface);
@@ -467,7 +467,7 @@ describe('progress notifications carry a status line, never the answer', () => {
   test('no progress notification interrupts anyone in the first seconds of a run', async () => {
     const h = harness('ntfy');
     h.track('agent-quick');
-    // A real, informative status — withheld purely because the run is young.
+    // A real, informative status, withheld purely because the run is young.
     expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 1 · Network error, retrying in 5s…', true, 'owner')).toBeNull();
     h.advance(29_000);
     expect(await h.pipeline.deliverProgress('agent-quick', 'Turn 2 · Network error, retrying in 9s…', true, 'owner')).toBeNull();
@@ -485,10 +485,10 @@ describe('progress notifications carry a status line, never the answer', () => {
     h.advance(1_200);
     await h.progress('agent-hello', 'Turn 2 · Thinking…');
     h.advance(1_500);
-    await h.complete('agent-hello', "Yes — I'm here and the daemon is running.");
+    await h.complete('agent-hello', "Yes, I'm here and the daemon is running.");
 
     await waitFor(() => h.published.length > 0);
-    expect(h.bodies()).toEqual(["Yes — I'm here and the daemon is running."]);
+    expect(h.bodies()).toEqual(["Yes, I'm here and the daemon is running."]);
   });
 
   test('a progress body never carries a fragment of the answer', async () => {

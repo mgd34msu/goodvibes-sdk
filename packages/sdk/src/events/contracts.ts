@@ -141,7 +141,7 @@ import {
 // Domain-grouping rule: entries are arranged by event domain (turn/tool, agent,
 // mcp, plugin, automation, route, control-plane, delivery, watcher, surface).
 // Within each domain group entries are sorted alphabetically by key.
-// Event types without a registered validator are not listed here — they pass
+// Event types without a registered validator are not listed here, they pass
 // through validateKnownEvent as unknown and are documented in that function.
 const EVENT_VALIDATORS: Record<string, (v: unknown) => import('./contracts/shared.js').ContractResult> = {
   // turn / tool domain
@@ -212,7 +212,7 @@ const EVENT_VALIDATORS: Record<string, (v: unknown) => import('./contracts/share
 /**
  * Validate a runtime event against its registered schema contract.
  *
- * Returns `{ valid: false }` for unknown event types — no validator is
+ * Returns `{ valid: false }` for unknown event types, no validator is
  * registered for approximately 165 of 219 total event types. Use
  * `isKnownEventType` to distinguish "unknown type" from "validation failed".
  */

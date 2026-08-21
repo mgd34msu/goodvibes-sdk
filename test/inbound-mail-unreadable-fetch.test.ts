@@ -9,11 +9,11 @@
  *
  *   1. The retry was unbounded AND the backoff was reset on every successful
  *      connection, so a mailbox that could never be read reconnected from
- *      attempt zero forever — measured at a flat 500 ms between logins, which
+ *      attempt zero forever, measured at a flat 500 ms between logins, which
  *      is roughly two IMAP logins per second against a provider that permits
  *      fifteen concurrent connections. The daemon becomes the outage.
  *   2. The refusal to advance was decided per BATCH, so a UID the server had
- *      genuinely expunged was held back by an unreadable batch-mate — and
+ *      genuinely expunged was held back by an unreadable batch-mate, and
  *      because batch composition is stable across retries, the cursor could
  *      never clear that point.
  *
@@ -81,7 +81,7 @@ function namedProblem(uid: number): ImapFetchProblem {
   };
 }
 
-/** A response that names nothing — the genuinely unattributable case. */
+/** A response that names nothing, the genuinely unattributable case. */
 function anonymousProblem(): ImapFetchProblem {
   return {
     seq: 2,
@@ -161,7 +161,7 @@ class ScriptedMailbox implements MailboxConnectionPort {
       reader,
       wire,
       // This stub connection never ran a probe, and `unproven` is what says so
-      // — not `readable`, which would claim a capability nothing demonstrated.
+      //, not `readable`, which would claim a capability nothing demonstrated.
       bodyCapability: {
         outcome: 'unproven',
         detail: 'A stub connection: no body was fetched, so nothing is proven.',
@@ -249,7 +249,7 @@ async function collectSleeps(harness: Harness, count: number): Promise<number[]>
  * that actually exist.
  *
  * `nextDueIn` is `Infinity` when nothing is scheduled, and advancing by that
- * moves the fake clock to a time `new Date()` cannot represent — so the guard
+ * moves the fake clock to a time `new Date()` cannot represent, so the guard
  * is not decoration; without it the watcher's next status timestamp throws
  * `Invalid Date` and the test fails somewhere unrelated to what it is testing.
  */
@@ -276,7 +276,7 @@ describe('a mailbox whose answers cannot be read does not become a login flood',
   test('the reconnect interval ESCALATES when the connection opens and the drain fails', async () => {
     // The measured defect: `connectBackoff.reset()` sat on the successful
     // connection, so every reconnect after a failed drain restarted at attempt
-    // zero and the intervals came back flat — [500, 500, 500, ...] forever.
+    // zero and the intervals came back flat, [500, 500, 500, ...] forever.
     // A successful TCP connect is not evidence of progress when the work the
     // connection exists for keeps failing.
     const harness = await build({
@@ -318,7 +318,7 @@ describe('a mailbox whose answers cannot be read does not become a login flood',
   test('an unreadable mailbox escalates to a named terminal reason with an owner notice', async () => {
     // The asymmetry that was the defect: the THROW path escalated through
     // MAX_CONSECUTIVE_LOCAL_FAILURES to a terminal reason and an owner notice,
-    // and the UNREADABLE path had no counterpart at all — no ceiling, no
+    // and the UNREADABLE path had no counterpart at all, no ceiling, no
     // terminal, no notice. A mailbox that can never be read must say so rather
     // than retry forever.
     const harness = await build({
@@ -369,7 +369,7 @@ describe('a mailbox whose answers cannot be read does not become a login flood',
 // ---------------------------------------------------------------------------
 
 describe('a genuine expunge is not blocked by an unreadable batch-mate', () => {
-  /** One drain, driven directly — the level the defect was reproduced at. */
+  /** One drain, driven directly, the level the defect was reproduced at. */
   async function drainOnce(options: ScriptedMailboxOptions & { readonly seedUid: number }) {
     const clock = new FakeClock();
     const { store: cursors } = await makeCursorStore({
@@ -402,7 +402,7 @@ describe('a genuine expunge is not blocked by an unreadable batch-mate', () => {
   test('a UID the server named as unreadable blocks only itself, not the batch', async () => {
     // The reproduction: SEARCH returns [101, 102], 101 is genuinely expunged
     // and 102 came back unreadable. The batch-wide test refused BOTH and left
-    // the cursor at 100 — and since batch composition is stable across
+    // the cursor at 100, and since batch composition is stable across
     // retries, it could never clear.
     const { report } = await drainOnce({
       seedUid: 100,
@@ -434,8 +434,8 @@ describe('a genuine expunge is not blocked by an unreadable batch-mate', () => {
       readable: [],
       unreadable: [namedProblem(102)],
     });
-    // Still held at 101 — 102 is the ambiguous one and must not be stepped
-    // over — but it did not go backwards, and 101 is behind us for good.
+    // Still held at 101, 102 is the ambiguous one and must not be stepped
+    // over, but it did not go backwards, and 101 is behind us for good.
     expect(second.report.cursor.lastSeenUid).toBe(101);
   });
 

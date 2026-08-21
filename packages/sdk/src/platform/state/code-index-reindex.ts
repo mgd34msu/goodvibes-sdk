@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * CodeIndexReindexScheduler — Stage B tool-site reindex hooks.
+ * CodeIndexReindexScheduler, Stage B tool-site reindex hooks.
  *
  * After a successful file-writing tool call (write / edit, including the edit
  * tool's notebook operations), the touched path(s) are scheduled for an
@@ -22,11 +22,11 @@
  *  3. NO-OP WHEN THERE IS NOTHING TO MAINTAIN, and CONTAINED FAILURE. At fire
  *     time the scheduler re-checks (live, so a runtime toggle is respected)
  *     that the code index is enabled AND already built (available &&
- *     indexedChunks > 0) — reindexing a single file into an index that was
+ *     indexedChunks > 0), reindexing a single file into an index that was
  *     never built would fabricate a misleading one-file index, so that case is
  *     a silent no-op. `reindexFile` is cheap when the file is unchanged
  *     (hash-gated). Any error is caught, logged, and recorded as the last
- *     activity — it never rethrows into the turn.
+ *     activity, it never rethrows into the turn.
  *
  * The most-recent completed reindex is exposed via `lastActivity()` for honest
  * surfacing (e.g. TUI `/codebase status`).
@@ -41,7 +41,7 @@ import { summarizeError } from '../utils/error-display.js';
 /** Default per-path debounce window: long enough to coalesce a burst of edits to one file, short enough that the index trails the working tree by well under a second. */
 export const DEFAULT_REINDEX_DEBOUNCE_MS = 300;
 
-/** The subset of CodeIndexStore this scheduler drives — kept structural so tests can supply a minimal fake. */
+/** The subset of CodeIndexStore this scheduler drives, kept structural so tests can supply a minimal fake. */
 export interface CodeIndexReindexTarget {
   reindexFile(absPath: string): Promise<{ indexed: boolean; mode: CodeChunkMode }>;
   stats(): Pick<CodeIndexStats, 'available' | 'indexedChunks'>;
@@ -127,7 +127,7 @@ export class CodeIndexReindexScheduler {
   /**
    * Entry point wired into both tool-execution loops. A no-op for a failed call
    * or a non-file tool. Extracts touched paths and schedules each (debounced).
-   * Returns immediately — never awaits a reindex.
+   * Returns immediately, never awaits a reindex.
    */
   onToolExecuted(toolName: string, args: Record<string, unknown>, success: boolean): void {
     if (!success) return;
@@ -180,7 +180,7 @@ export class CodeIndexReindexScheduler {
   }
 
   private async runReindex(absPath: string): Promise<void> {
-    // Live gates — respect a runtime toggle of the setting and never fabricate a
+    // Live gates, respect a runtime toggle of the setting and never fabricate a
     // one-file index when nothing was ever built.
     if (this.deps.isEnabled && !this.deps.isEnabled()) return;
     const stats = this.deps.target.stats();

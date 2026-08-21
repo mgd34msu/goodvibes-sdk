@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * RouteEvent — discriminated union covering external route binding lifecycle events.
+ * RouteEvent, discriminated union covering external route binding lifecycle events.
  */
 
 export const ROUTE_SURFACE_KINDS = [

@@ -90,11 +90,11 @@ export function scheduleAutomationFailureFollowUp(
  * Resolve where a failure (or missed-run) notice for `job` should go.
  *
  * Priority:
- *  1. The per-job failure override — its `notifyRouteId` / `deadLetterRouteId`
+ *  1. The per-job failure override, its `notifyRouteId` / `deadLetterRouteId`
  *     surface routes, when either is set. An explicit failure channel wins.
  *  2. Otherwise the job's OWN normal delivery targets (`delivery.targets`, or
  *     `delivery.replyToRouteId`), with `delivery.fallbackTargets` as the
- *     fallback — the same targets its ordinary run deliveries use. A job whose
+ *     fallback, the same targets its ordinary run deliveries use. A job whose
  *     delivery is turned off (`mode === 'none'`) contributes no default here;
  *     only its explicit failure override can reach anyone.
  *
@@ -139,7 +139,7 @@ function buildFailureNoticeMessage(job: AutomationJob, run: AutomationRun): stri
  * Deliver a failure (or missed-run) notice for a job's run.
  *
  * The notice flows to the job's own delivery targets by default so a failed or
- * slept-through overnight job still reaches its human — not only to a separately
+ * slept-through overnight job still reaches its human, not only to a separately
  * configured failure route. `onDeliveryGap` is invoked (once, at the caller's
  * discretion) when the job has no reachable target at all, so the gap is logged
  * honestly instead of failing silently.

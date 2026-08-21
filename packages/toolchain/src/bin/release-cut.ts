@@ -19,7 +19,10 @@ const notes = notesIdx !== -1 && process.argv[notesIdx + 1]
   : [];
 try {
   const result = runReleaseCut({ cwd: root, bump, config: config.releaseCut, notes, dryRun, logger: consoleLogger });
-  consoleLogger.info(`release-cut: prepared ${result.tag}${result.committed ? ' (committed + tagged)' : ' (dry-run)'}`);
+  const state = result.committed
+    ? (result.resumed ? ' (already cut, converged)' : ' (committed + tagged)')
+    : ' (dry-run)';
+  consoleLogger.info(`release-cut: prepared ${result.tag}${state}`);
   process.exit(0);
 } catch (error) {
   consoleLogger.error(`release-cut: ${error instanceof Error ? error.message : String(error)}`);

@@ -1,25 +1,25 @@
 /**
- * memory-recall-contract.ts — the CROSS-SURFACE recall-honesty contract (see CHANGELOG 1.0.0).
+ * memory-recall-contract.ts, the CROSS-SURFACE recall-honesty contract (see CHANGELOG 1.0.0).
  *
  * PROVENANCE. This is the agent's memory-honesty discipline, promoted
  * verbatim from a single surface (the agent's memory-prompt.ts) into the SDK so it
  * is ONE shared contract, not a discipline re-derived (and re-weakened) per surface.
  * Under memory unification the store is unified and cross-surface, which multiplies the cost of a
- * dishonest recall — so this discipline becomes MORE load-bearing, not less. A
+ * dishonest recall, so this discipline becomes MORE load-bearing, not less. A
  * unified store must not be able to lie more loudly than the siloed one did.
  *
  * The contract is three rules:
  *   1. INJECTION FLOOR = the store's own declared baseline trust (60), never higher.
  *      MemoryStore.add() stamps every new record at confidence 60 unless the caller
- *      says otherwise. A floor above 60 would starve every honestly-stored fact — a
+ *      says otherwise. A floor above 60 would starve every honestly-stored fact, a
  *      freshly-learned fact could never clear recall on its own. The floor trusts a
  *      record exactly as much as the store already vouches for it; anything stored
  *      BELOW 60 (explicitly marked less certain) still does not qualify.
  *   2. FLAGGED RECORDS ARE NEVER INJECTED. stale/contradicted records are excluded
- *      outright, regardless of confidence — the surface already knows they are wrong
+ *      outright, regardless of confidence, the surface already knows they are wrong
  *      or superseded, so no confidence number buys them back into a prompt.
  *   3. DEGRADED STATES ARE HONEST, NOT SILENT. an unavailable semantic index yields
- *      a STATED reason and a literal fallback — never a silent empty result that
+ *      a STATED reason and a literal fallback, never a silent empty result that
  *      reads as "nothing was ever stored." 'no match' and 'index unavailable' are
  *      distinct and both said out loud.
  */
@@ -33,13 +33,13 @@ import { HASHED_MEMORY_EMBEDDING_PROVIDER } from './memory-embeddings.js';
 /**
  * Recall-prompt confidence floor. Tied to the store's own baseline: MemoryStore.add
  * stamps new records at confidence 60. This is NOT a number chosen to make things
- * pass — it is the store's own definition of "a real, usable fact."
+ * pass, it is the store's own definition of "a real, usable fact."
  */
 export const MIN_PROMPT_MEMORY_CONFIDENCE = 60;
 
 export interface MemoryPromptEligibility {
   readonly eligible: boolean;
-  /** Why this record did or did not clear the recall floor — confidence, review state, and provenance, never silent. */
+  /** Why this record did or did not clear the recall floor, confidence, review state, and provenance, never silent. */
   readonly reason: string;
 }
 
@@ -54,18 +54,18 @@ function provenanceSummary(record: MemoryRecord): string {
  *
  * Flagged records (stale/contradicted) are excluded outright regardless of
  * confidence. Everything else is judged on its own stored confidence against
- * MIN_PROMPT_MEMORY_CONFIDENCE — the store's own baseline. Nothing is blanket-boosted.
+ * MIN_PROMPT_MEMORY_CONFIDENCE, the store's own baseline. Nothing is blanket-boosted.
  */
 export function describeMemoryPromptEligibility(record: MemoryRecord, now: number = Date.now()): MemoryPromptEligibility {
   const provenance = provenanceSummary(record);
   if (record.reviewState === 'stale' || record.reviewState === 'contradicted') {
     return {
       eligible: false,
-      reason: `reviewState is ${record.reviewState} — flagged memory is never injected regardless of confidence (${provenance})`,
+      reason: `reviewState is ${record.reviewState}, flagged memory is never injected regardless of confidence (${provenance})`,
     };
   }
   // Temporal validity window: a record outside [validFrom, validUntil) is not
-  // injected — but it is NOT deleted, and this reason is stated (expiry is
+  // injected, but it is NOT deleted, and this reason is stated (expiry is
   // visible, never silent). A 'pending' record has not started; an 'expired'
   // one has ended.
   const temporal = memoryRecordTemporalStatus(record, now);
@@ -75,7 +75,7 @@ export function describeMemoryPromptEligibility(record: MemoryRecord, now: numbe
       : `not yet valid until validFrom ${new Date(record.validFrom ?? now).toISOString()}`;
     return {
       eligible: false,
-      reason: `temporally ${temporal} — ${when}; outside its validity window a record is not injected (still stored) (${provenance})`,
+      reason: `temporally ${temporal}, ${when}; outside its validity window a record is not injected (still stored) (${provenance})`,
     };
   }
   if (record.confidence < MIN_PROMPT_MEMORY_CONFIDENCE) {
@@ -108,7 +108,7 @@ export function isPromptActiveMemory(
 
 /**
  * A HARD unavailable reason: the semantic index cannot be consulted at all, so a
- * search must fall back to a literal scan and SAY SO — never a silent empty result
+ * search must fall back to a literal scan and SAY SO, never a silent empty result
  * that reads as "no memory matches" when the index was never asked. Returns null
  * when the index is available and can be consulted.
  */
@@ -127,14 +127,14 @@ export function describeMemoryIndexUnavailable(stats: MemoryVectorStats): string
  */
 export function describeMemoryIndexCaveat(stats: MemoryVectorStats): string | null {
   if (stats.embeddingProviderId === HASHED_MEMORY_EMBEDDING_PROVIDER.id) {
-    return 'running on the hashed-only fallback embedding provider (no dedicated semantic model configured) — ranking is approximate, not modeled semantic understanding';
+    return 'running on the hashed-only fallback embedding provider (no dedicated semantic model configured), ranking is approximate, not modeled semantic understanding';
   }
   return null;
 }
 
 /**
  * The minimal read surface a honest search needs. MemoryStore (and MemoryRegistry)
- * satisfy this structurally — the function stays decoupled from either concrete
+ * satisfy this structurally, the function stays decoupled from either concrete
  * class so it can run over any store that exposes the three read paths.
  */
 export interface HonestSearchStore {
@@ -147,7 +147,7 @@ export interface HonestMemorySearchOptions {
   /**
    * Apply the recall-INJECTION contract to the result set: exclude flagged
    * (stale/contradicted) records outright and drop records below the confidence
-   * floor, counting each exclusion honestly. Off by default — a review/browse
+   * floor, counting each exclusion honestly. Off by default, a review/browse
    * caller wants to SEE flagged and low-confidence records; only a prompt-recall
    * caller filters them out.
    */
@@ -156,7 +156,7 @@ export interface HonestMemorySearchOptions {
 
 /**
  * The honest search envelope. `records` is what a caller should use; the rest is
- * the receipt: which path actually ran, and — when a degraded path was taken —
+ * the receipt: which path actually ran, and, when a degraded path was taken,
  * WHY, out loud. A wire client and a local surface serialize the SAME envelope, so
  * the honesty contract cannot be re-weakened per surface.
  */
@@ -165,7 +165,7 @@ export interface HonestMemorySearchResult {
   /** The path that actually ran. `'literal'` even when semantic was requested but the index could not be consulted. */
   readonly mode: 'literal' | 'semantic';
   readonly requestedSemantic: boolean;
-  /** Non-null ONLY when semantic was requested and the index could not be consulted, forcing the literal fallback. The stated reason — never a silent empty. */
+  /** Non-null ONLY when semantic was requested and the index could not be consulted, forcing the literal fallback. The stated reason, never a silent empty. */
   readonly indexUnavailableReason: string | null;
   /** Soft caveat when the semantic path ran on the hashed-only fallback provider. */
   readonly caveat: string | null;
@@ -175,11 +175,11 @@ export interface HonestMemorySearchResult {
   readonly excludedBelowFloorCount: number;
   /** Records excluded because they fell OUTSIDE their temporal validity window (pending or expired). */
   readonly excludedOutOfWindowCount: number;
-  /** Result count BEFORE any recall-injection filtering — so a caller can tell "index empty" from "everything filtered out". */
+  /** Result count BEFORE any recall-injection filtering, so a caller can tell "index empty" from "everything filtered out". */
   readonly totalBeforeRecallFilter: number;
   /**
    * The store's configured recall confidence floor (MIN_PROMPT_MEMORY_CONFIDENCE)
-   * this result was judged against — carried on the wire so a surface can state
+   * this result was judged against, carried on the wire so a surface can state
    * the floor in a label ("below the N% recall floor") without hardcoding it and
    * silently drifting if the store's floor is retuned.
    */
@@ -253,7 +253,7 @@ export function runHonestMemorySearch(
       continue;
     }
     // Order matches describeMemoryPromptEligibility: flagged first, then the
-    // temporal window, then the confidence floor — so each exclusion is counted
+    // temporal window, then the confidence floor, so each exclusion is counted
     // under the reason it was actually excluded for.
     if (record.reviewState === 'stale' || record.reviewState === 'contradicted') {
       excludedFlaggedCount += 1;

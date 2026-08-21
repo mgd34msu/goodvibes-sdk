@@ -12,9 +12,9 @@
  * statically-configured context window.
  *
  * Provenance ladder (highest to lowest):
- *   provider_api     — value from /v1/models max_context_length
- *   configured_cap   — explicit contextWindow in custom provider config
- *   fallback         — DEFAULT_CONTEXT_WINDOW constant
+ *   provider_api    , value from /v1/models max_context_length
+ *   configured_cap  , explicit contextWindow in custom provider config
+ *   fallback        , DEFAULT_CONTEXT_WINDOW constant
  */
 
 import { logger } from '../utils/logger.js';
@@ -27,9 +27,9 @@ import { discoverContextWindows } from './context-discovery.js';
 /**
  * Provenance tag for a resolved context window value.
  *
- * - `provider_api`   — sourced from the provider's /v1/models endpoint
- * - `configured_cap` — explicit value from the custom provider config file
- * - `fallback`       — DEFAULT_CONTEXT_WINDOW (no config, no API response)
+ * - `provider_api`  , sourced from the provider's /v1/models endpoint
+ * - `configured_cap`, explicit value from the custom provider config file
+ * - `fallback`      , DEFAULT_CONTEXT_WINDOW (no config, no API response)
  */
 export type ContextWindowProvenance = 'provider_api' | 'configured_cap' | 'fallback';
 
@@ -113,7 +113,7 @@ export class LocalContextIngestionService {
     }
 
     // Use multi-endpoint discovery (probes LM Studio, Ollama, OpenAI-compat, llama.cpp, TGI)
-    // Returns an empty Map when all probes fail — treat that as a fetch failure.
+    // Returns an empty Map when all probes fail, treat that as a fetch failure.
     const discovered = await discoverContextWindows(baseURL, apiKey);
     const failed = discovered.size === 0;
     if (failed) {
@@ -158,9 +158,9 @@ export class LocalContextIngestionService {
  * Resolve the effective context window for a single model with provenance.
  *
  * Priority ladder:
- *   1. provider_api  — `apiContextLength` when valid (> 0)
- *   2. configured_cap — `configuredContextWindow` when valid (> 0)
- *   3. fallback      — `DEFAULT_CONTEXT_WINDOW`
+ *   1. provider_api , `apiContextLength` when valid (> 0)
+ *   2. configured_cap, `configuredContextWindow` when valid (> 0)
+ *   3. fallback     , `DEFAULT_CONTEXT_WINDOW`
  *
  * @param modelId                - Model ID (for logging).
  * @param apiContextLength       - Context length from /v1/models (null if not available).

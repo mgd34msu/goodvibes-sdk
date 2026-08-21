@@ -3,10 +3,10 @@
  * inside `executeOrchestratorTurnLoop` (core/orchestrator-turn-loop.ts).
  *
  * An earlier change wired this feature into the AGENT path only
- * (agents/orchestrator-runner.ts runAgentTask) — the TUI's MAIN interactive session runs a
+ * (agents/orchestrator-runner.ts runAgentTask), the TUI's MAIN interactive session runs a
  * completely separate turn loop that never called buildPerTurnKnowledgeInjection at all.
  * This suite drives that main-loop turn loop directly (it accepts a fully mockable
- * `OrchestratorTurnLoopContext`, so no `Orchestrator` construction is needed — the same
+ * `OrchestratorTurnLoopContext`, so no `Orchestrator` construction is needed, the same
  * "pure function over an injected context" seam the agent-path's own tests exploit for
  * runAgentTask), covering the brief's integration test matrix:
  *  - a relevant memory record composes onto the systemPrompt actually sent to
@@ -51,7 +51,7 @@ import { UNKNOWN_MODEL_PRICING } from '../packages/sdk/src/platform/providers/mo
 const BASE_SYSTEM_PROMPT = 'You are the goodvibes assistant.';
 // getSystemPrompt() output is always passed through appendGoodVibesRuntimeAwarenessPrompt
 // at the call site (pre-existing, unrelated to this per-turn knowledge injection feature) before any per-turn knowledge block
-// is composed onto it — this is the "no injection happened" baseline every "byte-identical"
+// is composed onto it, this is the "no injection happened" baseline every "byte-identical"
 // assertion in this suite compares against, not the raw BASE_SYSTEM_PROMPT.
 const EXPECTED_BASE_PROMPT = appendGoodVibesRuntimeAwarenessPrompt(BASE_SYSTEM_PROMPT);
 
@@ -261,7 +261,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     expect(capturedSystemPrompts).toHaveLength(1);
     expect(capturedSystemPrompts[0]).toContain('mem_ratelimit');
     expect(capturedSystemPrompts[0]).toContain('Injected Project Knowledge');
-    // Base prompt is still present underneath the block — this is additive, not a
+    // Base prompt is still present underneath the block, this is additive, not a
     // replacement of the bootstrap-composed prompt.
     expect(capturedSystemPrompts[0]).toContain(BASE_SYSTEM_PROMPT);
 
@@ -362,7 +362,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     expect(counters.getAllCalls).toBe(1); // retrieval ran exactly once, not once per iteration
     expect(capturedSystemPrompts).toHaveLength(2);
     expect(capturedSystemPrompts[0]).toContain('mem_ratelimit');
-    // Iteration 2 reuses the SAME block verbatim — not a second, concatenated copy.
+    // Iteration 2 reuses the SAME block verbatim, not a second, concatenated copy.
     expect(capturedSystemPrompts[1]).toBe(capturedSystemPrompts[0]);
     const blockOccurrences = capturedSystemPrompts[1]!.split('mem_ratelimit').length - 1;
     expect(blockOccurrences).toBe(1);
@@ -382,7 +382,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     // against the SHORT iteration-1 conversation, but the tool result appended after
     // iteration 1 (1500 tokens of padding) pushes live tokens far past the same threshold
     // by the time iteration 2's call is composed. The budget override (800) is generous on
-    // purpose so the headroom clamp — not the budget — is what this test exercises.
+    // purpose so the headroom clamp, not the budget, is what this test exercises.
     //
     // DERIVED, not hard-coded: the base+awareness system prompt is real product text that
     // grows when the awareness instructions change, and a literal here silently turns any
@@ -416,7 +416,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
       executeToolCalls: async (_id, calls) => calls.map((call) => ({
         callId: call.id,
         success: true,
-        // ~1500 estimated tokens (estimateTokens ~= chars/4) — comfortably enough to blow
+        // ~1500 estimated tokens (estimateTokens ~= chars/4), comfortably enough to blow
         // through the 510-token threshold once added to the base+block cost.
         output: 'x '.repeat(3000),
       })),
@@ -452,7 +452,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
     expect(first.capturedSystemPrompts[0]).toContain('mem_ratelimit');
 
     // A second, later user turn (a fresh executeOrchestratorTurnLoop() call, as a new
-    // runTurn() would make) asking about the SAME topic — the record would score high
+    // runTurn() would make) asking about the SAME topic, the record would score high
     // again, but Orchestrator's persistent alreadyInjectedIds set (shared here) excludes
     // it from ever being listed twice in the session.
     const second = makeContext({
@@ -489,13 +489,13 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
 
   test('a sparse config source that returns undefined for the passive-injection keys still injects at the documented defaults', async () => {
     // A real ConfigManager always resolves the schema default for every key, but
-    // context.configManager is typed Pick<ConfigManager, 'get'> — a partial/stub
+    // context.configManager is typed Pick<ConfigManager, 'get'>, a partial/stub
     // implementation (as some embedders and tests supply) can legitimately return
     // undefined for a key it does not model. Before restoring the module-constant
     // fallbacks, `agents.contextCompactThreshold` -> undefined made the headroom
     // clamp NaN (turnBudgetTokens never > 0 -> hard no-op every turn) and
     // `agents.passiveInjection.relevanceFloor` -> undefined made every relevance
-    // comparison against NaN silently fail (no record ever clears the floor) —
+    // comparison against NaN silently fail (no record ever clears the floor),
     // both a total, permanent injection blackout with no error, no matter how
     // relevant the record. This proves injection still works at the documented
     // defaults (0.85 / 95 / 800 / 3) when a config source omits these keys.
@@ -514,7 +514,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
       provider: finalResponseProvider(),
       memoryRegistry,
       // Non-zero so the headroom-clamp branch (the one that reads
-      // agents.contextCompactThreshold) actually runs instead of being skipped —
+      // agents.contextCompactThreshold) actually runs instead of being skipped,
       // a contextWindow of 0 would hide the threshold-NaN regression entirely.
       contextWindow: 100_000,
       configManagerGet: (key: string) => {
@@ -522,7 +522,7 @@ describe('orchestrator-turn-loop — main-session per-turn passive knowledge inj
         if (key === 'cache.hitRateWarningThreshold') return 0;
         if (key === 'cache.monitorHitRate') return false;
         // Every passive-injection / context-compaction key this sparse source does
-        // not model — the exact shape a partial embedder-supplied config takes.
+        // not model, the exact shape a partial embedder-supplied config takes.
         return undefined;
       },
     });

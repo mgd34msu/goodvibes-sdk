@@ -1,11 +1,11 @@
 /**
- * install-provision.ts — putting the wake-word model on disk AS PART OF
+ * install-provision.ts, putting the wake-word model on disk AS PART OF
  * INSTALLING, and retrying it at boot.
  *
  * WHY THIS EXISTS
  *
- * Everything needed to run the detector was already here — a pinned classifier,
- * a front end computed in code, a verified download, recovery housekeeping — and
+ * Everything needed to run the detector was already here, a pinned classifier,
+ * a front end computed in code, a verified download, recovery housekeeping, and
  * a fresh machine had none of it. Provisioning was reachable only by typing
  * `/voice wake setup` or calling `voice.wake.provision`, so the ordinary
  * outcome of installing goodvibes was a wake-word feature that could not start,
@@ -24,7 +24,7 @@
  *
  *  2. **IT SAYS SO ONCE, PLAINLY.** {@link WakeInstallProvisionOutcome.message}
  *     is one line of prose a caller prints or logs verbatim. Not a stack trace,
- *     not a silent log entry at debug level, and not repeated per artifact — the
+ *     not a silent log entry at debug level, and not repeated per artifact, the
  *     failure mode being avoided is a user whose wake word does not work and who
  *     has no idea a download was ever attempted.
  *
@@ -39,7 +39,7 @@
  * Turning `voice.wake.enabled` on downloads nothing, and neither does reading
  * status. Those paths are read-only and report not-provisioned with the recovery
  * command named. Installing, and booting a daemon that was installed, are the
- * sanctioned acts — each with a written receipt — and they are the only ones.
+ * sanctioned acts, each with a written receipt, and they are the only ones.
  */
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
@@ -93,7 +93,7 @@ export const WAKE_INSTALL_DEFAULT_RECOVERY_HINT = 'the next daemon start fetches
  * Shorter than the 10 minutes {@link provisionWakeWordModels} allows by default,
  * because the caller here is an installer or a booting daemon: a black-holed
  * connection must degrade in a couple of minutes, not hold an install open for
- * ten. Abandoning is safe — nothing partial is kept, and the next boot retries.
+ * ten. Abandoning is safe, nothing partial is kept, and the next boot retries.
  */
 export const WAKE_INSTALL_TIMEOUT_MS = 120_000;
 
@@ -170,8 +170,8 @@ function firstFailure(outcomes: readonly WakeComponentOutcome[]): string {
 /**
  * Provision the wake-word artifacts as part of an install or a boot.
  *
- * NEVER THROWS. Every failure path — an absent network, an unwritable directory,
- * a provisioner that itself threw — comes back as a `degraded` outcome whose
+ * NEVER THROWS. Every failure path, an absent network, an unwritable directory,
+ * a provisioner that itself threw, comes back as a `degraded` outcome whose
  * message names what happened and how to retry. Callers are installers; an
  * exception here is an aborted installation.
  */
@@ -239,7 +239,7 @@ export async function provisionWakeWordModelsAtInstall(
     });
     reapedBeforeAttempt = sweep.reaped.length;
   } catch (error) {
-    // A sweep that failed is not a reason to skip the download — the download
+    // A sweep that failed is not a reason to skip the download, the download
     // re-verifies every file it touches anyway.
     logger.warn('wake install provisioning: pre-attempt sweep failed', { error: summarizeError(error) });
   }
@@ -304,7 +304,7 @@ export async function provisionWakeWordModelsAtInstall(
     message:
       `Wake-word model installed and verified: "hey goodvibes" ${after.modelVersion ?? 'unpinned'}`
       + `${installed > 0 ? ` (${describeBytes(installed)})` : ''}. `
-      + 'Turn it on with voice.wake.enabled — nothing further to download.'
+      + 'Turn it on with voice.wake.enabled, nothing further to download.'
       + mobileNote,
     outcomes: result.outcomes,
     modelVersion: after.modelVersion,
@@ -324,7 +324,7 @@ export interface WakeBootProvisioningOptions {
   readonly managedRoot: string;
   /**
    * The provisioning attempt, injected rather than called directly, so a host
-   * routes it through ITS single-flight — a boot attempt and a user typing the
+   * routes it through ITS single-flight, a boot attempt and a user typing the
    * setup command at the same moment must join one download, not race.
    */
   readonly ensureProvisioned: () => Promise<WakeInstallProvisionOutcome>;
@@ -345,7 +345,7 @@ export interface WakeBootProvisioningOptions {
  * provisioning attempt for whatever the install could not get.
  *
  * The attempt is delayed and never awaited, so a daemon's startup is not held
- * behind a download, and it announces only when there is something to say — a
+ * behind a download, and it announces only when there is something to say, a
  * host that is already provisioned stays silent rather than logging a line about
  * doing nothing on every restart.
  */

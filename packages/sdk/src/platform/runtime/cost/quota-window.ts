@@ -1,7 +1,7 @@
 /**
  * quota-window.ts
  *
- * QuotaWindowTracker — tracks provider rate/quota windows from REAL observed
+ * QuotaWindowTracker, tracks provider rate/quota windows from REAL observed
  * signals (429 rate-limit errors and their retry-after, plus explicit
  * limit/remaining/reset when a provider's headers carry them) and answers a
  * pre-fan-out question: "will spawning N agents against this provider likely
@@ -32,7 +32,7 @@ export interface QuotaSignal {
 
 export type FanoutVerdict = 'likely-exhausts' | 'unlikely' | 'unknown';
 
-/** The evidence a fan-out assessment rests on — all observed, never invented. */
+/** The evidence a fan-out assessment rests on, all observed, never invented. */
 export interface FanoutEvidence {
   /** How many rate-limit signals were seen for this provider inside the lookback window. */
   readonly recentRateLimitCount: number;
@@ -58,15 +58,15 @@ export interface FanoutQuery {
   readonly provider: string;
   /** How many agents the caller is about to spawn against this provider. */
   readonly agentCount: number;
-  /** Optional expected LLM calls each agent will make (defaults to 1) — used against an observed `remaining`. */
+  /** Optional expected LLM calls each agent will make (defaults to 1), used against an observed `remaining`. */
   readonly callsPerAgent?: number | undefined;
 }
 
 /**
- * A point-in-time view of a provider's observed quota window — the most recent
+ * A point-in-time view of a provider's observed quota window, the most recent
  * limit/remaining/reset a provider's headers reported, plus any active cooldown.
  * `hasSignal:false` (with every observed-* field absent) when no rate-limit
- * signal has been seen for the provider in the lookback window — an honest "no
+ * signal has been seen for the provider in the lookback window, an honest "no
  * observation", never a fabricated full quota.
  */
 export interface QuotaSnapshot {
@@ -165,7 +165,7 @@ export class QuotaWindowTracker {
       return {
         provider: query.provider,
         verdict: 'unknown',
-        reason: `No rate-limit or quota signal has been observed for ${query.provider} in the last ${Math.round(this.lookbackMs / 60000)} minutes — there is no evidence to judge this fan-out either way.`,
+        reason: `No rate-limit or quota signal has been observed for ${query.provider} in the last ${Math.round(this.lookbackMs / 60000)} minutes, there is no evidence to judge this fan-out either way.`,
         evidence: { recentRateLimitCount: 0, requestedAgents: query.agentCount },
       };
     }
@@ -205,7 +205,7 @@ export class QuotaWindowTracker {
       };
     }
 
-    // 3) Signals exist but no active cooldown and no shortfall — unlikely, with the evidence stated.
+    // 3) Signals exist but no active cooldown and no shortfall, unlikely, with the evidence stated.
     return {
       provider: query.provider,
       verdict: 'unlikely',

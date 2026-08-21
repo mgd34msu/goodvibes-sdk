@@ -3,12 +3,12 @@
  *
  * Live event subscriptions over the relay tunnel, end to end through a REAL
  * in-process Bun relay server, a real daemon-side registration bridging an event
- * source, and the real relay client. Proves: (1) events flow — an SSE request
+ * source, and the real relay client. Proves: (1) events flow, an SSE request
  * opened over the relay streams the daemon's event bytes back; (2) the relay hub
  * only ever sees ciphertext (the plaintext event text never appears in the bytes
  * the daemon hands the relay); (3) overflow on the daemon's bounded send buffer
  * surfaces as a visible `relay-overflow` event, never a silent gap; (4) close
- * semantics — the daemon ending its source closes the client stream, and the
+ * semantics, the daemon ending its source closes the client stream, and the
  * client cancelling reading unsubscribes the daemon's source.
  */
 import { afterAll, describe, expect, test } from 'bun:test';

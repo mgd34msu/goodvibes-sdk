@@ -65,7 +65,7 @@ type OpenAICompatChatCreate = OpenAI['chat']['completions']['create'];
  * Studio, llama.cpp, TGI, and LocalAI ignore the value entirely; discovery
  * registers these providers with `apiKey: ''`). openai's client constructor
  * has thrown "Missing credentials..." on a falsy `apiKey` (empty string
- * included) since 6.4x — previously it only threw on `undefined` — so every
+ * included) since 6.4x, previously it only threw on `undefined`, so every
  * unconfigured/anonymous provider broke at registration time once the SDK's
  * `openai` dependency resolved past that change. This is the SAME literal
  * already used by the builtin-provider registry's own anonymous fallback
@@ -79,7 +79,7 @@ export const OPENAI_CLIENT_LOCAL_PLACEHOLDER_API_KEY = 'gv-local';
  * Returns an apiKey value safe to pass to `new OpenAI(...)`, substituting the
  * shared placeholder when the effective key is empty. Callers must derive
  * `configured`/`isConfigured()` status from the ORIGINAL apiKey (or an
- * explicit override) BEFORE calling this — never from the substituted value.
+ * explicit override) BEFORE calling this, never from the substituted value.
  */
 export function resolveOpenAIClientApiKey(apiKey: string): string {
   return apiKey.length > 0 ? apiKey : OPENAI_CLIENT_LOCAL_PLACEHOLDER_API_KEY;
@@ -149,7 +149,7 @@ export interface OpenAICompatOptions {
 }
 
 /**
- * OpenAICompatProvider — generic OpenAI-compatible provider.
+ * OpenAICompatProvider, generic OpenAI-compatible provider.
  * Configured for InceptionLabs Mercury-2 with reasoning_effort and
  * reasoning_summary extensions, but usable with any OAI-compatible API.
  */
@@ -288,14 +288,14 @@ export class OpenAICompatProvider implements LLMProvider {
       ? `set ${this.authEnvVars.join(' or ')}, or store a key for "${this.name}"`
       : `configure credentials for "${this.name}"`;
     throw new ProviderError(
-      `Provider "${this.name}" has no API key configured — the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
+      `Provider "${this.name}" has no API key configured, the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
     );
   }
 
   /**
    * Re-check this backend's live model listing. Called at boot (background,
    * respects the on-disk TTL cache) and on-demand for a picker-open re-check
-   * or an explicit user refresh (`force: true`). Always resolves — falls back
+   * or an explicit user refresh (`force: true`). Always resolves, falls back
    * to the on-disk cache, then to the dated-static baseline, and reports the
    * honest failure reason rather than ever blanking the model list. When the
    * backend has no listing API (`modelListing: 'none'`, verified per
@@ -342,7 +342,7 @@ export class OpenAICompatProvider implements LLMProvider {
 
     return (await instrumentedLlmCall(() => withRetry(async () => {
       // Keeps returned reasoning out of the answer, in both shapes it arrives
-      // in — see the module doc in providers/inline-reasoning.ts for why.
+      // in, see the module doc in providers/inline-reasoning.ts for why.
       const streamText = new StreamTextAccumulator();
       let streamedText: { content: string; reasoning: string } = { content: '', reasoning: '' };
       let responseText = '';
@@ -448,7 +448,7 @@ export class OpenAICompatProvider implements LLMProvider {
           const delta = raw.choices[0]?.delta;
           streamText.push(extractOpenAIStreamTextDelta(raw, { allowReasoning: true }), onDelta);
 
-          // Mercury-2: reasoning_summary may appear on any chunk — capture and emit
+          // Mercury-2: reasoning_summary may appear on any chunk, capture and emit
           if (raw.reasoning_summary) {
             reasoningSummaryText = raw.reasoning_summary;
           }

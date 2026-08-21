@@ -1,5 +1,5 @@
 /**
- * build-binaries — compiles standalone binaries for the configured matrix.
+ * build-binaries, compiles standalone binaries for the configured matrix.
  *
  * Absorbs tui/build.ts and agent/build.ts. The TUI's daemon leg (a second
  * `bun build --compile` of a daemon entrypoint per target) is config-driven:
@@ -102,7 +102,7 @@ export function runBuildBinaries(options: RunBuildOptions): BuildOutcome[] {
   // An optionalDependency that is not installed becomes `--external`, so bun
   // leaves the specifier for runtime and the SDK's own unavailability report
   // governs instead of the bundle failing to resolve. A missing REQUIRED
-  // package fails here instead, loudly and by name — see optional-externals.ts
+  // package fails here instead, loudly and by name, see optional-externals.ts
   // for why that asymmetry is the whole point.
   let optionalExternals: readonly string[] = [];
   if (options.dependencyManifests && options.isPackageInstalled) {
@@ -114,7 +114,7 @@ export function runBuildBinaries(options: RunBuildOptions): BuildOutcome[] {
     optionalExternals = screened.externals;
     if (optionalExternals.length > 0) {
       logger.info(
-        `[build-binaries] ${optionalExternals.length} optional package(s) not installed — left external, `
+        `[build-binaries] ${optionalExternals.length} optional package(s) not installed, left external, `
         + `the feature reports itself unavailable at runtime: ${optionalExternals.join(', ')}`,
       );
     }
@@ -149,7 +149,7 @@ export function runBuildBinaries(options: RunBuildOptions): BuildOutcome[] {
     }
 
     outcomes.push({ key: target.key, ok, detail: ok ? 'built' : detail });
-    logger.info(`[build-binaries] ${target.key}: ${ok ? 'OK' : `FAILED — ${detail}`}`);
+    logger.info(`[build-binaries] ${target.key}: ${ok ? 'OK' : `FAILED, ${detail}`}`);
   }
   return outcomes;
 }

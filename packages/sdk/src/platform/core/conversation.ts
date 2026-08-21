@@ -74,12 +74,12 @@ function sameToolCalls(a: ToolCall[] | undefined, b: ToolCall[] | undefined): bo
 
 /**
  * True when `candidate` is the SAME assistant message the store already holds
- * at its tail — a re-delivery, not a new turn.
+ * at its tail, a re-delivery, not a new turn.
  *
  * The defect this closes: a hosted conversation opens a fresh event stream per
  * turn and never sends `Last-Event-ID`, so the gateway's catch-up replay
- * re-sends the tail of the previous turn's events — including its
- * `TURN_COMPLETED` — into the next turn's renderer. That renderer has never
+ * re-sends the tail of the previous turn's events, including its
+ * `TURN_COMPLETED`, into the next turn's renderer. That renderer has never
  * seen the event, so it appends the previous turn's final assistant message a
  * second time, byte-identical and carrying the identical usage numbers. The
  * observed recovery journal held exactly that: one turn's final message twice,
@@ -87,14 +87,14 @@ function sameToolCalls(a: ToolCall[] | undefined, b: ToolCall[] | undefined): bo
  *
  * Why matching on content is safe here rather than merely plausible: this only
  * compares against the IMMEDIATELY PRECEDING message. Two identical assistant
- * messages with nothing between them do not occur in an honest turn — a real
+ * messages with nothing between them do not occur in an honest turn, a real
  * repeat is separated by the user message that prompted it, or by the tool
  * messages that answer the tool calls, and either one moves the tail. Requiring
  * the usage counters to match as well means a genuine second call (which bills
  * its own tokens) is not mistaken for a replay.
  *
- * This is the store boundary on purpose. Every durable writer — the recovery
- * snapshot, the session store, the transcript journal — serializes this
+ * This is the store boundary on purpose. Every durable writer, the recovery
+ * snapshot, the session store, the transcript journal, serializes this
  * message array, so one guard here covers all of them, and none of them needs
  * its own idea of what a duplicate is.
  *
@@ -166,7 +166,7 @@ export class ConversationManager {
   /**
    * Returns the conversation messages formatted for the LLM provider.
    *
-   * @returns readonly reference — do not mutate; the array is shared across
+   * @returns readonly reference, do not mutate; the array is shared across
    *   cache-hit callers until the next conversation mutation.
    */
   public getMessagesForLLM(): ProviderMessage[] {
@@ -232,7 +232,7 @@ export class ConversationManager {
       provider: opts?.provider,
     };
     if (isRedeliveredAssistantMessage(this.messages[this.messages.length - 1], candidate)) {
-      // Dropped on purpose — see isRedeliveredAssistantMessage. Recorded rather
+      // Dropped on purpose, see isRedeliveredAssistantMessage. Recorded rather
       // than swallowed: a message that does not land must be explainable later.
       logger.debug('[conversation] dropped a re-delivered assistant message', {
         contentLength: content.length,
@@ -279,7 +279,7 @@ export class ConversationManager {
 
   public addToolResults(results: ToolResult[]): void {
     for (const result of results) {
-      // `output` must never be silently dropped on failure — many tools (e.g. exec)
+      // `output` must never be silently dropped on failure, many tools (e.g. exec)
       // put the full diagnostic payload (exit code, stdout, stderr) in `output` even
       // when `success` is false, and leave `error` unset for that failure shape.
       const content = result.output !== undefined

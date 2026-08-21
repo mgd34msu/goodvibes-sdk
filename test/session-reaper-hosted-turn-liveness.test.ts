@@ -47,7 +47,7 @@ function brokerRecord(overrides: Partial<SharedSessionRecord> = {}): SharedSessi
     status: 'active',
     createdAt: NOW - IDLE_EMPTY_MS * 3,
     updatedAt: NOW - IDLE_EMPTY_MS * 3,
-    // Stale on every clock the reaper used to consult — this is exactly the
+    // Stale on every clock the reaper used to consult, this is exactly the
     // state a long hosted turn leaves behind while it is still running.
     lastActivityAt: NOW - IDLE_EMPTY_MS * 3,
     messageCount: 0,
@@ -114,7 +114,7 @@ describe('idle reaper — a live hosted turn is activity', () => {
   test('a hosted session the engine touched recently survives on its own lastActivity', () => {
     const sessions = new Map([['hosted-1', brokerRecord()]]);
     const probe = createHostedSessionLivenessProbe(
-      // Idle, but the hosted engine's own updatedAt is fresh — activity the
+      // Idle, but the hosted engine's own updatedAt is fresh, activity the
       // broker's record never received.
       { get: () => hostedRecord({ status: 'idle', updatedAt: NOW - 1000 }) },
       { now: () => NOW },
@@ -171,7 +171,7 @@ describe('boot sweep — a session left active by a dead process', () => {
     expect(closed).toHaveLength(1);
     expect(closed[0]!.sessionId).toBe('user-b747dd2f');
     expect(closed[0]!.messageCount).toBe(0);
-    // Still on the record — silent deletion is indistinguishable from data loss.
+    // Still on the record, silent deletion is indistinguishable from data loss.
     const swept = sessions.get('user-b747dd2f')!;
     expect(swept).toBeDefined();
     expect(swept.status).toBe('closed');

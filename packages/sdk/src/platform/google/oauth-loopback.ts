@@ -1,18 +1,18 @@
 /**
- * google-oauth-loopback.ts — the OAuth 2.0 authorization-code + PKCE flow used
+ * google-oauth-loopback.ts, the OAuth 2.0 authorization-code + PKCE flow used
  * by the Path B ("oauth") Google setup, driven through a local loopback
  * redirect (the Desktop app client type; see google-setup-plan.ts).
  *
  * Two of Google's own rules shape this file directly (see the header comment
  * in google-setup-plan.ts for sources): the authorization URL must carry both
  * `access_type=offline` and `prompt=consent`, or Google will not reliably
- * hand back a refresh token — without a refresh token the seven-day Testing
+ * hand back a refresh token, without a refresh token the seven-day Testing
  * expiry (also documented there) has no automatic renewal path at all.
  *
  * Every function returns a typed result and never throws for an expected
  * failure. No token, refresh token, client secret, authorization code, or
  * PKCE verifier ever appears in a returned message, a thrown error, or a log
- * line — `redactSecretsFromMessage` is the one place that scrubs incidental
+ * line, `redactSecretsFromMessage` is the one place that scrubs incidental
  * leakage (for example a raw network-error message that happened to echo
  * back part of a request).
  */
@@ -42,7 +42,7 @@ export interface AuthorizationUrlOptions {
    * identity. Nothing then fails until a real call is made, and the error at
    * that point says nothing about accounts. See grant-diagnosis.ts.
    *
-   * A hint, not a constraint — Google still lets the person switch accounts,
+   * A hint, not a constraint, Google still lets the person switch accounts,
    * which is correct, because only they know which one they meant.
    */
   readonly loginHint?: string;
@@ -50,7 +50,7 @@ export interface AuthorizationUrlOptions {
 
 /**
  * Builds the Google authorization URL for the loopback flow. Always includes
- * `access_type=offline` and `prompt=consent` — both are required for Google
+ * `access_type=offline` and `prompt=consent`, both are required for Google
  * to reliably issue a refresh token on this and every later authorization.
  */
 export function buildAuthorizationUrl(options: AuthorizationUrlOptions): string {
@@ -98,7 +98,7 @@ function base64UrlEncode(buffer: Buffer): string {
 export interface StartLoopbackListenerOptions {
   /**
    * The `state` value this run generated. A redirect whose `state` does not
-   * match is rejected rather than accepted — this is the CSRF defense for the
+   * match is rejected rather than accepted, this is the CSRF defense for the
    * flow and it is enforced here, at the point the redirect is received.
    */
   readonly expectedState: string;
@@ -169,8 +169,8 @@ function escapeHtml(value: string): string {
 /**
  * Classifies one redirect hit on the loopback listener.
  *
- * Pulled out of the listener so the decision — is this the redirect we
- * generated, does it carry a code, did Google report an error — is testable
+ * Pulled out of the listener so the decision, is this the redirect we
+ * generated, does it carry a code, did Google report an error, is testable
  * without binding a port, and so every listener implementation makes the same
  * decision. The `state` check is the CSRF defense for this flow: a redirect
  * whose `state` does not match the value this run generated is rejected, never
@@ -332,7 +332,7 @@ async function postToken(
       ),
       fix:
         errorField === 'invalid_grant'
-          ? 'The authorization code or refresh token is no longer valid — start the sign-in flow again.'
+          ? 'The authorization code or refresh token is no longer valid, start the sign-in flow again.'
           : 'Check the client id and client secret are correct and try again.',
     };
   }

@@ -206,7 +206,7 @@ export function createNtfyDeliveryStrategy(
       if (!topic) throw new Error('Missing ntfy topic');
       const ntfy = new NtfyIntegration(baseUrl, token ?? undefined);
       // undefined here means nothing configured resolves to a reachable
-      // address — omit the click target rather than shipping a dead link.
+      // address, omit the click target rather than shipping a dead link.
       const baseUrlHint = resolveReachableBaseUrl(configManager, 'off-host');
       const primaryAttachment = attachments[0]!;
       await ntfy.publish(topic, appendAttachmentSummary(request.body, attachments), {
@@ -400,7 +400,7 @@ export function createGoogleChatDeliveryStrategy(
         // destination, exactly as it already is for webhook
         // (metadata.callbackUrl) and slack (metadata.responseUrl) above. This
         // strategy read the binding only for `threadKey`, so a conversation
-        // bound purely by binding — no target.address, no configured webhook —
+        // bound purely by binding, no target.address, no configured webhook,
         // threw "Missing Google Chat webhook URL" and the reply went nowhere.
         readString(request.binding?.metadata.webhookUrl),
         await serviceRegistry.resolveSecret('google-chat', 'webhookUrl'),

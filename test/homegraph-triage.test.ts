@@ -15,7 +15,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 
 /**
  * HomeGraphService.syncSnapshot() starts a self-improvement pump
- * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * fire-and-forget behind an AbortController, it sleeps in 15s rounds and
  * calls the semantic service (and therefore fetch) between them, for the rest
  * of the process. dispose() aborts it.
  */
@@ -86,7 +86,7 @@ const TRIAGE_SNAPSHOT = {
   // also accepts raw Home-Assistant snake_case (entity_id/device_id/area_id/attributes)
   // at runtime, but that is a wider Record<string, unknown> fallback the *element*
   // type here does not carry. Expressed in the declared camelCase shape, with the
-  // HA `attributes` bag placed under `metadata.attributes` — exactly where
+  // HA `attributes` bag placed under `metadata.attributes`, exactly where
   // normalizeHomeGraphObjectInput would have merged it to, so the triage/quality
   // code (which reads node.metadata.attributes.device_class) sees the same result.
   entities: [
@@ -102,7 +102,7 @@ describe('Home Graph LLM issue triage', () => {
       if (record.code === 'homegraph.device.unknown_battery') {
         return { action: 'reject', confidence: 95, reason: 'Software/mains object; not battery tracked.' };
       }
-      // missing_manual: below the 85 threshold on purpose — left for a human.
+      // missing_manual: below the 85 threshold on purpose, left for a human.
       return { action: 'review', confidence: 60, reason: 'Needs a human to confirm a manual is required.' };
     });
     const { root, store, service } = createTriageService(llm);

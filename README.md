@@ -4,9 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/version-2.0.9-blue.svg)](https://github.com/mgd34msu/goodvibes-sdk)
 
-GoodVibes SDK is the typed TypeScript platform layer behind the GoodVibes products: sessions, provider/model routing, in-process agents, a knowledge and memory store, a control-plane HTTP and realtime API, and the transports that carry it all. The daemon is its own product, built on this SDK. Full-surface consumers — the GoodVibes terminal app and the GoodVibes agent — embed this runtime directly in a Bun process and connect to the daemon as clients; companion consumers — the web UI, mobile clients, and the Home Assistant integration — connect to that same daemon as thin remote clients over HTTP, SSE, and WebSocket. One published package covers both: `@pellux/goodvibes-sdk` is a facade over a set of source-of-truth sibling packages, so consumers install one package and import only the entry points they need.
+GoodVibes SDK is the typed TypeScript platform layer behind the GoodVibes products: sessions, provider/model routing, in-process agents, a knowledge and memory store, a control-plane HTTP and realtime API, and the transports that carry it all. The daemon is its own product, built on this SDK. Full-surface consumers, the GoodVibes terminal app and the GoodVibes agent, embed this runtime directly in a Bun process and connect to the daemon as clients. Companion consumers, the web UI, mobile clients, and the Home Assistant integration, connect to that same daemon as thin remote clients over HTTP, SSE, and WebSocket. One published package covers both: `@pellux/goodvibes-sdk` is a facade over a set of source-of-truth sibling packages, so consumers install one package and import only the entry points they need.
 
-This project is pre-1.0. Public contract, config keys, route paths, event shapes, and file layouts can still change before the 1.0 line — pin exact versions and read `CHANGELOG.md` before upgrading.
+This project is pre-1.0. Public contract, config keys, route paths, event shapes, and file layouts can still change before the 1.0 line. Pin exact versions and read `CHANGELOG.md` before upgrading.
 
 ```mermaid
 flowchart LR
@@ -82,10 +82,10 @@ React Native, Expo, and Cloudflare Worker bridges follow the same pattern from t
 | Package | What it is |
 | --- | --- |
 | [`@pellux/goodvibes-sdk`](./packages/sdk) | The published facade: the full platform runtime (sessions, agents, providers, knowledge, control plane, daemon route handlers) plus thin client factories for Bun, browser, React Native, Expo, and Cloudflare Workers. |
-| [`@pellux/goodvibes-toolchain`](./packages/toolchain) | The published CI/CD toolchain — release cut, npm publish, per-job-green verification, coverage and SBOM gates — invoked as `bunx @pellux/goodvibes-toolchain <tool>` from every GoodVibes repo's release workflow. |
+| [`@pellux/goodvibes-toolchain`](./packages/toolchain) | The published CI/CD toolchain: release cut, npm publish, per-job-green verification, coverage and SBOM gates. Invoked as `bunx @pellux/goodvibes-toolchain <tool>` from every GoodVibes repo's release workflow. |
 | [`@pellux/goodvibes-contracts`](./packages/contracts) | Runtime-neutral operator and peer contract artifacts, generated method IDs, and lookup helpers that the `sdk` facade and every client surface share. |
 
-`sdk` also draws on further source-of-truth sibling packages — `errors`, `transport-core`, `transport-http`, `transport-realtime`, `daemon-sdk`, `operator-sdk`, `peer-sdk`, and `terminal-shell` — that are public dependencies rather than separate install steps for most consumers. The full package and entry-point matrix is [docs/packages.md](./docs/packages.md).
+`sdk` also draws on further source-of-truth sibling packages: `errors`, `transport-core`, `transport-http`, `transport-realtime`, `daemon-sdk`, `operator-sdk`, `peer-sdk`, and `terminal-shell`. These are public dependencies rather than separate install steps for most consumers. The full package and entry-point matrix is [docs/packages.md](./docs/packages.md).
 
 ### Entry points at a glance
 
@@ -99,20 +99,20 @@ React Native, Expo, and Cloudflare Worker bridges follow the same pattern from t
 | `@pellux/goodvibes-sdk/contracts` | Runtime-neutral contract types, schemas, and method IDs |
 | `@pellux/goodvibes-sdk/auth` | Token stores, login, and OAuth helpers, shared by every surface |
 
-This is a starting point, not the full list — there is no root `@pellux/goodvibes-sdk/platform` entry and no `platform/*` wildcard export. The canonical, stability-leveled reference for every entry point is [docs/public-surface.md](./docs/public-surface.md).
+This is a starting point, not the full list. There is no root `@pellux/goodvibes-sdk/platform` entry and no `platform/*` wildcard export. The canonical, stability-leveled reference for every entry point is [docs/public-surface.md](./docs/public-surface.md).
 
 ---
 
 ## Key concepts
 
-- **Two runtime surfaces** — full (Bun: TUI, agent, daemon hosts) vs. companion (browser, React Native, Expo, Workers) — [docs/getting-started.md](./docs/getting-started.md), [docs/surfaces.md](./docs/surfaces.md)
-- **Public entry points** — the single canonical, stability-leveled list of every importable subpath — [docs/public-surface.md](./docs/public-surface.md)
-- **Contracts** — the typed vocabulary (method IDs, endpoint IDs, event maps) every client and the daemon share — [docs/packages.md](./docs/packages.md)
-- **Authentication** — login, bearer tokens, and platform-specific secure token stores — [docs/authentication.md](./docs/authentication.md)
-- **Realtime transports** — SSE and WebSocket with reconnect and typed, session-filtered event domains — [docs/realtime-and-telemetry.md](./docs/realtime-and-telemetry.md)
-- **Knowledge and memory** — the SQLite-backed knowledge/wiki system, ingestion, retrieval, and project planning artifacts — [docs/knowledge.md](./docs/knowledge.md)
-- **Provider and model runtime** — daemon-side routing, failover, and catalogs across model providers — [docs/providers.md](./docs/providers.md)
-- **Errors** — a typed `SDKErrorKind` model; match on `err.kind`, never on `err.message` — [docs/error-kinds.md](./docs/error-kinds.md)
+- **Two runtime surfaces.** Full (Bun: TUI, agent, daemon hosts) vs. companion (browser, React Native, Expo, Workers). See [docs/getting-started.md](./docs/getting-started.md) and [docs/surfaces.md](./docs/surfaces.md).
+- **Public entry points.** The single canonical, stability-leveled list of every importable subpath: [docs/public-surface.md](./docs/public-surface.md).
+- **Contracts.** The typed vocabulary (method IDs, endpoint IDs, event maps) every client and the daemon share: [docs/packages.md](./docs/packages.md).
+- **Authentication.** Login, bearer tokens, and platform-specific secure token stores: [docs/authentication.md](./docs/authentication.md).
+- **Realtime transports.** SSE and WebSocket with reconnect and typed, session-filtered event domains: [docs/realtime-and-telemetry.md](./docs/realtime-and-telemetry.md).
+- **Knowledge and memory.** The SQLite-backed knowledge/wiki system, ingestion, retrieval, and project planning artifacts: [docs/knowledge.md](./docs/knowledge.md).
+- **Provider and model runtime.** Daemon-side routing, failover, and catalogs across model providers: [docs/providers.md](./docs/providers.md).
+- **Errors.** A typed `SDKErrorKind` model. Match on `err.kind`, never on `err.message`: [docs/error-kinds.md](./docs/error-kinds.md).
 
 Full index: [docs/README.md](./docs/README.md).
 
@@ -141,12 +141,12 @@ CI (`.github/workflows/ci.yml`) runs `validate`, a dependency and secret-scan au
 
 ## Release and stability
 
-Package versions are aligned across the whole workspace, and every version is published together. What counts as a major, minor, or patch change — down to specific export and error-kind rules — is fixed by [docs/semver-policy.md](./docs/semver-policy.md); a misclassified bump is a release gate failure. Releases follow a by-reference flow: a commit is validated exactly once on its push-CI run, a local cut bumps versions and tags without re-running gates, and the tag push re-verifies that the tagged commit's CI run was green before publishing with provenance. Full flow: [docs/release-and-publishing.md](./docs/release-and-publishing.md).
+Package versions are aligned across the whole workspace, and every version is published together. What counts as a major, minor, or patch change, down to specific export and error-kind rules, is fixed by [docs/semver-policy.md](./docs/semver-policy.md). A misclassified bump is a release gate failure. Releases follow a by-reference flow: a commit is validated exactly once on its push-CI run, a local cut bumps versions and tags without re-running gates, and the tag push re-verifies that the tagged commit's CI run was green before publishing with provenance. Full flow: [docs/release-and-publishing.md](./docs/release-and-publishing.md).
 
 ## Security
 
-Security fixes land in the latest published pre-1.0 line; earlier minor lines are not patched. The published package carries source-level overrides for reviewed transitive dependencies, including a patched Bash LSP dependency graph — Bash LSP itself stays bundled because shell language support is part of the SDK feature set. Report a vulnerability and read the current dependency posture in [SECURITY.md](./SECURITY.md) and [docs/security.md](./docs/security.md).
+Security fixes land in the latest published pre-1.0 line; earlier minor lines are not patched. The published package carries source-level overrides for reviewed transitive dependencies, including a patched Bash LSP dependency graph. Bash LSP itself stays bundled because shell language support is part of the SDK feature set. Report a vulnerability and read the current dependency posture in [SECURITY.md](./SECURITY.md) and [docs/security.md](./docs/security.md).
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT. See [LICENSE](./LICENSE).

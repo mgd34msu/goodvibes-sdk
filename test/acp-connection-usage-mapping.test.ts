@@ -1,12 +1,12 @@
 /**
  * acp-connection-usage-mapping.test.ts
  *
- * Unit tests for `mapAcpUsage` — the pure mapping from the ACP protocol's
+ * Unit tests for `mapAcpUsage`, the pure mapping from the ACP protocol's
  * (unstable/experimental) `PromptResponse.usage` field, which uses
  * `cachedReadTokens`/`cachedWriteTokens` naming, onto the SDK's `AgentUsage`
  * shape (`cacheReadTokens`/`cacheWriteTokens`), forwarded into AGENT_COMPLETED.
  *
- * Only the pure mapping function is exercised here — spawning a real ACP
+ * Only the pure mapping function is exercised here, spawning a real ACP
  * subprocess and driving the full handshake is out of scope for a unit test
  * and not something this repo's test suite currently does for the acp/
  * module (no existing acp test harness).

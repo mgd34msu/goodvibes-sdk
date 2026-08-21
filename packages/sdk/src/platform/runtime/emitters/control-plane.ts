@@ -1,5 +1,5 @@
 /**
- * Control-plane emitters — typed wrappers for ControlPlaneEvent domain.
+ * Control-plane emitters, typed wrappers for ControlPlaneEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

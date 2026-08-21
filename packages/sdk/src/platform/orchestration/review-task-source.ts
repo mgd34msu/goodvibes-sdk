@@ -1,19 +1,19 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * review-task-source.ts — review findings as a SECOND task source feeding the
+ * review-task-source.ts, review findings as a SECOND task source feeding the
  * ONE workstream engine (the fix-phase rework; never a sibling
  * scheduler).
  *
- * The reviewer's typed record — findings with file citations, the acceptance
- * checklist derived from the ORIGINAL task, and per-constraint satisfaction —
+ * The reviewer's typed record, findings with file citations, the acceptance
+ * checklist derived from the ORIGINAL task, and per-constraint satisfaction,
  * parses into typed tasks. A planner pass coalesces them by file-cluster/
  * subsystem and draws the INITIAL dependency graph: shared-file edges
  * (same-file tasks serialize, severity-first) and semantic-prerequisite edges
  * (verification tasks wait for the fixes that touch their files; an
  * injectable judgment hook can add more). The output is a
  * CreateWorkstreamInput for the one engine: worktree isolation, the
- * reviewed-and-merged release policy, and the elastic pool — sequential vs
+ * reviewed-and-merged release policy, and the elastic pool, sequential vs
  * concurrent is emergent from the edges, never a mode.
  */
 import type { ReviewerReport } from '../agents/completion-report.js';
@@ -111,7 +111,7 @@ export type SemanticEdgePlanner = (tasks: readonly ReviewTask[]) => ReadonlyArra
  * - shared-file: tasks citing the same file serialize, severity-first (a
  *   critical fix lands before a minor one touches the same file);
  * - semantic-prerequisite: file-less verification tasks (checklist/constraint)
- *   wait for every finding fix in the graph — the verification is over the
+ *   wait for every finding fix in the graph, the verification is over the
  *   fixed deliverable, not the broken one; a custom `semanticEdges` hook may
  *   add judgment edges on top.
  */

@@ -1,4 +1,4 @@
-/** The return type for all daemon route handler methods — either a synchronous or async `Response`. */
+/** The return type for all daemon route handler methods, either a synchronous or async `Response`. */
 export type MaybeResponse = Response | Promise<Response>;
 
 /** Combined route handler interface for the remote dispatch surface (overview + management). */
@@ -11,7 +11,7 @@ export interface DaemonRemoteOverviewRouteHandlers {
   getRemote(): MaybeResponse;
 }
 
-/** Full operator route surface — aggregates control, telemetry, channel, integration, system, remote-management, knowledge, media, and runtime handlers. */
+/** Full operator route surface, aggregates control, telemetry, channel, integration, system, remote-management, knowledge, media, and runtime handlers. */
 export interface DaemonOperatorRouteHandlers
   extends DaemonControlRouteHandlers,
     DaemonTelemetryRouteHandlers,
@@ -30,7 +30,7 @@ export interface DaemonOperatorRuntimeRouteHandlers {
   getSchedulerCapacity(req: Request): MaybeResponse;
 }
 
-/** Route handlers for the automation surface — overview, runtime automation, and delivery. */
+/** Route handlers for the automation surface, overview, runtime automation, and delivery. */
 export interface DaemonAutomationRouteHandlers
   extends DaemonAutomationOverviewRouteHandlers,
     DaemonRuntimeAutomationRouteHandlers,
@@ -49,7 +49,7 @@ export interface DaemonDeliveryRouteHandlers {
   getDelivery(deliveryId: string): MaybeResponse;
 }
 
-/** Route handlers for the session surface — overview and runtime session management. */
+/** Route handlers for the session surface, overview and runtime session management. */
 export interface DaemonSessionRouteHandlers
   extends DaemonSessionOverviewRouteHandlers,
     DaemonRuntimeSessionRouteHandlers {}
@@ -60,7 +60,7 @@ export interface DaemonSessionOverviewRouteHandlers {
   getIntegrationSessions(url?: URL): MaybeResponse;
 }
 
-/** Route handlers for the task surface — overview and runtime task management. */
+/** Route handlers for the task surface, overview and runtime task management. */
 export interface DaemonTaskRouteHandlers
   extends DaemonTaskOverviewRouteHandlers,
     DaemonRuntimeTaskRouteHandlers {}
@@ -138,7 +138,7 @@ export interface DaemonChannelRouteHandlers {
   getChannelDirectory(surface: string, url: URL): MaybeResponse;
 }
 
-/** Full integration route surface — overview, delivery, snapshot, remote, platform status, memory, local auth, panels, and event log. */
+/** Full integration route surface, overview, delivery, snapshot, remote, platform status, memory, local auth, panels, and event log. */
 export interface DaemonIntegrationRouteHandlers
   extends DaemonIntegrationOverviewRouteHandlers,
     DaemonDeliveryRouteHandlers,
@@ -245,7 +245,7 @@ export interface DaemonSystemRouteHandlers {
   getConfig(req: Request): MaybeResponse;
   postConfig(req: Request): MaybeResponse;
   /**
-   * `credentials.get` — admin + read:config. Returns secret-free credential
+   * `credentials.get`, admin + read:config. Returns secret-free credential
    * STATUS metadata for the daemon's shared store (never plaintext). An optional
    * `?key=` query narrows to a single caller-named credential.
    */
@@ -323,7 +323,7 @@ export interface DaemonKnowledgeRefinementRouteHandlers {
   postKnowledgeCancelRefinementTask(taskId: string, req: Request): MaybeResponse;
 }
 
-/** Route handlers for the media surface — voice, web search, artifacts, media providers, and multimodal. */
+/** Route handlers for the media surface, voice, web search, artifacts, media providers, and multimodal. */
 export interface DaemonMediaRouteHandlers
   extends DaemonVoiceRouteHandlers,
     DaemonWebSearchRouteHandlers,
@@ -424,7 +424,7 @@ export interface DaemonRuntimeAutomationRouteHandlers {
   getSchedulerCapacity(req: Request): MaybeResponse;
 }
 
-/** Combined runtime route surface — sessions, tasks, and automation. */
+/** Combined runtime route surface, sessions, tasks, and automation. */
 export interface DaemonRuntimeRouteHandlers
   extends DaemonRuntimeSessionRouteHandlers,
     DaemonRuntimeTaskRouteHandlers,
@@ -448,7 +448,7 @@ export interface GatewayRestVerbInvocation {
  * The single handler the gateway REST route table dispatches through. The
  * daemon implements it by delegating to `invokeGatewayMethodCall(methodId, …)`
  * after resolving the authenticated principal and folding `params` into the
- * invocation query — REST parity with the methodId-invoke endpoint, no verb
+ * invocation query, REST parity with the methodId-invoke endpoint, no verb
  * logic duplicated.
  */
 export interface DaemonGatewayRestRouteHandlers {

@@ -45,7 +45,7 @@ type AutomationRunLike = {
   readonly agentId?: string | undefined;
   readonly status: string;
   readonly startedAt?: number | undefined;
-  // Present in the canonical copy in daemon-sdk and missing here — the same
+  // Present in the canonical copy in daemon-sdk and missing here, the same
   // copy-paste drift as createJob/updateJob below, found the same way.
   readonly endedAt?: number | undefined;
   readonly queuedAt: number;
@@ -213,7 +213,7 @@ export interface DaemonRuntimeRouteContext extends Omit<
    * method added upstream is required here too;
    * test/platform-http-context-inheritance.test.ts pins that, minus the two
    * adapted methods. It could not pin anything before, because `test/` was
-   * never typechecked — and in the meantime `AutomationRunLike` below had
+   * never typechecked, and in the meantime `AutomationRunLike` below had
    * silently lost a field the canonical copy has.
    */
   readonly automationManager: {

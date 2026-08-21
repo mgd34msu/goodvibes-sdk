@@ -1,5 +1,5 @@
 /**
- * provisioner.ts — managed one-act provisioning of the local voice runtime.
+ * provisioner.ts, managed one-act provisioning of the local voice runtime.
  *
  * Installs the piper TTS engine (binary + espeak-ng-data, from the pinned
  * checksummed tarball) and one default voice into a goodvibes-managed directory,
@@ -56,7 +56,7 @@ export interface ManagedVoicePaths {
   readonly piperBinary: string;
   readonly defaultVoiceOnnx: string;
   readonly defaultVoiceJson: string;
-  /** The whisper bundle archive path — ALSO the sideload drop location. */
+  /** The whisper bundle archive path, ALSO the sideload drop location. */
   readonly whisperArchive: string;
   readonly whisperBinary: string;
   readonly whisperModel: string;
@@ -66,7 +66,7 @@ export function resolveManagedVoicePaths(managedRoot: string, platform?: VoicePl
   const enginesDir = join(managedRoot, 'engines');
   const modelsDir = join(managedRoot, 'models');
   // The binary's location inside the extracted archive comes from the PLATFORM
-  // manifest entry — a platform whose tarball layout differs sets its own
+  // manifest entry, a platform whose tarball layout differs sets its own
   // binaryRelPath (a duplicated constant here silently broke that).
   const resolved = platform === undefined ? currentVoicePlatform() : platform;
   const binaryRelPath = (resolved ? PIPER_ENGINES[resolved]?.binaryRelPath : undefined) ?? 'piper/piper';
@@ -103,7 +103,7 @@ export function readVoiceInstallStamp(managedRoot: string): VoiceInstallStamp | 
   }
 }
 
-/** Persist the install stamp (best effort — a failed stamp write is logged, not fatal). */
+/** Persist the install stamp (best effort, a failed stamp write is logged, not fatal). */
 export function writeVoiceInstallStamp(managedRoot: string, stamp: VoiceInstallStamp): void {
   try {
     mkdirSync(managedRoot, { recursive: true });
@@ -133,7 +133,7 @@ export type TtsProvisionState = 'provisioned' | 'unsupported-platform' | 'downlo
  * STT terminal states. `bundle-unavailable`: no hosted URL and no sideloaded
  * archive (and no usable binary). `sideload-mismatch`: an archive IS present at
  * the sideload path but fails the current pin, so it is refused rather than
- * extracted — reported explicitly so the user knows to rebuild/replace it.
+ * extracted, reported explicitly so the user knows to rebuild/replace it.
  */
 export type SttProvisionState = TtsProvisionState | 'bundle-unavailable' | 'sideload-mismatch';
 export interface VoiceComponentOutcome {
@@ -264,7 +264,7 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
 
   // 3. Extract the engine. Extraction runs when the binary is missing OR the
   // pinned engine version differs from the installed stamp (a version bump
-  // must REPLACE the old binary — skipping on mere existence made engine
+  // must REPLACE the old binary, skipping on mere existence made engine
   // updates a silent no-op) OR the archive was freshly re-downloaded.
   const archiveFresh = archive !== null && archive.ok && !archive.skipped;
   const versionChanged = priorStamp !== null && priorStamp.engineVersion !== engine.version;
@@ -301,7 +301,7 @@ export async function provisionLocalVoiceRuntime(options: VoiceProvisionOptions)
 
   // Stamp the installed versions so a later manifest bump knows to replace.
   // STT provenance prefers what THIS run actually installed on disk; otherwise
-  // it PRESERVES the prior stamp — a failed or absent STT half must never erase
+  // it PRESERVES the prior stamp, a failed or absent STT half must never erase
   // sttEngineVersion/sttModelId, the only version provenance the sideload update
   // path has (a rewrite-erase would freeze a later correct sideload forever).
   const sttEngineVersion = whisperOutcome.installedEngineVersion ?? priorStamp?.sttEngineVersion;
@@ -329,7 +329,7 @@ interface WhisperProvisionOutcome {
   /**
    * The whisper engine version now on disk, attestable ONLY when the installed
    * binary came from a pin-verified archive of that version. null when this run
-   * did not (re)install a pin-verified engine — the caller then preserves the
+   * did not (re)install a pin-verified engine, the caller then preserves the
    * prior stamp rather than claiming a version it cannot attest.
    */
   readonly installedEngineVersion: string | null;
@@ -372,7 +372,7 @@ async function provisionWhisperStt(ctx: {
 
   // Obtain the engine bundle. `bundleVerified` gates extraction: it is true ONLY
   // when the on-disk archive matches the current pin (fresh verified download,
-  // or a pin-matching sideload) — extraction never runs against an unverified
+  // or a pin-matching sideload), extraction never runs against an unverified
   // archive, so a bumped version can never be stamped over an old binary.
   let archiveFresh = false;
   let bundleVerified = false;
@@ -399,11 +399,11 @@ async function provisionWhisperStt(ctx: {
         archiveFresh = true;
       }
     } else if (archivePresent) {
-      // Present but fails the current pin — NEVER extract it. Report honestly.
+      // Present but fails the current pin, NEVER extract it. Report honestly.
       const got = fileSha256(paths.whisperArchive);
       const reason = `A whisper bundle is present at ${paths.whisperArchive} but does not match the pinned sha256 (got ${(got ?? 'unreadable').slice(0, 12)}…, want ${whisper.bundle.sha256.slice(0, 12)}…). Rebuild it byte-for-byte with scripts/build-whisper-bundle.ts, or wait for a release that hosts it. Local TTS is unaffected.`;
       if (isUsableBinary(paths.whisperBinary)) {
-        // An older verified binary is still installed — keep serving it; the pin
+        // An older verified binary is still installed, keep serving it; the pin
         // update simply cannot be applied from a mismatched archive, and the
         // stamp stays at the recorded (old) version rather than claiming the new.
         emit('whisper-engine', 'skip', reason);
@@ -419,7 +419,7 @@ async function provisionWhisperStt(ctx: {
       components.push({ id: 'whisper-engine', state: 'failed', error: reason });
       return unprovisioned({ engine: 'whisper-cpp', state: 'bundle-unavailable', reason });
     }
-    // else: no archive present but a usable binary is already installed — keep it.
+    // else: no archive present but a usable binary is already installed, keep it.
   }
 
   // Model (real hosted URL, checksum-pinned).
@@ -430,7 +430,7 @@ async function provisionWhisperStt(ctx: {
     return unprovisioned({ engine: 'whisper-cpp', state, reason: modelResult.error });
   }
 
-  // Atomic extract — ONLY from a pin-verified archive. A version bump or missing
+  // Atomic extract, ONLY from a pin-verified archive. A version bump or missing
   // binary that cannot be served from a verified archive is left as-is above.
   const versionChanged = priorStamp?.sttEngineVersion !== undefined && priorStamp.sttEngineVersion !== whisper.version;
   const needsExtract = bundleVerified && (!isUsableBinary(paths.whisperBinary) || versionChanged || archiveFresh);
@@ -479,7 +479,7 @@ function isUsableBinary(path: string): boolean {
  * Atomic engine extraction: untar into a TEMP directory, verify the expected
  * binary exists non-empty and executable, then swap the extracted tree into
  * place (old tree renamed aside and removed). A kill mid-tar can never leave a
- * truncated binary at the final path reporting 'provisioned' — the exact
+ * truncated binary at the final path reporting 'provisioned', the exact
  * partial-artifact class the download side already prevents via temp+rename.
  */
 async function extractEngineAtomically(
@@ -536,7 +536,7 @@ export interface VoiceRuntimeStatus {
   readonly offerBytes: number | null;
   /**
    * Present ONLY while a voice.local.install run is active: the live
-   * per-component progress of that run (the daemon composition merges it in —
+   * per-component progress of that run (the daemon composition merges it in,
    * see install-progress.ts). Surfaces poll status during install to render
    * real progress instead of busy→receipt.
    */
@@ -560,7 +560,7 @@ export function localVoiceRuntimeStatus(options: { managedRoot: string; platform
         binaryPath: paths.whisperBinary,
         modelPath: paths.whisperModel,
         ...(whisper.bundle.url === null && !sttBinaryPresent
-          ? { reason: `The pinned whisper.cpp ${whisper.version} bundle (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) is not yet hosted. Build it byte-for-byte with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive} — it must match the pin exactly (the script produces a reproducible tarball) — or wait for a hosting release.` }
+          ? { reason: `The pinned whisper.cpp ${whisper.version} bundle (sha256 ${whisper.bundle.sha256.slice(0, 12)}…) is not yet hosted. Build it byte-for-byte with scripts/build-whisper-bundle.ts and drop the archive at ${paths.whisperArchive}, it must match the pin exactly (the script produces a reproducible tarball), or wait for a hosting release.` }
           : {}),
       }
     : {

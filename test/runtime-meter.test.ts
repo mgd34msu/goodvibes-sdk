@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { resetMetrics } from '../packages/sdk/src/platform/runtime/metrics.js';
 
 /**
- * RuntimeMeter production wiring — verifies that the platform meter
+ * RuntimeMeter production wiring, verifies that the platform meter
  * singleton and all named instruments are accessible and use the correct API.
  * Counter: add(delta, labels?), value(labels?)
  * Histogram: record(value, labels?), snapshot(labels?)

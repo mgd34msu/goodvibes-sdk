@@ -2,11 +2,11 @@
  * OTel traceparent/tracestate propagation tests.
  *
  * Covers:
- * 1. OTel absent (default) — no traceparent header injected, request proceeds normally
- * 2. OTel present, active span — traceparent header injected with correct W3C format
- * 3. OTel present, no active span — no traceparent header
- * 4. injectTraceparent() — synchronous, does not mutate headers when OTel absent
- * 5. injectTraceparentAsync() — async variant, same behaviour
+ * 1. OTel absent (default), no traceparent header injected, request proceeds normally
+ * 2. OTel present, active span, traceparent header injected with correct W3C format
+ * 3. OTel present, no active span, no traceparent header
+ * 4. injectTraceparent(), synchronous, does not mutate headers when OTel absent
+ * 5. injectTraceparentAsync(), async variant, same behaviour
  * 6. traceparent format: "00-{traceId}-{spanId}-{flags}"
  * 7. tracestate header injected when span has traceState
  * 8. OTel errors are isolated and do not propagate
@@ -47,7 +47,7 @@ function makeOtelApi(spanCtx: ReturnType<typeof makeSpanContext> | null = makeSp
 }
 
 // ---------------------------------------------------------------------------
-// injectTraceparent() — synchronous
+// injectTraceparent(), synchronous
 // ---------------------------------------------------------------------------
 
 describe('injectTraceparent() — OTel absent', () => {
@@ -118,7 +118,7 @@ describe('injectTraceparent() — OTel present via injected state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// injectTraceparentAsync() — async variant
+// injectTraceparentAsync(), async variant
 // ---------------------------------------------------------------------------
 
 describe('injectTraceparentAsync() — OTel absent', () => {
@@ -194,7 +194,7 @@ describe('OTel error isolation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// HTTP transport integration — traceparent not injected when OTel absent
+// HTTP transport integration, traceparent not injected when OTel absent
 // ---------------------------------------------------------------------------
 
 describe('HTTP transport: traceparent not present when OTel absent', () => {
@@ -220,7 +220,7 @@ describe('HTTP transport: traceparent not present when OTel absent', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MINOR 1: Positive OTel path — injection seam
+// MINOR 1: Positive OTel path, injection seam
 // ---------------------------------------------------------------------------
 
 describe('injectTraceparent() — OTel present via test state', () => {
@@ -374,7 +374,7 @@ describe('HTTP transport: traceparent injection with OTel test state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SSE positive path — traceparent in fetch headers when OTel is present
+// SSE positive path, traceparent in fetch headers when OTel is present
 // ---------------------------------------------------------------------------
 
 describe('SSE transport: traceparent in fetch headers when OTel is present', () => {
@@ -440,7 +440,7 @@ describe('SSE transport: traceparent in fetch headers when OTel is present', () 
 });
 
 // ---------------------------------------------------------------------------
-// WebSocket positive path — traceparent in auth frame when OTel is present
+// WebSocket positive path, traceparent in auth frame when OTel is present
 // ---------------------------------------------------------------------------
 
 describe('WebSocket transport: traceparent in auth frame when OTel is present', () => {

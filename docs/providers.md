@@ -12,28 +12,28 @@ inspect or select provider state.
 
 ## Surfaces
 
-- **Registry & catalog metadata** — Built-in providers, their brand labels, and
+- **Registry and catalog metadata.** Built-in providers, their brand labels, and
   the environment variables that configure them are declared in the SDK provider
   registry and catalog. `inferFallbackContextWindow` and
   `FALLBACK_CONTEXT_WINDOW` (a family-aware, pre-catalog context-window
   fallback) are exported from `@pellux/goodvibes-sdk/platform/providers`.
-- **Model & selection API** — `GET /api/models`, `GET`/`PATCH`
+- **Model and selection API.** `GET /api/models`, `GET` or `PATCH`
   `/api/models/current`, and the `providers`-domain SSE events. See
-  [Provider & Model API Reference](./provider-model-api.md).
-- **Batch execution** — Opt-in, asynchronous provider Batch API queuing through
-  the daemon. See [Daemon Batch Processing](./daemon-batch-processing.md).
-- **Daemon embedding** — Hosting provider-backed daemon routes in another server
-  process. See [Daemon Embedding](./daemon-embedding.md).
+  [Provider and model API reference](./provider-model-api.md).
+- **Batch execution.** Opt-in, asynchronous provider Batch API queuing through
+  the daemon. See [Daemon batch processing](./daemon-batch-processing.md).
+- **Daemon embedding.** Hosting provider-backed daemon routes in another server
+  process. See [Daemon embedding](./daemon-embedding.md).
 
 Client integrations should only inspect or select provider state through the
-model/selection API. Provider execution — live turns and batch jobs — is a
+model/selection API. Provider execution, live turns and batch jobs, is a
 daemon/runtime concern.
 
 ## Default provider catalog
 
 The values below are stable: provider ids, brand labels, and the environment
 variables that configure each provider. Model ids are intentionally omitted
-because they version frequently — call `GET /api/models` for the live set of
+because they version frequently. Call `GET /api/models` for the live set of
 models and `registryKey` values.
 
 Labels come from the SDK provider label map and env vars from the built-in
@@ -79,22 +79,22 @@ needs no API key. A few native voice and media providers (such as the `microsoft
 Every (provider, model) pair resolves through ONE pricing resolver
 (`ProviderRegistry.resolveModelPricing`), with this precedence:
 
-1. **Your manual price** — the `pricing.modelPrices` config key, keyed
+1. **Your manual price.** The `pricing.modelPrices` config key, keyed
    `provider:model`, rates in USD per 1M tokens
    (`{ input, output, cacheRead?, cacheWrite? }`). Always wins when present
-   (negotiated or self-hosted rates outrank every catalog) and applies live —
-   no restart.
-2. **Registration-supplied price** — a custom provider/model file may carry an
+   (negotiated or self-hosted rates outrank every catalog) and applies live.
+   No restart.
+2. **Registration-supplied price.** A custom provider/model file may carry an
    optional `pricing` block per model. Omitting it means the price is UNKNOWN
    (not free).
-3. **The provider's own machine-readable pricing** — OpenRouter, aihubmix, and
-   the Vercel AI gateway serve rates in their /models payloads; fetched on the
+3. **The provider's own machine-readable pricing.** OpenRouter, aihubmix, and
+   the Vercel AI gateway serve rates in their /models payloads, fetched on the
    same 24h TTL discipline as model lists, cache read/write rates included,
    and stamped with the fetch date. A failed refresh degrades to the cached
-   rates with their date — never to zero.
+   rates with their date, never to zero.
 4. **The models.dev catalog entry** for that exact provider+model, dated.
-5. **Honest UNKNOWN** — a distinct state. Unpriced usage is reported as
-   unpriced ("N tokens unpriced"), never as $0; subscription surfaces resolve
+5. **Honest UNKNOWN.** A distinct state. Unpriced usage is reported as
+   unpriced ("N tokens unpriced"), never as $0. Subscription surfaces resolve
    as `subscription` with no fake per-token price.
 
 The resolved price carries its source (`'user' | 'provider' | 'catalog'` with

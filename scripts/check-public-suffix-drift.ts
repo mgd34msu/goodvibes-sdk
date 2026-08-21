@@ -10,13 +10,13 @@
  *
  * The list is bundled and never fetched at runtime. A security gate that
  * reaches the network to reach a decision is a gate an attacker can influence
- * by making that fetch fail or hang — and the failure would land exactly when
+ * by making that fetch fail or hang, and the failure would land exactly when
  * validation matters. So the data ships in the package, and the cost of that
  * choice is that it can go stale. This script is how the staleness is caught.
  *
  * It runs on its own schedule, deliberately OUTSIDE the normal CI lane, so an
  * upstream publication cadence can never block a release. And it FAILS rather
- * than warns, because a nudge that cannot fail is not a guard — this platform
+ * than warns, because a nudge that cannot fail is not a guard, this platform
  * has already been bitten by exactly that, where several checks looked like
  * enforcement and none of them could go red.
  *
@@ -25,12 +25,12 @@
  * Only MULTI-LABEL suffixes are compared. Single-label suffixes (`com`, `dev`,
  * `app`, every new gTLD) need no rule at all: the module's fallback treats one
  * label as the suffix, which is correct for all of them. That fallback is why
- * a stale snapshot degrades in the HARMLESS direction — an unknown new gTLD
+ * a stale snapshot degrades in the HARMLESS direction, an unknown new gTLD
  * still resolves correctly.
  *
  * The direction that matters is a multi-label suffix upstream has and we do
- * not. Under that rule two DIFFERENT registrants compare equal — `a.foo.xx`
- * and `b.foo.xx` would both reduce to `foo.xx` — and a link check would accept
+ * not. Under that rule two DIFFERENT registrants compare equal, `a.foo.xx`
+ * and `b.foo.xx` would both reduce to `foo.xx`, and a link check would accept
  * a stranger's domain as the authorized one. That is reported as MISSING and
  * fails the run.
  *
@@ -64,7 +64,7 @@ const reportOnly = process.argv.includes('--report');
  * The PRIVATE section is where hosting providers register their own suffixes.
  * The bundled snapshot carries a hand-picked handful of those (github.io,
  * pages.dev, …) because getting them wrong makes two unrelated sites compare
- * equal — but the private section is thousands of entries and churns
+ * equal, but the private section is thousands of entries and churns
  * constantly, so comparing against all of it would produce a permanently red
  * check that everyone learns to ignore. Private entries are therefore excluded
  * from the comparison and curated by hand.
@@ -105,7 +105,7 @@ async function main(): Promise<void> {
     if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
     text = await response.text();
   } catch (error) {
-    // A fetch failure is NOT drift and must not read as one — reporting a
+    // A fetch failure is NOT drift and must not read as one, reporting a
     // network blip as a security finding is how a real finding gets ignored.
     console.error(
       `public-suffix drift: could not reach ${UPSTREAM_URL} (${error instanceof Error ? error.message : String(error)}).`,
@@ -141,13 +141,13 @@ async function main(): Promise<void> {
   console.log(`public-suffix drift: bundled ${String(bundled.size)}, upstream ICANN multi-label ${String(upstream.size)}.`);
 
   if (missing.length === 0 && stale.length === 0) {
-    console.log('public-suffix drift: OK — the bundled snapshot matches upstream for every suffix it claims.');
+    console.log('public-suffix drift: OK, the bundled snapshot matches upstream for every suffix it claims.');
     return;
   }
 
   if (missing.length > 0) {
     console.error('');
-    console.error(`SECURITY-RELEVANT — ${String(missing.length)} multi-label suffix(es) upstream has and the snapshot does not.`);
+    console.error(`SECURITY-RELEVANT, ${String(missing.length)} multi-label suffix(es) upstream has and the snapshot does not.`);
     console.error('Under each of these, two DIFFERENT registrants currently compare equal, so a link check');
     console.error('could accept a stranger\'s domain as the authorized one. Add them to MULTI_LABEL_SUFFIXES.');
     for (const suffix of missing.slice(0, 60).sort()) console.error(`  + ${suffix}`);
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
 
   if (stale.length > 0) {
     console.error('');
-    console.error(`CORRECTNESS — ${String(stale.length)} suffix(es) the snapshot carries that upstream no longer lists.`);
+    console.error(`CORRECTNESS, ${String(stale.length)} suffix(es) the snapshot carries that upstream no longer lists.`);
     console.error('These make the comparison needlessly narrow: a legitimate link may be refused. Not a hole.');
     for (const suffix of stale.slice(0, 60).sort()) console.error(`  - ${suffix}`);
     if (stale.length > 60) console.error(`  … and ${String(stale.length - 60)} more`);

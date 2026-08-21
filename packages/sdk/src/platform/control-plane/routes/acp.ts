@@ -49,7 +49,7 @@ function createSessionsCreateHandler(deps: AcpGatewayDeps): GatewayMethodHandler
     }
     const agent = deps.discover().find((candidate) => candidate.id === agentId);
     if (!agent) {
-      throw new GatewayVerbError(`No installed agent with id "${agentId}" — see acp.agents.list`, 'AGENT_NOT_FOUND', 404);
+      throw new GatewayVerbError(`No installed agent with id "${agentId}", see acp.agents.list`, 'AGENT_NOT_FOUND', 404);
     }
     const hosted = await deps.host.spawnAgent({
       agent,
@@ -58,7 +58,7 @@ function createSessionsCreateHandler(deps: AcpGatewayDeps): GatewayMethodHandler
       prompt: typeof params.prompt === 'string' && params.prompt.trim().length > 0 ? params.prompt : undefined,
     });
     // A handshake failure is an HONEST OUTCOME (structured error on the
-    // record), not a transport throw — the surface renders which binary
+    // record), not a transport throw, the surface renders which binary
     // failed at which stage.
     return { hosted, started: hosted.state !== 'failed' };
   };

@@ -1,5 +1,5 @@
 /**
- * destinations.ts — where a nudge goes, and what it looks like when it lands.
+ * destinations.ts, where a nudge goes, and what it looks like when it lands.
  *
  * Split out of service.ts so the two questions live together: a destination's
  * surface kind decides both whether it may be pushed at and how the text has to
@@ -24,8 +24,8 @@ export function nudgeDestinationSurface(destination: string): string {
 /**
  * The channels a nudge may go to. Empty means pull-only.
  *
- * The setting is a comma-separated list — the same shape `payments.notifyChannels`
- * and the trigger backoff ladder use — because the owner's ruling was Telegram
+ * The setting is a comma-separated list, the same shape `payments.notifyChannels`
+ * and the trigger backoff ladder use, because the owner's ruling was Telegram
  * AND the agent, and a single-valued setting would have made that a choice
  * between them. Each entry is `surfaceKind` or `surfaceKind:address`, matching
  * the channel delivery router's own form, so `telegram:12345,agent` is a valid
@@ -36,7 +36,7 @@ export function nudgeDestinationSurface(destination: string): string {
  * to the TUI" is not the same guarantee as "it cannot be the TUI", and the
  * owner's ruling generalises beyond this feature: the TUI is a work interface,
  * and life-admin belongs on Telegram and the agent. A list that names the TUI
- * alongside real destinations loses the TUI entry and keeps the rest — the
+ * alongside real destinations loses the TUI entry and keeps the rest, the
  * exclusion is structural, not a reason to drop everything he asked for.
  */
 export function resolveNudgeDestinations(channel: string): readonly string[] {
@@ -71,7 +71,7 @@ export interface NudgeDeliveryText {
  *
  * So the agent gets the framed, self-contained notice and every other surface
  * gets the plain line. One function, so a new delivery path cannot get this
- * wrong by forgetting the special case — there is nowhere else to ask.
+ * wrong by forgetting the special case, there is nowhere else to ask.
  */
 export function nudgeDeliveryText(destination: string, nudge: OccasionNudge): NudgeDeliveryText {
   if (nudgeDestinationSurface(destination) === NUDGE_AGENT_SURFACE) {

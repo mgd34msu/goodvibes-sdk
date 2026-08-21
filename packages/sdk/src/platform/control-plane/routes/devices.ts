@@ -1,5 +1,5 @@
 /**
- * routes/devices.ts — handlers for the paired-device verbs over the live
+ * routes/devices.ts, handlers for the paired-device verbs over the live
  * device capability service (see platform/devices for the contract).
  *
  * These are what make the paired-phone feature real on every client: listing
@@ -93,7 +93,7 @@ function describeArtifact(
  *
  * A refusal comes back as `ok: false` with the runtime's own reason rather than
  * an HTTP error, because a person declining to hand over their camera is an
- * ANSWER — the request ran, was put to them, and they said no. Reporting that
+ * ANSWER, the request ran, was put to them, and they said no. Reporting that
  * as a server fault would make a working system look broken and would lose the
  * one thing the caller needs, which is what they said.
  */

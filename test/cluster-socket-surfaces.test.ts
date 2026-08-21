@@ -1,9 +1,9 @@
 /**
- * Socket surfaces — contesting Slack and Discord under their REAL identity.
+ * Socket surfaces, contesting Slack and Discord under their REAL identity.
  *
  * These two are the awkward pair: what a token reads is not in the config, it
- * is a fact the provider reports. The shortcut — every node contesting one
- * "Slack surface" under a fixed placeholder — is a starvation bug. Two nodes
+ * is a fact the provider reports. The shortcut, every node contesting one
+ * "Slack surface" under a fixed placeholder, is a starvation bug. Two nodes
  * configured for two DIFFERENT workspaces would contest a single election, the
  * loser's workspace would go unanswered, and nothing anywhere would say why.
  * That silence is what per-surface elections exist to remove, so it must not
@@ -164,7 +164,7 @@ describe('socket surfaces — the identity must be real', () => {
     for (let attempt = 0; attempt < 8; attempt += 1) await rig.retry();
 
     expect(rig.inert).toHaveLength(1);
-    // The repeats are still recorded — just as debug detail, with the count.
+    // The repeats are still recorded, just as debug detail, with the count.
     const repeats = rig.debug.filter((line) => line.message.includes('still cannot be identified'));
     expect(repeats).toHaveLength(8);
     expect(repeats.at(-1)?.meta?.attempts).toBe(9);
@@ -211,7 +211,7 @@ describe('socket surfaces — the identity must be real', () => {
         // Cast (not a narrowing bug fix, a narrowing bug WORKAROUND): TS's flow
         // analysis loses track of the non-null branch of `pending` across loop
         // iterations because the only reassignment it can see in this scope is
-        // `pending = null` below — the `pending = fn` assignment happens inside
+        // `pending = null` below, the `pending = fn` assignment happens inside
         // the `setTimer` callback, which TS does not treat as re-widening the
         // type here. Without the cast, `fire`'s inferred type narrows to exactly
         // `null`, so `fire?.()` reduces to calling `never` and fails to compile.
@@ -315,7 +315,7 @@ describe('socket surfaces — in a live group', () => {
   test('a node that identifies its workspace LATER stands by rather than double-reading', async () => {
     const world = createWorld();
     const early = addNode(world, { id: 'node-early', surfaces: ['slack-T0ACME999'] });
-    // This node's identity lookup was slow — a provider hiccup — so it joins
+    // This node's identity lookup was slow, a provider hiccup, so it joins
     // the election minutes after the other node already took the workspace.
     const late = addNode(world, { id: 'node-late', surfaces: [] });
     await startNode(world, early);

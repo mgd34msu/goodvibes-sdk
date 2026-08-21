@@ -54,8 +54,8 @@ const SDK_ROOT = resolve(import.meta.dir, '..');
  * So the bundle runs as a child process that this file owns: it cannot touch
  * the test runtime, it is bounded, and it is killed on every exit path
  * including the timeout and an assertion failure. The number is deliberately
- * enormous relative to the work — the same three bundles take single-digit
- * milliseconds each — because it is a ceiling, not a budget: a healthy run
+ * enormous relative to the work, the same three bundles take single-digit
+ * milliseconds each, because it is a ceiling, not a budget: a healthy run
  * never approaches it and never pays for it. It sits below the suite's 60 000
  * ms per-test default so that a stuck bundle is reported by the message below,
  * which names the entrypoint, rather than by the runner's generic timeout.

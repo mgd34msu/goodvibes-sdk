@@ -1,12 +1,12 @@
-# Performance and Tuning
+# Performance and tuning
 
-> **Surface scope:** This document covers performance tuning for the **full surface (Bun runtime)**. Code examples use `createGoodVibesSdk` from the full-surface entry point. Companion-surface consumers (React Native, browser) use surface-specific constructors — see [Published Surface Matrix](./surfaces.md) for the full breakdown.
+> **Surface scope:** This document covers performance tuning for the **full surface (Bun runtime)**. Code examples use `createGoodVibesSdk` from the full-surface entry point. Companion-surface consumers (React Native, browser) use surface-specific constructors. See [Published surface matrix](./surfaces.md) for the full breakdown.
 
 This guide covers the tuning knobs, runtime contracts, and internal subsystems that govern SDK performance across provider calls, context management, component rendering, and tool execution.
 
-## Provider Optimization
+## Provider optimization
 
-### Retry Strategy
+### Retry strategy
 
 The SDK uses deterministic exponential backoff (no jitter) for all retryable HTTP failures. The top-level `retry` config is an `HttpRetryPolicy` resolved by the transport-http retry layer (`resolveHttpRetryPolicy`) and applied via `computeBackoffDelay` in the HTTP transport loop; it is not handled by the `platform/utils` `withRetry` helper, which has a different config shape and is not wired to this config.
 
@@ -24,22 +24,22 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-Delay for a one-based attempt `n` is: `min(baseDelayMs * backoffFactor^(attempt-1), maxDelayMs)` — so attempt 1 waits `baseDelayMs`, attempt 2 applies one backoff factor, and so on. `backoffFactor` defaults to `2` and is configurable. There is no jitter. When a server sends a `Retry-After` header on a retryable response, it is honored as a floor on the computed delay.
+Delay for a one-based attempt `n` is: `min(baseDelayMs * backoffFactor^(attempt-1), maxDelayMs)`. So attempt 1 waits `baseDelayMs`, attempt 2 applies one backoff factor, and so on. `backoffFactor` defaults to `2` and is configurable. There is no jitter. When a server sends a `Retry-After` header on a retryable response, it is honored as a floor on the computed delay.
 
 Retries are only triggered for retryable errors. In the transport-http retry loop an error is retryable when:
-- Its HTTP status is in `RETRYABLE_STATUS_CODES` (408, 429, 500, 502, 503, 504) and the request method is eligible for retry — a safe method (`GET`/`HEAD`/`OPTIONS`), or a mutation the contract marks `idempotent` or that has a `perMethodPolicy` entry; or
+- Its HTTP status is in `RETRYABLE_STATUS_CODES` (408, 429, 500, 502, 503, 504) and the request method is eligible for retry: a safe method (`GET`, `HEAD`, or `OPTIONS`), or a mutation the contract marks `idempotent` or that has a `perMethodPolicy` entry; or
 - It is a network-level failure (status `0`) surfaced as a `GoodVibesSdkError` with `recoverable: true` (the transport flags fetch/connection errors recoverable).
 
 Never retry unsafe mutations blindly. Only idempotent reads and operations with application-level idempotency guarantees are safe to retry.
 
-### Adaptive Execution Planner
+### Adaptive execution planner
 
 The `AdaptivePlanner` selects an execution strategy each turn based on risk, latency budget, and task shape. It supports five strategies:
 
 | Strategy | When Selected |
 |---|---|
 | `single` | Risk > 0.7, latency budget < 5 s, or no multi-step signal |
-| `cohort` | Multi-step task, risk ≤ 0.7 — fan-out to coordinated agents |
+| `cohort` | Multi-step task, risk ≤ 0.7: fan-out to coordinated agents |
 | `background` | `backgroundEligible` true, no latency constraint, risk ≤ 0.6 |
 | `remote` | Remote endpoint available, risk ≤ 0.7 |
 | `auto` | Planner evaluates all strategies and picks the highest scorer |
@@ -62,7 +62,7 @@ console.log(decision.selected);    // 'cohort'
 console.log(decision.reasonCode);  // 'COHORT_CAPABLE'
 ```
 
-The planner keeps a rolling audit log of the last 100 decisions (`MAX_HISTORY`). Use `planner.explain()` to see a human-readable breakdown of the most recent decision, or `planner.getHistory(limit = 20)` to retrieve the most recent decisions — the default `limit` is `20`; pass a higher value (up to the 100-entry cap) to read further back.
+The planner keeps a rolling audit log of the last 100 decisions (`MAX_HISTORY`). Use `planner.explain()` to see a human-readable breakdown of the most recent decision, or `planner.getHistory(limit = 20)` to retrieve the most recent decisions. The default `limit` is `20`. Pass a higher value (up to the 100-entry cap) to read further back.
 
 User overrides take absolute precedence over automatic scoring:
 
@@ -71,7 +71,7 @@ planner.override('single');   // force single-agent execution
 planner.clearOverride();      // return to automatic selection
 ```
 
-### Circuit Breaker
+### Circuit breaker
 
 `ConsecutiveErrorBreaker` guards against runaway error loops. It tracks consecutive all-failed turns and returns graduated signals:
 
@@ -92,7 +92,7 @@ Default thresholds: warn at 5 consecutive failures, break at 10.
 
 ---
 
-## Connection Management
+## Connection management
 
 ### SSE vs WebSocket
 
@@ -107,7 +107,7 @@ Choose based on runtime environment:
 
 SSE is simpler (standard HTTP, firewall-friendly, works in all browser environments). WebSocket provides bidirectional communication and lower overhead for high-frequency event streams on mobile.
 
-### SSE and WebSocket Reconnect
+### SSE and WebSocket reconnect
 
 Reconnect is **off by default** for both transports and is opted into via
 `realtime.sseReconnect` / `realtime.webSocketReconnect`. The underlying HTTP
@@ -121,7 +121,7 @@ missed events when supported.
 For the configuration shapes, per-surface examples, and the full default table,
 see [Retries and reconnect](./retries-and-reconnect.md).
 
-### SSE Backpressure
+### SSE backpressure
 
 The control-plane gateway's SSE `ReadableStream` is constructed with a bounded `CountQueuingStrategy` to prevent slow subscribers from consuming unbounded memory:
 
@@ -129,11 +129,11 @@ The control-plane gateway's SSE `ReadableStream` is constructed with a bounded `
 new ReadableStream(..., new CountQueuingStrategy({ highWaterMark: 256 }));
 ```
 
-When a subscriber falls behind, the stream stops pulling new chunks from the producer rather than buffering indefinitely. Producers (the event bus) are not blocked — the back-pressure is isolated to the per-subscriber stream. A subscriber that stays behind long enough to drop events will surface as a `TRANSPORT_STALE` or disconnect event; reconnect with `Last-Event-ID` replays missed events where the server retains them.
+When a subscriber falls behind, the stream stops pulling new chunks from the producer rather than buffering indefinitely. Producers (the event bus) are not blocked. The back-pressure is isolated to the per-subscriber stream. A subscriber that stays behind long enough to drop events will surface as a `TRANSPORT_STALE` or disconnect event; reconnect with `Last-Event-ID` replays missed events where the server retains them.
 
 Startup events (initial snapshot, recent-event replay) are delivered before the `highWaterMark` gate engages in practice, but high-volume workloads should still prefer domain-filtered subscriptions to reduce the event rate per subscriber.
 
-### WebSocket Outbound-Queue Backpressure
+### WebSocket outbound-queue backpressure
 
 The control-plane strategy above governs the **server → client** SSE stream. The
 transport-realtime WebSocket connector applies separate **client → server**
@@ -152,7 +152,7 @@ with `{ droppedCount, queueLength, queueBytes, reason }`. To avoid flooding
 callers during sustained disconnects, `onBackpressure` fires on the first overflow
 and every tenth overflow thereafter; `droppedCount` is always the cumulative total.
 
-### Token Rotation on Long-Lived Connections
+### Token rotation on long-lived connections
 
 For long-lived clients where tokens expire, use `tokenStore` or `getAuthToken` instead of a static `authToken`. Reconnects automatically pick up the latest token:
 
@@ -167,9 +167,9 @@ const sdk = createGoodVibesSdk({
 
 ---
 
-## Token Management
+## Token management
 
-### Context Window Limits
+### Context window limits
 
 The SDK tracks token usage continuously against the active model's context window. Key constants:
 
@@ -190,7 +190,7 @@ tool loops. They use the same percentage/buffer decision so a turn can compact
 before the next model request rather than waiting for post-turn maintenance
 after the conversation has already exceeded the practical provider budget.
 
-### Compaction Strategies
+### Compaction strategies
 
 Compaction collapses conversation history into a structured return-context document that preserves essential context while reducing token count.
 
@@ -238,7 +238,7 @@ const result = await compactMessages(ctx, providerRegistry);
 
 **Small-window compaction** handles models with tight context windows (≤ 12,000 token effective budget). It uses a simpler keep-recent strategy (`compactSmallWindow`) that retains the last N messages without an LLM extraction pass.
 
-### Compaction Section Budgets
+### Compaction section budgets
 
 The compacted output is assembled from named sections, each with its own token budget:
 
@@ -267,7 +267,7 @@ const ctx: CompactionContext = {
 };
 ```
 
-### Token Estimation
+### Token estimation
 
 `estimateConversationTokens` scans the current message list and uses a 4-chars-per-token heuristic. It is fast and non-blocking, designed to be called every turn.
 
@@ -279,9 +279,9 @@ const estimate = estimateConversationTokens(messages); // number
 
 ---
 
-## Tool Execution
+## Tool execution
 
-### Performance Budgets
+### Performance budgets
 
 The SDK defines two categories of performance budgets: **bundle size budgets** and **runtime SLO gates**.
 
@@ -305,9 +305,9 @@ To update after a legitimate size increase, see [Testing and Validation](./testi
 | Memory growth rate | 50 MiB/hr | 2 |
 | Compaction latency (p95) | 500 ms | 3 |
 
-Tool executor overhead measures scheduling, dispatch, and teardown phases only — not the tool's own execution time.
+Tool executor overhead measures scheduling, dispatch, and teardown phases only, not the tool's own execution time.
 
-### SLO Gates
+### SLO gates
 
 Four end-to-end SLO latency gates are enforced at runtime via `SloCollector`:
 
@@ -322,11 +322,11 @@ SLO metrics are computed over a rolling window of 200 samples. Expired pending m
 
 ---
 
-## State Management
+## State management
 
-### Store Domain Selectors
+### Store domain selectors
 
-The runtime store partitions state into typed domains. Use the provided selector functions to read domain state — selectors avoid unnecessary recomputation and enforce the read model boundary.
+The runtime store partitions state into typed domains. Use the provided selector functions to read domain state. Selectors avoid unnecessary recomputation and enforce the read model boundary.
 
 ```ts
 import {
@@ -351,7 +351,7 @@ const health = selectSystemHealth(state);
 
 Health domains tracked by `selectSystemHealth`: `providerHealth`, `mcp`, `daemon`, `acp`, `integrations`.
 
-### Read Model Pattern
+### Read model pattern
 
 Use read models for derived UI state rather than subscribing to raw domain state. Read models are pre-computed projections that compose multiple selectors and expose stable surface contracts:
 
@@ -367,7 +367,7 @@ const models = createObservabilityReadModels(runtimeServices);
 
 ---
 
-## Resource Monitoring
+## Resource monitoring
 
 ### ComponentHealthMonitor
 
@@ -390,7 +390,7 @@ if (!monitor.canRender('agent-logs')) return; // skip
 monitor.recordRender('agent-logs', actualDurationMs);
 ```
 
-### Resource Contracts
+### Resource contracts
 
 Each category has a default contract. Components can override individual fields:
 
@@ -412,7 +412,7 @@ monitor.register('latency-graph', 'monitoring', {
 });
 ```
 
-### Throttle and Degrade Lifecycle
+### Throttle and degrade lifecycle
 
 Components progress through three health states based on contract compliance:
 
@@ -439,9 +439,9 @@ monitor.resetHealth('agent-logs');
 
 ---
 
-## Batch Patterns
+## Batch patterns
 
-### Event Feed Subscription
+### Event feed subscription
 
 Subscribe to multiple event types within a domain in a single feed to avoid per-event subscription overhead:
 
@@ -466,7 +466,7 @@ Filter to only the domains you need using the SSE `domains` query parameter to r
 GET /api/control-plane/events?domains=turn,agents,tools
 ```
 
-### Parallel Tool Execution
+### Parallel tool execution
 
 Configure `cohort` strategy via the adaptive planner to fan tasks out across agent cohorts. The planner automatically selects `cohort` for multi-step tasks with risk score ≤ 0.7:
 
@@ -481,7 +481,7 @@ const decision = planner.select({
 // decision.selected === 'cohort'
 ```
 
-### Background Execution
+### Background execution
 
 Defer latency-insensitive work to background execution to avoid blocking the conversation loop:
 
@@ -498,7 +498,7 @@ const decision = planner.select({
 
 ---
 
-## Next Reads
+## Next reads
 
 - [Retries and reconnect](./retries-and-reconnect.md)
 - [Observability](./observability.md)

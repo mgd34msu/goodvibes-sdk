@@ -51,7 +51,7 @@ export interface AgentManagerDependencies {
    * DEFAULT_CONVERSATION_SNAPSHOT_RETENTION. Test-only knob in practice.
    */
   readonly conversationSnapshotRetention?: number | undefined;
-  /** The live provider registry, when wired up — enables bare model id resolution for spawn() overrides. */
+  /** The live provider registry, when wired up, enables bare model id resolution for spawn() overrides. */
   readonly providerRegistry?: Pick<ProviderRegistry, 'listModels'> | undefined;
 }
 
@@ -60,7 +60,7 @@ export interface AgentManagerDependencies {
  * finished agents' final conversation snapshot AgentManager keeps around
  * after their live source is released. Without a bound, a long-lived process
  * that spawns many short-lived agents would retain every finished agent's
- * full message history forever — this is the "leaking unbounded memory" the
+ * full message history forever, this is the "leaking unbounded memory" the
  * brief calls out. RUNNING agents are unaffected by this bound: their
  * snapshot is read live from the still-open ConversationManager, whose size
  * is already governed by the existing context-window compaction machinery
@@ -122,7 +122,7 @@ export interface AgentRecord extends ProgressBearingRecord {
    * (verb formalization) without overloading `status`, which is
    * consumed widely (ledger parse, orchestrator finalize, exportState/
    * importState). Absent on records cancelled before this field existed, and
-   * on any record cancelled via the single-arg cancel(id) call — both default
+   * on any record cancelled via the single-arg cancel(id) call, both default
    * to 'kill' at the read site (fleet/adapters/agent.ts deriveAgentState).
    */
   terminationKind?: 'interrupt' | 'kill' | undefined;
@@ -164,14 +164,14 @@ export interface AgentRecord extends ProgressBearingRecord {
   /**
    * Orchestration engine tag: set by phase-runner.ts when it
    * spawns an agent to run one WorkItem through one Phase. Mirrors
-   * wrfcId/wrfcSubtaskId — the fleet's agent adapter uses it to parent this
+   * wrfcId/wrfcSubtaskId, the fleet's agent adapter uses it to parent this
    * agent node under its work-item ProcessNode (adapters/agent.ts
    * resolveParentId), separate from the WRFC parenting track so the two
    * systems' agents are never conflated.
    */
   workItemId?: string | undefined;
   /**
-   * Overrides this agent's tool working directory (absolute path) — see
+   * Overrides this agent's tool working directory (absolute path), see
    * AgentInput.workingDirectory. Copied from the spawn input at construction
    * (NOT settable post-hoc like workItemId: AgentOrchestrator.runAgent reads
    * it synchronously to select/build the per-cwd ToolRegistry before the
@@ -205,11 +205,11 @@ export interface AgentRecord extends ProgressBearingRecord {
   }>;
   /**
    * Bounded ring of per-turn passive-injection honesty
-   * records — one entry per turn that actually ran retrieval (turns that
+   * records, one entry per turn that actually ran retrieval (turns that
    * reused the prior turn's cached block, or that ran with the feature
    * flag/budget off, append nothing). See turn-knowledge-injection.ts for
    * the record shape and recordTurnInjection for the ring-eviction policy.
-   * Deliberately a plain field (no new KnowledgeEvent contract member) —
+   * Deliberately a plain field (no new KnowledgeEvent contract member),
    * the same entries are also appended to the agent's session transcript
    * via `session.appendMessage({type:'knowledge_injection', ...})`.
    */
@@ -238,7 +238,7 @@ export class AgentManager {
    * Live snapshot accessors for RUNNING agents (conversation-snapshot bridge, Part C6).
    * Registered by the executor (orchestrator-runner.ts) right after it
    * creates the agent's ConversationManager; the manager never stores
-   * messages itself while an agent is running — it just holds a callback.
+   * messages itself while an agent is running, it just holds a callback.
    */
   private readonly conversationSources = new Map<string, () => ConversationMessageSnapshot[]>();
   /**
@@ -248,13 +248,13 @@ export class AgentManager {
    * setCancellationSource/getCancellationSignal and threads it into
    * toolRegistry.execute opts so opted-in tools (exec, fetch) can abort an
    * in-flight child process/request immediately, instead of only at the next
-   * turn boundary's status poll. Purely additive — no caller is required to
+   * turn boundary's status poll. Purely additive, no caller is required to
    * register anything, and an agent with no registered signal behaves
    * exactly as before this change.
    */
   private readonly cancellationSignals = new Map<string, AbortSignal>();
   /**
-   * Manager-owned abort controllers, one per agent — the seam that lets
+   * Manager-owned abort controllers, one per agent, the seam that lets
    * cancel()/kill genuinely abort an in-flight provider call (not only
    * cooperatively at the next turn/tool boundary). An orchestration engine may
    * ALSO register its own signal via registerCancellationSignal (that one wins
@@ -686,7 +686,7 @@ export class AgentManager {
    *
    * Only a terminally-FAILED agent is woken: its turn loop has definitively
    * exited (an exhausted turn/circuit-breaker loop, idle-after-error, or a
-   * watchdog kill), so re-running cannot race a still-live promise — the honest,
+   * watchdog kill), so re-running cannot race a still-live promise, the honest,
    * safe subset of "wedged". A genuinely-running agent is left alone (its steer
    * is delivered through the message bus and drained at its next turn boundary,
    * exactly as today); a completed or cancelled agent is not auto-woken. The
@@ -729,7 +729,7 @@ export class AgentManager {
       const preview = text.replace(/\s+/g, ' ').trim().slice(0, 200);
       return `${message.role}: ${preview}`;
     });
-    return `Prior run before this steer — last ${tail.length} transcript message(s):\n${tail.join('\n')}`;
+    return `Prior run before this steer, last ${tail.length} transcript message(s):\n${tail.join('\n')}`;
   }
 
   getStatus(id: string): AgentRecord | null {
@@ -748,7 +748,7 @@ export class AgentManager {
       // boundary. (An engine-registered external signal is aborted by the engine's
       // own kill path; this covers the plain broker/ACP-spawned agent.) Create the
       // controller if the runner has not read the signal yet, so a later
-      // getCancellationSignal() returns THIS already-aborted controller — no race
+      // getCancellationSignal() returns THIS already-aborted controller, no race
       // where a cancel is dropped because the signal was requested afterwards.
       let controller = this.cancellationControllers.get(id);
       if (!controller) {
@@ -787,7 +787,7 @@ export class AgentManager {
   /**
    * Register the live conversation-snapshot source for a running agent
    * (conversation-snapshot bridge, Part C6). Called by the executor (orchestrator-runner.ts)
-   * once its ConversationManager exists — `source` is invoked on demand by
+   * once its ConversationManager exists, `source` is invoked on demand by
    * getConversationSnapshot(); the manager never copies or stores the
    * messages itself while the agent is running.
    */
@@ -836,7 +836,7 @@ export class AgentManager {
    * DEFAULT_CONVERSATION_SNAPSHOT_RETENTION) so a transcript tab that was
    * open at the moment of completion keeps showing content instead of going
    * blank. Once evicted (oldest-first, beyond the retention bound),
-   * getConversationSnapshot falls back to an empty array — callers past that
+   * getConversationSnapshot falls back to an empty array, callers past that
    * point are expected to degrade to the on-disk event ledger (TUI
    * Part C6's documented fallback for completed/detached agents).
    *
@@ -867,7 +867,7 @@ export class AgentManager {
 
   /**
    * The conversation-snapshot tab attach point: a full-fidelity conversation history for a
-   * fleet agent (ConversationMessageSnapshot[] — the same shape the main
+   * fleet agent (ConversationMessageSnapshot[], the same shape the main
    * session surface renders via MessageLineCache/conversation.ts).
    *
    * - RUNNING agent with a registered source → the current live snapshot.
@@ -876,7 +876,7 @@ export class AgentManager {
    *   conversationSnapshotRetention completed agents).
    * - Unknown agent, or one long since evicted → empty array. The disk
    *   ledger (<agentId>.jsonl, written by AgentSession) is NOT a substitute
-   *   for this array — it is a truncated event log (tool args/results
+   *   for this array, it is a truncated event log (tool args/results
    *   sliced to 500 chars, no assistant message text), so callers past
    *   eviction get a degraded activity view, never a fabricated replay.
    */

@@ -1,8 +1,8 @@
 /**
- * sha256sums — generate and verify a SHA256SUMS manifest over release assets.
+ * sha256sums, generate and verify a SHA256SUMS manifest over release assets.
  *
  * Emits the standard `<hex>  <name>` format (two spaces, coreutils-compatible).
- * A missing asset is a hard failure — a release must never ship an unlisted or
+ * A missing asset is a hard failure, a release must never ship an unlisted or
  * absent binary.
  */
 

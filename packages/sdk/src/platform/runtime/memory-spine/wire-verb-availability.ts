@@ -1,14 +1,14 @@
 /**
- * wire-verb-availability.ts — the runtime discriminator that lets a memory wire
+ * wire-verb-availability.ts, the runtime discriminator that lets a memory wire
  * consumer tell "no such record" apart from "this daemon does not serve this verb".
  *
  * THE PROBLEM THIS SOLVES. A newer consumer may talk to an OLDER daemon that never
  * registered an extended memory route (list / update / links / search-semantic /
  * export …). Calling such a route hits the daemon's terminal route-not-found 404.
- * A record-scoped verb (update / link) against a CURRENT daemon can ALSO 404 — when
+ * A record-scoped verb (update / link) against a CURRENT daemon can ALSO 404, when
  * the addressed record genuinely does not exist. Both are HTTP 404, so a consumer
  * that inspects only the status folds BOTH to `null` and then reports an existing
- * record as "not found" against an older daemon — a silent data lie on the exact
+ * record as "not found" against an older daemon, a silent data lie on the exact
  * version-skew path the wire feature advertises as supported.
  *
  * THE RUNTIME SIGNAL. The daemon already distinguishes the two in the response BODY:
@@ -21,7 +21,7 @@
  *   - anything that is not a 404           → 'other' (propagate unchanged)
  *
  * THE LEGACY-404 RULING. A pre-error-unification daemon may answer a bare 404 with
- * no structured code at all. That 404 is ambiguous — it could be either case — and
+ * no structured code at all. That 404 is ambiguous, it could be either case, and
  * we deliberately treat it as 'method-unavailable', NOT 'record-missing'. A loud
  * wrong ("this daemon does not serve X" when the record was in fact simply absent)
  * is recoverable and honest; a silent wrong (reporting an existing record as gone)
@@ -61,7 +61,7 @@ function readBodyCode(body: unknown): string | undefined {
  *  - an error carrying an explicit `.status`/`.code` (the agent transport stamps
  *    these onto its thrown error) or a `.body.code`;
  *  - a bare `Error` whose message embeds `HTTP <status>` (a legacy/hand-rolled
- *    transport) — status parsed out, code absent.
+ *    transport), status parsed out, code absent.
  */
 function extractWire404Signal(error: unknown): Wire404Signal {
   if (error === null || typeof error !== 'object') {
@@ -108,7 +108,7 @@ export function classifyMemoryWireError(error: unknown): MemoryWire404Dispositio
  */
 export function memoryVerbUnavailableError(verb: string, cause?: unknown): Error {
   return new Error(
-    `memory spine: the adopted daemon does not support the '${verb}' memory verb over the wire — `
+    `memory spine: the adopted daemon does not support the '${verb}' memory verb over the wire, `
     + 'upgrade the daemon to a build that serves it, or run this surface offline (no daemon adopted). '
     + 'A wire client will not read its own local store for this op, because that would break the '
     + 'single-writer invariant and report a divergent local copy as if it were the canonical store.',
@@ -120,14 +120,14 @@ export function memoryVerbUnavailableError(verb: string, cause?: unknown): Error
  * The fold a transport's extended-verb catch block runs. Given the caught wire
  * error:
  *  - 'method-unavailable' → throw {@link memoryVerbUnavailableError} (the older
- *    daemon never served this route — a loud, honest reject);
+ *    daemon never served this route, a loud, honest reject);
  *  - 'record-missing'     → return normally (the caller decides what a genuine
  *    record-miss means for its return type: `null` for a nullable verb, or a
  *    rethrow for a non-nullable one);
  *  - 'other'              → rethrow the original error unchanged.
  *
  * A nullable record-scoped verb uses it as `foldMemoryWireExtendedError(v, e); return null;`
- * — the fold throws for the version-skew case and only falls through to `null`
+ *, the fold throws for the version-skew case and only falls through to `null`
  * for a genuine record-miss.
  */
 export function foldMemoryWireExtendedError(verb: string, error: unknown): void {

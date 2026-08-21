@@ -1,19 +1,19 @@
 /**
  * gateway-verb-error.ts
  *
- * (fleet.*, checkpoints.*, sessions.search — see CHANGELOG 1.0.0): a structured error for
+ * (fleet.*, checkpoints.*, sessions.search, see CHANGELOG 1.0.0): a structured error for
  * gateway methods registered with a direct handler via
  * `GatewayMethodCatalog.register(descriptor, handler)`.
  *
  * WHY THIS EXISTS: `invokeGatewayMethodCall` (../../daemon/control-plane.ts)
  * dispatches a handler-bearing method via `catalog.invoke()` and, on ANY
- * thrown error, collapses it to a blanket `{ status: 500 }` — there was no
+ * thrown error, collapses it to a blanket `{ status: 500 }`, there was no
  * prior handler-registered verb that needed an honest non-500 status (the
  * only prior consumer of `register(descriptor, handler)` is the plugin API,
  * whose tool-call errors are swallowed into a `{success:false}` payload, not
  * an HTTP status). checkpoints.diff/restore need an honest 404 for an
  * unknown/gc'd checkpoint id (see routes/checkpoints.ts), and invalid
- * pagination cursors need an honest 400 (fleet.list, sessions.search) — a
+ * pagination cursors need an honest 400 (fleet.list, sessions.search), a
  * blanket 500 would misreport caller error as server error.
  *
  * This mirrors the existing `SDKErrorCodes.SESSION_CLOSED` convention used by
@@ -34,7 +34,7 @@ export class GatewayVerbError extends Error {
    * `invoke-input-validation.ts` enforces before dispatch. A handler that
    * refuses a call because `authority` is absent, on a descriptor that never
    * listed `authority` as required, type-checks in every consumer and 400s at
-   * runtime — the class of defect that has now been found three separate times
+   * runtime, the class of defect that has now been found three separate times
    * in this control plane.
    *
    * `test/gateway-verb-required-conformance.test.ts` catches it by INVOKING
@@ -48,7 +48,7 @@ export class GatewayVerbError extends Error {
    *
    * So the contract is: a refusal that is ABOUT a named input field sets
    * `field`, and the conformance test FAILS on an input-shaped refusal that
-   * does not — an unattributable refusal is treated as an unchecked verb, not
+   * does not, an unattributable refusal is treated as an unchecked verb, not
    * as a pass.
    *
    * Use the input field's own name as the caller spells it (`sessionId`,
@@ -82,9 +82,9 @@ export interface GatewayVerbRefusal {
  * Read a refusal from a thrown value by SHAPE rather than by class.
  *
  * `instanceof GatewayVerbError` only recognizes refusals thrown by handlers
- * compiled against this module. A handler registered by a consuming runtime —
+ * compiled against this module. A handler registered by a consuming runtime,
  * the daemon product registers its own, and its confirmation gate refuses with
- * a 403 the caller is meant to act on — throws its own error class carrying the
+ * a 403 the caller is meant to act on, throws its own error class carrying the
  * same two facts. Recognized only by class, every one of those reached the
  * client as a blanket 500, so a refusal a caller could answer read as a daemon
  * fault.

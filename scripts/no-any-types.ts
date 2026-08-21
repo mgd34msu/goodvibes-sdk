@@ -4,7 +4,7 @@
 // Prevents regression of the zero-`any` policy established in 0.18.44.
 //
 // Detected patterns (TypeScript type positions only):
-//   : any           (type annotation — colon then any)
+//   : any           (type annotation, colon then any)
 //   : any[]         (array type annotation)
 //   <any>           (generic type argument)
 //   <any,           (generic first arg)
@@ -12,7 +12,7 @@
 //   , any,          (generic middle arg)
 //   as any          (type assertion)
 //   extends any     (constraint)
-//   = any           (type alias RHS — space-equals-space-any)
+//   = any           (type alias RHS, space-equals-space-any)
 //
 // NOT flagged:
 //   // comments     (line comments)
@@ -42,17 +42,17 @@ const REPO_ROOT = resolve(__dirname, '..');
  * Each pattern requires a type-position prefix and type-terminator suffix.
  *
  * Type-position prefixes:
- *   :\s*    — type annotation (e.g., foo: any)
- *   <\s*    — generic arg start (e.g., Array<any>, Array < any >)
- *   [\s*    — tuple/array element start (e.g., [any, string])
- *   ,\s*    — generic/tuple arg separator (e.g., Foo<T, any>, [string, any])
- *   \|\s*   — union member (e.g., string | any)
- *   &\s*    — intersection member
- *   as\s+   — type assertion (e.g., x as any)
- *   extends\s+ — constraint
- *   =\s*    — type alias RHS (e.g., type Foo = any)
- *   =>\s*   — function return type (e.g., () => any)
- *   keyof\s+ — keyof constraint root (e.g., keyof any)
+ *   :\s*   , type annotation (e.g., foo: any)
+ *   <\s*   , generic arg start (e.g., Array<any>, Array < any >)
+ *   [\s*   , tuple/array element start (e.g., [any, string])
+ *   ,\s*   , generic/tuple arg separator (e.g., Foo<T, any>, [string, any])
+ *   \|\s*  , union member (e.g., string | any)
+ *   &\s*   , intersection member
+ *   as\s+  , type assertion (e.g., x as any)
+ *   extends\s+, constraint
+ *   =\s*   , type alias RHS (e.g., type Foo = any)
+ *   =>\s*  , function return type (e.g., () => any)
+ *   keyof\s+, keyof constraint root (e.g., keyof any)
  *
  * Type-terminator suffixes (what can follow `any` in a type position):
  *   > [ ] ) , ; ? : | & space newline
@@ -111,7 +111,7 @@ function stripStringLiterals(line: string): string {
   let result = line.replace(/"(?:[^"\\]|\\.)*"/g, '""');
   // Replace single-quoted strings
   result = result.replace(/'(?:[^'\\]|\\.)*'/g, "''");
-  // Replace template literal content (simple heuristic — no nested templates)
+  // Replace template literal content (simple heuristic, no nested templates)
   result = result.replace(/`(?:[^`\\]|\\.)*`/g, '``');
   return result;
 }
@@ -196,11 +196,11 @@ for (const root of SCAN_ROOTS) {
 // ─── Report ─────────────────────────────────────────────────────────────────
 
 if (findings.length === 0) {
-  console.log('any-check: OK — zero `any` type occurrences in source files.');
+  console.log('any-check: OK, zero `any` type occurrences in source files.');
   process.exit(0);
 }
 
-console.error(`\nany-check: FAIL — ${findings.length} \`any\` type occurrence(s) found:\n`);
+console.error(`\nany-check: FAIL, ${findings.length} \`any\` type occurrence(s) found:\n`);
 for (const f of findings) {
   console.error(`  ${f.rel}:${f.line}:${f.col}`);
   console.error(`    ${f.text}\n`);

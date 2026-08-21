@@ -1,7 +1,7 @@
 /**
  * Writing-style-matched draft reply composer.
  *
- * This module is PURE and DETERMINISTIC — no Date.now(), Math.random(),
+ * This module is PURE and DETERMINISTIC, no Date.now(), Math.random(),
  * or I/O.  It takes a corpus of prior sent messages and an inbound message
  * and produces a draft body that mirrors the user's writing style.
  *
@@ -34,7 +34,7 @@ export interface StyleProfile {
   readonly medianSentenceCount: number;
   /** Dominant tone inferred from token analysis: 'formal' | 'casual' | 'neutral'. */
   readonly tone: 'formal' | 'casual' | 'neutral';
-  /** True when the corpus is empty — all values are defaults. */
+  /** True when the corpus is empty, all values are defaults. */
   readonly isDefault: boolean;
 }
 
@@ -185,7 +185,7 @@ export interface DraftReplyResult {
   readonly profile: StyleProfile;
   /** Subject line for the reply, prefixed with 'Re: ' if not already. */
   readonly subject: string;
-  /** BEFORE-SEND REVIEW BOUNDARY: always true — this is a draft, never auto-sent. */
+  /** BEFORE-SEND REVIEW BOUNDARY: always true, this is a draft, never auto-sent. */
   readonly requiresBeforeSendReview: true;
   /** Human-readable reminder of the review boundary. */
   readonly reviewBoundary: string;
@@ -198,8 +198,8 @@ export interface DraftReplyResult {
  *
  * SAFETY GUARANTEES
  * - Throws if the composed body or context contains secret-like text.
- * - Never sends — returns a DraftReplyResult with requiresBeforeSendReview: true.
- * - No Date.now() / Math.random() — deterministic output for a given input.
+ * - Never sends, returns a DraftReplyResult with requiresBeforeSendReview: true.
+ * - No Date.now() / Math.random(), deterministic output for a given input.
  *
  * @param inbound   The email the user received and wants to reply to.
  * @param profile   Writing-style profile extracted from prior sent messages.
@@ -334,7 +334,7 @@ function buildAcknowledgement(inbound: EmailSummary, tone: StyleProfile['tone'])
 /**
  * Build placeholder body sentences to approximate target sentence count.
  * Returns one paragraph with `targetCount` filler sentences.
- * Deterministic — no randomness.
+ * Deterministic, no randomness.
  */
 function buildPlaceholderBody(targetCount: number, tone: StyleProfile['tone']): string {
   const formalSentences = [

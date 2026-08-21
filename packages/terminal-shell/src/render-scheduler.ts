@@ -1,10 +1,10 @@
 /**
- * render-scheduler.ts — same-tick render coalescing for the terminal shell.
+ * render-scheduler.ts, same-tick render coalescing for the terminal shell.
  *
  * A front-end fans out its own direct render() calls across turn/stream/input
  * wiring (many invocation contexts). Each one previously ran a full synchronous
  * composite the instant it was called. When several fire within a single
- * event-loop tick — a streaming burst is the canonical case — only the LAST
+ * event-loop tick, a streaming burst is the canonical case, only the LAST
  * frame is ever visible; the earlier composites are immediately overwritten.
  * This scheduler collapses every schedule() call made within one tick into a
  * single composite flushed on the microtask queue, so the tick produces exactly
@@ -14,7 +14,7 @@
  * render() would have read.
  *
  * This is deliberately SEPARATE from any cross-tick, throttled (~60fps)
- * coalescer a front-end may run for its panel/input/runtime fan-out — that kind
+ * coalescer a front-end may run for its panel/input/runtime fan-out, that kind
  * caps repaint RATE across ticks. This one collapses the WITHIN-tick burst with
  * no added latency: a microtask flushes at the tail of the current tick, before
  * the event loop yields to I/O, so the frame still lands in the same turn it was

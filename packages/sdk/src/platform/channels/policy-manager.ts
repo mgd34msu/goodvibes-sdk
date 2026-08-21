@@ -342,7 +342,7 @@ export class ChannelPolicyManager {
     }
 
     // Owner allowlist self-seeding: a surface with no owner allowlist adopts
-    // the first identified sender as its owner — whoever pairs/configures the
+    // the first identified sender as its owner, whoever pairs/configures the
     // channel proves it by sending the first message, and no separate
     // add-yourself step exists. From then on unknown senders are ignored.
     let effectivePolicy = policy;
@@ -403,7 +403,7 @@ export class ChannelPolicyManager {
       this.auditFlushTimer = null;
       // The flush goes through the same write queue every other write uses.
       // It used to have a chain of its own, which ordered flushes against each
-      // OTHER and against nothing else — the write it actually races is
+      // OTHER and against nothing else, the write it actually races is
       // `upsertPolicy`'s.
       void this.persist().catch((error: unknown) => {
         logger.warn('Channel policy audit flush failed', {
@@ -437,8 +437,8 @@ export class ChannelPolicyManager {
    * Two paths write this file and they were ordered only against themselves:
    * `upsertPolicy` awaited its write, and the debounced audit flush ran on a
    * private chain. `evaluateIngress` schedules a flush on EVERY inbound message,
-   * so a "disable this surface" ruling — or the owner-allowlist seeding that
-   * decides which sender the surface answers at all — arriving while a flush was
+   * so a "disable this surface" ruling, or the owner-allowlist seeding that
+   * decides which sender the surface answers at all, arriving while a flush was
    * in flight could be overwritten by that flush's older snapshot. The surface
    * comes back enabled, or the allowlist comes back empty and adopts the next
    * sender that speaks.

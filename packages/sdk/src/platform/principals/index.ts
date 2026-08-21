@@ -1,5 +1,5 @@
 /**
- * principals/ — the cross-channel principal identity registry.
+ * principals/, the cross-channel principal identity registry.
  *
  * Maps channel-specific sender identities (a Slack user id, an email address, a
  * phone number) onto one named principal so attribution and session continuity

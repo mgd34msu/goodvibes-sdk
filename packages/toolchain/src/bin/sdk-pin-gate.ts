@@ -8,7 +8,7 @@ const config = loadToolchainConfig(root);
 const results = runSdkPinGate(realFsReader(root), config.sdkPin);
 let failed = 0;
 for (const result of results) {
-  consoleLogger.info(`${result.ok ? 'PASS' : 'FAIL'}  ${result.id} — ${result.detail}`);
+  consoleLogger.info(`${result.ok ? 'PASS' : 'FAIL'}  ${result.id}, ${result.detail}`);
   if (!result.ok) failed += 1;
 }
 consoleLogger.info(`sdk-pin-gate: ${results.length - failed}/${results.length} gates passed`);

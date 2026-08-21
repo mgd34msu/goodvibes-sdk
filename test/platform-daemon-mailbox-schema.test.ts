@@ -1,7 +1,7 @@
 /**
  * platform-daemon-mailbox-schema.test.ts
  *
- * The daemon's own mailbox and calendar keys are REACHABLE — from the settings
+ * The daemon's own mailbox and calendar keys are REACHABLE, from the settings
  * modal, and from the daemon secret tier.
  *
  * Two products tell operators to set these keys by name. goodvibes-webui's
@@ -17,7 +17,7 @@
  *
  * The storage half is the same bug seen from the other side. `config-ownership`
  * derives the daemon-owned SECRET set by WALKING `listDaemonOwnedConfigPaths()`
- * — CONFIG_SCHEMA keys the daemon owns, plus a hand-kept list of non-scalar
+ *, CONFIG_SCHEMA keys the daemon owns, plus a hand-kept list of non-scalar
  * paths. `surfaces.` has always been a daemon-owned PREFIX, so the predicate
  * `isDaemonOwnedConfigKey` already answered true here; but nothing ENUMERATED
  * these paths, so the walk produced no daemon-owned credential name for them
@@ -125,7 +125,7 @@ describe('the credentials derive daemon-owned secret names', () => {
     const secretKey = daemonSecretKeyFor(key);
     expect(
       isDaemonOwnedSecretKey(secretKey),
-      `${secretKey} does not derive from a daemon-owned path, so an unqualified write puts the password in a client silo the daemon never reads — the exact failure where a stored password looks set and does nothing`,
+      `${secretKey} does not derive from a daemon-owned path, so an unqualified write puts the password in a client silo the daemon never reads, the exact failure where a stored password looks set and does nothing`,
     ).toBe(true);
   });
 

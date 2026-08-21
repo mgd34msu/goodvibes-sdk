@@ -1,7 +1,7 @@
 /**
  * quality-score.ts
  *
- * Compaction quality scoring — evaluates the output of a compaction strategy
+ * Compaction quality scoring, evaluates the output of a compaction strategy
  * by combining compression ratio and semantic retention signals.
  *
  * Score range: 0.0 (worst) → 1.0 (best)
@@ -109,7 +109,7 @@ function extractTextContent(msg: StrategyOutput['messages'][number]): string {
 /**
  * Evaluates the semantic retention signals from a strategy output.
  *
- * These are lightweight structural checks — no LLM call required.
+ * These are lightweight structural checks, no LLM call required.
  */
 function evaluateSemanticRetention(
   input: StrategyInput,
@@ -191,7 +191,7 @@ export function describeScore(score: CompactionQualityScore): string {
     `retention=${(score.retentionScore * 100).toFixed(0)}%`,
   ];
   if (score.isLowQuality) {
-    parts.push('LOW_QUALITY — strategy switch triggered');
+    parts.push('LOW_QUALITY, strategy switch triggered');
   }
   return parts.join(', ');
 }

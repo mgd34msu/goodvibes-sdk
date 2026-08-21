@@ -31,7 +31,7 @@ export const compactionFailurePlaybook: Playbook = {
           passed: false,
           summary: 'Compaction strategy availability requires live CompactionManager context.',
           severity: 'error',
-          context: { hint: 'Inspect CompactionManager.currentStrategy — confirm it is not null' },
+          context: { hint: 'Inspect CompactionManager.currentStrategy, confirm it is not null' },
         })),
     },
     {
@@ -55,7 +55,7 @@ export const compactionFailurePlaybook: Playbook = {
           passed: false,
           summary: 'State machine inspection requires live CompactionStateMachine context.',
           severity: 'error',
-          context: { hint: 'Call CompactionStateMachine.getState() — expect "error" or "failed"' },
+          context: { hint: 'Call CompactionStateMachine.getState(), expect "error" or "failed"' },
         })),
     },
   ],

@@ -112,7 +112,7 @@ describe('event-envelope contract', () => {
     });
 
     test('type-level: envelope generic narrows correctly via TypeScript', () => {
-      // This is a compile-time test — if it compiles, the type is correct.
+      // This is a compile-time test, if it compiles, the type is correct.
       const envelope: RuntimeEventEnvelope<'TASK_CREATED', TaskEvent & { type: 'TASK_CREATED' }> =
         createEventEnvelope('TASK_CREATED', { type: 'TASK_CREATED', taskId: 't1', description: 'd', priority: 0 }, baseContext);
 

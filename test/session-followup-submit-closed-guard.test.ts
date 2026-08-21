@@ -1,13 +1,13 @@
 /**
  * session-followup-submit-closed-guard.test.ts
  *
- * Final-batch fix — the closed-session guard in
+ * Final-batch fix, the closed-session guard in
  * SharedSessionBroker.handleIntent (session-broker.ts) covered ONLY
  * `intent === 'steer'`. `followUpMessage()` (intent='follow-up') and
  * `submitMessage()` (intent='submit', when the caller supplies a sessionId
  * that resolves to an EXISTING closed record) both skipped the guard,
  * mutated the closed record (message appended, input queued) and could bind
- * a fresh agent onto history via the spawn fallback — the exact zombie-agent
+ * a fresh agent onto history via the spawn fallback, the exact zombie-agent
  * state the guard was supposed to eliminate, just reached through a different
  * intent. The guard now fires for all three intents whenever session
  * resolution lands on a pre-existing closed record; a MISSING session still

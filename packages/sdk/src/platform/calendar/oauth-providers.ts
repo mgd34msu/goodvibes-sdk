@@ -1,5 +1,5 @@
 /**
- * oauth-providers.ts — the fixed provider profiles for Google Calendar and
+ * oauth-providers.ts, the fixed provider profiles for Google Calendar and
  * Microsoft Outlook (Graph), plus client-config resolution.
  *
  * Bring your own OAuth app. No first-party client id ships with the product: the
@@ -87,7 +87,7 @@ export function providerProfile(provider: CalendarProviderId): OAuthProviderProf
  *
  * Resolving is total: it never throws and never invents an id. With no client id
  * supplied the result carries the empty string and `isConfigured: false`, so a
- * caller can ASK about the state — render "not connected, set this key" — without
+ * caller can ASK about the state, render "not connected, set this key", without
  * having to catch an exception. Refusing is the flow's job, not the resolver's
  * (see `assertClientConfigured` in oauth-flow.ts).
  */
@@ -123,7 +123,7 @@ export function resolveClientConfig(
  * The exact provider-console steps whoever is setting up this GoodVibes
  * environment follows to register their own OAuth app.
  *
- * These are not "advanced" steps any more — they are THE setup, because no client
+ * These are not "advanced" steps any more, they are THE setup, because no client
  * id ships with the product. Surfaced verbatim by the connect flow's refusal help
  * and copied into docs/calendar-oauth-setup.md. Kept as data so the surfaces and
  * the docs never drift.

@@ -1,5 +1,5 @@
 /**
- * Watcher emitters — typed wrappers for WatcherEvent domain.
+ * Watcher emitters, typed wrappers for WatcherEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

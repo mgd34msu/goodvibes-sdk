@@ -55,7 +55,7 @@ export class SessionMemoryStore {
     );
   }
 
-  /** Clear all memories. NOTE: counter is intentionally NOT reset — IDs must remain unique
+  /** Clear all memories. NOTE: counter is intentionally NOT reset, IDs must remain unique
    *  across the lifetime of the store even after a clear(). */
   clear(): void {
     this.memories = [];

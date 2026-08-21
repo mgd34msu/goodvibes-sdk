@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * PermissionEvent — discriminated union covering all permission evaluation events.
+ * PermissionEvent, discriminated union covering all permission evaluation events.
  *
  * Covers permission evaluation events for the runtime event bus.
  */

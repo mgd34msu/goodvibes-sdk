@@ -1,9 +1,9 @@
 /**
- * types.ts — the shared type surface for the calendar-connectivity module.
+ * types.ts, the shared type surface for the calendar-connectivity module.
  *
- * Pure data shapes only. The module reads external calendars two ways — parsing
+ * Pure data shapes only. The module reads external calendars two ways, parsing
  * .ics text (a file or a fetched feed body) into typed events, and managing named
- * feed subscriptions with honest per-subscription status — and every value a
+ * feed subscriptions with honest per-subscription status, and every value a
  * caller sees is described here.
  *
  * Honesty contract (see docs/decisions/2026-07-05-calendar-connectivity-sdk-extraction.md):
@@ -61,7 +61,7 @@ export interface CalendarEvent {
   readonly location?: string;
   readonly description?: string;
   /**
-   * The ORGANIZER as the feed CLAIMED it, `mailto:` stripped — the inviter.
+   * The ORGANIZER as the feed CLAIMED it, `mailto:` stripped, the inviter.
    *
    * Present only when the VEVENT carried an ORGANIZER. A useful label for a
    * reader and the name an untrusted-content record carries as its origin (see
@@ -92,7 +92,7 @@ export interface ParsedCalendar {
   readonly events: readonly CalendarEvent[];
   /**
    * Events that were recognised as VEVENTs but could not be turned into a usable
-   * event (e.g. no DTSTART). Never silently dropped — surfaced here with a reason.
+   * event (e.g. no DTSTART). Never silently dropped, surfaced here with a reason.
    */
   readonly skipped: readonly ParseDiagnostic[];
   /** Non-fatal notes (unsupported recurrence, unknown TZID kept as-is, etc.). */
@@ -160,7 +160,7 @@ export type FeedFetchResult =
   | { readonly kind: 'not-modified'; readonly etag?: string; readonly lastModified?: string }
   | { readonly kind: 'error'; readonly status?: number; readonly message: string };
 
-/** Injected network boundary — the ONLY way this module reaches the network. */
+/** Injected network boundary, the ONLY way this module reaches the network. */
 export type FeedFetcher = (req: FeedFetchRequest) => Promise<FeedFetchResult>;
 
 /** Injected clock, so refresh/staleness timing is deterministic in tests. */
@@ -170,11 +170,11 @@ export type Clock = () => number;
 export interface RefreshReport {
   readonly name: string;
   /**
-   *  - 'updated'      — fetched fresh body, parsed, events replaced.
-   *  - 'not-modified' — server said 304; kept prior events, refreshed timestamp.
-   *  - 'skipped'      — not due yet and not forced.
-   *  - 'unreachable'  — fetch failed at the network stage.
-   *  - 'parse-error'  — fetched, but the body could not be parsed.
+   *  - 'updated'     , fetched fresh body, parsed, events replaced.
+   *  - 'not-modified', server said 304; kept prior events, refreshed timestamp.
+   *  - 'skipped'     , not due yet and not forced.
+   *  - 'unreachable' , fetch failed at the network stage.
+   *  - 'parse-error' , fetched, but the body could not be parsed.
    */
   readonly outcome: 'updated' | 'not-modified' | 'skipped' | 'unreachable' | 'parse-error';
   readonly health: SubscriptionHealth;

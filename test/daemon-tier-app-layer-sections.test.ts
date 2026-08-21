@@ -6,15 +6,15 @@
  *
  * The mail and calendar connection was made daemon-owned so setup performed in
  * any surface reaches the daemon instead of stranding in that surface's silo.
- * But `email.*`, `calendar.*` and `google.*` are not CONFIG_SCHEMA sections —
+ * But `email.*`, `calendar.*` and `google.*` are not CONFIG_SCHEMA sections,
  * a product materializes them at runtime through `ensureEmailConfigDefaults`
  * and friends.
  *
  * Those two facts collided. The daemon-tier overlay runs inside the
  * ConfigManager CONSTRUCTOR, before any product can call its `ensure*`, and the
  * path resolver threw on a section that was not already present. The result was
- * the worst possible shape: writing `email.imapHost` to the daemon store — the
- * correct place, by the platform's own ownership rule — made every later
+ * the worst possible shape: writing `email.imapHost` to the daemon store, the
+ * correct place, by the platform's own ownership rule, made every later
  * ConfigManager built against that directory throw "section 'email' does not
  * exist" on construction. Storing the value bricked reading it back.
  *
@@ -58,7 +58,7 @@ function managerFor(root: string): ConfigManager {
  * Read a dot-path out of the resolved config.
  *
  * `get()` is typed to CONFIG_SCHEMA keys and these paths deliberately are not
- * schema keys — that is the whole point of the case — so the read goes through
+ * schema keys, that is the whole point of the case, so the read goes through
  * the raw resolved config the same way the app layer's own readers do.
  */
 function readPath(manager: ConfigManager, path: string): unknown {
@@ -115,7 +115,7 @@ describe('materializing a section is not a hole for arbitrary keys', () => {
     const root = configRootWithDaemonTier({
       email: { imapHost: 'imap.example.org' },
       // Not on any daemon-owned prefix or path. The overlay enumerates
-      // daemon-owned paths, so this must not be picked up — and must not be
+      // daemon-owned paths, so this must not be picked up, and must not be
       // created as a side effect of the email section being created.
       notADaemonDomain: { invented: 'value' },
     });

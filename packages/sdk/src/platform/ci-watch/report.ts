@@ -1,7 +1,7 @@
 /**
  * ci-watch/report.ts
  *
- * Derives the overall CI verdict from the PER-JOB conclusions — the whole point
+ * Derives the overall CI verdict from the PER-JOB conclusions, the whole point
  * of the doctrine. It never trusts a single rollup status. continue-on-error
  * jobs are recorded as violations and, because they are banned, force the verdict
  * off "passed" even if every visible conclusion is success (a continue-on-error
@@ -30,11 +30,11 @@ export function deriveCiReport(input: DeriveCiReportInput): CiReport {
 
   for (const job of jobs) {
     if (job.continueOnError) {
-      violations.push(`job "${job.name}" is continue-on-error, which is banned — it can mask a failure`);
+      violations.push(`job "${job.name}" is continue-on-error, which is banned, it can mask a failure`);
     }
     if (job.status === 'completed' && job.conclusion !== null
       && !FAILING_CONCLUSIONS.has(job.conclusion) && !PASSING_CONCLUSIONS.has(job.conclusion)) {
-      violations.push(`job "${job.name}" has an unrecognized conclusion "${job.conclusion}" — treated as not-passed`);
+      violations.push(`job "${job.name}" has an unrecognized conclusion "${job.conclusion}", treated as not-passed`);
     }
   }
 

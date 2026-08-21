@@ -1,5 +1,5 @@
 /**
- * ForensicsDataPanel — diagnostic data provider for the Forensics panel.
+ * ForensicsDataPanel, diagnostic data provider for the Forensics panel.
  *
  * Bridges the ForensicsRegistry into the panel subscription model,
  * following the same pattern as OpsPanel and TasksPanel.

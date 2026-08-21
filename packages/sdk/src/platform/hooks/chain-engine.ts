@@ -83,7 +83,7 @@ function tokenize(input: string): Token[] {
       else tokens.push({ kind: 'ident', value: id });
       continue;
     }
-    // Unknown character — skip (will surface as parse error)
+    // Unknown character, skip (will surface as parse error)
     i++;
   }
   return tokens;
@@ -271,7 +271,6 @@ export class ChainEngine {
       const step = chain.steps[state.currentStep] as ChainStep | undefined;
       if (!step) continue;
 
-      // Check within timeout: if exceeded since last advance, reset
       if (step.within && state.lastAdvance > 0) {
         const withinMs = parseDuration(step.within);
         if (withinMs > 0 && Date.now() - state.lastAdvance > withinMs) {
@@ -305,7 +304,6 @@ export class ChainEngine {
             state.pendingDebounce = undefined;
             // Advance after debounce
             this._advanceState(chain, state, pendingEvent, step);
-            // Check if chain is complete
             if (state.currentStep >= chain.steps.length) {
               try {
                 await this.dispatcher.fire({

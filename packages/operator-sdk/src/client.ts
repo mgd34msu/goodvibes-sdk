@@ -21,7 +21,7 @@ import { buildSchemaRegistry } from './schema-registry.js';
  * Options for constructing an `OperatorSdk` instance via `createOperatorSdk`.
  *
  * Extends `HttpTransportOptions` with operator-specific settings.
- * Typically created indirectly by `createGoodVibesSdk` — pass operator-level
+ * Typically created indirectly by `createGoodVibesSdk`, pass operator-level
  * options as part of `GoodVibesSdkOptions` instead.
  */
 export interface OperatorSdkOptions extends HttpTransportOptions {
@@ -39,7 +39,7 @@ export interface OperatorSdkOptions extends HttpTransportOptions {
 /**
  * Per-call options for `sdk.operator.invoke()`.
  *
- * Extends the underlying transport invoke options — see `ContractInvokeOptions`
+ * Extends the underlying transport invoke options, see `ContractInvokeOptions`
  * for the full set of available fields (e.g. `signal`, `responseSchema`).
  */
 export interface OperatorInvokeOptions extends OperatorRemoteClientInvokeOptions {}
@@ -47,7 +47,7 @@ export interface OperatorInvokeOptions extends OperatorRemoteClientInvokeOptions
 /**
  * Per-call options for `sdk.operator.stream()`.
  *
- * Extends the underlying transport stream options — see `ContractStreamOptions`
+ * Extends the underlying transport stream options, see `ContractStreamOptions`
  * for available fields (e.g. `handlers`, `signal`).
  */
 export interface OperatorStreamOptions extends OperatorRemoteClientStreamOptions {}

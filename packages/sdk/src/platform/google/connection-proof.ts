@@ -5,7 +5,7 @@
  * evening: the flow reported success after storing a refresh token, and the
  * first CALENDAR call afterwards failed with "insufficient authentication
  * scopes". Storing a credential is not evidence that the credential does the
- * job — a token can be perfectly valid and still carry the wrong scopes, name
+ * job, a token can be perfectly valid and still carry the wrong scopes, name
  * a different account, or belong to a project whose APIs are switched off.
  * Every one of those looks identical to success at the moment of storage.
  *
@@ -45,7 +45,7 @@ export interface GoogleConnectionProof {
 /**
  * A scope refusal has a distinctive shape and a distinctive remedy, so it is
  * separated from every other failure. Google answers a missing scope with 403
- * and the phrase "insufficient authentication scopes" — the exact failure the
+ * and the phrase "insufficient authentication scopes", the exact failure the
  * owner hit on calendar after a Gmail-only consent.
  */
 function isScopeRefusal(status: number | null, problem: string): boolean {
@@ -110,7 +110,7 @@ export async function proveGoogleConnection(client: GoogleApiClient): Promise<Go
       ok: true,
       detail:
         events.value.length === 0
-          ? 'Read the primary calendar — it has no upcoming events.'
+          ? 'Read the primary calendar, it has no upcoming events.'
           : `Read the primary calendar (next event: ${events.value[0]?.summary ?? 'untitled'}).`,
     }
     : classify('calendar', events.status, events.problem);
@@ -124,7 +124,7 @@ export async function proveGoogleConnection(client: GoogleApiClient): Promise<Go
     calendar,
     account,
     summary: ok
-      ? `Connected and proven${account === null ? '' : ` as ${account}`} — mail and calendar both answered.`
+      ? `Connected and proven${account === null ? '' : ` as ${account}`}, mail and calendar both answered.`
       : mail.ok
         ? 'Mail works; calendar does not. The credential is connected but incomplete.'
         : calendar.ok

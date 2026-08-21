@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * KnowledgeEvent — structured knowledge ingest, extraction, packet, projection, and job lifecycle events.
+ * KnowledgeEvent, structured knowledge ingest, extraction, packet, projection, and job lifecycle events.
  */
 
 export type KnowledgeEvent =

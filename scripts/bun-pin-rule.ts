@@ -1,17 +1,17 @@
 /**
- * bun-pin-rule.ts — validation-gate rule.
+ * bun-pin-rule.ts, validation-gate rule.
  *
  * One bun version, declared in twenty-three places, held to a single number.
  *
  * The root `package.json`'s `engines.bun` is the source of truth. Every other
- * declaration of the toolchain version — `packageManager`, the `@types/bun`
+ * declaration of the toolchain version, `packageManager`, the `@types/bun`
  * devDependency, every workspace package's `engines.bun`, and every
- * `bun-version:` pin or default in `.github/` — must equal it exactly.
+ * `bun-version:` pin or default in `.github/`, must equal it exactly.
  *
  * The reason this rule exists rather than a convention: a floor with a REASON
  * behind it is worthless if one of its copies can quietly stay below the floor.
  * Bun 1.3.10 through 1.3.13 deadlock the module loader once a process has
- * closed two or more `node:fs` watch handles — the next module graph the loader
+ * closed two or more `node:fs` watch handles, the next module graph the loader
  * fetches never resolves, and the process parks with an idle event loop and no
  * output at all until something outside it runs out of patience. That cost this
  * repository two fifteen-minute CI cycles of pure silence. The floor is
@@ -25,7 +25,7 @@
 
 /** A file's text, as read by the caller. */
 export interface PinSource {
-  /** Repo-relative path, forward-slash normalized — used in messages. */
+  /** Repo-relative path, forward-slash normalized, used in messages. */
   readonly relPath: string;
   readonly text: string;
 }
@@ -47,7 +47,7 @@ export interface BunPin {
  * A range is not a pin: `^1.3.10` on a caret-resolving installer is free to
  * pick the very release the floor exists to exclude. Every site this rule
  * covers writes an exact version except `examples/package.json`, whose
- * `@types/bun` is a caret range — that one is compared with its caret stripped,
+ * `@types/bun` is a caret range, that one is compared with its caret stripped,
  * by the caller, because the examples workspace is not published and its
  * resolution is the installer's business.
  */

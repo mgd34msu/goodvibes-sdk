@@ -38,7 +38,7 @@ server running.
 
 - Live logind inhibit/release proven. An unprivileged idle inhibitor is
   genuinely held via logind (it appears in `systemd-inhibit --list`) and is gone
-  after release — no root, no sudo. The live leg now exercises rather than
+  after release, no root, no sudo. The live leg now exercises rather than
   skipping. Printed live-path output:
 
   > [power test] live logind proof EXERCISED: an unprivileged idle inhibitor was
@@ -54,7 +54,7 @@ server running.
 
   Leak check: `pgrep -fc "dbus-monitor --system.*PrepareForSleep"` returned the
   same count (1, the host's own legitimately-parented watcher) before and after
-  the full power test file ran — the fix leaves nothing behind.
+  the full power test file ran, the fix leaves nothing behind.
 
 ### Observed-agent steer channel (test/observed-external-agents.test.ts)
 

@@ -1,13 +1,13 @@
 /**
- * session-event-stream.ts — opening the SSE stream a client renders a turn from
+ * session-event-stream.ts, opening the SSE stream a client renders a turn from
  * when the loop is running in THIS daemon rather than in the client.
  *
  * Two routes need exactly this: `GET /api/sessions/:id/events` (a shared or
  * daemon-hosted session) and `GET /api/companion/chat/sessions/:id/events`.
  * They had one copy each, and both copies carried the same two defects:
  *
- *  - They subscribed on `DEFAULT_DOMAINS`, which contains `turn` — the text
- *    deltas, the turn lifecycle, the token usage — and does NOT contain
+ *  - They subscribed on `DEFAULT_DOMAINS`, which contains `turn`, the text
+ *    deltas, the turn lifecycle, the token usage, and does NOT contain
  *    `tools`, where `TOOL_RECEIVED` / `TOOL_EXECUTING` / `TOOL_SUCCEEDED` /
  *    `TOOL_FAILED` are emitted. A client on the defaults received everything
  *    the model SAID and nothing it DID: the turn rendered with its tool calls
@@ -18,7 +18,7 @@
  *  - They did not scope delivery. The path names ONE session; the stream handed
  *    every subscriber every OTHER session's frames as well, and each client was
  *    expected to know to throw them away. Frames carrying no session id still
- *    flow — they make no claim about a session.
+ *    flow, they make no claim about a session.
  *
  * One function so the next session-scoped stream cannot be added with the
  * defaults again.

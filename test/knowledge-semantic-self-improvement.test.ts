@@ -398,7 +398,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
         return { searched: true, evidenceSufficient: false, acceptedSourceIds: [], ingestedSourceIds: [], skippedUrls: [] };
       },
     });
-    // Space-scoped — the branch every sync-pump round takes.
+    // Space-scoped, the branch every sync-pump round takes.
     const result = await semantic.selfImprove({ knowledgeSpaceId: spaceId, force: true }, { stopWhenPaused: true });
     expect(repairCalls).toBe(1);
     expect(result.processedGaps).toBe(1);
@@ -406,7 +406,7 @@ describe('semantic knowledge/wiki enrichment: self-improvement', () => {
     expect(result.truncated).toBe(true);
     expect(result.budgetExhausted).toBe(true);
     // WITHOUT stopWhenPaused (a foreground/operator run), the pause does not
-    // stop it — the flag is a background-run contract, not a global gate.
+    // stop it, the flag is a background-run contract, not a global gate.
     paused = false;
     const semantic2 = new KnowledgeSemanticService(store, {
       isBackgroundPaused: () => true, // paused the whole time

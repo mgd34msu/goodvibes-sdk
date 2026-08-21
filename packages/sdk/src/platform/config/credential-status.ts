@@ -5,13 +5,13 @@
  * daemon's `credentials.get` wire method (config sharing, see CHANGELOG 1.0.0).
  *
  * The returned provider reports whether each credential in the shared store is
- * configured and usable — it NEVER exposes the plaintext value. `usable` is a
+ * configured and usable, it NEVER exposes the plaintext value. `usable` is a
  * real in-process resolution attempt (env → store → secret-ref), reported only
  * as a boolean, so a configured-but-unresolvable reference (e.g. a broken
  * `op://` ref) is honestly `configured: true, usable: false`.
  *
  * Enumeration is never a `process.env` dump. It covers STORED keys, plus the
- * env-backed keys whose names are KNOWN credential names — the provider env
+ * env-backed keys whose names are KNOWN credential names, the provider env
  * vars this SDK itself publishes in BUILTIN_PROVIDER_ENV_KEYS. Every other
  * environment variable stays invisible, so `PATH`, `AWS_PROFILE` and the rest
  * of the shell can still never be enumerated over the wire.
@@ -19,7 +19,7 @@
  * That intersection is what dropping every env record was reaching for, and it
  * was too wide a cut. `get()` consults env, so a provider key configured only
  * as `ANTHROPIC_API_KEY` answered `configured: true` from `get` while being
- * absent from `list` altogether — the two disagreeing about the same
+ * absent from `list` altogether, the two disagreeing about the same
  * credential. `list` is what a setup screen renders, so a key that was working
  * read as missing, which is the report that sends someone to re-enter a
  * credential they already have.
@@ -70,7 +70,7 @@ export function createCredentialStatusProvider(
     async list(): Promise<readonly CredentialStatusRecord[]> {
       const detailed = await secrets.listDetailed();
       // Stored keys, plus env-backed keys whose NAME this SDK publishes as a
-      // credential. The bulk env enumeration is still filtered out — the
+      // credential. The bulk env enumeration is still filtered out, the
       // intersection is the whole point, and it is what keeps unrelated
       // environment variable names off the wire.
       const knownEnvNames = knownCredentialEnvNames();

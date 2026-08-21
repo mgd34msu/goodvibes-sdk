@@ -1,5 +1,5 @@
 /**
- * cart.ts — the cart must contain what he asked for and nothing else.
+ * cart.ts, the cart must contain what he asked for and nothing else.
  *
  * ── Never add filler items ────────────────────────────────────────────────
  *
@@ -89,7 +89,7 @@ export function assertCartMatchesRequest(
     parts.push(
       `the cart contains ${unexpected.length} line(s) you did not ask for `
       // The merchant chose these labels, and this reason is delivered to a
-      // channel. Neutralised, not interpolated raw — see security/notice-text.ts.
+      // channel. Neutralised, not interpolated raw, see security/notice-text.ts.
       + `(${unexpected.map((line) => sanitizeNoticeField(line.label, 60)).join(', ')})`,
     );
   }
@@ -136,7 +136,7 @@ export interface RecurringCheck {
 /**
  * Look for recurring-charge language in the order summary.
  *
- * Takes the checkout's own text — which IS untrusted page content, and is used
+ * Takes the checkout's own text, which IS untrusted page content, and is used
  * here only to decide whether to REFUSE. Untrusted content can always talk us
  * out of an action; the rule it may never do is talk us into one. Reading it to
  * find a reason to stop is the safe direction of that asymmetry.
@@ -152,7 +152,7 @@ export function detectRecurringCharge(orderSummaryText: string): RecurringCheck 
     recurring: true,
     matched,
     reason:
-      // `matched` is text lifted straight off the merchant's order summary —
+      // `matched` is text lifted straight off the merchant's order summary,
       // the most directly attacker-chosen string in this module.
       `Refused: this checkout looks like it sets up a recurring charge `
       + `(${matched.map((hit) => sanitizeNoticeField(hit, 40)).join(', ')}). `

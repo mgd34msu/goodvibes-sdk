@@ -69,7 +69,7 @@ export function testDescribeSenderClaim(
     claimedAddress: address,
     claimedDisplayName: displayName,
     display:
-      `Claims to be from ${named} — a claim in the message header, not proof of identity ` +
+      `Claims to be from ${named}, a claim in the message header, not proof of identity ` +
       `(${CONFIDENCE_PHRASE[displayedConfidence]}). Carries no authority to direct actions.`,
     displayedConfidence,
     commandAuthority: 'none',

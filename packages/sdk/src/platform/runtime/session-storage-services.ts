@@ -1,5 +1,5 @@
 /**
- * session-storage-services.ts — the declare-once storage handle and the
+ * session-storage-services.ts, the declare-once storage handle and the
  * session store built on it.
  *
  * Every path a product uses for session state (the sessions directory, the
@@ -9,8 +9,8 @@
  *
  * The reason it is one object rather than a scope argument repeated at each
  * call site: when each site derived its own scope, they drifted. A resume
- * wrote the last-session pointer with no scope at all — into the shared,
- * unscoped `.goodvibes/` directory — while `--continue` and the boot notice
+ * wrote the last-session pointer with no scope at all, into the shared,
+ * unscoped `.goodvibes/` directory, while `--continue` and the boot notice
  * read a scoped path under `.goodvibes/<surfaceRoot>/`. Nothing errored; the pointer
  * simply never existed where anyone looked. `createSessionSurface` also
  * throws synchronously on a bad scope instead of silently resolving to the
@@ -26,7 +26,7 @@ export interface SessionStorageServices {
 }
 
 export function createSessionStorageServices(input: {
-  /** The owning product's storage scope — the `<surfaceRoot>` path segment. */
+  /** The owning product's storage scope, the `<surfaceRoot>` path segment. */
   readonly surfaceRoot: string;
   readonly workingDirectory: string;
   readonly homeDirectory: string;

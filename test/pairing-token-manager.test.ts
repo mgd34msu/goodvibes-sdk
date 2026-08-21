@@ -50,7 +50,7 @@ describe('PairingTokenManager', () => {
     expect(mgr.authenticate(b.token)?.id).toBe(b.id);
     expect(mgr.authenticate('gvp_not-a-real-token')).toBeNull();
 
-    // Revoke one device — it fails immediately, the other still works.
+    // Revoke one device, it fails immediately, the other still works.
     expect(mgr.revoke(a.id)).toBe(true);
     expect(mgr.authenticate(a.token)).toBeNull();
     expect(mgr.authenticate(b.token)?.id).toBe(b.id);
@@ -107,7 +107,7 @@ describe('PairingTokenManager: the store file itself', () => {
     writeFileSync(file, Buffer.concat([Buffer.from('{"tokens":[]}', 'utf-8'), Buffer.from([0, 0])]));
 
     const mgr = new PairingTokenManager(file);
-    // Auth still works — it starts clean rather than throwing on construction.
+    // Auth still works, it starts clean rather than throwing on construction.
     expect(mgr.list()).toEqual([]);
 
     // And the bytes it could not read were moved aside with a receipt, so the

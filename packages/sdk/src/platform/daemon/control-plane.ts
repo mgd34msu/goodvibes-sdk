@@ -86,7 +86,7 @@ interface UpgradeCapableServer {
 
 /**
  * Max concurrently in-flight WS 'call' invocations, counted for the FULL
- * lifetime of each call — from Request synthesis through response-body
+ * lifetime of each call, from Request synthesis through response-body
  * buffering. Each in-flight call retains a synthesized Request whose headers
  * carry the operator-token Authorization header (the exact object shape found
  * ~206k times in the 2026-07-14 OOM core), so an unbounded backlog is exactly
@@ -198,7 +198,7 @@ export class DaemonControlPlaneHelper {
     }
     if (authenticated.kind === 'pairing-token') {
       // A paired device is a distinct, per-token principal (`pairing:<id>`) with
-      // full operator authority — so step-up credentials key per token and a
+      // full operator authority, so step-up credentials key per token and a
       // revoked device drops out cleanly.
       return {
         principalId: pairingPrincipalId(authenticated.tokenId),
@@ -241,7 +241,7 @@ export class DaemonControlPlaneHelper {
         body: {
           error: `Gateway method is cataloged but not invokable through method dispatch: ${descriptor.id}`,
           // Machine-readable, following the SDKErrorCodes.SESSION_CLOSED precedent
-          // (session-broker.ts) — consumers match on `code`, never on the message
+          // (session-broker.ts), consumers match on `code`, never on the message
           // string. See the `invokable` field's doc comment (method-catalog-shared.ts)
           // for what this status does and does not mean.
           code: SDKErrorCodes.NOT_INVOKABLE,
@@ -334,7 +334,7 @@ export class DaemonControlPlaneHelper {
       remoteAddress: ws.data.remoteAddress,
     }, (event, payload) => {
       // Backpressure guard: a stalled consumer must not grow the socket's
-      // native outgoing buffer without bound during an event storm — drop the
+      // native outgoing buffer without bound during an event storm, drop the
       // event (counted) once the buffered amount crosses the ceiling.
       const buffered = ws.getBufferedAmount?.() ?? 0;
       if (buffered > WS_EVENT_MAX_BUFFERED_BYTES) {
@@ -550,7 +550,7 @@ export class DaemonControlPlaneHelper {
     }
     this.wsCallsInFlight += 1;
     // Abortable request: streaming endpoints (SSE event sources) tear down on
-    // request.signal abort — without this, a stream reached as a plain call
+    // request.signal abort, without this, a stream reached as a plain call
     // would pin the Request + Response + a growing buffer forever.
     const abort = new AbortController();
     try {
@@ -567,7 +567,7 @@ export class DaemonControlPlaneHelper {
       });
       const response = await this.context.dispatchApiRoutes(request) ?? Response.json({ error: 'Not found' }, { status: 404 });
       // A streaming response cannot be delivered over the request/response call
-      // frame — refuse honestly (and tear the producer down) instead of
+      // frame, refuse honestly (and tear the producer down) instead of
       // buffering an endless body via text().
       const contentType = response.headers.get('content-type') ?? '';
       if (contentType.includes('text/event-stream')) {
@@ -624,7 +624,7 @@ export class DaemonControlPlaneHelper {
        * True when a person asked for this, now. Set ONLY by transports that
        * can honestly claim it; scheduled work and triggers leave it unset
        * because they cannot. It gates the explicit-user-request refusal and
-       * starts a new untrusted-content turn — see
+       * starts a new untrusted-content turn, see
        * control-plane/routes/explicit-user-request.ts and
        * security/turn-boundary.ts.
        */
@@ -643,7 +643,7 @@ export class DaemonControlPlaneHelper {
         status: 404,
         ok: false,
         // Machine-readable, mirroring the NOT_INVOKABLE convention just below
-        // (validateGatewayInvocation) — the uncataloged-id 404 gets its own code so
+        // (validateGatewayInvocation), the uncataloged-id 404 gets its own code so
         // no consumer has to string-match "Unknown gateway method".
         body: refusalBody(`Unknown gateway method: ${input.methodId}`, SDKErrorCodes.METHOD_NOT_FOUND, 404),
       };
@@ -652,7 +652,7 @@ export class DaemonControlPlaneHelper {
     if (denied) return denied;
     // Input validation gate: reject a wrong-typed / missing-required body against
     // the verb's typed inputSchema before the handler runs (honest 400, not silent
-    // coercion). Only body-carrying invocations are checked — a handler method
+    // coercion). Only body-carrying invocations are checked, a handler method
     // (no http binding) or a POST/PATCH verb receives its params in the body;
     // GET/DELETE params arrive as query strings that cannot be soundly type-checked.
     const carriesBody = !descriptor.http || descriptor.http.method === 'POST' || descriptor.http.method === 'PATCH';
@@ -668,7 +668,7 @@ export class DaemonControlPlaneHelper {
     }
     if (this.context.gatewayMethods.hasHandler(input.methodId)) {
       // ONE contract: no WS call arm is unbounded. The registered-handler branch
-      // shares the same in-flight counter as the direct http-dispatch path —
+      // shares the same in-flight counter as the direct http-dispatch path,
       // each in-flight invocation retains its auth token + client-controlled
       // frame body for the handler's full latency, so an uncapped pipeline of
       // methodId frames was the same retained-context class the direct-path cap
@@ -702,9 +702,9 @@ export class DaemonControlPlaneHelper {
         return { status: 200, ok: true, body };
       } catch (error) {
         // A handler-registered verb (fleet.*, checkpoints.*,
-        // sessions.search — see CHANGELOG 1.0.0) reports an honest caller-error
+        // sessions.search, see CHANGELOG 1.0.0) reports an honest caller-error
         // status (400/403/404) instead of the blanket 500 below by throwing a
-        // refusal — read by shape, so a consuming runtime's own error class
+        // refusal, read by shape, so a consuming runtime's own error class
         // counts too. See routes/gateway-verb-error.ts.
         const refusal = readGatewayVerbRefusal(error);
         if (refusal) {

@@ -34,7 +34,7 @@ function readDaemonCliTokens(env: NodeJS.ProcessEnv): DaemonCliTokens {
 /**
  * The one-command service install: `goodvibes-daemon --install-service`
  * writes the service unit (with the survival contract) and reports the
- * follow-up commands — no raw HTTP call, no admin-token juggling. This is
+ * follow-up commands, no raw HTTP call, no admin-token juggling. This is
  * what the detached-spawn hint names for setups where the daemon could not
  * promote itself.
  */
@@ -69,13 +69,13 @@ async function main(): Promise<void> {
   // then every info/warn/error in the whole platform is dropped on the floor.
   // The TUI and agent entrypoints both do this at startup, so the standalone
   // daemon was the ONE host where a delivery failure, a rejected bot token, or
-  // an unroutable reply produced no record anywhere — which is precisely how a
+  // an unroutable reply produced no record anywhere, which is precisely how a
   // dropped surface reply looked identical to a message that never arrived.
   configureActivityLogger(join(workingDir, '.goodvibes', 'logs'));
   // `--daemon-home` / `GOODVIBES_DAEMON_HOME` names the daemon's own state
   // directory (`~/.goodvibes/daemon` by default). It was parsed here and then
-  // threaded only into the identity files — `ensureDaemonHome`, the operator
-  // token path — while the ConfigManager derived its daemon tier from
+  // threaded only into the identity files, `ensureDaemonHome`, the operator
+  // token path, while the ConfigManager derived its daemon tier from
   // `homedir()` regardless. So a daemon told to keep its state somewhere else
   // read its settings from the real home anyway, and the flag silently governed
   // half of what it names. daemon-config-tier.ts has always said a caller
@@ -96,8 +96,8 @@ async function main(): Promise<void> {
   }
   new GlobalNetworkTransportInstaller().install(config);
   // Point the bus listener cap at `runtime.eventBus.maxListeners` before the
-  // first bus exists, so every bus this process builds later — including ones
-  // built by components that hold no ConfigManager — uses the operator's number.
+  // first bus exists, so every bus this process builds later, including ones
+  // built by components that hold no ConfigManager, uses the operator's number.
   configureRuntimeEventBusDefaults(runtimeEventBusOptionsFrom((key) => config.get(key)));
   const runtimeBus = new RuntimeEventBus();
 
@@ -138,7 +138,7 @@ async function main(): Promise<void> {
 
   // The daemon CLI IS the SDK-released artifact, so its update identity is
   // the SDK release version and the running executable. Embedders never get
-  // this default — they pass their own artifact identity (or none).
+  // this default, they pass their own artifact identity (or none).
   const daemon = new DaemonServer({ runtimeBus, userAuth, runtimeServices, swapManager, updateArtifact: { version: VERSION } });
   const listener = new HttpListener({
     hookDispatcher: runtimeServices.hookDispatcher,
@@ -181,7 +181,7 @@ void main().catch(async (error) => {
   // A daemon that dies during startup must leave the reason where an operator
   // will actually find it: on the file descriptor the service journal is
   // attached to, written synchronously, BEFORE the activity log is attempted.
-  // Doing it the other way round is what shipped mute — see fatal-boot-report.ts.
+  // Doing it the other way round is what shipped mute, see fatal-boot-report.ts.
   reportFatalBootFailure(error);
   process.exit(1);
 });

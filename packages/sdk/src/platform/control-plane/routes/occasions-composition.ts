@@ -14,8 +14,8 @@
  *
  * ## Delivery is bound, not invented
  *
- * The nudge goes out over the channel delivery router — the same substrate the
- * proactive check-in uses — with the target parsed by the router's own parser.
+ * The nudge goes out over the channel delivery router, the same substrate the
+ * proactive check-in uses, with the target parsed by the router's own parser.
  * That includes the `agent` destination: the router carries a strategy for it,
  * and the agent product registers the sender that lands the message in its
  * conversation (`channels/delivery/strategies-agent.ts`). Nothing about this
@@ -35,7 +35,7 @@
  * The timer is deliberately dumb, because the SWEEP is where the judgement is:
  * a tick inside quiet hours raises nothing and reaps anyway, and a tick on a day
  * an occasion has already been raised finds its open item not yet due. So the
- * interval decides how soon the first nudge lands and nothing else — it cannot
+ * interval decides how soon the first nudge lands and nothing else, it cannot
  * make the system nag. It is `unref`'d so it never holds the process open, and
  * a tick that overlaps a still-running one is skipped rather than queued.
  */
@@ -192,7 +192,7 @@ export function composeOccasions(
  * What the gateway registrar has to hand when it installs this.
  *
  * Declared here rather than as an inline object at the call site so the
- * registrar's own file — which is at the repo's line-cap ceiling — carries one
+ * registrar's own file, which is at the repo's line-cap ceiling, carries one
  * line for this feature rather than a dozen, and so the reasoning about WHICH
  * pieces are needed lives beside the composition that needs them.
  */

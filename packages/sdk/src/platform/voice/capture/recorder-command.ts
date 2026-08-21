@@ -1,5 +1,5 @@
 /**
- * recorder-command.ts — which recorder to run, and the exact argv for it.
+ * recorder-command.ts, which recorder to run, and the exact argv for it.
  *
  * `voice.wake.captureCommand` names five recorders and an `auto` probe. Turning
  * that setting into a working command line is neither obvious nor uniform, and
@@ -13,7 +13,7 @@
  *    bytes of a live stream: `dns.` and a length field without the flag, pure
  *    PCM with it.
  *  - **pw-record's `--target` is a PipeWire node serial or node name**, not a
- *    PulseAudio device name — passing the latter fails with "no target node
+ *    PulseAudio device name, passing the latter fails with "no target node
  *    available" rather than falling back to the default.
  *  - **parecord writes to stdout only with `--raw`**; without it the stream is
  *    wrapped in a file format.
@@ -66,8 +66,8 @@ export interface RecorderCommandOptions {
    * Backends already proven unable to capture on THIS host, skipped by `auto`.
    *
    * Being installed is not the same as working. On a host where pw-record is
-   * present but cannot read the audio graph, `auto` picked it every time —
-   * because it is first in the probe order and `isInstalled` said yes — and
+   * present but cannot read the audio graph, `auto` picked it every time,
+   * because it is first in the probe order and `isInstalled` said yes, and
    * capture produced nothing at all, silently, forever. Measured on that host:
    * `pw-record --target <a name pactl lists>` answers "no target node
    * available" and exits 1, and with no target at all it yields zero bytes,

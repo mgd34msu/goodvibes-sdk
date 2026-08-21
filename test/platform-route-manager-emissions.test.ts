@@ -56,7 +56,7 @@ function captureRouteEvents(bus: RuntimeEventBus): CapturedEvent[] {
 }
 
 // ---------------------------------------------------------------------------
-// Tests — upsertBinding emissions
+// Tests, upsertBinding emissions
 // ---------------------------------------------------------------------------
 
 describe('RouteBindingManager.upsertBinding — emissions', () => {
@@ -114,7 +114,7 @@ describe('RouteBindingManager.upsertBinding — emissions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Tests — removeBinding emissions
+// Tests, removeBinding emissions
 // ---------------------------------------------------------------------------
 
 describe('RouteBindingManager.removeBinding — emissions', () => {

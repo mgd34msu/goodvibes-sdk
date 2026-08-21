@@ -434,7 +434,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'watchers.update',
     title: 'Update Watcher',
-    description: 'Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
+    description: 'Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)',
     category: 'watchers',
     scopes: ['write:watchers'],
     access: 'admin',
@@ -577,8 +577,8 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
   /**
    * Route-reconcile debt, retired in full.
    *
-   * Eight methods here — channels.inbox.list, channels.routing.*,
-   * channels.drafts.* — advertised http paths that no dispatch route served,
+   * Eight methods here, channels.inbox.list, channels.routing.*,
+   * channels.drafts.*, advertised http paths that no dispatch route served,
    * and were marked `invokable: false` so the published contract and the live
    * method-dispatch path both said "cataloged, not callable" rather than
    * letting a caller find the 404 on their own.
@@ -589,7 +589,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
    *
    * `channels.inbox.list` was the eighth and the last, because it needed an
    * aggregator rather than a route. It has one now. The host that holds the
-   * provider credentials — the daemon — keeps a synced mirror of what its
+   * provider credentials, the daemon, keeps a synced mirror of what its
    * Slack / Discord / IMAP adapters have pulled in, and attaches a handler for
    * this id over the descriptor below. The advertised path is in the gateway
    * REST table alongside its routing/drafts siblings, so the plain-REST call
@@ -597,7 +597,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
    *
    * What that means for the shape: the answer is served from the host's mirror,
    * not from a fresh remote fetch per call, so freshness is a fact a caller has
-   * to be told rather than assume. `providers` carries it — one entry per
+   * to be told rather than assume. `providers` carries it, one entry per
    * provider the host knows about, every call, whether or not it contributed an
    * item. A host that attaches no handler answers 501 NOT_INVOKABLE naming the
    * missing composition step (daemon/gateway-self-dispatch.ts), which is an
@@ -607,7 +607,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
     id: 'channels.inbox.list',
     title: 'List Channel Inbox',
     description:
-      'Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host\'s synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers` — including the unconfigured and the failing ones — so a short list is never ambiguous, and `partial` is true whenever a configured provider\'s items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer\'s `cursor` watermark; ?provider=<id> narrows to one provider.',
+      'Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host\'s synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers`, including the unconfigured and the failing ones, so a short list is never ambiguous, and `partial` is true whenever a configured provider\'s items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer\'s `cursor` watermark; ?provider=<id> narrows to one provider.',
     category: 'channels',
     scopes: ['read:channels'],
     http: { method: 'GET', path: '/api/channels/inbox' },
@@ -627,7 +627,7 @@ export const builtinGatewayChannelMethodDescriptors: readonly GatewayMethodDescr
       /**
        * Freshness watermark: the newest receivedAt in the filtered mirror. Feed
        * it back as `since` to ask only for what has arrived since. NOT a page
-       * cursor — that is `nextCursor`, and the two are deliberately separate
+       * cursor, that is `nextCursor`, and the two are deliberately separate
        * because "what is new" and "the next page down" are different questions.
        */
       cursor: STRING_SCHEMA,

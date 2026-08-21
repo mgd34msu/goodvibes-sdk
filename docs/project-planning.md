@@ -1,4 +1,4 @@
-# Project Planning
+# Project planning
 
 Project Planning is the SDK support layer for the TUI's conversational planning
 loop. It stores project-scoped planning artifacts in the knowledge system and
@@ -33,7 +33,7 @@ The daemon never initiates planning. It exposes storage/evaluation routes only.
 Home Assistant, companion apps, ntfy, Slack, webhooks, and other programmatic
 surfaces are not routed into planning loops by this feature.
 
-## Work Plans
+## Work plans
 
 Project work plans are the shared durable task model for TUI, WebUI, APK,
 daemon planning, and WRFC correlation. They replace surface-local task lists
@@ -57,8 +57,8 @@ The SDK validates the work-plan status vocabulary (`ProjectWorkPlanTaskStatus`):
 
 Do not confuse this with `ProjectPlanningTaskStatus`, the separate enum used by
 the planning-state `tasks` field (`ProjectPlanningTask`), whose members are
-`pending`, `in-progress`, `blocked`, `completed`, and `deferred` — hyphenated,
-and with `completed` rather than `done`/`failed`/`cancelled`.
+`pending`, `in-progress`, `blocked`, `completed`, and `deferred`, hyphenated,
+and with `completed` rather than `done`, `failed`, or `cancelled`.
 
 Operator methods are exposed under `projectPlanning.workPlan.*` and daemon
 routes under `/api/projects/planning/work-plan`. Clients should use those
@@ -79,7 +79,7 @@ WRFC and planning integrations should link visible tasks to owner chains and
 phase children through the correlation fields rather than presenting child
 agents as unrelated work.
 
-## Knowledge Spaces
+## Knowledge spaces
 
 Planning artifacts live in project knowledge spaces:
 
@@ -120,7 +120,7 @@ Artifact kinds:
 This keeps planning integrated with the knowledge/wiki store without adding a
 separate persistence system.
 
-## Planning State
+## Planning state
 
 The planning state shape is designed for the TUI planning panel and execution
 handoff:
@@ -155,7 +155,7 @@ The SDK does not decide what the TUI should ask next by itself. It returns gaps
 and a suggested `nextQuestion` so the TUI can keep the conversation disciplined
 while preserving conversational control.
 
-## Readiness Evaluation
+## Readiness evaluation
 
 `ProjectPlanningService.evaluate()` and
 `POST /api/projects/planning/evaluate` are pure evaluators. They do not persist
@@ -179,7 +179,7 @@ The output contains:
 - `nextQuestion` when a gap has a concrete question
 - the normalized state with the evaluated readiness
 
-## Decision Records
+## Decision records
 
 Decision records should be used for meaningful project choices, not every small
 implementation detail. A decision belongs here when reversal would be expensive,
@@ -196,7 +196,7 @@ Stored fields include:
 - consequences
 - status
 
-## Project Language
+## Project language
 
 Project language records prevent future TUI turns and agents from re-litigating
 terminology. They can store:
@@ -270,7 +270,7 @@ Operator method ids:
 - `projectPlanning.workPlan.tasks.reorder`
 - `projectPlanning.workPlan.clearCompleted`
 
-## TUI Integration Shape
+## TUI integration shape
 
 The TUI should use this feature as a passive backing store:
 
@@ -287,7 +287,7 @@ The TUI should use this feature as a passive backing store:
 The planning panel can render the same state returned by the SDK. The daemon
 does not own panel state or conversational transitions.
 
-## Next Reads
+## Next reads
 
-- [Runtime Orchestration](./runtime-orchestration.md) — how WRFC chains and agent work correlate to work-plan tasks.
-- [Automation And Watchers](./automation.md) — operator-method families for daemon-hosted jobs and schedules.
+- [Runtime orchestration](./runtime-orchestration.md): how WRFC chains and agent work correlate to work-plan tasks.
+- [Automation and watchers](./automation.md): operator-method families for daemon-hosted jobs and schedules.

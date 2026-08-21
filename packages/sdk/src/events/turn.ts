@@ -1,5 +1,5 @@
 /**
- * TurnEvent — discriminated union covering all conversation turn lifecycle events.
+ * TurnEvent, discriminated union covering all conversation turn lifecycle events.
  *
  * Maps to the typed runtime event contract for the turn domain.
  */
@@ -19,13 +19,13 @@ export interface TurnInputOrigin {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
   /**
    * True when the transport that produced this input can honestly attest the
-   * OWNER sent it — it authenticated him, or it read his local terminal.
+   * OWNER sent it, it authenticated him, or it read his local terminal.
    *
    * This is what starts a new untrusted-content turn (see
    * platform/security/turn-boundary.ts), so it is a claim about the caller,
    * made by the code that handled the call. Nothing in a message body can set
    * it: message bodies do not construct these records. A transport that cannot
-   * tell the owner from a channel leaves it unset, and the window stays open —
+   * tell the owner from a channel leaves it unset, and the window stays open,
    * the safe direction, because resetting it wrongly would let content that was
    * just read erase the record of itself.
    */
@@ -98,7 +98,7 @@ export type TurnEvent =
     durationMs?: number | undefined;
     retries?: number | undefined;
     /**
-     * usage x resolved price, in USD cents — actuals only. Absent when the
+     * usage x resolved price, in USD cents, actuals only. Absent when the
      * model's price is unknown or the surface is subscription-priced; the
      * absence is deliberate (an explicit unpriced marker via costSource),
      * never a silent $0.
@@ -108,7 +108,7 @@ export type TurnEvent =
      * Where the price behind costUsdCents came from: a user-set manual
      * price ('user'), the provider's own machine-readable pricing
      * ('provider'), a dated catalog entry ('catalog'), a subscription
-     * surface (no per-token price), or 'unknown' (unpriced usage —
+     * surface (no per-token price), or 'unknown' (unpriced usage,
      * downstream sums must report it, never $0 it).
      */
     costSource?: 'user' | 'provider' | 'catalog' | 'subscription' | 'unknown' | undefined;
@@ -148,10 +148,10 @@ export type TurnEvent =
    *
    * `metadata.memory.recordIds` carries the MEMORY-sourced knowledge-record ids
    * that were injected into this turn (TurnInjectionRecord.injectedIds filtered
-   * to source 'memory' — code-index hits are deliberately excluded). The path
+   * to source 'memory', code-index hits are deliberately excluded). The path
    * shape matches the documented surface convention exactly
    * (`metadata.memory.recordIds: string[]`), so a provenance chip reads it
-   * unchanged. A turn with no memory injections carries NO metadata field —
+   * unchanged. A turn with no memory injections carries NO metadata field,
    * honest absence, never an empty array.
    */
   | { type: 'TURN_COMPLETED'; turnId: string; response: string; stopReason: Extract<TurnStopReason, 'completed' | 'empty_response'>; metadata?: TurnCompletedMetadata | undefined }
@@ -162,7 +162,7 @@ export type TurnEvent =
 
 /**
  * Optional provenance metadata on TURN_COMPLETED. The `memory.recordIds` path
- * is a published convention surfaces already read — keep the shape stable.
+ * is a published convention surfaces already read, keep the shape stable.
  */
 export interface TurnCompletedMetadata {
   readonly memory?: { readonly recordIds: readonly string[] } | undefined;

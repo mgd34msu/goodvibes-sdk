@@ -9,7 +9,7 @@
  * back again: the store behaves, the descriptors no longer claim to be
  * uncallable, and the advertised REST paths actually resolve.
  *
- * `channels.inbox.list` was the eighth, and it is served now too — by the host
+ * `channels.inbox.list` was the eighth, and it is served now too, by the host
  * that holds the provider credentials, from its synced mirror. What is asserted
  * here is the split: the flag is gone and the advertised path is routed, while
  * registering THESE handlers still attaches nothing for it, because an SDK-only
@@ -83,7 +83,7 @@ describe('the routing table', () => {
 
     expect((await registry.listRoutes({ surfaceKind: 'slack' })).total).toBe(2);
     expect((await registry.listRoutes({ profileId: 'p2' })).total).toBe(1);
-    // A limited read still says how many there are — a screen that reported
+    // A limited read still says how many there are, a screen that reported
     // the page size as the total would say "1 rule" about a table holding two.
     const limited = await registry.listRoutes({ surfaceKind: 'slack', limit: 1 });
     expect(limited.routes).toHaveLength(1);
@@ -127,7 +127,7 @@ describe('the draft mirror', () => {
 
   // A webhook URL is a credential: anyone holding it can post to the channel.
   // The composing surface redacts before it sends, so a live value arriving
-  // here means that redaction did not run — and this store syncs to every one
+  // here means that redaction did not run, and this store syncs to every one
   // of the owner's machines.
   test('a live webhook URL is refused rather than mirrored', async () => {
     await expect(registry.saveDraft({ ...draft, webhook: 'https://hooks.slack.com/services/T/B/XXXX' }))
@@ -207,8 +207,8 @@ describe('the verbs are callable, and say so', () => {
     expect(answer).toEqual({ notFound: true });
   });
 
-  // The eighth verb, and the last of this debt. It is served now — by the host
-  // that holds the provider credentials, not by this module — so the flag is
+  // The eighth verb, and the last of this debt. It is served now, by the host
+  // that holds the provider credentials, not by this module, so the flag is
   // gone and the path is in the table. What stays true is that registering the
   // routing/drafts handlers attaches no handler for it: an SDK-only build has
   // no mailbox, and the 501 it answers names the composition step that is

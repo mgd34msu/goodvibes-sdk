@@ -1,16 +1,16 @@
 /**
- * round-trip-proof.ts — provisioning ends by PROVING the runtime works.
+ * round-trip-proof.ts, provisioning ends by PROVING the runtime works.
  *
  * "Provisioned" used to mean "the bytes are on disk and the checksums matched".
  * That is not the claim anyone cares about. On the owner's machine every byte
  * was present and verified, the install reported success, and speech-to-text
- * did not work — because the config still pointed at a different install. The
+ * did not work, because the config still pointed at a different install. The
  * install was right about everything it checked and wrong about the only thing
  * that mattered.
  *
  * So the last act of provisioning is a real round trip: SYNTHESIZE a known
  * phrase with the managed TTS, TRANSCRIBE the resulting audio with the managed
- * STT, and compare. What comes back is shown to the user verbatim — the proof
+ * STT, and compare. What comes back is shown to the user verbatim, the proof
  * is the text, not a green tick. If it fails, provisioning reports NOT
  * provisioned, with the stage that failed and the exception, because a false
  * "ready" costs a whole session and an honest failure costs a retry.
@@ -172,7 +172,7 @@ export async function proveVoiceRoundTrip(options: VoiceRoundTripProofOptions): 
       wordOverlap,
       summary: proved
         ? `Spoke "${phrase}" with ${options.ttsEngine} and heard it back through ${options.sttEngine} as "${transcript}".`
-        : `Spoke "${phrase}" with ${options.ttsEngine}, but ${options.sttEngine} heard "${transcript}" — too little of the phrase came back for this to count as working.`,
+        : `Spoke "${phrase}" with ${options.ttsEngine}, but ${options.sttEngine} heard "${transcript}", too little of the phrase came back for this to count as working.`,
     };
   } finally {
     if (options.scratchDir === undefined) rmSync(scratch, { recursive: true, force: true });

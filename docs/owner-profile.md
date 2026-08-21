@@ -30,8 +30,7 @@ containment (§9, §10) is part of the design rather than a caveat on it.
 
 **Learning.** Offered propose-first and autonomous, he chose autonomous:
 
-> You: "ship it to my office instead" → Agent: [records office address] "Noted —
-> saved your office address to your profile."
+> You: "ship it to my office instead" → Agent: [records office address] "Noted, > saved your office address to your profile."
 
 described as *"The agent writes facts it learns from things you say directly to
 it, without asking each time, and tells you what it recorded. Fastest to build
@@ -79,7 +78,7 @@ weight.
 
 2. **The knowledge store is the machine's untrusted-content intake.** Its ingest
    paths are `knowledge.ingest.url`, `.bookmarks`, `.artifact`,
-   `.browserHistory`, `.connector` — web pages, documents, bookmark exports.
+   `.browserHistory`, `.connector`, web pages, documents, bookmark exports.
    Requirement 3 says untrusted content must be *incapable* of reaching the
    profile. Putting the profile inside the store built to absorb web pages makes
    that a filter to maintain instead of a property of the design. A separate file
@@ -106,7 +105,7 @@ edit is picked up without a restart; a watcher is not a lookup structure.
 ### 2.4 Why Markdown, given the file was already chosen
 
 He named it. Beyond that it is the only one of the candidates that is legible
-*as a document* — he can open it, read the whole dossier at a glance, and fix a
+*as a document*, he can open it, read the whole dossier at a glance, and fix a
 line the way he would fix a line in any note. JSON, YAML and TOML are all
 formats you edit as data; this is a page he reads. The cost of Markdown is that
 nothing is strictly validated, which is why §4.4 makes leniency explicit and
@@ -123,19 +122,19 @@ disciplines.
 
 Resolved through the daemon home (honouring `GOODVIBES_DAEMON_HOME`), the
 directory that already holds `settings.json`, `operator-tokens.json` and
-`detached-daemon.json` — see `platform/config/daemon-config-tier.ts`.
+`detached-daemon.json`, see `platform/config/daemon-config-tier.ts`.
 
 Daemon scope, not surface scope, for the reason `config-ownership.ts` already
 gives: a fact written from the agent must be readable by the daemon with every
 surface closed, and by the TUI tomorrow. A surface-scoped profile reproduces the
-failure that motivated the daemon-credential-scope round — a value written
+failure that motivated the daemon-credential-scope round, a value written
 successfully into a silo the daemon never reads, reporting success and
 configuring nothing.
 
 Surfaces never open the file. They read and write through the daemon's control
 plane (§11).
 
-**The daemon is the only *program* that writes it — but it is not the only
+**The daemon is the only *program* that writes it, but it is not the only
 writer.** The owner is one too, by design (§4.5), and an earlier draft of this
 section claimed single-writer to justify having no lock while §4.5 and §5.3
 simultaneously depended on him editing the same file. That contradiction was a
@@ -147,9 +146,9 @@ So the rule is: **a write must verify the file has not changed underneath it
 between the projection it edited and the rename.** Compare mtime and content
 against disk immediately before the rename; on a mismatch, re-read and replay
 the edit against the new content, or refuse and say why. Never clobber. The
-window is small — roughly the debounce with `fs.watch`, up to
+window is small, roughly the debounce with `fs.watch`, up to
 `profile.reloadThrottleMs` on the poll fallback, and unbounded if the watcher
-errored — but "small" is not a property anyone should rely on for the file that
+errored, but "small" is not a property anyone should rely on for the file that
 holds his address.
 
 **Naming note:** `platform/profiles/` already exists and is a named-config-preset
@@ -246,16 +245,16 @@ A learned line carries a compact suffix at end of line:
 Em dash, surface, date, verbatim quote. It is recognised only when the whole
 shape matches at end of line, so an em dash in his own prose is prose. Where a
 line somehow carries two suffixes, the **rightmost** valid one wins and the
-older one stays as ordinary visible text — the newest provenance is the true
+older one stays as ordinary visible text, the newest provenance is the true
 one, and nothing is silently destroyed to reach that answer.
 
-Verified against real strings: `- He said — and I quote — that it was fine`
+Verified against real strings: `- He said, and I quote, that it was fine`
 stays prose; a malformed date, an unknown surface name, and a line ending in a
 bare `"` all stay prose; embedded quotes in the verbatim need no escaping.
 
 That is the lightest rendering that still answers "where did you get that"
 completely: which surface, when, and the exact words. It is not dropped, and if
-he finds it ugly the answer is to delete the suffix on that line — which is
+he finds it ugly the answer is to delete the suffix on that line, which is
 allowed and authoritative (§4.5), and after which the honest answer to "where
 did you get that" becomes "no provenance recorded; you edited this line by
 hand."
@@ -266,7 +265,7 @@ A `key: value` line carries the suffix the same way, after the value.
 
 Only these are parsed into typed values. Everything else in the document is
 prose, preserved and served as prose. The people and places sections have **no**
-mechanical fields at all — he asked for notes, and notes are what they are.
+mechanical fields at all, he asked for notes, and notes are what they are.
 
 | Section | Field | Parsed as |
 |---|---|---|
@@ -308,20 +307,18 @@ a file he owns.
   `~~~`) and, while inside a fence, treats nothing as a heading, a field, a
   bullet or a provenance suffix. Without this, a document containing a fenced
   `## Notes` or a fenced `timezone:` line would have that line rewritten by a
-  later write — silent corruption of his own content, which is the worst
+  later write, silent corruption of his own content, which is the worst
   failure this design can have.
 - **Mechanical fields are recognised only at column 0.** An indented
   `Gym: the Y on Michigan Ave` under a bullet is prose, not a field. This also
   avoids guessing at four-space indented code blocks, which are indistinguishable
   from deep list indentation.
-- A bullet, a paragraph, a nested list, a table, a code fence, an HTML comment —
-  all preserved verbatim.
+- A bullet, a paragraph, a nested list, a table, a code fence, an HTML comment, all preserved verbatim.
 - Blank lines, indentation and ordering are preserved.
 
 The **only** conditions that produce "profile unavailable" are: the file cannot
 be read (permissions, I/O error), or its bytes are not valid UTF-8. In those
-cases every verb answers with the state and the reason —
-*"Your profile could not be read: <reason> (`<path>`)"* — never with an empty
+cases every verb answers with the state and the reason, *"Your profile could not be read: <reason> (`<path>`)"*, never with an empty
 profile, which would read as "I know nothing about you" when the truth is "I
 could not open the file."
 
@@ -331,7 +328,7 @@ discards a line it did not understand.
 #### "Not loaded yet" is not one of the states
 
 There are exactly three: **loaded**, **disabled**, and **unavailable with a
-reason**. A live run found a fourth leaking out — `composeOwnerProfile` fires
+reason**. A live run found a fourth leaking out, `composeOwnerProfile` fires
 `void store.load().then(…)` and returns synchronously, so for the first
 milliseconds of daemon life every verb answered *"Your profile has not been
 loaded yet"*.
@@ -349,7 +346,7 @@ no way to connect it to anything.
 prescribed a `ready` promise that verbs and consumer reads would await. That was
 wrong, and the reason is worth keeping: **`ConfigManager.get()` is synchronous**,
 so a fallback reader has nothing to await with. A readiness promise could have
-closed the verb half of the window and never the consumer half — which is the
+closed the verb half of the window and never the consumer half, which is the
 half that costs him a mis-timed check-in. Reading the file once, synchronously,
 in the composition root removes the window instead of making it awaitable.
 
@@ -365,7 +362,7 @@ passing on this message rather than on the gate they were written to prove.
 
 - A line he deletes stays deleted. Nothing restores it, and nothing re-learns it
   from a superseded record. The `<!-- was: … -->` history comments (§9.1) are
-  themselves deletable, and deleting one destroys that history — his call.
+  themselves deletable, and deleting one destroys that history, his call.
 - A line he rewrites keeps his wording. The writer never normalises prose, never
   re-orders sections, never re-wraps, never converts a bullet to a field or back.
 - A line whose provenance suffix he strips keeps no provenance and reports none.
@@ -377,7 +374,7 @@ passing on this message rather than on the gate they were written to prove.
 
 Implementation rule that makes this true rather than aspirational: **the file's
 text is the source of truth, the in-memory model is a projection of it, and every
-write is a surgical edit to a line array — never a re-serialisation of the
+write is a surgical edit to a line array, never a re-serialisation of the
 model.** A round-trip test asserts that writing one fact changes exactly the
 lines it should and leaves every other byte identical.
 
@@ -405,35 +402,34 @@ interface ProfileFieldValue {
 
 Loaded once into:
 
-- `Map<string, ProfileFieldValue>` — mechanical fields, keyed
+- `Map<string, ProfileFieldValue>`, mechanical fields, keyed
   `'location.timezone'`, `'commerce.shippingAddress'`, …
-- `Map<string, ProfileLine[]>` — prose lines by section.
-- `string[]` — the raw lines, for writes.
+- `Map<string, ProfileLine[]>`, prose lines by section.
+- `string[]`, the raw lines, for writes.
 
 A mechanical read is `map.get(key)`. No I/O, no lock, no parse, no `stat` on the
 read path.
 
 ### 5.2 Acceptance criterion
 
-A mechanical-field read must be **effectively free** — target sub-microsecond.
+A mechanical-field read must be **effectively free**, target sub-microsecond.
 `test/owner-profile-read-latency.test.ts` measures nanoseconds per read
 against a realistic document (200 lines), and the measured number goes in the
 round report. Not an assertion that it is fast; a number. If it is not
 effectively free the design has failed his requirement regardless of how correct
 everything else is.
 
-**Measured: 15.2 ns/read** — median of five runs (14.7, 15.0, 15.2, 15.4, 17.2)
+**Measured: 15.2 ns/read**, median of five runs (14.7, 15.0, 15.2, 15.4, 17.2)
 at 1,000,000 reads of a 200-line profile, on a host at 0.42 load per core.
 Roughly sixty-five times inside the sub-microsecond target.
 
 Quote a figure only from a quiet host. An earlier run during a four-lane build
-read 43.6 ns — still far inside the criterion, but nearly three times the
+read 43.6 ns, still far inside the criterion, but nearly three times the
 settled number. A benchmark taken under contention measures the contention.
 
 ### 5.3 Picking up a hand edit
 
-`fs.watch` on the **containing directory**, filtered to the profile's filename —
-never on the file itself. §5.4's atomic write replaces the file's inode, and a
+`fs.watch` on the **containing directory**, filtered to the profile's filename, never on the file itself. §5.4's atomic write replaces the file's inode, and a
 file-level watch is bound to the old inode, so it goes deaf after the first
 write. The symptom would be subtle and awful: hand edits picked up until the
 first autonomous write, and silently ignored forever after. Measured on this
@@ -441,7 +437,7 @@ machine, a directory watch sees a `rename` event for each of two successive
 atomic replacements; a file watch sees the first and then nothing.
 
 On a change event the file is re-read, re-projected, and the model is swapped
-atomically — a reader sees the old projection or the new one, never a half-built
+atomically, a reader sees the old projection or the new one, never a half-built
 one. Where `fs.watch` is unavailable, a `stat` throttled to
 `profile.reloadThrottleMs` (default 2000). **Neither path puts a syscall on a
 read.** The watcher ignores the event caused by its own write (own-write token +
@@ -454,7 +450,7 @@ mean a broken file silently kept answering with stale values.
 ### 5.4 Writes
 
 Mutate the raw line array, join, write to
-`owner-profile.md.tmp.<pid>.<uuid>`, `rename()` over the target — atomic on
+`owner-profile.md.tmp.<pid>.<uuid>`, `rename()` over the target, atomic on
 POSIX, so a crash mid-write leaves either the old complete file or the new
 complete file. Same pattern as `PersistentStore.persist()`
 (`platform/state/persistent-store.ts`) with a text join instead of
@@ -475,7 +471,7 @@ suffix. Nothing turns them into records.
 `Important dates` and `Plans` are prose-only for a reason worth stating, because
 at a glance they look like the most record-shaped sections in the document. A
 birthday is a REPEATED record, and the field registry maps one section-plus-label
-to one value — it can hold `commerce.shippingAddress` and it cannot hold twenty
+to one value, it can hold `commerce.shippingAddress` and it cannot hold twenty
 birthdays. So each occasion is an ordinary prose line, preserved verbatim by this
 parser exactly like any other bullet, and typed by a reader layered on top of it
 (`platform/occasions/grammar.ts`, see `docs/occasions.md`). §4.4's guarantee that
@@ -483,7 +479,7 @@ a validator never rewrites a line he wrote survives untouched: a date line that
 reader cannot make sense of is reported with a reason rather than corrected.
 
 The daemon reads those two sections through `OwnerProfileStore.importantDates()`
-and `.plans()` — named, narrow routes in the same shape as `person()`, because
+and `.plans()`, named, narrow routes in the same shape as `person()`, because
 both sections are closed tier and `section()` refuses the closed tier. There is
 deliberately no generic "give me any closed section" call; adding one would
 re-open the enumerate-all hole §10 closes, by a different name.
@@ -508,8 +504,8 @@ middle tier.
 earlier version read an absent `authority` as `owner-direct`, reasoning that no
 live transport populates it. That reasoning does not hold here: `authority` is a
 body parameter of these verbs, so any caller can send it or omit it. And for
-`forget` and `undo` the authority check is the *only* gate — there is no value
-to check for derivation and no utterance to quote — so an omitted authority on a
+`forget` and `undo` the authority check is the *only* gate, there is no value
+to check for derivation and no utterance to quote, so an omitted authority on a
 delete was not a weakened gate, it was no gate. A caller that sent nothing at all
 could remove his shipping address. Absent now refuses.
 
@@ -518,7 +514,7 @@ Each surface answers honestly rather than uniformly:
 | Surface | What it sends | Why |
 |---|---|---|
 | TUI | hardcoded `owner-direct` | the only input reaching these calls is him typing on his own machine |
-| Web UI | hardcoded `owner-direct` | the same — his own typing in his own settings page |
+| Web UI | hardcoded `owner-direct` | the same, his own typing in his own settings page |
 | Agent | the model states it per write | the agent genuinely can be handed a purported fact by an email, a page, a channel message or a document, and the SDK must be told which so it can refuse |
 
 The contract has to declare it required too. A schema listing `authority` as
@@ -553,7 +549,7 @@ either:
 2. exact containment over `{value}` with `exactMatchFields: ['value']`.
 
 Two passes rather than one because `findContentTaint` **skips the word-shingle
-and span checks for any field listed in `exactMatchFields`** — it takes the
+and span checks for any field listed in `exactMatchFields`**, it takes the
 containment branch and `continue`s. Listing a postal address there would
 therefore make it *weaker*, not stronger: a reworded address from a hostile page
 would pass. Pass 2 catches the short high-signal payloads that slip under both
@@ -569,15 +565,14 @@ that cannot add a fact must not be able to delete one either: clearing his
 shipping address or his `contact.email` is tampering and denial, which is
 squarely inside what this boundary exists to stop.
 
-Layers 2 and 3 do not apply to a removal and are deliberately not faked — there
+Layers 2 and 3 do not apply to a removal and are deliberately not faked, there
 is no value to check for derivation and no owner utterance to quote, and
 demanding either would refuse every legitimate delete or invite a caller to
 invent a quote. Authority is the whole gate here, and it is the right one.
 
 #### Caller-declared authority on deletes is accepted, knowingly
 
-`authority` is a body parameter, so requiring it removes privilege-by-omission —
-a caller that sends nothing can no longer delete his shipping address — but it
+`authority` is a body parameter, so requiring it removes privilege-by-omission, a caller that sends nothing can no longer delete his shipping address, but it
 **cannot make a lying caller honest**. For `set` and `append` that residue is
 backstopped by layer 2, which refuses a write whose text overlaps untrusted
 content read this turn. A delete has no text to compare, so layer 1 stands
@@ -587,8 +582,7 @@ Three options were weighed: accept it, require a second factor the daemon issues
 and the caller echoes, or make deletes owner-surface-only.
 
 **Accepted as-is, and no second factor was added.** Anything able to forge an
-authenticated daemon call can already do considerably worse than delete a line —
-it can read the whole profile, send mail, or drive the browser. A second factor
+authenticated daemon call can already do considerably worse than delete a line, it can read the whole profile, send mail, or drive the browser. A second factor
 on deletes specifically buys nothing against that threat while costing the agent
 the ability to act on "forget that" spoken aloud, which is the interaction the
 capability exists for. Owner-surface-only costs the same and more. The real
@@ -636,11 +630,11 @@ undebuggable: he cannot tell why it thinks his office is somewhere it is not.
 
 When it records something autonomously it says so in the reply, in one line:
 
-> Noted — saved your office address to your profile.
+> Noted, saved your office address to your profile.
 
 **One line, naming what was recorded, not quoting the value back** unless he
 asked. Several facts in one turn collapse into one line. It is a receipt, not a
-confirmation prompt — he declined confirmation prompts.
+confirmation prompt, he declined confirmation prompts.
 `describeProfileWrite(changes)` in the SDK produces the string so all three
 surfaces say the same thing.
 
@@ -669,8 +663,7 @@ the old one into an HTML comment directly below the section:
 ```
 
 Invisible in rendered Markdown, plain text in the file, deletable by hand.
-`profile.provenance` reads them; `profile.undo` promotes the most recent one back
-— so a wrong correction is recoverable. Prose bullets are not superseded; a new
+`profile.provenance` reads them; `profile.undo` promotes the most recent one back, so a wrong correction is recoverable. Prose bullets are not superseded; a new
 bullet is a new bullet, and he removes the old one if he wants it gone.
 
 ### 9.2 Deleting
@@ -681,7 +674,7 @@ retention window. This follows
 `docs/decisions/2026-07-06-delete-means-delete.md`: a delete that leaves the
 record on disk is exactly the dishonesty that decision removed. The response says
 `deleted: true` and names what went. Forgetting something that was not there
-reports that it was not there — it does not report success.
+reports that it was not there, it does not report success.
 
 **A prose line is addressed by its content, never by its position.**
 `profile.forget` takes either a `fieldId`, for a mechanical field, or a
@@ -693,14 +686,14 @@ The reason is §3: the owner is a concurrent writer. A line index is only valid
 against the exact file state that produced it, and between his `profile.read`
 and his `profile.forget` he can add a line in his editor and shift everything
 below it. Positional addressing would then delete the wrong line and report
-success — the same class of false receipt that §9.2 exists to prevent, arriving
+success, the same class of false receipt that §9.2 exists to prevent, arriving
 through the front door. It is not theoretical: a review reproduced a raw index
 of `NaN` deleting his title, `4.9` deleting a currency line, and `2` deleting a
 `## Commerce` heading while reporting "removed a note", orphaning every field
 under it.
 
 Content addressing degrades honestly. If the text no longer matches, nothing is
-deleted and the answer is "that is not there any more" — which is true, and
+deleted and the answer is "that is not there any more", which is true, and
 which tells him his file changed. "Forget that" has to mean forget *that*,
 identified by what it says.
 
@@ -718,7 +711,7 @@ the wrong line, because ambiguity is already refused.
 load-bearing rather than tidiness. Without it a note reading
 `- -5 degrees is when the pipes freeze` would normalise to
 `5 degrees is when the pipes freeze`, so asking to forget `5 degrees…` would
-delete a line about *minus* five — a correct-looking delete of the wrong
+delete a line about *minus* five, a correct-looking delete of the wrong
 content, which is the hardest kind of wrong to notice afterwards. Verified in
 both directions: bare `5 degrees…` matches nothing and leaves the file
 untouched, `-5 degrees…` matches, and a bare `Allergic to shellfish` still
@@ -727,7 +720,7 @@ matches the stored `- Allergic to shellfish`.
 **Two lines reading identically are refused, never guessed.** The answer names
 how many matched and the file is untouched. Deleting the wrong one of two
 identical lines is unrecoverable; asking is not, and it is not a burden because
-the disambiguating information — which one he meant — is only in his head.
+the disambiguating information, which one he meant, is only in his head.
 
 `ProfileLine.lineIndex` (§5.1) stays, because the writer needs it to splice. It
 describes the **in-memory model**, not the reachable surface: the model is
@@ -746,7 +739,7 @@ The original brief asked for the full recovery-rule treatment: bounded, validate
 on load, swept periodically, discloses what it holds.
 
 **Validate-on-load is kept** (§4.4) and **disclosure of what it holds is kept**
-(§8.3 — `profile.read` is exactly that).
+(§8.3, `profile.read` is exactly that).
 
 **Bounding and periodic sweeping are dropped, deliberately.** The recovery rule
 exists for state a machine accumulates faster than a person inspects it; the
@@ -775,7 +768,7 @@ database. It gets the same containment as card material.
 **This is absolute, and it overrides the redaction distinctiveness floor.**
 `redaction.ts` skips values under a length threshold and without a digit, `@` or
 internal whitespace, because turning `standard` or `imperial` into a redaction
-pattern would blank those words out of every unrelated log line — sound
+pattern would blank those words out of every unrelated log line, sound
 reasoning, and it stays for ordinary values. But it conflicts with this section,
 and the conflict was reproduced: `- Bob Lee` is seven characters and left an
 export in the clear. The resolution is that `People` content is keyed on its
@@ -784,12 +777,12 @@ while the floor keeps protecting ordinary words everywhere else. An earlier
 draft of this document asserted the absolute rule without acknowledging the
 trade, which is how the code came to implement the floor faithfully and breach
 the rule.
-- Never injected into model context (§11.2 — closed tier).
+- Never injected into model context (§11.2, closed tier).
 - Never volunteered in outbound content unless the task genuinely needs it.
 
 ### What "needs it" means
 
-Not "the model judged it relevant" — that is not a boundary, because the model's
+Not "the model judged it relevant", that is not a boundary, because the model's
 judgement is the thing an injection attacks. The rule is structural:
 
 > A `People` line may appear in outbound content **only** when the owner named
@@ -800,14 +793,14 @@ judgement is the thing an injection attacks. The rule is structural:
 "Email the vendor and cc anyone relevant" reaches for nothing, because he named
 nobody. The lookup is by name and the name comes from him, this turn. **There is
 no enumerate-all-people call available to a composition path**: `profile.person`
-takes a name, and `profile.read` — which returns everything — is not callable
+takes a name, and `profile.read`, which returns everything, is not callable
 from a composition path at all.
 
 **The name is flat on purpose.** It was briefly `read:profile.full`, which was
 the only dotted scope in the entire platform and invented a hierarchy the
 matcher does not implement: `scopeMatches` grants on an exact match, on `*`, or
 on a `prefix:*` wildcard, and nothing else. So `.full` read as "profile, but
-more" while giving its holder *no* access to the plain `read:profile` verbs — a
+more" while giving its holder *no* access to the plain `read:profile` verbs, a
 token minted with what looked like the superset would have taken 403s on
 `profile.get`, `profile.person`, `profile.provenance` and `profile.status`.
 Today that is masked, because `getGrantedGatewayScopes` unions every scope the
@@ -820,8 +813,8 @@ caller wanting both lists both.
 verb is `read:profile`. This is what stops "not callable from a composition path"
 being a sentence in a document that no mechanism keeps: a caller holding
 `read:profile` can ask `profile.get` for one field and `profile.person` for one
-named person, and **cannot** enumerate the document. Enumerating it — which is
-what answering "what do you know about me" means — needs a scope that only the
+named person, and **cannot** enumerate the document. Enumerating it, which is
+what answering "what do you know about me" means, needs a scope that only the
 owner-facing path is issued. Same-scope-as-everything-else was the earlier state,
 and it made the guarantee depend on nobody thinking to call the verb.
 
@@ -861,8 +854,8 @@ declaring itself not a user request is refused before the authority check.
 
 #### The contract does not protect callers, and that is not a profile bug
 
-Two changes on this feature — `authority` becoming required, then `forget`
-becoming content-addressed — were **breaking changes to consumers that no
+Two changes on this feature, `authority` becoming required, then `forget`
+becoming content-addressed, were **breaking changes to consumers that no
 compiler caught**. Both times a surface kept sending the old body and compiled
 clean. That is worth writing down here because the profile verbs are where it was
 found, but the cause is platform-wide and the fix is not this round's to make
@@ -886,7 +879,7 @@ invoke<T = unknown>(methodId: string, input?: Record<string, unknown>, …): Pro
 A *known* method id carrying a *wrong* body fails the typed overload and then
 silently matches the loose one, because `Record<string, unknown>` accepts
 anything. So the type system reports success on exactly the case it exists to
-catch. The surfaces then widen it further — the web UI declares
+catch. The surfaces then widen it further, the web UI declares
 `TInput = OperatorMethodInput<TMethodId>` as a **default** rather than a
 constraint, so inference from the argument discards it, and the agent casts
 `payload as never` at the call site, opting out entirely.
@@ -911,14 +904,14 @@ repo's TypeScript 5.9.3 with a `profile.forget`-shaped input, seeding a retired
 | stale field carried in **by the spread source's type** | **slips through** | **slips through** | **slips through** | rejected |
 
 **The middle column is the one that matters, and it is all four rows.** Measured
-against a faithful model of `operator-sdk/client-core.ts` — the variadic
+against a faithful model of `operator-sdk/client-core.ts`, the variadic
 `...args: KnownMethodArgs<T>` typed overload with the loose
 `invoke<T = unknown>(id: string, input?: Record<string, unknown>, options?)`
 beneath it. A body the typed overload rejects does not error; it **falls through
 to the loose overload**, which accepts any object. Remove that second overload
 from the same model and rows one and two immediately fail `TS2353` again.
 
-So the loose overload does not merely leave a gap for awkward constructions — it
+So the loose overload does not merely leave a gap for awkward constructions, it
 removes compiler protection from the payload entirely, including the plainest
 possible case of a stale key typed straight into a fresh literal. Payload
 checking at a raw call site is not weak; it is **absent**. That is direct
@@ -936,12 +929,12 @@ through to it behaves like a plain annotation again. So the two mechanisms cover
 | 3, 4 | a contract-derived key guard |
 
 Neither is redundant and neither subsumes the other. Delete either and its half
-is caught by nothing at all — which is what both comments need to say, because a
+is caught by nothing at all, which is what both comments need to say, because a
 comment that *overstates* a guard gets it deleted by the next person who checks
 and finds the stated reason does not hold. That is the same failure as
 understating one.
 
-A spread literal is *not* uniformly unchecked — that was the first wrong
+A spread literal is *not* uniformly unchecked, that was the first wrong
 generalisation. Under a bare annotation, anything written inline in one is
 checked normally and only what arrives **through** the spread escapes, because
 it belongs to the source's type rather than to the literal.
@@ -949,7 +942,7 @@ it belongs to the source's type rather than to the literal.
 **Standing instruction, not an anecdote.** This table was wrong three times and
 every correction went the same way: the protection was weaker, or narrower, than
 the previous version claimed, because each measurement modelled one layer less
-than what actually runs — a bare annotation, then a single overload, then a
+than what actually runs, a bare annotation, then a single overload, then a
 wrapper asserted to cover more than it did. When a safety measurement keeps
 moving in one direction under scrutiny, assume it has not finished moving, and
 re-measure against the **real call shape** rather than against a model of it.
@@ -963,7 +956,7 @@ over it.
 
 #### The two exports gates, and which one survives the merge
 
-Three lanes independently built a gate for the same defect — a module that
+Three lanes independently built a gate for the same defect, a module that
 exists but is not declared in the `exports` map, so no consumer of the published
 package can import it. Two survive: `check-exports-coverage.ts` here and
 `check-subpath-declared.ts` on the payments branches. They ask the identical
@@ -975,7 +968,7 @@ does not. But the implementation kept is this one, because it is a strict
 superset: it carries an `INTENTIONALLY_INTERNAL` allowlist that forces a
 *reason* rather than silence, a non-vacuity tripwire so a scan that finds
 nothing fails instead of passing, and a declared-but-not-shipped check for the
-nastier inverse — an entry that resolves in the map and fails at import time
+nastier inverse, an entry that resolves in the map and fails at import time
 while the map itself looks right. It is also wired into `validate`, not only
 exposed as a script. The other file's top-level-only rationale is better argued
 than mine and its header reasoning should be carried across.
@@ -1002,7 +995,7 @@ home address, because the address was never in context to leak.
 
 The block is rendered once by `renderOpenTierBlock(store)` and composed at two
 seams, both of which build per-turn additions onto the base prompt **without
-writing back** into any cached base string — an invariant their own comments
+writing back** into any cached base string, an invariant their own comments
 call out, because writing back compounds the block once per tool round:
 
 | Seam | File |
@@ -1011,13 +1004,13 @@ call out, because writing back compounds the block once per tool round:
 | Spawned agents | `platform/agents/orchestrator-runner.ts`, its local `composeTurnSystemPrompt` |
 
 When the profile is disabled or unavailable the block is simply absent. It is
-never replaced by a placeholder saying it could not be read — that would be
+never replaced by a placeholder saying it could not be read, that would be
 prompt noise on every turn for a condition the `profile.status` verb already
 reports honestly.
 
 `location.city` is open deliberately: the failure that prompted this work was the
 agent guessing a metro area for a weather answer. `location.homeAddress` is
-closed — a city is not a doorstep.
+closed, a city is not a doorstep.
 
 Stated for tests: **composing an outbound message must not cause any closed-tier
 value to appear in that message unless a named accessor was called for it in the
@@ -1030,7 +1023,7 @@ same turn.**
   `redactSensitiveData()`, and object keys matching the profile-key pattern are
   redacted by `redactStructuredData()`.
 
-  One change, four containment paths — verified call sites:
+  One change, four containment paths, verified call sites:
 
   | Path | Function | What it covers |
   |---|---|---|
@@ -1043,7 +1036,7 @@ same turn.**
   rather than an import, so `redaction.ts` keeps no dependency on the profile
   module and stays usable where no profile is loaded.
 - The owner-profile module logs counts and field names, never values.
-- `profile.status` — the diagnostic verb — returns load state, path, section
+- `profile.status`, the diagnostic verb, returns load state, path, section
   names, line counts and the list of invalid mechanical fields with reasons. It
   never returns values.
 
@@ -1059,7 +1052,7 @@ settings in the TUI, the agent and the webui.
 | Key | Default | Reasoning |
 |---|---|---|
 | `profile.enabled` | `true` | He asked for it built. Off by default ships it dark, and flags ship as features. |
-| `profile.autonomousWrites` | `true` | His explicit ruling. Off leaves reads and manual edits working — the honest "I'll curate this myself" mode. |
+| `profile.autonomousWrites` | `true` | His explicit ruling. Off leaves reads and manual edits working, the honest "I'll curate this myself" mode. |
 | `profile.discloseWrites` | `true` | The condition attached to his choice. Editable because he may find the receipts noisy, but he turns them off himself, knowingly. |
 | `profile.injectOpenTier` | `true` | Otherwise the agent still guesses a metro area, which is the failure that started this. |
 | `profile.discloseClosedTierReads` | `true` | Using his address on an order should be visible. |
@@ -1068,13 +1061,13 @@ settings in the TUI, the agent and the webui.
 | `profile.path` | `""` | Empty means §3's default path; an override for a non-default daemon home. |
 
 `profile.enabled = false` means the file is not loaded and every verb answers
-"profile is disabled" — a stated state, not an empty profile.
+"profile is disabled", a stated state, not an empty profile.
 
 ### 12.1 Registering the section in each surface
 
 All three surfaces bucket settings automatically by `key.split('.')[0]`, so the
 `profile.*` keys need no per-key registration. But in the TUI and the agent a
-prefix with no matching category is **silently dropped** — `buildSettingGroups`
+prefix with no matching category is **silently dropped**, `buildSettingGroups`
 guards every push with `if (groups.has(cat))`, and the file's own comments record
 two past cases (`push.*`, `cluster.*`) where a domain vanished from the
 workspace and was reachable only by hand-editing a settings file.
@@ -1088,7 +1081,7 @@ So the registration is mandatory, not cosmetic:
 | Webui | regenerate `src/lib/generated/config-schema.ts` from the SDK; add `CATEGORY_LABELS['profile']` in `src/lib/config-redaction.ts` for the display name |
 
 The webui derives its groups with no hand-maintained category list, so it cannot
-drop the domain — but without the label entry the group renders as a Title-Cased
+drop the domain, but without the label entry the group renders as a Title-Cased
 key rather than a name.
 
 ---
@@ -1113,7 +1106,7 @@ export path.** `get()` is a single keyed read by a consumer that needs the value
 to do its job. A config dump is a different act: it hands the whole settings
 surface to a caller, and if the fallback applied there, `commerce.shippingAddress`
 would appear in a config listing without passing the closed-tier disclosure rule
-of §11.2. So a bulk read sees the raw stored value — unset — and the profile
+of §11.2. So a bulk read sees the raw stored value, unset, and the profile
 value reaches only the consumer that asked for that one key. A listing may show
 *that* a key resolves from the profile; it does not show the value.
 
@@ -1128,7 +1121,7 @@ contention over their files.
 `daemon.timezone`, and the difference is worth stating precisely** because an
 earlier version of this section got it wrong. `ConfigManager.resolvePath()` walks
 only as far as the *parent* section and then reads the field off it. So
-`payments.currency` throws — there is no `payments` section on this branch — and
+`payments.currency` throws, there is no `payments` section on this branch, and
 the fallback catches that and stays dormant. But `daemon.timezone` resolves
 today: the `daemon` section exists for other reasons, the field is simply unset,
 and an unset field is exactly what the fallback is for. It is live now, not
@@ -1137,8 +1130,8 @@ was the description that was wrong.
 
 | Consumer config key | Profile field | Status |
 |---|---|---|
-| `daemon.timezone` | `location.timezone` | **live now** — the `daemon` section exists, the field is unset |
-| `payments.billingAddress.*` | `commerce.billingAddress` (parsed to the 7 `PostalAddress` parts) | dormant — no `payments` section on this branch; activates on merge |
+| `daemon.timezone` | `location.timezone` | **live now**, the `daemon` section exists, the field is unset |
+| `payments.billingAddress.*` | `commerce.billingAddress` (parsed to the 7 `PostalAddress` parts) | dormant, no `payments` section on this branch; activates on merge |
 | `payments.shippingAddress.*` | `commerce.shippingAddress` (as above) | as above |
 | `payments.currency` | `commerce.currency` | as above |
 | `checkin.quietHours` | `contactMe.quietHours` | live now |
@@ -1146,12 +1139,12 @@ was the description that was wrong.
 
 ### 13.2 Direct consumers
 
-- **`platform/google/account-registry.ts`** — supplies `baseAddress` to
+- **`platform/google/account-registry.ts`**, supplies `baseAddress` to
   `signup-address.ts`'s alias minting, which is documented as *"the owner's real
   delivery address this alias resolves to."* It falls back to `contact.email`
   when no mail account is configured. `signup-address.ts` itself is unchanged;
   it is alias-minting machinery, not a store of owner facts.
-- **Locality / weather.** There is no location-guessing code to replace — the
+- **Locality / weather.** There is no location-guessing code to replace, the
   agent guessed a metro area because nothing told it one. The fix is the
   open-tier injection of `location.city` and `location.timezone` (§11.2), so the
   model has the answer instead of inferring it.
@@ -1159,8 +1152,7 @@ was the description that was wrong.
 ### 13.3 Deliberately not wired: `security/owner-identity.ts`
 
 `resolveOwnerAddresses()` reads five config keys to decide which addresses are
-"the owner's own", and that set gates the one exemption to the content-taint rule
-— a send addressed only to the owner. It is **not** fed from the profile.
+"the owner's own", and that set gates the one exemption to the content-taint rule, a send addressed only to the owner. It is **not** fed from the profile.
 
 Its own module header says the exemption is safe because spoofing it requires an
 authenticated write to daemon config, which is a strictly stronger capability
@@ -1196,7 +1188,7 @@ Each test is verified to fail without its fix, and both counts are reported.
 | 16 | hand edit picked up | an external modification is reflected without a restart |
 | 17 | atomic write | an interrupted write leaves the previous complete file |
 | 18 | invalid mechanical value | `timezone: Mars/Olympus` is preserved, reported invalid with a reason, and its consumer falls back |
-| 19 | third-party containment | `People` content is absent from context, exports and logs; `profile.person` requires a name; and no exported store method other than `read()` returns the whole `People` section — `section('People')` refuses |
+| 19 | third-party containment | `People` content is absent from context, exports and logs; `profile.person` requires a name; and no exported store method other than `read()` returns the whole `People` section, `section('People')` refuses |
 | 20 | consumer fallback direction | an explicitly configured `checkin.quietHours` beats the profile; an unset one reads from the profile |
 | 21 | read latency | benchmark; measured nanoseconds reported |
 | 22 | removal is gated | `forget` and `undo` from each untrusted authority are refused and the file is byte-identical after |

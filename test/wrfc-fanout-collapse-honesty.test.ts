@@ -6,7 +6,7 @@
  * made unsatisfiable must be:
  *   (b) excluded from the review rubric, derived mechanically from the collapse
  *       (only fan-out-shape constraints, only when a collapse actually happened);
- *   (c) un-loopable — never counted as unsatisfied, never able to fail the review,
+ *   (c) un-loopable, never counted as unsatisfied, never able to fail the review,
  *       never entered into the fix-loop target set.
  * And the guard must NOT collapse at all when the user explicitly asked for a
  * parallel fan-out of independent implementation deliverables (explicit intent).
@@ -207,7 +207,7 @@ describe('WrfcController — fan-out-collapse system-unsatisfiable constraints',
     emitAgentCompleted(h.bus, reviewerId);
     await flushMicrotasks();
 
-    // Part (c): the chain did NOT enter a fix loop chasing c1 — it advanced past review.
+    // Part (c): the chain did NOT enter a fix loop chasing c1, it advanced past review.
     expect(chain.state).not.toBe('fixing');
     expect(['awaiting_gates', 'gating', 'passed', 'committing']).toContain(chain.state);
     expect(h.spawnedRecords.some((r) => r.wrfcRole === 'fixer')).toBe(false);
@@ -217,7 +217,7 @@ describe('WrfcController — fan-out-collapse system-unsatisfiable constraints',
   test('without a collapse, the same fan-out-shape constraint is NOT dropped and still governs the review', async () => {
     const h = createHarness();
     const owner = makeRecord({ id: 'owner-2', task: 'implement endpoints with agents in parallel' });
-    // No fanoutCollapse marker — nothing was collapsed, so nothing is excluded.
+    // No fanoutCollapse marker, nothing was collapsed, so nothing is excluded.
     const chain = h.controller.createChain(owner);
     installStubFixRunner(h.controller, 'pending'); // planned-fix path: parks honestly in 'fixing'
 

@@ -4,7 +4,7 @@
  * Verifies:
  * - Below cap: normal registration succeeds (no warning, no throw).
  * - At cap in production mode: the (cap+1)th registration succeeds with a
- *   logger.warn (registration is NOT refused — live systems must not break).
+ *   logger.warn (registration is NOT refused, live systems must not break).
  * - Dev mode: throws a RangeError on overflow.
  * - Override via maxListeners option: higher cap is respected, overflow at
  *   the new boundary behaves correctly.
@@ -24,7 +24,7 @@ import { ConfigManager } from '../packages/sdk/src/platform/config/manager.ts';
 import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
 import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
-/** No-op listener factory — each call returns a distinct function reference. */
+/** No-op listener factory, each call returns a distinct function reference. */
 function makeListener(): () => void {
   return () => { /* no-op */ };
 }
@@ -180,13 +180,13 @@ describe('overflow in development mode — throw RangeError', () => {
     const cap = 3;
     const bus = new RuntimeEventBus({ maxListeners: cap });
     registerN(bus, 'SESSION_STARTED', cap);
-    // This should throw — listener must NOT be added
+    // This should throw, listener must NOT be added
     try {
       bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
     } catch {
       // expected
     }
-    // Register one more valid listener — if state is corrupt this will also throw
+    // Register one more valid listener, if state is corrupt this will also throw
     // when it should not.
     expect(() => {
       bus.on<SessionEvent>('SESSION_STARTED', makeListener() as Parameters<typeof bus.on>[1]);
@@ -216,7 +216,7 @@ describe('config override via maxListeners constructor option', () => {
     process.env['NODE_ENV'] = 'production';
     const customCap = 200;
     const bus = new RuntimeEventBus({ maxListeners: customCap });
-    // Register up to the default MAX (100) — should not warn with the higher cap
+    // Register up to the default MAX (100), should not warn with the higher cap
     registerN(bus, 'SESSION_STARTED', MAX_LISTENERS);
     const leakWarns = warnSpy.mock.calls.filter(
       (c) => typeof c[0] === 'string' && (c[0] as string).includes('listener leak')
@@ -258,9 +258,9 @@ describe('config override via maxListeners constructor option', () => {
 // Everything above proves the cap works when a construction site passes one.
 // None of it says `runtime.eventBus.maxListeners` reaches a bus: the SDK's three
 // construction sites all passed nothing, so the schema promised a tunable cap
-// that was always 100. These drive the real read path — a ConfigManager holding
+// that was always 100. These drive the real read path, a ConfigManager holding
 // a set value, through `runtimeEventBusOptionsFrom` and
-// `configureRuntimeEventBusDefaults`, into a bus built with no options — at two
+// `configureRuntimeEventBusDefaults`, into a bus built with no options, at two
 // different configured values.
 
 describe('runtime.eventBus.maxListeners governs a bus built with no options', () => {

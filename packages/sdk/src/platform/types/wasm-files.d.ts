@@ -4,7 +4,7 @@
  * Type declarations for WASM file imports using Bun's compile-time embedding.
  *
  * When importing `.wasm` files with `with { type: 'file' }`, Bun resolves them
- * to a `string` path — either the embedded path in compiled binaries or the
+ * to a `string` path, either the embedded path in compiled binaries or the
  * absolute filesystem path in dev mode. These declarations tell TypeScript the
  * module shape so `@ts-ignore` suppressions are not needed.
  */

@@ -3,7 +3,7 @@
  * OpenAICompatProvider and AnthropicCompatProvider base classes fetch the
  * backend's own model listing (GET {baseURL}/models), demote the configured
  * static list to a dated baseline, and degrade honestly when the endpoint is
- * dead — the model list is never blanked.
+ * dead, the model list is never blanked.
  */
 import { describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -18,7 +18,7 @@ async function withMockedFetch<T>(
   fn: () => Promise<T> | T,
 ): Promise<T> {
   const original = globalThis.fetch;
-  // @ts-expect-error — test double, narrower than the full fetch overload set
+  // @ts-expect-error, test double, narrower than the full fetch overload set
   globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => handler(String(url), init);
   try {
     return await fn();

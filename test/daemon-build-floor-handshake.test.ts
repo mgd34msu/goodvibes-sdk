@@ -2,7 +2,7 @@
  * daemon-build-floor-handshake.test.ts
  *
  * The client's half of the build-floor handshake. The daemon has published
- * `X-Goodvibes-Client-Floor` on /status for a while; this is the reverse — a
+ * `X-Goodvibes-Client-Floor` on /status for a while; this is the reverse, a
  * pure client declaring the oldest daemon build it can work against, checking
  * it once against the version /status already returns, and refusing with a
  * sentence that names both versions rather than letting the first missing verb

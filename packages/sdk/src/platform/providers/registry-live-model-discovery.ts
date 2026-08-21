@@ -1,5 +1,5 @@
 /**
- * Provider-native live model discovery — extracted from ProviderRegistry to
+ * Provider-native live model discovery, extracted from ProviderRegistry to
  * keep registry.ts under its line-cap ceiling, mirroring the extraction
  * pattern already used by registry-catalog-lifecycle.ts and
  * registry-models.ts.
@@ -64,7 +64,7 @@ export interface LiveModelDiscoverySweepResult {
  * command calls: routine background refreshes respect each provider's
  * on-disk TTL cache, `force: true` bypasses it.
  *
- * Always resolves with one report per checked provider — a provider whose
+ * Always resolves with one report per checked provider, a provider whose
  * live fetch fails still gets an honest report (see
  * `LiveModelDiscoveryResult.error`), never a thrown exception that would
  * abort the whole sweep.

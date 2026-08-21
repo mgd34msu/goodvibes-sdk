@@ -1,5 +1,5 @@
 /**
- * Provider Model Source Contract — a registration-time check that every
+ * Provider Model Source Contract, a registration-time check that every
  * provider names where its model list actually comes from, so a caller can
  * always tell a live-refreshed list apart from a hand-maintained one and
  * both apart from a silently dead, undated array.
@@ -11,10 +11,10 @@
  * bug, an outage, or simply a provider nobody wired up yet.
  *
  * A provider passes only when it declares a `modelSource` of:
- *   - `live-discovery`  — fetches its own model list from a live API, or
- *   - `dated-static`    — with a non-empty `asOf`, a complete hand-maintained
+ *   - `live-discovery` , fetches its own model list from a live API, or
+ *   - `dated-static`   , with a non-empty `asOf`, a complete hand-maintained
  *                         list verified as of that date, or
- *   - `catalog-backed`  — its real selectable models come from the shared,
+ *   - `catalog-backed` , its real selectable models come from the shared,
  *                         independently refreshed model catalog.
  *
  * A non-empty `models` array is no longer accepted by itself: a provider
@@ -31,7 +31,7 @@ export interface ProviderModelSourceViolation {
   readonly message: string;
 }
 
-/** Minimal shape needed to run the check — real providers satisfy this trivially. */
+/** Minimal shape needed to run the check, real providers satisfy this trivially. */
 export type ModelSourceCheckable = Pick<LLMProvider, 'name' | 'models' | 'modelSource'>;
 
 /**
@@ -66,7 +66,7 @@ export function formatProviderModelSourceRejection(violations: readonly Provider
   return violations.map((v) => v.message).join('\n');
 }
 
-/** Verify and throw in one call — the fail-closed registration-time gate callers actually want. */
+/** Verify and throw in one call, the fail-closed registration-time gate callers actually want. */
 export function assertProviderModelSource(provider: ModelSourceCheckable): void {
   const violations = verifyProviderModelSource(provider);
   if (violations.length > 0) throw new Error(formatProviderModelSourceRejection(violations));

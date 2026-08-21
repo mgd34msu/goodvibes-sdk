@@ -1,5 +1,5 @@
 /**
- * manager-streams.ts — the stream watcher kind's lifecycle.
+ * manager-streams.ts, the stream watcher kind's lifecycle.
  *
  * Split out of manager.ts so the supervisor file stays inside the 800-line
  * hand-authored cap. The logic is unchanged: spawn the long-lived command

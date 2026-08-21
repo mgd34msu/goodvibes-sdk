@@ -1,12 +1,12 @@
 /**
- * optional-sdk.ts — the one place `@agentclientprotocol/sdk` is reached.
+ * optional-sdk.ts, the one place `@agentclientprotocol/sdk` is reached.
  *
  * The package is declared under `optionalDependencies` in
  * packages/sdk/package.json, and four modules imported its VALUES statically:
  * acp/agent.ts (`AgentSideConnection`, `ndJsonStream`, `PROTOCOL_VERSION`),
  * acp/connection.ts and acp/host.ts (`ClientSideConnection`, `ndJsonStream`),
  * and acp/protocol.ts, which RE-EXPORTED three of them. The daemon reaches
- * acp/host.ts, so an install without the package did not lose the ACP host —
+ * acp/host.ts, so an install without the package did not lose the ACP host,
  * it lost the daemon at module init, before anything could report why. See
  * utils/optional-dependency.ts for the measured failure.
  *

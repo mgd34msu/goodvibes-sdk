@@ -1,5 +1,5 @@
 /**
- * power/runtime-wiring.ts — one-call composition of sleep ownership for the
+ * power/runtime-wiring.ts, one-call composition of sleep ownership for the
  * runtime-services root: pick the platform seam (Linux logind on linux; the
  * honest unavailable seam elsewhere until the macOS IOKit seam lands), start
  * the PowerManager (which re-applies a persisted keep-awake toggle), bind the
@@ -21,7 +21,7 @@ export interface RuntimePowerWiringInput {
   /** Live config subscription (ConfigManager.subscribe shape) so power.keepAwake changes apply live. */
   readonly subscribeConfig?: ((key: string, cb: (newValue: unknown) => void) => () => void) | undefined;
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
-  /** Checkpoint hook for PrepareForSleep(true) — checkpoint what's checkpointable. */
+  /** Checkpoint hook for PrepareForSleep(true), checkpoint what's checkpointable. */
   readonly sleepCheckpoint?: (() => void | Promise<void>) | undefined;
   /** Catch-up hooks for wake: re-arm timers, reconnect, deliver missed receipts. */
   readonly wakeCatchUp?: ReadonlyArray<() => void | Promise<void>> | undefined;
@@ -34,7 +34,7 @@ export interface RuntimePowerWiringInput {
  * systemd-inhibit inhibitor children and the read-only sleep-edge dbus-monitor
  * watcher) or the honest unavailable seam elsewhere. Spawning a real
  * sleep-edge watcher is a host-level side effect, so only the standalone
- * daemon opts into it — the generic runtime-services factory defaults to the
+ * daemon opts into it, the generic runtime-services factory defaults to the
  * unavailable seam (no spawn) for test determinism, exactly like the
  * observe-external-agents host scan.
  */

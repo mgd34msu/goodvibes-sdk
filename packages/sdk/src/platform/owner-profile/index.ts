@@ -1,5 +1,5 @@
 /**
- * owner-profile/ — what the platform knows about the person who owns it.
+ * owner-profile/, what the platform knows about the person who owns it.
  *
  * One Markdown file at daemon scope (`~/.goodvibes/daemon/owner-profile.md`),
  * read once into memory, read back out at the cost of a property access. See

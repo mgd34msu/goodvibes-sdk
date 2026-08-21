@@ -6,8 +6,8 @@
  *
  * The tool is registered when the agent tool registry is built; the owner
  * profile store and the occasions service are built later, inside the gateway
- * verb registrar. Rather than reorder either composition — both orders are
- * load-bearing for other reasons — the holder is created first and filled when
+ * verb registrar. Rather than reorder either composition, both orders are
+ * load-bearing for other reasons, the holder is created first and filled when
  * the real objects exist. Same pattern as ContextAccountingHolder, for the same
  * reason. A tool call that lands before the fill gets a plain "not wired up
  * here" refusal rather than a crash.
@@ -24,7 +24,7 @@ import type { OwnerProfileStore } from '../owner-profile/index.js';
  * Telegram and to the agent's conversation; the reply to it is a sentence he
  * types there. Before this, the only thing that could write an acknowledgement
  * was a CLI/webui verb, so every reply he ever gave to a nudge landed in a
- * conversation and nowhere else — and the sweep, seeing no answer, kept going.
+ * conversation and nowhere else, and the sweep, seeing no answer, kept going.
  */
 export type CaptureOccasionsAccess = Pick<
   OccasionsService,

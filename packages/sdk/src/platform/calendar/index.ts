@@ -1,25 +1,25 @@
 /**
  * @pellux/goodvibes-sdk/platform/calendar
  *
- * External-calendar READ connectivity — the SDK machinery behind the agent's
+ * External-calendar READ connectivity, the SDK machinery behind the agent's
  * `/calendar import`, `/calendar subscribe`, and the connect wizard (see
  * CHANGELOG 1.0.0, A9). Two pieces, both honest by construction:
  *
  *  - A vendored iCalendar (RFC 5545) reader: `parseIcs` turns .ics text (a file body
  *    or a fetched feed) into typed events, and `expandEvent` expands the honest RRULE
  *    subset into concrete occurrences. A recurrence outside the subset is NEVER
- *    fabricated — the event keeps its seed and carries an explicit
+ *    fabricated, the event keeps its seed and carries an explicit
  *    `recurrence.expansion: 'unsupported'` marker naming the part we declined.
  *  - `SubscriptionStore`: named external-calendar feed subscriptions with per-feed
  *    honest status (ok / stale-with-age / unreachable / parse-error), etag/
  *    last-modified conditional refresh, and a paste-URL-and-done `add()` that
  *    validates by fetching and auto-derives the name from X-WR-CALNAME.
  *
- * Network and clock are INJECTED (FeedFetcher / Clock) — this module never reaches
+ * Network and clock are INJECTED (FeedFetcher / Clock), this module never reaches
  * the network or reads wall-clock on its own, so consumers (and tests, with fake
  * feeds) own the IO boundary entirely. Persistence is the caller's job.
  *
- * The daemon `calendar.*` operator methods stay `invokable: false` — they are
+ * The daemon `calendar.*` operator methods stay `invokable: false`, they are
  * CalDAV-backed contracts with no live route, a separate concern from this
  * read-focused file/feed machinery. See
  * docs/decisions/2026-07-05-calendar-connectivity-sdk-extraction.md.
@@ -28,8 +28,8 @@
 export { parseIcs } from './ics-parser.js';
 export { describeRecurrence, expandEvent } from './rrule.js';
 
-// Externally-sourced event content is untrusted content. The policy — what
-// counts as external, what an origin says, what text is retained — lives in one
+// Externally-sourced event content is untrusted content. The policy, what
+// counts as external, what an origin says, what text is retained, lives in one
 // module, and every read path in this package records through it. Arrival never
 // records; see untrusted-events.ts.
 export {
@@ -74,14 +74,14 @@ export type {
 } from './types.js';
 
 // ---------------------------------------------------------------------------
-// Authenticated provider connectivity — Google Calendar API v3 + Microsoft Graph
+// Authenticated provider connectivity, Google Calendar API v3 + Microsoft Graph
 // over OAuth 2.0 (see CHANGELOG 1.0.0, A10). This half connects to real accounts;
 // A9's half above reads .ics files and feeds. Both normalize into ONE merged event
 // model (see MergedCalendarEvent) that a unified /calendar view renders source-
 // labeled (google-api / microsoft-graph / ics-feed / local).
 //
 // The network is an injected HttpFetch, the loopback redirect an injected
-// LoopbackWaiter, token persistence an injected secret-store slice — so the full
+// LoopbackWaiter, token persistence an injected secret-store slice, so the full
 // OAuth + API flow runs against fake servers with no real network, port, or keychain.
 // See docs/decisions/2026-07-06-calendar-oauth-connector-sdk.md.
 

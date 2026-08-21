@@ -1,5 +1,5 @@
 /**
- * UI emitters — typed wrappers for UIEvent domain.
+ * UI emitters, typed wrappers for UIEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

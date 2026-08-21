@@ -1,12 +1,12 @@
 /**
- * grammar.ts — the one line format for an occasion and for a plan.
+ * grammar.ts, the one line format for an occasion and for a plan.
  *
  * An occasion is a PROSE LINE in the owner's profile, under `## Important dates`.
  * It is not a mechanical field, and that is structural rather than incidental:
  * the field registry maps one section-plus-label to one value, so it can hold
  * `commerce.shippingAddress` and cannot hold twenty birthdays. Occasions are a
- * repeated record, so they are prose to the profile parser — preserved verbatim,
- * never rewritten by it — and typed here, by a reader layered on top.
+ * repeated record, so they are prose to the profile parser, preserved verbatim,
+ * never rewritten by it, and typed here, by a reader layered on top.
  *
  * That layering is what keeps the profile's guarantee intact. Nothing in this
  * file edits a line; it reads one and reports what it found, including what it
@@ -21,7 +21,7 @@
  * - My birthday · 08-06 · annual · remember-only · for me
  * ```
  *
- * `for me` — and a bare `mine`, `myself` or `self` — says the occasion is about
+ * `for me`, and a bare `mine`, `myself` or `self`, says the occasion is about
  * the OWNER. It is the one attribution the parser can settle by itself, and it
  * matters because something he only has to remember about himself is something
  * he already knows: see subject.ts. Every other attribution is reported as
@@ -30,7 +30,7 @@
  * Segments after the title are classified BY SHAPE rather than by position, so
  * he can write them in whatever order he thinks of them and a line stays valid
  * when he adds one later. Anything unrecognised is kept in `extras` and written
- * back unchanged — dropping a segment because this module did not know it would
+ * back unchanged, dropping a segment because this module did not know it would
  * be the profile's cardinal sin arriving by a side door.
  *
  * `·` is the canonical separator and `|` is accepted because a middot is
@@ -117,8 +117,8 @@ export type OccasionLineResult =
  *
  *  - **No date.** There is nothing to approach, so there is nothing to raise.
  *  - **No kind.** The kind is his choice, made at capture, and is never
- *    inferred. A line without one is recorded and answerable — he can still ask
- *    when the date is — and is never raised, because guessing whether a date
+ *    inferred. A line without one is recorded and answerable, he can still ask
+ *    when the date is, and is never raised, because guessing whether a date
  *    wants a cheerful gift prompt is exactly the guess that gets a death
  *    anniversary wrong.
  */
@@ -186,14 +186,14 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
     return unparsedOccasion(
       lineIndex,
       text,
-      'no date on the line, so there is nothing to count down to — write it as MM-DD or YYYY-MM-DD',
+      'no date on the line, so there is nothing to count down to, write it as MM-DD or YYYY-MM-DD',
     );
   }
   if (kind === null) {
     return unparsedOccasion(
       lineIndex,
       text,
-      'no kind on the line. Add gift-giving, remember-only or neither — nothing is inferred, '
+      'no kind on the line. Add gift-giving, remember-only or neither, nothing is inferred, '
       + 'so until it is there this date is kept and answerable but never raised on its own',
     );
   }
@@ -231,8 +231,8 @@ function unparsedOccasion(lineIndex: number, text: string, reason: string): Occa
 /**
  * Render an occasion back to a line, WITHOUT its list marker or provenance.
  *
- * The caller supplies both — `appendProse` writes the marker and the store
- * writes the provenance suffix — so nothing here can produce a line that
+ * The caller supplies both, `appendProse` writes the marker and the store
+ * writes the provenance suffix, so nothing here can produce a line that
  * bypasses the profile's write path.
  */
 export function renderOccasionLine(occasion: Occasion): string {
@@ -306,7 +306,7 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
       unparsed: {
         lineIndex,
         text: withoutListMarker(text),
-        reason: 'no dated range on the line — write it as YYYY-MM-DD..YYYY-MM-DD',
+        reason: 'no dated range on the line, write it as YYYY-MM-DD..YYYY-MM-DD',
       },
     };
   }
@@ -333,8 +333,8 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
 /**
  * Make one free-text detail safe to carry as a segment on a plan line.
  *
- * A plan's details — a confirmation number, a flight and its times, who is
- * travelling, why he is going — are the reason he pasted the itinerary, so they
+ * A plan's details, a confirmation number, a flight and its times, who is
+ * travelling, why he is going, are the reason he pasted the itinerary, so they
  * are kept verbatim wherever verbatim is possible. Three things would corrupt
  * the line if they went through untouched, and each is handled rather than
  * refused:
@@ -342,8 +342,8 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
  *  - A separator character inside the text would split one detail into two.
  *    Both accepted separators are replaced with a hyphen.
  *  - A newline would end the line early. All whitespace collapses to spaces.
- *  - A detail that happens to READ like structure — a bare `away`, an `in X`,
- *    or a `YYYY-MM-DD..YYYY-MM-DD` range — would be parsed back as the plan's
+ *  - A detail that happens to READ like structure, a bare `away`, an `in X`,
+ *    or a `YYYY-MM-DD..YYYY-MM-DD` range, would be parsed back as the plan's
  *    own attributes and silently change the record. Those are prefixed with
  *    `note`, which parses back as an ordinary detail.
  *

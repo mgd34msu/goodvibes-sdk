@@ -10,15 +10,15 @@
  * would be a password on disk in the clear. `record()` rejects secret-looking text in
  * every field, and there is a test asserting the credential value never reaches the file.
  *
- * Follows the platform registry conventions — caller-supplied store path, versioned
- * store file, defensive parse, atomic write — with one deliberate divergence noted at
+ * Follows the platform registry conventions, caller-supplied store path, versioned
+ * store file, defensive parse, atomic write, with one deliberate divergence noted at
  * `readStore`.
  *
  * The store path and the secret-shaped-text predicate both arrive from the caller.
  * The path, because where a product keeps its state is the product's decision. The
  * predicate, because "what looks like a credential" is a policy each surface already
  * owns, and quietly shipping a second copy of those patterns here would let the two
- * drift — a value this registry accepted would then be one the surface's own memory
+ * drift, a value this registry accepted would then be one the surface's own memory
  * guard rejected, or worse, the other way round.
  */
 
@@ -60,7 +60,7 @@ export interface AgentAccountSweepInput {
   readonly now?: Date;
   /**
    * Keys the secret store actually holds. When supplied, records pointing at a key that
-   * no longer exists are orphans and get dropped — the credential is already gone.
+   * no longer exists are orphans and get dropped, the credential is already gone.
    */
   readonly knownSecretKeys?: readonly string[];
   /** When supplied, records older than this are dropped. */
@@ -135,7 +135,7 @@ export type SecretLikeTextPredicate = (text: string) => boolean;
 
 /**
  * Validate a record by content. Anything that fails is dropped on read rather than
- * throwing — a single hand-edited entry must not make the whole registry unreadable.
+ * throwing, a single hand-edited entry must not make the whole registry unreadable.
  */
 function parseAccount(value: unknown, containsSecretLikeText: SecretLikeTextPredicate): AgentAccountRecord | null {
   if (!isRecord(value)) return null;
@@ -227,7 +227,7 @@ export function registerSignupBaseAddressFallback(source: SignupBaseAddressSourc
 }
 
 /**
- * The base address every minted alias resolves back to — "the owner's real
+ * The base address every minted alias resolves back to, "the owner's real
  * delivery address this alias resolves to", in `signup-address.ts`'s own words.
  *
  * A configured mail account always wins. The profile's `contact.email` fills the
@@ -242,7 +242,7 @@ export function registerSignupBaseAddressFallback(source: SignupBaseAddressSourc
  *
  * Note what this deliberately does NOT feed: `security/owner-identity.ts`'s
  * `resolveOwnerAddresses()`. That set gates the one exemption to the
- * content-taint rule and reads configuration only, on purpose — see
+ * content-taint rule and reads configuration only, on purpose, see
  * `owner-profile/consumers.ts` for the reasoning.
  */
 export function resolveSignupBaseAddress(configuredMailAddress?: string | undefined): string | undefined {
@@ -374,7 +374,7 @@ export class AgentAccountRegistry {
   /**
    * Divergence from `calendar-registry.ts`: that registry throws when the store cannot be
    * read. This one must not. A corrupt accounts file would otherwise take down every
-   * caller that just wants to enumerate what the agent signed up for — which is exactly
+   * caller that just wants to enumerate what the agent signed up for, which is exactly
    * when enumeration matters most. Unreadable content yields an empty, still-writable
    * store; malformed records are dropped individually and counted in `droppedOnRead`.
    */

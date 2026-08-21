@@ -45,14 +45,20 @@ export function startMcpConfigAutoReload(options: McpRuntimeReloadOptions): McpR
   const intervalMs = Math.max(500, options.intervalMs ?? 2_000);
   let stopped = false;
   let reloading = false;
-  let last = paths.map(signatureFor);
+  let last: readonly FileSignature[] = paths.map(signatureFor);
 
-  const reload = async (): Promise<void> => {
+  const reload = async (signature: readonly FileSignature[]): Promise<void> => {
     if (stopped || reloading) return;
     reloading = true;
     try {
       await options.registry.reload(options.roots);
       const servers = options.registry.listServerSecurity();
+      // The signature is committed only once the reload it describes actually
+      // succeeded. Committing it up front meant a reload that failed for a
+      // reason unrelated to the file (an MCP server connection timing out)
+      // was never retried: the poller saw no further difference and left the
+      // registry on stale state until a human edited the config again.
+      last = signature;
       options.onReload?.({
         connected: servers.filter((server) => server.connected).length,
         total: servers.length,
@@ -67,8 +73,7 @@ export function startMcpConfigAutoReload(options: McpRuntimeReloadOptions): McpR
   const interval = setInterval(() => {
     const next = paths.map(signatureFor);
     if (!signaturesDiffer(last, next)) return;
-    last = next;
-    void reload();
+    void reload(next);
   }, intervalMs);
   interval.unref?.();
 

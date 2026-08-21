@@ -1,5 +1,5 @@
 /**
- * occasions-verbs.test.ts — the `occasions.*` control-plane surface.
+ * occasions-verbs.test.ts, the `occasions.*` control-plane surface.
  *
  * Exercised over a real GatewayMethodCatalog with the handlers attached the way
  * the daemon attaches them, so the descriptors, the scopes, the required-field

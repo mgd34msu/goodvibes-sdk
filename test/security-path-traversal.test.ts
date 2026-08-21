@@ -20,7 +20,7 @@ function checkPath(toolName: string, path: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Path traversal — safety checks
+// Path traversal, safety checks
 // ---------------------------------------------------------------------------
 
 describe('security: path traversal', () => {

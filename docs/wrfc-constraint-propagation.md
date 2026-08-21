@@ -1,4 +1,4 @@
-# WRFC Constraint Propagation
+# WRFC constraint propagation
 
 Work-Review-Fix-Commit (WRFC) chains extract user-declared constraints from the task prompt, carry them through every state transition, and enforce them as independent pass/fail criteria. This document covers what constraints are, how they move through the chain, and how they interact with the review cycle.
 
@@ -8,7 +8,7 @@ See also: [Runtime events reference](./reference-runtime-events.md) for the `WOR
 
 ## What constraints are
 
-A **constraint** is an explicit user-declared requirement from the task prompt — one that specifies the *shape* of the work rather than the *what*. Examples: size limits ("under 200 lines"), feature inclusions or exclusions, style rules ("no `any` types"), performance targets, naming conventions, API shape requirements, or scope boundaries.
+A **constraint** is an explicit user-declared requirement from the task prompt, one that specifies the *shape* of the work rather than the *what*. Examples: size limits ("under 200 lines"), feature inclusions or exclusions, style rules ("no `any` types"), performance targets, naming conventions, API shape requirements, or scope boundaries.
 
 Constraints are not the task goal itself, not the engineer's own best practices, and not soft preferences or politeness. They are the conditions the user stated that the output must satisfy.
 
@@ -45,25 +45,25 @@ The controller injects a constraint enumeration addendum into the engineer's sys
 
 The engineer applies the following decision:
 
-- **Non-build or unconstrained prompt** — questions, conversational exchanges, requests for explanation, exploratory research, or build requests that delegate all decisions to the engineer's judgment. Emit `"constraints": []`. Do not fabricate constraints from soft preferences or task-description paraphrasing.
-- **Build task with explicit constraints** — any prompt that declares size limits, feature inclusions/exclusions, style rules, performance targets, naming conventions, API shape requirements, explicit scope boundaries, or stated behavioral requirements. Enumerate each as `{ id, text, source: "prompt" }` using the user's phrasing.
+- **Non-build or unconstrained prompt.** Questions, conversational exchanges, requests for explanation, exploratory research, or build requests that delegate all decisions to the engineer's judgment. Emit `"constraints": []`. Do not fabricate constraints from soft preferences or task-description paraphrasing.
+- **Build task with explicit constraints.** Any prompt that declares size limits, feature inclusions/exclusions, style rules, performance targets, naming conventions, API shape requirements, explicit scope boundaries, or stated behavioral requirements. Enumerate each as `{ id, text, source: "prompt" }` using the user's phrasing.
 
 ### Calibration examples
 
 | Prompt | Correct enumeration |
 |--------|--------------------|
-| `"Write a function that adds two numbers"` | `constraints: []` — no shape declared beyond the task |
+| `"Write a function that adds two numbers"` | `constraints: []`: no shape declared beyond the task |
 | `"Write a function that adds two numbers, must be pure, no external deps, under 20 lines"` | Three constraints: purity, no external deps, line limit |
-| `"What does this code do?"` | `constraints: []` — not a build task |
+| `"What does this code do?"` | `constraints: []`: not a build task |
 | `"Refactor this file to use hooks, keep public exports identical"` | Two constraints: use hooks, preserve public exports |
 
 ### Hard cap
 
-At most ~16 constraints. Real prompts almost never produce more than 5–10. More than ~16 indicates over-enumeration — consolidate.
+At most ~16 constraints. Real prompts almost never produce more than 5–10. More than ~16 indicates over-enumeration. Consolidate.
 
 ### Constraints as acceptance criteria
 
-Constraints become the chain's self-declared acceptance criteria. If the engineer cannot satisfy a constraint, it must record the conflict under `issues[]` with an explanation — silent omission is not permitted.
+Constraints become the chain's self-declared acceptance criteria. If the engineer cannot satisfy a constraint, it must record the conflict under `issues[]` with an explanation. Silent omission is not permitted.
 
 ---
 
@@ -80,7 +80,7 @@ Immediately after the initial engineer completes, the controller captures `repor
 }
 ```
 
-This event fires once — on initial engineer completion only, not on fixer re-runs. Fixer runs do not re-emit this event even when they return a `constraints[]` array (the returned array is used only for continuity validation).
+This event fires once, on initial engineer completion only, not on fixer re-runs. Fixer runs do not re-emit this event even when they return a `constraints[]` array (the returned array is used only for continuity validation).
 
 When the constraint list is empty (`constraints: []`), the event is still emitted to signal that the chain was evaluated and no constraints apply. The zero-constraint path is a clean no-op for all downstream processing.
 
@@ -88,7 +88,7 @@ When the constraint list is empty (`constraints: []`), the event is still emitte
 
 ## Reviewer verification
 
-The reviewer's task payload includes the original WRFC ask and the full constraint list. The reviewer runs constraint verification alongside the 10-dimension quality rubric — not instead of it.
+The reviewer's task payload includes the original WRFC ask and the full constraint list. The reviewer runs constraint verification alongside the 10-dimension quality rubric, not instead of it.
 
 Every review is full-scope. The reviewer must evaluate the complete current result against the original WRFC ask, even after one or more fix loops. A review must not be narrowed to the latest fix, recently touched files, functions named by a reviewer, or the engineer report digest. This invariant is what keeps fix loops from passing after they solve a small local issue while regressing or ignoring the broader task.
 
@@ -97,7 +97,7 @@ Every review is full-scope. The reviewer must evaluate the complete current resu
 For each constraint, the reviewer:
 
 1. Judges whether the applied changes satisfy it (`satisfied: true` / `false`).
-2. Cites concrete evidence — a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
+2. Cites concrete evidence: a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
 3. Emits a `ConstraintFinding` entry referencing `constraintId`.
 
 ### Severity taxonomy (unsatisfied constraints)
@@ -130,7 +130,7 @@ passed = review.score >= threshold && !constraintFailure && chain.claimsVerified
 
 where `constraintFailure = (unsatisfiedConstraints.length > 0)`.
 
-Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently — constraint satisfaction never overrides a low score. All three gates must hold for the review to pass: the score is at or above threshold, all constraints are satisfied, and the engineer/fixer work claims were verified on disk (`claimsVerified !== false`).
+Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently. Constraint satisfaction never overrides a low score. All three gates must hold for the review to pass: the score is at or above threshold, all constraints are satisfied, and the engineer/fixer work claims were verified on disk (`claimsVerified !== false`).
 
 When constraints are present, `WORKFLOW_REVIEW_COMPLETED` carries the constraint summary:
 
@@ -151,9 +151,9 @@ When there are no constraints, these fields are omitted entirely.
 
 When the chain moves to `fixing`, the fixer task payload includes every constraint with per-id status markers resolved from the reviewer's findings:
 
-- **`SATISFIED`** — reviewer confirmed satisfied; the fix must keep it satisfied.
-- **`UNSATISFIED`** — reviewer found it violated; the fix must satisfy it.
-- **`UNVERIFIED`** — reviewer produced no finding for this constraint; the fixer must verify and satisfy it.
+- **`SATISFIED`.** Reviewer confirmed satisfied. The fix must keep it satisfied.
+- **`UNSATISFIED`.** Reviewer found it violated. The fix must satisfy it.
+- **`UNVERIFIED`.** Reviewer produced no finding for this constraint. The fixer must verify and satisfy it.
 
 ### Conflict escalation
 
@@ -161,7 +161,7 @@ If a reviewer issue can only be resolved by regressing a satisfied constraint, t
 
 ### Continuity validation
 
-The fixer returns an `EngineerReport` containing the same `constraints[]` array — same ids, same text, same order. The controller validates this on fixer completion. Any missing or extra ids produce a **synthetic critical issue** pushed to `chain.syntheticIssues`:
+The fixer returns an `EngineerReport` containing the same `constraints[]` array, same ids, same text, same order. The controller validates this on fixer completion. Any missing or extra ids produce a **synthetic critical issue** pushed to `chain.syntheticIssues`:
 
 ```
 Fixer regressed constraint continuity: missing=[c2] extra=[c3]
@@ -169,7 +169,7 @@ Fixer regressed constraint continuity: missing=[c2] extra=[c3]
 
 Synthetic critical issues are prepended to the next review task as a `[CRITICAL]` block, consumed once, and cleared. This ensures the reviewer flags the regression explicitly rather than letting it propagate.
 
-The authoritative constraint list on `chain.constraints` is never overwritten by a fixer run — only the initial engineer's enumeration is canonical.
+The authoritative constraint list on `chain.constraints` is never overwritten by a fixer run. Only the initial engineer's enumeration is canonical.
 
 Fixer prompts also include the original WRFC ask. A fixer is expected to address reviewer issues while preserving the full original scope, then perform a short self-check before final reporting. Known remaining gaps go into `issues[]` or `uncertainties[]`; hiding them is treated as poor WRFC hygiene and should be caught by the full-scope reviewer.
 
@@ -200,17 +200,17 @@ The original `constraints[]` list remains authoritative for the chain. Fixer rep
 
 ## Chain fields
 
-`WrfcChain` carries these WRFC quality fields (internal — not part of the public companion surface):
+`WrfcChain` carries these WRFC quality fields (internal, not part of the public companion surface):
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `constraints` | `Constraint[]` | Authoritative constraint list; set once on initial engineer completion, never overwritten |
 | `constraintsEnumerated` | `boolean` | `true` once `WORKFLOW_CONSTRAINTS_ENUMERATED` has been emitted for this chain; prevents duplicate emission on fixer re-runs |
 | `syntheticIssues` | `Array<{ severity: 'critical'; description: string }> \| undefined` | Controller-injected critical issues (e.g. continuity violations); prepended to the next review task, then cleared |
-| `ownerDecisions` | `WrfcOwnerDecision[]` | Durable audit of the owner’s chain-keeping decisions: child spawns, review pass/fail decisions, gate decisions, resume decisions, and terminal decisions |
+| `ownerDecisions` | `WrfcOwnerDecision[]` | Durable audit of the owner's chain-keeping decisions: child spawns, review pass/fail decisions, gate decisions, resume decisions, and terminal decisions |
 | `subtasks` | `WrfcSubtask[] \| undefined` | Present on compound chains; each subtask carries its own `constraints[]`, `constraintsEnumerated`, and `claimsVerified`, and runs its own engineer/reviewer/fixer cycle |
-| `integratorAgentId` | `string \| undefined` | Integrator child that merges passed subtasks before the chain’s final review |
-| `integratorReport` | `CompletionReport \| undefined` | The integrator’s completion report |
+| `integratorAgentId` | `string \| undefined` | Integrator child that merges passed subtasks before the chain's final review |
+| `integratorReport` | `CompletionReport \| undefined` | The integrator's completion report |
 | `claimsVerified` | `boolean \| undefined` | Whether the engineer/fixer self-reported work claims were verified on disk; `false` means verification ran and found missing claims (phantom work) |
 
 ## Compound chains and subtasks
@@ -219,23 +219,23 @@ A large WRFC ask can be decomposed into a **compound chain**: the owner splits
 the work into `WrfcSubtask` records and runs each through its own
 engineer/reviewer/fixer cycle, tracked by `WrfcSubtaskState` (`pending`,
 `engineering`, `reviewing`, `fixing`, `passed`, `failed`). Each subtask
-enumerates and verifies its **own** constraint list — `WrfcSubtask` carries the
-same `constraints` and `constraintsEnumerated` fields as the parent chain — so
+enumerates and verifies its **own** constraint list, `WrfcSubtask` carries the
+same `constraints` and `constraintsEnumerated` fields as the parent chain, so
 the propagation rules above apply per subtask exactly as they do for a single
 chain.
 
 Two roles extend the engineer/reviewer/fixer set (`WrfcAgentRole`):
 
-- **integrator** (`'integrator'`) — merges the passed subtasks into the chain
+- **integrator** (`'integrator'`): merges the passed subtasks into the chain
   result before the final full-scope review; tracked on `chain.integratorAgentId`
   and `chain.integratorReport`.
-- **verifier** (`'verifier'`) — checks engineer/fixer self-reports against the
+- **verifier** (`'verifier'`): checks engineer/fixer self-reports against the
   actual on-disk changes. The result is recorded on `claimsVerified`: `false`
   means verification ran and found missing claims (phantom work), surfacing it
   rather than letting an unverified report pass.
 
-Owner orchestration choices for compound chains — `compound_started`,
-`spawn_integrator`, `subtask_review_passed`, and `subtask_review_failed` — are
+Owner orchestration choices for compound chains, `compound_started`,
+`spawn_integrator`, `subtask_review_passed`, and `subtask_review_failed`, are
 recorded in `ownerDecisions`. The complete `WORKFLOW_*` event enumeration lives
 in the [Runtime events reference](./reference-runtime-events.md).
 
@@ -257,13 +257,13 @@ When the engineer emits `constraints: []` (non-build or unconstrained prompt):
 - `WORKFLOW_FIX_ATTEMPTED` omits `targetConstraintIds`.
 - Fixer receives no constraint addendum.
 - Gate-fix tasks in the same chain omit the constraint section.
-- `passed` is computed as `review.score >= threshold` only — no constraint axis.
+- `passed` is computed as `review.score >= threshold` only, no constraint axis.
 
 This path does not add constraint fields to events or constraint blocks to agent prompts.
 
 ---
 
-## Next Reads
+## Next reads
 
-- [Runtime events reference](./reference-runtime-events.md) — `WORKFLOW_CONSTRAINTS_ENUMERATED`, `WORKFLOW_REVIEW_COMPLETED`, `WORKFLOW_FIX_ATTEMPTED` event shapes
-- [Observability](./observability.md) — event domain subscription
+- [Runtime events reference](./reference-runtime-events.md): `WORKFLOW_CONSTRAINTS_ENUMERATED`, `WORKFLOW_REVIEW_COMPLETED`, `WORKFLOW_FIX_ATTEMPTED` event shapes
+- [Observability](./observability.md): event domain subscription

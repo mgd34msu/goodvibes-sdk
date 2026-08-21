@@ -1,5 +1,5 @@
 /**
- * ci-watch/ — watch CI on a repo/PR with an honest, per-job verdict.
+ * ci-watch/, watch CI on a repo/PR with an honest, per-job verdict.
  *
  * The one-shot tool (CiWatchService.status) reports every job and its
  * conclusion; the verdict is derived from those per-job conclusions, never a

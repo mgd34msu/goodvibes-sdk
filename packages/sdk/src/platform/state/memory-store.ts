@@ -1,5 +1,5 @@
 /**
- * MemoryStore — project memory substrate.
+ * MemoryStore, project memory substrate.
  *
  * Durable, provenance-rich memory for decisions, constraints, incidents, and
  * patterns. Backed by SQLite via SQLiteStore. Survives process restarts and is
@@ -67,7 +67,7 @@ export interface MemoryRecord {
   id: string;
   /** Scope of the record for retrieval and sharing workflows. */
   scope: MemoryScope;
-  /** Memory class — governs retrieval priority and display grouping. */
+  /** Memory class, governs retrieval priority and display grouping. */
   cls: MemoryClass;
   /** Brief summary (one sentence). */
   summary: string;
@@ -92,14 +92,14 @@ export interface MemoryRecord {
   /** Last updated timestamp (epoch ms). */
   updatedAt: number;
   /**
-   * Temporal validity window — start. Epoch ms. When set, the record is NOT
+   * Temporal validity window, start. Epoch ms. When set, the record is NOT
    * injected before this time (it is "pending"). Undefined means valid from
    * creation. Consulted at injection time; see memory-recall-contract.ts.
    */
   validFrom?: number | undefined;
   /**
-   * Temporal validity window — end. Epoch ms. When set, the record stops being
-   * injected at/after this time (it is "expired") — but it is NOT deleted, and
+   * Temporal validity window, end. Epoch ms. When set, the record stops being
+   * injected at/after this time (it is "expired"), but it is NOT deleted, and
    * read/list surfaces label it expired rather than silently dropping it.
    * Undefined means no expiry.
    */
@@ -772,19 +772,16 @@ export class MemoryStore {
    * @throws if the new SQLite store or vector index cannot be opened.
    */
   async reroot(newDbPath: string): Promise<void> {
-    // Step 1: close existing handles
     this.sqlite.close();
     this.vectorIndex?.close();
     this.ready = false;
     this.rebuildVectorIndexPromise = null;
-    // Step 2: open at new path
     this.sqlite = new SQLiteStore(newDbPath);
     this.vectorIndex = new SqliteVecMemoryIndex(
       resolveMemoryVectorDbPath(newDbPath),
       undefined,
       this.embeddingRegistry,
     );
-    // Step 3: initialise
     await this.init();
   }
 

@@ -12,7 +12,7 @@ import {
 } from './method-catalog-shared.js';
 
 /**
- * Browser operator methods — real browser control through the standard
+ * Browser operator methods, real browser control through the standard
  * operator method protocol.
  *
  * These are SERVED. `registerBrowserGatewayMethods`
@@ -31,7 +31,7 @@ import {
  * reachable.
  *
  * The verb set deliberately mirrors the whole surface a product's `browser`
- * tool exposes rather than a convenient subset — navigation, snapshots,
+ * tool exposes rather than a convenient subset, navigation, snapshots,
  * clicking, typing, selecting, key presses, scrolling, waiting, reading,
  * extraction, screenshots, tabs, history, and the full session lifecycle. A
  * daemon that can do nine of a surface's twenty-three things is still a daemon

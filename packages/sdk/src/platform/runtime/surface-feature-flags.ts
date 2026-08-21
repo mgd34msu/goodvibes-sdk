@@ -1,5 +1,5 @@
 /**
- * surface-feature-flags — which platform capabilities a surface/server setup
+ * surface-feature-flags, which platform capabilities a surface/server setup
  * needs, and how to switch them on through their real domain settings keys.
  *
  * Capabilities are configured through first-class domain settings (see
@@ -70,7 +70,7 @@ export function isFeatureFlagEnabled(config: Pick<ConfigManager, 'get'>, flagId:
 /**
  * Translate internal feature-gate ids (e.g. 'control-plane-gateway') to the
  * canonical domain settings keys the user actually sets (e.g.
- * 'controlPlane.gateway') — matching the SDK's own gate errors, which name the
+ * 'controlPlane.gateway'), matching the SDK's own gate errors, which name the
  * settings key. A gate with no mapped setting falls back to its id. Deduped and
  * sorted for stable output.
  */

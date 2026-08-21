@@ -10,12 +10,12 @@
  * root under `bun scripts/test.ts`) is the same shape every time: give the
  * directory a name that is unique to this run AND recognizable as this
  * tool's own, then have every entry point of that tool sweep for stale
- * siblings — same prefix, older than a threshold generous enough that it
- * never touches a run that is still actually going — before it creates its
+ * siblings, same prefix, older than a threshold generous enough that it
+ * never touches a run that is still actually going, before it creates its
  * own. Age-gated and prefix-scoped on purpose: a sibling run of the SAME
  * tool started moments ago, or an unrelated directory sharing the same
  * system temp dir, must never be touched. This is not a blanket `/tmp`
- * sweep — it only ever looks at entries starting with the caller's prefix.
+ * sweep, it only ever looks at entries starting with the caller's prefix.
  */
 import { readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,7 +45,7 @@ export function sweepStaleTmpDirs(root: string, prefix: string, maxAgeMs: number
     try {
       rmSync(path, { recursive: true, force: true });
     } catch {
-      // Best effort — another run may have reclaimed it first.
+      // Best effort, another run may have reclaimed it first.
     }
   }
 }

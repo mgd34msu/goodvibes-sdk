@@ -2,7 +2,7 @@
  * Auto-refresh transport middleware.
  *
  * Integrates `AutoRefreshCoordinator` at the transport boundary so that ALL
- * typed operator/peer SDK calls benefit from automatic token refresh — not only
+ * typed operator/peer SDK calls benefit from automatic token refresh, not only
  * `auth.current()`.
  *
  * Responsibilities:
@@ -61,7 +61,7 @@ export function createAutoRefreshMiddleware(
     // Retry requests issued by this middleware carry the flag. When we see it,
     // simply forward the request without any refresh logic.
     // We catch and re-place errors onto ctx.error so they are NOT tagged as
-    // "middleware errors" by the transport's instrumented-chain wrapper — which
+    // "middleware errors" by the transport's instrumented-chain wrapper, which
     // would re-wrap them as GoodVibesSdkError{kind:'unknown'} and hide the
     // original 401 status that refreshAndRetryOnce needs to detect.
     if (ctx.options[ATTEMPTED_FLAG] === true) {
@@ -117,7 +117,7 @@ export function createAutoRefreshMiddleware(
     }
 
     if (!is401Error(caughtErr)) {
-      // Non-401 error (e.g. 5xx, network) — place on ctx.error so it exits
+      // Non-401 error (e.g. 5xx, network), place on ctx.error so it exits
       // the middleware chain without triggering middleware-error wrapping.
       ctx.error = caughtErr;
       return;
@@ -127,7 +127,7 @@ export function createAutoRefreshMiddleware(
     // Release the original 401 error before we await the refresh + retry. The
     // transport's end-of-chain catch (composeMiddleware) sets `ctx.error` to
     // the SAME error object innerFetch threw before rethrowing it to us, and
-    // ctx stays strongly reachable for the whole call — so clearing only the
+    // ctx stays strongly reachable for the whole call, so clearing only the
     // local `caughtErr` would be a no-op (verified by WeakRef probe): the
     // error, which can transitively retain the failed request and its
     // operator-token Authorization header, would stay pinned via ctx.error for
@@ -149,7 +149,7 @@ export function createAutoRefreshMiddleware(
       [ATTEMPTED_FLAG]: true,
     };
 
-    // Delegate to coordinator.refreshAndRetryOnce — this refreshes the token
+    // Delegate to coordinator.refreshAndRetryOnce, this refreshes the token
     // exactly once and executes the retry fn once. If the retry also returns
     // 401, it throws GoodVibesSdkError{kind:'auth'} with the standard three-part message.
     //
@@ -165,7 +165,7 @@ export function createAutoRefreshMiddleware(
         return transport.requestJson<unknown>(ctx.url, retryOptions as never);
       });
     } catch (retryErr) {
-      // Place onto ctx.error — transport's post-chain check will rethrow it
+      // Place onto ctx.error, transport's post-chain check will rethrow it
       // without the middleware-wrapping treatment.
       ctx.error = retryErr;
       return;
@@ -174,11 +174,11 @@ export function createAutoRefreshMiddleware(
     // Put the retry result back onto ctx.response so the transport's outer
     // requestJson can resolve it via `await ctx.response.json()`.
     //
-    // status: 200 — transport.requestJson throws on non-2xx, so a non-throwing
+    // status: 200, transport.requestJson throws on non-2xx, so a non-throwing
     //   return means the retry succeeded. The transport layer only inspects the
     //   JSON body; the status is not forwarded to callers by HttpJsonTransport.
     //
-    // headers: Content-Type only — the transport reads `ctx.response.json()` and
+    // headers: Content-Type only, the transport reads `ctx.response.json()` and
     //   does not forward response headers to callers. If header forwarding is
     //   needed in the future, use the lower-level fetch path here instead.
     //
@@ -198,4 +198,4 @@ export function createAutoRefreshMiddleware(
 // Helpers
 // ---------------------------------------------------------------------------
 
-// is401Error is shared — import from auto-refresh.ts to avoid divergence.
+// is401Error is shared, import from auto-refresh.ts to avoid divergence.

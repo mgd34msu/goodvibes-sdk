@@ -1,5 +1,5 @@
 /**
- * daemon-tier-paths.ts — resolving a daemon-owned path while loading the
+ * daemon-tier-paths.ts, resolving a daemon-owned path while loading the
  * daemon tier, creating the section it lives in if the product has not yet.
  *
  * ── The defect this exists to fix ─────────────────────────────────────────
@@ -13,8 +13,8 @@
  *
  * Those two facts collided. The daemon-tier overlay runs inside the
  * `ConfigManager` CONSTRUCTOR, before any product has had a chance to call its
- * `ensure*` seeding. So a daemon settings file containing `email.imapHost` — a
- * path the platform itself declares daemon-owned — made `resolvePath` throw
+ * `ensure*` seeding. So a daemon settings file containing `email.imapHost`, a
+ * path the platform itself declares daemon-owned, made `resolvePath` throw
  * "section 'email' does not exist", and every `ConfigManager` built against
  * that directory failed to construct. Storing a value correctly bricked
  * reading it back, which is a worse failure than the stranding it was meant to
@@ -45,7 +45,7 @@ export interface ResolvedConfigSlot {
  * Walk `root` to `key`, creating any missing intermediate section.
  *
  * A non-object sitting where a section should be (a string left by a hand
- * edit, say) is replaced rather than walked into — the alternative is throwing
+ * edit, say) is replaced rather than walked into, the alternative is throwing
  * during construction, which is the failure this module exists to remove.
  */
 export function resolveOrCreateDaemonPath(

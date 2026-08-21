@@ -9,7 +9,7 @@
  *
  * Wired via GatewayMethodCatalog.register(descriptor, handler) against
  * descriptors already cataloged (without a handler) from
- * ../method-catalog-principals.ts — the same mechanism skills.* / fleet.* use.
+ * ../method-catalog-principals.ts, the same mechanism skills.* / fleet.* use.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';

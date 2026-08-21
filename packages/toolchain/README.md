@@ -12,23 +12,23 @@ several drifting ones.
 Each tool ships as a library policy function (with injectable I/O for testing)
 and a thin CLI (`bin` entry):
 
-- **sdk-pin-gate** — pin ⇄ lockfile ⇄ installed tri-agreement plus a non-npm
+- **sdk-pin-gate.** Pin ⇄ lockfile ⇄ installed tri-agreement plus a non-npm
   import sweep and an optional exports-map check.
-- **build-binaries** — `bun build --compile` across a target matrix, with an
+- **build-binaries.** `bun build --compile` across a target matrix, with an
   optional daemon leg and native-addon copy/cross-fetch, all config-driven.
-- **release-cut** — prepare/bump/changelog/tag only. Never re-runs gates (CI
+- **release-cut.** Prepare, bump, changelog, tag only. Never re-runs gates (CI
   owns validation).
-- **coverage-gate** — aggregate coverage ratchet against per-repo floors.
-- **verification-ledger** — totals math and JSON/Markdown rendering of a
+- **coverage-gate.** Aggregates coverage and enforces a per-repo floor that only increases.
+- **verification-ledger.** Totals math and JSON and Markdown rendering of a
   repo-collected verification inventory.
-- **post-build-smoke** — boots a compiled binary and checks its version banner.
-- **package-install-check** — static `npm pack` tarball + bin-shim policy check.
-- **publish-package** — idempotent `npm publish` plus a propagation poll.
-- **per-job-green** — verifies a commit's push-CI run concluded with every job
+- **post-build-smoke.** Boots a compiled binary and checks its version banner.
+- **package-install-check.** Static `npm pack` tarball plus bin-shim policy check.
+- **publish-package.** Idempotent `npm publish` plus a propagation poll.
+- **per-job-green.** Verifies a commit's push-CI run concluded with every job
   green, with a 503-resilient check-suites fallback. The by-reference
-  validation primitive.
-- **changelog-gate** — asserts CHANGELOG carries a section for a version.
-- **sha256sums** — generate/verify a `SHA256SUMS` manifest over release assets.
+  validation check.
+- **changelog-gate.** Asserts CHANGELOG carries a section for a version.
+- **sha256sums.** Generate or verify a `SHA256SUMS` manifest over release assets.
 
 ## Config
 

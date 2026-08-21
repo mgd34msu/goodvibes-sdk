@@ -232,7 +232,7 @@ describe('automation kind:checkin execution branch', () => {
     const runs = new Map<string, { status: string }>();
     const jobs = new Map<string, unknown>();
     const events: string[] = [];
-    // Minimal execution context — only the members executeCheckinJob touches.
+    // Minimal execution context, only the members executeCheckinJob touches.
     const context = {
       runs,
       jobs,

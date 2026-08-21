@@ -1,15 +1,15 @@
 /**
- * cli-command-catalog.ts — WHAT a terminal-shaped front-end's command line
+ * cli-command-catalog.ts, WHAT a terminal-shaped front-end's command line
  * understands.
  *
  * This file is data (plus the handful of pure functions its own field
- * semantics need — inferring a provider from a `provider:model` key, folding
+ * semantics need, inferring a provider from a `provider:model` key, folding
  * leftover positionals into a prompt). It holds no argv-walking logic of its
  * own: cli-parser-engine.ts is the engine, handed this catalog and an
  * argument list, and it knows nothing about any specific command. `--print`
  * and `--prompt` implying the `run` command, `--non-interactive` also
  * implying `--yes`, and the session-lifecycle-flag conflict check are this
- * catalog's own domain rules, wired through its `postProcess` hook — the one
+ * catalog's own domain rules, wired through its `postProcess` hook, the one
  * seam the engine leaves for a product to have opinions the engine itself
  * must not.
  *
@@ -56,7 +56,7 @@ function createDefaultFlags(): GoodVibesCliFlags {
 
 /**
  * `provider:model` and `provider/model` name the provider inside the model
- * id. An explicit `--provider` always wins — the engine only calls this when
+ * id. An explicit `--provider` always wins, the engine only calls this when
  * none was given.
  */
 function inferProviderFromModel(model: string): string | undefined {
@@ -204,7 +204,7 @@ const GLOBAL_FLAGS: readonly CommandFlagSpec<GoodVibesCliFlagField>[] = [
 /**
  * Every command word this vocabulary accepts. Every entry declares no flags
  * of its own (see the file header) and is lenient toward an unmatched option
- * token once its own word has been consumed — this vocabulary's real current
+ * token once its own word has been consumed, this vocabulary's real current
  * shape is one flat set of global flags, with a subcommand's further
  * arguments left for its own handler downstream.
  */
@@ -253,7 +253,7 @@ const COMMANDS: readonly CommandSpec<GoodVibesCliCommand, GoodVibesCliFlagField>
  * `--print`/`--prompt` with no explicit command word implies `run`; leftover
  * positionals become the prompt for a `run` (or `--print`) invocation with
  * none set otherwise; and only one of --continue/--resume/--fork may be
- * used. These are this vocabulary's own domain rules — the engine enforces
+ * used. These are this vocabulary's own domain rules, the engine enforces
  * none of them, and a catalog with no such rules (there is nothing the
  * daemon's own vocabulary needs this hook for today) simply omits it.
  */
@@ -300,7 +300,7 @@ export const GOODVIBES_CLI_CATALOG: CliCatalog<GoodVibesCliCommand, GoodVibesCli
   defaultCommand: 'tui',
   // Preserves this vocabulary's exact current behavior: an unrecognized first
   // word has never been refused here (unlike a daemon-shaped catalog, which
-  // opts into 'reject' instead) — it silently becomes an ordinary positional
+  // opts into 'reject' instead), it silently becomes an ordinary positional
   // under the default command, e.g. feeding the prompt-from-positionals rule
   // above when combined with --print.
   unmatchedFirstToken: 'passthrough',

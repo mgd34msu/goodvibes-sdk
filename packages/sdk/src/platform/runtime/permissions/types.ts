@@ -10,13 +10,13 @@
 /**
  * The active permission mode controlling how the evaluator applies its layers.
  *
- * - `default`              — Standard prompt mode; reads auto-approved.
- * - `plan`                 — Planning mode; write/execute/network/escalation blocked.
- * - `accept-edits`         — File write/edit auto-approved; exec/network/escalation still gated.
- * - `allow-all`            — All tools auto-approved (⚠ use with caution).
- * - `custom`               — Per-rule policy applies exclusively.
+ * - `default`             , Standard prompt mode; reads auto-approved.
+ * - `plan`                , Planning mode; write/execute/network/escalation blocked.
+ * - `accept-edits`        , File write/edit auto-approved; exec/network/escalation still gated.
+ * - `allow-all`           , All tools auto-approved (⚠ use with caution).
+ * - `custom`              , Per-rule policy applies exclusively.
  * - `background-restricted`— Agent/delegate tools blocked; exec restricted.
- * - `remote-restricted`    — Network tools blocked; local reads/writes allowed.
+ * - `remote-restricted`   , Network tools blocked; local reads/writes allowed.
  */
 export type PermissionMode =
   | 'default'
@@ -48,50 +48,50 @@ export type CommandClassification =
  * Canonical reason codes emitted with every PermissionDecision.
  *
  * Prefix conventions:
- *   RULE_   — a policy rule matched (allow or deny)
- *   PROMPT_ — user was prompted and responded
- *   SAFETY_ — bypass-immune safety guardrail fired
- *   MODE_   — active permission mode determined the outcome
+ *   RULE_  , a policy rule matched (allow or deny)
+ *   PROMPT_, user was prompted and responded
+ *   SAFETY_, bypass-immune safety guardrail fired
+ *   MODE_  , active permission mode determined the outcome
  *   DEFAULT_— default policy
  */
 export type DecisionReason =
-  // Policy layer — user-defined allow rules
+  // Policy layer, user-defined allow rules
   | 'RULE_ALLOW_USER'
-  // Policy layer — managed (system/plugin) allow rules
+  // Policy layer, managed (system/plugin) allow rules
   | 'RULE_ALLOW_MANAGED'
-  // Policy layer — managed deny rules
+  // Policy layer, managed deny rules
   | 'RULE_DENY_MANAGED'
-  // Policy layer — user-defined deny rules
+  // Policy layer, user-defined deny rules
   | 'RULE_DENY_USER'
-  // Session override — user approved once
+  // Session override, user approved once
   | 'PROMPT_ALLOW_ONCE'
-  // Session override — user approved for entire session
+  // Session override, user approved for entire session
   | 'PROMPT_ALLOW_SESSION'
-  // Session override — user denied
+  // Session override, user denied
   | 'PROMPT_DENY'
-  // Session override — cached approval hit
+  // Session override, cached approval hit
   | 'SESSION_CACHED_ALLOW'
-  // Session override — cached denial hit
+  // Session override, cached denial hit
   | 'SESSION_CACHED_DENY'
-  // Safety — destructive prefix pattern matched
+  // Safety, destructive prefix pattern matched
   | 'SAFETY_DENY_DESTRUCTIVE_PREFIX'
-  // Safety — path escape attempt detected
+  // Safety, path escape attempt detected
   | 'SAFETY_DENY_PATH_ESCAPE'
-  // Safety — known dangerous command pattern
+  // Safety, known dangerous command pattern
   | 'SAFETY_DENY_DANGEROUS_PATTERN'
-  // Safety — dangerous SQL pattern matched
+  // Safety, dangerous SQL pattern matched
   | 'SAFETY_DENY_DANGEROUS_SQL'
-  // Safety — general guardrail
+  // Safety, general guardrail
   | 'SAFETY_DENY_GUARDRAIL'
-  // Mode — allow-all mode active
+  // Mode, allow-all mode active
   | 'MODE_ALLOW_ALL'
-  // Mode — plan mode blocks write/network/destructive/escalation
+  // Mode, plan mode blocks write/network/destructive/escalation
   | 'MODE_DENY_PLAN'
-  // Mode — accept-edits mode auto-approves file write/edit tools
+  // Mode, accept-edits mode auto-approves file write/edit tools
   | 'MODE_ALLOW_ACCEPT_EDITS'
-  // Mode — background-restricted mode blocks agent/delegate
+  // Mode, background-restricted mode blocks agent/delegate
   | 'MODE_DENY_BACKGROUND'
-  // Mode — remote-restricted mode blocks network tools
+  // Mode, remote-restricted mode blocks network tools
   | 'MODE_DENY_REMOTE_RESTRICTED'
   // Default policy allow
   | 'DEFAULT_ALLOW'
@@ -180,12 +180,12 @@ export interface PermissionDecision {
 /**
  * Controls how the permission simulator behaves during evaluation.
  *
- * - `simulation-only`     — Both evaluators run; only the actual decision is
+ * - `simulation-only`    , Both evaluators run; only the actual decision is
  *                           enforced. Divergence is recorded for reports without
  *                           warning emission.
- * - `warn-on-divergence`  — Both evaluators run; actual enforced. Divergence
+ * - `warn-on-divergence` , Both evaluators run; actual enforced. Divergence
  *                           emits a warning to the decision log.
- * - `enforce`             — The simulated evaluator becomes the authoritative
+ * - `enforce`            , The simulated evaluator becomes the authoritative
  *                           evaluator. Blocked if the divergence gate fails.
  */
 export type SimulationMode =
@@ -196,8 +196,8 @@ export type SimulationMode =
 /**
  * Categorises how two decisions diverged from one another.
  *
- * - `allow-vs-deny`  — Actual allowed; simulated denied.
- * - `deny-vs-allow`  — Actual denied; simulated allowed.
+ * - `allow-vs-deny` , Actual allowed; simulated denied.
+ * - `deny-vs-allow` , Actual denied; simulated allowed.
  * - `reason-mismatch`— Both produced the same allow/deny but with different
  *                      reason codes or source layers.
  */
@@ -207,7 +207,7 @@ export type DivergenceType =
   | 'reason-mismatch';
 
 /**
- * The result of a single simulation evaluation — pairing the actual decision
+ * The result of a single simulation evaluation, pairing the actual decision
  * with the simulated decision and describing any observed divergence.
  */
 export interface SimulationResult {
@@ -218,8 +218,8 @@ export interface SimulationResult {
   /**
    * The decision that should be enforced by the caller.
    *
-   * - `simulation-only` and `warn-on-divergence` — equals `actualDecision`.
-   * - `enforce` — equals `simulatedDecision` (simulated becomes authoritative).
+   * - `simulation-only` and `warn-on-divergence`, equals `actualDecision`.
+   * - `enforce`, equals `simulatedDecision` (simulated becomes authoritative).
    */
   authoritativeDecision: PermissionDecision;
   /** Whether the two decisions diverged in any way. */
@@ -311,7 +311,7 @@ export interface PermissionSimulatorConfig {
 // ── Policy Rules ───────────────────────────────────────────────────────────────
 
 /**
- * Who authored this rule — affects precedence within the policy layer.
+ * Who authored this rule, affects precedence within the policy layer.
  * User rules take precedence over managed (system/plugin) rules.
  */
 export type RuleOrigin = 'user' | 'managed';
@@ -329,7 +329,7 @@ interface BaseRule {
 }
 
 /**
- * PrefixRule — matches tool names and/or command prefixes.
+ * PrefixRule, matches tool names and/or command prefixes.
  *
  * Example: deny any exec call whose first argument starts with `rm -rf`.
  */
@@ -345,7 +345,7 @@ export interface PrefixRule extends BaseRule {
   commandPrefixes?: string[] | undefined;
   /**
    * Full-command match(es): a command must equal one of these strings
-   * (trimmed, case-insensitive) — the "this exact command" approval tier.
+   * (trimmed, case-insensitive), the "this exact command" approval tier.
    * `<command> && rm -rf x` never matches an exactCommands entry of
    * `<command>`, unlike a prefix.
    */
@@ -353,7 +353,7 @@ export interface PrefixRule extends BaseRule {
 }
 
 /**
- * ArgShapeRule — matches against argument shape/content via predicate.
+ * ArgShapeRule, matches against argument shape/content via predicate.
  *
  * Example: deny calls where args contain `{ force: true }` combined with a
  * destructive tool name.
@@ -370,7 +370,7 @@ export interface ArgShapeRule extends BaseRule {
 }
 
 /**
- * PathScopeRule — restricts or allows tool calls based on file path arguments.
+ * PathScopeRule, restricts or allows tool calls based on file path arguments.
  *
  * Example: deny any write tool call whose `path` arg escapes the project root.
  */
@@ -386,7 +386,7 @@ export interface PathScopeRule extends BaseRule {
 }
 
 /**
- * NetworkScopeRule — restricts or allows tool calls based on network host/URL.
+ * NetworkScopeRule, restricts or allows tool calls based on network host/URL.
  *
  * Example: deny any fetch call to hosts not in the allowed list.
  */
@@ -407,7 +407,7 @@ export interface NetworkScopeRule extends BaseRule {
 }
 
 /**
- * ModeConstraintRule — activates only when a specific PermissionMode is active.
+ * ModeConstraintRule, activates only when a specific PermissionMode is active.
  *
  * Example: deny all write tools when mode is `'plan'`.
  */

@@ -4,7 +4,7 @@
  * The session lifecycle operator methods the MCP server surfaces as first-class
  * tools, so an external agent tool can drive a GoodVibes session end to end:
  * create a session, attach to it, send it a message, read its transcript, and
- * steer a live turn. These are ordinary cataloged operator methods — this file
+ * steer a live turn. These are ordinary cataloged operator methods, this file
  * just names the lifecycle subset and its intent so the generator can lift them
  * to the front of the tool list and give each a task-oriented hint.
  */

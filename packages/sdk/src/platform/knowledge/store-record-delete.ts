@@ -17,7 +17,7 @@ import type {
  * source deletes cascade edges, issues, usage records, consolidation candidates and
  * refinement tasks (Defect 7 closed the refinement-task gap); node delete also
  * purges revision history and source delete purges derived extraction/enrichment
- * rows. Honest hard delete — no soft-hide. (Defect 6.)
+ * rows. Honest hard delete, no soft-hide. (Defect 6.)
  */
 export interface KnowledgeRecordDeleteView {
   readonly sqlite: SQLiteStore;

@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/orchestration
+ * Coverage-gap smoke test, platform/runtime/orchestration
  * Verifies that the spawn-policy module loads and exports expected symbols.
  * Closes coverage gap: platform/runtime/orchestration
  */

@@ -159,7 +159,7 @@ export function renderPacket(items: readonly KnowledgePacketItem[], packet: Pick
     const related = item.related.length > 0 ? ` | related: ${item.related.join(', ')}` : '';
     const uri = item.uri ? ` | ${item.uri}` : '';
     const evidence = item.evidence.length > 0 ? ` | evidence: ${item.evidence.join(' ; ')}` : '';
-    lines.push(`- [${item.id}] (${item.kind}) ${item.title}${uri} — ${item.summary ?? 'no summary'} — ${item.reason}${related}${evidence}`);
+    lines.push(`- [${item.id}] (${item.kind}) ${item.title}${uri}, ${item.summary ?? 'no summary'}, ${item.reason}${related}${evidence}`);
   }
   return lines.join('\n');
 }

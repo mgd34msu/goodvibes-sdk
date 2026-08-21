@@ -1,5 +1,5 @@
 /**
- * Domain Read Matrix — single source of truth for cross-domain import authorization.
+ * Domain Read Matrix, single source of truth for cross-domain import authorization.
  *
  * This file defines which domain slices are permitted to import (read) from
  * other domain slices within `src/runtime/store/domains/`.

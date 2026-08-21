@@ -7,13 +7,13 @@ import type { ToolDefinition } from '../../types/tools.js';
 export const workflowSchema: ToolDefinition = {
   name: 'workflow',
   description:
-    'Automation control plumbing — NOT for executing tasks or spawning agents. ' +
+    'Automation control plumbing, NOT for executing tasks or spawning agents. ' +
     'To run work, use the agent tool instead. ' +
     'This tool only manages: triggers (event-driven automations that fire shell commands on hook events), ' +
     'schedule (recurring background commands on intervals), ' +
     'and workflow state tracking (does not execute anything). ' +
     'Modes: triggers (manage event-driven automations), schedule (manage recurring tasks), ' +
-    'start/status/transition/cancel/list (state tracking only — no execution).',
+    'start/status/transition/cancel/list (state tracking only, no execution).',
   sideEffects: ['workflow', 'state'],
   concurrency: 'serial',
   parameters: {

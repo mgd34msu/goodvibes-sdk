@@ -1,9 +1,9 @@
 /**
- * cluster-group-harness.ts — a world of group members on one in-memory bus.
+ * cluster-group-harness.ts, a world of group members on one in-memory bus.
  *
  * Not a test file (the runner globs *.test.ts). It builds real
- * `ClusterGroupRuntime` instances — real crypto, real envelopes, real key
- * material — over a fake clock and an in-process bus, so every test here
+ * `ClusterGroupRuntime` instances, real crypto, real envelopes, real key
+ * material, over a fake clock and an in-process bus, so every test here
  * exercises the shipping code paths rather than a model of them.
  *
  * Secrets live in a Map that satisfies the same narrow interface the encrypted
@@ -158,12 +158,12 @@ export interface AddNodeOptions {
   readonly displayName?: string | undefined;
   readonly version?: string | undefined;
   readonly surfaceHoldings?: ClusterGroupRuntimeOptions['surfaceHoldings'];
-  /** Reuse an existing node's stores — how a restart is simulated. */
+  /** Reuse an existing node's stores, how a restart is simulated. */
   readonly reuse?: GroupTestNode | undefined;
   /**
    * The node id, when it must differ from the bus label.
    *
-   * A restart keeps its node id — that is the whole point of the id — while
+   * A restart keeps its node id, that is the whole point of the id, while
    * needing a fresh bus label, because the stopped transport is still attached.
    */
   readonly nodeId?: string | undefined;
@@ -174,8 +174,8 @@ export interface AddNodeOptions {
   /**
    * The secret store the runtime writes replicated credentials through.
    *
-   * Defaults to the in-memory Map. A test that cares WHERE a credential lands —
-   * which tier, which file — passes a real `SecretsManager` instead, so the
+   * Defaults to the in-memory Map. A test that cares WHERE a credential lands,
+   * which tier, which file, passes a real `SecretsManager` instead, so the
    * storage behaviour under test is the shipping one rather than a model of it.
    */
   readonly secrets?: ClusterSecretStore | undefined;
@@ -276,8 +276,8 @@ export async function advanceStepped(world: GroupTestWorld, ms: number, stepMs =
 /**
  * Await something that may be waiting on a fake-clock timer.
  *
- * A join or a rejoin resolves either when the group answers — which happens in
- * a microtask — or when its deadline passes on the injected clock, which only
+ * A join or a rejoin resolves either when the group answers, which happens in
+ * a microtask, or when its deadline passes on the injected clock, which only
  * moves when a test moves it. This settles microtasks first, so a fast answer
  * costs nothing, and only then starts winding the clock forward.
  */

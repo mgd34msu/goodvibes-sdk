@@ -1,5 +1,5 @@
 /**
- * cluster-group-membership.test.ts — getting in, staying in, and being kept out.
+ * cluster-group-membership.test.ts, getting in, staying in, and being kept out.
  *
  * These run the real runtimes over an in-memory bus: real scrypt, real x25519
  * seals, real envelopes. Nothing here models the protocol; it exercises it.
@@ -248,7 +248,7 @@ describe('coming back after being away', () => {
       now: 1_000,
     }).state;
 
-    // The intruder's proof is genuine — it holds a real historical key. The
+    // The intruder's proof is genuine, it holds a real historical key. The
     // only thing it lacks is a place on the roster, and that alone refuses it.
     const decision = decideAdmission(
       state,
@@ -372,8 +372,8 @@ describe('the reply to a returning machine', () => {
   });
 
   test('a REJOIN_REFUSE from a stranger cannot talk a machine out of its own group', async () => {
-    // The refusal is a message this machine ACTS on — it gives up early and
-    // tells its operator to re-join by hand — so it has to be authenticated to
+    // The refusal is a message this machine ACTS on, it gives up early and
+    // tells its operator to re-join by hand, so it has to be authenticated to
     // exactly the standard the acceptance is. Otherwise anything on the LAN
     // could evict every machine on it by shouting, without holding a single key.
     const { world: w, first, groupId, joinKey } = await makeGroupOfOne();
@@ -413,7 +413,7 @@ describe('the reply to a returning machine', () => {
       expect(rejoined.terminal).toBeFalsy();
       expect(rejoined.error).not.toContain('you were removed');
     }
-    // And it still holds its own key material — nothing was given up.
+    // And it still holds its own key material, nothing was given up.
     expect(returned.runtime.keyMaterial?.currentGeneration)
       .toBe(second.runtime.keyMaterial?.currentGeneration);
   });

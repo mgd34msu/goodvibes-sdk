@@ -1,5 +1,5 @@
 /**
- * PluginLifecycleManager — plugin lifecycle and capability enforcement.
+ * PluginLifecycleManager, plugin lifecycle and capability enforcement.
  *
  * Tracks all plugins through the 8-state lifecycle machine, resolves capability
  * manifests on load, and emits PluginEvents at every state transition.
@@ -57,9 +57,9 @@ export class PluginLifecycleManager {
   private readonly trustTierResolver: (pluginName: string) => PluginTrustTier;
   private readonly runtimeBus: RuntimeEventBusContract;
 
-  /** Trust store — manages tier records for all plugins. */
+  /** Trust store, manages tier records for all plugins. */
   readonly trustStore: PluginTrustStore = new PluginTrustStore();
-  /** Quarantine engine — tracks and applies quarantine constraints. */
+  /** Quarantine engine, tracks and applies quarantine constraints. */
   readonly quarantine: PluginQuarantineEngine = new PluginQuarantineEngine();
 
   constructor(options: PluginLifecycleManagerOptions = {}) {
@@ -164,7 +164,7 @@ export class PluginLifecycleManager {
     // discovered → loading (or disabled → loading for re-enable)
     const toLoadingResult = this.transition(name, 'loading');
     if (!toLoadingResult.ok) {
-      logger.warn(`[plugin-lifecycle] ${name}: cannot start load — ${toLoadingResult.reason}`);
+      logger.warn(`[plugin-lifecycle] ${name}: cannot start load, ${toLoadingResult.reason}`);
       return false;
     }
 
@@ -191,7 +191,7 @@ export class PluginLifecycleManager {
       // loaded → active
       const toActiveResult = this.transition(name, 'active');
       if (!toActiveResult.ok) {
-        logger.warn(`[plugin-lifecycle] ${name}: cannot transition to active — ${toActiveResult.reason}`);
+        logger.warn(`[plugin-lifecycle] ${name}: cannot transition to active, ${toActiveResult.reason}`);
         return false;
       }
 
@@ -217,7 +217,7 @@ export class PluginLifecycleManager {
         error: errorMsg,
         fatal: false,
       });
-      logger.error(`[plugin-lifecycle] ${name}: load threw — ${errorMsg}`);
+      logger.error(`[plugin-lifecycle] ${name}: load threw, ${errorMsg}`);
       return false;
     }
   }
@@ -238,7 +238,7 @@ export class PluginLifecycleManager {
 
     const toUnloadingResult = this.transition(name, 'unloading', reason);
     if (!toUnloadingResult.ok) {
-      logger.warn(`[plugin-lifecycle] ${name}: cannot unload — ${toUnloadingResult.reason}`);
+      logger.warn(`[plugin-lifecycle] ${name}: cannot unload, ${toUnloadingResult.reason}`);
       return;
     }
 
@@ -263,7 +263,7 @@ export class PluginLifecycleManager {
   // ── Trust & Quarantine operations ────────────────────────────────────────
 
   /**
-   * setTrustTier — Assign a trust tier to a plugin and re-sync the record.
+   * setTrustTier, Assign a trust tier to a plugin and re-sync the record.
    *
    * If the plugin has an active lifecycle record, the trust tier in the record
    * is updated immediately. Capability re-resolution requires a reload.
@@ -274,11 +274,11 @@ export class PluginLifecycleManager {
     if (record) {
       record.trustTier = tier;
     }
-    logger.info(`[plugin-lifecycle] ${name}: trust tier set to '${tier}'${note ? ` — ${note}` : ''}`);
+    logger.info(`[plugin-lifecycle] ${name}: trust tier set to '${tier}'${note ? `, ${note}` : ''}`);
   }
 
   /**
-   * quarantinePlugin — Apply quarantine to a named plugin.
+   * quarantinePlugin, Apply quarantine to a named plugin.
    *
    * Revokes high-risk capabilities from the live manifest, marks the record as
    * quarantined, and records the reason as the latest degradation. Active
@@ -309,7 +309,7 @@ export class PluginLifecycleManager {
       const transitionResult = this.transition(name, 'degraded', degradationReason);
       if (!transitionResult.ok) {
         logger.warn(
-          `[plugin-lifecycle] ${name}: quarantine degradation transition failed — ${transitionResult.reason}`,
+          `[plugin-lifecycle] ${name}: quarantine degradation transition failed, ${transitionResult.reason}`,
         );
       }
     } else if (record.state !== 'degraded') {
@@ -323,12 +323,12 @@ export class PluginLifecycleManager {
       affectedCapabilities: qRecord.revokedCapabilities as string[],
     });
 
-    logger.warn(`[plugin-lifecycle] ${name}: degraded — ${degradationReason}`);
+    logger.warn(`[plugin-lifecycle] ${name}: degraded, ${degradationReason}`);
     return true;
   }
 
   /**
-   * liftQuarantine — Remove quarantine from a plugin.
+   * liftQuarantine, Remove quarantine from a plugin.
    *
    * Capabilities are NOT restored here; the operator should reload the plugin
    * after lifting so that trust-aware re-resolution can grant capabilities
@@ -343,7 +343,7 @@ export class PluginLifecycleManager {
       record.quarantined = false;
     }
     if (lifted) {
-      logger.info(`[plugin-lifecycle] ${name}: quarantine lifted — reload to restore capabilities`);
+      logger.info(`[plugin-lifecycle] ${name}: quarantine lifted, reload to restore capabilities`);
     }
     return lifted;
   }
@@ -364,13 +364,13 @@ export class PluginLifecycleManager {
         reason,
         affectedCapabilities,
       });
-      logger.warn(`[plugin-lifecycle] ${name}: degraded — ${reason}`);
+      logger.warn(`[plugin-lifecycle] ${name}: degraded, ${reason}`);
       return;
     }
 
     const result = this.transition(name, 'degraded', reason);
     if (!result.ok) {
-      logger.warn(`[plugin-lifecycle] ${name}: cannot degrade — ${result.reason}`);
+      logger.warn(`[plugin-lifecycle] ${name}: cannot degrade, ${result.reason}`);
       return;
     }
 
@@ -383,7 +383,7 @@ export class PluginLifecycleManager {
       affectedCapabilities,
     });
 
-    logger.warn(`[plugin-lifecycle] ${name}: degraded — ${reason}`);
+    logger.warn(`[plugin-lifecycle] ${name}: degraded, ${reason}`);
   }
 
   /**
@@ -394,7 +394,7 @@ export class PluginLifecycleManager {
   recordError(name: string, error: string, fatal: boolean): void {
     const record = this.records.get(name);
     if (!record) {
-      logger.warn(`[plugin-lifecycle] ${name}: error recorded for untracked plugin — ${error}`);
+      logger.warn(`[plugin-lifecycle] ${name}: error recorded for untracked plugin, ${error}`);
       return;
     }
 
@@ -404,11 +404,11 @@ export class PluginLifecycleManager {
     if (fatal && (record.state === 'active' || record.state === 'loaded' || record.state === 'degraded')) {
       const transitionResult = this.transition(name, 'error', error);
       if (!transitionResult.ok) {
-        logger.warn(`[plugin-lifecycle] ${name}: fatal error transition failed — ${transitionResult.reason}`);
+        logger.warn(`[plugin-lifecycle] ${name}: fatal error transition failed, ${transitionResult.reason}`);
       }
     }
 
-    logger.error(`[plugin-lifecycle] ${name}: error (fatal=${String(fatal)}) — ${error}`);
+    logger.error(`[plugin-lifecycle] ${name}: error (fatal=${String(fatal)}), ${error}`);
   }
 
   // ── Bulk operations ───────────────────────────────────────────────────────
@@ -453,7 +453,7 @@ export class PluginLifecycleManager {
       reason,
     };
 
-    // Mutate the record in place — the record lives inside the Map.
+    // Mutate the record in place, the record lives inside the Map.
     record.transitions.push(entry);
     if (record.transitions.length > MAX_TRANSITION_HISTORY) {
       record.transitions.shift();

@@ -24,7 +24,7 @@ export interface CacheBreakpoint {
 export interface CacheStrategy {
   /** Breakpoints to place (for explicit providers only). Ordered by position in content. */
   breakpoints: CacheBreakpoint[];
-  /** Whether prefix stability should be enforced (universal — true for all caching providers). */
+  /** Whether prefix stability should be enforced (universal, true for all caching providers). */
   prefixStable: boolean;
   /** Session affinity header to send (for providers like Fireworks). */
   sessionAffinityHeader?: string | undefined;
@@ -90,12 +90,12 @@ export interface CachePolicyReader {
  * This answers "what has the operator asked for", which is a separate question
  * that nothing used to ask: `cache.enabled` was read by nobody, so the only way
  * to stop paying cache writes was to switch provider, and `cache.stableTtl` fed
- * `CacheContext.configuredTtl`, which no caller populated — so the enum's '5m'
+ * `CacheContext.configuredTtl`, which no caller populated, so the enum's '5m'
  * position produced 1h TTLs like its '1h' one.
  *
  * `enabled: false` returns the no-op strategy: no breakpoints, so no
  * `cache_control` is placed on any block and the request is billed as an
- * uncached one. It deliberately does not merely shorten the TTL — off means off.
+ * uncached one. It deliberately does not merely shorten the TTL, off means off.
  *
  * `config` is optional so a provider constructed without one (a direct
  * construction in a test, an embedder wiring only an API key) keeps the shipped
@@ -162,7 +162,7 @@ function buildExplicitStrategy(
   }
 
   // BP3: Last large tool result (if room and conversation has tool results)
-  // This is a heuristic — the actual placement happens at request time
+  // This is a heuristic, the actual placement happens at request time
   if (
     breakpoints.length < cap.maxBreakpoints &&
     context.conversationTurns >= 3
@@ -232,7 +232,7 @@ function buildNoopStrategy(): CacheStrategy {
 }
 
 /**
- * CacheHitTracker — tracks cache hit rate over a sliding window of turns.
+ * CacheHitTracker, tracks cache hit rate over a sliding window of turns.
  */
 export class CacheHitTracker {
   private metrics: CacheHitMetrics = {

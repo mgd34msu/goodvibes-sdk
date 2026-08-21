@@ -1,27 +1,27 @@
 /**
- * ingress.ts — supervises the Telegram INBOUND path.
+ * ingress.ts, supervises the Telegram INBOUND path.
  *
  * Background: registering `POST /webhook/telegram` is not the same as having
  * inbound Telegram. Telegram pushes nothing until it is told a URL exists
  * (setWebhook) or is asked for updates (getUpdates). With neither call wired
  * up, configuring a bot token produced a surface that could send but never
- * receive — outbound replies worked, so it looked half-alive rather than
+ * receive, outbound replies worked, so it looked half-alive rather than
  * broken. This supervisor is the missing half.
  *
  * Mode is decided by `surfaces.telegram.mode`, which is an explicit,
  * operator-visible setting rather than something inferred:
  *
- *   polling  — long-poll getUpdates. Works on a laptop, behind NAT, with no
+ *   polling , long-poll getUpdates. Works on a laptop, behind NAT, with no
  *              public hostname and no tunnel. This is the mode most people can
  *              actually run.
- *   webhook  — Telegram POSTs to a public HTTPS URL. Lower latency, but it
+ *   webhook , Telegram POSTs to a public HTTPS URL. Lower latency, but it
  *              requires an address Telegram's servers can reach.
  *
  * The two are mutually exclusive by construction, not by convention: Telegram
  * rejects getUpdates with 409 Conflict while a webhook is registered, so
  * polling deletes any registered webhook before its first poll, and webhook
  * mode never starts a loop. Exactly one path is armed per start(), and which
- * one — with the reason — is logged.
+ * one, with the reason, is logged.
  */
 import type { ConfigManager } from '../../config/manager.js';
 import type { SecretsManager } from '../../config/secrets.js';
@@ -53,7 +53,7 @@ export type TelegramIngressMode = 'polling' | 'webhook' | 'inactive';
 
 export interface TelegramIngressStatus {
   readonly mode: TelegramIngressMode;
-  /** Why this mode — and, when inactive, exactly what to fix. */
+  /** Why this mode, and, when inactive, exactly what to fix. */
   readonly reason: string;
   readonly running: boolean;
   /**
@@ -103,7 +103,7 @@ export interface TelegramIngressDeps {
  * Telegram only delivers webhooks to a public HTTPS address. A loopback or
  * private-range URL is the single most likely misconfiguration (the daemon's
  * own default base URL is loopback), and silently accepting it produces a
- * webhook that is registered but never fires — indistinguishable from the bug
+ * webhook that is registered but never fires, indistinguishable from the bug
  * this file fixes. Reject it up front with a message naming the fix.
  */
 export function describeWebhookUrlProblem(rawUrl: string): string | null {
@@ -135,7 +135,7 @@ export class TelegramIngressSupervisor {
   private stopped = true;
   private abort: AbortController | null = null;
   private loop: Promise<void> | null = null;
-  /** Who this bot is, per getMe — see resolveBotIdentity. */
+  /** Who this bot is, per getMe, see resolveBotIdentity. */
   private botIdentity: TelegramBotIdentity | null = null;
   private currentStatus: TelegramIngressStatus = {
     mode: 'inactive',
@@ -143,7 +143,7 @@ export class TelegramIngressSupervisor {
     running: false,
   };
 
-  /** Whether this node can PROCESS what it receives — see the class header. */
+  /** Whether this node can PROCESS what it receives, see the class header. */
   private readonly processing: IngressProcessingHealth;
 
   constructor(private readonly deps: TelegramIngressDeps) {
@@ -355,7 +355,7 @@ export class TelegramIngressSupervisor {
 
   /**
    * Classify a poll failure. Returns a terminal reason when retrying cannot
-   * possibly help — a revoked token or a webhook that will not clear — so the
+   * possibly help, a revoked token or a webhook that will not clear, so the
    * loop stops with an actionable message instead of backing off forever
    * against something only the operator can fix.
    */
@@ -372,7 +372,7 @@ export class TelegramIngressSupervisor {
 
     if (error instanceof TelegramApiError && error.isUnauthorized) {
       const reason = 'Telegram polling stopped: the bot token was rejected '
-        + `(${error.message}). Check surfaces.telegram.botToken — a revoked or mistyped token `
+        + `(${error.message}). Check surfaces.telegram.botToken, a revoked or mistyped token `
         + 'cannot be recovered by retrying.';
       logger.error('Telegram ingress: bot token rejected', { detail: reason });
       return reason;
@@ -393,8 +393,8 @@ export class TelegramIngressSupervisor {
    * message in between unread and nothing but a log line to say so.
    *
    * Worse, it died down the WRONG branch. Telegram uses 409 for two unrelated
-   * situations — a registered webhook, and another process long-polling the
-   * same token — and they were told apart by matching the error description
+   * situations, a registered webhook, and another process long-polling the
+   * same token, and they were told apart by matching the error description
    * against "terminated by other getUpdates". Anything that did not match that
    * string fell through to the webhook branch, because `isWebhookConflict` was
    * defined as "409 and not concurrent". So webhook was the DEFAULT for every
@@ -417,15 +417,15 @@ export class TelegramIngressSupervisor {
    * And neither cause is fatal:
    *
    *  - **A webhook really is registered.** Clear it and retry. If repeated
-   *    clears do not take, that is operator-actionable — so it is escalated to
+   *    clears do not take, that is operator-actionable, so it is escalated to
    *    an error that names the fix, and the loop KEEPS RETRYING on the backoff.
    *    A registered webhook can be removed by a person at any moment, and when
    *    it is, polling must resume by itself.
    *
    *  - **Another consumer holds the token.** Report it, so a cluster
    *    coordinator can stand this node down and re-run its election, then back
-   *    off and keep retrying. The other consumer is frequently transient — a
-   *    test daemon, a second checkout, a stale process — and standing down
+   *    off and keep retrying. The other consumer is frequently transient, a
+   *    test daemon, a second checkout, a stale process, and standing down
    *    forever means the owner's messages are lost until somebody notices.
    *    With `cluster.enabled` off there is no election to stand down TO, which
    *    is exactly how the live failure became permanent.
@@ -571,7 +571,7 @@ export class TelegramIngressSupervisor {
         });
         this.processing.recordSuccess();
       } catch (error) {
-        // Still advance past it — a cursor wedged on one poison update
+        // Still advance past it, a cursor wedged on one poison update
         // redelivers it forever. What is no longer true is that skipping is
         // quiet: IngressProcessingHealth degrades the surface and reaches the
         // owner. See its header for the day this cost.
@@ -586,7 +586,7 @@ export class TelegramIngressSupervisor {
    * Resolve the bot's own identity from its token and cache it in config.
    *
    * `surfaces.telegram.botUsername` being blank does NOT mean the bot has no
-   * username — it means nobody typed one in. Telegram's getMe returns the
+   * username, it means nobody typed one in. Telegram's getMe returns the
    * handle, id and display name for any valid token, so the daemon asks instead
    * of degrading: without a handle, @mentions in groups are not recognised,
    * `/goodvibes@thebot` is not stripped correctly, `/start@someotherbot` in a
@@ -598,8 +598,8 @@ export class TelegramIngressSupervisor {
    *   overwrites an operator's choice; it only fills a blank.
    * - The discovery is keyed to the token, so rotating the token re-discovers
    *   rather than serving a stale handle.
-   * - A failure never blocks startup. Ingress still arms — receiving messages
-   *   matters more than perfect mention matching — but it says at warn level
+   * - A failure never blocks startup. Ingress still arms, receiving messages
+   *   matters more than perfect mention matching, but it says at warn level
    *   exactly what will not work until the call succeeds, and the next start()
    *   retries.
    */
@@ -616,7 +616,7 @@ export class TelegramIngressSupervisor {
       // than run a new bot under the previous bot's identity.
       logger.info('Telegram ingress: bot token changed; re-resolving the bot identity', { botId: api.botId });
     } else if (configured) {
-      // Operator-supplied and never discovered — honour it, but still record
+      // Operator-supplied and never discovered, honour it, but still record
       // which token it belongs to so a later rotation is detected.
       this.botIdentity = { id: api.botId, username: configured, displayName: '' };
       this.rememberDiscoveredToken(api.botId);
@@ -671,7 +671,7 @@ export class TelegramIngressSupervisor {
    * Remove a webhook THIS deployment registered, and only that one.
    *
    * Checked against the configured public base URL first, so disabling the
-   * surface never silently tears down a webhook pointing somewhere else — the
+   * surface never silently tears down a webhook pointing somewhere else, the
    * same bot token may legitimately be driven by another deployment, and
    * deleting its registration would break a system we do not own.
    */
@@ -701,7 +701,7 @@ export class TelegramIngressSupervisor {
    * LAN election. Winning a surface with no token would starve the machine
    * that does have one: the loser stands down and the winner reads nothing.
    *
-   * Only the id half of the token is returned — the secret half is never
+   * Only the id half of the token is returned, the secret half is never
    * returned, logged, or hashed.
    */
   async resolveServableBotId(): Promise<string | null> {
@@ -782,7 +782,7 @@ export class TelegramIngressSupervisor {
       logger.warn('Telegram ingress is inactive', { surface: 'telegram', action: reason });
       return this.currentStatus;
     }
-    // Never fail silently — and the level has to match what the operator
+    // Never fail silently, and the level has to match what the operator
     // believes. An operator who switched the surface OFF and sees it inactive
     // has no problem; an operator who switched it ON and has an inert surface
     // has the most expensive failure in the system: the daemon looks healthy,

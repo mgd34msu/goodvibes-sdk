@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * instrumentedFetch migration — verifies instrumentedFetch has the same
+ * instrumentedFetch migration, verifies instrumentedFetch has the same
  * call signature as the native fetch and is reachable from the platform utils.
  */
 describe('instrumentedFetch migration', () => {
@@ -18,7 +18,7 @@ describe('instrumentedFetch migration', () => {
     expect(result).toBeInstanceOf(Error);
   });
 
-  // N-2: URL redaction — sensitive params are replaced with [redacted] in logged URL
+  // N-2: URL redaction, sensitive params are replaced with [redacted] in logged URL
   test('sanitizeUrlForLog redacts sensitive query params', async () => {
     const { sanitizeUrlForLog } = await import('../packages/sdk/src/platform/utils/fetch-with-timeout.js');
     const input = 'https://api.example.com/v1/chat?api_key=SECRET&token=TOKEN&foo=bar';

@@ -129,7 +129,7 @@ function ensureAgentKnowledgeService(runtimeServices: RuntimeServices): RuntimeS
  * Error handling:
  * - If no provider is configured or the model is unavailable, the adapter
  *   immediately yields `{ type: 'error', error: 'No provider available ...' }`
- *   and returns. This is a graceful degradation — the companion chat session
+ *   and returns. This is a graceful degradation, the companion chat session
  *   receives a structured error rather than an unhandled exception.
  * - If the underlying provider.chat() rejects mid-stream, the error is
  *   caught in the `.catch()` handler and surfaced as a final
@@ -326,7 +326,7 @@ export function resolveDaemonFacadeRuntime(config: DaemonConfig): ResolvedDaemon
   // Stamp automatic workspace checkpoints with the owning session id, resolved
   // the same way agent terminal events reconcile to a session (the broker's
   // activeAgentId map). Returns undefined when the triggering agent maps to no
-  // shared session — the checkpoint is then left unstamped rather than guessed,
+  // shared session, the checkpoint is then left unstamped rather than guessed,
   // and sessions.changes.get / list({sessionId}) honestly report nothing for it.
   runtimeServices.workspaceCheckpointManager.setSessionResolver(({ agentId }) => {
     if (!agentId) return undefined;
@@ -552,9 +552,9 @@ export function createDaemonFacadeCollaborators(
   channelReplyPipeline.setUndeliveredReporter((reply) => surfaceDeliveryHelper.recordUndeliveredReply(reply));
   channelReplyPipeline.setDeliveredReporter((reply) => surfaceDeliveryHelper.recordDeliveredReply(reply));
   // THE shared reply-routing point. The broker announces "this agent will
-  // answer this channel message" from inside itself, so every ingress — a fresh
+  // answer this channel message" from inside itself, so every ingress, a fresh
   // spawn, a message that landed in an existing live session, a shared-session
-  // continuation — routes its answer back to the conversation it came from.
+  // continuation, routes its answer back to the conversation it came from.
   runtime.sessionBroker.setSurfaceReplyBinder((binding) => {
     surfaceDeliveryHelper.ensureSurfaceReply(binding);
   });
@@ -568,7 +568,7 @@ export function createDaemonFacadeCollaborators(
     const binding = runtime.routeBindings.getBinding(routeId) ?? undefined;
     void surfaceDeliveryHelper.deliverSurfaceNotice(binding, text);
   });
-  // One alarm, every inbound path — see createChannelIngressAlarm.
+  // One alarm, every inbound path, see createChannelIngressAlarm.
   const ingressAlarm = createChannelIngressAlarm(runtime.routeBindings, surfaceDeliveryHelper);
   runtime.channelPlugins.setIngressAlarm(ingressAlarm);
   // Pending work proposals for the conversation-first spawn gate. Persisted
@@ -735,7 +735,7 @@ export function configureDaemonSessionContinuation(options: {
     readonly workflowChainId?: string | undefined;
     readonly sessionId?: string | undefined;
   }) => void;
-  /** The live registry's model candidates — enables bare model id resolution in routing overrides. */
+  /** The live registry's model candidates, enables bare model id resolution in routing overrides. */
   readonly modelCandidates?: (() => readonly ModelIdCandidate[]) | undefined;
   /**
    * The surface helper holding the conversation-first gate's dependencies. A
@@ -744,7 +744,7 @@ export function configureDaemonSessionContinuation(options: {
    * chain suppressed, and a work-shaped follow-up is PROPOSED over the channel
    * it arrived on (a Response, reported here as "no agent started").
    *
-   * Absent — an embedder that has not wired the gate — still fails closed via
+   * Absent, an embedder that has not wired the gate, still fails closed via
    * `continuationChainOptions` below. A continuation never opens a chain just
    * because nobody installed a gate.
    */
@@ -760,7 +760,7 @@ export function configureDaemonSessionContinuation(options: {
       context: `shared-session:${sessionId}`,
     };
     // Classify the OWNER's words (`input.body`), never the enriched
-    // continuation task the broker builds from the transcript — that framing
+    // continuation task the broker builds from the transcript, that framing
     // reads as work no matter what the owner actually said.
     const origin: SurfaceIngressOrigin | null = input.surfaceKind
       ? {

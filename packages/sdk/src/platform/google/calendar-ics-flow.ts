@@ -5,7 +5,7 @@
  *
  * The address is a credential: anyone holding it can read the calendar. It is
  * therefore returned only in the dedicated `icsUrl` field of the `ok` result
- * and never appears in `detail`, `problem`, or `fix` — not even a truncated or
+ * and never appears in `detail`, `problem`, or `fix`, not even a truncated or
  * partially-redacted form, since even a fragment plus the known URL shape
  * meaningfully narrows the secret.
  */
@@ -104,7 +104,7 @@ function findIcsUrl(text: string, elements: readonly GoogleBrowserElement[]): st
 
 /**
  * A value that looks address-shaped but does not match Google's private iCal
- * URL shape. Only used to decide which failure reason to report — the actual
+ * URL shape. Only used to decide which failure reason to report, the actual
  * candidate text is never carried into a message, since a near-miss can still
  * be sensitive.
  */

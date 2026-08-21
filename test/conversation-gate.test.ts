@@ -173,7 +173,7 @@ describe('parseWorkProposalReply', () => {
     expect(parseWorkProposalReply(text)).toBeNull();
   });
 
-  // The words above are still answers when they are the WHOLE answer — the
+  // The words above are still answers when they are the WHOLE answer, the
   // owner types these from a phone and must not be forced to a magic token.
   test.each([
     'please', 'pls', 'go', 'start', 'begin', 'proceed',
@@ -193,7 +193,7 @@ describe('parseWorkProposalReply', () => {
   test('a short qualifier still rides along, a second instruction does not', () => {
     expect(parseWorkProposalReply('yes but only touch the ntfy adapter')?.note)
       .toBe('but only touch the ntfy adapter');
-    // Same opener, but the trailer is its own job — the whole message is a
+    // Same opener, but the trailer is its own job, the whole message is a
     // request and must flow through rather than steer somebody else's task.
     expect(parseWorkProposalReply('yes and also rewrite the telegram adapter')).toBeNull();
   });
@@ -267,7 +267,7 @@ describe('isGatedSurface', () => {
     // The fail-closed rule only covers a surface the gate cannot identify:
     // `undefined` returns true above. 'email' is a known, non-TUI string, so
     // it skips that branch entirely and falls through to
-    // `gatedSurfaces.includes(...)` — which was false. An adapter passing
+    // `gatedSurfaces.includes(...)`, which was false. An adapter passing
     // `surface: 'email'` would therefore have let any message that reads as a
     // work request spawn an agent immediately, skipping propose-and-wait.
     //

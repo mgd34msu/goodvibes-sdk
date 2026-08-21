@@ -1,15 +1,15 @@
 /**
- * provider-model-live-config-change.test.ts — a `provider.model` write reaches
+ * provider-model-live-config-change.test.ts, a `provider.model` write reaches
  * the NEXT agent, with no restart.
  *
  * MEASURED DEFECT this locks down: `provider.model` was written through the
  * daemon's `POST /config`. It persisted to disk and the daemon's in-memory
- * ConfigManager reported the new value — yet agents spawned a minute later
+ * ConfigManager reported the new value, yet agents spawned a minute later
  * still ran the OLD model. ProviderRegistry read `provider.model` exactly once,
  * in its constructor, and stored the resolved registryKey in
- * `currentModelRegistryKey` forever. Every later read — including
+ * `currentModelRegistryKey` forever. Every later read, including
  * `getCurrentModel()`, the first thing `runAgentTask()` calls to pick an
- * agent's route (agents/orchestrator-runner.ts) — returned the boot value.
+ * agent's route (agents/orchestrator-runner.ts), returned the boot value.
  *
  * The three tests below cover the three ways the value moves:
  *   1. an in-process write (what `POST /config` does: `setDynamic`),
@@ -75,7 +75,7 @@ function makeModelDefinition(provider: string, id: string): ModelDefinition {
   };
 }
 
-/** A ProviderRegistry wired to a REAL ConfigManager — the daemon's shape. */
+/** A ProviderRegistry wired to a REAL ConfigManager, the daemon's shape. */
 function makeRegistry(configManager: ConfigManager, emitted?: unknown[]): ProviderRegistry {
   type Options = ConstructorParameters<typeof ProviderRegistry>[0];
   const registry = new ProviderRegistry({
@@ -88,7 +88,7 @@ function makeRegistry(configManager: ConfigManager, emitted?: unknown[]): Provid
     } as unknown as Options['subscriptionManager'],
     // No bare `as unknown as` on this double any more. The cast was hiding that
     // it does not implement setModelFactsSource, which the registry CALLS on
-    // every catalog update — the omission surfaced only as a runtime TypeError
+    // every catalog update, the omission surfaced only as a runtime TypeError
     // once a test reached that path. The `satisfies` clause makes the next
     // missing method a compile error instead.
     capabilityRegistry: {
@@ -111,7 +111,7 @@ function makeRegistry(configManager: ConfigManager, emitted?: unknown[]): Provid
       ? ({ emit: (_channel: string, envelope: unknown) => { emitted.push(envelope); } } as unknown as Options['runtimeBus'])
       : null,
   });
-  // Both models must be resolvable through listModels() — that is what the
+  // Both models must be resolvable through listModels(), that is what the
   // agent spawn path routes against.
   registry.registerRuntimeProvider({
     provider: makeProvider(OLD_PROVIDER, ['model-old']),

@@ -1,5 +1,5 @@
 /**
- * link-validation.ts — the gate a link from an untrusted surface must pass
+ * link-validation.ts, the gate a link from an untrusted surface must pass
  * BEFORE anything opens it.
  *
  * Owner's framing: headers can be spoofed, so any domain we are about to click
@@ -18,7 +18,7 @@
  *    interceptable and a downgrade. Only `https:` is opened.
  *  - **homograph**. `аccounts.google.com` with a Cyrillic `а` is a different
  *    host that renders identically. Mixed script in a label is refused rather
- *    than scored for similarity — a similarity threshold is a number an
+ *    than scored for similarity, a similarity threshold is a number an
  *    attacker can sit just underneath.
  *  - **registrable domain**. `google.com.evil.example`, `google-verify.example`
  *    and `accounts-google.example` all pass at least one substring or
@@ -78,7 +78,7 @@ export type LinkValidation = LinkAccepted | LinkRefused;
  * Hosts whose entire purpose is to point somewhere else.
  *
  * Listed so the refusal says "this is a shortener" rather than the less useful
- * "domain mismatch" — but note the list is a courtesy, not the defence: an
+ * "domain mismatch", but note the list is a courtesy, not the defence: an
  * unlisted shortener still fails the registrable-domain check, because its host
  * is not the service's host.
  */
@@ -141,7 +141,7 @@ function refuse(
 /**
  * Validate one link against the domain a caller authorized.
  *
- * `authorizedDomain` is the domain the agent is actually transacting with —
+ * `authorizedDomain` is the domain the agent is actually transacting with,
  * the service it signed up at, or the service it is logging in to. Comparison
  * is on the registrable domain of both, so a subdomain of the authorized
  * domain passes and a lookalike does not.
@@ -167,7 +167,7 @@ export function validateLinkTarget(rawUrl: string, authorizedDomain: string): Li
     return refuse(
       'not-https',
       `Refused: the link uses "${parsed.protocol}" rather than https. `
-      + 'Only https links are opened — http can be intercepted, and data/javascript links execute rather than navigate.',
+      + 'Only https links are opened, http can be intercepted, and data/javascript links execute rather than navigate.',
       expected,
     );
   }
@@ -280,7 +280,7 @@ export async function followValidatedRedirects(
     }
 
     // Resolve relative Location headers against the current url, then put the
-    // result through the SAME gate — a redirect target is not more trustworthy
+    // result through the SAME gate, a redirect target is not more trustworthy
     // for having been reached by one.
     let next: string;
     try {

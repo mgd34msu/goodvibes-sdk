@@ -1,13 +1,13 @@
 /**
  * Combine several abort signals into one.
  *
- * The clock takes a single signal and several things can end a wait — a
+ * The clock takes a single signal and several things can end a wait, a
  * shutdown, a re-probe request, an inner race. Composed here rather than
  * threaded through every sleep, and disposed so a long-lived signal does not
  * accumulate listeners from every wait that ever used it.
  *
  * One definition rather than two. `watcher.ts` and `gmail-source.ts` each held
- * a private copy, and the copy in `gmail-source.ts` said so in a comment —
+ * a private copy, and the copy in `gmail-source.ts` said so in a comment,
  * accepted at the time on the grounds that a three-line utility restates
  * nothing about the shape of the system. That reasoning holds for the SHAPE
  * and not for the BEHAVIOUR: the disposal half is the easy half to get subtly

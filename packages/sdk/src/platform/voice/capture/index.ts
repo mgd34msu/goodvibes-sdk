@@ -1,5 +1,5 @@
 /**
- * voice/capture — microphone capture as a platform capability.
+ * voice/capture, microphone capture as a platform capability.
  *
  * Two consumers share one device path: push-to-talk voice input, and wake-word
  * detection (which, on a confirmed wake, hands the utterance that follows to the
@@ -8,7 +8,7 @@
  *
  * Everything here is runtime-neutral: the host supplies the thing that opens a
  * device, so this module imports no `node:` builtin and a browser bundle can
- * carry all of it. `createRecorderCaptureOpener` is the host-shaped opener — it
+ * carry all of it. `createRecorderCaptureOpener` is the host-shaped opener, it
  * takes `spawn` as an argument rather than importing it, for the same reason.
  *
  * `voice.wake.noiseSuppression` is applied here too, by

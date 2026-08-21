@@ -5,7 +5,7 @@
  * that the core-verb renames actually work end to end over the wire, not
  * just in the generated catalog: the renamed/new ids are invokable and
  * behave identically to their pre-rename counterparts, and the retired ids
- * are gone (404 via the generic invoke dispatcher — never a silent 200).
+ * are gone (404 via the generic invoke dispatcher, never a silent 200).
  *
  * Renames proved here:
  *   automation.jobs.patch    -> automation.jobs.update
@@ -27,7 +27,7 @@ import { OPERATOR_METHOD_IDS } from '../packages/contracts/src/generated/operato
 // all sit behind tier-10 feature flags that default OFF for a stock daemon.
 // This proof exercises the renamed/retired ids' real behavior, not just their
 // presence in the catalog, so the relevant flags are enabled up front via the
-// daemon's own settings.json (surfaceRoot 'goodvibes' — see boot.ts:73 /
+// daemon's own settings.json (surfaceRoot 'goodvibes', see boot.ts:73 /
 // runtime/surface-root.ts resolveSurfaceDirectory), before bootDaemon reads it.
 function seedFeatureFlags(homeDirectory: string, flagIds: readonly string[]): void {
   const dir = join(homeDirectory, '.goodvibes', 'goodvibes');
@@ -187,7 +187,7 @@ describe('the other update-verb-split renames (routes.bindings, watchers)', () =
     const watchersPatch = await invokeVerb('watchers.patch', { watcherId: 'does-not-matter' });
     expect(watchersPatch.status).toBe(404);
 
-    // The renamed ids ARE real (cataloged, dispatched) methods — invoking
+    // The renamed ids ARE real (cataloged, dispatched) methods, invoking
     // them with a nonexistent target id still 404s, but with the HANDLER's
     // own "unknown record" message, never the generic "Unknown gateway
     // method" the retired .patch ids returned above. That distinguishes

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * TaskEvent — discriminated union covering all task lifecycle events.
+ * TaskEvent, discriminated union covering all task lifecycle events.
  *
  * Maps to the typed runtime event contract for the tasks domain.
  */

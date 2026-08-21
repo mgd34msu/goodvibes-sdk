@@ -156,7 +156,7 @@ describe('Workers harness: auth flow', () => {
 describe('Workers harness: transport-http round-trip', () => {
   // M-1 (success path): mock returns real-shape JSON for GET /api/sessions.
   // Asserts that result is non-null and contains expected fields, proving the
-  // transport completed the full HTTP round-trip successfully — not just that
+  // transport completed the full HTTP round-trip successfully, not just that
   // it didn't crash.
   test('success path — mock returns real-shape JSON, result is populated', async () => {
     const res = await mf.dispatchFetch('http://workers.test/transport-success');
@@ -179,7 +179,7 @@ describe('Workers harness: transport-http round-trip', () => {
   }, 10_000);
 
   // Error path: mock returns 5xx. Asserts errorKind === 'service' (exact
-  // literal, not regex) — proving SDK error taxonomy works under Workers runtime.
+  // literal, not regex), proving SDK error taxonomy works under Workers runtime.
   // kind and ctor are returned as separate fields to avoid conflating
   // typed SDKErrorKind values with raw constructor names.
   test('error path — mock returns 5xx, errorKind is typed \'service\'', async () => {
@@ -199,7 +199,7 @@ describe('Workers harness: transport-http round-trip', () => {
 
     // Assert 'ctor' is a string ending with 'Error' (the constructor name of
     // the thrown error). esbuild mangles class names with a '_' prefix to avoid
-    // collisions, so we cannot assert an exact name — just that it is a named
+    // collisions, so we cannot assert an exact name, just that it is a named
     // Error subclass (ends with 'Error') and not a raw RuntimeError or string.
     expect(typeof body.ctor).toBe('string');
     expect(body.ctor as string).toMatch(/Error$/);
@@ -262,7 +262,7 @@ describe('Workers harness: globals audit', () => {
 
   // Assert the actual observed value, not just typeof.
   // Miniflare simulates EventSource; production workerd does NOT.
-  // Local verification is impossible — both Miniflare and wrangler dev --local share the Miniflare 4
+  // Local verification is impossible, both Miniflare and wrangler dev --local share the Miniflare 4
   // runtime and inject EventSource. See test/workers/NOTES.md for the runtime boundary.
   test('EventSource availability (Miniflare injects it, real Workers does not)', async () => {
     const res = await mf.dispatchFetch('http://workers.test/globals');
@@ -270,7 +270,7 @@ describe('Workers harness: globals audit', () => {
     const globals = body.globals as Record<string, boolean>;
 
     // Miniflare simulates EventSource; production workerd does NOT.
-    // Both Miniflare and wrangler dev --local share the Miniflare 4 runtime — EventSource is
+    // Both Miniflare and wrangler dev --local share the Miniflare 4 runtime, EventSource is
     // injected in both local harnesses. Production absence is unverifiable without a real CF deploy.
     expect(globals.EventSource).toBe(true);
   }, 10_000);
@@ -280,7 +280,7 @@ describe('Workers harness: globals audit', () => {
     const body = await res.json() as Record<string, unknown>;
     const globals = body.globals as Record<string, boolean>;
 
-    // location.origin is absent in Workers — SDK throws ConfigurationError
+    // location.origin is absent in Workers, SDK throws ConfigurationError
     // if baseUrl is omitted. Workers callers must pass baseUrl explicitly.
     expect(globals.location).toBe(false);
   }, 10_000);

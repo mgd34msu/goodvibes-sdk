@@ -1,5 +1,5 @@
 /**
- * wake-setup.ts — the daemon's wake-word provisioning and model service.
+ * wake-setup.ts, the daemon's wake-word provisioning and model service.
  *
  * WHY THE DAEMON HAS TO SERVE THE MODEL BYTES
  *
@@ -15,20 +15,20 @@
  * The classifier is 2.4 MB and the front end 1.3 MB, which base64 to more than
  * either should be asked to carry in one request/response. So the read is offset
  * based and capped, and every chunk restates `totalBytes` and the artifact's
- * PINNED sha256 — the client reassembles and verifies against the pin with
+ * PINNED sha256, the client reassembles and verifies against the pin with
  * WebCrypto, which means a truncated transfer or a swapped file fails at the
  * consumer instead of loading as a model that silently never detects.
  *
  * WHO ASKS FOR THE DOWNLOAD
  *
  * `provision()` is a request from a surface, and `ensureProvisioned()` is the
- * install/boot path (voice/wake/install-provision.ts) — the model ships with the
+ * install/boot path (voice/wake/install-provision.ts), the model ships with the
  * installation, so a fresh daemon has it without anyone asking. Both go through
  * ONE single-flight: a boot attempt and a user typing the setup command at the
  * same moment join one download rather than racing for the same files.
  *
  * Nothing else here downloads. `status()` and `modelChunk()` only read, so a
- * surface enabling wake detection never triggers a fetch — it gets an honest
+ * surface enabling wake detection never triggers a fetch, it gets an honest
  * not-provisioned with the recovery act named.
  */
 import { readFileSync, statSync } from 'node:fs';
@@ -65,8 +65,8 @@ import { singleFlight } from '../utils/single-flight.js';
  * fetch them itself.
  *
  * EVERY NOTICE is served, and that is the point of listing them here. This
- * service hands out three redistributable artifacts — the classifier, Google's
- * Apache-2.0 embedding build, and the speech gate — and each has an attribution
+ * service hands out three redistributable artifacts, the classifier, Google's
+ * Apache-2.0 embedding build, and the speech gate, and each has an attribution
  * file that must travel with it. A client that can fetch the bytes but not the
  * NOTICE cannot satisfy the terms it received them under.
  */

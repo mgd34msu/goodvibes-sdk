@@ -1,4 +1,4 @@
-# GoodVibes SDK Examples
+# GoodVibes SDK examples
 
 Small runnable examples for the published SDK entry points. Run all commands
 from the **repository root** (not from `examples/`), because `examples/tsconfig.json`
@@ -34,7 +34,7 @@ that handle credentials, pairing tokens, or daemon URLs.
 | `direct-transport-quickstart.ts` | `bun examples/direct-transport-quickstart.ts` | In-process direct transport usage. |
 | `expo-quickstart.tsx` | typecheck only | Expo client setup; run inside an Expo app. |
 | `operator-http-quickstart.mjs` | `bun examples/operator-http-quickstart.mjs` | Operator HTTP client calls. Requires `GOODVIBES_TOKEN`. |
-| `peer-http-quickstart.mjs` | `bun examples/peer-http-quickstart.mjs` | Operator snapshot over HTTP — calls only `sdk.operator.snapshot()`; demonstrates no peer-specific endpoints (pairing/peer/work). Requires `GOODVIBES_TOKEN`. |
+| `peer-http-quickstart.mjs` | `bun examples/peer-http-quickstart.mjs` | Operator snapshot over HTTP. Calls only `sdk.operator.snapshot()`. Demonstrates no peer-specific endpoints (pairing, peer, work). Requires `GOODVIBES_TOKEN`. |
 | `react-native-quickstart.ts` | typecheck only | React Native client setup; run inside a React Native app. Requires `GOODVIBES_TOKEN` at runtime. |
 | `realtime-events-quickstart.mjs` | `bun examples/realtime-events-quickstart.mjs` | Runtime event streaming. Requires `GOODVIBES_TOKEN`. |
 | `retry-and-reconnect.mjs` | `bun examples/retry-and-reconnect.mjs` | Retry and reconnect policy configuration. Requires `GOODVIBES_TOKEN`. |

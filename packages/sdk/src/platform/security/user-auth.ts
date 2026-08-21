@@ -43,7 +43,7 @@ const DEFAULT_SCRYPT_PARAMS: ScryptParams = { N: 16384, r: 8, p: 1 };
  * Safe minimums: N>=16384, r>=8, p>=1.
  */
 export interface ScryptParams {
-  /** CPU/memory cost factor — must be a power of 2. Default: 16384. */
+  /** CPU/memory cost factor, must be a power of 2. Default: 16384. */
   readonly N: number;
   /** Block size. Default: 8. */
   readonly r: number;
@@ -61,7 +61,7 @@ interface AccountLockState {
 }
 
 /**
- * Result of authenticate() — includes lock state so callers can
+ * Result of authenticate(), includes lock state so callers can
  * return Retry-After without leaking whether the username exists.
  *
  * The union is strict: `.user` is ONLY present (and non-undefined) on the
@@ -125,14 +125,14 @@ function generateInitialPassword(): string {
 
 function verifyPassword(password: string, passwordHash: string): boolean {
   const parts = passwordHash.split(':');
-  // Legacy format: salt:hash (2 parts) — uses DEFAULT_SCRYPT_PARAMS for backward compat.
+  // Legacy format: salt:hash (2 parts), uses DEFAULT_SCRYPT_PARAMS for backward compat.
   // New format: salt:N:r:p:hash (5 parts)
   let saltEncoded: string;
   let hashEncoded: string;
   let params: ScryptParams;
 
   if (parts.length === 2) {
-    // Legacy hash: no cost params stored — use defaults.
+    // Legacy hash: no cost params stored, use defaults.
     [saltEncoded, hashEncoded] = parts as [string, string];
     params = DEFAULT_SCRYPT_PARAMS;
   } else if (parts.length === 5) {
@@ -221,7 +221,7 @@ function atomicWriteSecretFile(filePath: string, content: string): void {
 }
 
 function writeBootstrapUsers(filePath: string, users: AuthUser[]): void {
-  // auth-user store contains scrypt password hashes — must be 0600.
+  // auth-user store contains scrypt password hashes, must be 0600.
   const payload: AuthUserStore = { version: 1, users };
   atomicWriteSecretFile(filePath, `${JSON.stringify(payload, null, 2)}\n`);
 }
@@ -282,7 +282,7 @@ function readBootstrapCredentialFile(filePath: string): BootstrapCredentialRecor
 
 /**
  * Detects when the bootstrap credential file has drifted from the persisted
- * user store — typically after someone manually edits `auth-bootstrap.txt`
+ * user store, typically after someone manually edits `auth-bootstrap.txt`
  * without rotating the password through the UserAuthManager. The daemon's
  * /login route will reject the edited password because the hash in
  * `auth-users.json` no longer matches. Left silent, this wastes hours of
@@ -328,7 +328,7 @@ export class UserAuthManager {
   private readonly bootstrapCredentialPath: string;
   private readonly persistUsers: boolean;
   private readonly scryptParams: ScryptParams;
-  /** Injectable clock — defaults to Date.now for production. */
+  /** Injectable clock, defaults to Date.now for production. */
   private readonly nowFn: () => number;
 
   constructor(config: UserAuthConfig) {
@@ -348,7 +348,7 @@ export class UserAuthManager {
       this.users.set(user.username, user);
     }
 
-    // Only run drift detection when we own the file-backed store — test
+    // Only run drift detection when we own the file-backed store, test
     // configs that pass explicit `users` opt out of filesystem bootstrap and
     // should not trigger spurious warnings.
     if (this.persistUsers) {
@@ -373,9 +373,9 @@ export class UserAuthManager {
     const now = this.nowFn();
     const lockState = this.accountLocks.get(username);
 
-    // Check account lock (before touching user store — avoids user-existence side-channel).
+    // Check account lock (before touching user store; avoids user-existence side-channel).
     if (lockState && lockState.lockedUntil > now) {
-      // Still locked — record the attempt but keep the lock window intact.
+      // Still locked, record the attempt but keep the lock window intact.
       lockState.failures++;
       return { ok: false, lockedUntilMs: lockState.lockedUntil };
     }
@@ -389,7 +389,6 @@ export class UserAuthManager {
 
     if (!passwordOk) {
       this._recordLoginFailure(username, now);
-      // Check if this failure just triggered a lock.
       const newLock = this.accountLocks.get(username);
       const lockedUntilMs = newLock && newLock.lockedUntil > now ? newLock.lockedUntil : undefined;
       return lockedUntilMs !== undefined ? { ok: false, lockedUntilMs } : { ok: false };
@@ -403,7 +402,7 @@ export class UserAuthManager {
       && bootstrapCred.username === username
       && bootstrapCred.password === password;
 
-    // Success — clear failure count.
+    // Success, clear failure count.
     this.accountLocks.delete(username);
     return { ok: true, user, usedBootstrapCredential };
   }
@@ -430,7 +429,7 @@ export class UserAuthManager {
   private _recordLoginFailure(username: string, now: number): void {
     const existing = this.accountLocks.get(username);
     if (!existing) {
-      // New entry — evict if at cap before inserting.
+      // New entry, evict if at cap before inserting.
       this._evictAccountLockIfNeeded(now);
     }
     const state = existing ?? { failures: 0, lockedUntil: 0 };

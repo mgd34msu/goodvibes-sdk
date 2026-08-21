@@ -1,5 +1,5 @@
 /**
- * caldav-ics.ts — RFC 5545 (iCalendar) reading for the CalDAV calendar backend.
+ * caldav-ics.ts, RFC 5545 (iCalendar) reading for the CalDAV calendar backend.
  *
  * Pure: no network, no filesystem, no clock, no secret. It is what the CalDAV
  * gateway service deserialises REPORT/GET payloads with, and what
@@ -13,7 +13,7 @@
  *
  * Why this exists alongside `ics-parser.ts`: that parser answers "what is on
  * this calendar" for the merged-calendar model and returns `CalendarEvent`s.
- * This one is the CalDAV wire codec — it keeps the raw ATTENDEE/ORGANIZER
+ * This one is the CalDAV wire codec, it keeps the raw ATTENDEE/ORGANIZER
  * values a PUT has to re-emit, and the display names a response may show, which
  * are two different things and must not be confused (see `ICalAttendee`).
  */
@@ -59,7 +59,7 @@ export interface ParsedICalEvent {
 /**
  * Unfold folded content lines: a line beginning with a space or tab is a
  * continuation of the previous one, not a line of its own. Blank lines are
- * dropped — no iCalendar property is expressible as one.
+ * dropped, no iCalendar property is expressible as one.
  */
 export function unfoldLines(content: string): string[] {
   const rawLines = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
@@ -337,7 +337,7 @@ function finaliseEvent(partial: ParsingEvent): ParsedICalEvent {
  * VEVENTs (a VCALENDAR carrying recurrence overrides, or a whole collection
  * exported as one file) all come back.
  *
- * Throws — rather than dropping the event — on a date value it cannot read or
+ * Throws, rather than dropping the event, on a date value it cannot read or
  * on a DTSTART/DTEND VALUE-type mismatch: a calendar entry silently landing on
  * the wrong day is worse than a refusal that names the file.
  */

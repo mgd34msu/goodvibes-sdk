@@ -1,5 +1,5 @@
 /**
- * routes/power.ts — handlers for the sleep-ownership verbs over the live
+ * routes/power.ts, handlers for the sleep-ownership verbs over the live
  * PowerManager (see platform/power/manager.ts for the policy).
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';

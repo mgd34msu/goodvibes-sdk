@@ -8,7 +8,7 @@
  * ever resolve it.
  *
  * For a tool-permission ask that is a stale row someone eventually notices. For
- * a payment approval it is money in limbo — and because silence on a payment
+ * a payment approval it is money in limbo, and because silence on a payment
  * approval means DENIED, a record stuck at 'pending' is precisely the state that
  * ruling exists to prevent.
  *
@@ -42,8 +42,8 @@ function request(callId: string, args: Record<string, unknown> = { merchant: 'sh
 /**
  * Args that will not coalesce onto another ask in the same store.
  *
- * `requestApproval` merges an identical concurrent ask — same session, tool and
- * args — into the existing pending record instead of creating a second one. A
+ * `requestApproval` merges an identical concurrent ask, same session, tool and
+ * args, into the existing pending record instead of creating a second one. A
  * witness record built from the default args would therefore not exist at all,
  * and the tests below would be waiting on something that was never created.
  */
@@ -71,7 +71,7 @@ function readStore(storePath: string): PersistedSnapshot | null {
     return JSON.parse(readFileSync(storePath, 'utf-8')) as PersistedSnapshot;
   } catch {
     // Not written yet. `persist()` renames into place, so a read never sees a
-    // half-written file — only an absent one.
+    // half-written file, only an absent one.
     return null;
   }
 }
@@ -96,7 +96,7 @@ function persisted(storePath: string, callId: string): boolean {
  * Move a persisted deadline, which is what the passage of time would do to it.
  *
  * The deadline has to be a known distance from the restart for these tests to
- * mean anything — "still in the future" and "already passed" are the two cases
+ * mean anything, "still in the future" and "already passed" are the two cases
  * the sweep branches on. Deriving it from a `timeoutMs` handed to
  * `requestApproval` makes it a distance from the CREATE instead, so how long
  * the create took decides which case the test exercises. Writing it here, one
@@ -142,7 +142,7 @@ function expiryNote(broker: ApprovalBroker, callId: string): string | undefined 
  *
  * Two of the tests below assert that the sweep LEAVES A RECORD ALONE. Polling
  * for "still pending" answers instantly and would answer the same way before
- * the sweep had run at all, so on its own it proves nothing — it is the shape
+ * the sweep had run at all, so on its own it proves nothing, it is the shape
  * of assertion that the fixed sleeps were already failing to make honest. This
  * gives the sweep a second record it cannot ignore, waits for that one to be
  * settled, and only then is "unchanged" a statement about a sweep that has
@@ -178,7 +178,7 @@ describe('an approval survives a restart with its deadline intact', () => {
       const created = first.listApprovals().find((entry) => entry.callId === 'call-1');
       expect(created?.status).toBe('pending');
 
-      // Move the deadline into the past, directly on the persisted record —
+      // Move the deadline into the past, directly on the persisted record,
       // "already expired when the restart reads it" becomes a fact about the
       // file rather than a bet on real time elapsing between two fixed
       // sleeps and a slow disk write landing in between.
@@ -221,7 +221,7 @@ describe('an approval survives a restart with its deadline intact', () => {
       // … and the re-armed timer settles it rather than leaving it forever.
       await waitFor(() => statusOf(second, 'call-2') === 'expired');
       // WHICH branch settled it is the whole claim. A sweep that expired it on
-      // sight also reads 'expired' here, and would be the opposite defect —
+      // sight also reads 'expired' here, and would be the opposite defect,
       // an approval killed while it still had time left to be answered.
       expect(expiryNote(second, 'call-2')).toBe(REARMED_NOTE);
     } finally {
@@ -249,7 +249,7 @@ describe('an approval survives a restart with its deadline intact', () => {
       await witnessSweepRan(second, 'call-3-witness');
 
       // No deadline was ever set, so there is nothing to re-arm and nothing to
-      // expire. It stays pending, correctly, until something answers it — and
+      // expire. It stays pending, correctly, until something answers it, and
       // the witness above is what makes that a statement about a sweep that
       // ran, rather than about one that had not reached this record yet.
       const restored = second.listApprovals().find((entry) => entry.callId === 'call-3');
@@ -268,7 +268,7 @@ describe('an approval survives a restart with its deadline intact', () => {
       void first.requestApproval({ request: request('call-4') }).catch(() => undefined);
       // The create's write has to be COMPLETE before the resolve's write
       // starts. Both persist the whole store, so two in flight at once are a
-      // last-writer-wins race, and the loser is the create — it carries the
+      // last-writer-wins race, and the loser is the create, it carries the
       // 'pending' snapshot taken before the record was answered. On the CI
       // runner it landed second and the restarted broker read back an approval
       // that had already been approved as still pending.

@@ -1,5 +1,5 @@
 /**
- * text-layout.test.ts — wrapWithHangingIndent / fitLabelDetailColumns.
+ * text-layout.test.ts, wrapWithHangingIndent / fitLabelDetailColumns.
  *
  * Both helpers exist because `.length` is the wrong measure for a terminal.
  * The tests below therefore assert in display cells, and pin the two floors

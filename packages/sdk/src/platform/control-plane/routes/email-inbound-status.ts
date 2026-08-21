@@ -1,10 +1,10 @@
 /**
- * routes/email-inbound-status.ts — the inbound watcher's disclosure verb.
+ * routes/email-inbound-status.ts, the inbound watcher's disclosure verb.
  *
  * §9's rule is that anything persisted across restarts reaps, bounds,
  * validates by content, sweeps periodically, and DISCLOSES. Three things
- * outlive a restart here — the cursors, the inbound records and the
- * expectations — and until this verb existed the fifth rule was the one with
+ * outlive a restart here, the cursors, the inbound records and the
+ * expectations, and until this verb existed the fifth rule was the one with
  * no mechanism behind it. Everything below is that mechanism.
  *
  * It is a read, and only a read: the handler holds a supervisor slice
@@ -31,7 +31,7 @@ import type { InboundMailSupervisor } from '../../email/inbound/supervisor.js';
  * What a backend must be able to do to serve this verb: describe itself.
  *
  * Structurally satisfied by `InboundMailSupervisor`, so the daemon wiring
- * passes the supervisor itself rather than an adapter — and a `Pick` rather
+ * passes the supervisor itself rather than an adapter, and a `Pick` rather
  * than a restated method signature, so it cannot describe a method the
  * supervisor does not have.
  */

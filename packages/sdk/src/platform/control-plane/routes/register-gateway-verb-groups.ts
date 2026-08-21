@@ -8,7 +8,7 @@
  * It folds in the pre-existing fleet / checkpoints / sessions.search group
  * (registerFleetCheckpointsSearchGatewayMethods, unchanged) and constructs + wires the browser-
  * push group: a PushService over the subscription store and VAPID key custody,
- * its verb handlers, and — the real event source — a subscription to the
+ * its verb handlers, and, the real event source, a subscription to the
  * approval broker so an approval that needs a decision fans out as a push to the
  * operator's registered devices.
  */
@@ -120,24 +120,24 @@ import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 import { legacyWorkspaceRegisterPath, sharedWorkspaceRegisterPath } from '../../workspace/registration/shared-register-path.js';
 
 export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
-  /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
+  /** SecretsManager (get/set), VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
   /** Filled with the owner profile store and occasions service below, which is what lets the `profile` capture tool write. Absent in a host with no agent tools. */
   readonly personalCapture?: Pick<import('../../personal-capture/index.js').PersonalCaptureHolder, 'setPort'> | undefined;
   /**
-   * Teardown registry for the pollers this registration starts — today the
+   * Teardown registry for the pollers this registration starts, today the
    * push-subscription sweep, which is constructed here and so is otherwise
    * unreachable from the graph that owns it. Optional: a narrow composition
    * that never tears down passes nothing and keeps today's behaviour.
    */
   readonly disposal?: DisposalRegistry | undefined;
-  /** The approval broker — the real event source push fans out from. */
+  /** The approval broker, the real event source push fans out from. */
   readonly approvalBroker: ApprovalSource;
   /**
    * Optional: stamp the session an accepted ci fix-this offer spawned onto
    * its RESOLVED approval record (ApprovalBroker.stampFixSession). Present
    * when the real broker is wired (the runtime composition root); absent in
-   * narrower compositions — the id then travels only via the channel
+   * narrower compositions, the id then travels only via the channel
    * notification.
    */
   readonly stampFixSessionOnApproval?: ((offerCallId: string, outcome: FixSessionStartOutcome) => Promise<unknown>) | undefined;
@@ -151,7 +151,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
     readonly metadata?: Record<string, unknown> | undefined;
   }) => Promise<PermissionPromptDecision>) | undefined;
   /**
-   * Optional: the daemon's watcher registry — the recurring-poll host. When
+   * Optional: the daemon's watcher registry, the recurring-poll host. When
    * present, registered CI watches are polled on the watchers.ciPollIntervalMs
    * cadence instead of standing still until a manual ci.watches.run.
    */
@@ -238,8 +238,8 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * secrets (see routes/calendar-composition.ts); present in tests that serve
    * calendar.events.* / calendar.ics.* from a fake with no store behind it.
    *
-   * A missing calendar implementation the daemon could reach — not a missing
-   * route — is what made those five methods `invokable: false` for so long.
+   * A missing calendar implementation the daemon could reach, not a missing
+   * route, is what made those five methods `invokable: false` for so long.
    */
   readonly calendarGateway?: CalendarGatewayService | undefined;
   /** Optional browser backend; absent ⇒ composed over the daemon's own storage root (routes/browser-composition.ts). */
@@ -267,7 +267,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   /**
    * The following three are wired only by the full runtime-services composition
    * root; when any is absent (e.g. the terminal-shell embed) the proactive
-   * check-in verb group is simply not registered — a graceful degrade, exactly
+   * check-in verb group is simply not registered, a graceful degrade, exactly
    * like the runtimeBus-gated needs-input push source above.
    */
   readonly channelDeliveryRouter?: Pick<ChannelDeliveryRouter, 'deliver'> | undefined;
@@ -297,7 +297,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   /**
    * Optional: receives the CI auto-watch tool-execution observer once the
    * ci-watch service exists, so the composition root can hang it on the shared
-   * tool-execution seam — work pushed through the platform then mints its own
+   * tool-execution seam, work pushed through the platform then mints its own
    * CI watch with no ceremony. Absent → only the scripted ci.watches.create.
    */
   readonly onCiAutoWatch?: ((observer: (toolName: string, args: Record<string, unknown>, success: boolean) => void) => void) | undefined;
@@ -309,7 +309,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * It is no longer the only way that half gets served, and is no longer the
    * first one consulted. A surface running its own loop offers its live
    * conversation through the rewind.conversation.* verbs, and that offer wins
-   * for its session — a process holding the messages is a better authority on
+   * for its session, a process holding the messages is a better authority on
    * them than a store that merely might have them. This port is the fallback,
    * for sessions no surface has offered.
    *
@@ -320,7 +320,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
   /**
    * The relay WebAuthn step-up ceremony service. When present, the
    * stepup.credentials.register + stepup.challenge.mint verbs are registered over
-   * it — the SAME instance whose verifier the relay dispatch gate installs
+   * it, the SAME instance whose verifier the relay dispatch gate installs
    * (services.ts constructs one and threads it to both). Absent (an embed with no
    * relay wiring) → the verbs stay cataloged-but-unhandled, a graceful degrade.
    */
@@ -333,7 +333,7 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    */
   readonly memoryRegistry?: MemoryProjectionSource | undefined;
   /**
-   * The config + secret pair the credentials.set/.clear verbs write through —
+   * The config + secret pair the credentials.set/.clear verbs write through,
    * the only way a surface that is not on this filesystem can finish a settings
    * modal that asks for a token. A SEPARATE bundle rather than a widening of
    * `configManager`/`secretsManager` above, because those two are deliberately
@@ -374,7 +374,7 @@ function toFleetNotice(event: FleetEvent): FleetNotice {
 export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: GatewayVerbGroupDeps): void {
   registerFleetCheckpointsSearchGatewayMethods(catalog, deps);
 
-  // fleet.conflicts.* — a conflict row's one action: spawn a seeded resolution
+  // fleet.conflicts.*, a conflict row's one action: spawn a seeded resolution
   // session inside the kept tree (the CI fix-session machinery) and reclaim
   // the tree once the resolution lands (re-merge on run success). Registered
   // only when the engine's conflict surface AND the automation manager exist.
@@ -401,7 +401,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     attachConflict('fleet.conflicts.list', createFleetConflictsListHandler(conflictsDeps));
     attachConflict('fleet.conflicts.resolve', createFleetConflictsResolveHandler(conflictsDeps));
     // Reclaim on success: the resolution session's automation run completing
-    // successfully re-attempts the merge through the same integration lane —
+    // successfully re-attempts the merge through the same integration lane,
     // a clean merge removes the kept tree; a re-conflict honestly stays flagged.
     if (deps.runtimeBus) {
       deps.runtimeBus.onDomain('automation', (envelope) => {
@@ -434,7 +434,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // absurdly broad root by the same guard checkpointing uses.
   const daemonStateDir = deps.shellPaths.resolveUserPath();
   const workspaceRegistrationStore = new WorkspaceRegistrationStore({
-    // SHARED TIER, not surface-scoped — three products read this register. See workspace/registration/shared-register-path.ts.
+    // SHARED TIER, not surface-scoped, three products read this register. See workspace/registration/shared-register-path.ts.
     path: sharedWorkspaceRegisterPath(deps.shellPaths),
     fallbackReadPath: legacyWorkspaceRegisterPath(deps.shellPaths),
     homeDir: dirname(daemonStateDir),
@@ -459,8 +459,8 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // Skipped when the composition supplied no config manager (a narrow embed, a
   // conformance harness): every `profile.*` switch lives in config, so without
   // one there is nothing to read the feature's own on/off from. The verbs then
-  // stay cataloged-but-unhandled — the same graceful degrade the other optional
-  // groups use — instead of one optional family throwing and taking every other
+  // stay cataloged-but-unhandled, the same graceful degrade the other optional
+  // groups use, instead of one optional family throwing and taking every other
   // verb group in this registrar down with it.
   if (deps.configManager?.attachProfileFallback !== undefined) {
     const ownerProfile = composeOwnerProfile(catalog, {
@@ -498,7 +498,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // Wire the inbound-intake enrichment onto the transport intake chokepoint: from
   // here on, every channel-originated session is attributed to its sending
   // principal (via the registry just above) and inherits its channel's bound
-  // profile — no per-adapter call needed. Uses the same two registries the
+  // profile, no per-adapter call needed. Uses the same two registries the
   // principals.*/channels.profiles.* verbs manage, so the mappings an operator
   // sets are exactly the mappings intake honors.
   if (deps.sessionIntake) {
@@ -510,18 +510,18 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   }
 
   // CI-watch (the per-job status tool, the auto-minter and the recurring
-  // poll): constructed in routes/ci-watch-composition.ts — the free-function
+  // poll): constructed in routes/ci-watch-composition.ts, the free-function
   // split this file's line budget required, with no behaviour change.
   composeCiWatchGatewayVerbs(catalog, deps);
 
-  // channels.test.send — live per-channel test-message probe over the daemon's
+  // channels.test.send, live per-channel test-message probe over the daemon's
   // delivery router. Registered only when the router is wired; absent, the verb
   // stays cataloged-but-unhandled rather than a facade that pretends to deliver.
   if (deps.channelDeliveryRouter) {
     registerChannelTestGatewayMethods(catalog, deps.channelDeliveryRouter);
   }
 
-  // worktrees.setup.run — re-run cold-start setup on a live worktree. Registered
+  // worktrees.setup.run, re-run cold-start setup on a live worktree. Registered
   // over a registry rooted at the daemon working directory (matching
   // worktrees.snapshot's reader) so the recorded outcome is visible there.
   if (deps.workingDirectory !== undefined) {
@@ -643,7 +643,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   }
 
   // Tailscale auto-wire: read-only detection + the one-action serve affordance
-  // (the recommended https path — the daemon never mints certificates). Where
+  // (the recommended https path, the daemon never mints certificates). Where
   // tailscale is absent, detection reports it once; nothing nags.
   registerTailscaleGatewayMethods(catalog, {
     runner: deps.tailscaleRunner ?? defaultTailscaleRunner(),
@@ -708,13 +708,13 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   const quotaWindow = new QuotaWindowTracker();
   registerCostGatewayMethods(catalog, { costAttribution, quotaWindow });
 
-  // Durable permission rules settings surface (list/delete) — registered only
+  // Durable permission rules settings surface (list/delete), registered only
   // when the composition root wires the store, like every optional group here.
   if (deps.userPermissionRuleStore) {
     registerPermissionRulesGatewayMethods(catalog, { userRuleStore: deps.userPermissionRuleStore });
   }
 
-  // credentials.set / credentials.delete — a credential written THROUGH the
+  // credentials.set / credentials.delete, a credential written THROUGH the
   // daemon: into the encrypted store at the scope the ownership rules resolve,
   // read back and verified, with only a goodvibes://secrets/ reference left in
   // config, and the value never echoed anywhere. Registered only when the
@@ -725,7 +725,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
     registerCredentialWriteGatewayMethods(catalog, deps.credentialWrites);
   }
 
-  // approvals.raise — a surface CREATING an ask in the shared broker, the write
+  // approvals.raise, a surface CREATING an ask in the shared broker, the write
   // counterpart to the decide verbs. Registered only when the raising view of
   // the broker is wired.
   if (deps.approvalRaise) {
@@ -742,23 +742,23 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   // Feature-flag graduation report: a read-only view over the static flag
   // registry + owner graduation annotations. Needs no runtime dependency (the
   // registry is static module data), so it is always registered. No live
-  // evidence provider is threaded here yet — flags with instrumentation report
+  // evidence provider is threaded here yet, flags with instrumentation report
   // "no evidence collected this run" rather than a fabricated readiness.
   registerFlagsGraduationGatewayMethods(catalog);
 
-  // runtime.metrics.get — the process-wide RuntimeMeter snapshot plus per-model
+  // runtime.metrics.get, the process-wide RuntimeMeter snapshot plus per-model
   // tool-format telemetry. Needs no runtime dependency (platformMeter and the
   // tool-format recorder are process-wide singletons), so it is always
   // registered, exactly like the flags-graduation report above.
   registerRuntimeMetricsGatewayMethods(catalog);
 
   // Unified message-anchored rewind (rewind.plan / rewind.apply): one coordinator
-  // over the daemon's workspace-checkpoint store — files rewind reuses the same
+  // over the daemon's workspace-checkpoint store, files rewind reuses the same
   // manager checkpoints.* uses (never a fourth history system), and the pre-restore
   // safety checkpoint it already takes is the undo point that makes a rewind
   // reversible. The conversation half is wired only when a consumer threads a
   // conversationRewindPort (a daemon-hosted mutable conversation store); absent
-  // — the default today — the conversation part is honestly reported unavailable
+  //, the default today, the conversation part is honestly reported unavailable
   // rather than faked. Receipt events fan out on the workspace domain when the
   // runtime bus is present.
   //

@@ -1,13 +1,13 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * ToolEvent — discriminated union covering all tool execution lifecycle events.
+ * ToolEvent, discriminated union covering all tool execution lifecycle events.
  *
  * Covers tool execution lifecycle events for the runtime event bus.
  */
 
 /**
- * Structured summary of a tool result — avoids leaking raw `unknown` payloads
+ * Structured summary of a tool result, avoids leaking raw `unknown` payloads
  * into the event stream while still providing enough context for observability.
  */
 export interface ToolResultSummary {
@@ -54,9 +54,9 @@ export type ToolEvent =
   /**
    * A runtime budget was exceeded and the phase pipeline was terminated.
    * The `reason` discriminant distinguishes the type of budget breached:
-   *  - BUDGET_EXCEEDED_MS    — wall-clock execution time limit
-   *  - BUDGET_EXCEEDED_TOKENS — token consumption limit
-   *  - BUDGET_EXCEEDED_COST  — cost limit in USD
+   *  - BUDGET_EXCEEDED_MS,    wall-clock execution time limit
+   *  - BUDGET_EXCEEDED_TOKENS, token consumption limit
+   *  - BUDGET_EXCEEDED_COST,  cost limit in USD
    */
   | {
       type: 'BUDGET_EXCEEDED_MS';

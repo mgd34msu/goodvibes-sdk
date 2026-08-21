@@ -5,7 +5,7 @@ import { summarizeError } from '../../../utils/error-display.js';
 import { attachVisibleToolWarning } from './warnings.js';
 
 /**
- * posthook — Phase 6 of the tool execution pipeline.
+ * posthook, Phase 6 of the tool execution pipeline.
  *
  * Fires `Post:tool:<toolName>` hook via the HookDispatcher.
  *

@@ -1,5 +1,5 @@
 /**
- * method-catalog-runtime-mcp.ts — the MCP wire schemas for the runtime method
+ * method-catalog-runtime-mcp.ts, the MCP wire schemas for the runtime method
  * catalog.
  *
  * Lifted out of method-catalog-runtime.ts, which is a grandfathered
@@ -61,7 +61,7 @@ export const MCP_CONFIG_RESPONSE_SCHEMA = objectSchema({
   locations: arraySchema(MCP_CONFIG_SOURCE_SCHEMA),
   servers: arraySchema(MCP_CONFIG_SERVER_SCHEMA),
 }, ['locations', 'servers']);
-/** The redacted server record plus its env VALUES. Admin-only — see mcp.servers.reveal. */
+/** The redacted server record plus its env VALUES. Admin-only, see mcp.servers.reveal. */
 export const MCP_REVEALED_SERVER_SCHEMA = objectSchema({
   name: STRING_SCHEMA,
   command: STRING_SCHEMA,

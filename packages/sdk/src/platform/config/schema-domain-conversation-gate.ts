@@ -5,7 +5,7 @@
  * only its schema surface. It is a domain of its own rather than another block
  * inside schema-domain-runtime.ts because that file is at its size ceiling.
  *
- * `gatedSurfaces` is an array, so — like wrfc.gates — it is not a scalar
+ * `gatedSurfaces` is an array, so, like wrfc.gates, it is not a scalar
  * ConfigKey and is read through getCategory('conversationGate').
  */
 import { type ConfigSettingDefinition } from './schema-shared.js';

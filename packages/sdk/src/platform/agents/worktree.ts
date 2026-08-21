@@ -15,7 +15,7 @@ import { summarizeError } from '../utils/error-display.js';
  * Result of committing the working tree. `hash` is the commit sha, or null when
  * there was nothing to commit (empty ledger, all paths ignored/missing, or no
  * dirty changes). `skippedIgnored` lists scoped paths that were dropped because
- * git ignores them — deliberately excluded from staging so an ignored bookkeeping
+ * git ignores them, deliberately excluded from staging so an ignored bookkeeping
  * path in a self-reported ledger cannot fail the whole commit. Callers surface
  * this as an honest note rather than a failure.
  */
@@ -25,15 +25,15 @@ export interface CommitWorkingTreeResult {
 }
 
 /**
- * AgentWorktree — Manages git worktree lifecycle for spawned agents.
+ * AgentWorktree, Manages git worktree lifecycle for spawned agents.
  *
  * Each agent works in an isolated git worktree so its file changes are
  * sandboxed from the main working tree.
  *
  * Lifecycle:
- *   create()  — create worktree + branch, return path
- *   merge()   — merge agent branch back to current branch, remove worktree
- *   cleanup() — remove worktree without merging (cancel/error path)
+ *   create() , create worktree + branch, return path
+ *   merge()  , merge agent branch back to current branch, remove worktree
+ *   cleanup(), remove worktree without merging (cancel/error path)
  */
 export class AgentWorktree {
   private readonly git: GitService;
@@ -71,7 +71,6 @@ export class AgentWorktree {
       return false;
     }
 
-    // Check if the agent branch has any commits beyond base
     const hasChanges = await this._hasChanges(worktreePath, branch);
     if (!hasChanges) {
       logger.debug('AgentWorktree.merge: no changes, skipping merge', { agentId });
@@ -103,7 +102,7 @@ export class AgentWorktree {
    * filtered before staging:
    *  - a path that exists on disk (created/modified) is kept outright;
    *  - a path that does not exist is kept only if `git ls-files` shows it as tracked (a real
-   *    deletion), otherwise it is a hallucinated path and dropped — `git add -A -- <path>`
+   *    deletion), otherwise it is a hallucinated path and dropped, `git add -A -- <path>`
    *    throws "pathspec did not match any files" for a path neither on disk nor known to git;
    *  - a path that git IGNORES (e.g. the product's own `.goodvibes/` bookkeeping written by a
    *    memory/preference tool) is dropped and reported in `skippedIgnored`. This is load-bearing:
@@ -186,7 +185,7 @@ export class AgentWorktree {
       }
       // simple-git RESOLVES a rejected commit (e.g. a failing pre-commit hook) with an empty hash
       // rather than throwing. Distinguish that from a genuine no-op: if changes are still staged,
-      // a hook/verification step rejected the commit — throw so the catch below restores the index
+      // a hook/verification step rejected the commit, throw so the catch below restores the index
       // and the caller can report an honest warning. If nothing is staged, it was a true no-op.
       const stagedAfter = (await git.raw(['diff', '--cached', '--name-only'])).trim();
       if (stagedAfter.length > 0) {
@@ -201,7 +200,7 @@ export class AgentWorktree {
         return { hash: null, skippedIgnored };
       }
       // Any other failure (rejected add, rejected commit, hook/identity/disk error) must not leave
-      // the caller's staging area mutated by a commit we could not complete — restore what we staged.
+      // the caller's staging area mutated by a commit we could not complete, restore what we staged.
       await this._restoreIndex(git, stagedPathspecs);
       throw error;
     }
@@ -327,15 +326,15 @@ export class AgentWorktree {
 
 /** Outcome of integrating an item branch back into the base branch (see IsolatedWorktree.integrate). */
 export type IntegrationOutcome =
-  /** Clean merge — `hash` is the merge commit on the base branch. */
+  /** Clean merge, `hash` is the merge commit on the base branch. */
   | { readonly status: 'merged'; readonly hash: string }
   /** The base merge conflicted; `files` names the conflicting paths. The base tree is restored (merge --abort) so the lane can continue. */
   | { readonly status: 'conflict'; readonly files: readonly string[] }
-  /** The item branch carried no commits beyond base — nothing to merge (an honest no-op, not a failure). */
+  /** The item branch carried no commits beyond base, nothing to merge (an honest no-op, not a failure). */
   | { readonly status: 'empty' };
 
 /**
- * IsolatedWorktree — one work item's dedicated git worktree for the
+ * IsolatedWorktree, one work item's dedicated git worktree for the
  * orchestration engine's `worktree` isolation mode (see WorkstreamIsolation).
  *
  * Unlike {@link AgentWorktree} (whose merge() folds an agent branch into the
@@ -343,31 +342,31 @@ export type IntegrationOutcome =
  * commitWorkingTree surface), an IsolatedWorktree models the full per-item
  * lifecycle the engine drives:
  *
- *   create()    — add a git worktree at `path` on a fresh branch `branch`,
+ *   create()   , add a git worktree at `path` on a fresh branch `branch`,
  *                 branched from the base branch (the root tree's current HEAD).
- *   commit()    — scoped-commit the item's touched paths onto `branch`, INSIDE
+ *   commit()   , scoped-commit the item's touched paths onto `branch`, INSIDE
  *                 the worktree (delegates to AgentWorktree.commitWorkingTree
  *                 bound to `path`, so the ignored/hallucinated/deletion
  *                 filtering is reused verbatim).
- *   isClean()   — whether the worktree's working tree has uncommitted changes
+ *   isClean()  , whether the worktree's working tree has uncommitted changes
  *                 (drives the fail/kill cleanup rule: remove only if clean).
- *   integrate() — merge `branch` into the base branch IN THE ROOT TREE. The
+ *   integrate(), merge `branch` into the base branch IN THE ROOT TREE. The
  *                 root tree stays checked out on base; a different branch being
  *                 merged never needs the worktree removed first. On conflict it
  *                 runs `merge --abort` to restore the root index so the single
  *                 sequential integration lane can proceed to the next item.
- *   remove()    — remove the worktree dir and delete `branch` (post-merge, or
+ *   remove()   , remove the worktree dir and delete `branch` (post-merge, or
  *                 a clean tree after fail/kill).
- *   keepInPlace()/branchHasCommits() — inspection helpers for KEPT worktrees.
+ *   keepInPlace()/branchHasCommits(), inspection helpers for KEPT worktrees.
  *
  * Location: worktrees live under `<root>/.goodvibes/.worktrees/`, the same
- * gitignored bookkeeping area AgentWorktree and WorktreeRegistry already use —
- * chosen over the system temp dir deliberately: (1) crash cleanup — a worktree
+ * gitignored bookkeeping area AgentWorktree and WorktreeRegistry already use,
+ * chosen over the system temp dir deliberately: (1) crash cleanup, a worktree
  * under the repo is discoverable by `git worktree list` and the existing
  * WorktreeRegistry path scan, so an orphan left by a crashed process can be
  * reconciled; a temp-dir worktree is invisible to repo-relative reconciliation
  * and can be swept out from under a KEPT (dirty) tree by an OS temp cleaner,
- * losing data. (2) gitignore interplay — `.goodvibes/` is already ignored and
+ * losing data. (2) gitignore interplay, `.goodvibes/` is already ignored and
  * the commit path already excludes it, so a nested worktree checkout there
  * never pollutes the parent's tracked status nor gets accidentally committed.
  */
@@ -378,7 +377,7 @@ export class IsolatedWorktree {
   private readonly baseBranch: string;
 
   /**
-   * @param rootDir     the repository root (base tree) — merges land here.
+   * @param rootDir     the repository root (base tree), merges land here.
    * @param path        absolute path for this item's worktree directory.
    * @param branch      the item branch name to create/check out in the worktree.
    * @param baseBranch  the branch merges integrate into (the root tree's branch).
@@ -426,7 +425,7 @@ export class IsolatedWorktree {
       const status = (await wgit.raw(['status', '--porcelain'])).trim();
       return status.length === 0;
     } catch (error) {
-      // If we can't read status, treat as DIRTY (keep the tree) — data safety.
+      // If we can't read status, treat as DIRTY (keep the tree), data safety.
       logger.warn('IsolatedWorktree.isClean: status failed, treating as dirty', { path: this.path, error: summarizeError(error) });
       return false;
     }
@@ -447,7 +446,7 @@ export class IsolatedWorktree {
   /**
    * Merge the item branch into the base branch in the ROOT tree. Returns an
    * honest {@link IntegrationOutcome}: `merged` (with the merge commit hash),
-   * `conflict` (with the conflicting files — the merge is aborted so the root
+   * `conflict` (with the conflicting files, the merge is aborted so the root
    * is restored and the lane can continue), or `empty` (no commits to merge).
    * Never auto-resolves a conflict.
    */
@@ -463,11 +462,11 @@ export class IsolatedWorktree {
       const hash = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
       // A fast-forward or an already-merged branch can leave HEAD unmoved; a
       // fresh merge commit moves it. Either way the branch content is now in
-      // base — report the current base HEAD as the integration point.
+      // base, report the current base HEAD as the integration point.
       logger.debug('IsolatedWorktree.integrate: merged', { branch: this.branch, before, hash });
       return { status: 'merged', hash };
     }
-    // Conflict — restore the root tree so the sequential lane can continue.
+    // Conflict, restore the root tree so the sequential lane can continue.
     const files = [...(result.conflicts ?? [])];
     try {
       await wgit.raw(['merge', '--abort']);
@@ -479,7 +478,7 @@ export class IsolatedWorktree {
   }
 
   /**
-   * The diff this item branch introduced over the base branch (base...branch —
+   * The diff this item branch introduced over the base branch (base...branch,
    * changes on the branch since it diverged). The existing diff plumbing behind
    * a best-of-N candidate: returns the changed files, the unified diff text, and
    * the diffstat. A read error degrades to an empty diff, never throws.
@@ -514,13 +513,13 @@ export class IsolatedWorktree {
   /**
    * Evict this worktree under the kept-worktree cap. Eviction bounds DISK
    * usage, never work: any uncommitted state (modified AND untracked files,
-   * unfiltered — preservation must be exact) is first committed onto the item
+   * unfiltered, preservation must be exact) is first committed onto the item
    * branch, then ONLY the directory is removed. The branch is deliberately
    * KEPT, so a conflicted/dirty tree evicted past the cap stays recoverable
    * with `git worktree add <path> <branch>` / `git show <branch>:<file>`.
    *
    * When the preservation commit cannot be created, the directory is NOT
-   * removed (the error propagates) — leaving an over-cap directory on disk is
+   * removed (the error propagates), leaving an over-cap directory on disk is
    * always preferred over destroying uncommitted work.
    *
    * @returns the preservation commit hash, or null when the tree was already
@@ -537,7 +536,7 @@ export class IsolatedWorktree {
         await wgit.raw(['commit', '--no-verify', '-m', message]);
       } catch (err) {
         // Most common cause: no committer identity configured in this
-        // environment. Preservation must not depend on host config — retry
+        // environment. Preservation must not depend on host config, retry
         // with an explicit fallback identity rather than lose the tree.
         logger.debug('IsolatedWorktree.evict: commit failed, retrying with fallback identity', { path: this.path, error: summarizeError(err) });
         await wgit.raw(['-c', 'user.email=goodvibes@localhost', '-c', 'user.name=goodvibes-eviction', 'commit', '--no-verify', '-m', message]);
@@ -545,7 +544,7 @@ export class IsolatedWorktree {
       preservedCommit = (await wgit.raw(['rev-parse', 'HEAD'])).trim();
     }
     await this.removeDirectory();
-    // The branch is KEPT deliberately — no `branch -D` on the eviction path.
+    // The branch is KEPT deliberately, no `branch -D` on the eviction path.
     return { preservedCommit };
   }
 

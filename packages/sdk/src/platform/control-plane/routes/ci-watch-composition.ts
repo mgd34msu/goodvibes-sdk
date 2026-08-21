@@ -1,5 +1,5 @@
 /**
- * ci-watch-composition.ts — the CI-watch verb group's construction, as a free
+ * ci-watch-composition.ts, the CI-watch verb group's construction, as a free
  * function over the same deps object the registrar receives.
  *
  * Split out of routes/register-gateway-verb-groups.ts, which had reached the
@@ -32,7 +32,7 @@ import { logger } from '../../utils/logger.js';
 import type { GatewayVerbGroupDeps } from './register-gateway-verb-groups.js';
 import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 
-/** Exactly the deps this composition reads — a slice of the registrar's own. */
+/** Exactly the deps this composition reads, a slice of the registrar's own. */
 export type CiWatchCompositionDeps = Pick<
   GatewayVerbGroupDeps,
   | 'shellPaths'
@@ -79,7 +79,7 @@ export function composeCiWatchGatewayVerbs(catalog: GatewayMethodCatalog, deps: 
     // acceptance starts the fix-session seeded with the failing jobs' logs.
     // The accepted offer's started session id is stamped back onto the
     // RESOLVED approval record (broker seam, published live) so the surface
-    // that accepted has an in-process handle — the offerCallId returned below
+    // that accepted has an in-process handle, the offerCallId returned below
     // is what ties the started session to its approval record.
     ...(deps.stampFixSessionOnApproval
       ? { stampFixSession: deps.stampFixSessionOnApproval }
@@ -103,7 +103,7 @@ export function composeCiWatchGatewayVerbs(catalog: GatewayMethodCatalog, deps: 
               analysis: {
                 classification: 'ci-fix-session',
                 riskLevel: 'medium',
-                summary: `CI went red on ${brief.repo} (${where}) — start a fix session for ${brief.failingJobs.join(', ') || 'the failing jobs'}?`,
+                summary: `CI went red on ${brief.repo} (${where}), start a fix session for ${brief.failingJobs.join(', ') || 'the failing jobs'}?`,
                 reasons: [
                   `The watched CI run on ${brief.repo} reached a failed verdict.`,
                   'Accepting starts an isolated fix session seeded with the failing jobs\' logs; declining leaves the red run untouched.',
@@ -129,7 +129,7 @@ export function composeCiWatchGatewayVerbs(catalog: GatewayMethodCatalog, deps: 
   }
   // The daemon polls registered watches on the watchers.ciPollIntervalMs
   // cadence (15s floor, sequential passes, overlap-guarded) via the existing
-  // watcher-registry polling machinery — a standing watch no longer stands
+  // watcher-registry polling machinery, a standing watch no longer stands
   // still until someone runs the manual verb. When the watcher framework is
   // turned off (watchers.enabled false) the poll is honestly skipped: the
   // manual ci.watches.run verb still works, so nothing is silently faked.
@@ -144,7 +144,7 @@ export function composeCiWatchGatewayVerbs(catalog: GatewayMethodCatalog, deps: 
         ...(typeof configuredCadence === 'number' ? { intervalMs: configuredCadence } : {}),
       });
     } catch (error) {
-      // A gated/refusing watcher registry must never fail daemon composition —
+      // A gated/refusing watcher registry must never fail daemon composition,
       // CI watches degrade to the manual verb, stated honestly in the log.
       logger.warn('[ci-watch] recurring poll not registered; watches run via the manual verb only', {
         error: error instanceof Error ? error.message : String(error),

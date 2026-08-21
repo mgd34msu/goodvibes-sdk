@@ -1,18 +1,18 @@
 /**
- * config-replica.ts — the replicated settings document, and how two copies of
+ * config-replica.ts, the replicated settings document, and how two copies of
  * it are reconciled.
  *
  * ── ORDERING IS NOT A CLOCK ────────────────────────────────────────────────
  *
  * Nothing here compares timestamps to decide what wins. Two homelab machines
- * routinely disagree about the time by minutes — neither is obliged to run NTP —
+ * routinely disagree about the time by minutes, neither is obliged to run NTP,
  * and a last-write-wins rule keyed on wall clock would let the machine with the
  * fastest clock win every conflict permanently, including winning against a
  * deletion made afterwards on a correct clock.
  *
  * Ordering is a REVISION: a counter the master increments. Higher revision
- * wins. At an equal revision — which only a partition with two masters can
- * produce — a deletion beats a write, and two writes are settled by origin node
+ * wins. At an equal revision, which only a partition with two masters can
+ * produce, a deletion beats a write, and two writes are settled by origin node
  * id so both sides of a heal land on the same answer without negotiating.
  *
  * `at` is recorded because an operator reading `cluster status` wants to know
@@ -26,7 +26,7 @@ export interface ConfigReplicaEntry {
   /** JSON value for a config path; for a secret, the ciphertext is never here. */
   readonly value: unknown;
   readonly revision: number;
-  /** The node that originated the change — logged, and the equal-revision tiebreak. */
+  /** The node that originated the change, logged, and the equal-revision tiebreak. */
   readonly origin: string;
   /** Wall clock, for display only. Never used for ordering. */
   readonly at: number;
@@ -123,7 +123,7 @@ export function createConfigReplicaDocument(groupId: string): ConfigReplicaDocum
 }
 
 /**
- * Parse an untrusted document — off the wire, or off disk after a crash.
+ * Parse an untrusted document, off the wire, or off disk after a crash.
  *
  * `keep` is the replication policy. Filtering on the RECEIVE side as well as
  * the send side is the point: a peer running a different build, or a modified
@@ -168,7 +168,7 @@ function normalize(document: ConfigReplicaDocument): ConfigReplicaDocument {
     if (!existing || tombstone.revision > existing.revision) tombstones.set(tombstone.path, tombstone);
   }
   // A deletion at or above an entry's revision removes it. Equal resolves to
-  // DELETED — see the header: only a two-master partition produces a tie, and
+  // DELETED, see the header: only a two-master partition produces a tie, and
   // resolving toward the deletion is the only direction that cannot resurrect
   // something the operator removed.
   for (const [path, tombstone] of tombstones) {
@@ -274,7 +274,7 @@ export interface ConfigReplicaSweepResult {
  * Deletions expire after {@link CONFIG_TOMBSTONE_MAX_AGE_MS} and are capped,
  * oldest first. Expiring one is safe for the same reason it is safe in the
  * roster: the deletion has already been applied everywhere that is still
- * talking, and the tombstone's only job is to outlive a partition — 90 days is
+ * talking, and the tombstone's only job is to outlive a partition, 90 days is
  * far longer than any partition that ends in a heal rather than a rebuild.
  */
 export function sweepConfigReplica(

@@ -63,8 +63,8 @@ describe('capability-gates public subpath', () => {
 
 describe('no user-reachable "feature flag" string in source', () => {
   // Regression guard for the dissolved category: the phrase must not survive
-  // in any RUNTIME code path — string literals in thrown errors, log lines,
-  // descriptions — anywhere outside comments. (This class regressed once:
+  // in any RUNTIME code path, string literals in thrown errors, log lines,
+  // descriptions, anywhere outside comments. (This class regressed once:
   // four factory throws said 'Feature flag "..." is not enabled' after the
   // first sweep, because that sweep missed mixed-case phrasing and only
   // checked exported schemas.) Comments inside the internal kill-switch

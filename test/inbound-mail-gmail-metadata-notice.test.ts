@@ -1,5 +1,5 @@
 /**
- * The Gmail metadata-only delivery path — what
+ * The Gmail metadata-only delivery path, what
  * `surfaces.email.inbound.onInsufficientCapability: 'notice-only'` actually
  * does.
  *
@@ -10,23 +10,23 @@
  * plainly in every notice that bodies are unavailable, and it can never satisfy
  * a verification expectation while degraded." Nothing could produce that. The
  * `capability-degraded` notice outcome and its `missingCapability` field
- * existed, were rendered, and were tested — with **zero producers**. The key
+ * existed, were rendered, and were tested, with **zero producers**. The key
  * itself was read by nothing, so `notice-only` and `refuse-and-notify` were the
  * same behaviour.
  *
  * ── The security half, which is the part with no shortcut ────────────────
  *
  * `VerificationExpectationBook.matchCandidate` gates a match on the DELIVERY
- * EVIDENCE ADDRESS and nothing else — `CandidateEmail.body` is passed in and is
+ * EVIDENCE ADDRESS and nothing else, `CandidateEmail.body` is passed in and is
  * never consulted in the decision. Delivery evidence is a `Delivered-To`
  * HEADER, so it is present on a metadata-only message. A metadata-only message
  * would therefore match an open expectation for its alias and consume it, on
  * evidence nobody read: the verification link lives in the body that was never
  * fetched.
  *
- * `must never satisfy a verification expectation` is asserted here DIRECTLY —
+ * `must never satisfy a verification expectation` is asserted here DIRECTLY,
  * against the real `VerificationExpectationBook`, with a real open expectation
- * whose recipient address is the message's real delivery evidence — rather than
+ * whose recipient address is the message's real delivery evidence, rather than
  * inferred from the delta path happening not to produce a match.
  *
  * No network anywhere: Google's HTTP layer is an injected fake port.
@@ -118,8 +118,8 @@ function recordingPort(body: unknown, status = 200): {
 /**
  * What Google returns for `format=METADATA`.
  *
- * `payload.body` is deliberately ABSENT, which is the real shape — under
- * `format=METADATA` the payload carries headers and no body data — and
+ * `payload.body` is deliberately ABSENT, which is the real shape, under
+ * `format=METADATA` the payload carries headers and no body data, and
  * `snippet` is deliberately PRESENT, because a snippet is body-derived text and
  * the mapping must drop it rather than trust the provider not to send one.
  */
@@ -190,7 +190,7 @@ describe('readMessageMetadata: the format=metadata call a gmail.metadata token m
     // Google should not return a snippet to a gmail.metadata token. "Should
     // not" is the provider's promise; this path's guarantee is its own, so the
     // mapping blanks it unconditionally. The fixture deliberately contains a
-    // verification link inside the snippet — exactly the material that must
+    // verification link inside the snippet, exactly the material that must
     // never reach a caller that believes no body was read.
     const { port } = recordingPort(metadataResponse());
     const client = new GoogleApiClient(tokenManagerWithScopes([METADATA_SCOPE]), port);
@@ -204,7 +204,7 @@ describe('readMessageMetadata: the format=metadata call a gmail.metadata token m
 });
 
 // ---------------------------------------------------------------------------
-// 2. collectHistoryDelta stops refusing — but only when asked
+// 2. collectHistoryDelta stops refusing, but only when asked
 // ---------------------------------------------------------------------------
 
 /** A history page naming one added message, plus the new high-water mark. */
@@ -272,7 +272,7 @@ describe('collectHistoryDelta on a metadata-only grant', () => {
    * `surfaces.email.inbound.onInsufficientCapability` ships as
    * `refuse-and-notify`. If omitting the new option had started returning `ok`,
    * this module would have changed what that unset key means from underneath
-   * every existing caller — so the option defaults to `'refuse'` and this pins
+   * every existing caller, so the option defaults to `'refuse'` and this pins
    * it.
    */
   test('with the option omitted it still refuses, exactly as before', async () => {
@@ -371,8 +371,8 @@ describe('collectHistoryDelta on a metadata-only grant', () => {
 
   /**
    * A `historyId` is a decimal uint64 STRING. `Number('18446744073709551615')`
-   * is `18446744073709552000` — a position that looks valid and names a
-   * different record — so the metadata path must carry it as text, exactly as
+   * is `18446744073709552000`, a position that looks valid and names a
+   * different record, so the metadata path must carry it as text, exactly as
    * the body path does.
    */
   test('a uint64 historyId above 2^53 survives the metadata path verbatim', async () => {
@@ -410,7 +410,7 @@ function gmailMessage(
     messageId: '<abc@service.test>',
     // Receiver-written delivery evidence, and the ONLY field
     // `matchCandidate` gates on. Present on a metadata-only message because it
-    // is a header — which is precisely why item 4 needs asserting.
+    // is a header, which is precisely why item 4 needs asserting.
     deliveredTo: [ALIAS],
     unverifiedToHeaderClaim: 'owner@example.test',
     resourceId: '18f0a2b3c4d5e6f7',
@@ -474,7 +474,7 @@ describe('a metadata-only message is announced as LIMITED VIEW', () => {
     const notice = rig.sent[0]!;
 
     // The renderer arm that existed with no producer until now.
-    expect(notice.title.map((span) => span.text).join('')).toBe('New mail — LIMITED VIEW');
+    expect(notice.title.map((span) => span.text).join('')).toBe('New mail, LIMITED VIEW');
 
     const outcome = notice.fields.find((field) => field.label === 'Outcome');
     expect(outcome).toBeDefined();
@@ -513,7 +513,7 @@ describe('a metadata-only message can NEVER satisfy a verification expectation',
    * The one that matters.
    *
    * The expectation is real, open, unexpired, and registered for exactly the
-   * address this message's delivery evidence names — so every gate
+   * address this message's delivery evidence names, so every gate
    * `matchCandidate` applies is satisfied. The only thing standing between it
    * and a `matched` verdict is that the body was never read.
    */
@@ -550,7 +550,7 @@ describe('a metadata-only message can NEVER satisfy a verification expectation',
   /**
    * The control that makes the test above mean something.
    *
-   * The SAME expectation, the SAME delivery address, the SAME rig — and a
+   * The SAME expectation, the SAME delivery address, the SAME rig, and a
    * body-capable read. This one MUST match and MUST be consumed. Without it,
    * an intake that had simply stopped matching anything at all would pass the
    * assertion above.
@@ -583,7 +583,7 @@ describe('a metadata-only message can NEVER satisfy a verification expectation',
    *
    * `bunx tsc -b` does not typecheck `test/`, so a rig that omits the field
    * compiles and the value reads `undefined`. Falling through a `!==
-   * 'metadata-only'` comparison would treat it as a full body — the unsafe
+   * 'metadata-only'` comparison would treat it as a full body, the unsafe
    * direction, and the one that would let a body-less message satisfy an
    * expectation. Throwing releases the sink's claim and the message is retried.
    */
@@ -600,7 +600,7 @@ describe('a metadata-only message can NEVER satisfy a verification expectation',
     await expect(rig.intake(withoutTheField as GmailInboundMessage))
       .rejects.toThrow(/bodyAvailability/);
 
-    // Nothing announced and nothing spent — it left the world as it found it.
+    // Nothing announced and nothing spent, it left the world as it found it.
     expect(rig.sent).toEqual([]);
     expect(rig.book.list(new Date('2026-07-27T12:00:05.000Z'))).toHaveLength(1);
   });
@@ -703,7 +703,7 @@ describe('resolveInboundCapabilityPolicy', () => {
    * in `source-factory.ts` with the hardcoded default left the entire suite
    * green. Every other check was either about the schema row, about the key's
    * text appearing inside a `getConfig(...)` call somewhere in the tree, or
-   * about `GmailMailSource` honouring a policy it was HANDED — and none of
+   * about `GmailMailSource` honouring a policy it was HANDED, and none of
    * those is the claim that the value travels from the owner's config to the
    * constructor argument.
    *
@@ -751,7 +751,7 @@ describe('resolveInboundCapabilityPolicy', () => {
     await factoryFor('refuse-and-notify');
     expect(built.at(-1)?.capabilityPolicy).toBe('refuse-and-notify');
 
-    // And UNSET means the shipped default — asserted rather than changed.
+    // And UNSET means the shipped default, asserted rather than changed.
     await factoryFor(undefined);
     expect(built.at(-1)?.capabilityPolicy).toBe('refuse-and-notify');
     expect(built.at(-1)?.capabilityPolicy).toBe(INBOUND_CAPABILITY_POLICY_DEFAULT);

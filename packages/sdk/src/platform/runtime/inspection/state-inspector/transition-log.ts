@@ -11,7 +11,7 @@ import type { TransitionEntry } from './types.js';
 import { DEFAULT_MAX_TRANSITIONS } from './types.js';
 
 /**
- * BoundedTransitionLog — a fixed-capacity log of state transitions.
+ * BoundedTransitionLog, a fixed-capacity log of state transitions.
  *
  * Each call to `append()` stores a new entry. When capacity is exceeded, the
  * oldest entry is evicted; `totalAppended - size` exposes the eviction count.

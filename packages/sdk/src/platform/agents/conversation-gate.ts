@@ -1,16 +1,16 @@
 /**
- * Conversation-first spawn gate — the decision half.
+ * Conversation-first spawn gate, the decision half.
  *
  * Owner ruling: an inbound message, from ANY channel, gets a conversational
  * response. If it looks like it warrants a workstream, the agent PROPOSES one
- * and waits for agreement — it does not start one. Work that was already
+ * and waits for agreement, it does not start one. Work that was already
  * agreed to (a schedule, a trigger, an on-exit chain, or a proposal the owner
  * just said yes to) was authorized when it was created and runs without
  * re-asking.
  *
  * goodvibes-tui is exempt: the operator is sitting in front of it and typed
  * the thing, so work starting is the expected outcome. TUI spawns never reach
- * this module — the gate is installed on the channel-surface adapter context
+ * this module, the gate is installed on the channel-surface adapter context
  * (see daemon/surface-actions.ts), which the TUI does not go through.
  *
  * This file is pure: no I/O, no clock beyond what callers inject. The pending
@@ -37,7 +37,7 @@ export function isConversationGateMode(value: unknown): value is ConversationGat
 }
 
 /**
- * Channel surfaces the gate applies to by default — every conversational
+ * Channel surfaces the gate applies to by default, every conversational
  * ingress surface the platform ships. 'webhook' is intentionally absent: a
  * generic webhook is machine-to-machine automation that was authorized when
  * the webhook was registered, so it is pre-authorized work by construction.
@@ -45,14 +45,14 @@ export function isConversationGateMode(value: unknown): value is ConversationGat
 export const CONVERSATION_GATE_DEFAULT_SURFACES: readonly string[] = [
   /**
    * Inbound mail. Listed even though the inbound-mail watcher never reaches
-   * `gateSurfaceSpawn` — it is handed a purpose-built context with no way to
+   * `gateSurfaceSpawn`, it is handed a purpose-built context with no way to
    * spawn anything, so the gate is not what protects it today.
    *
    * It is here because of what happens to the NEXT person. `isGatedSurface`
    * fails closed only for a surface it cannot identify: an un-annotated spawn
    * (`surfaceKind === undefined`) returns true. A known, non-TUI string like
    * `'email'` skips that branch and falls through to
-   * `gatedSurfaces.includes(...)`, which was false — so an email adapter
+   * `gatedSurfaces.includes(...)`, which was false, so an email adapter
    * written the ordinary way, passing `surface: 'email'`, would let any
    * message that reads as a work request spawn an agent immediately, skipping
    * propose-and-wait. A surface name that fails OPEN in a list whose entire
@@ -102,14 +102,14 @@ const MAX_PENDING_PROPOSALS = 200;
 export interface ConversationGateConfigReader {
   get(key: string): unknown;
   /**
-   * `gatedSurfaces` is an array, so it is not a scalar ConfigKey — it is read
+   * `gatedSurfaces` is an array, so it is not a scalar ConfigKey, it is read
    * through the category, mirroring how wrfc.gates is read.
    *
    * `string`, NOT the literal `'conversationGate'`. `ConfigManager.getCategory`
    * is generic over `keyof GoodVibesConfig`, and `conversationGate` joins that
    * union through a module augmentation declared in
    * config/schema-domain-conversation-gate.ts. Inside this package that
-   * augmentation is always loaded, so the literal appeared to work — but a
+   * augmentation is always loaded, so the literal appeared to work, but a
    * CONSUMER's program only loads the declaration files its own imports reach,
    * and a consumer importing `ConfigManager` and `SharedSessionBroker` does not
    * necessarily pull that schema domain in. There, `keyof GoodVibesConfig` has
@@ -179,7 +179,7 @@ export function isGatedSurface(config: ConversationGateConfig, surfaceKind: stri
   if (config.mode === 'off') return false;
   if (!surfaceKind) {
     // An un-annotated channel spawn. Conversation is the default, so an
-    // unknown channel surface is gated rather than waved through — a new
+    // unknown channel surface is gated rather than waved through, a new
     // adapter cannot silently opt out by forgetting to declare itself.
     return true;
   }
@@ -269,8 +269,8 @@ export function summarizeWorkRequest(text: string, maxLength = 90): string {
  * Conversation is the default and the burden of proof is on "work": a message
  * only classifies as work when a base-form work verb sits in an imperative or
  * request position, or when it both references real code and uses a work verb
- * somewhere. Everything else — greetings, single words, questions, status
- * checks, opinions — is conversation and gets a conversational reply.
+ * somewhere. Everything else, greetings, single words, questions, status
+ * checks, opinions, is conversation and gets a conversational reply.
  */
 export function classifyInboundIntent(rawText: string | undefined): InboundIntent {
   const text = (rawText ?? '').trim();
@@ -335,7 +335,7 @@ const UNAMBIGUOUS_AFFIRMATIVE = /^(?:yes\s+please|go\s+ahead|goahead|go\s+for\s+
  * Openers that answer a yes/no question ONLY when they are the whole answer.
  *
  * Every word here is also an ordinary English word that opens a brand-new
- * request — "Please refactor the parser in src/parse.ts", "start the daemon",
+ * request, "Please refactor the parser in src/parse.ts", "start the daemon",
  * "go look at the logs". Treating one of these as agreement to whatever was
  * proposed earlier is how a fresh request got accepted as "yes" to an
  * unrelated proposal and launched a chain on the OLD task, with the new
@@ -350,7 +350,7 @@ const STANDALONE_AFFIRMATIVE = /^(?:proceed|please|begin|start|plz|pls|go)\b/i;
 const UNAMBIGUOUS_NEGATIVE = /^(?:no\s+thank\s+you|no\s+thanks?|never\s?mind|nevermind|not\s+now|hold\s+off|holdoff|drop\s+it|forget\s+it|negative|nope|nah|naw|no|nm|n)\b/i;
 
 /**
- * Refusals that are also verbs taking an object — "stop the daemon", "cancel
+ * Refusals that are also verbs taking an object, "stop the daemon", "cancel
  * the release", "skip the slow tests", "don't forget the changelog". Same rule
  * as {@link STANDALONE_AFFIRMATIVE}: only an answer when it is the whole answer.
  */
@@ -384,7 +384,7 @@ function remainderAfter(text: string, pattern: RegExp): string {
 }
 
 /**
- * Conjunctions that join a second instruction onto an answer — "go ahead AND
+ * Conjunctions that join a second instruction onto an answer, "go ahead AND
  * rename the config key". They are not preambles (classifyInboundIntent does
  * not peel them), so they are stripped here before the note is classified;
  * otherwise the work verb behind them hides and the instruction gets filed as
@@ -394,7 +394,7 @@ const NOTE_CONJUNCTIONS = /^(?:and\s+also|but\s+also|and\s+then|and|also|plus|th
 
 /**
  * May this trail an unambiguous answer as steering, or is it a request of its
- * own? A qualifier is short, names no code, and does not classify as work —
+ * own? A qualifier is short, names no code, and does not classify as work,
  * "but only touch the ntfy adapter" steers; "refactor the parser in
  * src/parse.ts" is a new job and must not be swallowed as a note.
  */
@@ -431,7 +431,7 @@ function parseAnswer(text: string, depth: number): WorkProposalReply | null {
     const note = remainderAfter(text, pattern);
     if (isAnswerParticle(note)) return { decision };
     if (depth >= MAX_ANSWER_DEPTH) return null;
-    // "ok go", "please go ahead" — a second answer word, not a new request.
+    // "ok go", "please go ahead", a second answer word, not a new request.
     const inner = parseAnswer(note, depth + 1);
     if (!inner || inner.decision !== decision) return null;
     return inner;
@@ -443,8 +443,8 @@ function parseAnswer(text: string, depth: number): WorkProposalReply | null {
 /**
  * Parse a channel reply as agreement or refusal for a pending proposal.
  *
- * Forgiving of natural phrasing — the owner should be able to type "yeah go
- * for it" from a phone, not a magic token — but the reply must be ONLY an
+ * Forgiving of natural phrasing, the owner should be able to type "yeah go
+ * for it" from a phone, not a magic token, but the reply must be ONLY an
  * answer. A message that carries its own request is that request, never a
  * "yes" to something proposed earlier, no matter how politely it opens.
  * Anything unrecognized returns null and flows through as a normal message,

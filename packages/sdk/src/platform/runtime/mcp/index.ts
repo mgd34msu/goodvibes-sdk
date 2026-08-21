@@ -1,10 +1,10 @@
 /**
- * src/runtime/mcp — MCP lifecycle barrel.
+ * src/runtime/mcp, MCP lifecycle barrel.
  *
  * Gated by the `mcp-lifecycle` capability gate (runtime.mcpLifecycle).
  *
  * Public API:
- *   - `createMcpLifecycleManager()` — factory function
+ *   - `createMcpLifecycleManager()`, factory function
  *   - All types from types.ts
  *   - State machine helpers from lifecycle.ts
  *   - Permission manager from permissions.ts
@@ -57,7 +57,7 @@ import type { FeatureFlagManager } from '../feature-flags/index.js';
 /**
  * Factory function for creating a `McpLifecycleManager`.
  *
- * Check the `mcp-lifecycle` gate (runtime.mcpLifecycle) before calling this — when the
+ * Check the `mcp-lifecycle` gate (runtime.mcpLifecycle) before calling this, when the
  * flag is disabled, the caller should use the standard MCP registry path.
  *
  * @param options - Optional configuration overrides

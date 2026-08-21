@@ -1,5 +1,5 @@
 /**
- * phases/index.ts — barrel export for all tool execution phase functions.
+ * phases/index.ts, barrel export for all tool execution phase functions.
  *
  * Each export is a pure async function conforming to PhaseFunction.
  * The pipeline is assembled in phased-executor.ts.

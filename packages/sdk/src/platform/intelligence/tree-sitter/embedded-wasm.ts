@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Embedded WASM files for tree-sitter — compiled into the binary via Bun's
+ * Embedded WASM files for tree-sitter, compiled into the binary via Bun's
  * `with { type: 'file' }` import assertion. In `bun build --compile`, Bun
  * embeds the file and returns the embedded path at runtime. In dev mode
  * (`bun run`), it returns the absolute filesystem path. Both modes work
@@ -28,7 +28,7 @@ export const TREE_SITTER_WASM: string = treeSitterWasm;
 /**
  * Map of language ID → embedded WASM path.
  * Only languages with installed grammar packages are present.
- * A missing key means the grammar is not available — the service returns null.
+ * A missing key means the grammar is not available, the service returns null.
  */
 export const GRAMMAR_WASM: Record<string, string> = {
   typescript: typescriptWasm,

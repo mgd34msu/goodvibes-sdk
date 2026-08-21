@@ -16,7 +16,7 @@
  *     supervised the throwaway as the machine's daemon.
  *
  *  2. `--daemon-home` had moved its identity directory and nothing else, so it
- *     read the real home's config and the real home's credentials — including
+ *     read the real home's config and the real home's credentials, including
  *     the owner's Telegram bot token. It long-polled his real bot, collided
  *     with the production daemon on the same token, and inbound Telegram
  *     stopped.
@@ -38,7 +38,7 @@ import { describeSecretIsolation } from '../packages/sdk/src/platform/runtime/se
 const MACHINE_HOME = '/home/owner';
 
 // ---------------------------------------------------------------------------
-// Scratch directories — created here, removed here
+// Scratch directories, created here, removed here
 // ---------------------------------------------------------------------------
 
 /**
@@ -49,7 +49,7 @@ const MACHINE_HOME = '/home/owner';
  * and remove only the two directories holding the compiled binaries. Every
  * `gv-promotion-…`, `gv-…-home-…` and `gv-flag-home-…` it made survived the
  * run, and the host this was measured on had accumulated roughly three
- * thousand of them from repeated runs — persisted residue with nothing reaping
+ * thousand of them from repeated runs, persisted residue with nothing reaping
  * it, on a tmpfs where each one costs inodes.
  *
  * A registry of the paths we made, rather than a glob sweep of `tmpdir()` for
@@ -75,14 +75,14 @@ afterAll(() => {
     try {
       rmSync(dir, { recursive: true, force: true });
     } catch {
-      // A directory we cannot remove must not fail the suite that made it —
+      // A directory we cannot remove must not fail the suite that made it,
       // the assertions have already run and the reason to be here is hygiene.
     }
   }
 });
 
 // ---------------------------------------------------------------------------
-// Guard 1 — a daemon with an overridden home never seizes the service unit
+// Guard 1, a daemon with an overridden home never seizes the service unit
 // ---------------------------------------------------------------------------
 
 function makePromotionHarness(options: { readonly hasOverriddenHome?: boolean | undefined }): {
@@ -146,7 +146,7 @@ describe('boot promotion', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Guard 2 — isolation reports which tier still reaches the real home
+// Guard 2, isolation reports which tier still reaches the real home
 // ---------------------------------------------------------------------------
 
 describe('credential isolation is reported per tier, not as one boolean', () => {
@@ -219,7 +219,7 @@ describe('credential isolation is reported per tier, not as one boolean', () => 
 });
 
 // ---------------------------------------------------------------------------
-// Guard 3 — `--daemon-home` governs the daemon tier, proven in a real binary
+// Guard 3, `--daemon-home` governs the daemon tier, proven in a real binary
 // ---------------------------------------------------------------------------
 
 /**
@@ -229,7 +229,7 @@ describe('credential isolation is reported per tier, not as one boolean', () => 
  *  - The released daemon died mute. Measured against the shipped 1.27.0 binary
  *    in an isolated home with an unparseable `daemon/settings.json`: exit 1,
  *    zero bytes on stdout, zero bytes on stderr, and no activity log at all.
- *    The cause was not buffering and not a bypassed handler — the shipped
+ *    The cause was not buffering and not a bypassed handler, the shipped
  *    entrypoint reports a fatal boot failure to the activity LOGGER and exits,
  *    and at that point the logger has no destination, so nothing is written
  *    anywhere and no file descriptor is ever touched.
@@ -237,7 +237,7 @@ describe('credential isolation is reported per tier, not as one boolean', () => 
  *  - `--daemon-home` moved the identity directory and nothing else. The
  *    ConfigManager derived its daemon tier from `homedir()` regardless, so a
  *    daemon told to keep its state elsewhere still read the real home's daemon
- *    settings — the second half of the incident this file's header describes.
+ *    settings, the second half of the incident this file's header describes.
  *
  * Compiling is what makes these honest: it is the artifact that ships.
  */
@@ -350,7 +350,7 @@ describe('the compiled daemon says why it will not start', () => {
     const run = runDaemon(fixed.binary, home);
     expect(run.status).toBe(1);
     expect(run.stderr).toContain('was migrated by a newer component');
-    expect(run.stderr).toContain('older than the floor (99.0.0) — update it');
+    expect(run.stderr).toContain('older than the floor (99.0.0), update it');
   });
 
   test('a settings file it CAN read still boots — the disclosure is not a new failure', () => {
@@ -363,13 +363,13 @@ describe('the compiled daemon says why it will not start', () => {
 
   test('--daemon-home moves the daemon tier: the real home\'s value does not surface', () => {
     // The sentinel lives in the REAL home, reached through HOME with no env
-    // override of the daemon home — so the only thing that can redirect the
+    // override of the daemon home, so the only thing that can redirect the
     // read is the flag itself.
     const realHome = homeWithDaemonSettings({ controlPlane: { port: 31111 } }, 'real-home');
     const flagHome = scratchDir('gv-flag-home-');
     writeFileSync(join(flagHome, 'settings.json'), JSON.stringify({ controlPlane: { port: 32222 } }), 'utf-8');
 
-    // Without the flag, the real home answers — otherwise the sentinel proves nothing.
+    // Without the flag, the real home answers, otherwise the sentinel proves nothing.
     const unflagged = runDaemon(fixed.binary, realHome);
     expect(unflagged.stdout).toContain('RESOLVED controlPlane.port=31111');
 

@@ -138,7 +138,7 @@ export class LspClient {
   /** Is the server running? */
   get isRunning(): boolean {
     if (!this.proc) return false;
-    // Bun.spawn process: check exitCode — null means still running
+    // Bun.spawn process: check exitCode, null means still running
     try {
       return (this.proc as { exitCode: number | null }).exitCode === null;
     } catch {
@@ -189,7 +189,7 @@ export class LspClient {
       const header = this.buffer.slice(0, headerEnd);
       const contentLengthMatch = header.match(/Content-Length:\s*(\d+)/i);
       if (!contentLengthMatch) {
-        // Malformed header — skip to next boundary
+        // Malformed header, skip to next boundary
         this.buffer = this.buffer.slice(headerEnd + 4);
         continue;
       }

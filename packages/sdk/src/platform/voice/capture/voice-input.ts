@@ -1,11 +1,11 @@
 /**
- * voice-input.ts — turning captured frames into ONE utterance to transcribe.
+ * voice-input.ts, turning captured frames into ONE utterance to transcribe.
  *
  * The same policy serves both ways an utterance starts, which is the whole point
  * of having it once:
  *
  *  - **push-to-talk**: the user starts, speaks, and stops. Only the ceiling
- *    applies (`voice.wake.captureMaxSeconds`) — a person holding the key is not
+ *    applies (`voice.wake.captureMaxSeconds`), a person holding the key is not
  *    asking to be cut off at a pause, so silence-stop is off for this case.
  *  - **after a wake**: nobody is going to press anything, so the utterance has
  *    to end itself. `voice.wake.silenceStopMs` ends it when the speaker stops,
@@ -22,7 +22,7 @@
  * second the ceiling would end anyway.
  *
  * A FIXED level is only correct for a room quieter than the level. In a room
- * whose steady noise sits ABOVE it — a fan, a compressor, traffic — no frame is
+ * whose steady noise sits ABOVE it, a fan, a compressor, traffic, no frame is
  * ever silent, `silenceStopMs` never accumulates, and every capture rides to the
  * ceiling no matter when the speaker stopped. So the floor is measured from the
  * room instead: {@link resolveSilenceFloorRms} sets it from the pre-wake audio
@@ -35,13 +35,13 @@
  * while the utterance runs. On a bluetooth headset it moves: automatic gain
  * control ramps the input up once the speaker stops, and the room the pre-roll
  * measured comes back louder than the floor derived from it. Every frame reads
- * as speech from then on and the capture rides the ceiling again — the same
+ * as speech from then on and the capture rides the ceiling again, the same
  * defect the measurement was added to fix, arriving from the other direction.
  * So the floor also FOLLOWS: {@link VoiceInputRecorder} keeps a windowed minimum
  * of the recent frame levels and raises the floor with it, bounded under the
  * speech it is hearing at the same time so it can never rise over the speaker.
  *
- * And a close-worn microphone hears things that are loud without being speech —
+ * And a close-worn microphone hears things that are loud without being speech,
  * a breath, a lip tick, a chair. Each is one or two frames. Treating every loud
  * frame as speech means each one resets the trailing-silence count to zero, so a
  * tick every half second holds the microphone open indefinitely with nobody
@@ -65,8 +65,8 @@ export const VOICE_INPUT_SILENCE_RMS = 180;
 /**
  * Analysis frame for the ambient measurement, in milliseconds.
  *
- * Short on purpose. The window being measured contains SPEECH — it is the audio
- * that just triggered the wake — and the estimate below works by finding the
+ * Short on purpose. The window being measured contains SPEECH, it is the audio
+ * that just triggered the wake, and the estimate below works by finding the
  * quiet frames inside it. 20 ms is short enough to land wholly inside a stop
  * closure or an inter-word gap; at 80 ms (the detector's frame) every frame of a
  * spoken phrase carries some speech energy and there is no quiet frame to find.
@@ -74,7 +74,7 @@ export const VOICE_INPUT_SILENCE_RMS = 180;
 export const VOICE_INPUT_AMBIENT_FRAME_MS = 20;
 
 /**
- * Fewest analysis frames that can produce an estimate — 160 ms of audio.
+ * Fewest analysis frames that can produce an estimate, 160 ms of audio.
  *
  * Below this the low percentile is one or two frames and is no longer a
  * statistic, so no estimate is reported and the caller falls back to the fixed
@@ -91,8 +91,8 @@ export const VOICE_INPUT_AMBIENT_MIN_FRAMES = 8;
  * textbook form but rides on a single frame; the 20th percentile keeps that
  * behaviour while surviving one anomalously quiet frame.
  *
- * The estimator is biased LOW — the quietest frames of a spoken phrase sit at or
- * slightly below the true floor — and low is the safe direction here: an
+ * The estimator is biased LOW, the quietest frames of a spoken phrase sit at or
+ * slightly below the true floor, and low is the safe direction here: an
  * underestimate reproduces today's behaviour (capture rides to the ceiling)
  * while an overestimate would put the floor above speech, which would mean never
  * hearing the speaker at all. The margin below is what pays that bias back.
@@ -109,14 +109,14 @@ export const VOICE_INPUT_AMBIENT_PERCENTILE = 0.2;
  * "loud" frames and never accumulate silence. And the estimate itself is biased
  * low, as above. +12 dB clears both. It also stays well clear of speech, which
  * the fixed constant's own note puts about two orders of magnitude (40 dB) over
- * a quiet room — leaving roughly 28 dB of headroom under the speaker.
+ * a quiet room, leaving roughly 28 dB of headroom under the speaker.
  */
 export const VOICE_INPUT_ADAPTIVE_MARGIN = 4;
 
 /**
  * The highest the adaptive floor may go, on the int16 magnitude scale.
  *
- * 8x the fixed constant — +18 dB over it, about -27 dBFS. A room noisy enough to
+ * 8x the fixed constant, +18 dB over it, about -27 dBFS. A room noisy enough to
  * push the floor past this cannot be separated into speech and silence by LEVEL
  * alone: the next thing above -27 dBFS is the speaker. Clamping here means such
  * a room keeps the pre-existing behaviour (silence never accumulates, the
@@ -140,13 +140,13 @@ export const VOICE_INPUT_ROLLING_WINDOW_MS = 1500;
 
 /**
  * The floor is never raised above this fraction of the speech level tracked over
- * the same capture — 3 is about 9.5 dB of clearance under the speaker.
+ * the same capture, 3 is about 9.5 dB of clearance under the speaker.
  *
  * This is the guard that makes raising the floor DURING a capture safe at all. A
  * floor that walks up with the room and is not held under something has exactly
  * one catastrophic failure: it passes the speaker's own level, every frame reads
  * as silence, and the utterance ends the instant it begins. Bounding it against
- * the loudest thing this capture has heard means the failure cannot happen —
+ * the loudest thing this capture has heard means the failure cannot happen,
  * whatever else is true, there is always most of a factor of three between the
  * floor and the voice it has to stay under.
  */
@@ -155,7 +155,7 @@ export const VOICE_INPUT_SPEECH_FLOOR_RATIO = 3;
 /**
  * Half-life of the tracked speech level, in milliseconds.
  *
- * Deliberately long — comparable to a whole capture rather than to a pause. The
+ * Deliberately long, comparable to a whole capture rather than to a pause. The
  * tracker is a running maximum that decays, and the decay is only there so a
  * speaker who genuinely gets quieter across a long dictation is not measured
  * against how loud they were at the start.
@@ -180,7 +180,7 @@ export const VOICE_INPUT_SPEECH_LEVEL_HALF_LIFE_MS = 8000;
  *
  * The rolling path is not one reading. It is re-derived every frame and held
  * under {@link VOICE_INPUT_SPEECH_FLOOR_RATIO} of the speech heard alongside it,
- * so the danger the 8x cap approximates — a floor set over the speaker — is
+ * so the danger the 8x cap approximates, a floor set over the speaker, is
  * checked directly instead. Applying 8x here would break the case this path
  * exists for: automatic gain control moves ambient AND speech up together, so a
  * ceiling fixed at 1440 pins the floor under a raised noise floor while the
@@ -239,7 +239,7 @@ export function isSilenceFloorPinned(override: number | undefined): override is 
  * Decide the silence floor for one utterance. The single place the rule lives.
  *
  * In order:
- *  1. An explicit `voice.wake.silenceFloorRms` above 0 wins outright — someone
+ *  1. An explicit `voice.wake.silenceFloorRms` above 0 wins outright, someone
  *     who set a level meant that level, and is not asking to be second-guessed.
  *  2. Otherwise measure the room from `ambient` and place the floor
  *     {@link VOICE_INPUT_ADAPTIVE_MARGIN} above it, clamped into
@@ -270,7 +270,7 @@ export function resolveSilenceFloorRms(options: {
 
 /** Why an utterance stopped. */
 export type VoiceInputStopReason =
-  /** The surface asked it to stop — a released key, an explicit cancel. */
+  /** The surface asked it to stop, a released key, an explicit cancel. */
   | 'requested'
   /** `silenceStopMs` of silence elapsed after speech. */
   | 'silence'
@@ -335,7 +335,7 @@ export interface VoiceInputEndpointing {
   /** The floor in force on the last frame. Equal to the initial one when pinned. */
   readonly finalFloorRms: number;
   /**
-   * The rolling ambient estimate at the stop — the windowed minimum of recent
+   * The rolling ambient estimate at the stop, the windowed minimum of recent
    * frame levels. Null when no frame was ever pushed.
    */
   readonly ambientRms: number | null;
@@ -384,7 +384,7 @@ export class VoiceInputRecorder {
    * The ceiling in samples, or Infinity when `captureMaxSeconds` is 0.
    *
    * Resolved ONCE here rather than multiplied out per frame, because 0 seconds
-   * is 0 samples and `samples >= 0` is true on the very first frame — a literal
+   * is 0 samples and `samples >= 0` is true on the very first frame, a literal
    * reading of "no ceiling" that would end every utterance immediately. Infinity
    * is the honest spelling of no ceiling and compares correctly forever; the
    * count itself is a double, so a capture long enough to lose precision would
@@ -401,8 +401,8 @@ export class VoiceInputRecorder {
    * Sliding-window minimum of frame level, as a deque of (level, end position)
    * kept monotonically increasing: the front is the minimum over the window.
    *
-   * Bounded by the window in frames — nineteen at the detector's 80 ms, about
-   * seventy-five at 20 ms — so the operations at both ends are on a handful of
+   * Bounded by the window in frames, nineteen at the detector's 80 ms, about
+   * seventy-five at 20 ms, so the operations at both ends are on a handful of
    * elements and the spelling that reads clearly is also the cheap one.
    */
   readonly #ambientWindow: Array<{ rms: number; endedAt: number }> = [];
@@ -474,7 +474,7 @@ export class VoiceInputRecorder {
   }
 
   /**
-   * Seed the utterance with audio from before it started — the wake detection's
+   * Seed the utterance with audio from before it started, the wake detection's
    * pre-roll. Must be called before any {@link push}, and does not count toward
    * the silence tracking: it is by definition the phrase that just triggered.
    */
@@ -490,7 +490,7 @@ export class VoiceInputRecorder {
 
   /**
    * Add one frame. Returns the reason the utterance should stop, or null to keep
-   * capturing. The frame is always kept first — a frame that trips the ceiling is
+   * capturing. The frame is always kept first, a frame that trips the ceiling is
    * part of the utterance, not discarded with it.
    */
   push(frame: Float32Array): VoiceInputStopReason | null {
@@ -559,7 +559,7 @@ export class VoiceInputRecorder {
    * held under three bounds: the speech level, so it can never rise over the
    * speaker; {@link VOICE_INPUT_ROLLING_FLOOR_MAX}, so runaway input cannot walk
    * it anywhere; and the starting floor as a LOWER bound, so the rolling path can
-   * only ever raise, never lower — lowering is what clips sentences, and nothing
+   * only ever raise, never lower, lowering is what clips sentences, and nothing
    * measured mid-capture is worth that risk.
    */
   #resolveEffectiveFloor(): number {
@@ -580,7 +580,7 @@ export class VoiceInputRecorder {
   /**
    * A frame above the floor. Only a run at least `speechRetriggerMs` long counts
    * as speech; while a shorter run is in progress the trailing silence is PAUSED
-   * at what it had reached, not reset — the run may yet turn out to be a tick.
+   * at what it had reached, not reset, the run may yet turn out to be a tick.
    */
   #onLoudFrame(frameSamples: number): void {
     this.#loudRunSamples += frameSamples;

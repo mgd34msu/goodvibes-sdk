@@ -1,5 +1,5 @@
 /**
- * check-subpath-declared.ts — a capability that exists but cannot be imported.
+ * check-subpath-declared.ts, a capability that exists but cannot be imported.
  *
  * ## The gap this closes
  *
@@ -11,7 +11,7 @@
  * What it structurally cannot see is a module that should be declared and is
  * not. A capability with no `exports` entry has no entry point to enumerate, so
  * it is absent from the snapshot, absent from the diff, and absent from every
- * green run — while `import '@pellux/goodvibes-sdk/platform/<thing>'` fails
+ * green run, while `import '@pellux/goodvibes-sdk/platform/<thing>'` fails
  * resolution for every consumer of the published package.
  *
  * That gap is invisible in local development for a specific reason worth
@@ -21,7 +21,7 @@
  *
  * ## Why the rule is TOP-LEVEL only
  *
- * The obvious rule — "every directory with an index.ts must be declared" —
+ * The obvious rule, "every directory with an index.ts must be declared",
  * fires on 97 modules in this repository, and nearly all of them are correct as
  * they are. `./platform/tools/read` is reached through `./platform/tools`;
  * `./platform/adapters/slack` through `./platform/adapters`. An internal
@@ -37,7 +37,7 @@
  * The five predate this check and belong to other work streams. Failing the
  * build for them would block every lane on a defect none of them introduced,
  * which is how a gate gets bypassed instead of fixed. So they are listed
- * explicitly — visible, attributable, and shrinking — and the check fails on
+ * explicitly, visible, attributable, and shrinking, and the check fails on
  * anything NEW. Same shape as `KNOWN_PRE_EXISTING_ROUTE_DEBT` in
  * capability-route-reconcile and the line-cap grandfather list.
  *
@@ -97,7 +97,7 @@ function main(): void {
 
   if (added.length === 0 && fixed.length === 0) {
     console.log(
-      `subpath-declared: OK — ${String(topLevelCapabilities().length)} top-level capabilities, `
+      `subpath-declared: OK, ${String(topLevelCapabilities().length)} top-level capabilities, `
       + `${String(undeclared.length)} known-undeclared, no new ones.`,
     );
     return;
@@ -112,7 +112,7 @@ function main(): void {
       ...added.map((subpath) => `  + ${subpath}`),
       '',
       'Fix: add an exports entry in packages/sdk/package.json pointing at its dist index,',
-      'then verify against a PACKED TARBALL — source-tree resolution does not prove this.',
+      'then verify against a PACKED TARBALL, source-tree resolution does not prove this.',
     );
   }
   if (fixed.length > 0) {

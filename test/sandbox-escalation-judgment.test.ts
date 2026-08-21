@@ -79,7 +79,7 @@ describe('sandbox escalation → approval broker', () => {
   });
 });
 
-// ── 3b: judgment tier — annotate-only default ────────────────────────────────
+// ── 3b: judgment tier, annotate-only default ────────────────────────────────
 
 describe('sandbox judgment tier', () => {
   test('annotate-only default: looks-safe still asks the human, ask carries the annotation', async () => {
@@ -116,7 +116,7 @@ describe('sandbox judgment tier', () => {
       config: { enabled: true, autoApprove: true },
     });
     const outcome = await handler(req());
-    // flags-risk does not auto-approve AND does not auto-deny — the human is asked.
+    // flags-risk does not auto-approve AND does not auto-deny, the human is asked.
     expect(seen).toHaveLength(1);
     expect(seen[0]!.analysis.reasons.some((x) => x.includes('model judgment: flags risk because'))).toBe(true);
     expect(outcome.judgmentReceipt?.outcome).toBe('annotated');

@@ -1,5 +1,5 @@
 /**
- * types.ts — the audio-capture boundary, shared by every voice consumer.
+ * types.ts, the audio-capture boundary, shared by every voice consumer.
  *
  * Capture is a CAPABILITY, not a wake-word detail. Two consumers sit on it and
  * they must share one device path:
@@ -24,8 +24,8 @@
  * container header out of alignment, or 62.5 fps against a 100 fps model, still
  * "works" and simply never detects.
  *
- * Opening the device is NOT here. It is per-surface by nature — a recorder
- * subprocess on a host, `getUserMedia` in a browser tab — so a host passes an
+ * Opening the device is NOT here. It is per-surface by nature, a recorder
+ * subprocess on a host, `getUserMedia` in a browser tab, so a host passes an
  * {@link AudioCaptureOpener} in, exactly as it passes the wake engine an
  * inference session. Nothing in this module imports `node:` anything, so a
  * browser bundle can carry all of it.
@@ -47,7 +47,7 @@ export type AudioCaptureBackend = 'auto' | 'pw-record' | 'parecord' | 'arecord' 
  * Noise suppression applied before detection, mirroring
  * `voice.wake.noiseSuppression`. `speex` is SpeexDSP's preprocessor, carried in
  * this package as a WebAssembly module and applied by
- * `createNoiseSuppressingOpener` — see ./noise-suppression.ts.
+ * `createNoiseSuppressingOpener`, see ./noise-suppression.ts.
  */
 export type AudioCaptureNoiseSuppression = 'none' | 'speex';
 
@@ -101,7 +101,7 @@ export type AudioCaptureFailureReason =
   | 'noise-suppression-unavailable'
   /** The surface has no capture mechanism at all. */
   | 'unsupported'
-  /** The stream ended on its own — recorder exited, or the track was revoked. */
+  /** The stream ended on its own, recorder exited, or the track was revoked. */
   | 'stream-ended';
 
 /** A capture failure carrying a machine-readable reason beside its message. */
@@ -134,7 +134,7 @@ export interface AudioCaptureHandlers {
 /** A live capture stream. */
 export interface AudioCaptureStream {
   /**
-   * What actually opened, for an honest indicator — `auto` resolving to
+   * What actually opened, for an honest indicator, `auto` resolving to
    * `parecord` must be visible as `parecord`, not as `auto`.
    */
   readonly label: string;

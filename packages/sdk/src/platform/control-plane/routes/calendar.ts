@@ -1,5 +1,5 @@
 /**
- * routes/calendar.ts — the daemon actually serving `calendar.events.*` and
+ * routes/calendar.ts, the daemon actually serving `calendar.events.*` and
  * `calendar.ics.*`.
  *
  * These five methods shipped cataloged with `invokable: false` for one
@@ -12,7 +12,7 @@
  * The connector is now platform capability (`platform/google`), so this module
  * is the thin part: it maps the descriptors' declared input and output shapes
  * onto a narrow service slice and nothing else. It performs no I/O, holds no
- * credential, and knows nothing about Google — a CalDAV-backed or Microsoft
+ * credential, and knows nothing about Google, a CalDAV-backed or Microsoft
  * Graph-backed implementation of `CalendarGatewayService` would serve the same
  * verbs unchanged.
  *
@@ -90,7 +90,7 @@ export interface CalendarGatewayIcsImport {
  * What a calendar backend must be able to do to serve these verbs.
  *
  * Every method reports failure by throwing `GatewayVerbError` with an honest
- * status — a missing scope is a 403, an unknown event id a 404, an
+ * status, a missing scope is a 403, an unknown event id a 404, an
  * unconfigured account a 400 naming what to configure. Nothing here returns a
  * plausible empty result in place of an error.
  */

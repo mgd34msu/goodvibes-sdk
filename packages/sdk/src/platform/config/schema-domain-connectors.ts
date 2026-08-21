@@ -1,11 +1,11 @@
 /**
- * schema-domain-connectors.ts — the mail and calendar connector's config
+ * schema-domain-connectors.ts, the mail and calendar connector's config
  * (`email.*`, `calendar.*`, `google.*`).
  *
  * ── What failed before this file existed ──────────────────────────────────
  *
- * The daemon really stores these keys — a Gmail app password reference, an
- * OAuth client id and secret reference, the private calendar feed address —
+ * The daemon really stores these keys, a Gmail app password reference, an
+ * OAuth client id and secret reference, the private calendar feed address,
  * under exactly these paths, seeded at runtime onto the live config object by
  * `connector-config-sections.ts` (a structural cast that bypasses
  * `CONFIG_SCHEMA`/`DEFAULT_CONFIG` entirely, because `email`, `calendar` and
@@ -15,7 +15,7 @@
  * The settings surface's whole authority is `isValidConfigKey` /
  * `configManager.getSchema()`, both of which read `CONFIG_SCHEMA`
  * (schema.ts). A key absent from `CONFIG_SCHEMA` is "Unknown setting", full
- * stop — so the agent's settings surface answered "Unknown setting
+ * stop, so the agent's settings surface answered "Unknown setting
  * calendar.google.clientId" for a key the daemon reads and writes every time
  * it composes mail or refreshes a calendar, and a catalog query for
  * `google.oauth.refreshToken` matched 0 of the schema's rows. A connection
@@ -36,7 +36,7 @@
  *
  * It was always a real daemon-owned path (`config-ownership.ts`'s non-schema
  * list carried it), but `connector-config-sections.ts`'s seed defaults never
- * included it — a section shape and its schema now have to agree, so it is
+ * included it, a section shape and its schema now have to agree, so it is
  * added to both in this change.
  *
  * ── Why these are a different domain from `surfaces.email.*` /
@@ -47,7 +47,7 @@
  * composes, sends and lists mail through (see
  * `control-plane/routes/email-composition.ts`, "the daemon's own mailbox").
  * Both are real, both are read in production, and unifying them is a
- * separate piece of work from giving each one a real schema row — this
+ * separate piece of work from giving each one a real schema row, this
  * change does the latter only, for the keys `connector-config-sections.ts`
  * already seeds.
  *
@@ -56,7 +56,7 @@
  * `email.passwordRef`, `email.smtpPasswordRef`, `calendar.google.clientSecretRef`,
  * `calendar.microsoft.clientSecretRef`, `calendar.google.icsUrl` and
  * `google.oauth.refreshToken` are declared in
- * `secret-bearing-config-keys.ts` (`SECRET_BEARING_CONFIG_PATHS`) already —
+ * `secret-bearing-config-keys.ts` (`SECRET_BEARING_CONFIG_PATHS`) already,
  * that is what routes a write into the encrypted secret store and masks a
  * render. Each row's own description says so, the same house phrasing
  * `surfaces.email.password` / `surfaces.calendar.caldavPassword` use in
@@ -132,7 +132,7 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'Turns on the mail connector: the account the daemon composes, sends and lists mail through. Off by default — a mailbox is only usable once host, username and a stored password reference are set below.',
+      'Turns on the mail connector: the account the daemon composes, sends and lists mail through. Off by default, a mailbox is only usable once host, username and a stored password reference are set below.',
   },
   {
     key: 'email.imapHost',
@@ -151,7 +151,7 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'tls',
     description:
-      'IMAP connection security. "tls" is implicit TLS on the IMAP port and is the safe default; "plaintext" is an unencrypted connection, legitimate only for a localhost or test server. There is no "auto" here — the operator either asks for TLS or asks not to have it.',
+      'IMAP connection security. "tls" is implicit TLS on the IMAP port and is the safe default; "plaintext" is an unencrypted connection, legitimate only for a localhost or test server. There is no "auto" here, the operator either asks for TLS or asks not to have it.',
     enumValues: ['tls', 'plaintext'],
   },
   {
@@ -185,14 +185,14 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description:
-      'A reference into the secret store (goodvibes://secrets/...) naming the mailbox password or app password — never a raw password. The secret itself is stored in the daemon secret tier, never in config.',
+      'A reference into the secret store (goodvibes://secrets/...) naming the mailbox password or app password, never a raw password. The secret itself is stored in the daemon secret tier, never in config.',
   },
   {
     key: 'email.smtpPasswordRef',
     type: 'string',
     default: '',
     description:
-      'A reference into the secret store for the SMTP password, only when the provider issues one that differs from the IMAP password. Empty — the common case — means submission authenticates with email.passwordRef like everything else. The secret itself is stored in the daemon secret tier, never in config.',
+      'A reference into the secret store for the SMTP password, only when the provider issues one that differs from the IMAP password. Empty, the common case, means submission authenticates with email.passwordRef like everything else. The secret itself is stored in the daemon secret tier, never in config.',
   },
   {
     key: 'email.fromAddress',
@@ -204,7 +204,7 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     key: 'email.mailbox',
     type: 'string',
     default: '',
-    description: 'Mailbox to read. Empty — the common case — means INBOX. Set when the account delivers to a folder, such as a per-signup alias mailbox.',
+    description: 'Mailbox to read. Empty, the common case, means INBOX. Set when the account delivers to a folder, such as a per-signup alias mailbox.',
   },
   {
     key: 'email.draftsMailbox',
@@ -223,14 +223,14 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description:
-      'A reference into the secret store naming the Google OAuth client secret, needed only for a confidential (Web-app) client registration — a Desktop-app client using PKCE needs none. The secret itself is stored in the daemon secret tier, never in config.',
+      'A reference into the secret store naming the Google OAuth client secret, needed only for a confidential (Web-app) client registration, a Desktop-app client using PKCE needs none. The secret itself is stored in the daemon secret tier, never in config.',
   },
   {
     key: 'calendar.google.icsUrl',
     type: 'string',
     default: '',
     description:
-      'A reference into the secret store naming the private calendar feed address (the "secret address in iCal format" from Google Calendar\'s Integrate Calendar settings). It is a URL rather than a password, but it grants read access to the operator\'s calendar to anyone holding it, so it is treated as a credential: the address itself is stored in the daemon secret tier, never in config. This is the read-only, credential-free route used when an app password is the mail connection — Google refuses Basic authentication on its CalDAV endpoint, so an app password cannot reach Calendar that way. Calendar writes require the OAuth path (calendar.google.clientId and the refresh token below).',
+      'A reference into the secret store naming the private calendar feed address (the "secret address in iCal format" from Google Calendar\'s Integrate Calendar settings). It is a URL rather than a password, but it grants read access to the operator\'s calendar to anyone holding it, so it is treated as a credential: the address itself is stored in the daemon secret tier, never in config. This is the read-only, credential-free route used when an app password is the mail connection, Google refuses Basic authentication on its CalDAV endpoint, so an app password cannot reach Calendar that way. Calendar writes require the OAuth path (calendar.google.clientId and the refresh token below).',
   },
   {
     key: 'calendar.microsoft.clientId',
@@ -243,7 +243,7 @@ export const connectorConfigSettings: ConfigSettingDefinition[] = [
     type: 'string',
     default: '',
     description:
-      'A reference into the secret store naming the Microsoft OAuth client secret, needed only for a confidential registration — a public client with "Allow public client flows" enabled needs none. The secret itself is stored in the daemon secret tier, never in config.',
+      'A reference into the secret store naming the Microsoft OAuth client secret, needed only for a confidential registration, a public client with "Allow public client flows" enabled needs none. The secret itself is stored in the daemon secret tier, never in config.',
   },
   {
     key: 'google.oauth.projectId',

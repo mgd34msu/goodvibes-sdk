@@ -16,7 +16,7 @@ const liveServices: HomeGraphService[] = [];
  *
  * MUST be called from each test file's own top level. An `afterEach` at this
  * module's scope runs at IMPORT time, and because `bun test` caches modules it
- * binds to whichever file imported this helper FIRST — every later file gets
+ * binds to whichever file imported this helper FIRST, every later file gets
  * silently no cleanup at all. That is not hypothetical here: the temp-dir sweep
  * below used to be registered that way, so only one of the three files using
  * this fixture ever swept, and none of them ever stopped the self-improvement

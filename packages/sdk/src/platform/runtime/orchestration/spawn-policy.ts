@@ -68,7 +68,7 @@ export function evaluateOrchestrationSpawn(input: {
     if (!recursionEnabled) {
       return {
         allowed: false,
-        reason: `recursive orchestration is disabled — cap: ${ORCHESTRATION_CAP_KEYS.recursionEnabled}=${recursionEnabled}`,
+        reason: `recursive orchestration is disabled, cap: ${ORCHESTRATION_CAP_KEYS.recursionEnabled}=${recursionEnabled}`,
         maxAgents,
         activeAgents: input.activeAgents,
         availableSlots,
@@ -83,7 +83,7 @@ export function evaluateOrchestrationSpawn(input: {
   if (input.mode === 'recursive-child' && requestedDepth > maxDepth) {
     return {
       allowed: false,
-      reason: `requested depth ${requestedDepth} exceeds configured recursion depth ${maxDepth} — cap: ${ORCHESTRATION_CAP_KEYS.maxDepth}=${maxDepth}`,
+      reason: `requested depth ${requestedDepth} exceeds configured recursion depth ${maxDepth}, cap: ${ORCHESTRATION_CAP_KEYS.maxDepth}=${maxDepth}`,
       maxAgents,
       activeAgents: input.activeAgents,
       availableSlots,
@@ -97,7 +97,7 @@ export function evaluateOrchestrationSpawn(input: {
   if (availableSlots <= 0) {
     return {
       allowed: false,
-      reason: `agent capacity reached (${input.activeAgents}/${maxAgents}) — cap: ${ORCHESTRATION_CAP_KEYS.maxActiveAgents}=${maxAgents}`,
+      reason: `agent capacity reached (${input.activeAgents}/${maxAgents}), cap: ${ORCHESTRATION_CAP_KEYS.maxActiveAgents}=${maxAgents}`,
       maxAgents,
       activeAgents: input.activeAgents,
       availableSlots,

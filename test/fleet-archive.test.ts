@@ -1,5 +1,5 @@
 /**
- * Behavior pins for withFleetArchive — finished agent/swarm subtrees move out
+ * Behavior pins for withFleetArchive, finished agent/swarm subtrees move out
  * of the live fleet view into a session-scoped archive, stay inspectable via
  * listArchived(), and running work can never be archived.
  */

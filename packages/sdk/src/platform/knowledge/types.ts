@@ -557,7 +557,7 @@ export interface KnowledgePacket {
   readonly estimatedTokens: number;
   readonly items: readonly KnowledgePacketItem[];
   /**
-   * Honest truncation disclosure — mirrors the home-graph packet's `truncated`
+   * Honest truncation disclosure, mirrors the home-graph packet's `truncated`
    * flag. `true` when candidates were dropped by the item limit or token budget,
    * so a partial packet is never indistinguishable from a complete one.
    */

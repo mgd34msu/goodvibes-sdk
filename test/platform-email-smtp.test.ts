@@ -530,7 +530,7 @@ describe('SmtpClient protocol', () => {
 });
 
 // ---------------------------------------------------------------------------
-// SmtpClient.verifyAuth — connect-wizard "test connection" step.
+// SmtpClient.verifyAuth, connect-wizard "test connection" step.
 // Must authenticate and QUIT WITHOUT ever sending MAIL FROM/RCPT TO/DATA.
 // ---------------------------------------------------------------------------
 
@@ -651,7 +651,7 @@ describe('SmtpClient.sendMail — Message-ID and sentAt', () => {
 
     const headers = wire.filter((line) => /^Message-ID:/i.test(line));
     expect(headers).toHaveLength(1);
-    // Not merely well-formed — the same string that went down the wire, which
+    // Not merely well-formed, the same string that went down the wire, which
     // is the only thing that makes it usable for correlation.
     expect(headers[0]).toBe(`Message-ID: ${result.messageId}`);
   });

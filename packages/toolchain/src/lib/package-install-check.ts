@@ -1,9 +1,9 @@
 /**
- * package-install-check — static verification of a package as it would install.
+ * package-install-check, static verification of a package as it would install.
  *
  * Inspects the `npm pack --json --dry-run` tarball for required and forbidden
  * paths and a size cap, and verifies each bin shim exists, is executable, and
- * carries the expected shebang. Static — the actual install-into-temp smoke is
+ * carries the expected shebang. Static, the actual install-into-temp smoke is
  * a separate tool/CI job.
  */
 
@@ -69,7 +69,7 @@ function looksLikePackResult(value: unknown): value is NpmPackResult {
  * - npm 12 emits an OBJECT keyed by package name: `{ "<name>": { files, ... } }`
  *
  * Reading `[0]` off the object form yields undefined, which then presents as an
- * EMPTY file list — so every required tarball path is reported missing and the
+ * EMPTY file list, so every required tarball path is reported missing and the
  * package looks catastrophically broken when nothing is wrong with it. Accept
  * both shapes, and throw on a shape that carries no pack result at all rather
  * than silently returning nothing.

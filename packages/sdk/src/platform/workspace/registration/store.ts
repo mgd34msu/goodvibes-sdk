@@ -7,19 +7,19 @@
  *
  * PERSISTENCE follows the sibling control-plane stores (PrincipalStore,
  * ChannelProfileStore …): a versioned JSON document over the shared
- * PersistentStore, which supports a `:memory:` path for deterministic tests —
+ * PersistentStore, which supports a `:memory:` path for deterministic tests,
  * that is the injectable-I/O seam. The persisted `workspaces` array is
  * field-identical to the agent registry so its file migrates in.
  *
  * ROOT-GUARD. `add` refuses an absurdly broad root ($HOME, the filesystem root,
  * or the daemon state dir) via the SAME broadRootReason the checkpoint manager
- * already uses — a registration store must never let automatic coverage sweep a
+ * already uses, a registration store must never let automatic coverage sweep a
  * whole home directory.
  *
  * CONCURRENCY. Every mutation here is a READ-MODIFY-WRITE: `read()` loads the
  * whole document, the method edits one array, and `persist()` replaces the
  * file. `PersistentStore.persist` is one atomic replacement, so nobody sees a
- * torn file — but it does not close the window between the read and the write,
+ * torn file, but it does not close the window between the read and the write,
  * which is exactly what its own header says belongs to the caller that owns the
  * read. Two registrations interleaved there lose one of the two roots outright:
  * both read the same array, both append their own record, and the second write
@@ -29,8 +29,8 @@
  * PROCESSES: `goodvibes register` in a project directory writes the same
  * user-scoped file the running daemon writes, so an in-process queue on its own
  * would order this process's writes and still lose the other's. Every
- * read-modify-write therefore runs under BOTH — the in-process chain and the
- * advisory lock at `<file>.lock` — which is the shape `push/subscription-store.ts`
+ * read-modify-write therefore runs under BOTH, the in-process chain and the
+ * advisory lock at `<file>.lock`, which is the shape `push/subscription-store.ts`
  * already uses for the same reason.
  */
 
@@ -70,12 +70,12 @@ function validate(snapshot: PersistedRegistry | null): PersistedRegistry {
 export interface WorkspaceRegistrationStoreOptions {
   /** Persistence path (or `:memory:` for tests). */
   readonly path: string;
-  /** The user's home directory — refused as a broad root. */
+  /** The user's home directory, refused as a broad root. */
   readonly homeDir: string;
-  /** The daemon state directory (~/.goodvibes) — refused as a broad root. */
+  /** The daemon state directory (~/.goodvibes), refused as a broad root. */
   readonly daemonStateDir: string;
   /**
-   * A second path to READ from when `path` does not exist yet — the pre-split
+   * A second path to READ from when `path` does not exist yet, the pre-split
    * location, during the one auto-update cycle before the daemon's boot fold
    * moves the register into the shared tier. Never written to: a
    * read-modify-write that started from the fallback still persists to `path`.
@@ -123,7 +123,7 @@ export class WorkspaceRegistrationStore {
    * after a rejection, so one failed registration cannot wedge the store for
    * the life of the process, and the rejection still reaches the caller that
    * owns it and nobody else. `then(guarded, guarded)` rather than `then(guarded)`
-   * for the same reason — a settled predecessor must run the next one either way.
+   * for the same reason, a settled predecessor must run the next one either way.
    */
   private run<T>(fn: () => Promise<T>): Promise<T> {
     const guarded = async (): Promise<T> => {
@@ -159,11 +159,11 @@ export class WorkspaceRegistrationStore {
 
   /**
    * Register a root, refusing an empty or absurdly broad one. Idempotent on
-   * the normalized root — but provenance UPGRADES: re-adding an existing root
+   * the normalized root, but provenance UPGRADES: re-adding an existing root
    * with `origin`/`checkpointEligible` stamps those fields (this is how the
    * checkpoint-owning consumer marks its roots on boot, including records
    * migrated before provenance existed). Absent options never strip an
-   * existing stamp — one surface's plain self-recording cannot demote another
+   * existing stamp, one surface's plain self-recording cannot demote another
    * consumer's eligibility.
    */
   async add(

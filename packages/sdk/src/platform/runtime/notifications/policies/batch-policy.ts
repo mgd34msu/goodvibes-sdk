@@ -1,5 +1,5 @@
 /**
- * Batch policy — collapses repeated notifications from the same domain +
+ * Batch policy, collapses repeated notifications from the same domain +
  * level within a rolling time window to prevent UI flooding from high-
  * frequency operational events (e.g. tool progress ticks, agent heartbeats).
  */
@@ -63,23 +63,23 @@ export class BatchPolicy {
     const entry = this.groups.get(key);
 
     if (!entry) {
-      // First notification in this group — start a new window.
+      // First notification in this group. Start a new window.
       this.groups.set(key, { last: notification, count: 1, windowStart: now });
-      // First in group is NOT batched — route immediately.
+      // First in group is NOT batched. Route immediately.
       return undefined;
     }
 
     const windowExpired = now - entry.windowStart > this.batchWindowMs;
 
     if (windowExpired) {
-      // Window has expired — flush the held batch and start fresh.
+      // Window has expired, flush the held batch and start fresh.
       this.pending.push({ notification: entry.last, batchCount: entry.count });
       this.groups.set(key, { last: notification, count: 1, windowStart: now });
       // New window start is NOT batched.
       return undefined;
     }
 
-    // Within window — collapse into batch.
+    // Within window, collapse into batch.
     entry.last = notification;
     entry.count += 1;
     return key;

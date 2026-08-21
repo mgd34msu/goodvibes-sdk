@@ -4,11 +4,11 @@
  * The VAPID signing chain and the fleet-driven push triggers, proven over a REAL
  * bootDaemon (isolated home, ephemeral port, token auth) against a LOCAL sink
  * that behaves like a push service. Nothing here talks to a browser vendor, and
- * no key is supplied from outside — the daemon mints and keeps its own.
+ * no key is supplied from outside, the daemon mints and keeps its own.
  *
  * What is proven end to end, beyond web-push-daemon-wire.test.ts:
- *  - Keypair lifecycle: first need generates and persists; every later need —
- *    including a SECOND DAEMON booted over the same home — reuses the same pair
+ *  - Keypair lifecycle: first need generates and persists; every later need,
+ *    including a SECOND DAEMON booted over the same home, reuses the same pair
  *    rather than regenerating (a regenerated key silently invalidates every
  *    live browser subscription, so this is load-bearing).
  *  - The public key `push.vapid.get` returns is a real P-256 point that imports
@@ -19,7 +19,7 @@
  *    sink's origin, and whose `sub` is the configured contact.
  *  - A fleet node blocking on the operator and a fleet node finishing each reach
  *    dispatch and arrive at the sink as decryptable 'needs-input' / 'completion'
- *    pushes — driven through the production emit-bridge on the daemon's own
+ *    pushes, driven through the production emit-bridge on the daemon's own
  *    runtime bus, not by calling PushService directly.
  *  - A 5xx keeps the subscription (only 404/410, or exhausted bounded retries,
  *    remove it).
@@ -139,7 +139,7 @@ async function waitForPush(predicate: (p: CapturedPush) => boolean, timeoutMs = 
 // ---------------------------------------------------------------------------
 interface VapidAuth {
   readonly jwt: string;
-  /** The `k=` parameter — the application-server public key, base64url. */
+  /** The `k=` parameter, the application-server public key, base64url. */
   readonly k: string;
   readonly header: Record<string, unknown>;
   readonly claims: Record<string, unknown>;
@@ -238,7 +238,7 @@ function readStoredKeypair(): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Fleet snapshot source — the production emit-bridge is attached to the DAEMON'S
+// Fleet snapshot source, the production emit-bridge is attached to the DAEMON'S
 // OWN runtime bus, so a node transition travels the real path:
 // snapshot -> emit-bridge -> bus 'fleet' domain -> the push wiring in
 // register-gateway-verb-groups -> PushService -> VAPID-signed HTTP delivery.
@@ -466,7 +466,7 @@ describe('web push — the VAPID Authorization JWT on a real delivery', () => {
     // The `k=` parameter is the daemon's published key…
     const publicKey = (await invokeVerb('push.vapid.get')).json.publicKey as string;
     expect(vapid.k).toBe(publicKey);
-    // …and the JWT actually verifies under it — the daemon signed with the
+    // …and the JWT actually verifies under it, the daemon signed with the
     // private half of the pair it publishes.
     expect(verifyVapidSignature(vapid, publicKey)).toBe(true);
 
@@ -479,7 +479,7 @@ describe('web push — the VAPID Authorization JWT on a real delivery', () => {
 
   test('a configured subject becomes the JWT `sub`', async () => {
     // The signing path itself, over the real secrets store, with an explicit
-    // contact — proving `sub` is the configured subject and not a constant.
+    // contact, proving `sub` is the configured subject and not a constant.
     const configManager = new ConfigManager({ workingDir: work, homeDir: home, surfaceRoot: 'goodvibes' });
     const secrets = new SecretsManager({ projectRoot: work, globalHome: home, surfaceRoot: 'goodvibes', configManager });
     const manager = new VapidManager(secrets, { subject: 'mailto:ops@example.test' });
@@ -502,7 +502,7 @@ describe('web push — subscription storage survives a restart', () => {
     const id = (created.json.subscription as { id: string }).id;
 
     // It reached the daemon's own state file, endpoint and keys included (this
-    // file is the capability store — it never goes on the wire).
+    // file is the capability store, it never goes on the wire).
     const stateFiles = collectFiles([home, work]).filter((f) => f.path.endsWith('push-subscriptions.json'));
     expect(stateFiles.length).toBe(1);
     const snapshot = JSON.parse((stateFiles[0] as DiskFile).text) as {
@@ -550,7 +550,7 @@ describe('web push — failure handling distinguishes gone from broken', () => {
     expect(receipt.outcome).toBe('failed');
     expect(receipt.httpStatus).toBe(500);
 
-    // Still there, with an honest failure counter — not deleted, not retried away.
+    // Still there, with an honest failure counter, not deleted, not retried away.
     const list = await invokeVerb('push.subscriptions.list');
     const mine = (list.json.subscriptions as ReadonlyArray<{ id: string; consecutiveFailures?: number; lastOutcome?: string }>)
       .find((s) => s.id === id);
@@ -586,7 +586,7 @@ describe('web push — the fleet triggers reach dispatch', () => {
     const subscriptionId = (created.json.subscription as { id: string }).id;
 
     // Seed the bridge (a first snapshot emits nothing by design), then transition
-    // the node INTO the block — the observed transition the bridge reports.
+    // the node INTO the block, the observed transition the bridge reports.
     emitSnapshot([fleetNode('node-block-1', 'thinking', { sessionRef: { sessionId: 'session-block-1' } })]);
     emitSnapshot([
       fleetNode('node-block-1', 'thinking', {

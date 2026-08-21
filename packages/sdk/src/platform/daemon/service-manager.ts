@@ -21,7 +21,7 @@ export interface ManagedServiceDefinition {
 
 export interface ManagedServiceStatus {
   readonly platform: ManagedServicePlatform;
-  /** The resolved service name (`service.serviceName` config, else the built-in default) — so a CLI/consumer never has to hardcode it. */
+  /** The resolved service name (`service.serviceName` config, else the built-in default), so a CLI/consumer never has to hardcode it. */
   readonly serviceName: string;
   readonly path: string;
   readonly installed: boolean;
@@ -85,7 +85,7 @@ function buildDefaultDefinition(
   options: Pick<ManagedServiceManagerOptions, 'binaryBaseName' | 'defaultServiceName' | 'defaultServiceDescription'>,
 ): ManagedServiceDefinition {
   const serviceName = resolveServiceName(configManager, options.defaultServiceName);
-  // ExecStart is derived from how THIS process was actually started — a compiled
+  // ExecStart is derived from how THIS process was actually started, a compiled
   // binary launches itself with its real argv; only a source/dev run yields the
   // `run <cli.ts>` shape (and that path is never self-promoted, see
   // facade-lifecycle.promoteToServiceAtBoot). This replaces a dist/-existence
@@ -124,7 +124,7 @@ function resolveLogPath(
 
 /**
  * Escalating restart delays (RestartSteps=/RestartMaxDelaySec=) landed in
- * systemd 254. On older systemd — or when the version cannot be read — the
+ * systemd 254. On older systemd, or when the version cannot be read, the
  * unit degrades to the flat RestartSec retry, which StartLimitIntervalSec=0
  * already keeps retrying forever instead of tombstoning.
  */
@@ -189,7 +189,7 @@ export function renderSystemdUnit(
 /**
  * Stable provenance marker written into every product-generated launchd plist.
  * launchd has no Description field (unlike a systemd unit), so the definition's
- * description was previously dropped entirely — a product-written plist was not
+ * description was previously dropped entirely, a product-written plist was not
  * provenance-identifiable. This additive custom key carries the writer identity
  * plus the description; launchd ignores keys it does not know. The prefix is
  * STABLE (pinned by a render test) so tooling can match product-written plists.
@@ -212,7 +212,7 @@ function renderLaunchdPlist(definition: ManagedServiceDefinition): string {
     '  <key>Label</key>',
     `  <string>${definition.name}</string>`,
     '  <key>GoodVibesManagedBy</key>',
-    `  <string>${LAUNCHD_MANAGED_BY_PREFIX} — ${definition.description}</string>`,
+    `  <string>${LAUNCHD_MANAGED_BY_PREFIX}, ${definition.description}</string>`,
     '  <key>ProgramArguments</key>',
     '  <array>',
     args,
@@ -414,20 +414,20 @@ export class PlatformServiceManager {
   private ensureLinger(): string {
     const user = process.env.USER ?? process.env.LOGNAME ?? '';
     if (!user) {
-      return 'lingering: could not determine the current user — the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger <user>';
+      return 'lingering: could not determine the current user, the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger <user>';
     }
     const lingerEnabled = (): boolean => {
       const readback = this.runQuery('loginctl', ['show-user', user, '--property=Linger']);
       return readback.status === 0 && (readback.stdout ?? '').trim() === 'Linger=yes';
     };
     if (lingerEnabled()) {
-      return `lingering: already enabled for ${user} — the daemon starts at boot.`;
+      return `lingering: already enabled for ${user}, the daemon starts at boot.`;
     }
     this.runQuery('loginctl', ['enable-linger', user]);
     if (lingerEnabled()) {
-      return `lingering: enabled for ${user} — the daemon starts at boot.`;
+      return `lingering: enabled for ${user}, the daemon starts at boot.`;
     }
-    return `lingering: could not be enabled (polkit may require an interactive session) — the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger ${user}`;
+    return `lingering: could not be enabled (polkit may require an interactive session), the daemon starts at login rather than at boot. Enable it once yourself with: loginctl enable-linger ${user}`;
   }
 
   uninstall(): ManagedServiceStatus {
@@ -614,7 +614,7 @@ export class PlatformServiceManager {
       const state = (result.stdout ?? '').trim();
       return { running: (result.status ?? 1) === 0 && state === 'active' };
     }
-    // launchd: no single-job query is used here — `launchctl list <label>` prints
+    // launchd: no single-job query is used here, `launchctl list <label>` prints
     // a plist dump on modern macOS, not a stable parseable field. Instead run the
     // plain `launchctl list` (same command this module's suggestedCommands()
     // already tells operators to run: `launchctl list | grep <name>`) and find the
@@ -632,7 +632,7 @@ export class PlatformServiceManager {
     return pid !== undefined ? { running: true, pid } : { running: false };
   }
 
-  /** Runs a service-management query/action through the injected actionRunner when present, else a real spawnSync — the single choke point start/stop/restart/status share. */
+  /** Runs a service-management query/action through the injected actionRunner when present, else a real spawnSync, the single choke point start/stop/restart/status share. */
   private runQuery(command: string, args: readonly string[]): ManagedServiceActionResult {
     return this.actionRunner
       ? this.actionRunner(command, args)

@@ -1,5 +1,5 @@
 /**
- * ACP domain state — tracks the Agent Client Protocol transport layer,
+ * ACP domain state, tracks the Agent Client Protocol transport layer,
  * active subagent connections, and inter-session ACP sessions.
  */
 
@@ -31,7 +31,7 @@ export interface AcpConnection {
 }
 
 /**
- * AcpDomainState — ACP protocol transport and connection state.
+ * AcpDomainState, ACP protocol transport and connection state.
  */
 export interface AcpDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 /**
- * Agent emitters — typed emission wrappers for AgentEvent domain.
+ * Agent emitters, typed emission wrappers for AgentEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

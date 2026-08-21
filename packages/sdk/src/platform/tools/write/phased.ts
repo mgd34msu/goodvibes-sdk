@@ -28,8 +28,8 @@ export interface WriteDeps {
 /**
  * Create a phased write tool.
  *
- * Category  : `write` — routes to the mutating-filesystem concurrency pool.
- * Cancellable: `false` — write operations are not safe to interrupt mid-flight;
+ * Category  : `write`, routes to the mutating-filesystem concurrency pool.
+ * Cancellable: `false`, write operations are not safe to interrupt mid-flight;
  *   a partial write leaves files in an inconsistent state.
  *
  * @param deps - Optional dependency overrides (shared cache instances, undo manager).

@@ -60,7 +60,7 @@ export type NativeFetch = (
  * Build the LM Studio responses client.
  *
  * `openai` is an optionalDependency, so the client is built on the first
- * `create()` call rather than here — a static import plus a construction at
+ * `create()` call rather than here, a static import plus a construction at
  * call time put the specifier on the module graph of everything that reaches
  * the LM Studio provider, and an absent optional package then took the whole
  * process down at module init (see utils/optional-dependency.ts). This

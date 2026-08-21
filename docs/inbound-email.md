@@ -24,7 +24,7 @@ Verified against the tree at `1.18.1`, not inferred:
   `platform/email/` or `platform/google/`. `EmailService` opens a socket per
   call and closes it. The only `setInterval`s that mention "inbox" are the
   facade's surface-reply queue and the fleet registry's in-process agent
-  mailbox — neither touches IMAP.
+  mailbox, neither touches IMAP.
 - `platform/email/imap-client.ts` lists `IDLE / NOTIFY push` under
   "Not supported (document boundaries)".
 
@@ -42,7 +42,7 @@ The distinction that makes inbound mail buildable without breaking that:
 
 | | May it happen? |
 |---|---|
-| An arriving message **satisfies an expectation** an authorized workstream registered in advance | Yes — this is the entire mechanism |
+| An arriving message **satisfies an expectation** an authorized workstream registered in advance | Yes, this is the entire mechanism |
 | An arriving message **creates work**, starts a workstream, spawns an agent, or initiates anything | **Never** |
 | An arriving message **registers, widens or extends** an expectation | **Never** |
 | No expectation matches | The mail is inert: recorded, owner told, nothing else |
@@ -54,7 +54,7 @@ service domain, a specific purpose and a bounded window. This is
 `packages/sdk/src/platform/google/verification-expectations.ts`, and it is
 reused rather than paralleled.
 
-Matching is keyed on `DeliveredRecipient` — the branded type in
+Matching is keyed on `DeliveredRecipient`, the branded type in
 `platform/google/delivery-evidence.ts` whose brand symbol is not exported, so
 no value can be fabricated outside that module, and whose three constructors
 accept only the mailbox actually fetched from or the top-most
@@ -67,7 +67,7 @@ accept only the mailbox actually fetched from or the top-most
 Every existing adapter is handed a `SurfaceAdapterContext`
 (`platform/adapters/types.ts`), and that context supplies `trySpawnAgent`,
 `queueSurfaceReplyFromBinding` and `publishConversationFollowup` as **required
-fields**. The shared adapter path does not merely permit spawning work — it
+fields**. The shared adapter path does not merely permit spawning work, it
 hands every adapter the means as part of its argument.
 
 Worse, there is a live trap waiting for anyone who wires email through that
@@ -108,7 +108,7 @@ not a reviewer.
 
 **The same narrowing applies to expectations, and my first draft got it wrong.**
 It handed the inbound path the whole `VerificationExpectationBook`. That book
-carries `openExpectation`, and now also `hydrateExpectation` — two methods that
+carries `openExpectation`, and now also `hydrateExpectation`, two methods that
 insert. Holding it would make inbound code structurally able to register an
 expectation, which is precisely what §2 forbids and precisely the mistake this
 section refuses to allow for `trySpawnAgent`. Same principle, and it nearly went
@@ -125,7 +125,7 @@ export interface ExpectationMatcher {
 ```
 
 `VerificationExpectationBook` satisfies this structurally, so nothing is
-wrapped or duplicated — the watcher simply cannot name what it does not hold.
+wrapped or duplicated, the watcher simply cannot name what it does not hold.
 `hydrateExpectation` is boot-only: the wiring calls it from the store's recovery
 sweep, never the watcher. Enforced by a type-level test and by a source-level
 test that no file under `platform/email/inbound/` mentions either method. Three tests hold the line: a runtime own-property assertion (so
@@ -135,8 +135,8 @@ a source-level test asserting no file under `platform/email/inbound/` references
 `trySpawnAgent`, `sessionBroker` or `AgentManager`.
 
 **Second, the trap is closed anyway.** `'email'` is added to
-`CONVERSATION_GATE_DEFAULT_SURFACES`. This round does not need it — nothing here
-reaches `gateSurfaceSpawn` — but leaving a surface name that fails open in a
+`CONVERSATION_GATE_DEFAULT_SURFACES`. This round does not need it, nothing here
+reaches `gateSurfaceSpawn`, but leaving a surface name that fails open in a
 list whose whole purpose is failing closed is a defect waiting for the next
 person who wires email the ordinary way.
 
@@ -148,16 +148,14 @@ exact assumption this section removes.
 ### 2.2 The expectation mechanism has never actually run
 
 `VerificationExpectationBook` is fully built and thoroughly tested, and
-`grep` finds **no production instantiation anywhere in the SDK** — only tests
+`grep` finds **no production instantiation anywhere in the SDK**, only tests
 construct it. The machinery the authority rule depends on is, today, dead code.
 
 So "reuse the existing mechanism rather than inventing a parallel one" also
 means *wire it for the first time*, including:
 
 - constructing the book at daemon boot with a real `SurfaceAuthorityProbe`
-  backed by `surfaceHasCommandAuthority`, so its own defensive check —
-  which refuses to open an expectation if email ever gained command authority —
-  stops being dormant;
+  backed by `surfaceHasCommandAuthority`, so its own defensive check, which refuses to open an expectation if email ever gained command authority, stops being dormant;
 - giving it the persistence described in §9.2;
 - exposing `openExpectation` to authorized workstreams (account signup,
   payments) through the control plane, and exposing it to **nothing** that an
@@ -167,7 +165,7 @@ means *wire it for the first time*, including:
 
 §2.2 said the book had never been instantiated. It was worse than that, and the
 gap made the whole capability inert: **nothing ever registered an expectation.**
-Verified — `openExpectation` has no production call site anywhere in
+Verified, `openExpectation` has no production call site anywhere in
 `packages/sdk/src`, and `new VerificationExpectationBook` appears only in tests.
 
 So the chain was: a signup begins, nothing records what is being waited for,
@@ -181,14 +179,14 @@ model calls before submitting the signup form.** Not inference, and not a
 watcher that detects a signup and opens one on the workstream's behalf.
 
 The reasoning is the part to build to. An expectation created by inference is
-created **by content** — the page being filled in, or a heuristic reading of it.
+created **by content**, the page being filled in, or a heuristic reading of it.
 That inverts the authority model this entire document rests on. Expectations
 must be created by the already-authorized workstream, in advance, or
 "mail may satisfy an expectation but may never create work" is decorative
 rather than structural. A verb makes the authorization explicit and auditable:
 the model was already authorized to do the work, it declares what it is about to
 expect, and the daemon holds the record. The same shape as
-`payments.checkout.fillCard` — the model orchestrates, the daemon holds the
+`payments.checkout.fillCard`, the model orchestrates, the daemon holds the
 privileged state.
 
 Three verbs, in the email catalog family:
@@ -217,7 +215,7 @@ failures, rather than lapsing into silence.
 - It is true push. RFC 2177: the server answers `IDLE` with a `+` continuation
   and then sends untagged responses as they occur; the client ends it by
   sending `DONE`.
-- It is provider-agnostic — one implementation serves Gmail, Fastmail, a
+- It is provider-agnostic, one implementation serves Gmail, Fastmail, a
   self-hosted Dovecot, and the owner's actual provider, whatever it is.
 - It works over the authentication already shipped. The client's `open()` does
   `AUTHENTICATE XOAUTH2` when the password starts with `Bearer ` and `LOGIN`
@@ -230,7 +228,7 @@ re-issue it at least every 29 minutes to avoid being logged off"*, because
 *"The server MAY consider a client inactive if it has an IDLE command running,
 and if such a server has an inactivity timeout it MAY log the client off
 implicitly at the end of its timeout period."* So the watcher re-issues on a
-timer well inside that bound (default 27 minutes — see §7), not at 29.
+timer well inside that bound (default 27 minutes, see §7), not at 29.
 
 **Adaptive polling is the fallback**, not a second-class citizen: it runs when
 the server does not advertise `IDLE` in its `CAPABILITY`, when `IDLE` is
@@ -261,8 +259,7 @@ the standing tiebreaker is least friction. So:
 - It is **capability-gated on the granted scope set**, checked at runtime
   against the token's actual scopes rather than assumed.
 - When no Gmail scope is present it reports
-  `unavailable: 'no-gmail-scope'` in health — visibly, in the surfaced status —
-  and the IMAP IDLE watcher serves the Gmail account instead. Gmail speaks IMAP
+  `unavailable: 'no-gmail-scope'` in health, visibly, in the surfaced status, and the IMAP IDLE watcher serves the Gmail account instead. Gmail speaks IMAP
   IDLE with an app password, so the account is covered either way.
 - It never silently does nothing. A capability that is off must say it is off.
 
@@ -277,7 +274,7 @@ pieces of setup friction, one of which is disqualifying on its own:
 3. It needs the same restricted Gmail scope as `history.list`, so it inherits
    every problem above and adds infrastructure.
 4. The watch registration **expires and must be renewed**, so it adds a
-   recurring failure mode whose symptom is silence — the precise failure this
+   recurring failure mode whose symptom is silence, the precise failure this
    whole round exists to eliminate.
 
 It also buys nothing IDLE does not already deliver: both are push, both are
@@ -313,18 +310,17 @@ times out 108 times over. **Fix:** IDLE uses a separate long-read path with no
 per-read deadline, bounded instead by the re-issue timer and by a liveness check
 (§3.4).
 
-**(d) `fetchEnvelopes` reports a sequence number in a field named `uid` — a
+**(d) `fetchEnvelopes` reports a sequence number in a field named `uid`, a
 live defect, user-reachable today.**
 `imap-client.ts:390` sets `uid: seqNum` from the values returned by `SEARCH`.
 `email-service.ts:486` feeds it exactly those, and `listInbox` returns them as
 `uid`. `email.inbox.read` documents its parameter as *"an IMAP UID: a positive
 integer"*, passes it to `readMessage(uid)` → `fetchMessage(uid)` → `UID FETCH`.
 So listing a mailbox and then reading from that listing reads **a different
-message** whenever a sequence number and a UID differ — which is every mailbox
+message** whenever a sequence number and a UID differ, which is every mailbox
 that has ever had a message deleted. The file's own header explains precisely
 why this is wrong (*"a sequence number from then may by now belong to a
-different message"*) and the code does it anyway. The 404 text —
-*"It may have been moved or deleted since it was listed"* — misattributes the
+different message"*) and the code does it anyway. The 404 text, *"It may have been moved or deleted since it was listed"*, misattributes the
 resulting failure to the mailbox.
 
 This is not incidental to inbound mail. A durable cursor **must** be UID-keyed,
@@ -335,7 +331,7 @@ parsed and reported.
 **(e) The body preview is attached to the wrong message.** Same code path,
 separate defect. `SEARCH` returns sequence numbers in ascending order, so
 `seqNums[0]` (`email-service.ts:491`) is the **oldest** match, while
-`fetchEnvelopes` keeps `seqNums.slice(-limit)` — the **newest**. The preview
+`fetchEnvelopes` keeps `seqNums.slice(-limit)`, the **newest**. The preview
 fetched from the oldest message is then attached to `messages[0]`, a different
 message, under a comment calling it "the newest message"; `recordIngest`
 attributes that text to the wrong sender too. **Fix:** select the preview target
@@ -376,13 +372,12 @@ Correctness details that are easy to get wrong and are therefore specified:
   actual delta is always fetched by `UID SEARCH UID <cursor+1>:*`.
 - **`EXPUNGE` renumbers everything above it.** This is precisely why the cursor
   is UID-keyed and why `EXISTS` is not treated as arithmetic. An `EXPUNGE`
-  requires no refetch — it cannot produce new mail — but it invalidates any
+  requires no refetch, it cannot produce new mail, but it invalidates any
   in-flight sequence numbers, so any pending sequence-number work is dropped
   rather than reused.
 - **Nothing is marked `\Seen`.** `EXAMINE` keeps the mailbox read-only and every
   fetch uses `BODY.PEEK`. Reading the owner's mail must not mark it read behind
-  his back. This is also why the cursor cannot be the server's `\Seen` flag —
-  see §4.
+  his back. This is also why the cursor cannot be the server's `\Seen` flag, see §4.
 
 ### 3.4 Reconnection, and the failure modes that actually happen
 
@@ -390,7 +385,7 @@ Correctness details that are easy to get wrong and are therefore specified:
   full jitter so a provider outage does not produce a synchronized retry storm
   across every mailbox and every restart.
 - **A reconnect never loses messages**, because recovery is not "resume the
-  stream" — it is "ask what is above the persisted cursor". Whatever arrived
+  stream", it is "ask what is above the persisted cursor". Whatever arrived
   while the socket was down is above the cursor and is fetched on reconnect.
   This is the property the design is built around and the one §9 tests directly.
 - **Liveness, not just connectedness.** A silently-dead TCP connection reads as
@@ -427,7 +422,7 @@ and it does not fall back to a surface-local store.
 This is not hypothetical. The owner hit a live failure where the daemon
 reported no email capability at all, because `/google adopt` in the agent wrote
 credentials to the agent's own secret store while the daemon reads a different
-one. A separate round is fixing that generally — a credential the daemon needs
+one. A separate round is fixing that generally, a credential the daemon needs
 is written at daemon scope regardless of which surface captured it.
 
 A fallback that searches a surface-local store would paper over exactly that
@@ -442,7 +437,7 @@ A defect caught in review generalizes into a rule for the whole inbound path,
 so it is stated here rather than left in one module.
 
 The Gmail delta path originally gated on scopes that authorize
-`users.history.list` — a set that includes `gmail.metadata`. Google's scope
+`users.history.list`, a set that includes `gmail.metadata`. Google's scope
 documentation describes that scope as *"View your email message metadata such as
 labels and headers, but not the email body."* So a metadata-only token passed
 the gate, the call succeeded, and the result was `ok: true` with every body
@@ -460,12 +455,12 @@ The rule:
 This is a **precondition of the inbound path**, evaluated before the watcher
 reports healthy, not a per-provider check:
 
-- **Gmail API path** — two scope tiers, checked separately. Scopes that
+- **Gmail API path**, two scope tiers, checked separately. Scopes that
   authorize the history call, and scopes that authorize bodies
-  (`gmail.readonly`, `gmail.modify`, `https://mail.google.com/` — *not*
+  (`gmail.readonly`, `gmail.modify`, `https://mail.google.com/`, *not*
   `gmail.metadata`). History-capable but not body-capable refuses **before**
   making the call.
-- **IMAP path** — `open()` reports a typed capability record rather than
+- **IMAP path**, `open()` reports a typed capability record rather than
   returning `void` and letting "connected" stand in for "can read this mailbox":
   whether `IDLE` is advertised (which decides push vs poll), whether
   `EXAMINE <mailbox>` actually succeeded, the `UIDVALIDITY` it reported, and a
@@ -483,14 +478,14 @@ Three runtime states, all distinct and all surfaced in health:
 
 | State | Meaning | Watcher |
 |---|---|---|
-| `healthy` | Full capability — **including polling the owner explicitly configured** | Running, IDLE or polling |
-| `degraded` | Reduced in a way he did not choose — e.g. IDLE unavailable, so *falling back* to polling | **Running.** Expectations still work |
+| `healthy` | Full capability, **including polling the owner explicitly configured** | Running, IDLE or polling |
+| `degraded` | Reduced in a way he did not choose, e.g. IDLE unavailable, so *falling back* to polling | **Running.** Expectations still work |
 | `insufficient` | Cannot read the mailbox, cannot fetch bodies, or cannot keep a durable cursor | **Not running** |
 
 **Configured polling is `healthy`, not `degraded`** (reason
 `polling-configured`). A permanent amber light on a working configuration the
 owner deliberately chose is the same alarm fatigue the notify-once rule exists
-to prevent — a health indicator that is always yellow is one nobody reads.
+to prevent, a health indicator that is always yellow is one nobody reads.
 *Fallback* polling stays `degraded`, because that genuinely is a reduced state
 he did not ask for. The distinction is between "this is what you chose" and
 "this is less than you asked for".
@@ -501,10 +496,10 @@ depends on, so after a restart the watcher would either silently skip messages
 or silently redeliver them. Both are invisible, and both are worse than
 refusing. It refuses.
 
-**A missing `UIDNEXT` is derived, not assumed — and never assumed to be zero.**
+**A missing `UIDNEXT` is derived, not assumed, and never assumed to be zero.**
 `[UIDNEXT n]` on `EXAMINE` is a SHOULD in RFC 3501, not a MUST, and servers omit
 it. The high-water mark was computed as `(status.uidNext ?? 1) - 1`, so an
-absent `UIDNEXT` established the cursor at UID 0 — below every message that
+absent `UIDNEXT` established the cursor at UID 0, below every message that
 exists. The first drain then searched `UID 1:*`, matched the whole mailbox, and
 delivered every message in it to the owner's notification channel as new mail,
 while the note it had just emitted said the opposite in three clauses at once
@@ -516,8 +511,8 @@ year of old mail", followed by re-announcing a year of old mail.
 This is **not** resolved the way `uidvalidity-missing` is, and the difference is
 the point. Nothing can supply a missing `UIDVALIDITY`, so refusing is the only
 option there. `UIDNEXT` is one core `UID SEARCH` away: the watcher asks
-`UID SEARCH UID 1:*` — the same question put directly, through the same
-`searchAboveCursor` the drain already uses — and takes the highest answer as the
+`UID SEARCH UID 1:*`, the same question put directly, through the same
+`searchAboveCursor` the drain already uses, and takes the highest answer as the
 mark and the count of answers as the skipped total. (The count comes from the
 search rather than `EXISTS` because a server terse enough to omit `UIDNEXT` may
 omit `EXISTS` too, and `exists ?? 0` would then make the note claim nothing was
@@ -525,8 +520,8 @@ skipped while skipping several.) Refusing instead would take inbound mail away
 from every conforming-but-terse server over a field the RFC never required.
 
 Two things are refused rather than derived. A search that **fails** is
-classified exactly as the drain classifies one — a refused `SEARCH` is a
-reconnect, never a capability verdict (§13.1) — so a hiccup on the first
+classified exactly as the drain classifies one, a refused `SEARCH` is a
+reconnect, never a capability verdict (§13.1), so a hiccup on the first
 connection cannot permanently disable a mailbox. A search that **succeeds while
 naming nothing**, on a mailbox whose own `EXISTS` says it holds messages, is a
 contradiction with no trustworthy mark behind it: that is
@@ -540,7 +535,7 @@ The question lives in `mailbox-position.ts`, on the seam `poll-loop.ts` already
 sits on: that file knows how to ask the server what arrived and returns a
 report, and the watcher decides what a failed drain *means* for the capability
 verdict. `resolveMailboxStartPosition` is the same split applied to the position
-question — it knows the protocol and not the verdict vocabulary, and returns a
+question, it knows the protocol and not the verdict vocabulary, and returns a
 discriminated `MailboxStartPosition` so that "we could not establish a position"
 cannot be read as a position. (The split was forced by the 800-line cap, which
 `watcher.ts` sat exactly on. That is the cap doing its job rather than an
@@ -553,8 +548,8 @@ because it reads as pedantry right up until it bites.
 
 A `fetch-refused` or `uidvalidity-missing` verdict is reached *while the socket
 is still open*, and putting the hour-long re-check wait right there is the
-obvious thing to do. Doing so holds one of the provider's connections — one of
-Gmail's fifteen — for a full hour, on behalf of a mailbox the daemon has already
+obvious thing to do. Doing so holds one of the provider's connections, one of
+Gmail's fifteen, for a full hour, on behalf of a mailbox the daemon has already
 decided it cannot read. That is the same limit pressure the `connection-limit`
 verdict exists to absorb, applied by us, against every other mailbox, for
 nothing.
@@ -564,7 +559,7 @@ loop **after the connection is closed**. The general rule, which applies to
 every long wait this design introduces:
 
 > A state that means "not working" must release what working required. If it
-> does not, it is not that state — it is the same work, holding the same
+> does not, it is not that state, it is the same work, holding the same
 > resources, with the reporting changed.
 
 **Ruling: `insufficient` refuses and notifies. It does not silently degrade.**
@@ -576,7 +571,7 @@ The reasoning, since this rejects the more accommodating option:
 
 1. **An expectation that can never be satisfied is worse than no expectation.**
    The signup workstream would wait out its entire window and then report "no
-   verification mail arrived" — which is false. It would send the owner to check
+   verification mail arrived", which is false. It would send the owner to check
    his mailbox when the problem is his grant, and the mailbox will look fine.
 2. **Automatic degradation reintroduces the exact defect one level up.** We just
    removed a silent partial capability from the Gmail gate; adding a silent
@@ -597,7 +592,7 @@ Consequences that make the refusal honest rather than merely safe:
   requirement, and expiry is not an acceptable substitute for it: expiry means
   *nothing came*, and this is *we can no longer look*.
 - **"Cannot" and "not yet" are different.** A watcher in backoff after a dropped
-  connection is **not** insufficient — recovery fetches everything above the
+  connection is **not** insufficient, recovery fetches everything above the
   cursor, so the expectation is still satisfiable and must not be failed.
   Only a capability verdict fails an expectation.
 - **Re-probed on a timer** (`capabilityRecheckMinutes`, default 60) and on
@@ -611,7 +606,7 @@ Consequences that make the refusal honest rather than merely safe:
 
 The owner asked whether verification mail arriving on Google would work. The
 honest answer was no: the watcher was IMAP-only. So a user who had already
-adopted Google credentials — as he has — would still be asked to find an IMAP
+adopted Google credentials, as he has, would still be asked to find an IMAP
 host, a username and an app password to get real-time inbound **for a mailbox
 the daemon can already read**. That is friction we invented, in the middle of
 the exact journey this capability exists to serve.
@@ -644,21 +639,21 @@ Some of the seam already exists. `InboundMailSink`, `MailboxCursorPort`,
 **Expectation matching, taint labelling, dedup, notice rendering, cursor
 persistence and owner disclosure are written once and serve both sources.**
 
-**Correction — this paragraph originally listed `InboundMailboxMessage` among
+**Correction, this paragraph originally listed `InboundMailboxMessage` among
 the source-agnostic types, and that was wrong.** As shipped it carries
-`uidValidity: number`, `uid: number` and `envelope: ImapEnvelope` — three
+`uidValidity: number`, `uid: number` and `envelope: ImapEnvelope`, three
 IMAP-specific fields. A Gmail message has an opaque message id, a `historyId`
 that is a decimal uint64 string, and no UID or `UIDVALIDITY` at all.
 
 The error was mine and it was avoidable: I read the *export list* and inferred
 from the name rather than reading the fields. So the message becomes a
-discriminated union on source, exactly as the cursor does — see
+discriminated union on source, exactly as the cursor does, see
 `docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md`. Widening
 it with optional fields was rejected for the same reason it was rejected for the
 cursor: a record that can be half-filled is a record that will be.
 
-- **IMAP source** — IDLE, wrapping the existing watcher.
-- **Gmail source** — `collectHistoryDelta` over `users.history.list`, already
+- **IMAP source**, IDLE, wrapping the existing watcher.
+- **Gmail source**, `collectHistoryDelta` over `users.history.list`, already
   built, with the two-tier scope gate already landed.
 
 #### Selection is automatic
@@ -667,8 +662,8 @@ Google adopted **and** the configured mail account is a Gmail account ⇒ the
 Gmail source. Otherwise ⇒ IMAP. **Adopting Google should be the entire setup**;
 no setting has to be found for the common case.
 
-`surfaces.email.inbound.source` — `'auto' | 'gmail' | 'imap'`, default
-**`'auto'`** — exists so either can be forced, per the rule that every flag
+`surfaces.email.inbound.source`, `'auto' | 'gmail' | 'imap'`, default
+**`'auto'`**, exists so either can be forced, per the rule that every flag
 ships as a real configurable feature. But the default requires no configuration
 at all when Google is already connected.
 
@@ -676,8 +671,8 @@ at all when Google is already connected.
 
 | Source | Mechanism | Worst-case delay |
 |---|---|---|
-| IMAP | IDLE — **true push** | Sub-second; bounded by the 27-minute re-issue sweep if a push is ever missed |
-| Gmail | `users.history.list` — **polling** | The poll interval. Nothing faster is possible on this path |
+| IMAP | IDLE, **true push** | Sub-second; bounded by the 27-minute re-issue sweep if a push is ever missed |
+| Gmail | `users.history.list`, **polling** | The poll interval. Nothing faster is possible on this path |
 
 **Gmail is not real-time and this design does not call it that.** It is polling
 with a latency floor, and the number is disclosed rather than dressed up. For a
@@ -689,22 +684,21 @@ different needs:
 
 | Setting | Default | Why |
 |---|---|---|
-| `surfaces.email.inbound.gmailPollSecondsExpecting` | **5** | An expectation is open — a signup is mid-flight and someone is waiting. Worst case ~5s. `history.list` costs 2 quota units against a daily budget in the billions, so this is free in practice. Range 2–60 |
+| `surfaces.email.inbound.gmailPollSecondsExpecting` | **5** | An expectation is open, a signup is mid-flight and someone is waiting. Worst case ~5s. `history.list` costs 2 quota units against a daily budget in the billions, so this is free in practice. Range 2–60 |
 | `surfaces.email.inbound.gmailPollSecondsIdle` | **60** | Nothing is pending, so there is nobody to keep waiting. Range 10–3600 |
 
-The owner's real journey — sign up, wait for verification mail, complete it —
-runs on the fast interval, and the daemon is not polling every five seconds for
+The owner's real journey, sign up, wait for verification mail, complete it, runs on the fast interval, and the daemon is not polling every five seconds for
 the rest of the week.
 
 #### The cursor is a discriminated union, not a widened record
 
 Gmail's cursor is a `historyId`, not `UIDVALIDITY` + `lastSeenUid`. Rather than
-overload the numeric fields — a `historyId` is a uint64 and does not reliably
-fit a JS number — the persisted cursor discriminates on source, so an
+overload the numeric fields, a `historyId` is a uint64 and does not reliably
+fit a JS number, the persisted cursor discriminates on source, so an
 IMAP-shaped cursor and a Gmail-shaped one cannot be confused or half-filled.
 
 The recovery rule is the same on both sides, which is the useful part.
-**`resync-required`** from Gmail — a 404 on an expired `historyId` — means
+**`resync-required`** from Gmail, a 404 on an expired `historyId`, means
 exactly what a **`UIDVALIDITY` change** means for IMAP: the stored position is
 meaningless, so discard it, re-establish at the current high-water mark,
 disclose it, and **do not replay the mailbox**. One rule, two sources, no second
@@ -712,7 +706,7 @@ implementation of "what to do when we lost our place".
 
 #### A message that was not read is never stepped over
 
-`history.list` names message ids and `messages.get` fetches them — two calls,
+`history.list` names message ids and `messages.get` fetches them, two calls,
 with a gap in between. Every failed fetch used to be dropped alike:
 
 ```ts
@@ -726,7 +720,7 @@ The comment above that line named one cause (a message deleted in the interim)
 while the code applied it to all of them, and a `GoogleApiResult` failure covers
 429, 500/503, 401/403 and transport faults. So a rate-limited fetch produced
 `ok: true` with zero messages, the source advanced its cursor to the delta's
-`historyId`, and — because **Gmail's history is a forward-only log** — those
+`historyId`, and, because **Gmail's history is a forward-only log**, those
 records could never be requested again. The verification email was never read,
 never announced, never recorded, and the verdict said `healthy`.
 
@@ -740,28 +734,27 @@ classification is deliberately narrow in the safe direction:
 | What happened | Answer | Cursor |
 |---|---|---|
 | Fetched | in `messages` | may advance |
-| **404** — deleted between `history.list` and `messages.get` | dropped | may advance |
-| Anything else — 429, 5xx, 401/403, transport fault | in `unreadable` | **must not advance** |
+| **404**, deleted between `history.list` and `messages.get` | dropped | may advance |
+| Anything else, 429, 5xx, 401/403, transport fault | in `unreadable` | **must not advance** |
 
 Only 404 drops. Every status that is not recognised is retried rather than
 dropped, because each status added to the drop list is a new way for mail still
 sitting in the owner's mailbox to become unreachable, while leaving a genuinely
 permanent status out costs only a delta that retries under a verdict that has
-stopped saying healthy — visible, bounded, recoverable.
+stopped saying healthy, visible, bounded, recoverable.
 
 `ok: true` is kept rather than failing the whole delta, and that is deliberate
 too: a partly-readable delta hands on what it read. Withholding a verification
 email we *did* fetch because a sibling message was rate-limited would be the
 same silence by a different route. The position simply does not move, the whole
-delta is fetched again, and dedup suppresses the duplicates — the same trade
+delta is fetched again, and dedup suppresses the duplicates, the same trade
 already made for a refused delivery.
 
 #### `users.watch` + Pub/Sub remains rejected as primary
 
 Unchanged, for the reason in §3.1: it needs a public HTTPS endpoint and a GCP
 Pub/Sub topic, which is wrong for a daemon on someone's own machine behind NAT.
-Recorded here as the path to **true push on Gmail** if that ever becomes wanted
-— it is the only way to get sub-second Gmail delivery, and the trade is
+Recorded here as the path to **true push on Gmail** if that ever becomes wanted, it is the only way to get sub-second Gmail delivery, and the trade is
 infrastructure the owner does not have.
 
 #### Scope sufficiency applies to both
@@ -774,9 +767,9 @@ paragraph originally claimed they did.**
 | | Gmail | IMAP |
 |---|---|---|
 | What is checked | granted scopes | whether the server hands over message data |
-| When | **before the first call** — scopes are declarative | **on the first fetch** — `fetch-refused` |
+| When | **before the first call**, scopes are declarative | **on the first fetch**, `fetch-refused` |
 | Verdict | `insufficient`, `gmail-metadata-only` | `insufficient`, `fetch-refused` |
-| Envelope fields still readable? | **yes** — headers are authorized | **no** — the envelope fetch is what failed |
+| Envelope fields still readable? | **yes**, headers are authorized | **no**, the envelope fetch is what failed |
 
 That last row is why `surfaces.email.inbound.onInsufficientCapability:
 'notice-only'` applies to the Gmail column and to nothing else. It reads
@@ -785,22 +778,21 @@ that reason: the two are opposite situations, and a policy that had to tell them
 apart while both were called `fetch-refused` could not.
 
 The asymmetry is the protocol, not laziness. A Gmail token *states* what it may
-do, so it can be checked against nothing. IMAP has no equivalent declaration —
-`CAPABILITY` does not say "you may fetch bodies from this mailbox", and
+do, so it can be checked against nothing. IMAP has no equivalent declaration, `CAPABILITY` does not say "you may fetch bodies from this mailbox", and
 permission is discovered only by asking for data. On an **empty mailbox there is
 nothing to ask for**, so a universal connect-time body probe does not exist.
 
 What follows matters for the journey this capability serves: during a signup the
 first fetch **is** the verification mail, so an expectation is already open when
-the refusal is found. §3.4b already covers the outcome — expectations open when
-capability is lost are **failed with a named reason**, never left to expire — so
+the refusal is found. §3.4b already covers the outcome, expectations open when
+capability is lost are **failed with a named reason**, never left to expire, so
 the owner is told the truth either way. He is simply told slightly later on IMAP
 than on Gmail.
 
 **Closing most of the gap:** when the mailbox is non-empty at connect, one
 `BODY.PEEK` of a single envelope at the highest UID answers the question before
 any expectation is opened, at the cost of one round trip per connection. That is
-the honest version of "connect-time" for IMAP — available whenever there is
+the honest version of "connect-time" for IMAP, available whenever there is
 anything to probe, and impossible when there is not.
 
 ### 3.5 Where it plugs in — the supervisor model, not the webhook model
@@ -824,15 +816,14 @@ replays rather than loses. That is exactly the cursor rule in §4, already prove
 in this codebase.
 
 `InboundMailSupervisor` therefore exposes the same status triple the other
-poll surfaces do — `{ mode: 'idle' | 'polling' | 'inactive', reason, running }`
-— which `getStatus()` folds into the standard `ChannelStatusSnapshot`
+poll surfaces do, `{ mode: 'idle' | 'polling' | 'inactive', reason, running }`, which `getStatus()` folds into the standard `ChannelStatusSnapshot`
 (`state: 'healthy' | 'degraded' | 'disabled'`, `enabled`, `accountId`,
 `metadata`) so it appears in channel health and the doctor report alongside
 every other surface.
 
 **It registers as a `ClusterConsumerGate`.** Clustering defaults off, but when
 the owner opts in, two nodes both holding an IDLE connection to the same mailbox
-would both fetch and both notify — the same message announced twice, from a
+would both fetch and both notify, the same message announced twice, from a
 capability whose entire value is being told exactly once. The existing gate
 (`daemon/facade-cluster.ts`, `registerDaemonClusterSurfaces`) already solves
 this for every other consuming surface: one node consumes, the others stand by
@@ -860,7 +851,7 @@ interface MailboxCursor {
 
 - **`UIDVALIDITY` is part of the key, not a field to ignore.** When a server
   reports a different `UIDVALIDITY` than the stored one, every stored UID is
-  meaningless — the mailbox was recreated. The cursor is discarded and
+  meaningless, the mailbox was recreated. The cursor is discarded and
   re-established at the current high-water mark, and the event is disclosed to
   the owner. It deliberately does **not** replay the mailbox: re-notifying about
   a year of old mail because a server rebuilt an index is not recovery, it is a
@@ -869,7 +860,7 @@ interface MailboxCursor {
   mailbox sets `lastSeenUid` to the current highest UID and reports how many
   messages it skipped. The daemon starts listening now; it does not
   retroactively decide about mail that arrived before it was asked to.
-- **The cursor advances only after a message is fully processed** — matched,
+- **The cursor advances only after a message is fully processed**, matched,
   recorded, and notice dispatched or deliberately suppressed. A crash between
   fetch and completion re-delivers, and re-delivery is caught by dedup (§6), so
   the failure mode is a duplicate suppressed rather than a message lost.
@@ -904,8 +895,7 @@ Concretely:
 
 - The watcher writes arriving mail to its own durable **inbound record store**,
   which is not the turn ledger and has no watermark.
-- `ledger.record()` is called from where it is called today —
-  `EmailService.listInbox` / `readMessage`, inside a turn that asked — and from
+- `ledger.record()` is called from where it is called today, `EmailService.listInbox` / `readMessage`, inside a turn that asked, and from
   nowhere new.
 - The owner notice is rendered from structured fields only (§7), so telling the
   owner mail arrived never ingests the body into a turn.
@@ -917,7 +907,7 @@ Concretely:
 `startTurnForOwnerInput` is the only path that advances the watermark, and that
 inbound mail is never treated as owner-direct. Its
 `inputOriginIsOwnerDirect(origin)` returns true when `origin === undefined`
-("nothing routed it in — that is the keyboard"). Inbound email is routed in, so
+("nothing routed it in, that is the keyboard"). Inbound email is routed in, so
 it must always supply an origin, and that origin must carry
 `ownerDirect: false` explicitly rather than relying on its source name being
 absent from a list. Stated as a requirement in §10.
@@ -925,7 +915,7 @@ absent from a list. Stated as a requirement in §10.
 ### 5.2 Every message body is untrusted content
 
 Labelled at the boundary via `labelUntrustedContent`, `surface: 'email'`,
-`origin: 'email:<domain> (claimed)'` — keeping the existing wording, which
+`origin: 'email:<domain> (claimed)'`, keeping the existing wording, which
 already names the sender domain as a claim rather than a fact.
 
 ### 5.3 Links
@@ -940,8 +930,8 @@ snapshot, known-redirector detection, and hop-by-hop revalidation through
 The expected/unexpected distinction already exists and is not reinvented:
 
 - **A link in mail that matched an expectation** is validated against
-  `expectation.serviceDomain` — exact for `'login'`, subdomain-tolerant via
-  `hostMatchesServiceDomain` for `'signup'` — by `extractVerification`, which
+  `expectation.serviceDomain`, exact for `'login'`, subdomain-tolerant via
+  `hostMatchesServiceDomain` for `'signup'`, by `extractVerification`, which
   yields at most one artifact and refuses with `'link-host-mismatch'` rather
   than returning a link from the wrong host.
 - **A link in mail that matched nothing** has no authorized domain to be
@@ -957,8 +947,8 @@ The expected/unexpected distinction already exists and is not reinvented:
 **The cursor is the first line of defence. Dedup is the second, and its job is
 narrower than this section originally claimed.**
 
-That original claim — that "a reconnect refetches above the cursor" and dedup
-catches the repeat — is **false**, and it was found by making a vacuous test
+That original claim, that "a reconnect refetches above the cursor" and dedup
+catches the repeat, is **false**, and it was found by making a vacuous test
 real. The test asserted the watcher redelivers on a plain re-wake and dedup
 suppresses it. It passed while waiting on a cursor advance the *first* delivery
 had already satisfied, so the second pass never ran. Made real, it failed: the
@@ -973,23 +963,21 @@ next person who checks.**
 
 So dedup covers exactly two things:
 
-1. **The failure path** — a message claimed and then not successfully processed.
-2. **Genuinely concurrent passes** — an IDLE wake and a fallback poll overlapping
+1. **The failure path**, a message claimed and then not successfully processed.
+2. **Genuinely concurrent passes**, an IDLE wake and a fallback poll overlapping
    on the same message.
 
-`InboundMessageDedup` from `platform/adapters/inbound-dedup.ts` is reused —
-already bounded (2048 entries), already TTL-expiring, already order-pruned, and
+`InboundMessageDedup` from `platform/adapters/inbound-dedup.ts` is reused, already bounded (2048 entries), already TTL-expiring, already order-pruned, and
 its `claim()` contract is right.
 
 **One method was added to it: `release()`.** §6 originally said "as-is", and this
 is not as-is, so the deviation is recorded rather than absorbed. The alternative
-was a second in-flight cache inside the sink doing the same job as the first —
-the mirror pattern this document has removed four times, and the one that
+was a second in-flight cache inside the sink doing the same job as the first, the mirror pattern this document has removed four times, and the one that
 already produced a silently-disabled push mode. One mechanism with an honest
 interface beats two that agree by convention.
 
 **Why `release()` is load-bearing, and it is the subtlest point in this
-section.** `claim()` records the key *before* the work runs — that ordering is
+section.** `claim()` records the key *before* the work runs, that ordering is
 what stops two concurrent deliveries both running the pipeline. The same
 ordering means a failure between claim and completion leaves the key **claimed**,
 so the retry is suppressed as a duplicate of an attempt that never finished.
@@ -1020,7 +1008,7 @@ receiving server assigned.** Gmail has no UID and no `UIDVALIDITY`; its
 server-assigned identity is the message resource id, which is stable for the
 life of the message and is not something a sender writes. So the identity is
 `gmail:<resourceId>` there, and the two are prefixed so they can never collide
-in the shared key space — a bare `${uidValidity}:${uid}` and a bare resource id
+in the shared key space, a bare `${uidValidity}:${uid}` and a bare resource id
 are both opaque strings, and an unprefixed collision between them would suppress
 a real message with no way to notice.
 
@@ -1034,8 +1022,8 @@ sharing `ntfyInboundDedup`, so one surface's traffic cannot evict another's
 under the shared entry cap.
 
 **Correction: this cache is in-memory, and the TTL never covered a restart.**
-The original text here — and the comment in `sink.ts`, and the "correctness
-floor" comment on `dedupTtlMs()`, and the `dedupTtlMinutes` row in §8 — all said
+The original text here, and the comment in `sink.ts`, and the "correctness
+floor" comment on `dedupTtlMs()`, and the `dedupTtlMinutes` row in §8, all said
 the window "must exceed a restart cycle" and that "an hour covers the
 auto-update restart". That was structurally false at every setting.
 `InboundMailSupervisor.runStart()` builds a fresh `createInboundMailDedup(...)`,
@@ -1045,31 +1033,30 @@ holding it. A floor guarding a property the mechanism cannot provide at any
 value is a floor guarding nothing, so the config key's stated basis is corrected
 too.
 
-What the window genuinely covers is the two cases listed above — an IDLE wake
-overlapping a fallback poll, and a retry after a failed pass — both of which
+What the window genuinely covers is the two cases listed above, an IDLE wake
+overlapping a fallback poll, and a retry after a failed pass, both of which
 happen inside one process, seconds apart. The value is therefore generous rather
 than load-bearing.
 
 **What covers the restart is the record store.** The sequence the false claim
 was written for is real: UID 205 is announced, the daemon's hourly auto-update
 restarts it before the cursor advance lands, the cursor is still at 204, and the
-message comes back into an empty cache. The durable answer already existed —
-the inbound record store is keyed by the identity the receiving server assigned
-and says what happened to the notice — so `intake.ts` asks `findByMessage`
+message comes back into an empty cache. The durable answer already existed, the inbound record store is keyed by the identity the receiving server assigned
+and says what happened to the notice, so `intake.ts` asks `findByMessage`
 whether this exact message was already announced before announcing it, and a
 record reading `delivered` suppresses the second notice.
 
 Persisting the dedup cache itself was the alternative, and it is the worse one.
 The claim is taken BEFORE the work, so a durable claim that survives a crash
-suppresses the retry and the message is lost silently — the failure this section
+suppresses the retry and the message is lost silently, the failure this section
 already rules is worse than a duplicate. Persisting only on success narrows the
 window to "notice sent, completion not yet durable", which is exactly the window
 the record store closes, using state that already reaps, bounds, validates by
 content, sweeps and discloses (§9.3) rather than a fourth store that would need
 all five rules written again.
 
-Every path where the record store cannot answer — a discarded file, a reaped
-record, a record still at `pending` — leads to announcing. That is deliberate:
+Every path where the record store cannot answer, a discarded file, a reaped
+record, a record still at `pending`, leads to announcing. That is deliberate:
 the failure direction has to be the duplicate, never the silence.
 
 ---
@@ -1078,7 +1065,7 @@ the failure direction has to be the duplicate, never the silence.
 
 New mail the owner should know about is delivered where he actually is. The
 existing entry point is
-`DaemonSurfaceDeliveryHelper.deliverSurfaceNotice(binding, text)` — and it takes
+`DaemonSurfaceDeliveryHelper.deliverSurfaceNotice(binding, text)`, and it takes
 a **plain string**, which is the hazard.
 
 So the SDK owns a renderer, `platform/email/inbound-notice.ts`, and the adapter
@@ -1108,7 +1095,7 @@ The rules the renderer enforces, and which its tests assert:
 - **Links appear as registrable domain plus verdict**, never as clickable URLs
   the daemon assembled from message text.
 - **The delivery address is shown**, because for a per-signup alias it is the
-  single most useful fact — it says which account this is about, from evidence
+  single most useful fact, it says which account this is about, from evidence
   the sender could not forge.
 
 ### 7.1 Which fields are attacker-chosen — the audit
@@ -1116,7 +1103,7 @@ The rules the renderer enforces, and which its tests assert:
 A defect found in review makes the case for doing this as a list rather than by
 intuition. `deliveredTo` was given weaker sanitization than the subject line, on
 the reasoning that a delivery header "cannot be forged by the sender". The
-header cannot be forged — the receiving server stamps it truthfully — but what
+header cannot be forged, the receiving server stamps it truthfully, but what
 it truthfully stamps is **the envelope recipient the sender chose**, and this
 design runs on per-signup aliases, which means catch-all or plus-addressing,
 which means the local part is the sender's to pick. Mail addressed to
@@ -1133,12 +1120,12 @@ otherwise, and the reason is written down.
 | `subject` | `Subject:` header | **Attacker-chosen.** Sender writes it verbatim |
 | `senderDisplay` | `From:` header | **Attacker-chosen.** Display name is free text |
 | `deliveredTo` local part | envelope recipient | **Attacker-chosen** under catch-all/plus-addressing |
-| `deliveredTo` domain | our own domain | Ours — but escaped anyway, at no cost |
+| `deliveredTo` domain | our own domain | Ours, but escaped anyway, at no cost |
 | `outcome.purpose` | the registering workstream | **Attacker-chosen unless drawn from a fixed vocabulary.** A signup flow that lifted a service name off a web page is passing untrusted text through an authorized caller |
 | `outcome.serviceDomain` | expectation, validated | Validated ASCII hostname. Escaped anyway |
 | `outcome.reason` | refusal | Ours **only if** it is a fixed enum member. Any reason quoting a server's wording is attacker-chosen |
 | `links[].host` | extracted + validated | Registrable domain, hostname-shaped. Escaped anyway |
-| `receivedAt` | **our clock** | Ours — **and this is load-bearing.** `ImapEnvelope.date` is `extractHeader(raw, 'Date')`, a string the sender wrote. The notice timestamp must come from our own receipt time, never from that header |
+| `receivedAt` | **our clock** | Ours, **and this is load-bearing.** `ImapEnvelope.date` is `extractHeader(raw, 'Date')`, a string the sender wrote. The notice timestamp must come from our own receipt time, never from that header |
 | `authenticationResults` | receiving server | Only the top-most is beyond the sender's reach; carries no authority anywhere and is escaped if shown |
 
 Two of those rows are ones nobody would have guessed: an address, and a
@@ -1182,7 +1169,7 @@ export interface StructuredNotice {
 
 `renderInboundMailNotice` returns a `StructuredNotice`. Each channel's delivery
 path owns a `renderNotice(notice: StructuredNotice): string` that escapes
-`untrusted` spans per its own syntax — **escapes, not strips**, so
+`untrusted` spans per its own syntax, **escapes, not strips**, so
 `[Approved](https://evil.example)` reaches the owner as that exact literal text
 rather than as a link or as mangled spaces. He sees what the mail actually said,
 and it does nothing.
@@ -1193,15 +1180,14 @@ Why this is the right shape:
   string. Forgetting to escape is not a mistake that can be made in the wrong
   place; the only code that turns spans into text is the code that knows the
   syntax.
-- **Adding a channel is a bounded, visible task** — implement one escaper —
-  rather than an invisible widening of a shared character set.
+- **Adding a channel is a bounded, visible task**, implement one escaper, rather than an invisible widening of a shared character set.
 - **Untrusted-ness travels with the value.** A field passed through three
   functions is still tagged `untrusted` at the end.
 
 **Discord masked links are what make this required rather than precautionary**,
 and it was verified rather than assumed. `[text](url)` **does** render in
 bot-sent messages, webhook messages and embeds. It does **not** render in
-messages a human types into the client — a trade-off Discord made specifically
+messages a human types into the client, a trade-off Discord made specifically
 to stop people hiding malicious URLs behind innocent text.
 
 The daemon delivers over the bot and webhook paths, which are precisely the
@@ -1225,12 +1211,11 @@ Sources: `https://github.com/discord/discord-api-docs/issues/6096`,
 **Correction, and it is mine.** This section originally mapped Telegram to
 MarkdownV2 escaping. Verified against the code: `telegram/api.ts` `sendMessage`
 posts `chat_id`, `text`, `disable_web_page_preview` and an optional
-`message_thread_id` — **no `parse_mode`** — and `parse_mode` appears nowhere in
+`message_thread_id`, **no `parse_mode`**, and `parse_mode` appears nowhere in
 `packages/sdk/src` outside this module's own comments.
 
 With `parse_mode` omitted Telegram performs **no entity parsing**. So
-MarkdownV2 escaping would inject literal backslashes into the owner's notice —
-`Confirm your account\.` — making it harder to read while preventing nothing.
+MarkdownV2 escaping would inject literal backslashes into the owner's notice, `Confirm your account\.`, making it harder to read while preventing nothing.
 The mapping described what Telegram *can* do rather than what this codebase
 *asks it to do*.
 
@@ -1254,10 +1239,10 @@ documentation:
 
 | Channel | Send path | Treatment |
 |---|---|---|
-| Discord | `payload.content` — always parses markdown, no opt-in | **Escape.** Masked links render on bot and webhook paths |
+| Discord | `payload.content`, always parses markdown, no opt-in | **Escape.** Masked links render on bot and webhook paths |
 | Slack | body lands in a `{ type: 'mrkdwn' }` block | **Escape.** `mrkdwn` is interpreted |
 | Telegram | `sendMessage` with **no `parse_mode`** | **Neutralize URL and mention forms.** Do not escape markup |
-| html / ntfy | not yet traced | **Unmapped.** If ntfy's title goes in an HTTP header the injection is a newline, not markup — a different defence |
+| html / ntfy | not yet traced | **Unmapped.** If ntfy's title goes in an HTTP header the injection is a newline, not markup, a different defence |
 
 The general rule, which is the durable part:
 
@@ -1273,7 +1258,7 @@ to prove a property disproving it instead: a "no surface emits the raw live
 form" assertion failed on **Slack**.
 
 `escapeSlackMrkdwn` handles `&<>` and `` *_~` `` and leaves `https://`
-untouched — and Slack mrkdwn linkifies it. The same is true of Discord, of ntfy
+untouched, and Slack mrkdwn linkifies it. The same is true of Discord, of ntfy
 clients, and of the plain-text fallback. **None of them need markup to make a
 URL tappable.** §7 requires links to reach the owner as a registrable domain
 plus a verdict, so a live URL sitting in an attacker-written subject contradicts
@@ -1287,13 +1272,13 @@ because there is no path around it.
 
 #### A specific handler must be a superset of the fallback, never a substitute
 
-ntfy — a **mapped** surface — was receiving weaker treatment than an
+ntfy, a **mapped** surface, was receiving weaker treatment than an
 **unmapped** one. Its escaper stripped control characters, while the plain-text
 fallback also broke mention forms. So recognising a surface actively reduced its
 protection.
 
 That inverts the purpose of the mapping table, and it is a defect that hides
-indefinitely, because a mapped surface *looks* handled — the table is the very
+indefinitely, because a mapped surface *looks* handled, the table is the very
 thing a reviewer checks to confirm coverage.
 
 > **Being recognised must never mean being protected less.** A per-channel
@@ -1312,7 +1297,7 @@ better class of protection than sanitizing and it generalizes well past email.
 
 `receivedAt` is a branded `ReceiptTimestamp` whose only constructor takes a real
 `Date` the daemon observed. A sender's `Date:` header is a `string`, so it
-cannot be passed — not "is rejected by validation", but **has no path into the
+cannot be passed, not "is rejected by validation", but **has no path into the
 type at all**. The check cannot be forgotten, because there is nowhere to forget
 it.
 
@@ -1325,7 +1310,7 @@ text produces one.
 Stated so it gets reused:
 
 > Where an attacker-supplied value could be mistaken for an observed one, do not
-> validate the attacker's version — make it **impossible to construct**. Give
+> validate the attacker's version, make it **impossible to construct**. Give
 > the observed value a brand whose only constructor takes the observation
 > itself.
 
@@ -1347,20 +1332,20 @@ it applies to every structural protection in this document.
 The IDLE tri-state was deliberately made unignorable: `report.idle` is
 `{ known: true; supported: boolean } | { known: false }`, so `if
 (report.idle.supported)` does not compile and "the server said nothing" cannot
-be silently read as "no". That guarantee held exactly as designed — in the module
+be silently read as "no". That guarantee held exactly as designed, in the module
 that declared it.
 
 The watcher had **hand-written its own `boolean | null` mirror** of the same
 concept rather than importing the type. After the rename, its mirror read
 `undefined`, `undefined` is falsy, and the watcher **silently polled a
-push-capable server** — precisely the defect the two-case shape exists to
+push-capable server**, precisely the defect the two-case shape exists to
 prevent, reintroduced by copying the shape instead of importing it. Its own
 tests caught it, as "Timed out waiting for: IDLE command number 1".
 
 So the rule:
 
 > A type that makes a wrong state unrepresentable protects only the code that
-> imports it. A structurally-equivalent local mirror is not equivalent — it is a
+> imports it. A structurally-equivalent local mirror is not equivalent, it is a
 > second declaration of the same idea that can drift, and it will drift silently,
 > because nothing links the two.
 
@@ -1374,19 +1359,19 @@ stated as a rule rather than an anecdote:
    unconditionally, so a late write would have dragged the high-water mark
    backwards and **re-announced every message between the two marks**.
 3. `SurfaceAuthorityProbe` typed its parameter `string`, which made the **real**
-   predicate structurally **unassignable** — a function accepting only
+   predicate structurally **unassignable**, a function accepting only
    `AuthoritySurface` cannot stand where one accepting any `string` is required.
    Passing the genuine check therefore required wrapping it in a shim. That is
    part of *why* §2.2's defensive check had never run: it could not have. The
    type carried a comment naming `src/agent/surface-authority.ts`, a path that
    does not exist, while the predicate lives in
-   `platform/security/untrusted-content.ts` — a drifted type under a comment
+   `platform/security/untrusted-content.ts`, a drifted type under a comment
    citing a file that was never there.
 
 **So where a narrowed view is needed, project it from the real declaration
 rather than restating it.** `ExpectationMatcher` began as a hand-authored
-interface and described a method the book does not have — it omitted the
-required `now` — so every caller through it would have been type-checked against
+interface and described a method the book does not have, it omitted the
+required `now`, so every caller through it would have been type-checked against
 fiction. As `Pick<VerificationExpectationBook, 'matchCandidate'>` it **cannot
 drift, because there is nothing to keep in sync.**
 
@@ -1401,8 +1386,7 @@ say so and be pinned by a type-level test, not maintained by hand in two places.
 
 `deliverSurfaceNotice(binding, text)` takes a plain string and stays as it is;
 the channel renderer runs immediately before it. Until every channel has an
-escaper, the fallback renderer emits **plain text with all markup neutralized**
-— the conservative behavior, chosen explicitly rather than inherited.
+escaper, the fallback renderer emits **plain text with all markup neutralized**, the conservative behavior, chosen explicitly rather than inherited.
 
 Routing is configurable (§8). The default is the owner's existing notice route
 binding, so this inherits whatever he already uses rather than introducing a
@@ -1420,7 +1404,7 @@ announced is a fact the owner gets to see, not a dropped promise.
 
 Daemon-owned config, under `surfaces.email.inbound.*`, sitting alongside the
 existing `surfaces.email.*` connection settings so one account is configured
-once. Every setting is a real, meaningful control — not an enable/disable pair
+once. Every setting is a real, meaningful control, not an enable/disable pair
 wearing a feature's clothes.
 
 | Key | Type | Default | Why this default |
@@ -1434,15 +1418,13 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.notice.route` | route binding \| `'default'` | **`'default'`** | Inherits the owner's existing notice routing. A second place to configure "where to reach me" is a second place to get it wrong. |
 | `surfaces.email.inbound.notice.mode` | `'all' \| 'expected-only' \| 'none'` | **`'all'`** | He asked to be told about mail. `expected-only` exists for a high-volume mailbox; `none` is available and disclosed, but silence is not a default. |
 | `surfaces.email.inbound.expectationWindowMinutes` | number | **`15`** | Matches `DEFAULT_VERIFICATION_WINDOW_MS` already shipped. Range 1–60, hard-capped by the existing `MAX_VERIFICATION_WINDOW_MS`. |
-| `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | How long one process remembers a message it handled, so an overlapping poll or a retried pass does not process it twice. In-memory only: a restart destroys the cache rather than expiring it, so no value here prevents a restart-crossing duplicate — the record store does that (§6). Seconds would cover what this covers; the default is generous, not load-bearing. |
+| `surfaces.email.inbound.dedupTtlMinutes` | number | **`60`** | How long one process remembers a message it handled, so an overlapping poll or a retried pass does not process it twice. In-memory only: a restart destroys the cache rather than expiring it, so no value here prevents a restart-crossing duplicate, the record store does that (§6). Seconds would cover what this covers; the default is generous, not load-bearing. |
 | `surfaces.email.inbound.retentionDays` | number | **`30`** | How long inbound records are kept before reaping. Long enough to explain "why did I get that message", short enough to bound the store. |
 | `surfaces.email.inbound.maxRecords` | number | **`5000`** | The hard bound. Whichever of age or count binds first, wins. |
 | `surfaces.email.inbound.capabilityRecheckMinutes` | number | **`60`** | How often a mailbox reporting insufficient capability is re-probed (§3.4b). Fixing a scope must not require a daemon restart, and must not produce a tight retry loop. Range 5–1440. |
-| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied — so signup and order confirmation stop working — and is never entered automatically. It applies to **one** condition: a Google `gmail.metadata` grant, where headers are authorized and bodies are not. Every other insufficient reason leaves no envelope fields to announce, so `notice-only` behaves as `refuse-and-notify` there and the verdict says which is in force (§13.11). |
+| `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied, so signup and order confirmation stop working, and is never entered automatically. It applies to **one** condition: a Google `gmail.metadata` grant, where headers are authorized and bodies are not. Every other insufficient reason leaves no envelope fields to announce, so `notice-only` behaves as `refuse-and-notify` there and the verdict says which is in force (§13.11). |
 
-**Every default above is mine, not the owner's, and needs his confirmation** —
-fourteen of them now, counting the two capability settings —
-`flags-are-features` requires an explicit per-flag ruling. They are listed here
+**Every default above is mine, not the owner's, and needs his confirmation**, fourteen of them now, counting the two capability settings, `flags-are-features` requires an explicit per-flag ruling. They are listed here
 rather than buried in a schema file so he can rule on them as a set. The two
 most likely to be argued: `enabled: false` (the alternative is a daemon that
 starts reading mail on upgrade, which is not a decision an upgrade should make)
@@ -1459,23 +1441,23 @@ in `config/schema-domain-daemon-mailbox.ts`, so the inbound keys join them
 there and flow through `schema-domain-surfaces.ts` into `CONFIG_SCHEMA`.
 
 Because `'surfaces.'` is already in `DAEMON_OWNED_CONFIG_PREFIXES`, these keys
-are daemon-owned automatically — no ownership edit, and the TUI's
+are daemon-owned automatically, no ownership edit, and the TUI's
 daemon-owned-note enrichment picks them up for free.
 
 What each surface needs, verified rather than assumed:
 
-- **TUI** — nothing. `buildSettingGroups` walks `CONFIG_SCHEMA` and derives the
+- **TUI**, nothing. `buildSettingGroups` walks `CONFIG_SCHEMA` and derives the
   category from `key.split('.')[0]`, which is already `surfaces`.
-- **Agent** — nothing. Same derivation in `settings-modal.ts`; the `surfaces`
+- **Agent**, nothing. Same derivation in `settings-modal.ts`; the `surfaces`
   category and its `CATEGORY_INFO` sentence already exist.
-- **webui** — one build step. The browser bundle cannot import the node-only
+- **webui**, one build step. The browser bundle cannot import the node-only
   config barrel, so it reads a checked-in snapshot generated by
   `scripts/generate-config-schema.ts`. Bump the SDK dependency and run
   `bun run config-schema:generate`. `config-schema:check` is wired into
   `bun run build`, so a schema change without regeneration fails the build
   rather than shipping a settings screen missing the new fields.
 
-"Surfaced in every surface" is therefore mostly free — but *mostly free* is not
+"Surfaced in every surface" is therefore mostly free, but *mostly free* is not
 *done*, and each of the three is opened and confirmed rather than assumed, since
 a setting the owner cannot find is a setting he does not have.
 
@@ -1501,14 +1483,13 @@ follow that shape rather than a new one:
   an `unref()`'d interval, persisting a bounded disclosure log.
 
 All three live under `~/.goodvibes/daemon/`, addressed through
-`ShellPathService.resolveUserPath('daemon', name)` — the mechanism the daemon
+`ShellPathService.resolveUserPath('daemon', name)`, the mechanism the daemon
 composition root actually uses (`daemon/facade-inbound-mail.ts`), not a
 hand-built path.
 
 **This paragraph named `resolveSurfaceDirectory(homeDirectory, 'daemon', …)`
 for most of the round.** §13.3 item 3 recorded the discrepancy and this section
-was left uncorrected, so the document catalogued an error it went on repeating —
-which is worse than never noticing, because the catalogue implies it was
+was left uncorrected, so the document catalogued an error it went on repeating, which is worse than never noticing, because the catalogue implies it was
 handled.
 
 ### 9.1 The cursor store
@@ -1517,7 +1498,7 @@ handled.
 |---|---|
 | Reaps | Cursors for accounts no longer in config are dropped on load. |
 | Bounds | One record per (account, mailbox); the file cannot grow with traffic. |
-| Validates by content | On load every field is re-validated: `uidValidity` must be a positive integer, `lastSeenUid` a **non-negative** integer (zero is the honest value for a first run against an empty mailbox, and requiring positivity would make a freshly-established cursor fail its own validation on the very next load), `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired** — a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
+| Validates by content | On load every field is re-validated: `uidValidity` must be a positive integer, `lastSeenUid` a **non-negative** integer (zero is the honest value for a first run against an empty mailbox, and requiring positivity would make a freshly-established cursor fail its own validation on the very next load), `updatedAt` a parseable ISO date, `mailbox` a non-empty string. A record failing any check is **discarded, not repaired**, a corrupt cursor silently coerced to `0` would replay the entire mailbox. Discarded cursors re-establish at the high-water mark and are disclosed. |
 | Sweeps | On load, and on config change. |
 | Discloses | `email.inbound.status` reports every cursor with its mailbox, position and age. |
 
@@ -1530,7 +1511,7 @@ narrowly, for a reason that did not exist when it was written:
 
 **The daemon auto-restarts.** It checks for updates hourly and restarts itself
 at idle. An account signup begun at 14:58 with a restart at 15:00 loses its
-expectation, and the verification mail then arrives inert — the exact failure
+expectation, and the verification mail then arrives inert, the exact failure
 this entire round exists to eliminate, caused by our own update mechanism.
 
 The override is narrow and keeps what the original reasoning protects:
@@ -1543,14 +1524,13 @@ The override is narrow and keeps what the original reasoning protects:
   `openExpectation` uses: `authority` must read exactly `'evidence-only'`;
   `openedAt` must **not be in the future**; the window must be at least
   `MIN_VERIFICATION_WINDOW_MS` and at most `MAX_VERIFICATION_WINDOW_MS`;
-  `serviceDomain` must be a **registrable domain** by the public-suffix data —
-  a bare TLD like `com` and a multi-label public suffix like `co.uk` are both
+  `serviceDomain` must be a **registrable domain** by the public-suffix data, a bare TLD like `com` and a multi-label public suffix like `co.uk` are both
   refused; and `purpose`, `serviceDomain`, `recipientAddress` and `id` are
   length-bounded. A record failing any check is discarded.
 
   **This list is what the section originally claimed, and it was not true when
-  written.** The window check was a *delta only* — neither timestamp compared to
-  the present — so a record dated `openedAt: 2999-01-01` with a 30-minute delta
+  written.** The window check was a *delta only*, neither timestamp compared to
+  the present, so a record dated `openedAt: 2999-01-01` with a 30-minute delta
   validated, survived the sweep and hydrated, while a live grant can never
   exceed an hour. And `serviceDomain` had no hostname validation at all, so
   `"com"` passed **on the load path and on the live `email.expectation.open`
@@ -1561,7 +1541,7 @@ The override is narrow and keeps what the original reasoning protects:
   wildcard-TLD grant from one edit of a 0644 file.**
 
   The claim *"a file on disk cannot mint an expectation the live API would have
-  refused"* is therefore **earned, not assumed** — and it was still false for
+  refused"* is therefore **earned, not assumed**, and it was still false for
   `id` after the first hardening pass, which bounded three fields and left the
   fourth, so thirty-two 1 MB ids re-persisted a 32 MB well-formed file. A
   guarantee stated in a design document is a hypothesis until something tries to
@@ -1574,12 +1554,12 @@ The override is narrow and keeps what the original reasoning protects:
 ### 9.3 The inbound record store
 
 Bounded by both `retentionDays` and `maxRecords`, whichever binds first, swept
-on a periodic timer and on load. Records hold structured fields — sender,
-subject, delivery evidence, link verdicts, outcome — and a **bounded body
+on a periodic timer and on load. Records hold structured fields, sender,
+subject, delivery evidence, link verdicts, outcome, and a **bounded body
 excerpt**, capped at the same 20,000 characters the ledger uses, so the store
 cannot become an unbounded copy of the mailbox. Every field re-validated on
 load; unparseable records dropped. Disclosed through status and through the
-config UI, which states plainly what is retained and for how long — the owner
+config UI, which states plainly what is retained and for how long, the owner
 should not have to read source to learn his daemon keeps a month of his mail's
 metadata.
 
@@ -1588,18 +1568,18 @@ metadata.
 Four things the five rules imply about a FILE rather than about a record, each
 of which was unmet and is now closed. Exercised by
 `test/inbound-mail-persistence-hygiene.test.ts`, where every assertion reads the
-file rather than a store's own read method — a read that filters is what hid
+file rather than a store's own read method, a read that filters is what hid
 three of these four.
 
 **Bounds apply at write, not only at the sweep.** `record()` applied neither
-`maxRecords` nor `retentionMs` — both were the sweep's job, and the sweep runs
+`maxRecords` nor `retentionMs`, both were the sweep's job, and the sweep runs
 every six hours. Measured with `maxRecords: 2`, ten writes put ten records on
 disk while `list()` served two. Worse, `email.inbound.status` computed
 `retention.records.kept` from that filtered read, so the owner was told a
 smaller number than the file held: a bound reported by the very filter that
 concealed it not being applied. Both bounds now apply on every write, by the
 same age-then-count precedence the sweep uses. The disclosure reports two
-numbers rather than redefining one — `kept` is what a read serves, `stored` is
+numbers rather than redefining one, `kept` is what a read serves, `stored` is
 what the file holds, and **the gap between them is itself the disclosure**:
 records past their window that no write or sweep has reached yet. A write-time
 reap cannot appear in any sweep report, so `reapedOnWrite` counts it; §9's fifth
@@ -1615,12 +1595,12 @@ service domain and purpose into `email-inbound-housekeeping.json`, which expiry
 reaping never touched; and `listDisclosures()` read it back with no content
 validation at all. What is persisted now is a projection: survivors dropped
 (`retained` carries the count, and a count is what a disclosure needs about what
-stayed — naming them is retention, not disclosure), removals kept because the
+stayed, naming them is retention, not disclosure), removals kept because the
 removed *are* the disclosure but capped at 100 with `removedTotal` carrying the
 true number, and every entry validated field by field on load with a torn one
 dropped rather than served. Bounded by age as well as by count: twenty entries
 looks like five days on a daemon sweeping four times a day, but that cap reaps
-by ARRIVALS, and a mailbox that goes quiet has none — the twentieth entry would
+by ARRIVALS, and a mailbox that goes quiet has none, the twentieth entry would
 otherwise be the last one written and stay forever. The live in-process report
 still carries the survivors, because the boot-time hydrate reads them from it;
 they stop at the disk boundary.
@@ -1629,21 +1609,21 @@ they stop at the disk boundary.
 files into a 0755 directory with no fsync anywhere. These files hold recipient
 aliases, the services an agent signed up at and retained body excerpts, and
 nothing but the daemon reads them, so they are written 0600 into a 0700
-directory — set at create time on the temporary, which a rename carries, so an
+directory, set at create time on the temporary, which a rename carries, so an
 existing 0644 file heals on its next write without a separate chmod pass. The
 temporary is fsynced before the rename and the directory after it, because
 `rename` is atomic against other processes but says nothing about power loss:
 the failure it left behind was a zero-length file, which is indistinguishable
 from a corrupt one. A `*.tmp.<pid>.<uuid>` left by a process killed mid-write is
-reclaimed by a later write — by AGE rather than by the liveness of the pid in
-its name, because pids are recycled — and the count is disclosed in the
+reclaimed by a later write, by AGE rather than by the liveness of the pid in
+its name, because pids are recycled, and the count is disclosed in the
 housekeeping summary, for the same reason `reapedOnWrite` exists.
 
 **One writer at a time, across processes, is enforced rather than assumed.**
 Writes were serialized per store INSTANCE, and an instance is as narrow as the
 object holding it: six records written by two writers left three on disk, with
 no error on either side. It is tempting to record that as an accepted boundary
-on the grounds that the daemon runs one process per machine — **and that premise
+on the grounds that the daemon runs one process per machine, **and that premise
 does not hold.** `requirePortAvailable` refuses a start only when the CONFIGURED
 PORT is already bound; the port is configuration (`resolveHostBinding`); and the
 store paths are `shellPaths.resolveUserPath('daemon', …)`, derived from `$HOME`
@@ -1652,7 +1632,7 @@ therefore share every one of these files and neither refuses to start.
 `lifecycle-marker.ts` records a pid and a `running` state, but it is a
 crash-receipt marker, not a mutex: a second start reads it, writes a receipt and
 proceeds. So the three stores take `acquireCrossProcessLock` around the whole
-read-modify-write — the advisory lock the checkpoint and push-subscription
+read-modify-write, the advisory lock the checkpoint and push-subscription
 stores already use, reused rather than reinvented, so the hard parts
 (populated-before-published, single-winner takeover, release-only-your-own,
 staleness by pid *and* mtime, reclamation of its own staging litter) are already
@@ -1672,14 +1652,14 @@ Stated as requirements rather than hopes, because they are load-bearing:
    message read in a turn refuses every outward action until the process
    restarts, and with inbound mail arriving continuously that is permanent.
 
-2. **Inbound email must never be owner-direct.** **Satisfied — by a different
+2. **Inbound email must never be owner-direct.** **Satisfied, by a different
    mechanism from the one this requirement was written against. The
    requirement as originally worded must not now be implemented, because it
    names a function that does not exist.**
 
    It asked for every inbound-mail invocation to pass an origin carrying
    `ownerDirect: false` explicitly, because `inputOriginIsOwnerDirect` was
-   understood to return `true` for `origin === undefined` — "nothing routed it
+   understood to return `true` for `origin === undefined`, "nothing routed it
    in, that is the keyboard". Verified by grepping all of
    `packages/sdk/src`: `inputOriginIsOwnerDirect`, `startTurnForOwnerInput` and
    `ownerDirect` appear **nowhere**. The taint round did not ship that shape.
@@ -1708,31 +1688,30 @@ the config schema. Neither list overlaps.
 ### 11.0 Card-shaped content arriving on a remote channel is refused
 
 **Provenance, stated plainly: this is a coordinator ruling, not an owner
-quote.** The owner's ruling it enforces is his own — card details are entered
+quote.** The owner's ruling it enforces is his own, card details are entered
 only at a local terminal or the webui, never over a remote messaging channel.
 What follows is the daemon-side enforcement of that.
 
 The payments round built the outbound half in `goodvibes-agent`: no card-entry
 prompt is offered toward a remote surface, and outbound card-shaped content is
 refused before reaching a provider. It reported the **inbound** half as not
-implementable there, and verified rather than asserted it — the agent is
+implementable there, and verified rather than asserted it, the agent is
 adopt-only, has no inbound channel path at all, `no-inbound-consumers.test.ts`
 fails the build if one is added, and `unified-inbox.ts` marks the seam as
 awaiting a daemon contract. That is correct, and it lands the inbound gate here.
 
 **The requirement.** A message arriving on any remote messaging channel that
-carries card-shaped content is refused. Not stored — it never reaches the
+carries card-shaped content is refused. Not stored, it never reaches the
 payments store, config, or any secret tier. Not logged, not transcribed, not
 placed in a notice body: nowhere it can be read later. The refusal reply names
 only the matched **shapes**, never the digits, matching the precedent the agent
 round set outbound. And no card-entry prompt is ever offered on a remote
-channel, because **prompting is itself the harm** — it invites him to type a
+channel, because **prompting is itself the harm**, it invites him to type a
 card number into Telegram, where it lands in a third party's history nobody can
 erase.
 
 **The distinction a later reader will try to collapse, so it is written in these
-terms:** approvals and vetoes for purchases **do** work over remote channels —
-that is the owner's explicit ruling and it stays. Remote surfaces have authority
+terms:** approvals and vetoes for purchases **do** work over remote channels, that is the owner's explicit ruling and it stays. Remote surfaces have authority
 to **say yes or no about a purchase**; they have **no path for entering the
 instrument**. Authority over a decision is not a channel for a secret. These two
 must not be unified.
@@ -1740,23 +1719,23 @@ must not be unified.
 #### Where the check goes
 
 `SurfaceActions.authorizeSurfaceIngress`
-(`platform/daemon/surface-actions.ts:179`) — the single shared hook that all
+(`platform/daemon/surface-actions.ts:179`), the single shared hook that all
 nineteen remote adapter call sites already pass through. The file argues for
 this placement itself, having put work-proposal and approval-reply consumption
-there *"on the shared ingress hook every surface adapter already calls — which
+there *"on the shared ingress hook every surface adapter already calls, which
 is what makes agreement answerable over whatever channel the proposal went out
 on, with no per-adapter wiring"*.
 
 Per-surface would be wrong for the reason the agent round learned firsthand: a
 fix applied per-adapter leaves the other seventeen open.
 
-**It runs first** — before `evaluateIngress`, before proposal-reply resolution,
+**It runs first**, before `evaluateIngress`, before proposal-reply resolution,
 before approval-reply resolution. Everything downstream may store, log or
 transcribe, so the check must precede all of it.
 
 One consequence, deliberate: a message that would have been an approval or a
 veto is refused if it carries card shapes. **The refusal reply is always
-delivered**, even though the content is dropped — this is the one case where
+delivered**, even though the content is dropped, this is the one case where
 silence would do harm, because an unheard objection inside a veto window
 elapses into a completed purchase. He is told immediately, on the same channel,
 and can resend without the digits.
@@ -1777,13 +1756,12 @@ export function detectCardShapes(text: string): readonly CardShapeFinding[];
 ```
 
 The finding carries **position and kind, never the matched characters**. This is
-§7.3 again: the digits are not something a caller must remember not to log —
-they are not reachable from the result at all. A refusal message composed from
+§7.3 again: the digits are not something a caller must remember not to log, they are not reachable from the result at all. A refusal message composed from
 findings is structurally incapable of quoting a card number.
 
 Rules:
 
-- **`pan`** — 13–19 digits, passing the Luhn check. Luhn alone is the
+- **`pan`**, 13–19 digits, passing the Luhn check. Luhn alone is the
   discriminator; a known issuer prefix is deliberately **not** additionally
   required, since that would miss valid cards from less common networks. The
   trade is asymmetric and decided accordingly: a false positive costs one
@@ -1791,11 +1769,11 @@ Rules:
   card number into a third party's message history permanently.
 
   **This rule originally read "a run of 13–19 digits after stripping internal
-  spaces and hyphens", and that is not implementable — it misses cards.** A
+  spaces and hyphens", and that is not implementable, it misses cards.** A
   separator-joined run is not one number. Taking the maximal run whole welds
   `4111111111111111 07/29` into an eighteen-digit string that fails Luhn, so a
-  card pasted with its expiry after it — the single most likely way a person
-  sends one — **was not detected at all**. The implementation caught this in its
+  card pasted with its expiry after it, the single most likely way a person
+  sends one, **was not detected at all**. The implementation caught this in its
   own tests.
 
   So a run is analysed as a **sequence of digit groups**: each single group of
@@ -1809,7 +1787,7 @@ Rules:
   granularity would fire on about one in ten arbitrary tracking numbers. The
   threat model is the owner pasting his own card, not an adversary evading the
   check.
-- **`security-code`** and **`expiry`** — never refused on shape alone. Three or
+- **`security-code`** and **`expiry`**, never refused on shape alone. Three or
   four bare digits, and `MM/YY`, are far too common, and refusing them would
   make the channel unusable. They count only in card context (`cvv`, `cvc`,
   `security code`, `card`, `expiry`) or alongside a `pan` finding.
@@ -1820,8 +1798,7 @@ finding occurs in card context.
 #### This applies to inbound mail too, and that is a finding about this design
 
 The inbound record store (§9.3) persists a **bounded body excerpt for thirty
-days**. A card number in an email would therefore be written to disk and kept —
-by this round's own machinery, in a store this round introduced. Nobody asked
+days**. A card number in an email would therefore be written to disk and kept, by this round's own machinery, in a store this round introduced. Nobody asked
 for that and it is exactly the exposure this section exists to prevent.
 
 Email is not gated the way remote channels are: mail is not refused for
@@ -1834,10 +1811,10 @@ fail to reach disk.
 
 **The subject is redacted too, and this paragraph originally missed it.** The
 subject is persisted in the same record *and* rendered to the owner in the
-notice — the same exposure through a second field, and the more visible one.
+notice, the same exposure through a second field, and the more visible one.
 Redacting it requires re-clamping to the field's length limit, because a
 redaction marker is longer than the three digits it replaces, and an
-over-length subject fails `validateInboundMailRecord` on load — which discards
+over-length subject fails `validateInboundMailRecord` on load, which discards
 **the whole record**, turning a redaction into a lost message.
 
 #### One adapter does not pass through this hook, on purpose
@@ -1848,7 +1825,7 @@ that skips `authorizeSurfaceIngress` fails rather than shipping ungated.
 `adapters/github/index.ts` is a recorded exception: it never calls
 `authorizeSurfaceIngress` at all, going from an HMAC-verified webhook body
 straight to `trySpawnAgent`. It is not gated here, because it is not a remote
-messaging channel — no `ChannelPolicyDecision`, no owner-facing reply channel to
+messaging channel, no `ChannelPolicyDecision`, no owner-facing reply channel to
 deliver a refusal on, and its content is issue and pull-request text rather than
 something the owner types. It is named in the enumeration test so this is a
 decision on the record rather than an oversight.
@@ -1879,8 +1856,7 @@ Three things make it worse there than here:
    target the owner has already been primed to trust, because he is expecting a
    message about a purchase he authorized.
 3. **The total is the one field he checks.** An item title carrying markup can
-   restyle, obscure or visually displace the amount in the same message —
-   Telegram will happily bold, strike through, or spoiler-tag whatever it is
+   restyle, obscure or visually displace the amount in the same message, Telegram will happily bold, strike through, or spoiler-tag whatever it is
    handed. The number he reads must not be positionable by the merchant.
 
 So the payments round needs: the same `StructuredNotice` and per-channel
@@ -1893,8 +1869,8 @@ renders.
 
 The payments capability is a consumer, not a peer: order confirmations and
 delivery notices arrive by mail. It gets them through the **expectation**
-mechanism — a purchase that was approved registers an expectation scoped to the
-merchant's domain before checkout completes — and never through a scan of
+mechanism, a purchase that was approved registers an expectation scoped to the
+merchant's domain before checkout completes, and never through a scan of
 arriving mail for order-shaped text. The asymmetry that matters and must not be
 collapsed: payments **approvals never travel by email** (owner ruling), while
 order *confirmations* may arrive by email as evidence of something already
@@ -1910,7 +1886,7 @@ before the fix lands.
 | # | Behaviour | Vehicle |
 |---|---|---|
 | 1 | Mail arriving with a registered expectation satisfies it | Fake IMAP server, expectation opened first |
-| 2 | Mail arriving with no expectation is inert — no spawn, no work, notice only | Fake server; asserts the notice fired and nothing else did |
+| 2 | Mail arriving with no expectation is inert, no spawn, no work, notice only | Fake server; asserts the notice fired and nothing else did |
 | 3 | An arriving message cannot register an expectation | Body containing register-shaped text; book unchanged |
 | 4 | An arriving message cannot widen an expectation | Mail for domain B against an expectation for domain A |
 | 5 | An arriving message cannot extend a window | Expired expectation + mail; `expired`, not renewed |
@@ -1946,7 +1922,7 @@ before the fix lands.
 | 35 | The inbound path cannot register or hydrate an expectation | Type-level + source-level assertion (§2.1) |
 | 36 | The producer cannot emit a channel-formatted string | `renderInboundMailNotice` returns `StructuredNotice`; type-level test |
 | 37 | Each channel escapes rather than strips | `[Approved](https://evil)` arrives as that literal text, not a link and not mangled |
-| 38 | Per-channel escapers cover their own syntax | Telegram MarkdownV2, Discord mentions, Slack `<url\|text>`, HTML entities, ntfy header newline — one case each |
+| 38 | Per-channel escapers cover their own syntax | Telegram MarkdownV2, Discord mentions, Slack `<url\|text>`, HTML entities, ntfy header newline, one case each |
 | 39 | An untrusted span cannot reach output unescaped on any channel | Table-driven across every registered escaper |
 | 40 | A channel with no escaper falls back to fully-neutralized plain text | Not to the raw string |
 | 41 | The notice timestamp comes from our clock, not the `Date:` header | Sender-supplied date differs from receipt time |
@@ -1971,8 +1947,8 @@ overturn any of them.
 
 1. **Gmail `users.watch` + Pub/Sub is not built.** §3.1.
 2. **`users.history.list` is built but scope-gated and inert today.** §3.1. The
-   alternative — asking the owner to complete Google's restricted-scope
-   verification and annual security assessment to read his own mail — is the
+   alternative, asking the owner to complete Google's restricted-scope
+   verification and annual security assessment to read his own mail, is the
    highest-friction option available.
 3. **Expectations persist, with their original absolute expiry.** §9.2.
    Overrides a documented decision, for a reason that post-dates it.
@@ -2006,7 +1982,7 @@ overturn any of them.
 16. **Dedup identity is per-source and always server-assigned**, prefixed
     `imap:` / `gmail:` so the two opaque forms cannot collide. §6. `Message-ID`
     is refused on both sources, and is most tempting exactly where it is least
-    safe — Gmail, where it is the only identity that looks source-agnostic.
+    safe, Gmail, where it is the only identity that looks source-agnostic.
 17. **The found message is a discriminated union on source**, not a widened
     record and not a synthesised UID.
     `docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md`.
@@ -2015,13 +1991,13 @@ overturn any of them.
     `ImapEnvelope`.
 18. **IMAP body capability is probed, not declared.** One `BODY.PEEK` at
     connect on a non-empty mailbox, before any expectation is opened. An empty
-    mailbox reports `{ probed: false }` — **visible in status and distinct from
+    mailbox reports `{ probed: false }`, **visible in status and distinct from
     probed-ok, but it does NOT change the health verdict.**
 
     *Corrected.* This ruling previously said an empty mailbox reports
     `degraded`/`bodies-unproven`, and cited a decision record
     (`2026-07-27-imap-body-capability-is-probed-not-declared.md`) that **does
-    not exist** — a fifth instance of §13.2, this time citing a document rather
+    not exist**, a fifth instance of §13.2, this time citing a document rather
     than a symbol. The implementing round flagged the contradiction instead of
     guessing, which is why it surfaced.
 
@@ -2029,8 +2005,8 @@ overturn any of them.
     given: **an empty mailbox is the primary case, not an edge case.** A fresh
     per-signup alias is empty by definition, so every new signup would start
     permanently amber and stay there until its first message. That is the same
-    alarm-fatigue argument already settled for configured polling — a health
-    indicator that is always yellow is one nobody reads — and it would fire on
+    alarm-fatigue argument already settled for configured polling, a health
+    indicator that is always yellow is one nobody reads, and it would fire on
     exactly the journey this capability exists to serve.
 
     Honesty is preserved without the alarm: the unprobed state is *disclosed*
@@ -2052,7 +2028,7 @@ overturn any of them.
 21. **A missing `UIDNEXT` is derived from `UID SEARCH`, never assumed to be
     zero.** §3.4b. It is a SHOULD, not a MUST, and servers omit it; establishing
     at 0 replays the entire mailbox as new mail. Deliberately NOT ruling 15's
-    answer — a missing `UIDVALIDITY` is derivable from nothing, whereas this is
+    answer, a missing `UIDVALIDITY` is derivable from nothing, whereas this is
     one core command away. Refusal is reserved for the case where asking also
     fails to answer: `mailbox-position-unknown`, its own reason rather than
     `uidvalidity-missing`. The cursor note states which way the mark was
@@ -2067,24 +2043,24 @@ overturn any of them.
 - **`[UIDNEXT n]` on `EXAMINE` is a SHOULD, not a MUST.** `parseMailboxStatus`
   types it `number | null` for that reason. Read through a `?? 1` it becomes the
   mark 0, which is below every message that exists, and the next `UID SEARCH`
-  matches the whole mailbox — a full replay to the owner's notification channel,
+  matches the whole mailbox, a full replay to the owner's notification channel,
   under a note claiming nothing was backfilled. Derived from `UID SEARCH UID
   1:*` instead; see §3.4b.
 - **A refused `FETCH` is `insufficient`; a refused `SEARCH` is only a
   reconnect.** Search refusals are routinely transient, and stopping for an hour
   over one turns a hiccup into silence.
-- **The IDLE re-issue also runs a cheap `UID SEARCH` sweep** — one per 27
+- **The IDLE re-issue also runs a cheap `UID SEARCH` sweep**, one per 27
   minutes. It closes the hole where a push was never sent, or was sent while
   nothing was listening. Push is an optimization over polling, never a guarantee
   to be trusted alone.
 - **`fetchEnvelopes(uids, limit)` keeps only the last `limit` UIDs**, default
   20, silently. A caller handing it a larger delta and then advancing a cursor
   skips everything dropped. Being fixed at source; recorded because the shape of
-  the bug — a truncating default feeding a cursor — will recur elsewhere.
+  the bug, a truncating default feeding a cursor, will recur elsewhere.
 - **An untagged line arriving BETWEEN IDLE rounds is lost.** After one round's
   subscription is released and before the next `IDLE` is issued, nobody is
-  waiting on the socket. This is **not a defect** — the next `EXISTS` or the
-  27-minute re-issue sweep picks the message up — but it is a real property of
+  waiting on the socket. This is **not a defect**, the next `EXISTS` or the
+  27-minute re-issue sweep picks the message up, but it is a real property of
   the transport, and it is written down because someone will otherwise
   rediscover it as a bug and "fix" it by widening a listener that has nothing to
   hand its lines to. It is also the concrete reason the sweep is not redundant
@@ -2100,7 +2076,7 @@ more than it deserves.
    `inputOriginIsOwnerDirect`, `startTurnForOwnerInput` and `ownerDirect` exist
    nowhere in `packages/sdk/src`. The taint round shipped
    `startTurnForOwnerRequest(explicitUserRequest)`, which returns false unless
-   the argument is exactly `true` — so it fails closed and there is no absence
+   the argument is exactly `true`, so it fails closed and there is no absence
    to misread. Implementing the requirement as written meant coding against an
    API that does not exist.
 2. **§6 ruled the dedup identity as `UIDVALIDITY:UID`.** Gmail has neither.
@@ -2110,21 +2086,20 @@ more than it deserves.
 
 **The common cause: each was asserted from something other than the code it
 described.** The first from another round's *uncommitted working-tree diff*,
-read early and never re-checked after that round landed — the draft I read did
+read early and never re-checked after that round landed, the draft I read did
 have the hazard I wrote up; the shipped version had inverted it. The second from
 a rule that was true when written and was never re-derived when a second source
 was added. The third from an export list and a type's *name*, without opening
 the declaration.
 
-This is the same failure this round kept catching in implementation work —
-copying a shape instead of importing it, mirroring a tri-state, trusting a
+This is the same failure this round kept catching in implementation work, copying a shape instead of importing it, mirroring a tri-state, trusting a
 description over a definition. It applies to design documents identically, and
 arguably worse: an implementation error fails a test, while a design error gets
 built.
 
 > A requirement that names a function, a field or a type is a claim about the
 > code, and it decays. Re-verify it against the code at the moment it is handed
-> to someone to implement — not at the moment it was written.
+> to someone to implement, not at the moment it was written.
 
 **A fourth instance, committed while citing this very rule.** I reported that
 `method-catalog-email.ts` declared no `required` arrays, because grepping it for
@@ -2150,15 +2125,15 @@ recorded here. They are listed because §13.2's whole point is that a document
 which hides its own defects earns more trust than it deserves.
 
 1. **§2.1's `InboundMailContext` does not exist.** `grep` across `packages/` and
-   `test/` finds no `interface` or `type` by that name — only prose referring to
+   `test/` finds no `interface` or `type` by that name, only prose referring to
    it. So of the three guards §2.1 claims, **one shipped**: the source-level ban
    (`test/platform-email-inbound-backoff.test.ts`, "no file under
    platform/email/inbound references a spawn capability"). The runtime
    own-property assertion and the type-level non-assignability test do not
-   exist. §2.1's second half **did** ship — `'email'` is in
+   exist. §2.1's second half **did** ship, `'email'` is in
    `CONVERSATION_GATE_DEFAULT_SURFACES`.
 2. **§3.5's "folds into the standard `ChannelStatusSnapshot`" is impossible.**
-   That type's `surface` field is `ChannelSurface`, which has no `'email'` — and
+   That type's `surface` field is `ChannelSurface`, which has no `'email'`, and
    widening it is exactly what the `ManagedSurface` ruling forbids. The two
    instructions contradicted each other; the constraint won, via
    `Omit<ChannelStatusSnapshot, 'surface' | 'accountId'> & {…}`.
@@ -2168,13 +2143,13 @@ which hides its own defects earns more trust than it deserves.
    implementation follows the composition root rather than the document.
 4. **§7.3's own rule was violated in shipped code.** `InboundNoticeStatus` was a
    hand-written mirror of `SurfaceNoticeRefusal` missing `empty-text` and
-   `unsupported-delivery-surface` — so a notice refused for either was
+   `unsupported-delivery-surface`, so a notice refused for either was
    **discarded by `validateInboundMailRecord` on the next load**, and "mail
    arrived and could not be announced" vanished at restart. The section
    forbidding restated types was itself undermined by a restated type.
 5. **§9.3 never says no Gmail message can be recorded at all.**
    `validateInboundMailRecord` requires `uidValidity` and `uid` as positive
-   integers, which a Gmail message has neither of — so on the source automatic
+   integers, which a Gmail message has neither of, so on the source automatic
    selection makes primary, nothing is ever persisted. Same root as §13.2's
    dedup-identity error, never carried into the record store. Being fixed.
 6. **§8's `notice.route: 'default'` names a concept the platform does not
@@ -2186,7 +2161,7 @@ which hides its own defects earns more trust than it deserves.
 `default` is implemented as **the most recently seen route binding** (highest
 `lastSeenAt`): the channel the owner last actually reached the daemon on. With
 no bindings at all it resolves to `null`, the notice is refused as
-`no-route-binding`, recorded, and disclosed — **never sent somewhere invented.**
+`no-route-binding`, recorded, and disclosed, **never sent somewhere invented.**
 
 This is a reading, not a specification, and it is the one place in this round
 where an interpretation was chosen rather than found. Two things make it safe
@@ -2195,21 +2170,19 @@ demonstrably uses, and the resolved route is **disclosed in
 `email.inbound.status`**, so where his notices will go is answerable before one
 is sent rather than discovered when one arrives somewhere unexpected.
 
-The alternative — a real `owner notice route` concept — is the better answer and
+The alternative, a real `owner notice route` concept, is the better answer and
 is a larger change than this round. Recorded for a ruling.
 
 ### 13.4 Four more, found by trying to kill the watcher
 
 Reported by the lane that hardened the lifecycle, each reproduced before being
-recorded. All four are the SAME defect this capability exists to eliminate —
-*the watcher dies permanently while reporting healthy* — reached by four
+recorded. All four are the SAME defect this capability exists to eliminate, *the watcher dies permanently while reporting healthy*, reached by four
 different routes, which is the part worth writing down: the document states the
 rule in §3.4b and then leaves four paths that break it.
 
 1. **"A verdict is reported where it is found" says nothing about a throw that
    never becomes a verdict.** `poll-loop.ts` calls the cursor store's `advance`
-   outside every `try`, deliberately — a store write is not a protocol failure —
-   and the rejection unwound the whole stack into a supervisor
+   outside every `try`, deliberately, a store write is not a protocol failure, and the rejection unwound the whole stack into a supervisor
    `.catch(() => undefined)`. One transient `ENOSPC` ended inbound mail forever
    with `email.inbound.status` still reporting a healthy IDLE. The document's
    three states describe conditions the watcher *concludes*; it needed a rule
@@ -2221,13 +2194,13 @@ rule in §3.4b and then leaves four paths that break it.
    and not about files.** `PersistentStore.load()` throws on unparseable JSON,
    and none of the three stores caught it, so one bad byte in the cursor file
    disabled the record sweep, the expectation sweep, `start()`, AND
-   `email.inbound.status` — the disclosure verb failing in exactly the state it
+   `email.inbound.status`, the disclosure verb failing in exactly the state it
    exists to disclose. The rule is now applied at file granularity
    (`loadOrDiscard`), one store's failure cannot stop another's sweep, and the
    discard is named per store in the status snapshot.
 3. **§3.4b's "announced, not merely recorded" had no implementation.** The
    once-per-transition tracker existed, the notice port was in the same
-   function, and the only consumer of `terminalFailure` was `logger.error` — the
+   function, and the only consumer of `terminalFailure` was `logger.error`, the
    round's own "rendered and never sent" shape, in the one place meaning no mail
    will ever arrive again. Terminal failures now go to the owner through
    `deliverStructuredNotice`, rendered from structured fields (our reason and
@@ -2247,7 +2220,7 @@ harness rather than the code, and it is the one that let a broken capability
 sit under 8356 green tests.
 
 `test/platform-email-imap-fetch.test.ts:742-744` emits a folded literal with a
-**trailing UID** — the exact wire shape that breaks the watcher — and asserts
+**trailing UID**, the exact wire shape that breaks the watcher, and asserts
 the subject parses. **It passes, and it is correct.**
 
 It passes because it drives `fetchMessage`, which parses via
@@ -2262,14 +2235,14 @@ Measured against the real `ImapClient.fetchEnvelopes`:
 
 | Server shape | Result |
 |---|---|
-| Bare lines, UID first — *what the harness emits* | `count=1  subject="Real subject"` |
-| `{N}` literal, UID **before** BODY | `count=1  subject=""` — announced with no sender, no subject, no delivery evidence |
-| `{N}` literal, UID **after** BODY | `count=0` — treated as an expunge, **cursor advances past it** |
+| Bare lines, UID first, *what the harness emits* | `count=1  subject="Real subject"` |
+| `{N}` literal, UID **before** BODY | `count=1  subject=""`, announced with no sender, no subject, no delivery evidence |
+| `{N}` literal, UID **after** BODY | `count=0`, treated as an expunge, **cursor advances past it** |
 
 Every test in the tree exercising `fetchEnvelopes` uses the first shape
 (`fake-imap-mailbox.ts:219-222`, `platform-email-imap-uid.test.ts:92`,
 `platform-email-imap-delivery-recipient.test.ts:55`). And **there are no direct
-unit tests of `parseFetchHeaders` or `parseFetchUids` at all** — so neither
+unit tests of `parseFetchHeaders` or `parseFetchUids` at all**, so neither
 parser has coverage independent of a fake server, and a single harness gap
 became zero coverage.
 
@@ -2281,7 +2254,7 @@ Two rules worth carrying:
 
 > **The acceptance question for a fix is not "does it work" but "does the
 > harness now fail if the defect returns."** A correct fix under a harness that
-> cannot reproduce the defect leaves the regression unguarded — which is the
+> cannot reproduce the defect leaves the regression unguarded, which is the
 > state that produced this section.
 
 Also confirmed **not** defects, recorded so nobody re-investigates: header
@@ -2292,7 +2265,7 @@ than most.
 
 ### 13.6 The capability did not work against a real server, and 8356 tests said it did
 
-Not an error in this document — an error the document could not catch, because
+Not an error in this document, an error the document could not catch, because
 every claim it makes about the IMAP read is correct and the code underneath
 still could not read what an IMAP server sends. Recorded because the *cause* is
 the reusable part, and because "the tests pass" was, for a while, the whole of
@@ -2302,7 +2275,7 @@ the evidence that inbound mail worked.
 `{N}` literal (RFC 3501 §4.3): a byte count on the end of the line, then exactly
 that many bytes. `ImapSession` handles it correctly and hands the response up
 with the payload welded onto the line that announced it. Separately, `UID FETCH`
-makes the server add a `UID` data item (§6.4.8) **wherever it likes** — before
+makes the server add a `UID` data item (§6.4.8) **wherever it likes**, before
 the body section or after it. Two shapes, both conformant, both in the wild:
 
     * 3 FETCH (UID 307 BODY[HEADER.FIELDS (…)] {58}…)
@@ -2312,20 +2285,20 @@ the body section or after it. Two shapes, both conformant, both in the wild:
 
 1. **UID first.** `parseFetchHeaders` tested whether the text after `* n FETCH `
    began with `(` and discarded it when it did. Against a folded literal that
-   text is `(UID 307 BODY[…] From: a@b.test…` — so the header block went out
+   text is `(UID 307 BODY[…] From: a@b.test…`, so the header block went out
    with the data items it was welded to. An envelope **was** produced, with
    `from`, `subject`, `date` and `messageId` all empty strings and no delivery
    evidence. The message is delivered and announced: a notice naming nobody,
    about nothing, that expectation matching cannot correlate.
 2. **UID last.** `parseFetchUids` searched only `line.slice(0, indexOf('BODY'))`
-   of the start line, and on this shape the UID is not on that line at all — it
+   of the start line, and on this shape the UID is not on that line at all, it
    is on the line that closes the response. No UID, so no envelope, so the UID
    was simply missing from the fetch result.
 
 **And the third defect, which is the one that loses mail.** `poll-loop.ts` could
 not tell *"the server says this UID is gone"* from *"we could not read a response
 for it"*. Both arrive as an absence from the result, and it resolved the
-ambiguity by advancing the cursor — reporting the drain `complete`. Defect 2
+ambiguity by advancing the cursor, reporting the drain `complete`. Defect 2
 therefore did not surface as an error; it surfaced as a mailbox whose every
 message looked expunged, silently skipped, permanently. Absence of an envelope
 is now two distinct facts: `fetchEnvelopeBatch` returns the responses it could
@@ -2334,12 +2307,12 @@ unreadable answer holds the cursor, is reported through the observer as
 `fetch-unreadable`, and is fetched again.
 
 **The cause, which is the point.** `test/_helpers/fake-imap-mailbox.ts` wrote
-header blocks as ordinary response lines — the one shape no server produces and
+header blocks as ordinary response lines, the one shape no server produces and
 the only shape the broken readers could parse. Every test that touched
 `fetchEnvelopes` went through that helper, so the coverage was real, extensive,
 and entirely of a fiction. A nearby test (`platform-email-imap-fetch.test.ts`)
 **did** emit a literal with a trailing UID and passed, which made the gap look
-closed — it drives `fetchMessage`, which parses through a different function
+closed, it drives `fetchMessage`, which parses through a different function
 that was always correct. Coverage of one path reads as coverage of the
 capability.
 
@@ -2355,7 +2328,7 @@ arithmetic is exercised for real.
 
 A refutation review found these. They lived only in that review's report, and a
 later confirmation pass **could not re-check them because the list was not in
-the repo** — §13.5 cross-referenced "the nine vacuous tests" and no such
+the repo**, §13.5 cross-referenced "the nine vacuous tests" and no such
 enumeration existed anywhere in the tree. A finding that exists only in a
 transcript is a finding that expires. They are recorded here so the next pass
 can verify each one rather than take my word for it.
@@ -2363,14 +2336,14 @@ can verify each one rather than take my word for it.
 | # | Test | Why it cannot fail |
 |---|---|---|
 | V1 | `inbound-mail-supervisor.test.ts:386` "recovery sweep runs before the source starts" | `getLastReport()` is read **after** `start()` resolves, so the sweep has run either way. Reverse the order and it still passes. The probe must read inside `onStart` |
-| V2 | `inbound-mail-expectation-registry.test.ts:158` "the matcher carries no way to insert" | Asserts `reachable.has('matchCandidate') === true` and `Object.keys(x).length >= 0` — **neither says anything about absence**. This is gate #11's runtime own-property assertion and gate #35, and it asserts nothing |
-| V3 | `platform-email-inbound-gmail-source.test.ts:409` "no source module imports an expectation registry" | Haystack is `lines.filter(l => l.startsWith('import '))`, so a multi-line import contributes only `import {` — the `from './x.js'` line is excluded. Multi-line is the dominant style in those very files |
-| V4 | `inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop" | `expect(() => start(0)).not.toThrow()`. Delete the guard and `setInterval(fn, 0)` still does not throw — **the test passes with the busy loop installed** |
+| V2 | `inbound-mail-expectation-registry.test.ts:158` "the matcher carries no way to insert" | Asserts `reachable.has('matchCandidate') === true` and `Object.keys(x).length >= 0`, **neither says anything about absence**. This is gate #11's runtime own-property assertion and gate #35, and it asserts nothing |
+| V3 | `platform-email-inbound-gmail-source.test.ts:409` "no source module imports an expectation registry" | Haystack is `lines.filter(l => l.startsWith('import '))`, so a multi-line import contributes only `import {`, the `from './x.js'` line is excluded. Multi-line is the dominant style in those very files |
+| V4 | `inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop" | `expect(() => start(0)).not.toThrow()`. Delete the guard and `setInterval(fn, 0)` still does not throw, **the test passes with the busy loop installed** |
 | V5 | `platform-email-inbound-gmail-source.test.ts:379` | Terminates in `expect(true).toBe(true)`. A hang-gate, not an assertion |
 | V6 | `inbound-mail-dedup-redelivery.test.ts:234` "a suppressed duplicate still advances the cursor" | Touches no cursor. The suppression half is real; the cursor half is untested. Misnamed |
-| ~~V7~~ | ~~`inbound-mail-supervisor.test.ts:530`~~ | **STRUCK — the row was wrong.** `expect('surface' in health).toBe(false)` is an ordinary runtime own-property check over a real object, and adding `surface: 'email'` to `describeInboundMailHealth` reddens it. The test is sound |
+| ~~V7~~ | ~~`inbound-mail-supervisor.test.ts:530`~~ | **STRUCK, the row was wrong.** `expect('surface' in health).toBe(false)` is an ordinary runtime own-property check over a real object, and adding `surface: 'email'` to `describeInboundMailHealth` reddens it. The test is sound |
 | V8 | `surface-card-gate.test.ts:518` | Real data, but the check is per-**file** ("contains both strings somewhere"), not per-call-site. A file with one gated and one ungated spawn passes |
-| V9 | `inbound-email-config-schema.test.ts` | Tests that three settings can be *set*. Nothing asserts they take effect, and nothing reads them — coverage illusion for gate #28 |
+| V9 | `inbound-email-config-schema.test.ts` | Tests that three settings can be *set*. Nothing asserts they take effect, and nothing reads them, coverage illusion for gate #28 |
 
 **Gates in §12 with no corresponding test at all:** 11, 14, 15, 25, 28, 31, 32,
 33, 35 (type half), 36 (type half), 52 (second half).
@@ -2378,13 +2351,13 @@ can verify each one rather than take my word for it.
 Two are worth naming. **#14** is *unconstructible* in the harness:
 `fake-imap-mailbox.ts` mints `Message-ID: <uid-N@example.test>` per UID, so a
 collision cannot be built, and the gate can never be satisfied as written.
-**#25** — "the expectation book is instantiated in production with a real
-authority probe, **boot wiring assertion**" — is uncovered, but the cause stated
+**#25**, "the expectation book is instantiated in production with a real
+authority probe, **boot wiring assertion**", is uncovered, but the cause stated
 in the first version of this row was wrong and is corrected here:
 `composeInboundMail` **is** driven, at
 `inbound-mail-lifecycle-failures.test.ts:528`. That test asserts terminal-notice
 routing and nothing else, and `facade-inbound-mail.ts` builds the registry
-without passing `authority` at all, relying on the constructor default — so the
+without passing `authority` at all, relying on the constructor default, so the
 gate's second half, "with a real authority probe", had nothing observing it. The
 correction matters because "nothing imports the file" and "the file is imported
 and this property is not asserted" call for opposite fixes.
@@ -2393,7 +2366,7 @@ and this property is not asserted" call for opposite fixes.
 > that live in a report are re-found; findings that live in the repo are fixed.
 >
 > And a written-down finding is a claim to be re-checked, not a fact. Two of the
-> eleven entries above were wrong — V7 was not vacuous, and #25's stated cause
+> eleven entries above were wrong, V7 was not vacuous, and #25's stated cause
 > was not the real one. A list kept so findings do not expire will preserve
 > mistakes just as faithfully.
 
@@ -2404,8 +2377,8 @@ Gates 31, 32 and 33 had no test **because they had no production mechanism**.
 `ExpectationExpiryReport.reason` was the closed union `'window-elapsed'`.
 
 **33 was the sharpest, and its shape is the one to remember.** Since nothing
-*could* fail an expectation for capability loss, gate 33 — "a watcher in
-reconnect backoff does NOT fail expectations" — could not be violated. An
+*could* fail an expectation for capability loss, gate 33, "a watcher in
+reconnect backoff does NOT fail expectations", could not be violated. An
 unfalsifiable gate is strictly worse than an untested one: an untested gate is a
 known hole, while an unfalsifiable one reads as a guarantee, and a test written
 over it passes on the first run and every run after, proving only that the
@@ -2415,12 +2388,12 @@ The registry now takes an `ExpectationCapabilityProbe`. `open()` refuses at open
 time against an `insufficient` verdict, so a signup workstream learns
 immediately instead of after fifteen minutes of silence it cannot tell from "the
 service never sent it". `capabilityChanged(verdict)` fails open expectations
-with `reason: 'capability-lost'` — a second reason beside `window-elapsed`,
+with `reason: 'capability-lost'`, a second reason beside `window-elapsed`,
 because "nothing came" and "we could no longer look" have opposite fixes and one
 of them sends the owner hunting for a message that may well have been delivered.
 And it fails **nothing** for a `degraded` verdict: a reconnect fetches
 everything above the cursor, so "not yet" is not "cannot". Gate 33 is now
-falsifiable — mutating that predicate from `state !== 'insufficient'` to
+falsifiable, mutating that predicate from `state !== 'insufficient'` to
 `state === 'healthy'` reddens three tests.
 
 ### 13.8 A mutation that does not redden proves nothing until you prove the mutation landed
@@ -2433,19 +2406,19 @@ mutations were tried against the parser to confirm the new coverage bites:
 
 | Mutation | Result |
 |---|---|
-| `return []` from the parser | all four redden — **blunt**, proves only that the parser is reached |
+| `return []` from the parser | all four redden, **blunt**, proves only that the parser is reached |
 | drop the trailing-UID append at the close | all four **stay green** |
 | strip the UID capture from `CONTINUATION_END` | all four **stay green**, and so does the wire-shapes suite |
 | scan for UID only **before** the section marker | **all four redden** |
 
 The middle two look exactly like coverage gaps. They are not. Probing the parser
-directly showed the UID still came back correctly under the second — **the
+directly showed the UID still came back correctly under the second, **the
 mutation did not remove the behaviour**, so it demonstrated nothing about the
 tests. The probe for the third was itself wrong: it hand-built the response array
 without a `{N}`, so it never entered the folded path being mutated.
 
 Only the fourth reproduces the original `parseFetchUids` defect, and under it the
-failures are precisely one shape's worth — 14 of 42 and 3 of 9 — which is the
+failures are precisely one shape's worth, 14 of 42 and 3 of 9, which is the
 trailing shape and nothing else.
 
 > **A mutation that fails to redden means EITHER the test is weak OR the mutation
@@ -2466,11 +2439,11 @@ gap. There is an inverse, and it was hit while fixing the terminal-notice
 announcer.
 
 The obvious mutation for "is the once-per-transition latch tested?" is to delete
-the latch. Delete it, and the tests **pass** — because removing a latch produces
+the latch. Delete it, and the tests **pass**, because removing a latch produces
 *more* sends, and more sends is the safe direction for a notice. So
 "delete it and see" would have reported the guard as covered while the real
-defect — the latch being set **before** the send, so a refused delivery latched
-a notice the owner never got — sat untouched underneath it.
+defect, the latch being set **before** the send, so a refused delivery latched
+a notice the owner never got, sat untouched underneath it.
 
 > A mutation must move the behaviour toward the **failure being guarded
 > against**, not merely away from the current implementation. Deleting a guard
@@ -2480,7 +2453,7 @@ a notice the owner never got — sat untouched underneath it.
 Two other rules earned in the same fix:
 
 - **A log line that reports a local variable must not be worded as a report
-  about the world.** The announcer logged `announced: announced !== key` — a
+  about the world.** The announcer logged `announced: announced !== key`, a
   statement about a local, phrased as a statement about the owner. Even with the
   latch moved, that line would still have lied. Three faults occupied those same
   lines: the latch, the discarded result, and the log's wording.
@@ -2490,8 +2463,7 @@ Two other rules earned in the same fix:
   ignores the outcome no longer compiles.
 
 And the detail worth the most: **the correct pattern already existed one file
-away.** `intake.ts` uses the same port for arriving mail and was always right —
-it awaits, branches on `delivery.delivered`, and records `no-route-binding`
+away.** `intake.ts` uses the same port for arriving mail and was always right, it awaits, branches on `delivery.delivered`, and records `no-route-binding`
 honestly. The announcer diverged from it on the strength of its own comment,
 *"its result is deliberately unread"*. That comment was the defect's rationale
 rather than its description, which is the most dangerous shape a comment can
@@ -2507,13 +2479,13 @@ beside it.
 **The notice was sent before the record was written.** §13.5's round fixed the
 *consume* ordering on the rule "a pass either completes, or it leaves the book
 exactly as it found it". The notice is the step in that handler that genuinely
-cannot be undone — a message on the owner's phone is not retractable — and the
+cannot be undone, a message on the owner's phone is not retractable, and the
 rule was not applied to it. So: `notices.send` ran, `records.record` threw
 (ENOSPC, a read-only state directory), the intake threw, the sink released its
 claim, the cursor stayed put, and the next pass **announced the same message
 again**. Every pass; five redeliveries produced five notices and zero records.
 Dedup could not suppress any of it, because releasing the claim is exactly how
-the retry is enabled — the guard against duplicate notices was the mechanism
+the retry is enabled, the guard against duplicate notices was the mechanism
 producing them.
 
 The fix is the ordering: the record goes first, in a new `pending` state,
@@ -2531,8 +2503,8 @@ with it and both are load-bearing.
 > **Writing before an irreversible step means the write must be idempotent by
 > the thing's own identity.** `record()` appended, so every retried pass would
 > have added a row and `email.inbound.status` would have reported five arrivals
-> where the phone buzzed once. It now upserts on the message key — the mailbox
-> plus the id the receiving server assigned — keeping the existing record id.
+> where the phone buzzed once. It now upserts on the message key, the mailbox
+> plus the id the receiving server assigned, keeping the existing record id.
 
 **The dedup cache was in-memory and three places said otherwise.** §6, `sink.ts`
 and `dedupTtlMs()` all asserted the TTL "must outlast a restart cycle". The
@@ -2541,12 +2513,12 @@ expiring it, and no value made the claim true. Corrected in all four places
 (the §8 table row included), and the property the comments wanted is now
 delivered by the mechanism that can: the intake asks the record store whether
 this exact message was already announced. The reasoning for choosing that over
-persisting the cache is in §6 — a durable claim taken *before* the work
+persisting the cache is in §6, a durable claim taken *before* the work
 converts a duplicate into silence, which is the trade this document already
 ruled the wrong way round.
 
 > **A comment that justifies code rather than describing it is the shape to
-> distrust** — §13.8 already recorded this for the announcer's "deliberately
+> distrust**, §13.8 already recorded this for the announcer's "deliberately
 > unread", and it recurred here verbatim. Both times the comment named a
 > property the code did not have, and both times it was the comment that stopped
 > anyone checking.
@@ -2555,7 +2527,7 @@ ruled the wrong way round.
 right and was deliberately chosen: retrying `no-route-binding` forever would pin
 the cursor on a message that fails identically on every pass. But "not retried"
 was implemented as "return normally", and returning normally is
-indistinguishable from success everywhere upstream — the cursor advanced, the
+indistinguishable from success everywhere upstream, the cursor advanced, the
 supervisor reported `idle`, and the health entry reported `healthy` while every
 message that arrived was announced to nobody. The same class as §3.4b's terminal
 failure ending at a log line, one seam further along.
@@ -2575,27 +2547,27 @@ so the gate-off case can name itself.
 > announced.** `terminal-notice.ts` reaches the owner by sending him a notice;
 > that is unavailable here, because the thing being reported IS the notice route
 > refusing, and a notice about it would be refused identically. The honest
-> surfaces are the ones that do not depend on the broken path — the status verb,
-> the health entry, the log — and all three are driven rather than one.
+> surfaces are the ones that do not depend on the broken path, the status verb,
+> the health entry, the log, and all three are driven rather than one.
 
 > **`healthy` must mean the capability is doing its job, not that its socket is
 > open.** Every input `describeInboundMailHealth` was built from described the
 > connection to the mail server, and all of them were satisfied while nothing
 > was being delivered. That is the same fault the function's own docstring
-> already criticised in `ChannelStatusSnapshot` — computed from configuration
-> rather than from behaviour — reproduced one field short.
+> already criticised in `ChannelStatusSnapshot`, computed from configuration
+> rather than from behaviour, reproduced one field short.
 
 ### 13.10 A predicate with two answers cannot say "I do not know yet"
 
 `MailboxCursorStore`'s reap rule asks an injected predicate whether an account
 is still configured. It returned `boolean`, so a caller that could not yet
-answer — config not loaded, manager mid-reload, account list a promise that has
-not settled — had to pick one of two answers, and both are wrong:
+answer, config not loaded, manager mid-reload, account list a promise that has
+not settled, had to pick one of two answers, and both are wrong:
 
 - answering `false` reaps the stored cursor. The next `resolve()` then answers
   **`first-run` at the mailbox's current high-water mark**, so every message
-  between the discarded position and that mark is *skipped* — not replayed,
-  skipped — and the owner is told the mailbox started fresh, which is exactly
+  between the discarded position and that mark is *skipped*, not replayed,
+  skipped, and the owner is told the mailbox started fresh, which is exactly
   what a genuine first run looks like. Seeded at UID 900 against a mailbox at
   1500, that is six hundred messages nobody ever sees and no line anywhere
   saying so.
@@ -2605,12 +2577,12 @@ not settled — had to pick one of two answers, and both are wrong:
 The defect was **latent**: the one production caller builds its predicate from
 an account it has already resolved, so the empty-configured-set trigger is
 avoided by construction. That is not protection, it is luck about the current
-call site — an account-id rename reaches the same path, and nothing in the
+call site, an account-id rename reaches the same path, and nothing in the
 predicate's shape stops the next caller from guessing.
 
 The answer type is now `boolean | 'unknown'`, `'unknown'` keeps the cursor, and
 `CursorSweepReport.unresolvedAccounts` counts what was kept for a reason nobody
-could confirm — because a retained cursor that nothing justified is persisted
+could confirm, because a retained cursor that nothing justified is persisted
 state held for an unknown reason, and a count that never falls to zero is a
 caller that can never answer.
 
@@ -2618,23 +2590,23 @@ caller that can never answer.
 > A two-valued predicate forces every caller who does not know to lie, and the
 > caller who lies in the safe-looking direction is the one that loses data.
 
-The same reasoning is why the capability probe in §13.7 treats `null` — nothing
-has probed yet — as permission to proceed rather than as a failure. Three
+The same reasoning is why the capability probe in §13.7 treats `null`, nothing
+has probed yet, as permission to proceed rather than as a failure. Three
 answers, in both places, for the same reason.
 
 ### 13.11 Settings that ship configured and read by nothing
 
 `surfaces.email.inbound.gmailPollSecondsExpecting`, `.gmailPollSecondsIdle` and
 `.onInsufficientCapability` each had a schema row, a documented default, a
-validated range, daemon-owned scope and a user-facing description — and no
+validated range, daemon-owned scope and a user-facing description, and no
 consumer anywhere in `packages/sdk/src`. Two of them were *named in doc comments*
 beside the fields they are supposed to fill (`GmailMailSourceDeps.pollExpectingMs`
 and `pollIdleMs`), which is what made them look wired.
 
 The two Gmail keys are now read, and the reason they were not is §13.12: the
 only constructor that takes them had no production call site at all. They are
-filled in `composeInboundMail`, and the effect — both intervals read back off a
-running Gmail source, the short one after an expectation is opened — is asserted
+filled in `composeInboundMail`, and the effect, both intervals read back off a
+running Gmail source, the short one after an expectation is opened, is asserted
 in `test/inbound-mail-gmail-reachability.test.ts`.
 
 `onInsufficientCapability` is now read too, and closing it needed a path built
@@ -2644,7 +2616,7 @@ arriving mail from envelope fields alone, and nothing could do that: on IMAP,
 are no envelopes, and every other `insufficient` reason is "cannot log in",
 "cannot open the mailbox" or "cannot keep a cursor". Wiring the key without the
 path would have made the settings UI offer a behaviour the daemon answered with
-silence — the V9 failure below with a switch on it.
+silence, the V9 failure below with a switch on it.
 
 The one condition where mail can be seen arriving without being readable is a
 Google `gmail.metadata` grant: headers are authorized, bodies are not. So
@@ -2652,7 +2624,7 @@ Google `gmail.metadata` grant: headers are authorized, bodies are not. So
 `collectHistoryDelta` takes that path under `onMetadataOnlyGrant:
 'fetch-metadata'` and returns a delta whose `bodies` field reads
 `withheld-metadata-only`, and `intake.ts` routes those messages to the
-`capability-degraded` notice outcome — which had existed, been rendered and been
+`capability-degraded` notice outcome, which had existed, been rendered and been
 tested with **zero producers**.
 
 Two consequences are load-bearing rather than incidental:
@@ -2660,7 +2632,7 @@ Two consequences are load-bearing rather than incidental:
 - **A metadata-only message can never satisfy a verification expectation.**
   `matchCandidate` gates on the delivery-evidence address and nothing else, and
   that address is a *header*, so a metadata-only message would otherwise match an
-  open expectation and consume it on evidence nobody read — the verification link
+  open expectation and consume it on evidence nobody read, the verification link
   lives in the body that was never fetched. The intake therefore does not consult
   the expectation book at all on that path.
 - **`notice-only` degrades to `refuse-and-notify` on every other reason, and says
@@ -2672,14 +2644,14 @@ Two consequences are load-bearing rather than incidental:
 
 This is the failure mode §13.7's V9 row describes, one level up: the schema half
 of the coverage is thorough enough that the missing half does not show. A
-setting is not a feature until something reads it — see the owner ruling that
+setting is not a feature until something reads it, see the owner ruling that
 every flag ships as a real configurable feature.
 
 `inbound-email-config-schema.test.ts` scans production sources for a *read* of
 each key (inside a `get(...)` or `readNumberSetting(...)` call, not a mention in
 prose) and fails if the set of unread keys is anything other than the named
 inert list. Wiring one reddens it, which forces an effect assertion to be written
-rather than the key quietly joining the "tested" pile — which is exactly what
+rather than the key quietly joining the "tested" pile, which is exactly what
 happened when the two Gmail keys were wired.
 
 ### 13.12 The Gmail source was complete, tested, exported and never constructed
@@ -2689,15 +2661,13 @@ happened when the two Gmail keys were wired.
 and its comment read "Supplied by a composition that has an adopted Google
 credential." **No such composition existed.** `deps.gmail` was `undefined` on
 every machine, `create()` answered `null` for `kind: 'gmail'`, and
-`selectionFacts` reported `googleAdopted: options.gmail !== undefined` —
-permanently false.
+`selectionFacts` reported `googleAdopted: options.gmail !== undefined`, permanently false.
 
 The consequence was not a degraded Gmail path; it was no Gmail path. An owner
 with Google adopted and IMAP never configured got an inactive supervisor whose
 status told him "no Google credentials have been adopted on this machine",
 sending him to look for a credential that was already there. Everything else on
-the inbound path — the cursor, backoff, dedup, expectations, the notice route —
-was on the IMAP branch he did not use.
+the inbound path, the cursor, backoff, dedup, expectations, the notice route, was on the IMAP branch he did not use.
 
 Three things kept it invisible:
 
@@ -2705,7 +2675,7 @@ Three things kept it invisible:
     That is precisely the shape production lacked, so the suite was green over
     the one condition that mattered.
   - **`GoogleApiClient` had no way to produce a `currentHistoryId`.** It exposed
-    no profile call, which the source's own comment recorded — so the missing
+    no profile call, which the source's own comment recorded, so the missing
     wiring had a true-sounding excuse attached to it.
   - **`mailAccountIsGmail` was read off the configured IMAP host.** On a machine
     with Google adopted and no IMAP at all it answered `false`, so even a wired
@@ -2713,7 +2683,7 @@ Three things kept it invisible:
 
 All three are closed. `GoogleApiClient.getProfile()` / `.currentHistoryId()`
 call `users.getProfile`, whose `historyId` is documented as "the ID of the
-mailbox's current history record" — the right value for a path that establishes
+mailbox's current history record", the right value for a path that establishes
 without backfilling. `createDaemonGmailInboundReader` resolves the adopted
 credential in the daemon tier, exactly as `createDaemonCalendarGatewayService`
 does. `isGmailMailbox` accepts the address `users.getProfile` returns as direct
@@ -2724,7 +2694,7 @@ An unfilled optional field is indistinguishable from a machine with no Google
 account, and that indistinguishability is the whole defect; a required provider
 that ANSWERS `unavailable` with a reason carries the same information and cannot
 be silently dropped, because `createBuiltinChannelRuntime` stops compiling.
-That compile error is the gate — a test could go inert the same way the code
+That compile error is the gate, a test could go inert the same way the code
 did.
 
 ### 13.13 The load-bearing false comment, and the merge-resolution variant
@@ -2736,11 +2706,11 @@ that is what stopped anyone checking it.
 
 The two instances inside this document's own scope, both fixed here:
 
-- `terminal-notice.ts`'s *"its result is deliberately unread"* — §13.8 already
+- `terminal-notice.ts`'s *"its result is deliberately unread"*, §13.8 already
   records this one. The sentence was the defect's rationale, not its
   description.
 - `sink.ts`, `dedupTtlMs()`, §6 and the §8 table all asserting the dedup TTL
-  "must outlast a restart cycle" — a property the mechanism cannot provide at
+  "must outlast a restart cycle", a property the mechanism cannot provide at
   any value, protecting a config floor that guarded nothing (§13.9).
 
 Two more of the same class arrived elsewhere in the round and are recorded here
@@ -2754,7 +2724,7 @@ instances and not described further.
 rather than from authorship.** `record-store.ts` carried *"Not reachable today:
 `intake.ts` passes `body: ''`"*. That was accurate against the tree the scan-
 window fix was written for, and false against the tree it landed in, because the
-Gmail body arm merged in between — the IMAP envelope pass sends `''`, a Gmail
+Gmail body arm merged in between, the IMAP envelope pass sends `''`, a Gmail
 history delta sends the real body. Nothing about the line changed; the tree
 moved under it. The code the comment called unreachable was executing while the
 suite was green, and `inbound-mail-intake.test.ts` had been driving a card
@@ -2787,7 +2757,7 @@ it.
 
 ## 14. Related
 
-- `docs/payments.md` — a consumer of this capability.
-- `docs/decisions/2026-07-27-daemon-refuses-derived-sends.md` — the outward-send
+- `docs/payments.md`, a consumer of this capability.
+- `docs/decisions/2026-07-27-daemon-refuses-derived-sends.md`, the outward-send
   refusal this ingest path feeds.
-- `docs/security.md` — untrusted content and link validation.
+- `docs/security.md`, untrusted content and link validation.

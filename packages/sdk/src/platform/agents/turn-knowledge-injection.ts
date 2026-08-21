@@ -1,4 +1,4 @@
-// turn-knowledge-injection.ts — per-turn passive retrieval (see CHANGELOG 0.38.0).
+// turn-knowledge-injection.ts, per-turn passive retrieval (see CHANGELOG 0.38.0).
 //
 // Spawn-time knowledge injection (orchestrator-prompts.ts buildOrchestratorSystemPrompt)
 // runs `selectKnowledgeForTask` exactly ONCE against the frozen `record.task`, caches
@@ -12,7 +12,7 @@
 // (`selectKnowledgeForTaskScored`) so scoring semantics never diverge from the spawn-time
 // baseline, then applies two things spawn-time selection does NOT have:
 //   1. a relevance floor (kill low-signal filler that would otherwise pad every turn), and
-//   2. a hard token budget (never silently balloon the system prompt — drop the
+//   2. a hard token budget (never silently balloon the system prompt, drop the
 //      lowest-scored candidates first, and drop everything if even the single
 //      highest-scored candidate cannot fit).
 //
@@ -47,7 +47,7 @@ export const DEFAULT_TURN_KNOWLEDGE_BUDGET_TOKENS = 800;
  * picked arbitrarily: a record sitting exactly at the confidence floor (55) with the
  * weakest positive reviewState bonus ('fresh', +20) that matches at least one task token
  * (+20) scores 55 + 20 + 20 = 95. Below that, a record is either under-confidence, has no
- * reviewState credit, or matched nothing about the current turn — filler, not relevance.
+ * reviewState credit, or matched nothing about the current turn, filler, not relevance.
  */
 export const DEFAULT_TURN_KNOWLEDGE_RELEVANCE_FLOOR = 95;
 
@@ -74,7 +74,7 @@ export const DEFAULT_TURN_CODE_LIMIT = 3;
  * Consequences of scale = 200, stated so the mapping is auditable, not magic:
  *   - The default floor 95 admits code at similarity >= 0.475.
  *   - An orthogonal (unrelated) normalized-embedding pair has cosine 0, i.e.
- *     L2 distance sqrt(2) ≈ 1.414, i.e. similarity ≈ 0.293 — BELOW 0.475, so
+ *     L2 distance sqrt(2) ≈ 1.414, i.e. similarity ≈ 0.293, BELOW 0.475, so
  *     unrelated chunks never clear the floor.
  *   - A genuinely similar chunk (similarity 0.5–1.0 → score 100–200) clears it.
  *   - Because the SAME configurable floor scales both sources, raising the
@@ -93,7 +93,7 @@ export const DEFAULT_TURN_INJECTION_RING_SIZE = 20;
  * fake without constructing a real sqlite-backed store. `stats()` exposes the
  * exact honesty signals the retrieval gates on: an empty index, a provider-
  * space mismatch, or a hashed-only (no real semantic) provider each mean "do
- * not auto-inject" — see collectCodeInjectionCandidates.
+ * not auto-inject", see collectCodeInjectionCandidates.
  */
 export type TurnCodeIndexSource = {
   search(query: string, opts?: { limit?: number }): readonly CodeContextResult[];
@@ -125,7 +125,7 @@ export function defaultTurnKnowledgeBudgetTokens(
 /**
  * Per-turn honesty record for one agent turn's passive-injection attempt. Stored on
  * `AgentRecord.turnInjections` (bounded ring) and appended verbatim to the agent's
- * session transcript (`{type:'knowledge_injection', turn, ...record}`) — no new
+ * session transcript (`{type:'knowledge_injection', turn, ...record}`), no new
  * event-contract member, per the brief's "prefer existing-event reuse" constraint.
  */
 export interface TurnInjectionRecord {
@@ -138,7 +138,7 @@ export interface TurnInjectionRecord {
   /**
    * Count of not-already-injected CODE-INDEX hits considered this turn (before the relevance floor).
    * 0 when code injection was off / no code source was wired / the index was empty or mismatched
-   * (see codeInjectionSkipped for which). Stage B — memory-only records keep this at 0.
+   * (see codeInjectionSkipped for which). Stage B, memory-only records keep this at 0.
    */
   readonly codeCandidatesConsidered: number;
   /** Record ids actually injected into the prompt this turn (empty when block===null). */
@@ -169,7 +169,7 @@ export interface TurnInjectionRecord {
    * injected line, stating why in the store's own terms: 'code index empty', a provider-space
    * mismatch string, 'no semantic embedding provider', or 'no code chunks cleared the relevance
    * floor'. Undefined when code injected at least one line, or when code injection was off (the
-   * flag/setting gate never called into the index — nothing to explain).
+   * flag/setting gate never called into the index, nothing to explain).
    */
   readonly codeInjectionSkipped?: string | undefined;
   /** Honest embeddings signal: 'available' when the registry's vector index is enabled and
@@ -184,7 +184,7 @@ export interface TurnInjectionRecord {
  * Structural registry surface, mirroring knowledge-injection.ts's private
  * `KnowledgeRegistrySource` plus one addition: optional `vectorStats`, the sole signal this
  * module uses to tell a real semantic search apart from memory-store.ts's silent lexical
- * fallback (searchSemantic() never throws on a missing/disabled vector index — it just
+ * fallback (searchSemantic() never throws on a missing/disabled vector index, it just
  * degrades to keyword ranking). Kept structural (not `Pick<MemoryRegistry, ...>`) so tests
  * can supply a minimal fake without constructing a real MemoryStore/SQLite.
  */
@@ -196,10 +196,10 @@ export type TurnKnowledgeRegistrySource = {
 
 export interface BuildPerTurnKnowledgeInjectionInput {
   readonly memoryRegistry: TurnKnowledgeRegistrySource;
-  /** The agent's (possibly frozen) task text — always included in the derived query. */
+  /** The agent's (possibly frozen) task text, always included in the derived query. */
   readonly task: string;
   readonly writeScope?: readonly string[] | undefined;
-  /** The current conversation, formatted for the LLM — the source of "what changed this turn". */
+  /** The current conversation, formatted for the LLM, the source of "what changed this turn". */
   readonly conversationTail: readonly ProviderMessage[];
   /** Hard token budget for the rendered block. budgetTokens<=0 is the caller's job to no-op on;
    *  this function still honors it correctly (an empty/null block, honest record). */
@@ -210,16 +210,16 @@ export interface BuildPerTurnKnowledgeInjectionInput {
   readonly alreadyInjectedIds: readonly string[];
   readonly turn: number;
   /**
-   * Stage B — repo code index. Optional; the two callers pass it only when a store is wired.
+   * Stage B, repo code index. Optional; the two callers pass it only when a store is wired.
    * Whether code hits are actually retrieved is gated by `codeInjectionEnabled` (below) AND
    * the store's own honesty checks (empty index / provider mismatch / no semantic provider),
    * so a wired-but-disabled source is a hard no-op with an honest record.
    */
   readonly codeIndex?: TurnCodeIndexSource | undefined;
   /**
-   * Stage B — resolved code-injection gate for this turn: (the `agent-passive-code-injection`
+   * Stage B, resolved code-injection gate for this turn: (the `agent-passive-code-injection`
    * gate, off by default via agents.passiveInjection.code) AND (the embedder's storage.codeIndexEnabled setting). Resolved
-   * by the caller, not this pure function. Defaults to false — code injection never happens
+   * by the caller, not this pure function. Defaults to false, code injection never happens
    * unless the caller explicitly opted in this turn, matching the flag's default-off posture.
    */
   readonly codeInjectionEnabled?: boolean | undefined;
@@ -242,8 +242,8 @@ function extractTextContent(content: string | readonly ContentPart[]): string {
 
 /**
  * The one behavioral difference from spawn-time selection: derive the query from the
- * LATEST user-role message in the conversation tail (a steer, a drained directive, or —
- * on turn 1, before any steer exists — the initial task itself) concatenated with the
+ * LATEST user-role message in the conversation tail (a steer, a drained directive, or,
+ * on turn 1, before any steer exists, the initial task itself) concatenated with the
  * task, instead of the task alone. On turn 1 the latest user message IS the task (the
  * runner seeds it via `conversation.addUserMessage(record.task)` before the turn loop),
  * so this collapses to the task with no duplication.
@@ -286,8 +286,8 @@ function codeHitId(hit: CodeContextResult): string {
 
 /**
  * Retrieve, gate, and floor-filter code-index candidates for this turn. Returns the
- * candidates that cleared the floor, the count considered (pre-floor, post-dedupe), and —
- * when nothing was contributed for a stateable reason — an honest skip string. Honours the
+ * candidates that cleared the floor, the count considered (pre-floor, post-dedupe), and,
+ * when nothing was contributed for a stateable reason, an honest skip string. Honours the
  * store's own honesty signals (never inject from an empty or provider-mismatched index, and
  * never from a hashed-only provider whose "semantic" retrieval is a weak lexical-ish signal).
  */

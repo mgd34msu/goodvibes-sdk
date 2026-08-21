@@ -1,15 +1,15 @@
 /**
- * rest-transport.ts — the session-spine's raw-REST `SpineTransport`.
+ * rest-transport.ts, the session-spine's raw-REST `SpineTransport`.
  *
  * A hand-rolled REST mirror of the daemon's `sessions.register` /
  * `sessions.close` HTTP routes (`POST /api/sessions/register`,
- * `POST /api/sessions/{sessionId}/close` — see
+ * `POST /api/sessions/{sessionId}/close`, see
  * `method-catalog-control-core.ts`), written request/response only with a
  * Bearer token and an `AbortController` timeout, deliberately NOT the typed
  * operator SDK client. "Version-tolerant" here means tolerant of the ADOPTED
  * DAEMON's version, not this package's: a consumer can attach to a daemon
  * that predates one of these routes, and every response is classified from
- * its actual HTTP status rather than assumed present — a 404 becomes an
+ * its actual HTTP status rather than assumed present, a 404 becomes an
  * honest `connected_host_route_unavailable` rather than a thrown parse error.
  *
  * ── Hoist provenance (2026-07-30 daemon/TUI split) ──────────────────────────
@@ -19,13 +19,13 @@
  * this raw-REST mirror plus a probe and a receipt consumer) carried a
  * `SpineTransport` implementation. The agent's is the superset adopted here:
  * it folds failures into THREE outcomes (`ok`/`offline`/`rejected`) instead
- * of the TUI's two (`ok`/`offline`, which treats every failure — including a
- * durable auth/route rejection — as a transient connectivity fault the spine
+ * of the TUI's two (`ok`/`offline`, which treats every failure, including a
+ * durable auth/route rejection, as a transient connectivity fault the spine
  * client will retry forever), and it supplies a reachability probe and a
  * daemon-receipt consumer the TUI's thinner adapter did not need because it
  * already had a live, in-process typed client for those concerns. Kept out
  * of this hoist: the agent's `createSpineConnectionResolver` (reads a
- * connected-host token file from a specific home directory — a consumer
+ * connected-host token file from a specific home directory, a consumer
  * trust-boundary concern the SDK core deliberately never reaches into; a
  * consumer builds its own `resolveConnection` and passes it in here).
  */
@@ -254,8 +254,8 @@ export interface SessionSpineRestProbeOptions {
 
 /**
  * Builds the zero-argument `probe` `SessionSpineClient.probeReachability()`
- * calls directly (its injected-probe shape takes no parameters — the client
- * has no connection to hand it). Liveness only — receipt consumption is
+ * calls directly (its injected-probe shape takes no parameters, the client
+ * has no connection to hand it). Liveness only, receipt consumption is
  * {@link createSessionSpineReceiptConsumer}, not this.
  */
 export function createSessionSpineRestProbe(options: SessionSpineRestProbeOptions): () => Promise<boolean> {
@@ -316,7 +316,7 @@ export interface SessionSpineReceiptConsumerOptions {
 /**
  * Builds the zero-argument receipt consumer a consumer invokes once per
  * attach. Delivery is destructive at the daemon (served exactly once), so
- * this must be called on attach only — never on the frequent liveness probe
+ * this must be called on attach only, never on the frequent liveness probe
  * cadence above.
  */
 export function createSessionSpineReceiptConsumer(

@@ -75,7 +75,7 @@ describe('AgentWorktree', () => {
     writeFileSync(join(root, 'gone.ts'), 'export const gone = true;\n');
     runGit(root, ['add', 'gone.ts']);
     runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'seed']);
-    // Delete the tracked file from the working tree without staging the removal — the
+    // Delete the tracked file from the working tree without staging the removal, the
     // engineer's report claims a deletion of a path that git still has tracked in HEAD.
     Bun.spawnSync(['rm', join(root, 'gone.ts')]);
 
@@ -91,7 +91,7 @@ describe('AgentWorktree', () => {
     // Reproduces the WRFC trust defect: the product writes .gitignore (ignoring .goodvibes/) and
     // its own bookkeeping under .goodvibes/, so a self-reported ledger mixes a real deliverable
     // with an ignored path. `git add -A -- <deliverable> <ignored>` exits non-zero AFTER staging
-    // the deliverable — the ignored path must be filtered out first.
+    // the deliverable, the ignored path must be filtered out first.
     const root = mkdtempSync(join(tmpdir(), 'agent-worktree-ignored-'));
     runGit(root, ['init']);
     writeFileSync(join(root, '.gitignore'), '.goodvibes/\n');
@@ -114,7 +114,7 @@ describe('AgentWorktree', () => {
     const committedFiles = runGit(root, ['show', '--stat', '--name-only', 'HEAD']);
     expect(committedFiles).toContain('slugify.ts');
     expect(committedFiles).not.toContain('.goodvibes');
-    // Index is clean — nothing left staged after the commit.
+    // Index is clean, nothing left staged after the commit.
     expect(runGit(root, ['diff', '--cached', '--name-only']).trim()).toBe('');
   });
 
@@ -144,7 +144,7 @@ describe('AgentWorktree', () => {
     runGit(root, ['add', 'seed.ts']);
     runGit(root, ['-c', 'user.email=a@b.c', '-c', 'user.name=test', 'commit', '-m', 'seed']);
 
-    // Install a pre-commit hook that always rejects. The executable bit must be set explicitly —
+    // Install a pre-commit hook that always rejects. The executable bit must be set explicitly,
     // git ignores a non-executable hook (and writeFileSync's mode is not honored reliably here).
     const hookDir = join(root, '.git', 'hooks');
     mkdirSync(hookDir, { recursive: true });
@@ -156,7 +156,7 @@ describe('AgentWorktree', () => {
     const worktree = new AgentWorktree(root);
     await expect(worktree.commitWorkingTree('WRFC: rejected', ['deliverable.ts'])).rejects.toThrow();
 
-    // Index must be clean despite the failed commit — the staged path was reset.
+    // Index must be clean despite the failed commit, the staged path was reset.
     expect(runGit(root, ['diff', '--cached', '--name-only']).trim()).toBe('');
     // And the working-tree file is untouched (still present, just not staged).
     expect(runGit(root, ['status', '--porcelain']).trim()).toContain('deliverable.ts');

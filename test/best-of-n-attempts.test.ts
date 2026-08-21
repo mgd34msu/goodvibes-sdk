@@ -4,7 +4,7 @@
  * Covers expansion into N siblings (worktree only), the held-merge park instead
  * of auto-merge, group readiness, the winner pick (winner merges, losers are
  * cleaned), the model judge proposal + auto-accept, and the per-item budget
- * ceiling. Drives the coordinator directly with fakes — no git, no agents.
+ * ceiling. Drives the coordinator directly with fakes, no git, no agents.
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -106,7 +106,7 @@ describe('hold-vs-merge and readiness', () => {
     h.coordinator.onItemPassedTerminal(ws, siblings[0]!);
     expect(siblings[0]!.state).toBe('held-merge');
     expect(h.events.some((e) => e.type === 'item-attempt-held')).toBe(true);
-    // Not ready yet — sibling 1 is still pending.
+    // Not ready yet, sibling 1 is still pending.
     expect(h.events.some((e) => e.type === 'attempts-ready')).toBe(false);
 
     h.coordinator.onItemPassedTerminal(ws, siblings[1]!);
@@ -148,7 +148,7 @@ describe('pickWinner', () => {
     expect(h.cleaned.sort()).toEqual([siblings[0]!.id, siblings[2]!.id].sort());
     expect(winner.state).toBe('passed');
     expect(h.events.some((e) => e.type === 'attempt-winner-picked')).toBe(true);
-    // Group is resolved — a second pick is an honest error.
+    // Group is resolved, a second pick is an honest error.
     await expect(h.coordinator.pickWinner(groupId, winner.id)).rejects.toBeInstanceOf(AttemptError);
   });
 

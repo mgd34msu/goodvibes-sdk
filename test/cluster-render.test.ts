@@ -1,11 +1,11 @@
 /**
- * cluster-render.test.ts — clipboardEscapeSequence byte pinning.
+ * cluster-render.test.ts, clipboardEscapeSequence byte pinning.
  *
  * OSC 52 is the only clipboard path that survives SSH, and it is written by
  * hand as a string. That makes it uniquely fragile: the introducer (ESC, 0x1b)
  * and the terminator (BEL, 0x07) are invisible, so a copy between files, an
  * editor normalising a line, or a careless diff can drop them and leave a
- * function that still returns a plausible-looking `]52;c;<base64>` — which the
+ * function that still returns a plausible-looking `]52;c;<base64>`, which the
  * terminal does not act on, and instead prints at the operator.
  *
  * That is not hypothetical: the bytes HAVE been lost this way, and it shipped

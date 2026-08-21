@@ -9,7 +9,7 @@
  * a rich, structured artifact that an orchestration engine can render for
  * human approval and (once approved) instantiate.
  *
- * A `PlanProposal` is DATA. It is never instantiated on its own — approval
+ * A `PlanProposal` is DATA. It is never instantiated on its own, approval
  * flows through the existing `ProjectPlanningState.executionApproved` gate
  * (see `planProposalToPlanningState` below), and durable persistence reuses
  * `ExecutionPlanManager` (see `planProposalToExecutionPlanItems` below).
@@ -56,11 +56,11 @@ export interface WorkItem {
   /**
    * Best-of-N: run this item as N sibling attempts in isolated worktrees and
    * HOLD the merge for a winner pick instead of auto-merging (the orchestration
-   * engine's best-of-N — platform/orchestration/attempts.ts). Previously the
+   * engine's best-of-N, platform/orchestration/attempts.ts). Previously the
    * plan format constrained this OUT (every item was single-attempt); the engine
    * now supports it, so a planner may propose it. A best-of-N item may be
    * NON-LEAF: it may declare `dependsOn` (each attempt inherits it) and other
-   * items may depend on it — a dependent gates on the group's picked-and-merged
+   * items may depend on it, a dependent gates on the group's picked-and-merged
    * winner (the losing attempts are cleaned first). Omitted/1 ⇒ an ordinary single
    * item. Only honored under `worktree` workstream isolation.
    */
@@ -82,9 +82,9 @@ export type PlanProposalSource = 'planner-agent' | 'single-item-fallback' | 'cal
 /**
  * Honest provenance for how a proposal's work items were produced.
  *
- * - `'agent'`     — a read-only planning agent decomposed the goal, and its
+ * - `'agent'`    , a read-only planning agent decomposed the goal, and its
  *   output validated cleanly (possibly after one repair attempt).
- * - `'heuristic'` — the deterministic single-item path produced the proposal,
+ * - `'heuristic'`, the deterministic single-item path produced the proposal,
  *   either because `planner.decomposition` is configured to `'heuristic'`, the
  *   planner's gate declined to decompose, or the agent path failed and fell
  *   back. `fallbackReason` is set only in the failure case, never when the
@@ -125,7 +125,7 @@ export interface PlanProposal {
   /**
    * Why the agent path fell back to the heuristic path. Set ONLY on honest
    * failure fallbacks (spawn error, timeout, cancellation, or output that was
-   * still malformed after one repair attempt) — never when `'heuristic'` was
+   * still malformed after one repair attempt), never when `'heuristic'` was
    * chosen by config or by the planner's decompose gate.
    */
   fallbackReason?: string | undefined;
@@ -228,7 +228,7 @@ function detectCycleTitles(workItems: readonly WorkItem[]): string[] {
  * a dep that already looks like a UUID passes through unchecked, otherwise
  * it is resolved by case-insensitive title match, otherwise it is dropped.
  *
- * `source` defaults to `'planner-agent'` (the expected majority caller —
+ * `source` defaults to `'planner-agent'` (the expected majority caller,
  * `AdaptivePlanner.proposeWorkstream`). Pass `'caller-supplied'` when a
  * non-agent caller hands in its own decomposition directly.
  */
@@ -297,7 +297,7 @@ export function assemblePlanProposal(
     } satisfies WorkItem;
   });
 
-  // Pass 3: resolve dependsOn — UUID passthrough, else case-insensitive title lookup, else drop.
+  // Pass 3: resolve dependsOn, UUID passthrough, else case-insensitive title lookup, else drop.
   for (let i = 0; i < workItems.length; i++) {
     const rawDeps = raw.workItems[i]?.dependsOn;
     if (!rawDeps || rawDeps.length === 0) continue;
@@ -377,7 +377,7 @@ export function singleItemProposal(task: string): PlanProposal {
 
 /**
  * Project a `PlanProposal` into the existing `/plan approve` seam. This is
- * data-only — no store is written here. The caller feeds the result into
+ * data-only, no store is written here. The caller feeds the result into
  * `ProjectPlanningService.upsertState` (or an equivalent), which is what
  * actually persists it and evaluates readiness.
  *
@@ -390,7 +390,7 @@ export function singleItemProposal(task: string): PlanProposal {
  * `ProjectPlanningTask` has no first-class phase concept, so phase
  * membership is preserved in `metadata` rather than dropped silently.
  *
- * `executionApproved` is always `false` here — approval is a separate,
+ * `executionApproved` is always `false` here, approval is a separate,
  * explicit step owned by `/plan approve` (planning-runtime.ts), never implied
  * by proposing.
  */
@@ -445,7 +445,7 @@ export function planProposalToPlanningState(proposal: PlanProposal): Partial<Pro
  * re-deriving the phase/description/dependency shape by hand.
  *
  * Dependencies are expressed as WORK ITEM TITLES, not ids, because
- * `ExecutionPlanManager.create()` does not resolve dependency references —
+ * `ExecutionPlanManager.create()` does not resolve dependency references,
  * only `ExecutionPlanManager.replaceItems()` does, by case-insensitive
  * description match. The intended call sequence at instantiation is
  * therefore:
@@ -456,7 +456,7 @@ export function planProposalToPlanningState(proposal: PlanProposal): Partial<Pro
  *
  * which reuses `replaceItems`' existing dependency resolver end-to-end
  * instead of re-implementing dependency resolution here. This module defines
- * no scheduler of its own — ready-to-run item selection stays
+ * no scheduler of its own, ready-to-run item selection stays
  * `ExecutionPlanManager.getNextItems`'s job.
  */
 export function planProposalToExecutionPlanItems(

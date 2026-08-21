@@ -1,11 +1,11 @@
 /**
- * pending.ts — what is outstanding, for a surface that ASKS rather than receives.
+ * pending.ts, what is outstanding, for a surface that ASKS rather than receives.
  *
  * The pull half of the feature, and under the two-boundary cadence it carries
  * considerably more weight than it used to. A nudge now pushes twice: at the
  * top of its lead window and on the day itself. For the whole stretch between
  * those two moments the occasion is open, quiet, and reachable only through
- * here — "anything coming up?" is the way he finds out, and that is the design
+ * here, "anything coming up?" is the way he finds out, and that is the design
  * rather than a gap in it. Nothing unresolved drops; it simply stops shouting.
  *
  * Three things are enumerated that a push would never send him:
@@ -39,7 +39,7 @@ export interface PendingResult {
    *
    * Kept out of `nudge` on purpose. The nudge is composed as something to say
    * to him, and saying an acknowledged occasion back at him is the badgering
-   * this whole round exists to stop — but he asked what is coming up, and an
+   * this whole round exists to stop, but he asked what is coming up, and an
    * honest answer includes the one he told us he has in hand.
    */
   readonly acknowledged: readonly NudgeSubject[];
@@ -62,8 +62,8 @@ export interface PendingInput {
  * Compose the pull. Pure: same inputs, same answer.
  *
  * The agent de-duplication is scoped TO THE DAY the push landed, and that
- * narrowing is load-bearing. It used to be permanent — an item the agent had
- * ever been pushed carried a stamp and never appeared here again — which was
+ * narrowing is load-bearing. It used to be permanent, an item the agent had
+ * ever been pushed carried a stamp and never appeared here again, which was
  * survivable when a push repeated every few days and is not survivable now that
  * there are only two. Under the old rule, an occasion pushed once at the top of
  * its window would then be invisible to "anything coming up?" for the entire

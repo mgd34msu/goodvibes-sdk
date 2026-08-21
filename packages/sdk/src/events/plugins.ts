@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * PluginEvent — discriminated union covering all plugin lifecycle events.
+ * PluginEvent, discriminated union covering all plugin lifecycle events.
  *
  * Covers plugin lifecycle events for the runtime event bus.
  */

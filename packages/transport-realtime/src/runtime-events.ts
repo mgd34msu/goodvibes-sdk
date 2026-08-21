@@ -55,13 +55,13 @@ export interface RemoteRuntimeEventsOptions {
  * const session = await sdk.operator.sessions.create({ title: 'demo' });
  * const sessionId = session.session.id;
  *
- * // Before forSession — repeated manual guard:
+ * // Before forSession, repeated manual guard:
  * events.turn.onEnvelope('STREAM_DELTA', (e) => {
  *   if (e.sessionId !== sessionId) return;
  *   process.stdout.write(e.payload.content);
  * });
  *
- * // After forSession — clean, session-scoped subscription:
+ * // After forSession, clean, session-scoped subscription:
  * const sessionEvents = forSessionRuntime(events, sessionId);
  * sessionEvents.turn.onEnvelope('STREAM_DELTA', (e) => {
  *   process.stdout.write(e.payload.content);
@@ -110,7 +110,7 @@ function isSocketOpen(socket: WebSocket, WebSocketImpl: typeof WebSocket): boole
 
 /**
  * Creates a {@link WebSocketTransportError} from a raw server-sent payload body,
- * unpacking a {@link StructuredDaemonErrorBody} when present — matching the
+ * unpacking a {@link StructuredDaemonErrorBody} when present, matching the
  * envelope parity that `createHttpStatusError` provides for HTTP errors.
  *
  * When the server sends a structured `{ error, code, category, recoverable, … }` body
@@ -362,7 +362,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       options.onConnectionStateChange?.(state);
       options.onTransportEvent?.({ type: 'TRANSPORT_CONNECTION_STATE', transportId, state });
     };
-    // Bounded outbound message queue — max entries and total bytes, drop-oldest policy.
+    // Bounded outbound message queue, max entries and total bytes, drop-oldest policy.
     // Messages pushed while the socket is not yet open or is reconnecting are buffered here
     // and flushed on the next successful open event.
     const outboundQueue: Array<{ readonly data: string; readonly sizeBytes: number }> = [];
@@ -553,7 +553,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
     };
 
     const onOpen = async (event: Event) => {
-      // NOTE: do NOT call emitConnectionState('connecting') here — connect()
+      // NOTE: do NOT call emitConnectionState('connecting') here, connect()
       // already emits it before creating the socket. Calling it here would
       // be a dedup-suppressed no-op (lastConnectionState is already 'connecting')
       // and is semantically wrong since the socket is now open, not connecting.
@@ -682,7 +682,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
         stabilityTimer = null;
       }
       // RFC 6455 §7.4.1: code 1005 (No Status Received) is synthesized by runtimes
-      // when a socket closes WITHOUT a close frame — including abnormal drops (process
+      // when a socket closes WITHOUT a close frame, including abnormal drops (process
       // death, proxy teardown, RST) where wasClean === false. Only a genuine clean
       // shutdown has wasClean === true AND code === 1000. Everything else must reconnect.
       //
@@ -690,10 +690,10 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
       // and on the 'ws' package's CloseEvent (used by Node.js and Bun). If a runtime
       // somehow does not expose wasClean, `event.wasClean` is undefined (falsy), so
       // the expression `event.wasClean === true` correctly falls back to reconnecting
-      // for any ambiguous close — never suppresses reconnect incorrectly.
+      // for any ambiguous close, never suppresses reconnect incorrectly.
       const isCleanClose = event.wasClean === true && event.code === 1000;
       if (!stopped && !isCleanClose) {
-        // Abnormal close — surface error and schedule reconnect.
+        // Abnormal close, surface error and schedule reconnect.
         // The raw close reason is forwarded so TRANSPORT_RECONNECT_ATTEMPT
         // metadata is meaningful to diagnostic UIs.
         const closeError = webSocketCloseError(event);
@@ -706,7 +706,7 @@ export function createWebSocketConnector<TEvent extends RuntimeEventRecord = Run
           : `code=${event.code}`;
         scheduleReconnect(rawReason);
       } else {
-        // Clean close (wasClean === true && code === 1000) — deliberate server-side
+        // Clean close (wasClean === true && code === 1000), deliberate server-side
         // disconnect. We do NOT schedule a reconnect: the server explicitly terminated
         // the session and the client should stay disconnected.
         //
@@ -776,8 +776,8 @@ function webSocketCloseError(event: CloseEvent): Error {
 
 function webSocketEventError(event: Event, socket: WebSocket | null, url: string): Error {
   // We cast to ErrorEvent to access `error`/`message` fields.
-  // Per the WHATWG spec, WebSocket `error` events are plain Events — not ErrorEvents
-  // — so `candidate.error` and `candidate.message` may be undefined in compliant
+  // Per the WHATWG spec, WebSocket `error` events are plain Events, not ErrorEvents
+  //, so `candidate.error` and `candidate.message` may be undefined in compliant
   // browsers. The safe-extract path below handles both cases: if `candidate.error`
   // is defined we treat it as an ErrorEvent (V8/Bun do populate it on some failures);
   // if not, we fall through to the generic `describeUnknownTransportError` branch.

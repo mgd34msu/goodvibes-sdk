@@ -1,5 +1,5 @@
 /**
- * McpRegistry — manages all connected MCP servers.
+ * McpRegistry, manages all connected MCP servers.
  *
  * Progressive loading strategy:
  *   - On connect: load tool names and descriptions only.
@@ -124,7 +124,7 @@ export class McpRegistry {
   }
 
   /**
-   * connectAll — Load config from .goodvibes/mcp.json and connect to all servers.
+   * connectAll, Load config from .goodvibes/mcp.json and connect to all servers.
    * Errors on individual servers are logged but do not abort the whole startup.
    */
   async connectAll(roots: McpConfigRoots): Promise<void> {
@@ -132,7 +132,7 @@ export class McpRegistry {
   }
 
   /**
-   * connectServer — Connect a single MCP server by config.
+   * connectServer, Connect a single MCP server by config.
    * Exposed for programmatic use (testing, dynamic registration).
    */
   async connectServer(serverConfig: McpServerConfig): Promise<void> {
@@ -213,8 +213,8 @@ export class McpRegistry {
   }
 
   /**
-   * listAllTools — Return all registered tools (name + description) from all connected servers.
-   * Only loads tool names and descriptions — full schemas are NOT fetched here.
+   * listAllTools, Return all registered tools (name + description) from all connected servers.
+   * Only loads tool names and descriptions, full schemas are NOT fetched here.
    */
   async listAllTools(): Promise<RegisteredTool[]> {
     const results: RegisteredTool[] = [];
@@ -238,7 +238,7 @@ export class McpRegistry {
   }
 
   /**
-   * getToolSchema — Fetch full JSON schema for a qualified tool name.
+   * getToolSchema, Fetch full JSON schema for a qualified tool name.
    * Triggers lazy schema load and caches within McpClient.
    */
   async getToolSchema(qualifiedName: string): Promise<McpToolSchema | null> {
@@ -250,7 +250,7 @@ export class McpRegistry {
   }
 
   /**
-   * callTool — Execute a tool by its qualified name.
+   * callTool, Execute a tool by its qualified name.
    * Fetches the full schema on first use.
    */
   async callTool(qualifiedName: string, args: Record<string, unknown>): Promise<unknown> {
@@ -268,7 +268,7 @@ export class McpRegistry {
     if (this.freshness.isQuarantined(parsed.serverName)) {
       const record = this.freshness.getRecord(parsed.serverName);
       throw new Error(
-        `MCP call '${qualifiedName}' blocked: schema quarantined (${record?.quarantine?.reason ?? 'unknown'})${record?.quarantine?.detail ? ` — ${record.quarantine.detail}` : ''}`,
+        `MCP call '${qualifiedName}' blocked: schema quarantined (${record?.quarantine?.reason ?? 'unknown'})${record?.quarantine?.detail ? `, ${record.quarantine.detail}` : ''}`,
       );
     }
 
@@ -331,7 +331,7 @@ export class McpRegistry {
   }
 
   /**
-   * disconnectAll — Stop all connected MCP server processes.
+   * disconnectAll, Stop all connected MCP server processes.
    */
   async disconnectAll(): Promise<void> {
     // Lifecycle:mcp:disconnected hooks (fire-and-forget for each server)
@@ -390,7 +390,7 @@ export class McpRegistry {
   }
 
   /**
-   * getClient — Get the McpClient for a given server name (for advanced use).
+   * getClient, Get the McpClient for a given server name (for advanced use).
    */
   getClient(serverName: string): McpClient | undefined {
     return this.clients.get(serverName);
@@ -402,7 +402,7 @@ export class McpRegistry {
   }
 
   /**
-   * listServers — Return status info for all known servers (connected or not).
+   * listServers, Return status info for all known servers (connected or not).
    * Includes the negotiated protocol (era + version) and transport so
    * diagnostics surfaces show what each server is actually speaking.
    */
@@ -607,7 +607,7 @@ export class McpRegistry {
       }
       this.freshness.markFailed(name, summarizeError(err));
       logger.error('McpRegistry: failed to connect server', { name, err: summarizeError(err) });
-      // Don't register the client — it's not usable
+      // Don't register the client, it's not usable
     }
   }
 
@@ -616,7 +616,7 @@ export class McpRegistry {
   ): Promise<{ sessionId: string; processSpec: McpProcessSpec } | null> {
     const configManager = this.sandboxConfigManager;
     if (!configManager) return null;
-    // HTTP servers are remote endpoints — there is no local process to sandbox.
+    // HTTP servers are remote endpoints, there is no local process to sandbox.
     if (!serverConfig.command) return null;
     const sandbox = getSandboxConfigSnapshot(configManager);
     if (sandbox.mcpIsolation === 'disabled') return null;

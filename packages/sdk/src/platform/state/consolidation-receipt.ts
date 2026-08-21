@@ -1,26 +1,26 @@
 // ---------------------------------------------------------------------------
-// consolidation-receipt.ts — the one-line notice for an idle-time memory
+// consolidation-receipt.ts, the one-line notice for an idle-time memory
 // consolidation run.
 //
 // MemoryConsolidationScheduler runs at idle and produces a
 // MemoryConsolidationRunReceipt (merged / archived / decayed / proposed). This
 // formats it into the same one-line shape every other attach-time receipt
 // uses, so a run that changed something surfaces on the next attach like a
-// crash/update/migration receipt. A pure no-op run yields null — no noise.
+// crash/update/migration receipt. A pure no-op run yields null, no noise.
 //
 // A run that PROPOSED something (a contradiction or cross-scope-duplicate
-// awaiting human judgment — never auto-applied) names where to actually look:
+// awaiting human judgment, never auto-applied) names where to actually look:
 // the memory surface's Proposals view (`/memory`), which lists each proposal's
 // kind, reason, and affected record ids and jumps to them in the review queue.
 // Without that pointer the receipt line is the only trace a proposal ever
-// existed — a count with nowhere to go.
+// existed, a count with nowhere to go.
 // ---------------------------------------------------------------------------
 
 import type { MemoryConsolidationRunReceipt } from './memory-consolidation.js';
 
 /**
  * A one-line receipt for a consolidation run that changed something, or null
- * when the run merged/archived/decayed/proposed nothing (a quiet idle pass —
+ * when the run merged/archived/decayed/proposed nothing (a quiet idle pass,
  * no notice, matching the check-in "stayed quiet" discipline).
  */
 export function formatConsolidationReceipt(receipt: MemoryConsolidationRunReceipt): string | null {

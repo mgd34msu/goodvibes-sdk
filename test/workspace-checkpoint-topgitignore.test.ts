@@ -23,7 +23,7 @@ describe('WorkspaceCheckpointManager in a repo whose top-level .gitignore ignore
   // rule (exactly what this project's own TUI writes at startup), naming that
   // already-ignored path explicitly in a pathspec makes git abort the whole
   // `add -A` with "The following paths are ignored by one of your .gitignore
-  // files: .goodvibes ... Use -f if you really want to add them." — because
+  // files: .goodvibes ... Use -f if you really want to add them.", because
   // git's ignore check fires on any pathspec that literally names an ignored
   // path, exclude magic or not. `.goodvibes/.gitignore`'s own `*` self-ignore
   // (written by SideGitRunner.init()) already keeps everything under
@@ -81,7 +81,7 @@ describe('WorkspaceCheckpointManager in a repo whose top-level .gitignore ignore
       manager.create({ kind: 'turn', turnId: 't1', label: 'auto' }),
     ]);
     // Exactly one of the two racing create() calls observes a change to
-    // stage (the other sees an identical tree and dedupes to null) — either
+    // stage (the other sees an identical tree and dedupes to null), either
     // way, neither call may throw.
     expect([manual, auto].some((c) => c !== null)).toBe(true);
 

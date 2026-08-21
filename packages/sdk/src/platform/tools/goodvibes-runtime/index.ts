@@ -40,7 +40,7 @@ export const GOODVIBES_RUNTIME_AWARENESS_PROMPT = [
   // value was noted in the reply and never written. He believed his system was
   // configured for hours. Supplying a value IS the ask. Kept terse on purpose:
   // this prompt is paid on every turn and competes with injected context.
-  'A configuration value the user states — bot name, chat id, token, host, port, model, path — is a request to set it: call goodvibes_settings, then report the key and its persistedTo store. A value only repeated back in prose is not set.',
+  'A configuration value the user states, bot name, chat id, token, host, port, model, path, is a request to set it: call goodvibes_settings, then report the key and its persistedTo store. A value only repeated back in prose is not set.',
   'If the key or the intent is unclear, ask one short question; never write config the user did not ask for. Report settings from goodvibes_context with the store each came from; a value its owning runtime could not supply is unavailable, not unset.',
   'Never reveal raw secrets; report only redacted credential posture.',
   // A setup request is the other half of the same failure: "set up the wake
@@ -145,7 +145,7 @@ export function createGoodVibesSettingsTool(
   const definition: ToolDefinition = {
     name: 'goodvibes_settings',
     description:
-      'Apply a GoodVibes setting. When the user supplies a concrete configuration value — a bot username, a chat id, a host, a port, a model, a path — that is a request to set it: call this tool, then tell the user the key and the persistedTo store it landed in. A value only mentioned in your reply has not been set. '
+      'Apply a GoodVibes setting. When the user supplies a concrete configuration value, a bot username, a chat id, a host, a port, a model, a path, that is a request to set it: call this tool, then tell the user the key and the persistedTo store it landed in. A value only mentioned in your reply has not been set. '
       + 'The write is routed to the runtime that owns the key: daemon-owned settings (surfaces.*, control-plane binding, watchers, device pairing, provisioning, retention) go to the daemon\'s config, client-owned settings stay in this client\'s config. The value is then re-read from that store, so a write that did not land is reported as a failure rather than as success. '
       + 'If you cannot tell which key a stated value belongs to, ask one short question instead of guessing, and do not set anything the user did not ask for. '
       + 'Raw secret/token/password values are rejected: store the secret separately and set the key to a goodvibes:// secret reference.',
@@ -329,7 +329,7 @@ async function buildRuntimeSummary(deps: GoodVibesRuntimeToolDeps): Promise<Json
  * OWNS it, plus the store that value came from.
  *
  * Reading only this client's store is why the same key looked blank in one place
- * and set in another with nothing saying why — a daemon-owned key set in the
+ * and set in another with nothing saying why, a daemon-owned key set in the
  * daemon's config is invisible to a client that reads its own file, and the
  * honest-looking answer "not set" was simply wrong. Rows whose owning runtime
  * could not be reached are marked unavailable with the reason rather than

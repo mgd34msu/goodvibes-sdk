@@ -39,7 +39,7 @@ interface MutableAgentRecord {
 }
 
 /**
- * AgentsPanel — diagnostic data provider for agent lifecycle telemetry.
+ * AgentsPanel, diagnostic data provider for agent lifecycle telemetry.
  *
  * Active agents are tracked in a live map; terminal agents are moved
  * to the history buffer for filtering and display.

@@ -1,5 +1,5 @@
 /**
- * client-seam-approvals-config-credentials.test.ts — the three seams where a
+ * client-seam-approvals-config-credentials.test.ts, the three seams where a
  * surface stops being allowed to answer for itself.
  *
  * A chat host raising an ask into its own in-process broker makes that ask
@@ -12,8 +12,8 @@
  *
  *  - APPROVALS: the race. An ask goes to the daemon AND prompts locally, and the
  *    first real answer wins. A decision taken elsewhere must resolve the ask
- *    here; a decision taken here must be written back so the daemon's record —
- *    the one every other surface reads — matches what happened.
+ *    here; a decision taken here must be written back so the daemon's record,
+ *    the one every other surface reads, matches what happened.
  *  - CONFIG: reads may be optimistic, writes may not. A daemon-owned write with
  *    no daemon must REJECT rather than land in a file nothing reads.
  *  - CREDENTIALS: one verb, never two writes. A reference written without its
@@ -99,7 +99,7 @@ describe('a permission ask leaves this surface and the first real answer wins', 
       if (methodId === 'approvals.raise') return { approval: { id: 'ap-2', status: 'pending' } };
       if (methodId === 'approvals.list') {
         listed += 1;
-        // Answered elsewhere on the second read — a phone, the web app, another
+        // Answered elsewhere on the second read, a phone, the web app, another
         // terminal. The local prompt is still open and is simply overtaken.
         return listed >= 2 ? { approvals: [{ id: 'ap-2', status: 'denied', decision: { remember: false } }] } : { approvals: [] };
       }
@@ -157,7 +157,7 @@ describe('a daemon-owned config key is written where the daemon reads it', () =>
     expect(config.ownsKey('watchers.enabled')).toBe(true);
     await config.set('watchers.enabled', false);
     expect(rec.calls[0]).toEqual(['config.set', { key: 'watchers.enabled', value: false }]);
-    // `config.get` takes no key — it answers with the whole tree — so the dotted
+    // `config.get` takes no key, it answers with the whole tree, so the dotted
     // walk happens here rather than in every caller that wanted one value.
     expect(await config.get('watchers.enabled')).toBe(false);
     expect(rec.calls[1]).toEqual(['config.get', {}]);
@@ -190,7 +190,7 @@ describe('a credential and the config reference that points at it stay together'
     const credentials = createDaemonCredentialsClient(rec.verbs);
     const receipt = await credentials.set('surfaces.telegram.botToken', 'not-a-real-token');
     expect(rec.calls[0]).toEqual(['credentials.set', { key: 'surfaces.telegram.botToken', value: 'not-a-real-token' }]);
-    // What comes back names the key, the scope and the reference — never the
+    // What comes back names the key, the scope and the reference, never the
     // value, on success or otherwise.
     expect(JSON.stringify(receipt)).not.toContain('not-a-real-token');
   });

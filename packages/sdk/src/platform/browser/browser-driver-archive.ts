@@ -4,12 +4,12 @@
  * Provisioning downloads the Playwright driver package straight from the npm
  * registry and writes the tree to disk. That is release-critical and must not
  * depend on a `tar` binary existing on the machine, and it is the one piece of
- * concrete node I/O in this module that had no existing injection seam — so
+ * concrete node I/O in this module that had no existing injection seam, so
  * the header parsing lives here, beside its only caller, rather than becoming
  * a port every product would have to fill before the driver could install
  * itself.
  *
- * Scope is deliberately narrow — the archives this reads are ustar archives
+ * Scope is deliberately narrow, the archives this reads are ustar archives
  * npm or a release workflow produced: regular files and directories, short
  * paths, no sparse entries. Anything else in the stream is skipped rather than
  * guessed at, and every extracted path is checked against its destination
@@ -142,7 +142,7 @@ function strip(path: string, components: number): string | null {
  * Writes every regular file and directory of a gzipped tar under `destination`,
  * preserving the executable bit (playwright-core ships shell helpers and an
  * `xdg-open` that must stay runnable). Entries that are neither files nor
- * directories — symlinks, devices, hard links — are skipped, because nothing
+ * directories, symlinks, devices, hard links, are skipped, because nothing
  * this extracts is supposed to contain any.
  */
 export function extractTarGzTree(

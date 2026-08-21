@@ -1,5 +1,5 @@
 /**
- * atomic-write.ts — the one write primitive every store on this platform uses
+ * atomic-write.ts, the one write primitive every store on this platform uses
  * when a reader must never observe a half-written file.
  *
  * Write to a sibling temp file, fsync it, rename it into place, then fsync the
@@ -25,7 +25,7 @@ export interface AtomicWriteOptions {
 /**
  * Writes `data` to `path` atomically: writes to a sibling temp file, fsyncs
  * it, then renames it into place. On POSIX, rename(2) is atomic so readers
- * always see either the old file or the new file — never a partial write.
+ * always see either the old file or the new file, never a partial write.
  *
  * If the write or fsync fails, the temp file is cleaned up before rethrowing.
  *
@@ -72,7 +72,7 @@ export function atomicWriteFileSync(
     try {
       unlinkSync(tmp);
     } catch {
-      // Best-effort cleanup — original error takes priority.
+      // Best-effort cleanup, original error takes priority.
     }
     throw err;
   }

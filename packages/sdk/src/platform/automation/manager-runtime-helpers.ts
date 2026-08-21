@@ -145,7 +145,7 @@ export function normalizeStringList(value: readonly string[] | undefined): reado
  * live registry's candidate list) is supplied, a bare id resolves via the
  * shared resolver (unique -> auto-qualify; ambiguous/unknown -> a rich error
  * naming real candidates) and the RESOLVED, provider-qualified key is
- * returned — automation storage stays provider-qualified either way. When
+ * returned, automation storage stays provider-qualified either way. When
  * `models` is omitted (a caller that hasn't threaded the registry through
  * yet), falls back to format-only validation so existing behavior is
  * unaffected until that caller is updated.

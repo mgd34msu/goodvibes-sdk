@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// work-plan-store.ts — per-project work plan persisted at
+// work-plan-store.ts, per-project work plan persisted at
 //   <home>/.goodvibes/<surfaceRoot>/work-plans/<projectId>.json
 //
 // The surface root is supplied by the product that owns the plan, so two
@@ -9,7 +9,7 @@
 // Recovery discipline (applies to every read):
 //
 //  * CONTENT, NOT EXISTENCE, decides whether the file is usable. A plan file
-//    can exist and still be unusable — zero-byte, truncated mid-write, or
+//    can exist and still be unusable, zero-byte, truncated mid-write, or
 //    otherwise torn by a crash. Every read parses defensively and validates the
 //    parsed SHAPE; an unusable file degrades to an empty plan instead of
 //    throwing out of the store's public methods (which used to brick every
@@ -19,8 +19,8 @@
 //    Those quarantine copies are themselves bounded (age TTL + count cap) so
 //    the recovery path cannot become its own leak.
 //  * THE STORE IS BOUNDED. Terminal (done/cancelled) items age out and are
-//    capped by count. Items the user still has open — pending, in_progress,
-//    blocked, failed — are NEVER reclaimed by either bound: garbage collection
+//    capped by count. Items the user still has open, pending, in_progress,
+//    blocked, failed, are NEVER reclaimed by either bound: garbage collection
 //    must not delete live work.
 //  * NOTHING IS DELETED SILENTLY. Whatever a sweep reclaimed is recorded on the
 //    plan as `housekeeping` and rendered by `toMarkdown()` (which /work-plan
@@ -51,7 +51,7 @@ export const WORK_PLAN_TERMINAL_ITEM_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 da
  */
 export const WORK_PLAN_TERMINAL_ITEM_CAP = 200;
 
-/** Age TTL for quarantined (unreadable) plan files — the recovery copy's own bound. */
+/** Age TTL for quarantined (unreadable) plan files, the recovery copy's own bound. */
 export const WORK_PLAN_QUARANTINE_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 /** Count cap for quarantined plan files kept alongside one plan; oldest go first. */
@@ -102,7 +102,7 @@ export interface WorkPlanItem {
 
 /**
  * What the last recovery/bounding sweep reclaimed. Persisted with the plan and
- * rendered by `toMarkdown()` so a removal is always disclosed — counts and
+ * rendered by `toMarkdown()` so a removal is always disclosed, counts and
  * paths only, never item text.
  */
 export interface WorkPlanHousekeeping {
@@ -137,7 +137,7 @@ export interface WorkPlan {
 export interface WorkPlanStoreOptions {
   readonly homeDirectory: string;
   /**
-   * The owning product's storage scope — the `<surfaceRoot>` segment in
+   * The owning product's storage scope, the `<surfaceRoot>` segment in
    * `<home>/.goodvibes/<surfaceRoot>/work-plans/`. Supplied rather than spelled
    * here so the plan lands under the same scope as the rest of that product's
    * state.
@@ -281,7 +281,7 @@ function normalizeHousekeeping(value: unknown): WorkPlanHousekeeping | undefined
 
 /**
  * Parse a plan file's CONTENT. Returns null for anything that is not a JSON
- * object — empty/whitespace-only (a zero-byte file left by a crash), truncated
+ * object, empty/whitespace-only (a zero-byte file left by a crash), truncated
  * JSON, or a valid JSON scalar/array. Never throws.
  */
 function parsePlanDocument(raw: string): Record<string, unknown> | null {
@@ -332,7 +332,7 @@ export class WorkPlanStore {
 
   /**
    * Unix ms of this instance's last quarantine-directory scan. Zero means the
-   * first read of the session sweeps — that read IS the recovery point.
+   * first read of the session sweeps, that read IS the recovery point.
    */
   private lastQuarantineSweepAt = 0;
 
@@ -482,7 +482,7 @@ export class WorkPlanStore {
   /**
    * The plan as callers see it: loaded from disk (content-validated), then put
    * through the recovery/bounding sweep. When the sweep reclaimed anything the
-   * bounded plan — carrying its housekeeping disclosure — is written back
+   * bounded plan, carrying its housekeeping disclosure, is written back
    * immediately, so the disclosure survives even if the caller only reads.
    */
   private readPlan(): WorkPlan {
@@ -567,7 +567,7 @@ export class WorkPlanStore {
       if (now - terminalAgeStamp(item) > WORK_PLAN_TERMINAL_ITEM_TTL_MS) expired.add(item);
     }
     const survivors = plan.items.filter((item) => !expired.has(item));
-    // Count cap applies to terminal survivors only — newest completions kept.
+    // Count cap applies to terminal survivors only, newest completions kept.
     const terminalSurvivors = survivors
       .filter((item) => isTerminalStatus(item.status))
       .sort((a, b) => terminalAgeStamp(b) - terminalAgeStamp(a));
@@ -619,7 +619,7 @@ export class WorkPlanStore {
       renameSync(this.filePath, target);
       return target;
     } catch {
-      // Gone already (another process quarantined it first) or unwritable —
+      // Gone already (another process quarantined it first) or unwritable,
       // either way the plan still degrades to empty rather than throwing.
       return undefined;
     }
@@ -659,7 +659,7 @@ export class WorkPlanStore {
         unlinkSync(join(directory, candidate.entry));
         removed += 1;
       } catch {
-        // Already removed by a concurrent sweep — idempotent, not an error, and
+        // Already removed by a concurrent sweep, idempotent, not an error, and
         // not counted so the disclosed number stays truthful.
       }
     }

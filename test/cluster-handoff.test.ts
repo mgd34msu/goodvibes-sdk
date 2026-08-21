@@ -1,10 +1,10 @@
 /**
- * LAN leader election — handoffs, and the ordering that makes them safe.
+ * LAN leader election, handoffs, and the ordering that makes them safe.
  *
  * The single property under test throughout this file: a successor NEVER
  * starts consuming a surface before its predecessor has finished stopping.
  * Every assertion on `world.events` is an ordering assertion, because "exactly
- * one consumer" is not a state you can check at a single instant — it is a
+ * one consumer" is not a state you can check at a single instant, it is a
  * property of the sequence.
  */
 import { describe, expect, test } from 'bun:test';
@@ -76,7 +76,7 @@ describe('cluster handoff — preemption by a strictly newer build', () => {
 
     // An ORDERED handoff replays NOTHING. The predecessor consumed right up to
     // its stop, so resuming from its last heartbeat would re-deliver every
-    // message it already handled in between — which is not a near-miss but the
+    // message it already handled in between, which is not a near-miss but the
     // exact symptom this feature exists to prevent, arriving through the fix.
     expect(surfaceState(newBuild, SURFACE).lastReplayFromMs).toBeNull();
   });
@@ -123,7 +123,7 @@ describe('cluster handoff — preemption by a strictly newer build', () => {
 
   test('a preemptor whose predecessor wedges on stop takes over on the grace timeout', async () => {
     const world = createWorld();
-    // Its consumer never finishes closing — a long poll whose socket hangs —
+    // Its consumer never finishes closing, a long poll whose socket hangs,
     // so the RESIGN this handoff is waiting on will never be sent.
     const oldBuild = addNode(world, {
       id: 'node-old',
@@ -312,8 +312,8 @@ describe('cluster handoff — the provider-conflict backstop', () => {
     expect(surfaceState(node, SURFACE).running).toBe(false);
     expect(roleOf(node, SURFACE)).toBe('standby');
 
-    // It backs off, re-probes, and — if the conflict was transient and nobody
-    // else claims — comes back on its own rather than staying dead.
+    // It backs off, re-probes, and, if the conflict was transient and nobody
+    // else claims, comes back on its own rather than staying dead.
     await advance(world, 2_000);
     expect(roleOf(node, SURFACE)).toBe('master');
     expect(surfaceState(node, SURFACE).running).toBe(true);
@@ -346,7 +346,7 @@ describe('cluster handoff — the provider-conflict backstop', () => {
     }
     expect(delays).toEqual([500, 1_000, 2_000, 4_000, 4_000, 4_000]);
 
-    // Having served well past the threshold, the next refusal starts over —
+    // Having served well past the threshold, the next refusal starts over,
     // this is a new incident, not a continuation of the old one.
     const afterServing = nextConsumerConflictBackoff(state, { servedForMs: 60_000, ...limits });
     expect(afterServing.streak).toBe(1);
@@ -363,7 +363,7 @@ describe('cluster handoff — the provider-conflict backstop', () => {
     // credential, and no amount of retrying decides which one should. With a
     // flat backoff a node with no peer to hand the surface to resigns,
     // re-probes, wins its own election again, restarts the consumer and is
-    // refused again — forever, at a constant rate, against a third party's
+    // refused again, forever, at a constant rate, against a third party's
     // API. Measured live on a two-node group with a 4s master timeout before
     // this existed: 44 getUpdates calls in 40 seconds, every one refused.
     const world = createWorld();
@@ -434,8 +434,8 @@ describe('cluster protocol — the wire', () => {
 
   test('a surface travels as a digest, never as the topic or the bot id', () => {
     const raw = encodeMessage(message, '');
-    // The capability itself — anyone who learns an ntfy topic name can read
-    // and publish to it — must not be recoverable from a packet capture.
+    // The capability itself, anyone who learns an ntfy topic name can read
+    // and publish to it, must not be recoverable from a packet capture.
     expect(raw).not.toContain('gv-secret-topic-name');
     expect(raw).not.toContain('ntfy.test');
     expect(message.surfaceId).toMatch(/^[0-9a-f]{32}$/);
@@ -523,7 +523,7 @@ describe('cluster protocol — the wire', () => {
     await advance(world, 4_000);
 
     // The stranger cannot be heard by the trusted node, so the trusted node
-    // never gives the surface up — and the stranger, hearing nothing it
+    // never gives the surface up, and the stranger, hearing nothing it
     // accepts, believes it is alone. That is the correct outcome for a node
     // that was never admitted: it must not be able to take a surface away.
     expect(surfaceState(trusted, SURFACE).running).toBe(true);
@@ -657,7 +657,7 @@ describe('cluster coordinator — the wiring contract', () => {
     expect(status.signed).toBe(true);
     expect(status.heldSurfaceCount).toBe(1);
     const serialized = JSON.stringify(status);
-    // Neither the shared phrase nor the topic name is part of the payload —
+    // Neither the shared phrase nor the topic name is part of the payload,
     // a pasted /status is as safe as a packet capture.
     expect(serialized).not.toContain('shared-phrase');
     expect(serialized).not.toContain('gv-secret-topic-name');

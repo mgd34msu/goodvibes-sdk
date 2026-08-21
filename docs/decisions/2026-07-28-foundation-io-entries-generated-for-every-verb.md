@@ -27,7 +27,7 @@ Two measured gaps existed at `9ef97eb8` across the 443 catalogued verbs:
   reddened no gate.
 
 The untyped-IO ratchet (`check-foundation-io-coverage.ts`, baseline 97) held the
-frontier — a new verb without typed IO fails the build — but by construction did
+frontier, a new verb without typed IO fails the build, but by construction did
 nothing about the verbs behind it.
 
 ## Decision
@@ -35,17 +35,17 @@ nothing about the verbs behind it.
 Entries are **rendered from the catalog descriptors**, not authored. Nothing here
 is per-verb.
 
-- `scripts/foundation-io-render.ts` — the schema-to-TS-type-string renderer,
+- `scripts/foundation-io-render.ts`, the schema-to-TS-type-string renderer,
   extracted verbatim from `check-foundation-io-types.ts` so the writer and the
   checker share one implementation.
-- `scripts/foundation-io-catalog.ts` — the composition of all 25 builtin
+- `scripts/foundation-io-catalog.ts`, the composition of all 25 builtin
   descriptor arrays, mirroring the module-private `BUILTIN_GATEWAY_METHODS` in
   `method-catalog.ts`. `assertCoversMethodIds` fails loudly if a catalog module
   is wired into `method-catalog.ts` but not here, so verbs cannot fall out of
   coverage silently.
-- `scripts/generate-foundation-io-entries.ts` — rewrites both map bodies for all
+- `scripts/generate-foundation-io-entries.ts`, rewrites both map bodies for all
   443 ids. Wired into `refresh:contracts`.
-- `scripts/check-foundation-io-types.ts` — its `ENTRIES` list is now **derived**
+- `scripts/check-foundation-io-types.ts`, its `ENTRIES` list is now **derived**
   from the catalog rather than hand-maintained, so the drift check covers 886
   entries (443 methods x input/output) instead of 286.
 - `FOUNDATION_IO_COVERAGE_BASELINE` lowered 97 -> 0.
@@ -55,14 +55,14 @@ is per-verb.
 **Schema-valued `additionalProperties`.** `recordSchema(v)` returns
 `{ type: 'object', additionalProperties: v }`, and every call site builds a fresh
 object. The renderer identity-matched only the single `METADATA_SCHEMA`
-instance, so structurally identical record schemas — `TOOL_ARGUMENTS_SCHEMA`,
-`GRAPHQL_VARIABLES_SCHEMA`, `CONFIG_CATEGORY_SNAPSHOT_SCHEMA` and the rest — fell
+instance, so structurally identical record schemas, `TOOL_ARGUMENTS_SCHEMA`,
+`GRAPHQL_VARIABLES_SCHEMA`, `CONFIG_CATEGORY_SNAPSHOT_SCHEMA` and the rest, fell
 through to the plain-object branch and rendered as `{  }`, which declares
 nothing. Generalizing the identity check to any schema-valued
 `additionalProperties` moved 22 map entries from wrong to right and subsumes the
 `METADATA_SCHEMA` special case exactly (byte-identical render). It also makes
 `approvals.approve`'s `modifiedArgs` and the approval request's `args` stop
-claiming `{  }` when the schema says JSON record — the divergence class the
+claiming `{  }` when the schema says JSON record, the divergence class the
 sweep flagged.
 
 The `JSON_VALUE_SCHEMA` / `JSON_OBJECT_SCHEMA` / `JSON_ARRAY_SCHEMA` identity
@@ -71,7 +71,7 @@ named recursive `JsonValue` alias, which structural recursion cannot reach.
 
 **`anyOf` of pure required-key refinements.** `knowledge.ingest.connector` is a
 base object schema plus `anyOf: [{required:['input']},{required:['content']},
-{required:['path']}]` — the JSON-Schema idiom for "at least one of these". The
+{required:['path']}]`, the JSON-Schema idiom for "at least one of these". The
 renderer hit its union branch and threw on a node with no `type`. It now renders
 the union of the base object with each branch's keys promoted to required. This
 was the only verb of 443 the renderer could not express; after it, zero throw.
@@ -82,8 +82,8 @@ speculation in a renderer whose contract is to throw rather than guess.
 
 ### A consumer-side collapse the new types exposed
 
-`Omit<OperatorMethodInput<M>, K>` — used at 8 wrapper signatures in
-`packages/sdk/src/browser-knowledge.ts` — does not work for any verb whose schema
+`Omit<OperatorMethodInput<M>, K>`, used at 8 wrapper signatures in
+`packages/sdk/src/browser-knowledge.ts`, does not work for any verb whose schema
 sets `additionalProperties: true`. That renders as `Base & { readonly [key:
 string]: unknown }`, whose `keyof` is `string | number`, so `Exclude<keyof T, K>`
 removes nothing and `Pick` retains no named property: the argument type collapses
@@ -98,7 +98,7 @@ the additional-properties escape hatch.
   without an entry fails the gate rather than joining a backlog.
 - The published OpenAPI contract now marks **0** methods `untyped-client-io`
   (was 97).
-- Drift coverage went from 143 verbs to all 443 — a corrected `required` array on
+- Drift coverage went from 143 verbs to all 443, a corrected `required` array on
   any catalog schema now reaches consumer types, or reddens `contracts:check`.
 - `etc/goodvibes-sdk.api.md` grew substantially: the maps went from 346 to 443
   entries and 91 existing entries changed shape. That diff is the point of the
@@ -106,9 +106,9 @@ the additional-properties escape hatch.
 
 ## Verified
 
-- `bun run contracts:check` — green (needed the documented second pass: the
+- `bun run contracts:check`, green (needed the documented second pass: the
   OpenAPI artifact consumes the untyped set, so 97 -> 0 required regenerating it).
-- `bunx tsc -b` — green.
+- `bunx tsc -b`, green.
 - The entries are load-bearing, proved two-sided at a production call site rather
   than in `test/` (which `tsc -b` does not typecheck): mutating
   `browser-knowledge.ts`'s `projectPlanning.workPlan.task.status` call to pass

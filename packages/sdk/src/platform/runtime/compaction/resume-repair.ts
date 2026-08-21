@@ -6,7 +6,7 @@
  * When a session is resumed from a saved boundary commit, this pipeline
  * validates and repairs the compacted message list before it is handed
  * to the active conversation context. Repairs are non-destructive and
- * append-only — they never discard information without recording the
+ * append-only, they never discard information without recording the
  * action in the repair log.
  *
  * Repair checks (in order):
@@ -26,13 +26,13 @@ import type { RepairAction, ResumeRepairResult } from './types.js';
 // ---------------------------------------------------------------------------
 
 /**
- * FALLBACK ceiling for a resumed session — 80% of a 100K context window —
+ * FALLBACK ceiling for a resumed session, 80% of a 100K context window,
  * used only when the caller cannot supply the real one.
  *
  * It is not the intended value. A caller that knows the model's context
  * window must pass `maxTokens`; CompactionManager does, computed from its own
  * `contextWindow`. Left standing as the only ceiling, this constant silently
- * truncated resumed sessions on every model with a window larger than 100K —
+ * truncated resumed sessions on every model with a window larger than 100K,
  * which is every current frontier model.
  */
 const RESUME_MAX_TOKENS = 80_000;
@@ -177,7 +177,7 @@ function stripNonSerializableBlocks(messages: ProviderMessage[]): number {
         JSON.stringify(block);
         return true;
       } catch {
-        // Non-serialisable block — strip it
+        // Non-serialisable block, strip it
         return false;
       }
     });

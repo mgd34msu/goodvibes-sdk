@@ -64,7 +64,7 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
 export function createReactNativeGoodVibesSdk(
   options: ReactNativeGoodVibesSdkOptions,
 ): ReactNativeGoodVibesSdk {
-  // Normalize baseUrl once — trimmed and validated — so both HTTP and WebSocket
+  // Normalize baseUrl once, trimmed and validated, so both HTTP and WebSocket
   // connectors use the same value regardless of how the caller passed it.
   const baseUrl = options.baseUrl.trim();
   const base = createGoodVibesSdk({

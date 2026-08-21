@@ -4,7 +4,7 @@
  * The `sessions.hosted.*` handlers: argument reading, and the error mapping
  * that is the real content of this layer.
  *
- * Each engine refusal has its own wire shape on purpose — "no such session",
+ * Each engine refusal has its own wire shape on purpose, "no such session",
  * "that session ended and here is why", "the path is not absolute" and "you are
  * at the configured cap" want four different reactions, and collapsing them
  * into one 400 is how a caller retries the one thing that can never work. That
@@ -56,7 +56,7 @@ function record(id = 'hosted-1'): HostedSessionRecord {
   };
 }
 
-/** Params ride the invoke BODY — the schema-validated channel these verbs read. */
+/** Params ride the invoke BODY, the schema-validated channel these verbs read. */
 function invocation(body: Record<string, unknown>): GatewayMethodInvocation {
   return { methodId: 'test', body, context: {} } as unknown as GatewayMethodInvocation;
 }
@@ -196,7 +196,7 @@ test('every hosted verb descriptor gets a handler attached', () => {
 // A daemon that never stated how a hosted session's workspace floor is built
 // hosts nothing, and the verbs have to say that as a refusal a client can act
 // on. They used to reach the branch for a verb with neither handler nor route:
-// a 501 carrying no code over the wire, and a plain Error — a 500 — for anyone
+// a 501 carrying no code over the wire, and a plain Error, a 500, for anyone
 // invoking the catalog directly.
 test('with no engine the hosted verbs refuse with the catalog\'s own code, on every path', async () => {
   const catalog = new GatewayMethodCatalog();

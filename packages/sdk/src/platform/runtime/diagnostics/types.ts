@@ -1,5 +1,5 @@
 /**
- * Diagnostics system types — shared across all diagnostic panel data providers.
+ * Diagnostics system types, shared across all diagnostic panel data providers.
  *
  * These types are purely data-oriented. No UI rendering logic lives here.
  * All entries are immutable snapshots produced at the time of capture.

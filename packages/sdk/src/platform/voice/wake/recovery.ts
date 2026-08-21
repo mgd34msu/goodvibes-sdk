@@ -1,5 +1,5 @@
 /**
- * recovery.ts — housekeeping for everything the wake-word feature persists.
+ * recovery.ts, housekeeping for everything the wake-word feature persists.
  *
  * Downloaded models, abandoned partial downloads, and retained debug audio all
  * survive a restart or a crash, so they get the full treatment rather than only
@@ -12,14 +12,14 @@
  *  2. BOUND EVERYTHING. Retained audio carries both a count cap and an age TTL.
  *     An unbounded "it's only debug audio" directory is a leak with a nicer name.
  *  3. VALIDATE BY CONTENT. A model file that exists may be torn, truncated, or
- *     zero-filled by a crash — this project has already shipped that exact bug
+ *     zero-filled by a crash, this project has already shipped that exact bug
  *     once, and trained on the zeros. A file is kept only when its sha256
  *     matches the pin; otherwise it is reaped so the next provision re-fetches it.
  *  4. REAP PERIODICALLY. {@link startWakeRecoverySweeper} keeps a long-lived
  *     daemon sweeping, because a process that only sweeps at boot never sweeps.
  *     Its caller is `startWakeBootProvisioning` in ./install-provision.ts, which
  *     starts it at every boot and then retries whatever the install could not
- *     download — the sweep and the retry belong together, because reaping a torn
+ *     download, the sweep and the retry belong together, because reaping a torn
  *     artifact is exactly what lets the retry replace it instead of skipping it.
  *  5. DISCLOSE. Every sweep writes a receipt next to the data
  *     ({@link WAKE_REAP_RECEIPT_FILE}) and returns a summary. Silent deletion is
@@ -54,7 +54,7 @@ export const WAKE_SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 export type WakeReapReason =
   /** A `.part` file left behind by an interrupted download. */
   | 'abandoned-partial'
-  /** Present but its bytes do not hash to the pin — torn, truncated, or the wrong asset. */
+  /** Present but its bytes do not hash to the pin, torn, truncated, or the wrong asset. */
   | 'failed-verification'
   /** An artifact of a model version the manifest no longer lists. */
   | 'unpinned-version'
@@ -92,7 +92,7 @@ export interface WakeRecoveryOptions {
   readonly retainedMaxAgeHours?: number | undefined;
   /** Injected clock, so TTL behaviour is deterministic under test. */
   readonly now?: number | undefined;
-  /** Skip writing the receipt — for a caller that only wants the summary. */
+  /** Skip writing the receipt, for a caller that only wants the summary. */
   readonly skipReceipt?: boolean | undefined;
 }
 
@@ -110,7 +110,7 @@ export function sweepWakeStorage(options: WakeRecoveryOptions): WakeReapSummary 
     try {
       bytes = statSync(path).size;
     } catch {
-      // Already gone — another sweep won the race. Not a failure.
+      // Already gone, another sweep won the race. Not a failure.
       return;
     }
     try {
@@ -202,12 +202,12 @@ function sweepPinnedArtifacts(
   }
   const embeddingSpec = WAKE_WORD_FRONT_END.embedding.download;
   // Every file the provisioner writes into the front-end directory has to appear
-  // in this set, or the sweeper deletes an artifact that was just verified — once
+  // in this set, or the sweeper deletes an artifact that was just verified, once
   // an hour, forever. That defect shipped once for the tflite; the embedding's
   // NOTICE, the speech gate and the gate's own NOTICE are the other files this
   // directory now holds and belong here for the same reason. A name-by-name set
   // (rather than a suffix match) is what keeps a leftover from an older version
-  // reapable — including a gate from an earlier retrain.
+  // reapable, including a gate from an earlier retrain.
   const pinnedFrontEndNames = new Set<string>();
   const embeddingVersion = WAKE_WORD_FRONT_END.embedding.version;
   pinnedFrontEndNames.add(`speech-embedding-${embeddingVersion}.onnx`);
@@ -311,7 +311,7 @@ function listFiles(dir: string): DirEntry[] {
       if (!stat.isFile()) continue;
       out.push({ name, path, mtimeMs: stat.mtimeMs });
     } catch {
-      // Vanished between readdir and stat — another sweep got there first.
+      // Vanished between readdir and stat, another sweep got there first.
     }
   }
   return out;

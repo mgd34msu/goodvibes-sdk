@@ -1,5 +1,5 @@
 /**
- * schema-domain-daemon-mailbox.ts — the daemon's OWN mailbox and calendar.
+ * schema-domain-daemon-mailbox.ts, the daemon's OWN mailbox and calendar.
  *
  * These keys live under `surfaces.` and so ride the surface domain's ownership
  * rule, but they are not a chat adapter and they do not belong beside Slack,
@@ -12,7 +12,7 @@
  *
  * The daemon's email and calendar handlers read these long before anything
  * declared them. `CONFIG_SCHEMA` is what the schema-driven settings modal
- * renders from, so an undeclared key is a key the modal cannot show — and the
+ * renders from, so an undeclared key is a key the modal cannot show, and the
  * handlers' own failure text names them:
  *
  *   "Email is not configured. Set surfaces.email.host, surfaces.email.user…"
@@ -36,7 +36,7 @@
  * `listDaemonOwnedConfigPaths()`, which is `CONFIG_SCHEMA` keys the daemon
  * owns plus a hand-kept list of non-scalar paths. `surfaces.` has always been
  * a daemon-owned PREFIX, so `isDaemonOwnedConfigKey` already answered true for
- * these — but nothing ENUMERATED them, so the walk produced no daemon-owned
+ * these, but nothing ENUMERATED them, so the walk produced no daemon-owned
  * credential name for them and `GOODVIBES_SURFACES_EMAIL_PASSWORD` was filed
  * in whichever client silo the operator happened to be sitting in. The daemon
  * reads none of those, so a stored mail password looked set and did nothing.
@@ -73,7 +73,7 @@ export const daemonMailboxConfigDefaults = {
       password: '',
       secure: true,
     },
-    // The inbound-mail watcher's own settings — the inbound section of
+    // The inbound-mail watcher's own settings, the inbound section of
     // surfaces.email. See docs/inbound-email.md §8 for the ruled defaults;
     // every one of them is the owner's to confirm or overturn.
     inbound: {
@@ -232,14 +232,14 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     description: 'Connect to SMTP over TLS',
   },
 
-  // ── Inbound-mail watcher — the inbound section of surfaces.email ──────────
+  // ── Inbound-mail watcher, the inbound section of surfaces.email ──────────
   // See docs/inbound-email.md §8 for the ruled defaults and the rationale
   // behind each one; every default here is the owner's to confirm.
   {
     key: 'surfaces.email.inbound.enabled',
     type: 'boolean',
     default: false,
-    description: 'Turns on continuous IMAP watching of the configured inbound accounts below. Off by default — '
+    description: 'Turns on continuous IMAP watching of the configured inbound accounts below. Off by default, '
       + 'reading the owner\'s mail continuously is not a thing to start doing without being asked. Turn on after '
       + 'configuring at least one account in surfaces.email.inbound.accounts.',
   },
@@ -256,11 +256,11 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'auto',
     description: 'Which mechanism reads the mailbox. "auto" uses Gmail when Google credentials have been adopted '
-      + 'and the configured mail account is a Gmail account, and IMAP otherwise — so connecting Google is the '
+      + 'and the configured mail account is a Gmail account, and IMAP otherwise, so connecting Google is the '
       + 'whole of the setup and no IMAP host, username or app password has to be found. "gmail" and "imap" force '
       + 'one of them. The two are not equivalent and the difference is a real cost: IMAP holds an IDLE '
       + 'connection, which is true push and delivers in under a second, while Gmail has no push available to a '
-      + 'daemon on a home machine and is POLLED on a timer — its worst-case delay is the whole poll interval '
+      + 'daemon on a home machine and is POLLED on a timer, its worst-case delay is the whole poll interval '
       + 'below, never less. Forcing "gmail" without adopted Google credentials, or on an account that is not a '
       + 'Gmail account, is refused rather than quietly served over IMAP.',
     enumValues: ['auto', 'gmail', 'imap'],
@@ -270,7 +270,7 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 5,
     description: 'How often the Gmail source asks Google what changed while something is actually being waited '
-      + 'for — a signup mid-flight whose verification mail has not arrived yet. This is polling, not push: mail '
+      + 'for, a signup mid-flight whose verification mail has not arrived yet. This is polling, not push: mail '
       + 'can sit unnoticed for up to this many seconds, and no setting makes Gmail faster than the interval. '
       + 'Five seconds is the floor worth having for a person watching a signup form; the underlying call costs 2 '
       + 'quota units against a daily budget in the billions, so a shorter interval buys latency rather than '
@@ -340,7 +340,7 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     default: 'all',
     description: 'How much inbound mail generates an owner notice: "all" announces every message, '
       + '"expected-only" announces only mail matching a registered expectation (quieter for a high-volume '
-      + 'mailbox), "none" announces nothing. Choosing "none" means mail can arrive with no notice at all — a '
+      + 'mailbox), "none" announces nothing. Choosing "none" means mail can arrive with no notice at all, a '
       + 'deliberate but silent choice.',
     enumValues: ['all', 'expected-only', 'none'],
   },
@@ -360,7 +360,7 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     default: 60,
     description: 'How long an inbound message\'s identity is remembered, inside the running daemon, so an '
       + 'overlapping poll or a retried pass does not process it twice. This cache lives in memory only: a '
-      + 'restart destroys it rather than expiring it, so no value here prevents a duplicate across a restart — '
+      + 'restart destroys it rather than expiring it, so no value here prevents a duplicate across a restart, '
       + 'the inbound record store does that, by remembering which messages were already announced. Seconds '
       + 'would be enough for what this covers; a larger value only costs a little memory.',
     ...intRange(5, 1440),
@@ -369,7 +369,7 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     key: 'surfaces.email.inbound.retentionDays',
     type: 'number',
     default: 30,
-    description: 'How many days an inbound mail record (sender, subject, delivery evidence, link verdicts — '
+    description: 'How many days an inbound mail record (sender, subject, delivery evidence, link verdicts, '
       + 'never the full body) is kept before it is reaped. Longer keeps a longer history to explain "why did I '
       + 'get that message"; shorter bounds how much of the owner\'s mail metadata the daemon retains.',
     ...intRange(1, 365),
@@ -397,15 +397,15 @@ export const daemonMailboxConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'refuse-and-notify',
     description: '"refuse-and-notify" stops the watcher for that account and tells the owner once, naming what '
-      + 'is missing and the exact step to fix it — the account is not watched again until the recheck above '
+      + 'is missing and the exact step to fix it, the account is not watched again until the recheck above '
       + 'finds it fixed. "notice-only" is a deliberate downgrade: it keeps announcing that mail arrived using '
       + 'envelope fields alone (sender, subject, delivery evidence), stating plainly in every notice that bodies '
-      + 'are unavailable, and it can never satisfy a verification expectation while degraded — an account signup '
+      + 'are unavailable, and it can never satisfy a verification expectation while degraded, an account signup '
       + 'or order confirmation will not work under it. "notice-only" applies to exactly one condition: a Google '
       + 'grant that authorizes message headers and excludes message bodies (the gmail.metadata scope), which is '
       + 'the only case where mail can be seen arriving without being readable. Every other insufficient '
-      + 'condition — no stored password, a refused sign-in, a mailbox that will not open, a lost cursor, a '
-      + 'refused or unreadable fetch — leaves no envelope fields to announce, so "notice-only" behaves as '
+      + 'condition, no stored password, a refused sign-in, a mailbox that will not open, a lost cursor, a '
+      + 'refused or unreadable fetch, leaves no envelope fields to announce, so "notice-only" behaves as '
       + '"refuse-and-notify" there and the notice says which one is in force.',
     enumValues: ['refuse-and-notify', 'notice-only'],
   },

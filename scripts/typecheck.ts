@@ -1,12 +1,12 @@
 /**
- * typecheck.ts — the typecheck gate, wrapped so a failure fails.
+ * typecheck.ts, the typecheck gate, wrapped so a failure fails.
  *
  * Runs every TypeScript project this repository owns and judges each run by its
  * OUTPUT as well as its exit code. See typecheck-output-rule.ts for why the
  * exit code alone is not evidence.
  *
- * Output is captured rather than piped. `tsc -b 2>&1 | head` — the shape that
- * makes this easy to get wrong by accident — reports `head`'s exit status, so
+ * Output is captured rather than piped. `tsc -b 2>&1 | head`, the shape that
+ * makes this easy to get wrong by accident, reports `head`'s exit status, so
  * the compiler's verdict is discarded before anyone reads it.
  */
 import { spawnSync } from 'node:child_process';
@@ -26,7 +26,7 @@ interface Project {
 
 const PROJECTS: readonly Project[] = [
   // The composite solution. tsconfig.json references every package AND
-  // tsconfig.tests.json, so this is the run that covers test/ and scripts/ —
+  // tsconfig.tests.json, so this is the run that covers test/ and scripts/,
   // it did not before, because the root is `files: []` and the tests project
   // was not a reference.
   // `--force` is load-bearing, not belt-and-braces. `tsc -b` skips a project it
@@ -60,7 +60,7 @@ for (const project of PROJECTS) {
     // Node's default old-space ceiling is ~4 GB regardless of how much the host
     // has. The contract surface passed that: with 464 operator methods rendered
     // into OperatorMethodInputMap / OperatorMethodOutputMap, `tsc -b --force`
-    // dies with "Ineffective mark-compacts near heap limit" — a SIGNAL, not a
+    // dies with "Ineffective mark-compacts near heap limit", a SIGNAL, not a
     // diagnostic, so a caller reading only the exit code sees a failure with no
     // errors and has nothing to act on. Raised rather than worked around,
     // because the type surface is legitimately this large and the machine has
@@ -68,7 +68,7 @@ for (const project of PROJECTS) {
     env: { ...process.env, NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --max-old-space-size=16384`.trim() },
   });
   if (run.error) {
-    console.error(`[typecheck] ${project.label}: could not run — ${run.error.message}`);
+    console.error(`[typecheck] ${project.label}: could not run, ${run.error.message}`);
     process.exit(1);
   }
   const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
@@ -84,4 +84,4 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`[typecheck] OK — ${results.length} project(s), no diagnostics, all exited 0.`);
+console.log(`[typecheck] OK, ${results.length} project(s), no diagnostics, all exited 0.`);

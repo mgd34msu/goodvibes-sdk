@@ -1,5 +1,5 @@
 /**
- * Remote Substrate — Core Types
+ * Remote Substrate, Core Types
  *
  * Implements durable identity, handshake tokens,
  * typed transport messages, and replay configuration.
@@ -17,7 +17,7 @@ export type { DaemonTransportState as RemoteTransportState };
 /**
  * Globally unique, stable identity for a remote substrate session.
  *
- * These IDs are stable across reconnects — a new transport connection
+ * These IDs are stable across reconnects, a new transport connection
  * to the same remote session reuses the same identifiers.
  */
 export interface DurableIdentity {
@@ -29,7 +29,7 @@ export interface DurableIdentity {
   readonly agentId: string;
   /** Epoch ms when this identity was first created. */
   readonly createdAt: number;
-  /** Monotonic generation counter — increments on each identity refresh (not reconnect). */
+  /** Monotonic generation counter, increments on each identity refresh (not reconnect). */
   readonly generation: number;
 }
 
@@ -46,7 +46,7 @@ export interface HandshakeToken {
   readonly sessionId: string;
   /** Opaque token string issued by the remote server on initial connect. */
   readonly token: string;
-  /** Epoch number — increments on each server restart. Server sets this. */
+  /** Epoch number, increments on each server restart. Server sets this. */
   readonly epoch: number;
   /** Epoch ms when this token was issued. */
   readonly issuedAt: number;
@@ -117,7 +117,7 @@ export interface TransportMessageBase {
   readonly epoch: number;
   /** Epoch ms when this message was created. */
   readonly ts: number;
-  /** Idempotency key — same key on retry means server deduplicates. */
+  /** Idempotency key, same key on retry means server deduplicates. */
   readonly idempotencyKey: string;
 }
 
@@ -173,7 +173,7 @@ export interface FailureMessage extends TransportMessageBase {
 export type RemoteConnectionHealth = 'healthy' | 'degraded' | 'unreachable';
 
 /**
- * A synced remote task — subset of RuntimeTask fields synced from remote.
+ * A synced remote task, subset of RuntimeTask fields synced from remote.
  */
 export interface RemoteTask {
   /** Remote task ID (stable across reconnects). */
@@ -348,11 +348,11 @@ export interface RemoteSessionBundle {
  * A peer with a lower minor version may require graceful downgrade.
  */
 export interface ProtocolVersion {
-  /** Major version — breaking changes; different majors cannot interoperate. */
+  /** Major version, breaking changes; different majors cannot interoperate. */
   readonly major: number;
-  /** Minor version — additive features; lower minor = possible downgrade. */
+  /** Minor version, additive features; lower minor = possible downgrade. */
   readonly minor: number;
-  /** Patch version — bug fixes only; no capability differences. */
+  /** Patch version, bug fixes only; no capability differences. */
   readonly patch: number;
   /** Human-readable version string (e.g. "2.1.0"). */
   readonly label: string;
@@ -478,6 +478,6 @@ export interface AuthProvider {
    * Called before each connect and reconnect attempt.
    */
   getToken(): Promise<string>;
-  /** Optional revocation — called on terminal failure. */
+  /** Optional revocation, called on terminal failure. */
   revokeToken?(): Promise<void>;
 }

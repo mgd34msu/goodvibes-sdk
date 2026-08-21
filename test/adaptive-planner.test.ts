@@ -115,7 +115,7 @@ describe('AdaptivePlanner purity (import-surface test)', () => {
       'utf-8',
     );
     // Targeted at actual async syntax (function modifier / await / Promise
-    // return types), not incidental prose — a comment describing
+    // return types), not incidental prose, a comment describing
     // BACKGROUND_DEFERRED legitimately contains the word "async".
     expect(source).not.toMatch(/\basync\s+(\(|function\b|[a-zA-Z_]+\s*\()/);
     expect(source).not.toMatch(/\bawait\b/);

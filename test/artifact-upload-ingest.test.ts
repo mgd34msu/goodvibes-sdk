@@ -18,7 +18,7 @@ import { HomeGraphRoutes } from '../packages/sdk/src/platform/daemon/http/home-g
  * this adapter narrows the concrete store down to the route-facing interface
  * instead of widening the production ArtifactStoreLike type.
  *
- * Also forwards getMaxBytes/createFromStream (ArtifactStoreUploadLike) — the
+ * Also forwards getMaxBytes/createFromStream (ArtifactStoreUploadLike), the
  * multipart upload path (createArtifactFromUploadRequest) calls these as
  * optional members; without them the early 413-oversize check is silently
  * skipped.

@@ -12,8 +12,8 @@
  *
  * The CLI argument surface is a generic engine (cli-parser-engine.ts) over a
  * declarative catalog contract (cli-catalog-types.ts): a daemon-shaped
- * front-end and a terminal-shaped one need different command vocabularies —
- * different commands, different flags, different unknown-token policy — over
+ * front-end and a terminal-shaped one need different command vocabularies,
+ * different commands, different flags, different unknown-token policy, over
  * the SAME token/value/arity/refusal mechanics. `parseGoodVibesCli` is that
  * engine driven by this package's own catalog instance
  * (cli-command-catalog.ts, exported as `GOODVIBES_CLI_CATALOG`) plus its
@@ -26,7 +26,7 @@
  * SDK-side code needs it too, and the SDK cannot import this package.
  *
  * Alongside the wiring sits the terminal IDIOM: the arithmetic and policy a
- * character-cell surface needs before it can draw anything — capability
+ * character-cell surface needs before it can draw anything, capability
  * probing and color downsampling, shell/split/overlay geometry, display-width
  * text fitting, escape-sequence sanitization of untrusted content, and the
  * key-semantics and list-filter conventions two terminal front-ends must
@@ -36,7 +36,7 @@
  *
  * See ./conformance for the descriptor/handler gate a consumer runs against its
  * own composition in CI, and ./terminal-output-guard for the write guard on its
- * own import path — a renderer needs `allowTerminalWrite` and nothing else in
+ * own import path, a renderer needs `allowTerminalWrite` and nothing else in
  * this barrel, and reaching it through the barrel would load the whole
  * gateway/fleet graph on the startup path.
  */

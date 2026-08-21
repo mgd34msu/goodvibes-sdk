@@ -36,7 +36,7 @@ interface ControlPlaneGatewayLike {
 interface ControlRouteContext {
   readonly authToken: string | null;
   /**
-   * The PLATFORM build this daemon is composed from — the SDK's own version.
+   * The PLATFORM build this daemon is composed from, the SDK's own version.
    *
    * It is not the version of the product a person installed, and it used to be
    * the only thing /status reported. A daemon shipped from its own repository
@@ -48,7 +48,7 @@ interface ControlRouteContext {
   readonly version: string;
   /**
    * The RUNNING ARTIFACT's own release version, when the host stated one
-   * (`updateArtifact.version` — the same value the auto-update loop compares
+   * (`updateArtifact.version`, the same value the auto-update loop compares
    * against release tags). Absent on an embedded daemon that ships no artifact
    * of its own, where the platform build is the only version there is.
    */
@@ -170,7 +170,7 @@ export function createDaemonControlRouteHandlers(
       if (!principal) return jsonErrorResponse({ error: 'Unauthorized' }, { status: 401 });
       // Receipt consumption is explicit: only a reader that passes
       // ?receipts=consume receives undelivered receipts (and marks them
-      // delivered — exactly once). Every other /status read is
+      // delivered, exactly once). Every other /status read is
       // receipt-neutral, so an identity probe or keepalive that parses only
       // status/version can never eat a receipt before a rendering surface.
       const consumeReceipts = new URL(req.url).searchParams.get('receipts') === 'consume';
@@ -178,8 +178,8 @@ export function createDaemonControlRouteHandlers(
         ? { [context.clientCompatibilityFloorHeader]: context.clientCompatibilityFloor }
         : undefined;
       // Two versions, both named. `version` keeps the meaning every existing
-      // reader already assumes it has — which build of this product is running
-      // — and that is the artifact's own version whenever the host stated one.
+      // reader already assumes it has, which build of this product is running
+      //, and that is the artifact's own version whenever the host stated one.
       // `platformVersion` is the SDK composition underneath it, which nothing
       // could previously ask for separately because it was occupying the only
       // field there was.
@@ -303,7 +303,7 @@ export function createDaemonControlRouteHandlers(
       // principal, fold the path params into BOTH query and body (so query-reading
       // GET/DELETE verbs and body-schema-validated POST verbs both see them), and
       // delegate to the same invokeGatewayMethodCall the methodId-invoke endpoint
-      // above uses — identical access gate, identical in-process handler.
+      // above uses, identical access gate, identical in-process handler.
       const { methodId, req, params } = invocation;
       const descriptor = context.gatewayMethods.get(methodId);
       const access = descriptor?.access ?? 'admin';

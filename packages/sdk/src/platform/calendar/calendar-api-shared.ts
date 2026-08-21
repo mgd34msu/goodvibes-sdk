@@ -1,5 +1,5 @@
 /**
- * calendar-api-shared.ts — the bearer-auth HTTP helper and honest degraded-state
+ * calendar-api-shared.ts, the bearer-auth HTTP helper and honest degraded-state
  * mapping shared by the Google Calendar and Microsoft Graph clients. Every failed
  * response is turned into a NAMED ApiDegradedState (never a generic throw): a 401 is
  * `reconnect-needed`, a 403 that names a missing scope is `insufficient-scope` naming

@@ -92,7 +92,7 @@ export interface MemoryRecordReviewInput {
 
 /**
  * The editable-field update body (scope/summary/detail/tags + the temporal
- * validity window) — NOT a review update. For validFrom/validUntil, an omitted
+ * validity window), NOT a review update. For validFrom/validUntil, an omitted
  * field leaves the bound unchanged, a number sets it, and `null` clears it, so a
  * proposal that changes only the window can be applied.
  */
@@ -105,13 +105,13 @@ export interface MemoryRecordUpdateInput {
   readonly validUntil?: number | null | undefined;
 }
 
-/** The link-create body — the source id comes from the path, target + relation from the body. */
+/** The link-create body, the source id comes from the path, target + relation from the body. */
 export interface MemoryLinkInput {
   readonly toId: string;
   readonly relation: string;
 }
 
-/** The import body — a { bundle } envelope. The bundle is passed through loosely to the store. */
+/** The import body, a { bundle } envelope. The bundle is passed through loosely to the store. */
 export interface MemoryBundleInput {
   readonly bundle: {
     readonly records: readonly unknown[];
@@ -125,7 +125,7 @@ export interface MemoryBundleInput {
  * `MemoryRegistry` satisfies this structurally (method params are compared
  * bivariantly, exactly as `reviewQueue`'s `scope?: string` already binds to the
  * registry's `scope?: MemoryScope`). The route layer stays decoupled from the SDK
- * store types — it hands loose bodies in and serializes whatever comes back.
+ * store types, it hands loose bodies in and serializes whatever comes back.
  */
 export interface MemoryRegistryLike {
   doctor(): Promise<unknown>;
@@ -146,7 +146,7 @@ export interface MemoryRegistryLike {
   // ── Full-detach catalog (1.2.0) ─────────────────────────────────────────────
   /** Literal search / bulk read. Serves both records.list and getAll (empty filter). */
   search(filter?: MemoryRecordSearchFilterInput): unknown[];
-  /** Scored semantic search — returns MemorySemanticSearchResult[] the route wraps as { results }. */
+  /** Scored semantic search, returns MemorySemanticSearchResult[] the route wraps as { results }. */
   searchSemantic(filter?: MemoryRecordSearchFilterInput): unknown[];
   /** Edit scope/summary/detail/tags. Returns the updated record or null when the id is unknown. */
   update(id: string, patch: MemoryRecordUpdateInput): unknown | null;
@@ -182,7 +182,7 @@ export interface DaemonIntegrationRouteContext {
   readonly integrationHelpers: IntegrationHelperServiceLike | null;
   readonly memoryEmbeddingRegistry: MemoryEmbeddingRegistryLike;
   readonly memoryRegistry: MemoryRegistryLike;
-  /** Optional: absent on embedders without the consolidation scheduler — the receipts route answers 501 honestly. */
+  /** Optional: absent on embedders without the consolidation scheduler, the receipts route answers 501 honestly. */
   readonly memoryConsolidation?: MemoryConsolidationSchedulerLike | null | undefined;
   readonly parseJsonBody: (req: Request) => Promise<JsonRecord | Response>;
   readonly providerRuntime: ProviderRuntimeSnapshotServiceLike;

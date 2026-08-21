@@ -1,5 +1,5 @@
 /**
- * Repo code index (Stage A) — CodeIndexStore unit suite: chunking
+ * Repo code index (Stage A), CodeIndexStore unit suite: chunking
  * determinism, incremental reindex (unchanged/changed/deleted files), and
  * the "never silently drop a file" fallback contract.
  */
@@ -83,7 +83,7 @@ describe('CodeIndexStore — chunking determinism', () => {
     const store = makeStore(root, registry);
 
     const stats = await store.buildFull();
-    // foo (function), Bar (class), baz (constant) — method() is nested, not top-level.
+    // foo (function), Bar (class), baz (constant), method() is nested, not top-level.
     expect(stats.chunksIndexed).toBe(3);
     expect(stats.filesIndexed).toBe(1);
     expect(stats.skip.chunkedByWindow).toBe(0);

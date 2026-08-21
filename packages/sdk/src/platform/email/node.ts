@@ -10,7 +10,7 @@
  *
  *   - `createImapTlsSocket`      IMAP over implicit TLS (port 993)
  *   - `createImapPlainSocket`    IMAP unencrypted (port 143), for a localhost or
- *                                test server — `surfaces.email.imap.secure: false`
+ *                                test server, `surfaces.email.imap.secure: false`
  *   - `createSmtpTlsSocket`      SMTP submission over implicit TLS (port 465)
  *   - `createSmtpStartTlsSocket` SMTP submission, plain then STARTTLS (port 587)
  *

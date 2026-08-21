@@ -4,7 +4,7 @@
  * Attaches the `push.*` gateway-method handlers to the descriptors declared in
  * ../method-catalog-push.ts. Same mechanism fleet.* uses:
  * `catalog.register(descriptor, handler)`, reached over real HTTP through the
- * generic `/api/control-plane/methods/{id}/invoke` endpoint — no new REST route
+ * generic `/api/control-plane/methods/{id}/invoke` endpoint, no new REST route
  * in the external daemon-sdk package, no router change.
  *
  * Every write is scoped to the authenticated principal (the operator identity
@@ -58,7 +58,7 @@ function requireHttpsEndpoint(value: unknown): string {
 
 /**
  * Key material is validated by CONTENT, not existence: `p256dh` must decode to
- * a 65-byte uncompressed P-256 point and `auth` to a 16-byte secret — the same
+ * a 65-byte uncompressed P-256 point and `auth` to a 16-byte secret, the same
  * predicates push/encryption.ts enforces at delivery, so the two cannot
  * disagree about what is storable.
  */
@@ -155,7 +155,7 @@ const PUSH_HANDLER_FACTORIES: Readonly<Record<string, (service: PushGatewayServi
  * Attach the `push.*` handlers to their already-cataloged descriptors. Call
  * once, at RuntimeServices construction time, after the PushService exists. A
  * missing descriptor (contract/registration drift) is a silent no-op rather
- * than a throw — construction must never fail because one wire verb failed to
+ * than a throw, construction must never fail because one wire verb failed to
  * register; the operator-contract gates catch a real drift.
  */
 export function registerPushGatewayMethods(catalog: GatewayMethodCatalog, service: PushGatewayService): void {

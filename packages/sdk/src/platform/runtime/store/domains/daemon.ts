@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Daemon domain state — tracks the goodvibes daemon process lifecycle
+ * Daemon domain state, tracks the goodvibes daemon process lifecycle
  * and IPC transport health.
  *
  * Note: The daemon is a separate long-running process that manages
@@ -53,7 +53,7 @@ export interface DaemonJob {
 }
 
 /**
- * DaemonDomainState — daemon process and IPC transport state.
+ * DaemonDomainState, daemon process and IPC transport state.
  */
 export interface DaemonDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

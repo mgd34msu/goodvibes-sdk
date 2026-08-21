@@ -57,7 +57,7 @@ function makeManager(opts: ManagerOptions = {}): CompanionChatManager {
 }
 
 // ---------------------------------------------------------------------------
-// RL1: Per-session limit — (N+1)-th message throws
+// RL1: Per-session limit, (N+1)-th message throws
 // ---------------------------------------------------------------------------
 
 describe('RL1: per-session rate limit — (N+1)-th message throws', () => {
@@ -103,7 +103,7 @@ describe('RL6: runtime configManager overrides per-session limit', () => {
       configManager,
     });
 
-    // configManager returns 5 — we should be able to send exactly 5 before throwing
+    // configManager returns 5, we should be able to send exactly 5 before throwing
     for (let i = 0; i < 5; i++) {
       expect(() => limiter.check('sess-1', '')).not.toThrow();
     }
@@ -119,7 +119,7 @@ describe('RL6: runtime configManager overrides per-session limit', () => {
       configManager,
     });
 
-    // Baseline is 2 — exactly 2 succeed
+    // Baseline is 2, exactly 2 succeed
     expect(() => limiter.check('sess-2', '')).not.toThrow();
     expect(() => limiter.check('sess-2', '')).not.toThrow();
     // 3rd should throw

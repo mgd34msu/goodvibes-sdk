@@ -335,7 +335,7 @@ describe('subclass default codes', () => {
 
 describe('backward compatibility', () => {
   test('arbitrary string code still type-checks and is stored', () => {
-    // This must not produce a TypeScript error — the open string & {} union allows it.
+    // This must not produce a TypeScript error, the open string & {} union allows it.
     const err = new GoodVibesSdkError('x', { code: 'LEGACY_APP_ERROR' });
     expect(err.code).toBe('LEGACY_APP_ERROR');
   });

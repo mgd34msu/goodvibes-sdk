@@ -1,15 +1,15 @@
 /**
- * term-caps.ts — Terminal capability detection and color downsampling.
+ * term-caps.ts, Terminal capability detection and color downsampling.
  *
  * Probes the terminal's color support level once at renderer init and exposes
  * a `downsampleColor` function that maps hex/RGB color strings to the
  * appropriate SGR parameter string for the detected capability level.
  *
  * Capability levels (in ascending order):
- *   none      — NO_COLOR set or TERM=dumb; emit no SGR color sequences.
- *   basic16   — 16 ANSI colors (\x1b[30-37m / \x1b[90-97m / \x1b[40-47m).
- *   ansi256   — 256-color palette (\x1b[38;5;Nm).
- *   truecolor — 24-bit RGB (\x1b[38;2;R;G;Bm).
+ *   none     , NO_COLOR set or TERM=dumb; emit no SGR color sequences.
+ *   basic16  , 16 ANSI colors (\x1b[30-37m / \x1b[90-97m / \x1b[40-47m).
+ *   ansi256  , 256-color palette (\x1b[38;5;Nm).
+ *   truecolor, 24-bit RGB (\x1b[38;2;R;G;Bm).
  *
  * References:
  *   - NO_COLOR spec: https://no-color.org/ (any non-empty value disables color)
@@ -27,10 +27,6 @@ export interface TermColorCaps {
    */
   syncedOutput: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Capability probe
-// ---------------------------------------------------------------------------
 
 /**
  * Probe terminal color capabilities from environment and the write stream.
@@ -70,10 +66,6 @@ export function probeTermCaps(stdout: NodeJS.WriteStream): TermColorCaps {
   return { capability, syncedOutput };
 }
 
-// ---------------------------------------------------------------------------
-// Color parsing helpers
-// ---------------------------------------------------------------------------
-
 /** Parse "#rrggbb" → [r, g, b]. Returns null for invalid input. */
 function parseHex(hex: string): [number, number, number] | null {
   if (hex.length === 7 && hex[0] === '#') {
@@ -89,7 +81,7 @@ function parseHex(hex: string): [number, number, number] | null {
  * Parse a sanitized color string in one of two forms:
  *   - "#rrggbb"  → RGB tuple
  *   - "r;g;b"    → RGB tuple (already decomposed by sanitizeColor)
- *   - "N"        → null (already a palette index — pass through)
+ *   - "N"        → null (already a palette index, pass through)
  * Returns [r, g, b] or null (non-RGB / palette index).
  */
 function parseRgbString(color: string): [number, number, number] | null {
@@ -106,15 +98,11 @@ function parseRgbString(color: string): [number, number, number] | null {
   return null;
 }
 
-// ---------------------------------------------------------------------------
-// 256-color cube math
-// ---------------------------------------------------------------------------
-
 /**
  * Map [r, g, b] (0-255 each) to the nearest xterm-256 palette index.
  *
  * The 256-color palette is structured as:
- *   0-15:   System colors (16 named colors) — we avoid these for predictability
+ *   0-15:   System colors (16 named colors), we avoid these for predictability
  *           and instead target the 6×6×6 cube + grayscale ramp.
  *   16-231: 6×6×6 color cube, index = 16 + 36*r6 + 6*g6 + b6
  *           where r6/g6/b6 ∈ 0-5 map via [0,95,135,175,215,255]
@@ -174,10 +162,6 @@ export function nearestAnsi256(r: number, g: number, b: number): number {
   return grayDist < cubeDist ? gi : ci;
 }
 
-// ---------------------------------------------------------------------------
-// 16-color nearest-color table
-// ---------------------------------------------------------------------------
-
 /**
  * Standard 16 ANSI colors. Each entry is [r, g, b, fgCode, bgCode].
  * The fg code is the SGR parameter for foreground (30-37, 90-97);
@@ -229,10 +213,6 @@ function ansi16FgToBg(fgCode: number): number {
   return fgCode + 10;
 }
 
-// ---------------------------------------------------------------------------
-// Public downsampler
-// ---------------------------------------------------------------------------
-
 /**
  * Downsample a color for the given capability.
  *
@@ -240,11 +220,11 @@ function ansi16FgToBg(fgCode: number): number {
  *   the forms a grid cell may carry:
  *   - "#rrggbb"  hex
  *   - "r;g;b"    RGB already decomposed into SGR parameter form
- *   - "N"        already a palette index — returned as-is for ansi256/truecolor,
+ *   - "N"        already a palette index, returned as-is for ansi256/truecolor,
  *                or omitted for none
  *
  * @param caps - The probed terminal capabilities.
- * @param role - 'fg' or 'bg' — determines which SGR range to use for basic16.
+ * @param role - 'fg' or 'bg', determines which SGR range to use for basic16.
  *
  * @returns The SGR parameter string suitable for embedding in \x1b[38;2;...m
  *   (truecolor), \x1b[38;5;Nm (ansi256), \x1b[Nm (basic16 fg), etc.
@@ -274,13 +254,13 @@ export function downsampleColor(
   if (caps.capability === 'truecolor') {
     // Pass hex through as r;g;b decomposed, pass r;g;b through as-is
     if (rgb) return `${rgb[0]};${rgb[1]};${rgb[2]}`;
-    // Already a palette index — emit as 256-color
+    // Already a palette index, emit as 256-color
     return rawColor; // caller will use 38;5;N or 48;5;N
   }
 
   if (caps.capability === 'ansi256') {
     if (rgb) return String(nearestAnsi256(rgb[0], rgb[1], rgb[2]));
-    // Already a palette index — pass through
+    // Already a palette index, pass through
     return rawColor;
   }
 

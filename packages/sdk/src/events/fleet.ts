@@ -1,20 +1,20 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * FleetEvent — discriminated union of live process-registry lifecycle events.
+ * FleetEvent, discriminated union of live process-registry lifecycle events.
  *
  * These are the wire-surfaced, poll-free counterpart to the ProcessRegistry's
  * in-process coalesced snapshot tick: an emit-bridge diffs consecutive registry
  * snapshots and emits these per-node lifecycle deltas onto the runtime event bus
  * `fleet` domain, which the control-plane gateway already fans out to subscribed
  * SSE/WebSocket clients (no new channel). Every field here is DERIVED from the
- * authoritative snapshot — the events carry no state the snapshot does not, in
+ * authoritative snapshot, the events carry no state the snapshot does not, in
  * keeping with the registry's contract ("a view, not a second source of truth").
  *
  * The kind/state/attention string unions are structural duplicates of
  * ProcessKind / ProcessState / ProcessAttentionReason
  * (platform/runtime/fleet/types.ts), kept inline so this leaf event module stays
- * free of a `platform/` import — the same independence precedent as AgentUsage
+ * free of a `platform/` import, the same independence precedent as AgentUsage
  * in ./agents.ts.
  */
 
@@ -51,7 +51,7 @@ export type FleetNodeState =
   | 'queued'
   | 'paused';
 
-/** Mirrors ProcessAttentionReason — every way a node can wait on a human is first-class. */
+/** Mirrors ProcessAttentionReason, every way a node can wait on a human is first-class. */
 export type FleetAttentionReason = 'approval' | 'input' | 'pick' | 'conflict';
 
 export type FleetEvent =

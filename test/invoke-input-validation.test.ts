@@ -58,8 +58,8 @@ describe('conditional requirements (branchedSchema / dependentRequired)', () => 
 
   test('the base required set is enforced even when a branch matches', () => {
     // The regression this guards: `anyOf` used to SHORT-CIRCUIT the rest of the
-    // schema, so a matching branch skipped the base entirely and `id` — plainly
-    // declared required — went unchecked. knowledge.ingest.connector had
+    // schema, so a matching branch skipped the base entirely and `id`, plainly
+    // declared required, went unchecked. knowledge.ingest.connector had
     // exactly this shape and its `connectorId` was never enforced.
     const error = validateInvocationInput(verb(oneOfSchema), { a: 'set' });
     expect(error?.detail).toBe('id is required');

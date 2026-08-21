@@ -1,5 +1,5 @@
 /**
- * BIG-3 item 5 (+ items 2/3 in worktree mode) — configured quality gates run
+ * BIG-3 item 5 (+ items 2/3 in worktree mode), configured quality gates run
  * INSIDE the item's worktree in worktree-isolation mode, and the dependency
  * flow composes with per-item worktrees + the sequential integration lane.
  *
@@ -10,7 +10,7 @@
  *  - shared mode is unchanged: the same gate runs in the process cwd, not a
  *    per-item worktree;
  *  - a 3-item plan (B dependsOn A, C independent) in worktree mode integrates
- *    in dependency-respecting order — A merges before B — because B cannot even
+ *    in dependency-respecting order, A merges before B, because B cannot even
  *    start (let alone pass and enqueue) until A has passed and enqueued.
  */
 import { describe, expect, test } from 'bun:test';

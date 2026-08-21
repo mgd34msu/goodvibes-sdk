@@ -1,5 +1,5 @@
 /**
- * LocalLedgerExporter — append-only JSON lines span exporter.
+ * LocalLedgerExporter, append-only JSON lines span exporter.
  *
  * Writes completed spans to a rotating JSON Lines (.jsonl) file.
  * Export failures are isolated from the runtime and reported through
@@ -54,7 +54,7 @@ export interface LocalLedgerConfig {
  * seek and stepwise playback.
  */
 export interface LedgerEntry {
-  /** Run identifier — groups entries belonging to the same recorded run. */
+  /** Run identifier, groups entries belonging to the same recorded run. */
   readonly runId: string;
   /** Monotonically increasing revision counter within the run (starts at 1). */
   readonly rev: number;
@@ -69,7 +69,7 @@ export interface LedgerEntry {
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 /**
- * LocalLedgerExporter — writes spans as JSON lines to a rotating file.
+ * LocalLedgerExporter, writes spans as JSON lines to a rotating file.
  *
  * Usage:
  * ```ts
@@ -211,7 +211,7 @@ export class LocalLedgerExporter implements SpanExporter {
           entries.push(entry);
         }
       } catch {
-        // Skip malformed lines — ledger may have partial writes.
+        // Skip malformed lines, ledger may have partial writes.
       }
     }
 
@@ -253,7 +253,7 @@ export class LocalLedgerExporter implements SpanExporter {
 
   /** Flush is a no-op for synchronous append-only writes. */
   async flush(): Promise<void> {
-    // Nothing to flush — writes are synchronous via appendFileSync.
+    // Nothing to flush, writes are synchronous via appendFileSync.
   }
 
   /** Shutdown is a no-op for file-based exports. */
@@ -270,7 +270,7 @@ export class LocalLedgerExporter implements SpanExporter {
    * Applies the age + total-size caps across the span file, its rotated backup,
    * and the ledger file, deleting oldest-first. The freshly-written active files
    * carry the most recent mtime, so they are only ever reclaimed as a last
-   * resort under extreme size pressure — a rotated backup goes first.
+   * resort under extreme size pressure, a rotated backup goes first.
    */
   private _enforceRetention(): void {
     try {

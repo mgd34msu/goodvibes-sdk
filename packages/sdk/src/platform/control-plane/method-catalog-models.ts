@@ -1,9 +1,9 @@
 /**
- * method-catalog-models.ts — the model catalog and the daemon's current model.
+ * method-catalog-models.ts, the model catalog and the daemon's current model.
  *
- * Three routes that have been served and called for a long time —
+ * Three routes that have been served and called for a long time,
  * `GET /api/models`, `GET /api/models/current`, `PATCH /api/models/current`
- * (platform/daemon/http/model-routes.ts) — and which no method descriptor
+ * (platform/daemon/http/model-routes.ts), and which no method descriptor
  * described. Every generated client is derived from this catalog, so a route
  * outside it is a route each consumer has to hand-write a row for: the web
  * surface did exactly that, and a hand-written row is a second statement of the
@@ -98,7 +98,7 @@ export const builtinGatewayModelMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'models.current.get',
     title: 'Current Model',
-    description: 'The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.',
+    description: 'The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.',
     category: 'providers',
     scopes: ['read:providers'],
     http: { method: 'GET', path: '/api/models/current' },
@@ -108,7 +108,7 @@ export const builtinGatewayModelMethodDescriptors: readonly GatewayMethodDescrip
   methodDescriptor({
     id: 'models.current.set',
     title: 'Switch the Current Model',
-    description: 'Switch the daemon\'s current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.',
+    description: 'Switch the daemon\'s current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened.',
     category: 'providers',
     scopes: ['write:providers'],
     dangerous: true,

@@ -3,7 +3,7 @@
  *
  * Cancel every agent run a graph is still hosting, over `AgentManager`'s public
  * surface. A free function rather than a method because `manager.ts` sits at its
- * grandfathered line ceiling (scripts/line-cap-grandfather.json) with no room —
+ * grandfathered line ceiling (scripts/line-cap-grandfather.json) with no room,
  * and it needs nothing private: `list()` and `cancel()` are both public and are
  * exactly the ordinary operator kill path.
  */
@@ -23,7 +23,7 @@ export interface CancellableAgentRuns {
  * orchestration engine, process registry and event bus these runs report
  * through have all been taken down, so an agent still "running" has nowhere to
  * publish progress, nothing to write results into and no operator left to
- * answer it — it is orphaned, not preserved.
+ * answer it, it is orphaned, not preserved.
  *
  * It is also the only shutdown-reachable way into an in-flight provider call:
  * each record's cancellation signal is what aborts the HTTP request and cuts
@@ -31,7 +31,7 @@ export interface CancellableAgentRuns {
  * through as much as 30 seconds per attempt.
  *
  * Goes through the ordinary cancel path, so every record ends in the same state
- * an operator kill produces — no new terminal state and the same events.
+ * an operator kill produces, no new terminal state and the same events.
  */
 export function cancelAllAgentRuns(manager: CancellableAgentRuns): number {
   let cancelled = 0;

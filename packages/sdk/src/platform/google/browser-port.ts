@@ -8,7 +8,7 @@
  *
  * It lives in the SDK rather than in a product because of who needs it. The
  * Cloud Console walkthrough is browser-driven, and the daemon is a runtime
- * that has to be able to complete it — a walkthrough only one product could
+ * that has to be able to complete it, a walkthrough only one product could
  * perform is a walkthrough the daemon cannot offer at all. Both halves are
  * platform now, so the adapter between them is too.
  *

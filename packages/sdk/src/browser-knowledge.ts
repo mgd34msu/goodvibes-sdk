@@ -20,7 +20,7 @@ import type { ServerSentEventHandlers } from './transport-http.js';
  * The input type of `TMethodId` minus the key this wrapper supplies from its own
  * positional argument (the id already in the URL path).
  *
- * `OmitNamed` rather than a plain `Omit` — see @pellux/goodvibes-contracts'
+ * `OmitNamed` rather than a plain `Omit`, see @pellux/goodvibes-contracts'
  * typed-io-keys.ts: an `additionalProperties: true` verb renders with a broad
  * index signature, and `Omit` collapses the whole named shape against it.
  */
@@ -123,7 +123,7 @@ export type BrowserKnowledgeDomain = typeof KNOWLEDGE_BROWSER_DOMAINS[number];
  * addition breaks `Omit`: `keyof` an intersection carrying an index signature
  * is `string | number`, so omitting a named key removes nothing and keeps
  * nothing, and the result is a bare record. Every helper below that took
- * `Omit<Input, 'sessionId'>` was therefore accepting anything at all — not
+ * `Omit<Input, 'sessionId'>` was therefore accepting anything at all, not
  * because of the requirement branches, which came later, but from the moment
  * the envelope was opened. Dropping the index signature first is what makes
  * the omit mean something.
@@ -138,7 +138,7 @@ type DeclaredKeys<T> = {
  * Distributing matters as much as `DeclaredKeys`: the companion-chat verbs
  * whose required set is conditional are typed as a base intersected with a
  * union of requirement branches, and a non-distributive `Omit` collapses that
- * union to its members' common keys — discarding the requirement it exists to
+ * union to its members' common keys, discarding the requirement it exists to
  * state.
  */
 type OmitDeclared<T, TKeys extends PropertyKey> = T extends unknown

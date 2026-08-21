@@ -3,7 +3,7 @@
  *
  * Handlers for memory.projections.list + memory.projections.get over the
  * daemon's canonical MemoryRegistry. A read-only view that projects standing
- * (project/team-scope) memory records to their markdown form — the same
+ * (project/team-scope) memory records to their markdown form, the same
  * projection the file-projection surface writes, computed live from the store
  * rather than read from disk so it always matches the current records.
  *

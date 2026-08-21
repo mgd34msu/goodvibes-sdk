@@ -4,7 +4,7 @@
  * Google names the file `client_secret_<id>.apps.googleusercontent.com.json`,
  * so matching on filename is fragile and matching on an exact name is simply
  * wrong. The browser tool owns the profile the download landed in, so the flow
- * already knows the directory — what it needs is to identify the right file by
+ * already knows the directory, what it needs is to identify the right file by
  * **content shape**: a JSON object with an `installed` key carrying both
  * `client_id` and `client_secret`.
  *
@@ -37,7 +37,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /**
  * Does this text look like a Desktop-app OAuth client JSON?
  *
- * Checks structure, not name. A `web` client is deliberately not accepted —
+ * Checks structure, not name. A `web` client is deliberately not accepted,
  * it cannot complete the loopback flow, and silently picking one up would
  * produce a baffling failure several steps later.
  */

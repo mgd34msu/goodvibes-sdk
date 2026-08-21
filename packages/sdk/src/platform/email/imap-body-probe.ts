@@ -1,5 +1,5 @@
 /**
- * Can this connection actually read message content — asked, not assumed.
+ * Can this connection actually read message content, asked, not assumed.
  *
  * Why this file exists
  * ────────────────────
@@ -11,7 +11,7 @@
  *
  * IMAP publishes nothing of the kind. There are no scopes; there is a mailbox
  * whose access rights the provider decides and never states. `LOGIN` succeeding
- * and `EXAMINE` succeeding say the account exists and the folder is there —
+ * and `EXAMINE` succeeding say the account exists and the folder is there,
  * neither says the server will hand over what is inside a message. A provider
  * that permits headers and withholds content answers every command with `OK`
  * and returns nothing, which reads from the outside exactly like a mailbox
@@ -27,12 +27,12 @@
  *    section for a message whose own BODYSTRUCTURE declared a text part with
  *    octets in it is the same failure wearing a quiet mailbox's clothes.
  * 2. **A runtime invariant.** An empty mailbox has nothing to probe, so the
- *    probe cannot prove anything there — and a freshly created signup alias is
+ *    probe cannot prove anything there, and a freshly created signup alias is
  *    empty by definition, which is the exact journey this capability serves.
  *    The same comparison therefore runs again on the first body actually
  *    fetched, and settles what the probe had to leave open.
  *
- * The comparison — DECLARED octets against RETURNED bytes — is what makes this
+ * The comparison, DECLARED octets against RETURNED bytes, is what makes this
  * checkable rather than a guess, and it is why the probe fetches BODYSTRUCTURE
  * alongside the body rather than the body alone. Without the server's own
  * declaration there is no way to tell "this message is empty" from "this server
@@ -40,9 +40,9 @@
  *
  * One probe, both command forms
  * ─────────────────────────────
- * There were briefly two probes here — one asking "will this server answer a
+ * There were briefly two probes here, one asking "will this server answer a
  * UID-addressed fetch", the other asking "does what came back match what was
- * declared" — costing three round trips between them. They are one probe now,
+ * declared", costing three round trips between them. They are one probe now,
  * because they were two halves of one question. `probeMailboxBody` issues the
  * sequence-addressed BODYSTRUCTURE that supplies the declaration and the
  * UID-addressed body fetch that exercises the drain's own addressing, in two
@@ -79,10 +79,10 @@ export const IMAP_BODY_PROBE_BYTES = 512;
  * Three outcomes, and the third is the one that would otherwise be guessed
  * wrong in both directions:
  *
- *   - `readable` — content came back. Demonstrated, not inferred.
- *   - `unreadable` — this account cannot read message content. Mail can be
+ *   - `readable`, content came back. Demonstrated, not inferred.
+ *   - `unreadable`, this account cannot read message content. Mail can be
  *     seen arriving and never read.
- *   - `unproven` — there was nothing to read from, so nothing was learned.
+ *   - `unproven`, there was nothing to read from, so nothing was learned.
  *     NOT the same as `readable`: claiming a capability nobody has
  *     demonstrated is how the Gmail metadata-scope defect looked from outside.
  *
@@ -118,19 +118,19 @@ export type ImapBodyProbe =
  * The two ways a connection demonstrates it cannot read message content.
  *
  * They are one outcome rather than two because they carry the same meaning for
- * the owner and the same remedy — this account is not permitted to read message
- * content — and a reader that had to handle them separately would be handling
+ * the owner and the same remedy, this account is not permitted to read message
+ * content, and a reader that had to handle them separately would be handling
  * the same finding twice. They stay distinguishable because the EVIDENCE
  * genuinely differs, and each case carries only the evidence it actually has:
  * there is no declaration to report when the server refused before declaring
  * anything, and no server wording to report when the server said nothing and
  * merely returned nothing.
  *
- *   - `withheld` — the server ACCEPTED the fetch and returned an empty body for
+ *   - `withheld`, the server ACCEPTED the fetch and returned an empty body for
  *     a message its own BODYSTRUCTURE declared has content in it. This is the
  *     case that has no other detector: a refusal-only check reads it as success,
  *     and from outside it is indistinguishable from a mailbox nobody wrote to.
- *   - `refused` — the server declined, and named no condition
+ *   - `refused`, the server declined, and named no condition
  *     `classifyServerRefusal` can place. A refusal it CAN place ([LIMIT], an
  *     auth code, a mailbox code) never reaches here; it is re-thrown for the
  *     classifier that already owns it, because "this account may not read
@@ -158,7 +158,7 @@ export function declaredTextOctets(parts: readonly ImapBodyPart[]): number {
  * The invariant, as a pure comparison: does what came back match what the
  * server said was there?
  *
- * This is half 2 as much as it is half 1 — the probe calls it with one probed
+ * This is half 2 as much as it is half 1, the probe calls it with one probed
  * message, and a real body fetch calls it with the message it just read. One
  * rule, evaluated in both places, so "the mailbox went quiet" and "the server
  * will not show me the mail" cannot be confused at either call site.
@@ -212,9 +212,9 @@ export function assessFetchedBody(input: {
  * A connection that authenticated, opened its mailbox, and will not hand over
  * what is inside a message.
  *
- * Carries the same routable `notice` `ImapOpenError` does, and structurally —
+ * Carries the same routable `notice` `ImapOpenError` does, and structurally,
  * `describeEmailCapabilityFailure` reads it off either without importing
- * either — so a withheld body reaches the owner by the path a refused
+ * either, so a withheld body reaches the owner by the path a refused
  * credential already travels, with its own reason and its own remedy.
  *
  * Deliberately NOT an `ImapOpenError` with `fetch`-shaped wording: the server
@@ -271,7 +271,7 @@ export function bodyCapabilityFailure(input: {
  * NOTHING about itself becomes a body-capability failure; everything the
  * server characterised is re-thrown for `classifyOpenFailure` to place.
  *
- * A timeout or a dead socket is re-thrown untouched — that is a reconnect, and
+ * A timeout or a dead socket is re-thrown untouched, that is a reconnect, and
  * calling it a capability verdict would stop a watcher over a network blip.
  */
 async function probeCommand(
@@ -311,13 +311,13 @@ function uidFrom(lines: readonly string[]): number {
  * This used to be two separate probes making three round trips between them,
  * and the reason they merged is that each was answering half of one question:
  *
- *   1. `FETCH <exists> (UID BODYSTRUCTURE)` — SEQUENCE-addressed. Asks the
+ *   1. `FETCH <exists> (UID BODYSTRUCTURE)`, SEQUENCE-addressed. Asks the
  *      server to describe the newest message, which is what supplies the
  *      declared octet count the whole check compares against, and its UID.
  *      The newest message is chosen by sequence number `exists` because that is
- *      the same message the highest UID names — IMAP keeps UID order and
- *      sequence order together — and it costs no `UID SEARCH` to find.
- *   2. `UID FETCH <uid> BODY.PEEK[]<0.N>` — UID-addressed, and deliberately so.
+ *      the same message the highest UID names, IMAP keeps UID order and
+ *      sequence order together, and it costs no `UID SEARCH` to find.
+ *   2. `UID FETCH <uid> BODY.PEEK[]<0.N>`, UID-addressed, and deliberately so.
  *      That is the command form the real drain uses, so a server that refuses
  *      UID-addressed fetches is caught HERE, at connect, rather than on the
  *      first message that matters. Fetching the body by sequence number instead
@@ -325,7 +325,7 @@ function uidFrom(lines: readonly string[]): number {
  *
  * So the two forms are not redundant: the first is the only source of the
  * declaration, and the second is the only exercise of the drain's own
- * addressing. Losing either loses a case — a withheld body becomes invisible
+ * addressing. Losing either loses a case, a withheld body becomes invisible
  * without the comparison, and a UID-refusing server becomes invisible without
  * the UID fetch.
  *
@@ -375,8 +375,8 @@ export async function probeMailboxBody(
 
   // UID-addressed whenever the server named a UID, because that is the form the
   // drain uses. Falling back to the sequence form when it named none is not a
-  // silent downgrade of the check: the declared-versus-returned comparison —
-  // the part with no other detector — runs either way, and refusing to probe at
+  // silent downgrade of the check: the declared-versus-returned comparison,
+  // the part with no other detector, runs either way, and refusing to probe at
   // all because a server omitted a UID it was explicitly asked for would turn a
   // server quirk into a mailbox nobody watches.
   const bodyLines = await probeCommand(

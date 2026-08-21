@@ -4,7 +4,7 @@
  * The `control.session_update` channel declares `scopes: ['read:sessions']`.
  * The gateway must ENFORCE that on the per-client SSE fan-out: a principal-scoped
  * web client without read:sessions does not receive session-update frames, while
- * one that has it (or an admin token — single-admin-token collapse) does. Internal
+ * one that has it (or an admin token, single-admin-token collapse) does. Internal
  * streams that carry no scopes stay trusted so nothing existing regresses.
  */
 

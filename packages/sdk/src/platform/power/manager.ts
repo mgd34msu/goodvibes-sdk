@@ -1,10 +1,10 @@
 /**
- * power/manager.ts — sleep ownership policy over the platform seam.
+ * power/manager.ts, sleep ownership policy over the platform seam.
  *
  * Three responsibilities, per the recorded ruling:
  *
  * 1. AUTOMATIC work inhibition: while real work runs (a running turn, an
- *    active agent/fleet node, a schedule about to fire — callers hold/release
+ *    active agent/fleet node, a schedule about to fire, callers hold/release
  *    named work holds), an idle+sleep inhibitor is held, hard time-capped
  *    (honest, configurable cap) and released when work drains. State is
  *    always inspectable as "held because X".
@@ -12,11 +12,11 @@
  *    callback runs (checkpoint what's checkpointable); on wake the catch-up
  *    callbacks run (re-arm timers, reconnect, deliver missed-run receipts
  *    through each job's own path).
- * 3. THE OWNER TOGGLE (keep-awake): daemon-held, INDEPENDENT of work state —
+ * 3. THE OWNER TOGGLE (keep-awake): daemon-held, INDEPENDENT of work state,
  *    it survives surfaces closing; covers idle + sleep + lid-switch classes
  *    where grantable and states the split honestly where the lid-switch block
  *    is refused ("idle sleep blocked; lid-close suspend is controlled by your
- *    OS here"). NO timers, NO AC-only sub-options — the always-visible chip
+ *    OS here"). NO timers, NO AC-only sub-options, the always-visible chip
  *    (served from getState over the contract) is the safety mechanism.
  */
 import { logger } from '../utils/logger.js';
@@ -55,9 +55,9 @@ export interface PowerState {
 }
 
 export interface PowerSleepEdgeHooks {
-  /** Checkpoint what's checkpointable — runs on PrepareForSleep(true). */
+  /** Checkpoint what's checkpointable, runs on PrepareForSleep(true). */
   readonly onSleep?: (() => void | Promise<void>) | undefined;
-  /** Catch-up: re-arm timers, reconnect, deliver missed receipts — runs on wake. */
+  /** Catch-up: re-arm timers, reconnect, deliver missed receipts, runs on wake. */
   readonly onWake?: (() => void | Promise<void>) | undefined;
 }
 
@@ -69,8 +69,8 @@ export interface PowerManagerOptions {
   readonly writeConfig?: ((key: string, value: boolean) => void) | undefined;
   /**
    * Subscribe to live config changes (ConfigManager.subscribe shape). When
-   * present, a power.keepAwake change — from any writer, including an external
-   * settings edit — applies LIVE, not just at start().
+   * present, a power.keepAwake change, from any writer, including an external
+   * settings edit, applies LIVE, not just at start().
    */
   readonly subscribeConfig?: ((key: string, cb: (newValue: unknown) => void) => () => void) | undefined;
   /** Emits the state-change event surfaces subscribe the chip to. */
@@ -78,7 +78,7 @@ export interface PowerManagerOptions {
   /**
    * Process exit/signal hook registration seam (injectable for tests).
    * Default registers on the real `process`. The registered cleanup releases
-   * every held inhibitor so the out-of-process inhibit children die with us —
+   * every held inhibitor so the out-of-process inhibit children die with us,
    * an exiting daemon must never leave a hold blocking host sleep.
    */
   readonly registerProcessExitHooks?: ((cleanup: () => void) => () => void) | undefined;
@@ -89,7 +89,7 @@ export interface PowerManagerOptions {
  * Default process-exit hook registration: the 'exit' event (normal exits and
  * signal-handled exits) plus SIGINT/SIGTERM/SIGHUP once-handlers. A signal
  * handler releases the holds and then re-raises the signal ONLY when it was
- * the sole listener — when a host application (the daemon) also handles the
+ * the sole listener, when a host application (the daemon) also handles the
  * signal, that handler owns process shutdown and this one only releases.
  */
 function defaultRegisterProcessExitHooks(cleanup: () => void): () => void {
@@ -202,7 +202,7 @@ export class PowerManager {
   }
 
   /**
-   * Release every held inhibitor NOW, without awaiting — for process-exit
+   * Release every held inhibitor NOW, without awaiting, for process-exit
    * paths where only synchronous work runs. The seam handles kill their
    * inhibit children synchronously before their first await, so the children
    * are signalled even from an 'exit' handler.

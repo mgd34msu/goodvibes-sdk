@@ -1,5 +1,5 @@
 /**
- * pause-controller.ts — the backpressure seam the MemoryGovernor drives to
+ * pause-controller.ts, the backpressure seam the MemoryGovernor drives to
  * pause and resume deferrable background jobs (knowledge self-improvement,
  * memory consolidation, code-index reindex) when memory pressure is high.
  *

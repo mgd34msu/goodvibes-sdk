@@ -44,7 +44,7 @@ interface TelemetryApiLike {
 }
 
 /**
- * Ingest sink — receives parsed OTLP records forwarded by the POST receivers.
+ * Ingest sink, receives parsed OTLP records forwarded by the POST receivers.
  * When null (no ingest sink wired), the route still accepts and acknowledges
  * payloads (to keep client exporters happy) but discards the data.
  */
@@ -66,7 +66,7 @@ interface TelemetryRouteContext {
    * which stores ingested records in its bounded event buffer (default 500
    * records) and makes them observable via GET /api/v1/telemetry/events.
    * Pass `null` only in test fixtures where ingestion is intentionally
-   * a no-op — the receivers still return 200 to keep OTLP exporters happy but
+   * a no-op, the receivers still return 200 to keep OTLP exporters happy but
    * discard the payload.
    */
   readonly ingestSink: TelemetryIngestSink | null;
@@ -127,11 +127,7 @@ function buildFilter(url: URL): TelemetryFilter {
   };
 }
 
-// ---------------------------------------------------------------------------
-// OTLP ingest helpers
-// ---------------------------------------------------------------------------
-
-/** Max ingest payload (4 MiB) — reject larger bodies with 413 */
+/** Max ingest payload (4 MiB), reject larger bodies with 413 */
 const OTLP_INGEST_MAX_BODY_BYTES = 4 * 1024 * 1024;
 
 /** Accepted content-types for OTLP/HTTP ingest. */
@@ -151,7 +147,7 @@ const OTLP_INGEST_SCOPES = ['ingest:telemetry', 'write:telemetry'] as const;
  * Validate and parse an OTLP HTTP ingest request body.
  * Returns a parsed JSON Record on success, or a Response (error) on failure.
  *
- * Protocol: OTLP/HTTP spec §4.2 — supports JSON and binary protobuf service
+ * Protocol: OTLP/HTTP spec §4.2, supports JSON and binary protobuf service
  * requests for logs, traces, and metrics.
  */
 async function parseOtlpBody(

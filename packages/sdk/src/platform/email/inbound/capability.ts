@@ -1,10 +1,10 @@
 /**
- * Can this watcher do its job at all — and if not, does the owner know?
+ * Can this watcher do its job at all, and if not, does the owner know?
  *
  * A watcher has three honest answers, not two. It is `healthy` when it is
  * doing what it was configured to do; `degraded` when it is running with less
- * than it wanted — polling because the server offers no push, or waiting out a
- * reconnect — and `insufficient` when it CANNOT do the job, because the
+ * than it wanted, polling because the server offers no push, or waiting out a
+ * reconnect, and `insufficient` when it CANNOT do the job, because the
  * mailbox will not open or the credential is refused.
  *
  * The third one is the reason this file exists. A capability that cannot work
@@ -20,13 +20,13 @@
  * ignore the exact channel this capability depends on being read; by the third
  * night it is noise, and the message that mattered arrives in a stream he has
  * learned to swipe away. So a verdict identical to the one before it changes
- * nothing and says nothing — but the re-probe still runs, so fixing a scope or
+ * nothing and says nothing, but the re-probe still runs, so fixing a scope or
  * a password recovers without a restart.
  *
  * The tri-state that this file exists to respect
  * ──────────────────────────────────────────────
  * `ImapConnectionReport.supportsIdle` is `boolean | null`, and `null` means
- * THE SERVER SAID NOTHING — never "no". `if (report.supportsIdle)` is
+ * THE SERVER SAID NOTHING, never "no". `if (report.supportsIdle)` is
  * therefore wrong in a way that produces no error and no log line: it silently
  * polls forever against a server that would have pushed. Resolving a `null`
  * means asking, with a `CAPABILITY` command, and only a server that will not
@@ -75,7 +75,7 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
   'mailbox-position-unknown': 'insufficient',
   'fetch-refused': 'insufficient',
   'gmail-metadata-only': 'insufficient',
-  // Running, and running with less than it wanted — the definition of
+  // Running, and running with less than it wanted, the definition of
   // `degraded`. Mail IS being announced; what cannot happen is a verification
   // being satisfied.
   'gmail-metadata-notice-only': 'degraded',
@@ -90,14 +90,14 @@ const STATE_BY_REASON: Readonly<Record<InboundCapabilityReason, InboundCapabilit
  * The remedial step for each reason, or '' where waiting is the step.
  *
  * One step, imperative, naming the thing to change. "Check your settings" is
- * not a fix; "the mail server refused the credential — store a new app
+ * not a fix; "the mail server refused the credential, store a new app
  * password" is, and it is what gets routed to the owner when a state goes
  * `insufficient`.
  *
  * Only settings that EXIST today are named by key. The inbound watcher's own
  * settings land with the config schema in a separate round, and a fix that
  * named a key the settings screen has no row for would send the owner looking
- * for something that is not there — the precise defect
+ * for something that is not there, the precise defect
  * `platform-daemon-mailbox-schema` exists to catch. Those are described in
  * words until the keys are real.
  */
@@ -105,14 +105,14 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
   'idle-push': '',
   'polling-configured': '',
   'polling-no-idle':
-    'Nothing to fix — this mail server offers no push, so new mail is found by '
+    'Nothing to fix, this mail server offers no push, so new mail is found by '
     + 'polling instead. Shortening the inbound poll interval finds it sooner, '
     + 'at the cost of more requests to the mail server.',
   'polling-idle-refused':
-    'Nothing to fix — the server advertised IDLE and then refused it, so new '
+    'Nothing to fix, the server advertised IDLE and then refused it, so new '
     + 'mail is found by polling instead.',
   'polling-capability-unknown':
-    'Nothing to fix — the server would not say whether it supports push, so '
+    'Nothing to fix, the server would not say whether it supports push, so '
     + 'new mail is found by polling instead.',
   reconnecting: '',
   'server-unavailable': '',
@@ -126,7 +126,7 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
   'mailbox-unreadable':
     'The sign-in worked and the mailbox did not open. Check the folder name '
     + '(surfaces.email.imap.mailbox) against the folders the account actually '
-    + 'has — on Gmail the name is case-sensitive and nested folders are '
+    + 'has, on Gmail the name is case-sensitive and nested folders are '
     + 'written like [Gmail]/All Mail.',
   'uidvalidity-missing':
     'The mail server opened the mailbox without reporting a UIDVALIDITY, which '
@@ -157,7 +157,7 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     + 'mailbox. Re-authorize granting a body-capable scope (gmail.readonly, '
     + 'gmail.modify, or https://mail.google.com/). To be told that mail arrived '
     + 'without being able to act on it, set '
-    + 'surfaces.email.inbound.onInsufficientCapability to "notice-only" — that '
+    + 'surfaces.email.inbound.onInsufficientCapability to "notice-only", that '
     + 'announces the sender, subject and delivery address of every message and '
     + 'still completes nothing.',
   'gmail-metadata-notice-only':
@@ -172,8 +172,8 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
   'fetch-unreadable':
     'The mail server is answering the request for message data and the daemon '
     + 'cannot read the answers it sends, so mail is arriving and none of it can '
-    + 'be handed on. Nothing is lost — the messages are still in the mailbox and '
-    + 'the daemon has not marked them handled — but it has stopped asking, '
+    + 'be handed on. Nothing is lost, the messages are still in the mailbox and '
+    + 'the daemon has not marked them handled, but it has stopped asking, '
     + 'because asking again was producing the same unreadable answer several '
     + 'times a second. The detail above is what could not be read; it is a '
     + 'mismatch between this daemon and this mail server rather than anything '
@@ -192,11 +192,11 @@ const FIX_BY_REASON: Readonly<Record<InboundCapabilityReason, string>> = {
     + 'or when inbound settings change.',
   'bodies-unfetchable':
     'This account can sign in but is not permitted to read message content, so '
-    + 'check the mailbox access rights for it — and where the provider offers a '
+    + 'check the mailbox access rights for it, and where the provider offers a '
     + 'restricted or metadata-only app password, replace the stored one with a '
     + 'password that may read message content.',
   'bodies-unproven':
-    'Nothing to fix — the mailbox was empty, so there was no message to read '
+    'Nothing to fix, the mailbox was empty, so there was no message to read '
     + 'and it is not yet proven that this account can read message content. The '
     + 'first message that arrives settles it either way.',
 };
@@ -281,8 +281,8 @@ export function verdictForOpenConnection(input: {
 /**
  * The verdict a body-capability reading implies, or null when it implies none.
  *
- * `readable` implies nothing on its own — the transport still decides between
- * `idle-push`, `polling-configured` and a polling fallback — so it returns
+ * `readable` implies nothing on its own, the transport still decides between
+ * `idle-push`, `polling-configured` and a polling fallback, so it returns
  * null and lets that decision stand.
  *
  * `unproven` is `degraded`, and this is the ruling worth being able to
@@ -290,7 +290,7 @@ export function verdictForOpenConnection(input: {
  * to run a watcher on a genuinely empty mailbox, which is what a freshly
  * created signup alias IS, and would therefore break the exact journey this
  * capability exists to serve. `healthy` would claim a capability nobody has
- * demonstrated — the same shape as the Gmail metadata-scope defect, which also
+ * demonstrated, the same shape as the Gmail metadata-scope defect, which also
  * looked like success. `degraded` runs, tells the owner it has not yet been
  * able to prove it can read message content, and lets the first real message
  * settle it.
@@ -341,7 +341,7 @@ const REASON_FOR_NOTICE: Readonly<
  *
  * This used to re-read the server's wording ahead of the reason, because
  * `composeOpenFailure` classified by PHASE and called every refusal at LOGIN a
- * rejected credential — which is terminal, and which Gmail's
+ * rejected credential, which is terminal, and which Gmail's
  * `NO [LIMIT] Too many simultaneous connections` arrives as. That workaround
  * is gone: the email layer now classifies from the response code and the
  * wording first, produces `server-unavailable` for a refusal about the server
@@ -385,8 +385,8 @@ export function classifyOpenFailure(error: unknown): OpenFailureVerdict {
  * Whether a failure while reading messages means the mailbox cannot be read at
  * all, or merely that this connection ended.
  *
- * The server's own words are read by `classifyServerRefusal` — the same
- * function the open path uses — so a `[LIMIT]` refused mid-session is the same
+ * The server's own words are read by `classifyServerRefusal`, the same
+ * function the open path uses, so a `[LIMIT]` refused mid-session is the same
  * `server-unavailable` it would have been at login. The phase reason handed in
  * is deliberately the non-terminal one, so a refusal that says nothing about
  * itself falls through to the rule below rather than to a verdict that stops
@@ -463,7 +463,7 @@ function errnoOf(error: unknown): string {
 }
 
 /**
- * Classify a failure that escaped the reading path entirely — a cursor write
+ * Classify a failure that escaped the reading path entirely, a cursor write
  * that threw, an injected dependency that broke, a bug.
  *
  * This is the classifier behind the rule that an unexpected throw is CAUGHT,
@@ -517,13 +517,13 @@ export function errorText(error: unknown): string {
  *
  * `record()` returns whether it announced, so the caller can tell "this is
  * new" from "this is the same thing again" without comparing verdicts itself
- * — which is the comparison that gets forgotten, and forgetting it is what
+ *, which is the comparison that gets forgotten, and forgetting it is what
  * turns an hourly re-probe into an hourly alarm.
  *
  * The comparison is on state AND reason, and deliberately not on `detail`: the
  * detail carries the server's own wording, and a server that phrases the same
- * refusal differently between attempts — a session id in the text, a
- * timestamp — must not read as a new condition. The stored verdict is still
+ * refusal differently between attempts, a session id in the text, a
+ * timestamp, must not read as a new condition. The stored verdict is still
  * updated to the latest wording, so status shows what the server last said.
  */
 export class CapabilityStateTracker {

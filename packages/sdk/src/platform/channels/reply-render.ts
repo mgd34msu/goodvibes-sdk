@@ -41,8 +41,8 @@ function safeParseJson(raw: string): unknown {
 /**
  * The human summary of an agent completion report, or null if this is not one.
  *
- * Keyed off the report's OWN discriminators — `version: 1` plus a non-empty
- * `archetype` (see agents/completion-report.ts) — never off "this text looks
+ * Keyed off the report's OWN discriminators, `version: 1` plus a non-empty
+ * `archetype` (see agents/completion-report.ts), never off "this text looks
  * like JSON", so an answer that legitimately is JSON is left untouched.
  */
 function readCompletionReportSummary(value: unknown): string | null {
@@ -109,12 +109,12 @@ const MAX_COMPLETION_REPORT_REWRITES = 4;
  * Replace any agent completion report with the summary it carries.
  *
  * The report is an internal contract between an agent and the WRFC controller.
- * It belongs in the transcript, so only the report SPAN is rewritten — prose
+ * It belongs in the transcript, so only the report SPAN is rewritten, prose
  * written around it survives intact.
  *
  * BOTH forms are handled, because the report reached the owner's phone in both:
- * once as `{"version":1,"archetype":"engineer",...}`, and again — after that
- * was fixed — as the prose form the base agent prompt asks for, a filled-in
+ * once as `{"version":1,"archetype":"engineer",...}`, and again, after that
+ * was fixed, as the prose form the base agent prompt asks for, a filled-in
  * `Summary: / Changes: / Decisions:` template with `Changes: None` under a
  * greeting. The prose half lives in completion-report-prose.ts.
  *
@@ -141,7 +141,7 @@ export function renderWithoutCompletionReport(text: string): string {
  * (providers/inline-reasoning.ts) so it arrives as a `reasoning` event, which
  * `eventLine` already governs. This covers what that fix cannot reach: a
  * provider path not yet taught the wire format, whose reasoning would
- * otherwise land verbatim in an ntfy or telephony body — surfaces whose whole
+ * otherwise land verbatim in an ntfy or telephony body, surfaces whose whole
  * policy is `reasoningVisibility: 'suppress'`. Applied here, one place, for
  * every channel surface; no surface re-solves it.
  *
@@ -171,7 +171,7 @@ const MAX_EVENT_STATUS_CHARS = 400;
 
 export function eventLine(event: ChannelRenderEvent, reasoningVisibility: ChannelReasoningVisibility): string | null {
   // The gate. Everything below this line is text a person in a conversation
-  // receives, so nothing written for an operator gets past it — see
+  // receives, so nothing written for an operator gets past it, see
   // channels/render-audience.ts for the incident that put it here. Placed at
   // the top of the ONE function every channel's body is built from, rather than
   // in each surface's plugin, so no channel can be fixed and another left.
@@ -212,8 +212,8 @@ export function eventLine(event: ChannelRenderEvent, reasoningVisibility: Channe
         : event.text ?? null;
     case 'status':
       // Same placeholder rule as an explicit progress line. `AgentRecord.progress`
-      // reaches a surface by BOTH routes — handed to deliverProgress by the
-      // daemon's poller, and republished as an AGENT_PROGRESS runtime event —
+      // reaches a surface by BOTH routes, handed to deliverProgress by the
+      // daemon's poller, and republished as an AGENT_PROGRESS runtime event,
       // so filtering only the first route would leave the second one shipping
       // "Turn 1 · Thinking…" exactly as before.
       return event.text ? channelStatusLine(event.text, MAX_EVENT_STATUS_CHARS) : null;
@@ -224,7 +224,7 @@ export function eventLine(event: ChannelRenderEvent, reasoningVisibility: Channe
 
 /**
  * The hard ceiling on a progress status line. A status line is one short
- * phrase — "Read(src/parse.ts)", "Network error, retrying in 5s…" — so this is
+ * phrase, "Read(src/parse.ts)", "Network error, retrying in 5s…", so this is
  * a backstop, not a budget to fill.
  */
 const MAX_PROGRESS_STATUS_CHARS = 160;
@@ -245,7 +245,7 @@ const TURN_COUNTER_PREFIX = /^turn\s+\d+\s*(?:[·:•\-–—]\s*)?/i;
  * Status text that says only that the machine is running.
  *
  * Owner ruling: never emit a placeholder that carries no information a person
- * can act on — if the only thing you have to say is that a turn started, say
+ * can act on, if the only thing you have to say is that a turn started, say
  * nothing. `Turn 1 · Thinking…` is both halves of that at once, and it was the
  * single most-delivered notification body on the owner's phone.
  */
@@ -258,7 +258,7 @@ const CONTENTLESS_STATUS = /^(?:thinking|working|processing|starting|started|run
  * Newlines are collapsed rather than kept, which is what makes this safe by
  * construction: a caller who wrongly hands over accumulating content cannot
  * turn a progress notification into a growing transcript, because the result
- * is always a single bounded line whose head is stable — so the pipeline's
+ * is always a single bounded line whose head is stable, so the pipeline's
  * identical-body check suppresses the repeat instead of shipping it.
  *
  * Callers must still pass a STATUS ("what is happening now"), never content:
@@ -283,7 +283,7 @@ export function buildRenderedText(
 ): string {
   if (phase === 'final' && explicitText.trim().length > 0) {
     // The final body is the explicit text, so it never passes through
-    // `eventLine` — the reasoning policy has to be applied to it here or a
+    // `eventLine`, the reasoning policy has to be applied to it here or a
     // suppressed surface receives the model's reasoning as the answer.
     const visible = assistantTextForVisibility(explicitText, policy.reasoningVisibility);
     if (visible.trim().length > 0) {
@@ -298,7 +298,7 @@ export function buildRenderedText(
   //
   // This used to be an ntfy-only rule that ALSO covered the final phase, which
   // is what left the owner with "Agent completed in Nms" and never the reply.
-  // Reasoning is not special-cased here at all — `reasoningVisibility` already
+  // Reasoning is not special-cased here at all, `reasoningVisibility` already
   // decides it, and ntfy's policy suppresses it.
   const renderableEvents = phase === 'final'
     ? events
@@ -307,7 +307,7 @@ export function buildRenderedText(
     .slice(-policy.maxEventsPerUpdate)
     .map((event) => eventLine(event, policy.reasoningVisibility))
     .filter((line): line is string => Boolean(line && line.trim().length > 0));
-  // The status line is what the agent is doing RIGHT NOW, so it reads last —
+  // The status line is what the agent is doing RIGHT NOW, so it reads last,
   // the newest thing on a lock screen. On the progress phase this is the only
   // use of explicitText; it used to be dropped on the floor here, which is why
   // `AgentRecord.progress` reached no notification body on any surface.
@@ -355,7 +355,7 @@ export function normalizeChannelRenderEventFromRuntime(
     case 'AGENT_PROGRESS':
       // The audience the emitter stamped, and nothing else. An unstamped
       // progress line resolves to `operator` and is dropped by `eventLine`,
-      // which is how `registry — email send` stops being a chat message: the
+      // which is how `registry, email send` stops being a chat message: the
       // orchestrator's tool-activity lines say `operator`, its retry and
       // model-fallback lines say `owner`. See agents/progress-audience.ts.
       return payload.progress.trim().length > 0
@@ -368,20 +368,20 @@ export function normalizeChannelRenderEventFromRuntime(
       // The answer, and nothing else.
       //
       // This used to ALSO emit `Agent completed in ${durationMs}ms`, which the
-      // pipeline appended under the reply on every completion — operator
+      // pipeline appended under the reply on every completion, operator
       // telemetry pushed to a phone, and the source of the duplicate
       // completion line under every answer. It stays in the activity log and
       // on operator surfaces, which read the runtime event directly.
       //
       // A completion with NO output still emits one final-phase event, and
       // that event carries no text on purpose. Owner ruling: work with nothing
-      // to report reports nothing — silence is the correct outcome, not a
+      // to report reports nothing, silence is the correct outcome, not a
       // bare "Done." A textless event renders to an empty body, which the
       // pipeline closes the run out on WITHOUT notifying anyone; an empty
       // event LIST would instead leave the pipeline never told the run ended.
       // (A run that owes a person an answer never reaches here empty: the
       // agent runtime regenerates it and, failing that, substitutes a plain
-      // notice — agents/conversational-reply-recovery.ts.)
+      // notice, agents/conversational-reply-recovery.ts.)
       return payload.output?.trim()
         ? [renderEvent('assistant_text', 'final', envelope, { text: payload.output })]
         : [renderEvent('status', 'final', envelope)];
@@ -390,7 +390,7 @@ export function normalizeChannelRenderEventFromRuntime(
     case 'AGENT_CANCELLED':
       // Owner-facing: someone who asked for work is owed the news that it
       // stopped, and the reason is written for them rather than about the
-      // machine. This is a `status` event, so it says so explicitly — the kind
+      // machine. This is a `status` event, so it says so explicitly, the kind
       // alone denies.
       return [renderEvent('status', 'final', envelope, {
         audience: 'owner',
@@ -437,7 +437,7 @@ export function normalizeChannelRenderEventFromRuntime(
         text: `${payload.approved ? 'Approved' : 'Denied'} ${payload.tool}`,
       })];
     case 'MODEL_FALLBACK':
-      // OWNER. Their answer is now coming from a different model — a fact about
+      // OWNER. Their answer is now coming from a different model, a fact about
       // the reply rather than about the machine, and the same call the
       // orchestrator's own `Model fallback → …` progress line makes.
       return [renderEvent('model', 'progress', envelope, {
@@ -447,7 +447,7 @@ export function normalizeChannelRenderEventFromRuntime(
       })];
     case 'COMPACTION_RECEIPT':
       return [renderEvent(payload.outcome === 'applied' ? 'compaction' : 'error', 'progress', envelope, {
-        text: `compaction ${payload.outcome}: ${payload.tokensBefore}->${payload.tokensAfter} tokens, quality ${payload.qualityGrade}${payload.detail ? ` — ${payload.detail}` : ''}`,
+        text: `compaction ${payload.outcome}: ${payload.tokensBefore}->${payload.tokensAfter} tokens, quality ${payload.qualityGrade}${payload.detail ? `, ${payload.detail}` : ''}`,
       })];
     case 'COMPACTION_CHECK':
     case 'COMPACTION_MICROCOMPACT':
@@ -471,12 +471,12 @@ export function normalizeChannelRenderEventFromRuntime(
     // suppressing it would be the "suppress the message that should have been
     // there" failure rather than the fix.
     //
-    // These lines used to lead with `WRFC chain 7f3a91c02b4e` — a name for the
+    // These lines used to lead with `WRFC chain 7f3a91c02b4e`, a name for the
     // machinery and a register id, neither of which belongs in outward-facing
     // text. The id was doing one real job, telling two concurrent workstreams
     // apart, so it is replaced rather than deleted: a workstream is named by
     // what it is doing, and two that would read the same are counted in words.
-    // `payload.chainId` below is only ever a lookup key — see
+    // `payload.chainId` below is only ever a lookup key, see
     // workstream-labels.ts. Nothing in this family renders it.
     case 'WORKFLOW_CHAIN_CREATED':
       rememberWorkstreamLabel(payload.chainId, payload.task);
@@ -504,7 +504,7 @@ export function normalizeChannelRenderEventFromRuntime(
     case 'WORKFLOW_FIX_ATTEMPTED':
       return [renderEvent('status', 'progress', envelope, {
         audience: 'owner',
-        text: `Fixing review findings on ${workstreamLabelInline(payload.chainId)} — attempt ${payload.attempt} of ${payload.maxAttempts}`,
+        text: `Fixing review findings on ${workstreamLabelInline(payload.chainId)}, attempt ${payload.attempt} of ${payload.maxAttempts}`,
       })];
     case 'WORKFLOW_GATE_RESULT':
       return [renderEvent(payload.passed ? 'status' : 'error', 'progress', envelope, {

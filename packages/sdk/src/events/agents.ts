@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * AgentEvent — discriminated union covering all subagent/agent lifecycle events.
+ * AgentEvent, discriminated union covering all subagent/agent lifecycle events.
  *
  * Covers agent lifecycle events for the runtime event bus.
  */
@@ -38,7 +38,7 @@ export type AgentEvent =
       progress: string;
       /**
        * Who `progress` was written for. Absent means `operator`, and an
-       * `operator` line is never rendered into a reply on a channel — see
+       * `operator` line is never rendered into a reply on a channel, see
        * platform/agents/progress-audience.ts. The channel renderer reads this
        * field and nothing else to decide, so a progress line that forgets to
        * declare an audience stays on the machine rather than reaching a phone.
@@ -78,7 +78,7 @@ export type AgentEventType = AgentEvent['type'];
 
 /**
  * Token usage for a single agent's run. Mirrors the shape of
- * `TokenUsage` in `platform/core/conversation.ts` — kept as a structural
+ * `TokenUsage` in `platform/core/conversation.ts`, kept as a structural
  * duplicate here (rather than an import) so this leaf event module stays
  * free of dependencies on `platform/`.
  */

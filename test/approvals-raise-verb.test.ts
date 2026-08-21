@@ -8,7 +8,7 @@
  *   - raise creates a real, listable, decidable record and RETURNS rather than
  *     blocking on a human;
  *   - the record's every transition reaches an SSE/WS subscriber on the
- *     `permissions` domain — including the first one, which IS the prompt;
+ *     `permissions` domain, including the first one, which IS the prompt;
  *   - the existing in-process path (`requestApproval`) still resolves exactly
  *     as it did, including duplicate-ask coalescing, because it now runs
  *     through the same free function raise does.
@@ -209,7 +209,7 @@ describe('approval-update — the push that replaces polling', () => {
 
       const pushed = approvalFrames(permissionsSub);
       expect(pushed).toHaveLength(1);
-      // The FIRST push carries the pending ask itself — that push IS the prompt.
+      // The FIRST push carries the pending ask itself, that push IS the prompt.
       expect(pushed[0]?.approval.status).toBe('pending');
       expect(pushed[0]?.approval.request.tool).toBe('exec');
       // Domain narrowing still narrows: this is a real filter, not a broadcast.

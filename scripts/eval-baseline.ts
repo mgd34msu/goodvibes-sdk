@@ -4,16 +4,16 @@
  *
  * Regenerate (or drift-check) the checked-in eval baseline the standing gate
  * (scripts/eval-gate.ts) compares against. Baselines change ONLY through this
- * explicit script — never silently:
+ * explicit script, never silently:
  *
  *   bun run eval:baseline           # regenerate eval/baseline.json from a fresh run
  *   bun run eval:baseline --check   # exit 1 if the checked-in baseline has drifted
  *
- * The built-in suite scores are deterministic (see runtime/eval/suites.ts — each
+ * The built-in suite scores are deterministic (see runtime/eval/suites.ts, each
  * scenario's own wall-clock runtime is far under the 500 ms latency-excellent
  * threshold, and every other input is a fixed fixture), so a fresh capture must
  * reproduce the checked-in per-scenario scores exactly. When it does not, the
- * suites or the scorer changed and the gate's regression baseline is stale — the
+ * suites or the scorer changed and the gate's regression baseline is stale, the
  * --check mode fails CI and names the drift so a human regenerates deliberately.
  *
  * The baseline `label` is a fixed sentinel, NOT the build version: the gate must
@@ -36,7 +36,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
 const BASELINE_PATH = resolve(PROJECT_ROOT, 'eval/baseline.json');
 
-/** Fixed sentinel — deliberately NOT the SDK version (the gate must not couple to VERSION). */
+/** Fixed sentinel, deliberately NOT the SDK version (the gate must not couple to VERSION). */
 const BASELINE_LABEL = 'standing-gate';
 
 const CHECK_ONLY = process.argv.includes('--check');
@@ -87,7 +87,7 @@ if (CHECK_ONLY) {
     console.error('\nRegenerate deliberately with: bun run eval:baseline');
     process.exit(1);
   }
-  console.log('[eval-baseline] OK — checked-in baseline matches a fresh capture (no drift).');
+  console.log('[eval-baseline] OK, checked-in baseline matches a fresh capture (no drift).');
 } else {
   await writeBaseline(BASELINE_PATH, fresh, PROJECT_ROOT);
   console.log(`[eval-baseline] wrote ${BASELINE_PATH}`);

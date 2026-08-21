@@ -1,10 +1,10 @@
 /**
  * expo-secure-token-store.ts
  *
- * Token store backed by `expo-secure-store` — Expo's hardware-backed secure
+ * Token store backed by `expo-secure-store`, Expo's hardware-backed secure
  * storage layer (iOS Keychain / Android Keystore behind the scenes).
  *
- * `expo-secure-store` is an **optional peer dependency** — this module does
+ * `expo-secure-store` is an **optional peer dependency**, this module does
  * NOT eagerly import it. The module is loaded lazily so the SDK remains
  * loadable in environments where the native module is absent.
  *
@@ -98,7 +98,7 @@ async function loadExpoSecureStore(): Promise<ExpoSecureStoreModule> {
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
-      'expo-secure-store is not installed — the Expo secure token store cannot be initialised. ' +
+      'expo-secure-store is not installed, the Expo secure token store cannot be initialised. ' +
         'This optional peer dependency is required to persist tokens in native hardware-backed storage. ' +
         'Run `expo install expo-secure-store` and rebuild your app.',
       {
@@ -140,7 +140,7 @@ export interface ExpoSecureTokenStore extends GoodVibesTokenStore {
  * Both the `token` and `expiresAt` values are serialised as a single JSON
  * blob into one secure-store entry, keeping the keychain tidy.
  *
- * `expo-secure-store` is an **optional peer dependency** — install it with:
+ * `expo-secure-store` is an **optional peer dependency**, install it with:
  *
  * ```sh
  * expo install expo-secure-store

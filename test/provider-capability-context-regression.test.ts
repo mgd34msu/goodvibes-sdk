@@ -3,13 +3,13 @@
  *
  * Regression guards for two provider-resolution defects:
  *
- * S01 — getContextWindowForModel must NOT widen (or narrow) a model whose
+ * S01, getContextWindowForModel must NOT widen (or narrow) a model whose
  *       contextWindowProvenance === 'configured_cap', even when a fuzzy
  *       OpenRouter id (e.g. 'meta-llama/llama-3.1-8b-instruct' for a local
  *       'llama-3.1-8b-instruct') would otherwise match a larger window. The
  *       explicit user cap is authoritative.
  *
- * S05 — ProviderCapabilityRegistry.getCapability must fold a provider
+ * S05, ProviderCapabilityRegistry.getCapability must fold a provider
  *       instance's self-declared capabilities into the cache key, so a call
  *       WITHOUT an instance cannot poison the entry a later call WITH a
  *       self-declaring instance reads back (and vice versa).
@@ -96,7 +96,7 @@ describe('S01: getContextWindowForModel honors configured_cap over fuzzy OpenRou
       const service = makeServiceWithFuzzyCache(tmp);
       const model = makeModel({ contextWindowProvenance: 'configured_cap', contextWindow: 65_536 });
 
-      // The explicit user cap must win — never the 131_072 fuzzy match.
+      // The explicit user cap must win, never the 131_072 fuzzy match.
       expect(service.getContextWindowForModel(model)).toBe(65_536);
     } finally {
       rmSync(tmp, { recursive: true, force: true });
@@ -117,7 +117,7 @@ describe('S01: getContextWindowForModel honors configured_cap over fuzzy OpenRou
   });
 
   test('control: a fallback-provenance model DOES consult the fuzzy OpenRouter match', () => {
-    // Proves the cache really is loaded and the fuzzy endsWith match fires —
+    // Proves the cache really is loaded and the fuzzy endsWith match fires,
     // otherwise the configured_cap assertions above would be vacuous.
     const tmp = mkdtempSync(join(tmpdir(), 'gv-ctx-cap-'));
     try {
@@ -145,12 +145,12 @@ describe('S05: getCapability cache is not poisoned across provider-instance pres
   test('no-instance call first does NOT poison a later self-declaring call', () => {
     const registry = new ProviderCapabilityRegistry();
 
-    // First: no instance — resolves from GLOBAL_DEFAULTS (toolCalling true).
+    // First: no instance, resolves from GLOBAL_DEFAULTS (toolCalling true).
     const withoutInstance = registry.getCapability(providerId, modelId);
     expect(withoutInstance.toolCalling).toBe(true);
     expect(withoutInstance.reasoningControls).toBe(false);
 
-    // Then: same id pair WITH a self-declaring instance — must reflect it,
+    // Then: same id pair WITH a self-declaring instance, must reflect it,
     // not return the cached defaults-only record.
     const withInstance = registry.getCapability(providerId, modelId, selfDeclaring);
     expect(withInstance.toolCalling).toBe(false);

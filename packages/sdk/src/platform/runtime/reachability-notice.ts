@@ -1,5 +1,5 @@
 /**
- * reachability-notice.ts — the two ways a running build can be the wrong one,
+ * reachability-notice.ts, the two ways a running build can be the wrong one,
  * stated in plain words at startup.
  *
  * The platform's guarantee is that clients auto-update at startup, the daemon
@@ -11,7 +11,7 @@
  *      one. Both installs "succeed", the version number reports itself
  *      current, and an older build answers every question.
  *   2. This build is simply behind the latest release and, for whatever
- *      reason, did not update itself — a package-managed install, a failed
+ *      reason, did not update itself, a package-managed install, a failed
  *      swap, a check that could not reach the network.
  *
  * Either way the user finds out by being told a capability does not exist. A
@@ -47,7 +47,7 @@ export interface ReachabilityNoticeInput {
 
 /**
  * Builds the notices for this startup. Returns an empty list for the healthy
- * case — one reachable copy, running the latest release — so a normal start
+ * case, one reachable copy, running the latest release, so a normal start
  * says nothing at all.
  */
 export function buildReachabilityNotices(input: ReachabilityNoticeInput): ReachabilityNotice[] {
@@ -88,7 +88,7 @@ function describeVersionGap(input: ReachabilityNoticeInput): ReachabilityNotice 
     kind: 'behind',
     lines: [
       `This build is v${running}. The current release is v${latest}, so what you are running is behind.`,
-      `Anything added since v${running} is genuinely absent from this build — if it says it cannot do something, that may be why.`,
+      `Anything added since v${running} is genuinely absent from this build, if it says it cannot do something, that may be why.`,
       `Update with: ${input.updateCommand}`,
     ],
   };

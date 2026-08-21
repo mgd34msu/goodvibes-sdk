@@ -76,7 +76,7 @@ function findSystemNpmCli(): string {
 
 const cyclonedxBin = resolve(SDK_ROOT, 'node_modules/.bin/cyclonedx-npm');
 if (!existsSync(cyclonedxBin)) {
-  console.error('[sbom:generate] ERROR: node_modules/.bin/cyclonedx-npm not found. Run `bun install` from the repo root first. If you already ran `bun install`, the install was incomplete — try `rm -rf node_modules && bun install`.');
+  console.error('[sbom:generate] ERROR: node_modules/.bin/cyclonedx-npm not found. Run `bun install` from the repo root first. If you already ran `bun install`, the install was incomplete, try `rm -rf node_modules && bun install`.');
   process.exit(1);
 }
 
@@ -166,7 +166,7 @@ try {
   if (existsSync(tempOutputFile)) {
     normalizeSbomFile(tempOutputFile);
     renameSync(tempOutputFile, OUTPUT_FILE);
-    console.log(`[sbom:generate] SBOM generated (with npm warnings — expected in bun workspace).`);
+    console.log(`[sbom:generate] SBOM generated (with npm warnings, expected in bun workspace).`);
   } else {
     console.error(`[sbom:generate] ERROR: SBOM generation failed and no output file was written.`);
     const stderr = e != null && typeof e === 'object' && 'stderr' in e

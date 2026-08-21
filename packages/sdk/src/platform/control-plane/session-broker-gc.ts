@@ -15,14 +15,14 @@ export interface SharedSessionGcOptions {
   /**
    * Age (ms since closedAt) at which a CLOSED session's record + bodies are
    * PERMANENTLY deleted from the store. Closed sessions are HISTORY: by default
-   * this is `Number.POSITIVE_INFINITY` (retain indefinitely — a closed session
+   * this is `Number.POSITIVE_INFINITY` (retain indefinitely, a closed session
    * is never swept off disk), and deletion happens only when a caller opts into
    * a finite retention window or invokes an explicit delete verb.
    *
    * NOTE ON MEMORY vs PERSISTENCE (divergence from the companion manager):
    * the broker's durable store is a FULL SNAPSHOT of these in-memory maps
    * (createSessionBrokerSnapshot), so there is no separate "memory handle" to
-   * evict independently of disk — dropping a closed session's bodies from these
+   * evict independently of disk, dropping a closed session's bodies from these
    * maps would also drop them from the next persisted snapshot. Retention is
    * therefore all-or-nothing here: retained closed sessions stay both listable
    * and on disk; memory stays bounded by the per-session message cap
@@ -35,14 +35,14 @@ export interface SharedSessionGcOptions {
    * see. Returns true while that work is genuinely in flight.
    *
    * Why this exists: the reaper used to judge liveness ONLY by signals a
-   * locally-executed turn emits — `lastActivityAt`, `activeAgentId`,
+   * locally-executed turn emits, `lastActivityAt`, `activeAgentId`,
    * `pendingInputCount`, participant heartbeats. A HOSTED turn emits none of
    * them while it runs: its transcript lives on the hosted record, so the
    * broker's `messageCount` stays 0 (judging the session against the 10-minute
    * idleEmptyMs window rather than the 24-hour one), and its heartbeat is
    * driven by an intake tick that is itself blocked awaiting the turn. The
    * observed result was a session closed 'idle-reaped' at 21:45Z whose turn
-   * demonstrably went on running until 22:26Z — the record contradicted the
+   * demonstrably went on running until 22:26Z, the record contradicted the
    * work.
    *
    * So liveness is no longer inferred solely from what this store happens to
@@ -109,13 +109,13 @@ export interface BootOrphanSweepOptions {
  * Close sessions a dead process left behind, at the boot that finds them.
  *
  * The case: a pty-forked second instance died without closing its session and
- * left a record reading `status: 'active'`, 0 messages — permanently, because
+ * left a record reading `status: 'active'`, 0 messages, permanently, because
  * nothing ever revisited it with the right verdict.
  *
  * NOT "every active session at boot". A session deliberately SURVIVES a daemon
  * restart: surfaces outlive the daemon, re-register on their next heartbeat,
  * and their sessions are expected to still be listed active afterwards.
- * Closing all of them would have broken that contract (and did — two existing
+ * Closing all of them would have broken that contract (and did, two existing
  * restart tests caught it). So the predicate is the same one the idle reaper
  * uses: a session already past its idle window at the moment the store is
  * loaded, with no message traffic and no fresh participant, is an orphan.
@@ -124,13 +124,13 @@ export interface BootOrphanSweepOptions {
  *
  * The value over waiting for the periodic reaper is honesty and timing. The
  * reaper runs on a 60s timer and would eventually close the ghost as
- * 'idle-reaped' — which says the conversation went quiet, when what actually
+ * 'idle-reaped', which says the conversation went quiet, when what actually
  * happened is the process holding it died. This closes it at boot and says so.
  *
  * Records are CLOSED WITH A REASON, never deleted: silent deletion is
  * indistinguishable from data loss. And `'boot-orphaned'` is a SYSTEM close, so
  * a surface that really is still alive reopens automatically on its next
- * register heartbeat (see isSystemClosedSession) — a false positive costs one
+ * register heartbeat (see isSystemClosedSession), a false positive costs one
  * reopen, never a conversation.
  */
 export function closeOrphanedSessionsAtBoot(
@@ -141,7 +141,7 @@ export function closeOrphanedSessionsAtBoot(
   const closed: OrphanedSessionClosure[] = [];
   for (const [sessionId, session] of sessions.entries()) {
     if (session.status !== 'active') continue;
-    // Same liveness bar as the running reaper — see the doc comment above for
+    // Same liveness bar as the running reaper, see the doc comment above for
     // why "active at boot" on its own is NOT evidence of an orphan.
     if (!idleCloseReason(session, now, {
       idleEmptyMs: options.idleEmptyMs,
@@ -171,7 +171,7 @@ export function closeOrphanedSessionsAtBoot(
  * Run the boot orphan sweep and DISCLOSE what it closed.
  *
  * Lives here rather than in the broker so the sweep, its reason vocabulary and
- * its disclosure stay in one file — and so the broker (a grandfathered
+ * its disclosure stay in one file, and so the broker (a grandfathered
  * shrink-only monolith) takes one call rather than a block.
  *
  * Disclosure is not optional: these sessions close without anyone asking, so
@@ -203,7 +203,7 @@ export function applyBootOrphanSweep(
 }
 
 /**
- * True when any participant was seen within the idle-empty window — i.e. a
+ * True when any participant was seen within the idle-empty window, i.e. a
  * surface is actively holding this session open. A live participant IS activity,
  * so an empty session with a fresh heartbeat must NOT be idle-empty reaped even
  * if `lastActivityAt` has drifted (defense-in-depth alongside the register path
@@ -228,7 +228,7 @@ function idleCloseReason(
   const idle = now - session.lastActivityAt;
   if (session.messageCount === 0 && idle >= options.idleEmptyMs) {
     // A surface holding the session open (fresh participant heartbeat) exempts it
-    // from idle-empty reaping — closing it would kill a LIVE, message-less session.
+    // from idle-empty reaping, closing it would kill a LIVE, message-less session.
     if (hasFreshParticipant(session, now, options.idleEmptyMs)) return null;
     return 'idle-empty';
   }

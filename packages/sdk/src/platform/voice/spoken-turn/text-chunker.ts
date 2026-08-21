@@ -1,15 +1,15 @@
 import { StreamingCodeFenceFilter, stripMarkdownForSpeech } from './speech-markdown.js';
 
 /**
- * TtsTextChunker — turns a stream of provider content deltas into speech-sized
+ * TtsTextChunker, turns a stream of provider content deltas into speech-sized
  * chunks at sentence boundaries, with a max-length cut and a latency flush so a
  * long unpunctuated run still starts speaking. This is pure policy (no I/O, no
- * timers of its own — the caller drives `flushDue()` on its own clock), so it
+ * timers of its own, the caller drives `flushDue()` on its own clock), so it
  * lives in the SDK and is shared verbatim by every voice consumer.
  *
  * Assistant text is markdown; a synthesizer has no renderer for it. Deltas run
  * through a {@link StreamingCodeFenceFilter} on the way into the buffer (so a
- * fenced code block can never straddle a chunk boundary — the boundary logic
+ * fenced code block can never straddle a chunk boundary, the boundary logic
  * only ever sees " Code block omitted. " where the code was), and each
  * outgoing chunk runs through {@link stripMarkdownForSpeech} before the
  * existing whitespace collapse.
@@ -55,7 +55,7 @@ export class TtsTextChunker {
   flushAll(): string[] {
     // The fence filter may still be holding an undecided line-start fragment
     // (e.g. the turn ended mid-line, before we could tell whether it was a
-    // fence marker) — surface it now, since no more deltas are coming.
+    // fence marker), surface it now, since no more deltas are coming.
     this.buffer += this.fenceFilter.flush();
     if (!this.buffer.trim()) {
       this.buffer = '';

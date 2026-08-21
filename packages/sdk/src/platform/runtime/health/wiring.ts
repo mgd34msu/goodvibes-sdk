@@ -1,5 +1,5 @@
 /**
- * Health Error Propagation — HealthStoreWiring
+ * Health Error Propagation, HealthStoreWiring
  *
  * Wires together the RuntimeHealthAggregator, CascadeEngine, and RuntimeEventBus
  * to form a complete error-propagation pipeline. When a domain health status
@@ -44,7 +44,7 @@ export class HealthStoreWiring {
    *
    * When any domain health changes (detected via aggregator subscribers),
    * the cascade engine is not automatically re-evaluated for subscriber-driven
-   * changes — callers should use `evaluateDomain()` for explicit cascade evaluation.
+   * changes, callers should use `evaluateDomain()` for explicit cascade evaluation.
    *
    * Calling `start()` on an already-started wiring replaces the existing
    * subscription without leaking the previous one.
@@ -61,7 +61,7 @@ export class HealthStoreWiring {
       const failed = health.failedDomains;
       const degraded = health.degradedDomains;
       if (failed.length > 0 || degraded.length > 0) {
-        // Emit health state to stderr for observability — lightweight, no logger import needed
+        // Emit health state to stderr for observability, lightweight, no logger import needed
         process.stderr.write(
           `[health] overall=${health.overall} failed=[${failed.join(',')}] degraded=[${degraded.join(',')}]\n`,
         );
@@ -72,7 +72,7 @@ export class HealthStoreWiring {
   /**
    * Stop listening to aggregator health changes and release all resources.
    *
-   * Safe to call multiple times — subsequent calls are no-ops.
+   * Safe to call multiple times, subsequent calls are no-ops.
    */
   stop(): void {
     this.unsubscribe?.();
@@ -86,7 +86,7 @@ export class HealthStoreWiring {
    * 1. Update the domain health in the aggregator.
    * 2. Evaluate cascade rules for the new domain + status.
    * 3. Apply all actionable cascade effects via effect handlers.
-   *    Pending-recovery effects are NOT applied — they await recovery exhaustion.
+   *    Pending-recovery effects are NOT applied, they await recovery exhaustion.
    *
    * @param domain - The domain whose health has changed.
    * @param status - The new health status for the domain.

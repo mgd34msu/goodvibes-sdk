@@ -1,7 +1,7 @@
 /**
  * method-catalog-owner-profile.ts
  *
- * Contract descriptors for the owner profile (`profile.*`) — what the platform
+ * Contract descriptors for the owner profile (`profile.*`), what the platform
  * knows about the person who owns it, kept as one Markdown file at daemon scope.
  * See docs/owner-profile.md §11.1 for the verb table these descriptors implement.
  *
@@ -15,7 +15,7 @@
  *
  *  - **`profile.status` never returns a value.** It is the diagnostic verb, so
  *    it answers with load state, path, section names, counts and the invalid
- *    field list WITH REASONS — and nothing that could carry a shipping address
+ *    field list WITH REASONS, and nothing that could carry a shipping address
  *    into a diagnostics bundle. Its output schema has no `value` anywhere.
  *  - **There is no enumerate-all-people verb.** `profile.person` takes a name.
  *    `profile.read` returns everything and is the "what do you know about me"
@@ -28,7 +28,7 @@
  *    decide which token a composition path is handed, a separate scope is what
  *    makes that assertion expressible: the bulk read can be withheld while
  *    `get`, `person`, `provenance` and `status` are granted. Without it the
- *    claim had no mechanism behind it whatsoever — every profile read sat at
+ *    claim had no mechanism behind it whatsoever, every profile read sat at
  *    one scope.
  *
  *    The name is flat and UNRELATED, deliberately not `read:profile.full`.
@@ -36,7 +36,7 @@
  *    `*`, or on a `prefix:*` wildcard; there is no dotted hierarchy anywhere in
  *    the platform, and `read:profile.full` was its only dotted scope. That name
  *    read as "profile, but more" while granting its holder none of the plain
- *    `read:profile` verbs — a token minted with the apparent superset would
+ *    `read:profile` verbs, a token minted with the apparent superset would
  *    have taken 403s on `get`, `person`, `provenance` and `status`. It is
  *    masked today only because `getGrantedGatewayScopes` unions every declared
  *    scope, so real tokens hold both; it would surface the moment a caller
@@ -68,7 +68,7 @@ export const PROFILE_PROVENANCE_SCHEMA = objectSchema({
  * The same provenance, where the runtime answers an explicit `null`.
  *
  * `profile.provenance` returns `ProfileProvenanceReport`, whose `provenance` is
- * `ProfileProvenance | null` — a hand-edited field carries `handEdited: true`
+ * `ProfileProvenance | null`, a hand-edited field carries `handEdited: true`
  * and a null source. The schema declared a plain object, so a strict client
  * validating that answer failed with `field "$.provenance" expected object but
  * received null` on every hand-edited field, in exactly the way `profile.get`
@@ -81,7 +81,7 @@ export const PROFILE_PROVENANCE_SCHEMA = objectSchema({
  * that already handles it.
  *
  * Everywhere else provenance is OMITTED when there is none rather than sent as
- * null — the field views, the prose lines, the superseded lines — so those keep
+ * null, the field views, the prose lines, the superseded lines, so those keep
  * the non-nullable schema and say exactly what they send.
  */
 export const NULLABLE_PROFILE_PROVENANCE_SCHEMA: Record<string, unknown> = {
@@ -96,7 +96,7 @@ export const PROFILE_LINE_SCHEMA = objectSchema({
   provenance: PROFILE_PROVENANCE_SCHEMA,
 }, ['lineIndex', 'section', 'text']);
 
-/** One mechanical field. `valid: false` still carries the value — see §4.3. */
+/** One mechanical field. `valid: false` still carries the value, see §4.3. */
 export const PROFILE_FIELD_SCHEMA = objectSchema({
   fieldId: STRING_SCHEMA,
   label: STRING_SCHEMA,
@@ -110,7 +110,7 @@ export const PROFILE_FIELD_SCHEMA = objectSchema({
  * One mechanical field as `profile.get` answers it: everything the read view
  * carries, plus the heading it was found under.
  *
- * `section` is real data — it comes from the fields registry, and it is the
+ * `section` is real data, it comes from the fields registry, and it is the
  * answer to "whereabouts in my profile is that written". It is DECLARED here
  * rather than stripped from the payload or waved through by loosening
  * `additionalProperties`, because a client that cannot see the property is no
@@ -118,7 +118,7 @@ export const PROFILE_FIELD_SCHEMA = objectSchema({
  *
  * Its own schema rather than an optional property on {@link
  * PROFILE_FIELD_SCHEMA}, because that one is also `profile.read`'s, and
- * `profile.read` does not send `section` — it groups fields under their
+ * `profile.read` does not send `section`, it groups fields under their
  * heading, so repeating it on each field would be noise. Adding a property to
  * THAT response would break every client still validating against the
  * previously published contract: the same failure this schema exists to fix,
@@ -234,7 +234,7 @@ export const PROFILE_PROVENANCE_OUTPUT_SCHEMA = objectSchema({
  * It shipped in `properties` but in none of the `required` arrays, so the
  * generated contract, the OpenAPI document and every typed client told callers
  * the field was optional while `routes/owner-profile.ts` answered 400 without
- * it — a client that followed the published contract was broken by
+ * it, a client that followed the published contract was broken by
  * construction. `owner-profile-verbs.test.ts` pins all four against the live
  * descriptors so the two cannot drift apart again.
  *
@@ -259,20 +259,20 @@ export const PROFILE_APPEND_INPUT_SCHEMA = objectSchema({
 }, ['section', 'text', 'surface', 'said', 'authority']);
 
 /**
- * A prose line is addressed by its CONTENT — its section plus its exact text —
+ * A prose line is addressed by its CONTENT, its section plus its exact text,
  * and never by its position. `lineIndex` is not a parameter here or of any
  * other verb.
  *
  * §3: the owner is a concurrent writer. An index is only valid against the file
  * state that produced it, and between his `profile.read` and his
  * `profile.forget` he can add a line in his editor and shift everything below
- * it. The positional delete then removes the wrong line and reports success —
+ * it. The positional delete then removes the wrong line and reports success,
  * the false-receipt class §9.2 exists to prevent, arriving through the front
  * door. No validation can catch it, because a stale index is perfectly
  * well-formed; only content addressing closes it.
  *
- * `ProfileLine.lineIndex` stays in the in-memory model and in read output — the
- * writer splices by it — but §5.1 is explicit that it describes the model, not
+ * `ProfileLine.lineIndex` stays in the in-memory model and in read output, the
+ * writer splices by it, but §5.1 is explicit that it describes the model, not
  * the reachable surface.
  */
 export const PROFILE_FORGET_INPUT_SCHEMA = objectSchema({
@@ -353,7 +353,7 @@ export const builtinGatewayOwnerProfileMethodDescriptors: readonly GatewayMethod
   methodDescriptor({
     id: 'profile.forget',
     title: 'Forget Profile Line',
-    description: 'Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.',
+    description: 'Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window, delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.',
     category: 'profile',
     scopes: ['write:profile'],
     http: { method: 'POST', path: '/api/profile/forget' },
@@ -374,7 +374,7 @@ export const builtinGatewayOwnerProfileMethodDescriptors: readonly GatewayMethod
   methodDescriptor({
     id: 'profile.status',
     title: 'Owner Profile Status',
-    description: 'Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value — that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.',
+    description: 'Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value, that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.',
     category: 'profile',
     scopes: ['read:profile'],
     http: { method: 'GET', path: '/api/profile/status' },

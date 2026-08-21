@@ -1,9 +1,9 @@
 /**
  * Detection behaviour, driven by REAL per-frame scores.
  *
- * The score traces in the fixture came out of the full reference pipeline — the
+ * The score traces in the fixture came out of the full reference pipeline, the
  * published hey_goodvibes 1.0.0 classifier over a held-out positive clip and a
- * held-out prose clip — so "fires on a positive, does not fire on a negative"
+ * held-out prose clip, so "fires on a positive, does not fire on a negative"
  * is checked against what the shipped model actually produces, not against
  * numbers invented to make a threshold look reasonable.
  */
@@ -57,8 +57,8 @@ async function runTrace(scores: readonly number[], threshold: number) {
   });
   const silence = new Float32Array(WAKE_CHUNK_SAMPLES);
   const detections = [];
-  // The pipeline scores for the first time on the 16th frame — the one that
-  // completes the window — so `scores.length + 15` frames replay the trace exactly.
+  // The pipeline scores for the first time on the 16th frame, the one that
+  // completes the window, so `scores.length + 15` frames replay the trace exactly.
   for (let i = 0; i < scores.length + WAKE_CLASSIFIER_FRAMES - 1; i += 1) {
     clock += 80;
     const result = await engine.pushFrame(silence);
@@ -217,7 +217,7 @@ describe('running several models', () => {
     }
     expect(fired.every((id) => id === 'hot')).toBe(true);
     expect(fired.length).toBeGreaterThan(0);
-    // The expensive stages ran once per frame regardless of model count — the
+    // The expensive stages ran once per frame regardless of model count, the
     // reason a second wake word is cheap.
     expect(embeddingCalls).toBe(20);
     expect(engine.modelIds).toEqual(['hot', 'cold']);

@@ -1,19 +1,19 @@
 /**
- * Gateway-served model pricing — providers whose own /models payload carries
+ * Gateway-served model pricing, providers whose own /models payload carries
  * machine-readable rates (beyond OpenRouter, which model-limits.ts already
  * fetches). Evidence per gateway (probed 2026-07-12):
  *
  *   - aihubmix  GET https://aihubmix.com/api/v1/models
- *     `pricing: { input, output, cache_read?, cache_write? }` — absolute USD
+ *     `pricing: { input, output, cache_read?, cache_write? }`, absolute USD
  *     per 1M tokens (claude-fable-5: input 11 / output 55 / cache_read 1.1 /
  *     cache_write 13.75).
  *   - vercel-ai-gateway  GET https://ai-gateway.vercel.sh/v1/models
- *     `pricing: { input, output, input_cache_read?, input_cache_write? }` —
+ *     `pricing: { input, output, input_cache_read?, input_cache_write? }`,
  *     USD per single token as strings (OpenRouter-style). Tiered variants
  *     (`input_tiers` etc.) exist; the flat base rate is used.
  *
  * Each gateway gets its own 24h-TTL cache file. A failed refresh degrades to
- * the cached rates with their fetch date — never to zero. A model absent
+ * the cached rates with their fetch date, never to zero. A model absent
  * from the payload resolves to null (unpriced), never $0.
  */
 
@@ -102,7 +102,7 @@ function parseVercelAiGateway(json: unknown): RateMap {
 /**
  * Gateways with machine-readable pricing in their /models payload.
  * OpenRouter is deliberately absent: model-limits.ts already fetches and
- * caches its payload (pricing included) — one fetch, not two.
+ * caches its payload (pricing included), one fetch, not two.
  */
 const GATEWAY_ADAPTERS: Readonly<Record<string, GatewayAdapter>> = {
   aihubmix: { url: 'https://aihubmix.com/api/v1/models', parse: parseAihubmix },
@@ -185,7 +185,7 @@ export class GatewayPricingService {
     this.refreshing.add(providerId);
     void this.refresh(providerId)
       .catch((error) => {
-        // Degrade to the cached rates (with their date) — never to zero.
+        // Degrade to the cached rates (with their date), never to zero.
         logger.warn('[gateway-pricing] Refresh failed; serving cached rates', {
           providerId,
           error: summarizeError(error),

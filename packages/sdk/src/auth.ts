@@ -10,7 +10,6 @@ import {
   TokenStore,
 } from './client-auth/index.js';
 import type { AutoRefreshOptions } from './client-auth/index.js';
-import type { ControlPlaneAuthSnapshot } from './client-auth/control-plane-auth-snapshot.js';
 import type {
   GoodVibesAuthLoginOptions,
   GoodVibesCurrentAuth,
@@ -47,9 +46,9 @@ export interface BrowserTokenStoreOptions {
  * This interface aggregates token storage and session management behind a
  * single object for convenience. For focused single-responsibility access,
  * use the split classes exposed as readonly getters on this object:
- * - `sdk.auth.tokenStore` — Token persistence (`TokenStore`)
- * - `sdk.auth.sessionManager` — Login / session lifecycle (`SessionManager`)
- * - `sdk.auth.permissionResolver(snapshot)` — Role / scope checks (`PermissionResolver`)
+ * - `sdk.auth.tokenStore`, Token persistence (`TokenStore`)
+ * - `sdk.auth.sessionManager`, Login / session lifecycle (`SessionManager`)
+ * - `sdk.auth.permissionResolver(snapshot)`, Role / scope checks (`PermissionResolver`)
  * - OAuth 2.0 flows: handle server-side (operator/daemon) and provide the acquired
  *   token to the client via TokenStore.
  */
@@ -100,7 +99,7 @@ function requireStorage(storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeI
 /**
  * Create a simple in-memory token store.
  *
- * The token is held in a closure variable — it does not survive page
+ * The token is held in a closure variable, it does not survive page
  * refreshes or process restarts. Suitable for server-side scripts and tests.
  *
  * @example
@@ -296,7 +295,11 @@ export function createGoodVibesAuthClient(
       return sm;
     },
     permissionResolver(snapshot: GoodVibesCurrentAuth): PermissionResolver {
-      return new PermissionResolver(snapshot as unknown as ControlPlaneAuthSnapshot);
+      // Passed unconverted on purpose. The contract-derived shape of
+      // `control.auth.current` must stay assignable to ControlPlaneAuthSnapshot,
+      // the shape PermissionResolver reads; the `as unknown as` that used to sit
+      // here hid any drift between them from the compiler.
+      return new PermissionResolver(snapshot);
     },
     async current(): Promise<GoodVibesCurrentAuth> {
       if (coordinator) {
@@ -351,8 +354,8 @@ export function createGoodVibesAuthClient(
       const store = assertWritableTokenStore(ts);
       const currentToken = await ts?.getToken();
       await store.clearToken();
-      // Notify observer of the auth state transition. Always fire — even for
-      // anonymous→anonymous — so callers that explicitly call clearToken receive
+      // Notify observer of the auth state transition. Always fire, even for
+      // anonymous→anonymous, so callers that explicitly call clearToken receive
       // the expected transition event.
       invokeObserver(() =>
         observer?.onAuthTransition?.({

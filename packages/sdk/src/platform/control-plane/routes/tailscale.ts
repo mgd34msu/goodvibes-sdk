@@ -47,7 +47,7 @@ function createServeRunHandler(deps: TailscaleGatewayDeps): GatewayMethodHandler
   return async (invocation) => {
     requirePrincipal(invocation);
     const receipt = enableTailscaleServe(deps.resolveWebPort(), deps.runner);
-    // The attempt is recorded either way — an honest receipt, never a silent failure.
+    // The attempt is recorded either way, an honest receipt, never a silent failure.
     deps.receipts.append(receipt);
     let publicBaseUrlUpdated = false;
     if (receipt.ok && receipt.url) {

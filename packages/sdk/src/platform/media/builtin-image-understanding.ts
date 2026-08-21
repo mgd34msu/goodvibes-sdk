@@ -94,7 +94,7 @@ async function resolveModel(
   const models: readonly ModelDefinition[] = providerRegistry.listModels();
   const resolveCandidate = async () => {
     if (modelId) {
-      // Accepts either a provider-qualified registryKey or a bare model id —
+      // Accepts either a provider-qualified registryKey or a bare model id,
       // bare ids resolve via the shared resolver (unique -> auto-qualify;
       // ambiguous or unknown -> a rich error naming real candidates).
       const registryKey = resolveModelReference(modelId, models);

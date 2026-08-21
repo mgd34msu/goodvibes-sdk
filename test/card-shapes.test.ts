@@ -122,7 +122,7 @@ describe('secondary shapes are never refused on shape alone', () => {
   });
 
   test('a pan in the same message is itself card context for the rest', () => {
-    // No keyword anywhere — the pan alone licenses the secondary shapes.
+    // No keyword anywhere, the pan alone licenses the secondary shapes.
     const findings = detectCardShapes(`${VISA} 07/29 123`);
     expect(cardShapeKinds(findings)).toEqual(['pan', 'security-code', 'expiry']);
   });
@@ -158,7 +158,7 @@ describe('the result cannot carry the digits', () => {
   test('the compile-time guard in card-shapes.ts is the type-level assertion', () => {
     // The real assertion is the @ts-expect-error trio and the keyof guard at
     // the bottom of card-shapes.ts, which fail `tsc` the moment a value-bearing
-    // field is added — a runtime test cannot observe a field that does not
+    // field is added, a runtime test cannot observe a field that does not
     // exist. This case pins the exact key set the type is allowed to have, so
     // an addition shows up here as well as in the build.
     const finding: CardShapeFinding = { kind: 'pan', startIndex: 0, length: 16 };

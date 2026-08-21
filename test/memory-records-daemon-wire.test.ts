@@ -2,7 +2,7 @@
  * memory-records-daemon-wire.test.ts
  *
  * The daemon-owned single-writer memory service, proven over a REAL bootDaemon
- * (isolated home, ephemeral port, token auth — the boot-daemon-factory pattern).
+ * (isolated home, ephemeral port, token auth, the boot-daemon-factory pattern).
  *
  *   - add over the wire → the record is visible via a wire search AND via a DIRECT
  *     read of the daemon's canonical store (the same registry the routes serve),
@@ -100,7 +100,7 @@ describe('semantic search degrades honestly to a literal fallback with a stated 
     const result = await search({ query: 'semantic honesty probe', semantic: true });
     expect(result.requestedSemantic).toBe(true);
     // In the isolated test daemon the semantic index has no modeled provider / no
-    // indexed rows, so the honest path is a stated fallback — never a silent empty.
+    // indexed rows, so the honest path is a stated fallback, never a silent empty.
     if (result.indexUnavailableReason !== null) {
       expect(result.mode).toBe('literal');
     }
@@ -162,7 +162,7 @@ describe('full-detach catalog over the wire (list / semantic / update / links / 
     const body = await res.json() as { records: Array<{ id: string }> };
     expect(Array.isArray(body.records)).toBe(true);
     expect(body.records.some((r) => r.id === record.id)).toBe(true);
-    // Same set the daemon's own canonical store sees — not a detached copy.
+    // Same set the daemon's own canonical store sees, not a detached copy.
     expect(daemon.memory.search({}).some((r) => r.id === record.id)).toBe(true);
   });
 
@@ -232,7 +232,7 @@ describe('full-detach catalog over the wire (list / semantic / update / links / 
     expect(exportBody.bundle.schemaVersion).toBe('v1');
     expect(exportBody.bundle.records.some((r) => r.id === record.id)).toBe(true);
 
-    // Re-importing the same bundle skips the already-present id — idempotent, no loss.
+    // Re-importing the same bundle skips the already-present id, idempotent, no loss.
     const imported = await fetch(`${daemon.url}/api/memory/records/import`, {
       method: 'POST', headers: auth(), body: JSON.stringify({ bundle: exportBody.bundle }),
     });
@@ -253,7 +253,7 @@ describe('version-skew wire honesty — the two 404s carry distinguishable codes
   // Grounds the memory-spine wire discriminator against the actual daemon wire: a
   // record-scoped extended verb against a MISSING record and an UNKNOWN route (the
   // shape an older daemon that never registered the route produces) are BOTH HTTP
-  // 404, but carry different body codes — and the discriminator keys on that code,
+  // 404, but carry different body codes, and the discriminator keys on that code,
   // never on the bare status.
   test('a record-missing update 404 carries MEMORY_RECORD_NOT_FOUND → discriminator says record-missing', async () => {
     const res = await fetch(`${daemon.url}/api/memory/records/mem_absent_id/update`, {
@@ -267,7 +267,7 @@ describe('version-skew wire honesty — the two 404s carry distinguishable codes
   });
 
   test('an unknown route 404 (older-daemon shape) carries a NON-record code → discriminator says method-unavailable', async () => {
-    // A route the daemon never registered — exactly what a pre-1.2.0 daemon does with
+    // A route the daemon never registered, exactly what a pre-1.2.0 daemon does with
     // an extended memory verb. The terminal 404 carries the router's route-not-found
     // code, NOT the record-missing code.
     const res = await fetch(`${daemon.url}/api/memory/records/mem_x/this-verb-was-never-wired`, {

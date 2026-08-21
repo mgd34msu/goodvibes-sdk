@@ -2,13 +2,13 @@
  * gateway-domain-scope.test.ts
  *
  * The SSE/WS broadcast fan-out (ControlPlaneGateway.publishEvent) must reach only
- * the clients whose subscribed domains include the event's domain — WITHOUT
+ * the clients whose subscribed domains include the event's domain, WITHOUT
  * regressing consumers that did not opt into domain narrowing.
  *
  * These tests drive the domain filter through openWebSocketClient because it
  * exposes the live client's `send` callback directly, so delivery is asserted
  * deterministically with no stream-draining flake. The filter under test lives in
- * publishEvent and is identical for SSE (createEventStream) and WS clients — the
+ * publishEvent and is identical for SSE (createEventStream) and WS clients, the
  * only difference between the two transports is how the `domains` field is
  * threaded onto the live client, which the boot-daemon SSE test exercises over
  * real HTTP.
@@ -41,7 +41,7 @@ function connect(
 }
 
 // ---------------------------------------------------------------------------
-// Pure helper — the null=deliver-all + untagged-inert contract
+// Pure helper, the null=deliver-all + untagged-inert contract
 // ---------------------------------------------------------------------------
 describe('clientMayReceiveEventDomain — the migration-safe default', () => {
   test('null client domains deliver everything (opt-in narrowing)', () => {
@@ -94,7 +94,7 @@ describe('publishEvent — domain-scoped delivery', () => {
     gateway.publishEvent('session-update', { event: 'session-created' });
     gateway.publishEvent('approval-update', { id: 'a1' });
 
-    // permissions is NOT in DEFAULT_DOMAINS — this proves the default is null
+    // permissions is NOT in DEFAULT_DOMAINS, this proves the default is null
     // (deliver-all) and not the normalized DEFAULT_DOMAINS set, which would have
     // wrongly excluded approval-update.
     expect(defaultSub.received).toContain('session-update');
@@ -155,7 +155,7 @@ describe('publishEvent — domain-scoped delivery', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Replay parity (Finding 1) — a reconnecting client must receive the same
+// Replay parity (Finding 1), a reconnecting client must receive the same
 // approval-update it would have received live. Before the fix, both replay
 // callers (WS + SSE) handed replayRecentTraffic the already-normalized
 // `selectedDomains` (which falls back to DEFAULT_DOMAINS, excluding
@@ -164,7 +164,7 @@ describe('publishEvent — domain-scoped delivery', () => {
 // delivered it. These tests reconnect DURING a pending approval (the event is
 // recorded to the ring while no live client is connected/subscribed) and
 // assert the replayed frame reaches a default consumer and a
-// domains=permissions consumer, but not a domains=tasks consumer — on both
+// domains=permissions consumer, but not a domains=tasks consumer, on both
 // transports.
 // ---------------------------------------------------------------------------
 

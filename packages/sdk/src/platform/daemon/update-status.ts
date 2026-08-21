@@ -1,5 +1,5 @@
 /**
- * update-status.ts — what a daemon can say about updating itself.
+ * update-status.ts, what a daemon can say about updating itself.
  *
  * The state was always there: the loop tracked its cadence, its consecutive
  * failures, the release it had already downloaded and verified, and the one a

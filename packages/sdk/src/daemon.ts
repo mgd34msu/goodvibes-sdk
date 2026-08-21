@@ -7,7 +7,7 @@ export { bootDaemon, DaemonServer } from './platform/daemon/index.js';
 export type { BootDaemonOptions, BootedDaemon } from './platform/daemon/index.js';
 
 // Daemon-side relay surface: reachability control and the WebAuthn step-up
-// policy hook + ceremony service (RuntimeServices.stepUpService —
+// policy hook + ceremony service (RuntimeServices.stepUpService,
 // DaemonServer.start() calls its createVerifier() unconditionally, so a
 // consumer composing its own RuntimeServices-compatible object needs the
 // class, not a deep import). No certificate machinery: the daemon never mints

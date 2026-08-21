@@ -1,5 +1,5 @@
 /**
- * B1 — Workspace swap re-root integration test.
+ * B1, Workspace swap re-root integration test.
  *
  * Verifies that WorkspaceSwapManager.requestSwap() calls the rerootStores callback
  * with the new path and that session writes after the swap go to the new workspace.
@@ -34,7 +34,7 @@ function cleanup(...dirs: string[]): void {
 }
 
 // ---------------------------------------------------------------------------
-// B1 — rerootStores is called with the new working directory
+// B1, rerootStores is called with the new working directory
 // ---------------------------------------------------------------------------
 
 describe('WorkspaceSwapManager — rerootStores is called on swap', () => {
@@ -116,9 +116,9 @@ describe('WorkspaceSwapManager — rerootStores is called on swap', () => {
       },
     });
 
-    // Fire first swap — will hang in rerootStores
+    // Fire first swap, will hang in rerootStores
     const first = mgr.requestSwap(workspace2);
-    // Fire second swap immediately — should be rejected as WORKSPACE_BUSY
+    // Fire second swap immediately, should be rejected as WORKSPACE_BUSY
     const second = await mgr.requestSwap(join(workspace1, 'other'));
     expect(second.ok).toBe(false);
     if (!second.ok) {
@@ -141,7 +141,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
    * built-in deterministic HASHED provider (no external API keys required).
    *
    * MemoryStore with enableVectorIndex: false never calls the registry for
-   * embedding operations — the registry is held by reference but dormant.
+   * embedding operations, the registry is held by reference but dormant.
    * Using a real registry here eliminates the need for any type-unsafe casts.
    */
   function makeEmbeddingRegistry(): MemoryEmbeddingProviderRegistry {
@@ -150,7 +150,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
     // MemoryStore with enableVectorIndex: false never invokes embedding calls.
     const configManager = new ConfigManager({ configDir: tmpdir() });
     // HASHED_MEMORY_EMBEDDING_PROVIDER is registered automatically in the
-    // constructor and is the default — no additional registration needed.
+    // constructor and is the default, no additional registration needed.
     return new MemoryEmbeddingProviderRegistry({ configManager });
   }
 
@@ -206,7 +206,7 @@ describe('WorkspaceSwapManager — real MemoryStore disk isolation', () => {
     expect(result.ok).toBe(true);
 
     // After swap: memoryStore is now backed by workspace2's SQLite
-    // Write a new record — this must go to workspace2, NOT workspace1
+    // Write a new record, this must go to workspace2, NOT workspace1
     await memoryStore.add({
       cls: 'fact',
       summary: 'workspace2-record',

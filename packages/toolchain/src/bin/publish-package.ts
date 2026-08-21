@@ -23,7 +23,7 @@ const dryRun = process.argv.includes('--dry-run');
 const registry = process.env.GOODVIBES_PUBLISH_REGISTRY ?? config.publish.defaultRegistry;
 
 // --tarball <path>: publish a prebuilt .tgz instead of packing cwd. Validate the
-// flag value up front — a missing/empty path is a caller error (exit 2), kept
+// flag value up front, a missing/empty path is a caller error (exit 2), kept
 // distinct from a publish failure (exit 1) so a broken pack→publish handoff is
 // unambiguous in CI logs.
 const tarballPath = flagValue('--tarball');

@@ -1,11 +1,11 @@
-# Capability bundles & SHA-pinned distribution
+# Capability bundles and SHA-pinned distribution
 
 A **capability bundle** is a distributable unit (plugin, skill, hook-pack, or
-policy-pack) that declares — up front, in a manifest — exactly which
+policy-pack) that declares, up front, in a manifest, exactly which
 capabilities it needs. The runtime grants a bundle **only** what it declared:
 deny-by-default at the surface level, not merely at the security-capability
 level. Distribution is **SHA-256 pinned**, and the marketplace index format is
-**governed by construction** — an unpinned or capability-opaque entry cannot be
+**governed by construction**. An unpinned or capability-opaque entry cannot be
 represented.
 
 Import from `@pellux/goodvibes-sdk/platform/runtime/ecosystem`.
@@ -32,9 +32,9 @@ Import from `@pellux/goodvibes-sdk/platform/runtime/ecosystem`.
 
 `validateCapabilityBundleManifest(value)` returns the typed manifest or the full
 list of reasons it was rejected. An unknown security capability is a hard error,
-not a silent drop — a typo cannot slip past review.
+not a silent drop. A typo cannot slip past review.
 
-## Enforcement — declaration is the grant
+## Enforcement: declaration is the grant
 
 `createBundleCapabilityGuard(manifest)` returns a deny-by-default guard. Every
 runtime registration path calls `enforceBundleCapability(guard, surface, name)`
@@ -52,7 +52,7 @@ enforceBundleCapability(guard, 'channel', 'slack');  // throws — not declared
 `planBundleActivation(manifest, { trustTier })` resolves the bundle's declared
 security capabilities against the trust tier using the existing plugin
 capability model. If the bundle declared high-risk capabilities the tier does
-not grant, it activates **quarantined** — those capabilities are withheld and
+not grant, it activates **quarantined**. Those capabilities are withheld and
 recorded (`plan.quarantine`), and the returned guard cannot exercise them even
 though they were declared. Safe capabilities still work; over-reach is withheld,
 not silently granted.
@@ -72,14 +72,14 @@ const { bytes } = await fetchAndVerifyBundle(source);
 ```
 
 `fetchAndVerifyBundle` verifies the pin **before** returning. A missing or
-mismatched pin throws `BundlePinRefusal` — there is no path that yields bytes for
+mismatched pin throws `BundlePinRefusal`. There is no path that yields bytes for
 an unverified source. All three source kinds resolve to the same byte space, so
 one pin convention (hex SHA-256 of the fetched bytes) governs every source.
 
 ## Governed marketplace index
 
 A `PinnedMarketplaceIndex` is a static, self-hostable JSON document. Each entry's
-`source.sha256` and `capabilities` summary are **required by the type** —
+`source.sha256` and `capabilities` summary are **required by the type**.
 `parseMarketplaceIndex` rejects any entry missing them, so a registry built from
 this format cannot list an unpinned or capability-opaque bundle. There is no
 field to omit that would let one through.

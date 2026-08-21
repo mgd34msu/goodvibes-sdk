@@ -1,5 +1,5 @@
 /**
- * daemon-config-route.ts — where a config write goes, and what happens when the
+ * daemon-config-route.ts, where a config write goes, and what happens when the
  * owning runtime cannot be reached.
  *
  * This is the single place that answers "who writes this key". Callers hand it
@@ -17,8 +17,8 @@
  *     tier, which is the store the daemon will read when it next starts. There
  *     is no unreachable runtime in this case; there is no runtime at all.
  *
- * FAILURE IS LOUD. When a daemon is expected — a base URL was configured, or a
- * daemon actually ANSWERED at the address discovery produced — and the write
+ * FAILURE IS LOUD. When a daemon is expected, a base URL was configured, or a
+ * daemon actually ANSWERED at the address discovery produced, and the write
  * cannot be delivered, this throws {@link DaemonConfigUnreachableError}. It does
  * NOT fall back to writing locally and reporting success. "Written locally, not
  * applied to the daemon" is a failure, and it is reported as one, because
@@ -29,8 +29,8 @@
  * daemon being there. It does not: a record is written when a daemon is spawned
  * and nothing removes it when that daemon dies, so a stale one made every
  * daemon-owned READ answer "unavailable" against a dead port for days while a
- * live daemon sat elsewhere. The record is now a hint — pid checked here, port
- * checked by the probe, reaped with a receipt when it fails either — and only a
+ * live daemon sat elsewhere. The record is now a hint, pid checked here, port
+ * checked by the probe, reaped with a receipt when it fails either, and only a
  * configured address or an address that answered makes failure loud. See
  * {@link discoverDaemonEndpoint}.
  */
@@ -109,7 +109,7 @@ export class DaemonConfigRejectedError extends Error {
 export interface DaemonConfigRouterDeps {
   /** True when this process hosts the daemon (so local IS the daemon store). */
   readonly hostsDaemon: boolean;
-  /** Explicit endpoint — required when the daemon runs on another machine. */
+  /** Explicit endpoint, required when the daemon runs on another machine. */
   readonly endpoint?: DaemonConfigEndpoint | null | undefined;
   /** Daemon home directory holding `detached-daemon.json`. */
   readonly daemonHomeDir?: string | undefined;
@@ -129,7 +129,7 @@ export interface DaemonConfigRouterDeps {
    * the connected host's `config.set`; when this is supplied, reads route
    * through the same connection's `config.get`, so a value that was just
    * written is read back from the runtime that applied it. Without it the two
-   * directions resolve the daemon independently and can disagree — a write that
+   * directions resolve the daemon independently and can disagree, a write that
    * succeeds and is then unreadable, which is what a whole session was lost to.
    *
    * Returns null when the connection holds no answer; discovery is then tried.
@@ -153,7 +153,7 @@ export interface DaemonConfigRouterDeps {
   readonly probeTimeoutMs?: number | undefined;
 }
 
-/** Decide where a write to `key` belongs. Pure — performs no I/O beyond the record read. */
+/** Decide where a write to `key` belongs. Pure, performs no I/O beyond the record read. */
 export function resolveConfigWriteRoute(key: string, deps: DaemonConfigRouterDeps): ConfigWriteRoute {
   const scope = configKeyScope(key);
   if (scope !== 'daemon') {
@@ -181,12 +181,12 @@ export function resolveConfigWriteRoute(key: string, deps: DaemonConfigRouterDep
 /**
  * Where the daemon is, in decreasing order of certainty:
  *
- *   1. an explicit endpoint — the only option when the daemon is on another
+ *   1. an explicit endpoint, the only option when the daemon is on another
  *      machine, and always authoritative;
  *   2. the running-daemon record a surface writes when it SPAWNS a detached
- *      daemon — a HINT, validated here and never simply believed;
+ *      daemon, a HINT, validated here and never simply believed;
  *   3. the control-plane binding in the daemon's own config, derived (never a
- *      stored `baseUrl` string, which drifts — see control-plane-base-url.ts).
+ *      stored `baseUrl` string, which drifts, see control-plane-base-url.ts).
  *
  * (3) exists because (2) is not written by every launch: a daemon started in
  * the foreground leaves no record, and treating that as "no daemon" sent
@@ -196,7 +196,7 @@ export function resolveConfigWriteRoute(key: string, deps: DaemonConfigRouterDep
  *
  * THE RECORD IS A HINT, NOT AN ADDRESS.
  *
- * It used to be returned as `certain: true` — never liveness-checked, and never
+ * It used to be returned as `certain: true`, never liveness-checked, and never
  * fallen through. One record left behind by a daemon that had exited made every
  * daemon-owned settings READ answer "unavailable" against a port nothing
  * listened on, for days, while a live daemon sat on another port with a
@@ -224,7 +224,7 @@ export function discoverDaemonEndpoint(deps: DaemonConfigRouterDeps): DaemonConf
     const endpoint = validatedRecordEndpoint(record, deps);
     if (endpoint) return endpoint;
     // Reaped: fall through to the derived binding rather than returning null,
-    // which is the whole point — the daemon is usually still running.
+    // which is the whole point, the daemon is usually still running.
   }
   if (!deps.readDaemonBinding) return null;
   const binding = deps.readDaemonBinding();
@@ -307,7 +307,7 @@ export function reapUnansweringRuntimeRecord(deps: DaemonConfigRouterDeps, baseU
  *
  * A binding read out of configuration says where a daemon would listen, not
  * that one does. If nothing answers there, no daemon is running, and the local
- * daemon store is the correct destination — that is not a silent fallback, it
+ * daemon store is the correct destination, that is not a silent fallback, it
  * is the absence of a runtime to be unreachable. An endpoint that IS known
  * (explicit, or an observed running daemon) is never downgraded this way: it
  * must be reached or the write fails.
@@ -349,7 +349,7 @@ export async function resolveLiveConfigWriteRoute(
   }
 
   if (reapedRecord) {
-    // A daemon was recorded as running and nothing answers for it anywhere —
+    // A daemon was recorded as running and nothing answers for it anywhere,
     // neither at its recorded address nor at the address its own config derives.
     // Reported as an unreachable daemon so the write fails loudly.
     return {
@@ -380,7 +380,7 @@ async function daemonAnswers(endpoint: DaemonConfigEndpoint, deps: DaemonConfigR
       headers: daemonHeaders(endpoint),
       signal: AbortSignal.timeout(deps.probeTimeoutMs ?? 2_000),
     });
-    // A 401/403 still proves a daemon is listening — it answered.
+    // A 401/403 still proves a daemon is listening, it answered.
     return response.status < 500;
   } catch {
     return false;
@@ -400,7 +400,7 @@ export interface ConfigWriteOutcome {
   readonly reason: string;
 }
 
-/** The narrow local writer this module needs — satisfied by ConfigManager. */
+/** The narrow local writer this module needs, satisfied by ConfigManager. */
 export interface LocalConfigWriter {
   setDynamic(key: string, value: unknown): void;
   get(key: string): unknown;
@@ -502,7 +502,7 @@ async function postDaemonConfig(
  * Read the daemon's full config THROUGH the daemon. Clients must not open the
  * daemon's settings file: it may not be on this machine, and even when it is,
  * reading the file misses anything the running daemon holds but has not yet
- * flushed. Throws when the daemon is unreachable — an honest failure beats a
+ * flushed. Throws when the daemon is unreachable, an honest failure beats a
  * stale local answer.
  */
 export async function readDaemonConfig(

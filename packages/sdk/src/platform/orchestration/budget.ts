@@ -3,13 +3,13 @@
 /**
  * Budget enforcement (see CHANGELOG 0.38.0). Enforcement point is BEFORE the
  * scheduler claims an item into a new phase (i.e. before a new agent spawn)
- * — never mid-item. An in-flight item's phase always runs to completion even
+ *, never mid-item. An in-flight item's phase always runs to completion even
  * if a later check here would refuse a NEW claim: honest semantics, never a
  * mid-run kill on budget.
  *
  * Usage is summed directly from WorkItem.usage, which phase-runner.ts
  * populates from the SAME `priceUsage` function threaded through
- * OrchestrationEngineDeps — the single cost source shared with the fleet
+ * OrchestrationEngineDeps, the single cost source shared with the fleet
  * registry (registry.ts ProcessRegistryDeps.priceUsage), so budget checks and
  * fleet cost totals can never double-count against each other.
  */
@@ -63,7 +63,7 @@ function totalCostUsd(workstream: Workstream): number | null {
  * Refuses a NEW claim once the workstream's running total has reached its
  * ceiling. Never mid-item. When `item` is supplied and carries its own
  * `itemBudget`, that per-item ceiling is checked too (against the item's own
- * usage) — a best-of-N attempt, or any opted-in item, can be bounded
+ * usage), a best-of-N attempt, or any opted-in item, can be bounded
  * independently of the workstream (see WorkItem.itemBudget). The stricter of the
  * two refuses.
  */

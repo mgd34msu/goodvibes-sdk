@@ -1,5 +1,5 @@
 /**
- * capture.ts — proposing an occasion, confirming it once, and removing one.
+ * capture.ts, proposing an occasion, confirming it once, and removing one.
  *
  * Split out of `service.ts` when that file reached the repo's 800-line cap.
  * Nothing here has state: each function takes the profile source it reads and
@@ -8,8 +8,8 @@
  *
  * ## Confirm once, at the time
  *
- * *"Noted your anniversary as 12 September — right?"* One line, at the moment he
- * can still catch a mishearing, and silent afterwards — no re-confirmation at
+ * *"Noted your anniversary as 12 September, right?"* One line, at the moment he
+ * can still catch a mishearing, and silent afterwards, no re-confirmation at
  * nudge time. The reason is arithmetic rather than politeness: for an annual
  * date a silent write means he discovers the error up to eleven months later,
  * when it is far too late to matter.
@@ -131,7 +131,7 @@ export function proposeOccasion(
 ): OccasionProposal {
   const title = input.title.trim();
   if (title.length === 0) {
-    return refuse('An occasion needs a name — what should it be called?');
+    return refuse('An occasion needs a name, what should it be called?');
   }
   const date = parseOccasionDate(input.date);
   if (date === null) {
@@ -174,9 +174,9 @@ export function proposeOccasion(
   };
 
   const confirmation = kind === null
-    ? `Noted ${title} as ${written} — right? And is that one you'll want to sort something for, `
+    ? `Noted ${title} as ${written}, right? And is that one you'll want to sort something for, `
       + 'one to just remember, or neither?'
-    : `Noted ${title} as ${written} — right?`;
+    : `Noted ${title} as ${written}, right?`;
 
   return {
     ok: true,
@@ -200,7 +200,7 @@ export async function confirmOccasion(
   if (proposal.needsKind) {
     return failed(
       id,
-      'Which kind is this — something to sort a gift for, something to just remember, or neither? '
+      'Which kind is this, something to sort a gift for, something to just remember, or neither? '
       + 'Nothing is recorded until you say, because that is not something to guess at.',
     );
   }
@@ -231,7 +231,7 @@ export interface ProposePlanInput {
    * number, a flight and its times, who is travelling, why he is going.
    *
    * Kept because a trip stripped to its dates answers "am I away" and nothing
-   * else — and the itinerary was pasted precisely so the details would be
+   * else, and the itinerary was pasted precisely so the details would be
    * there later. Each entry is normalised to survive the line grammar
    * (`normalizePlanDetail`) and then the whole line is re-read to prove it
    * round-trips before anything is written.
@@ -283,7 +283,7 @@ export function proposePlan(input: ProposePlanInput): OccasionProposal {
     ok: true,
     reason: null,
     line,
-    confirmation: `Noted ${title}, ${reread.from} to ${reread.to}${where} — right?`,
+    confirmation: `Noted ${title}, ${reread.from} to ${reread.to}${where}, right?`,
     needsKind: false,
     conflictsWith: [],
   };
@@ -319,7 +319,7 @@ export async function confirmPlan(
  * people divorce and people die, and removing an occasion should take one
  * sentence and one confirm.
  *
- * The profile line goes first and the machine state second. That order matters —
+ * The profile line goes first and the machine state second. That order matters,
  * if the state drop failed after the line was gone, the next sweep reaps it as
  * an orphan anyway, whereas the other order could leave the line in place with
  * its history removed and nothing to explain why.

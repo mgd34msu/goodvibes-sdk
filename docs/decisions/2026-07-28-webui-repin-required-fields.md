@@ -1,12 +1,12 @@
 # The webui re-pin now enforces required fields it never enforced before
 
 Date: 2026-07-28
-Status: accepted — action required at the webui re-pin, not here
+Status: accepted, action required at the webui re-pin, not here
 
 `goodvibes-webui/src/lib/goodvibes.ts`'s `invokeGatewayMethod` is typed
 `body?: OperatorMethodInput<TMethodId>`, and its own comment records that it
 relies on that family resolving to the permissive `{ [k: string]: unknown }`
-fallback — which it did for every id that had no entry in
+fallback, which it did for every id that had no entry in
 `OperatorMethodInputMap`.
 
 Every catalogued verb now has a rendered entry. The fallback is gone, so those
@@ -43,16 +43,16 @@ enforce at least one required field**:
 | `rewind.plan` | `sessionId`, `scope` |
 | `sessions.changes.get` | `sessionId` |
 
-The remaining 11 — `checkpoints.list`, `fleet.archived.list`,
+The remaining 11, `checkpoints.list`, `fleet.archived.list`,
 `fleet.archiveFinished`, `fleet.list`, `fleet.snapshot`, `pairing.tokens.list`,
 `push.subscriptions.list`, `push.vapid.get`, `sessions.search`,
-`tailscale.get`, `tailscale.serve.run` — declare no required field. Checked
+`tailscale.get`, `tailscale.serve.run`, declare no required field. Checked
 individually rather than inferred from the absence of an error: each is either
 an empty input or all-optional.
 
 **The action:** every bridge type in `goodvibes-webui/src/lib/contract-bridge-types.ts`
 covering an id above must declare those fields required. A bridge that still
-declares them optional will now be a compile error at the re-pin — which is the
+declares them optional will now be a compile error at the re-pin, which is the
 wanted outcome, because the server was already refusing those calls; the webui
 simply could not see it.
 

@@ -1,7 +1,7 @@
 # Decision: mixed-version stance for the session wire (parse-with-backfill)
 
 Date: 2026-07-05
-Scope: One-Platform Wave 1 spine — session lifecycle wire contract
+Scope: One-Platform Wave 1 spine, session lifecycle wire contract
 Status: accepted
 
 ## Context
@@ -60,23 +60,22 @@ validates the raw wire body against `method.outputSchema` *before*
 (`packages/sdk/src/platform/control-plane/operator-contract-schemas-runtime.ts`,
 around line 104) previously listed `project` in its `required` array, so a
 mixed-version daemon response omitting `project` threw a `ContractError` at
-the schema gate — pre-empting the reader backfill described above entirely.
+the schema gate, pre-empting the reader backfill described above entirely.
 
 Fixed by removing `'project'` from `SHARED_SESSION_RECORD_SCHEMA`'s `required`
 array (`operator-contract-schemas-runtime.ts` line ~125). `project` remains a
-real, typed property on the schema (still `STRING_SCHEMA`) — it is simply no
+real, typed property on the schema (still `STRING_SCHEMA`), it is simply no
 longer contractually guaranteed present on every wire response, matching the
 reader-tolerant stance. This is a response/output-schema relaxation only:
 `SHARED_SESSION_REGISTER_INPUT_SCHEMA` (write path, same file, ~line 80-87)
 is untouched and still does not require `project` on input, and the daemon's
-write path (`session-broker.ts` / `session-broker-sessions.ts`) is unchanged —
-it still always populates `project` when it creates a record. The generated
+write path (`session-broker.ts` / `session-broker-sessions.ts`) is unchanged, it still always populates `project` when it creates a record. The generated
 contract artifacts (`packages/contracts/src/generated/operator-contract.ts`,
 `packages/contracts/artifacts/operator-contract.json`) were regenerated via
 `bun run refresh:contracts` to drop `project` from all embedded
 `sessions.*` copies of this schema.
 
-## Addendum (2026-07-05): the enum leg — open the `kind` on read
+## Addendum (2026-07-05): the enum leg, open the `kind` on read
 
 The `project`-required fix above closed one schema-gate leg; the mixed-version
 `kind` enum leg was still open. `SHARED_SESSION_RECORD_SCHEMA.kind` was an
@@ -84,7 +83,7 @@ The `project`-required fix above closed one schema-gate leg; the mixed-version
 A 0.38-pinned operator SDK compiled that enum WITHOUT `agent`/`webui`/`automation`,
 so `validateJsonSchemaResponse` (the generic `firstJsonSchemaFailure` walker,
 which enforces `enum`) hard-failed the ENTIRE `sessions.list` envelope the moment
-any record carried a `kind` the reader's build did not know — blanking the whole
+any record carried a `kind` the reader's build did not know, blanking the whole
 union (webui Sessions view showed 0 rows). This is exactly the tolerance this
 decision promised readers, applied to `kind` instead of `project`.
 
@@ -98,9 +97,9 @@ the documented `'tui'` fallback and preserves the raw value under
 
 Writes stay STRICT: `SHARED_SESSION_REGISTER_INPUT_SCHEMA.kind` keeps the closed
 `SHARED_SESSION_KIND_SCHEMA` enum, so `sessions.register` still returns 400 on an
-unknown kind (leniency is a reader stance, never a writer one — decision point 4).
+unknown kind (leniency is a reader stance, never a writer one, decision point 4).
 The daemon's `sessions.register` handler (`runtime-session-register.ts`) already
 rejects unknown kinds against the `SHARED_SESSION_KINDS` allowlist; that is
 unchanged. Generated contract artifacts were regenerated via
-`bun run refresh:contracts` — `sessions.list`/`sessions.get` output copies now
+`bun run refresh:contracts`, `sessions.list`/`sessions.get` output copies now
 carry `kind: { type: 'string' }` while `sessions.register` input keeps the enum.

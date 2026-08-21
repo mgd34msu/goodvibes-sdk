@@ -46,7 +46,7 @@ function makeConfig(overrides: ConfigMap = {}): ConfigMap {
   };
 }
 
-// Stub socket that does nothing — satisfies the Socket type for factory stubs
+// Stub socket that does nothing, satisfies the Socket type for factory stubs
 const stubSocket = {} as Socket;
 
 // ---------------------------------------------------------------------------
@@ -179,7 +179,7 @@ describe('EmailService.getStatus', () => {
   });
 
   test('EmailSummary includes bodyPreview field', () => {
-    // Verify the type shape — bodyPreview is always present, empty string by default
+    // Verify the type shape, bodyPreview is always present, empty string by default
     const summary: import('../packages/sdk/src/platform/email/email-service.ts').EmailSummary = {
       uid: 1,
       messageId: '<msg-1@example.test>',
@@ -242,7 +242,7 @@ describe('EmailService.checkInbox', () => {
     });
 
     // Stub out the ImapClient by monkey-patching the module's behavior
-    // via the socket factory — since ImapClient requires real socket I/O,
+    // via the socket factory, since ImapClient requires real socket I/O,
     // we test the service wiring by overriding the IMAP socket factory
     // and verifying the service handles errors from the client gracefully.
     await expect(service.checkInbox(5)).rejects.toThrow();
@@ -338,14 +338,14 @@ describe('EmailService smtpSecurity — socket factory selection', () => {
       secretsManager: makeSecretsManager({ GOODVIBES_EMAIL_PASSWORD: 'pass' }),
       transport: throwingEmailTransport,
       describeSenderClaim: testDescribeSenderClaim,
-      // No smtpSocketFactory — use the default factory selection
+      // No smtpSocketFactory, use the default factory selection
       // This will fail to connect to smtp.example.test but that’s expected in tests
       smtpSocketFactory: async () => stubSocket,
     });
     await expect(
       service.sendMail({ to: 'a@b.test', subject: 'Hi', body: 'Body', confirm: true }),
     ).rejects.toThrow();
-    // If we reach here, the factory selection itself didn’t throw — wiring is correct
+    // If we reach here, the factory selection itself didn’t throw, wiring is correct
   });
 
   // With the transports behind a port, the selection rule itself is now
@@ -383,13 +383,13 @@ describe('EmailService smtpSecurity — socket factory selection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// imapSecurity field wiring — surfaces.email.imap.secure
+// imapSecurity field wiring, surfaces.email.imap.secure
 // ---------------------------------------------------------------------------
 //
 // `surfaces.email.imap.secure` had a schema row and a default of true, and
 // nothing read it: the surface reader translated smtp.secure and skipped its
 // IMAP twin, and every IMAP connection went through the implicit-TLS factory
-// unconditionally. These pin BOTH positions of the key — the default TLS path
+// unconditionally. These pin BOTH positions of the key, the default TLS path
 // byte-for-byte as before, and the plaintext path the schema describes.
 
 describe('readEmailConfig — imapSecurity field', () => {
@@ -463,7 +463,7 @@ describe('EmailService imapSecurity — socket factory selection', () => {
 });
 
 // ---------------------------------------------------------------------------
-// EmailService.testConnection — connect-wizard "test connection" step.
+// EmailService.testConnection, connect-wizard "test connection" step.
 // Uses real in-process fake TCP servers (no real network) to exercise a
 // genuine success path, not just a wiring-rejection path.
 // ---------------------------------------------------------------------------

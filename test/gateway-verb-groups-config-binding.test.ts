@@ -1,5 +1,5 @@
 /**
- * gateway-verb-groups-config-binding.test.ts — regression test for the
+ * gateway-verb-groups-config-binding.test.ts, regression test for the
  * detached-`this` config-binding defect in
  * packages/sdk/src/platform/control-plane/routes/register-gateway-verb-groups.ts.
  *
@@ -11,24 +11,24 @@
  * call `this.resolvePath(key)`), so a genuinely detached call throws
  * `Cannot read properties of undefined (reading 'resolvePath')`.
  *
- * This test uses a REAL ConfigManager instance (never a plain-object stub —
+ * This test uses a REAL ConfigManager instance (never a plain-object stub,
  * a plain object has no `this` dependency and would never catch this class of
  * bug) and calls closures that mirror the file's own isCategoryEnabled /
  * escalation's `num` / resolveWebPort-read / setPublicBaseUrl exactly (they
  * are not exported, so the PRE_FIX/POST_FIX helpers below are verbatim copies
- * of, respectively, the original and the fixed source — kept in sync with
+ * of, respectively, the original and the fixed source, kept in sync with
  * register-gateway-verb-groups.ts by file/line references in each comment).
  *
  * Empirical finding (verified by actually running the PRE_FIX forms below
  * against a real ConfigManager, and by temporarily reverting the source file
  * and re-running): of the four call sites the fix touches, only the
  * `escalation` closure's `const read = deps.configManager?.get as ...;
- * read?.(key)` form — where the extracted method is stored in a variable
- * before being called — actually throws. The other three
+ * read?.(key)` form, where the extracted method is stored in a variable
+ * before being called, actually throws. The other three
  * (isCategoryEnabled, resolveWebPort, setPublicBaseUrl) cast the same
  * expression INLINE, with no intermediate variable
  * (`(deps.configManager.get as ...)(key)` / `(...)?.(key)`), and JavaScript's
- * grouping operator does not strip a MemberExpression's reference-ness — the
+ * grouping operator does not strip a MemberExpression's reference-ness, the
  * receiver is preserved through parens and through optional chaining as long
  * as there is no separate variable assignment in between. So those three
  * were misleading, fragile, and inconsistent with this repo's real
@@ -53,7 +53,7 @@ import type { ConfigKey } from '../packages/sdk/src/platform/config/schema.ts';
  * file: the CI-watch group's construction (which carries the
  * `deps.configManager?.get(key as ConfigKey)` read) moved to
  * routes/ci-watch-composition.ts when the registrar hit the source cap. Reading
- * both is what keeps the pin honest — checking only the original file would
+ * both is what keeps the pin honest, checking only the original file would
  * have reported green while the text it claims to guard sat next door.
  */
 const SOURCE_PATHS = [

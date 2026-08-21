@@ -11,7 +11,7 @@ import type { AudioSink } from './audio-sink.js';
  * waiting to play, or playing). 2 = the chunk being played plus ONE prefetch,
  * so the next audio is ready the moment the current sink drains. Bounding
  * this is what keeps a streaming answer from bursting N concurrent requests
- * at the voice provider — ElevenLabs plans allow as few as 3 concurrent, and
+ * at the voice provider, ElevenLabs plans allow as few as 3 concurrent, and
  * an unbounded burst 429s the whole turn. The SDK config schema has no tts.*
  * key for pipeline tuning, so this is a constant by design.
  */
@@ -20,7 +20,7 @@ const SYNTHESIS_PIPELINE_WINDOW = 2;
 /**
  * Upper bound for one merged synthesis request's text. The ElevenLabs
  * provider passes request text through verbatim (no cap of its own); the API
- * caps text per request by plan — 2,500 chars on the lowest tiers, 5,000 on
+ * caps text per request by plan, 2,500 chars on the lowest tiers, 5,000 on
  * most others. 1,500 stays safely under every plan while still folding a
  * multi-paragraph answer into one or two requests.
  */
@@ -30,8 +30,8 @@ const SYNTHESIS_MERGE_MAX_CHARS = 1500;
  * Backoff schedule for transient synthesis failures (429 rate/concurrency
  * limits, transient 5xx, network drops): first retry after 1s, second after
  * 2.5s, then the chunk is skipped honestly and the turn continues. The SDK's
- * provider errors are plain Error strings with the HTTP status embedded — no
- * Retry-After header is exposed — so the schedule is fixed, not server-driven.
+ * provider errors are plain Error strings with the HTTP status embedded, no
+ * Retry-After header is exposed, so the schedule is fixed, not server-driven.
  */
 const SYNTHESIS_RETRY_DELAYS_MS = [1000, 2500] as const;
 
@@ -63,7 +63,7 @@ export interface SpokenTurnControllerOptions {
 }
 
 /**
- * SpokenTurnController — the shared spoken-output policy engine. It watches a
+ * SpokenTurnController, the shared spoken-output policy engine. It watches a
  * turn's lifecycle events, chunks the streamed answer into speech-sized pieces,
  * merges and dispatches synthesis requests through a bounded 2-slot window with
  * retry/backoff, and drives an injected {@link AudioSink} with honest
@@ -132,7 +132,7 @@ export class SpokenTurnController {
 
   /**
    * Returns whether speech was actually ACTIVE when stopped. The notice only
-   * prints in that case — stop() on an idle controller used to notify anyway,
+   * prints in that case, stop() on an idle controller used to notify anyway,
    * spamming "[TTS] Spoken output stopped." on every Ctrl+C (an earlier replay
    * fix); callers use the return to decide whether the press "did a
    * job" (see handleCtrlC's consume-on-speech-stop).
@@ -250,7 +250,7 @@ export class SpokenTurnController {
   /**
    * Chunker output does NOT map 1:1 to synthesis requests. Text queues here
    * and the pump merges everything pending into one request whenever a
-   * pipeline slot is free — so the request count tracks how often the model
+   * pipeline slot is free, so the request count tracks how often the model
    * out-paces the audio, not how many sentences it wrote. A short answer that
    * arrives before the first pump tick is exactly one request.
    */
@@ -322,13 +322,13 @@ export class SpokenTurnController {
         const result = await resultPromise;
         this.abortControllers.delete(abortController);
         // Re-check after the await: an abort that landed while synthesis was
-        // in flight (deliberate stop or exit) makes the rejection expected —
+        // in flight (deliberate stop or exit) makes the rejection expected,
         // it must not be reported, and it must not hard-stop a sink that may
         // still be draining the previous chunk.
         if (abortController.signal.aborted) return;
         if (!result.ok) {
           // Retries are exhausted (or the failure was not transient). Skip
-          // just this chunk and keep speaking the rest of the turn — a gap in
+          // just this chunk and keep speaking the rest of the turn, a gap in
           // speech beats losing the whole response.
           this.reportSkippedChunk(result.error);
           return;
@@ -379,7 +379,7 @@ export class SpokenTurnController {
     }
   }
 
-  /** Abortable backoff sleep — an abort clears the timer and rejects, so a stop mid-backoff leaves nothing running. */
+  /** Abortable backoff sleep, an abort clears the timer and rejects, so a stop mid-backoff leaves nothing running. */
   private delay(ms: number, signal: AbortSignal): Promise<void> {
     return new Promise((resolve, reject) => {
       if (signal.aborted) {
@@ -416,12 +416,12 @@ export class SpokenTurnController {
 
   /**
    * One synthesis request failed after its retries. Report once per turn and
-   * keep going — the rest of the response still plays.
+   * keep going, the rest of the response still plays.
    */
   private reportSkippedChunk(error: unknown): void {
     if (this.errorReportedForTurn) return;
     this.errorReportedForTurn = true;
-    this.notify?.(`[TTS] Skipping part of the spoken response — synthesis kept failing (${summarizeError(error)}). Playback continues with the rest.`);
+    this.notify?.(`[TTS] Skipping part of the spoken response, synthesis kept failing (${summarizeError(error)}). Playback continues with the rest.`);
   }
 
   private reportError(error: unknown): void {
@@ -467,7 +467,7 @@ function readOptionalConfigString(configManager: Pick<ConfigManager, 'get'>, key
 }
 
 /**
- * readOptionalConfigNumber — reads a numeric config value by key.
+ * readOptionalConfigNumber, reads a numeric config value by key.
  *
  * Accepts a string key and casts it, returning undefined when the value is
  * absent, zero, or not a finite positive number.

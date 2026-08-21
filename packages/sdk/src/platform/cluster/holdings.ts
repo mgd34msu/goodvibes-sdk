@@ -1,26 +1,26 @@
 /**
- * holdings.ts — who currently holds what, derived from traffic alone.
+ * holdings.ts, who currently holds what, derived from traffic alone.
  *
  * Spread ranking needs a number the whole cluster agrees on: how many surfaces
  * each node is already responsible for. There is no field on the wire that
- * carries it, and there deliberately isn't one — a node that ADVERTISED its own
+ * carries it, and there deliberately isn't one, a node that ADVERTISED its own
  * load could advertise a convenient number, and every node would then be
  * ranking on a different node's self-report.
  *
  * It does not need one. Every node hears every datagram in the group: the
  * transport is multicast with loopback on, so a node that does not serve
  * Telegram still RECEIVES the Telegram heartbeats and can count them. Holdings
- * are therefore observed, not announced — each node counts, from the same
+ * are therefore observed, not announced, each node counts, from the same
  * datagram stream, which node last claimed each surface. Two nodes that have
  * seen the same traffic compute the same numbers, including for themselves.
  *
  * Two separate tables, with different lifetimes:
  *
- *   holders    — surfaceId -> the node heard heartbeating it. Expires at the
+ *   holders   , surfaceId -> the node heard heartbeating it. Expires at the
  *                master timeout, because a holder that stopped heartbeating is
  *                exactly what "no longer holds it" looks like.
  *
- *   candidates — surfaceId -> nodes that have shown they can serve it, by
+ *   candidates, surfaceId -> nodes that have shown they can serve it, by
  *                sending ANY datagram for it. Expires much later: a standby is
  *                quiet by design, and forgetting it would make an overloaded
  *                holder believe it has nobody to hand a surface to.
@@ -51,7 +51,7 @@ export class ClusterHoldingsLedger {
 
   constructor(private readonly options: ClusterHoldingsOptions) {}
 
-  /** `nodeId` is heartbeating `surfaceId` — it holds it as of `mono`. */
+  /** `nodeId` is heartbeating `surfaceId`, it holds it as of `mono`. */
   noteHolder(surfaceId: string, nodeId: string, mono: number): void {
     this.holders.set(surfaceId, { nodeId, seenMono: mono });
     this.noteCandidate(surfaceId, nodeId, mono);
@@ -60,7 +60,7 @@ export class ClusterHoldingsLedger {
   /**
    * `nodeId` said it is no longer holding `surfaceId` (a RESIGN, or our own
    * ordered stop). Only clears the entry when that node is the believed holder
-   * — a stale farewell from a node that already lost the surface must not
+   *, a stale farewell from a node that already lost the surface must not
    * erase the successor.
    *
    * The node stays a CANDIDATE: resigning is not the same as being unable to
@@ -95,7 +95,7 @@ export class ClusterHoldingsLedger {
   }
 
   /**
-   * How many surfaces `nodeId` currently holds — the spread ranking's second
+   * How many surfaces `nodeId` currently holds, the spread ranking's second
    * tier, computed identically for self and for every peer.
    */
   holdingsOf(nodeId: string, mono: number): number {
@@ -145,7 +145,7 @@ export class ClusterHoldingsLedger {
   /**
    * Drop everything known about a node.
    *
-   * Used when the local view has to be rebuilt from scratch — after a host
+   * Used when the local view has to be rebuilt from scratch, after a host
    * suspend, the holdings table describes a network that moved on without us,
    * and acting on it would rank against nodes that may no longer exist.
    */

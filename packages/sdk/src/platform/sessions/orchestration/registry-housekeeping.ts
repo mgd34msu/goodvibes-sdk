@@ -1,8 +1,8 @@
 /**
- * Cross-Session Task Registry — housekeeping (content validation + reaping).
+ * Cross-Session Task Registry, housekeeping (content validation + reaping).
  *
  * Module-private companion to registry.ts: the pure, I/O-free half of the
- * persisted task graph's store obligations — parse-and-validate-by-content,
+ * persisted task graph's store obligations, parse-and-validate-by-content,
  * the bound constants (each a count cap AND an age TTL), and the idempotent
  * reap over a snapshot. Kept out of registry.ts so neither file carries two
  * jobs at once. Nothing here is re-exported from the package's public surface.
@@ -23,8 +23,8 @@ export const GRAPH_SCHEMA_VERSION = 1;
 /**
  * Count cap on persisted task refs.
  *
- * Sized far above any real cross-session fleet — a heavy day of linked work
- * tops out in the low hundreds of refs — so the cap only ever trims a graph
+ * Sized far above any real cross-session fleet, a heavy day of linked work
+ * tops out in the low hundreds of refs, so the cap only ever trims a graph
  * that has genuinely been leaking, while still holding the JSON file to a few
  * megabytes. Least-recently-updated refs are dropped first.
  */
@@ -40,7 +40,7 @@ const MAX_PERSISTED_REFS = 5_000;
  */
 const REF_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Count cap on persisted handoff records — same reasoning as {@link MAX_PERSISTED_REFS}, smaller because handoffs are far rarer than refs. */
+/** Count cap on persisted handoff records, same reasoning as {@link MAX_PERSISTED_REFS}, smaller because handoffs are far rarer than refs. */
 const MAX_PERSISTED_HANDOFFS = 1_000;
 
 /**
@@ -62,15 +62,15 @@ export const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
  *
  * Owner-existence is the one reap rule that acts on an answer from OUTSIDE this
  * module, and that answer can be wrong in a way age and count never are. A
- * sweep that lands during startup — before the session broker has registered,
+ * sweep that lands during startup, before the session broker has registered,
  * before a resume has re-attached, while a session is being created in another
- * process — gets a truthful "no such session" for a session that is about to
+ * process, gets a truthful "no such session" for a session that is about to
  * exist. Without a floor, that momentary false answer is permanent data loss on
  * the very first tick.
  *
  * So a record must be BOTH unowned AND stale before it goes. 24 hours is far
  * longer than any startup race, reconnect, or handoff window, and far shorter
- * than the 30-day TTL that eventually collects the record anyway — so the floor
+ * than the 30-day TTL that eventually collects the record anyway, so the floor
  * costs at most one extra day of a dead session's refs while removing the whole
  * class of transient-false-negative deletions.
  */
@@ -102,7 +102,7 @@ const TASK_LIFECYCLE_STATES: ReadonlySet<string> = new Set<TaskLifecycleState>([
 // ── Reap summary ──────────────────────────────────────────────────────────────
 
 /**
- * What a single reap pass reclaimed. Every field is a count — the registry
+ * What a single reap pass reclaimed. Every field is a count, the registry
  * never logs graph contents, only how much of it was removed and why.
  */
 export interface CrossSessionGraphReapSummary {
@@ -113,7 +113,7 @@ export interface CrossSessionGraphReapSummary {
   /**
    * Refs from the pre-binding `'local'` namespace dropped by age. Counted apart
    * from {@link refsExpired} so the one-way drain-down of the legacy store is
-   * visible in its own right — it is a migration finishing, not routine expiry.
+   * visible in its own right, it is a migration finishing, not routine expiry.
    */
   readonly refsLegacyNamespaceExpired: number;
   /** Refs dropped because the graph exceeded {@link MAX_PERSISTED_REFS}. */
@@ -240,7 +240,7 @@ type GraphFileVerdict =
 /**
  * Parse and content-validate the persisted graph file.
  *
- * VERSION POLICY — tolerate backward, fail closed forward.
+ * VERSION POLICY, tolerate backward, fail closed forward.
  *
  * The previous behaviour was a strict `version !== GRAPH_SCHEMA_VERSION`
  * equality check, which means the first schema bump silently discards every
@@ -250,7 +250,7 @@ type GraphFileVerdict =
  * failure is invisible: the user just finds their cross-session graph empty.
  *
  * So: any version at or below the current one is READ, because every field the
- * registry actually uses is validated record by record right here — an older
+ * registry actually uses is validated record by record right here, an older
  * envelope that no longer matches simply loses the records that fail
  * validation, and those losses are counted and disclosed. A version ABOVE the
  * current one is rejected (a newer runtime may have written fields whose
@@ -335,7 +335,7 @@ export function parseGraphFile(text: string): GraphFileVerdict {
 // ── Reaping ───────────────────────────────────────────────────────────────────
 
 interface GraphReapOptions {
-  /** "Does this session still exist?" — absent means owner-existence reaping is skipped (age/count bounds still apply). */
+  /** "Does this session still exist?", absent means owner-existence reaping is skipped (age/count bounds still apply). */
   readonly sessionExists?: ((sessionId: string) => boolean) | undefined;
   readonly now: number;
 }
@@ -355,7 +355,7 @@ export function reapGraphSnapshot(
    * Is this session id one we are permitted to judge by owner-existence at all?
    *
    * Two ids are not: the legacy `'local'` namespace (nobody can say which real
-   * session those records belonged to — see isLegacyTaskNamespace), and any id
+   * session those records belonged to, see isLegacyTaskNamespace), and any id
    * at all when the caller supplied no predicate. Both fall through to the age
    * and count bounds, which are always safe because they depend on nothing
    * outside the record itself.
@@ -365,7 +365,7 @@ export function reapGraphSnapshot(
   /**
    * Should a record be removed for having no owner? Requires BOTH an
    * authoritative "no" AND that the record has gone untouched for longer than
-   * the grace floor — see OWNERLESS_GRACE_MS for why a bare predicate answer is
+   * the grace floor, see OWNERLESS_GRACE_MS for why a bare predicate answer is
    * not enough on its own.
    */
   const ownerlessAndStale = (sessionId: string, updatedAt: number): boolean => {
@@ -428,7 +428,7 @@ export function reapGraphSnapshot(
     const taskKey = makeRefKey(handoff.taskRef.sessionId, handoff.taskRef.taskId);
     // Same grace floor as refs, measured from when the handoff was initiated:
     // a handoff whose destination session has not registered YET is the exact
-    // case the floor exists for — it is in flight, not orphaned.
+    // case the floor exists for, it is in flight, not orphaned.
     if (
       ownerlessAndStale(handoff.fromSessionId, handoff.initiatedAt) ||
       ownerlessAndStale(handoff.toSessionId, handoff.initiatedAt) ||

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * AutomationEvent — discriminated union covering automation job and run lifecycle events.
+ * AutomationEvent, discriminated union covering automation job and run lifecycle events.
  */
 
 export const AUTOMATION_SCHEDULE_KINDS = ['at', 'every', 'cron'] as const;

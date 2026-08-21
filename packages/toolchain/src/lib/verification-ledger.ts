@@ -1,10 +1,10 @@
 /**
- * verification-ledger — aggregation + rendering of a per-area verification
+ * verification-ledger, aggregation + rendering of a per-area verification
  * inventory.
  *
  * The data collection is deeply repo-specific (each repo introspects its own
  * settings/commands/panels), so it stays a per-repo hook. What is genuinely
- * shared — the totals math and the JSON/Markdown rendering — lives here.
+ * shared, the totals math and the JSON/Markdown rendering, lives here.
  */
 
 export interface LedgerArea {

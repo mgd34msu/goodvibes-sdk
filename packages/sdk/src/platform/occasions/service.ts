@@ -1,9 +1,9 @@
 /**
- * service.ts — the one object every occasions verb goes through.
+ * service.ts, the one object every occasions verb goes through.
  *
  * It owns nothing it can compute: the profile is read through a narrow source,
  * the machine state through its own store, the clock through an injected
- * function and delivery through a seam. What it owns is the SEQUENCE — capture
+ * function and delivery through a seam. What it owns is the SEQUENCE, capture
  * confirms once, an answer resolves an open item, a yes opens an interview, a
  * completed interview writes gift history, a removal drops orphaned state.
  *
@@ -21,7 +21,7 @@
  *
  * ## Telegram and the agent, and one thing said once
  *
- * `occasions.nudgeChannel` is a LIST, so his ruling — Telegram and the agent —
+ * `occasions.nudgeChannel` is a LIST, so his ruling, Telegram and the agent,
  * is expressible rather than a choice between them. Each destination is pushed
  * independently and a failure on one is recorded rather than thrown, so a dead
  * Telegram token cannot silence the agent and a missing agent sender cannot
@@ -32,7 +32,7 @@
  * They cannot, because both read the same open item: a push that lands on the
  * agent stamps the item with the DAY it landed, and the pull leaves out items
  * stamped with today. An item no push has ever landed there carries no stamp,
- * so the pull is still how that nudge gets raised — which covers `agent`
+ * so the pull is still how that nudge gets raised, which covers `agent`
  * configured with no sender registered, and a send that failed.
  *
  * The stamp is scoped to the day rather than being permanent, and that matters
@@ -293,7 +293,7 @@ export class OccasionsService {
   }
 
   // -------------------------------------------------------------------------
-  // Capture — proposed, confirmed once, then silent (see capture.ts)
+  // Capture, proposed, confirmed once, then silent (see capture.ts)
   // -------------------------------------------------------------------------
 
   /** What would be written, and the one line to put to him. Writes nothing. */
@@ -336,10 +336,10 @@ export class OccasionsService {
   /**
    * Record yes, no or later for one occurrence.
    *
-   *  - **no** — silent for the rest of this cycle. The record expires with the
+   *  - **no**, silent for the rest of this cycle. The record expires with the
    *    occurrence, so next year asks fresh carrying no memory of the refusal.
-   *  - **later** — not a decline. It comes back roughly halfway to the date.
-   *  - **yes** — opens the interview, and the answer is what stops the nudging.
+   *  - **later**, not a decline. It comes back roughly halfway to the date.
+   *  - **yes**, opens the interview, and the answer is what stops the nudging.
    *
    * A one-off carries no expiry: "handled" is permanent for something that
    * happens once.
@@ -379,7 +379,7 @@ export class OccasionsService {
       // It also RETURNS THE LEAD BOUNDARY, and that is not a hole in the
       // two-raise ceiling. The ceiling exists to stop an item he has ignored
       // from repeating at him; "come back nearer the time" is the opposite of
-      // ignoring it — it is an instruction, and a system that took the
+      // ignoring it, it is an instruction, and a system that took the
       // instruction and then stayed silent because it had used up its two
       // turns would be worse than one that never offered "later" at all.
       const item = await this.deps.state.openItem(nudgeItemId(occasion.id, occurrence));
@@ -445,7 +445,7 @@ export class OccasionsService {
     // Working on the gift IS acknowledging the occasion. Being asked whether he
     // has thought about a birthday while he is in the middle of answering
     // questions about what to buy for it would be the feature interrupting its
-    // own interview, so engagement here mutes the push by itself — no verb, no
+    // own interview, so engagement here mutes the push by itself, no verb, no
     // extra sentence from him, nothing to remember to do.
     await this.autoAcknowledgeFromGiftFlow(updated.occasionId, updated.occurrence);
     return progressOf(updated);
@@ -461,7 +461,7 @@ export class OccasionsService {
     );
     if (occasion === undefined) return;
     // A `yes` or a `no` already settled this occurrence, and both say MORE than
-    // an acknowledgement does — a `yes` is what opened this interview in the
+    // an acknowledgement does, a `yes` is what opened this interview in the
     // first place, and overwriting it would erase the record the interview
     // machinery reads to know the thread is live. Only an unanswered or
     // deferred occurrence needs the mute.
@@ -503,8 +503,8 @@ export class OccasionsService {
   /**
    * One pass: reap, decide, mirror, deliver, remember.
    *
-   * Housekeeping runs FIRST and unconditionally — before the enabled check and
-   * before quiet hours — because a store that only reaps when the feature is
+   * Housekeeping runs FIRST and unconditionally, before the enabled check and
+   * before quiet hours, because a store that only reaps when the feature is
    * allowed to speak is a store that never reaps on a machine where he turned
    * nudging off.
    */
@@ -611,7 +611,7 @@ export class OccasionsService {
       );
       if (interview !== undefined && interview.completedAt === undefined) found.push(interview);
     }
-    // An interview that has no open item yet — one just started by a `yes` —
+    // An interview that has no open item yet, one just started by a `yes`,
     // is also in flight, and is what creates the item on the next sweep.
     const started = await this.deps.state.acknowledgements();
     for (const ack of started) {
@@ -671,8 +671,8 @@ export class OccasionsService {
    * landed there is left out. The push and the pull are two ways of getting the
    * same thing to the same conversation, and doing both would have the agent
    * raise one birthday twice. The condition is the LANDED push rather than the
-   * configuration: an item no push has ever landed on the agent — because the
-   * sender is not registered, or because the send failed — carries no stamp and
+   * configuration: an item no push has ever landed on the agent, because the
+   * sender is not registered, or because the send failed, carries no stamp and
    * still comes back here, so the guard cannot turn into a way of dropping a
    * nudge.
    */

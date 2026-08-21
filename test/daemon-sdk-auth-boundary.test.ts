@@ -4,7 +4,7 @@
  * Verifies that each handler derives authorization from the per-call
  * request, not from a closure-captured factory-time request. An admin
  * request must be permitted; a non-admin request to the same handler
- * must be denied — even when the factory was initialized with a
+ * must be denied, even when the factory was initialized with a
  * different request object.
  */
 import { describe, expect, test } from 'bun:test';
@@ -85,7 +85,7 @@ describe('createDaemonSystemRouteHandlers per-request auth', () => {
   function makeContext(): DaemonSystemRouteContext {
     return {
       requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
-      // platformServiceManager — matches production field name
+      // platformServiceManager, matches production field name
       platformServiceManager: {
         status: () => ({ installed: false, running: false }),
         install: () => ({ ok: true }),
@@ -109,7 +109,7 @@ describe('createDaemonSystemRouteHandlers per-request auth', () => {
         patchBinding: async () => null,
         removeBinding: async () => false,
       },
-      // configManager — getAll() needed by getConfig handler
+      // configManager, getAll() needed by getConfig handler
       configManager: {
         get: () => null,
         getAll: () => ({}),
@@ -169,7 +169,7 @@ describe('createDaemonIntegrationRouteHandlers per-request auth', () => {
   function makeContext(): DaemonIntegrationRouteContext {
     return {
       requireAdmin: makeRequireAdmin(ADMIN_TOKEN),
-      // userAuth — matches production field name (not userAuthManager)
+      // userAuth, matches production field name (not userAuthManager)
       userAuth: {
         addUser: () => ({ username: 'u' }),
         deleteUser: () => true,
@@ -343,7 +343,7 @@ describe('createDaemonRuntimeSessionRouteHandlers getSharedSessionEvents auth', 
 });
 
 // ---------------------------------------------------------------------------
-// GET /api/runtime/metrics — consolidated on the gateway verb (runtime.metrics.get)
+// GET /api/runtime/metrics, consolidated on the gateway verb (runtime.metrics.get)
 //
 // The daemon-sdk raw getRuntimeMetrics handler was removed; the URL is now
 // served solely by the gateway-REST parity table, which dispatchDaemonApiRoutes

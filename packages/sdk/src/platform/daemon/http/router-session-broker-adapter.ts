@@ -4,7 +4,7 @@
  * Adapts the real `SharedSessionBroker` to the narrow structural shape
  * `createDaemonRuntimeRouteHandlers` (runtime-routes.ts) expects on its
  * `sessionBroker` context field. Split out of router.ts (see CHANGELOG 1.0.0) to stay under
- * the repo's grandfathered line-cap ceiling (see scripts/check-line-cap.ts) —
+ * the repo's grandfathered line-cap ceiling (see scripts/check-line-cap.ts),
  * this is a pure file-organization move, not a behavior change.
  */
 import type { SharedSessionBroker } from '../../control-plane/index.js';

@@ -14,7 +14,7 @@
  *   pass: an accepted notifications offer registers the browser push
  *   subscription, an accepted passkey offer registers the WebAuthn credential,
  *   an accepted relay offer is acknowledged; each returns an honest per-offer
- *   result, and a declined/omitted offer is reported as declined — never
+ *   result, and a declined/omitted offer is reported as declined, never
  *   silently half-applied.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
@@ -42,7 +42,7 @@ import { readInvocationParams } from './invocation-params.js';
 /** What the hand-off verbs need from the surrounding composition. */
 export interface PairingHandoffDeps {
   readonly tokens: Pick<PairingTokenManager, 'mint'>;
-  /** The push service — VAPID key for the notifications offer + subscription registration. */
+  /** The push service, VAPID key for the notifications offer + subscription registration. */
   readonly push: Pick<PushGatewayService, 'getPublicKey' | 'subscribe'>;
   /** WebAuthn step-up; present ⇒ the passkey offer is available. */
   readonly stepUp?: StepUpGatewayService | undefined;
@@ -93,7 +93,7 @@ function createHandoffCreateHandler(deps: PairingHandoffDeps): GatewayMethodHand
 
     // The QR path is where a phone actually pairs, so this is where
     // `device.nodes.maxPaired` has to hold. The refusal names the setting and
-    // the live count (see PairingLimitReachedError) — 409, because the request
+    // the live count (see PairingLimitReachedError), 409, because the request
     // is fine and the state is what refuses it.
     const minted: MintedPairingToken = ((): MintedPairingToken => {
       try {
@@ -129,7 +129,7 @@ function createHandoffCreateHandler(deps: PairingHandoffDeps): GatewayMethodHand
 }
 
 /**
- * pairing.posture.get — the same posture read outside a pairing exchange: a
+ * pairing.posture.get, the same posture read outside a pairing exchange: a
  * surface passes its OWN current origin (or omits it to read the configured web
  * origin) and renders labeled capability gaps for wherever it is running.
  */
@@ -191,7 +191,7 @@ function createHandoffCompleteHandler(deps: PairingHandoffDeps): GatewayMethodHa
     for (const kind of PAIRING_HANDOFF_OFFER_KINDS) {
       const offered = accept[kind];
       if (offered === undefined || offered === false) {
-        // Omitted or explicitly declined — reported, never silently applied.
+        // Omitted or explicitly declined, reported, never silently applied.
         results.push({ kind, status: 'declined' });
         continue;
       }

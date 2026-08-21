@@ -1,6 +1,6 @@
 /**
- * The ci fix-session starter returns the REAL spawned session's id — the id a
- * session lookup actually resolves — never the automation job's scheduling
+ * The ci fix-session starter returns the REAL spawned session's id, the id a
+ * session lookup actually resolves, never the automation job's scheduling
  * handle ('auto-…'). Job-id-vs-session-id confusion is pinned here so it
  * cannot recur; a start that cannot run yields an honest error outcome.
  */
@@ -74,7 +74,7 @@ describe('ci fix-session starter returns a REAL session id', () => {
     if (!('sessionId' in outcome)) throw new Error(`expected a session, got error: ${outcome.error}`);
 
     // Job-vs-session pinning: automation job ids are 'auto-…' scheduling
-    // handles no attach can resolve — the starter must never surface one.
+    // handles no attach can resolve, the starter must never surface one.
     expect(outcome.sessionId.startsWith('auto-')).toBe(false);
     for (const job of automation.listJobs()) {
       expect(outcome.sessionId).not.toBe(job.id);

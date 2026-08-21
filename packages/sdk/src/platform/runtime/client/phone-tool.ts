@@ -1,13 +1,13 @@
 /**
- * phone-tool.ts — the `phone` tool, registered in THIS process, answered by the
+ * phone-tool.ts, the `phone` tool, registered in THIS process, answered by the
  * daemon.
  *
  * ── Why the tool is here and the runtime is not ────────────────────────────
  *
  * A tool is called by the conversation loop. The loop runs in this process, so
  * the tool is registered in this process's tool registry. The device-posture
- * RUNTIME it calls — grants ledger, capture store, housekeeping sweeps,
- * capability service — is the daemon's, and has to be: a phone pairs with the
+ * RUNTIME it calls, grants ledger, capture store, housekeeping sweeps,
+ * capability service, is the daemon's, and has to be: a phone pairs with the
  * daemon, a grant must outlive the terminal window that approved it, and the
  * sweep that reaps a grant whose phone is gone has to run with nobody watching.
  * Two runtimes writing one grants ledger is the split-brain the daemon
@@ -37,15 +37,15 @@
  * the person is prompted again for the thing they just declined. The refusal is
  * reported plainly and the turn moves on.
  *
- * A genuine failure — no daemon reachable, a malformed request, a capture whose
- * bytes are gone — is still an error, because it is one.
+ * A genuine failure, no daemon reachable, a malformed request, a capture whose
+ * bytes are gone, is still an error, because it is one.
  *
  * ── Captures ──────────────────────────────────────────────────────────────
  *
  * A photo or screenshot is retained by the daemon, not written here. The result
  * names the artifact and when it expires; `action:"read"` fetches the bytes
  * over `devices.artifacts.read`, base64-encoded. The `daemonPath` on an
- * artifact is a path on the DAEMON's disk — reported because an operator on
+ * artifact is a path on the DAEMON's disk, reported because an operator on
  * that machine may want it, and never opened from here.
  */
 import {
@@ -114,7 +114,7 @@ function normalizeAction(value: unknown): PhoneAction | null {
 /**
  * Render the runtime's outcome.
  *
- * A refusal is `success: true` carrying `allowed: false` — see the module
+ * A refusal is `success: true` carrying `allowed: false`, see the module
  * header for why a declined capability is an answer rather than an error.
  */
 function renderOutcome(outcome: DeviceCapabilityOutcomeWire): PhonePayload {
@@ -215,7 +215,7 @@ async function runCapability(
       nodeId, capabilityId, input: capabilityInput, reason,
     }));
   } catch (error) {
-    // Only a transport or argument failure reaches here — a refusal by the
+    // Only a transport or argument failure reaches here, a refusal by the
     // person or the policy already came back as a value.
     return fail(error instanceof Error ? error.message : String(error));
   }
@@ -341,7 +341,7 @@ async function handleAction(devices: DevicesClient, args: Record<string, unknown
     return {
       success: true,
       revoked: grantId,
-      note: 'A revoked grant is deleted, not flagged — the next request for that capability asks again.',
+      note: 'A revoked grant is deleted, not flagged, the next request for that capability asks again.',
     };
   }
 
@@ -364,7 +364,7 @@ async function handleAction(devices: DevicesClient, args: Record<string, unknown
 
   if (action === 'read') {
     const artifactId = readString(args['artifactId']);
-    if (!artifactId) return fail('Pass artifactId:"…" — use action:"artifacts" to list them.');
+    if (!artifactId) return fail('Pass artifactId:"…", use action:"artifacts" to list them.');
     try {
       const read = await devices.readArtifact(artifactId);
       return {
@@ -419,20 +419,20 @@ async function handleAction(devices: DevicesClient, args: Record<string, unknown
 
   if (action === 'clipboard_write') {
     const text = readString(args['text']);
-    if (!text) return fail('Pass text:"…" — the text to place on the phone\'s clipboard.');
+    if (!text) return fail('Pass text:"…", the text to place on the phone\'s clipboard.');
     return runCapability(devices, args, 'device.clipboard.write', { text });
   }
 
   if (action === 'notify') {
     const title = readString(args['title']);
-    if (!title) return fail('Pass title:"…" — the notification title.');
+    if (!title) return fail('Pass title:"…", the notification title.');
     const body = readString(args['body']);
     return runCapability(devices, args, 'device.command.notify', { title, ...(body ? { body } : {}) });
   }
 
   if (action === 'open_url') {
     const url = readString(args['url']);
-    if (!/^https?:\/\//i.test(url)) return fail('Pass url:"https://…" — only http and https links are opened on the phone.');
+    if (!/^https?:\/\//i.test(url)) return fail('Pass url:"https://…", only http and https links are opened on the phone.');
     return runCapability(devices, args, 'device.command.open_url', { url });
   }
 

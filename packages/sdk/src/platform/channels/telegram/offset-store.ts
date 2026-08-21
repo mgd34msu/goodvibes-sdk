@@ -1,23 +1,23 @@
 /**
- * offset-store.ts — the Telegram getUpdates offset, persisted across restarts.
+ * offset-store.ts, the Telegram getUpdates offset, persisted across restarts.
  *
  * Telegram's long-poll queue is confirmation-based: an update stays queued
  * until a getUpdates call passes an `offset` greater than its `update_id`.
  * That offset is therefore the daemon's read cursor, and it MUST outlive the
  * process. Without persistence every restart either replays the whole retained
  * backlog (re-spawning agents for work already done) or skips it (silently
- * dropping messages) — the two failure modes this file exists to prevent.
+ * dropping messages), the two failure modes this file exists to prevent.
  *
  * Housekeeping posture for state that survives crashes:
- *   bound    — a fixed-size, single-record file; refuse to parse anything
+ *   bound   , a fixed-size, single-record file; refuse to parse anything
  *              larger than MAX_FILE_BYTES rather than loading whatever is there
- *   validate — by CONTENT, not by existence: a file that exists is not evidence
+ *   validate, by CONTENT, not by existence: a file that exists is not evidence
  *              it is intact, so the parsed record must be the right shape with a
  *              plausible integer cursor
- *   sweep    — a torn or nonsense file is deleted, not left to fail every boot
- *   disclose — every recovery decision is logged with the reason, because a
+ *   sweep   , a torn or nonsense file is deleted, not left to fail every boot
+ *   disclose, every recovery decision is logged with the reason, because a
  *              cursor that silently moved is indistinguishable from lost mail
- *   write    — temp file + rename, so a crash mid-write cannot tear the record
+ *   write   , temp file + rename, so a crash mid-write cannot tear the record
  *              in the first place
  */
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -32,18 +32,18 @@ const RECORD_VERSION = 1;
 /**
  * What the store found on disk, and therefore how the poller must start.
  *
- * - `resume`   — a valid cursor; continue exactly where the last run stopped.
- * - `fresh`    — no cursor file at all (first run, or the surface was just
+ * - `resume`  , a valid cursor; continue exactly where the last run stopped.
+ * - `fresh`   , no cursor file at all (first run, or the surface was just
  *                enabled). Start with NO offset so Telegram hands over its
  *                retained backlog. This is deliberate: a user who sends /start
  *                before the daemon is running must still be answered, which is
  *                precisely the case that made the missing ingress path visible.
- * - `skip-ahead` — the cursor file existed but was torn or implausible. We
+ * - `skip-ahead`, the cursor file existed but was torn or implausible. We
  *                cannot know which updates were already dispatched, so the
  *                poller jumps to the newest update instead of replaying.
  *                Rationale: replaying spawns duplicate agents that do real work
  *                on the user's machine and send duplicate messages, whereas
- *                skipping loses at most the messages sent since the crash —
+ *                skipping loses at most the messages sent since the crash,
  *                which the user can see went unanswered and can resend.
  *                Duplicated autonomous work is the worse failure.
  */
@@ -113,7 +113,7 @@ export class TelegramOffsetStore {
 
   /**
    * Persist the cursor. Called after a batch is fully processed, so an update
-   * is only confirmed once the work it triggered has been handed off — a crash
+   * is only confirmed once the work it triggered has been handed off, a crash
    * mid-batch replays that batch rather than losing it.
    */
   save(offset: number): void {
@@ -140,7 +140,7 @@ export class TelegramOffsetStore {
     }
   }
 
-  /** Remove the cursor entirely — used when the surface is reconfigured. */
+  /** Remove the cursor entirely, used when the surface is reconfigured. */
   clear(): void {
     try {
       rmSync(this.filePath, { force: true });

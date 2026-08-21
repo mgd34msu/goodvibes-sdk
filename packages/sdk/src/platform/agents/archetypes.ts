@@ -108,15 +108,12 @@ const BUILT_IN_ARCHETYPES: AgentArchetype[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// Minimal YAML frontmatter parser
-// Supports the subset used in agent markdown files:
+// Minimal YAML frontmatter parser. Supports the subset used in agent markdown files:
 //   key: value
 //   tools: [read, write, edit]
 //   tools:
 //     - read
 //     - write
-// ---------------------------------------------------------------------------
 
 interface RawFrontmatter {
   name?: string | undefined;
@@ -270,7 +267,7 @@ export class ArchetypeLoader {
     try {
       files = readdirSync(this.dir).filter((f) => f.endsWith('.md'));
     } catch {
-      // Directory doesn't exist — built-ins are the only archetypes
+      // Directory doesn't exist, built-ins are the only archetypes
       logger.debug('ArchetypeLoader: agents dir not found, using built-ins', { dir: this.dir });
       return;
     }
@@ -291,7 +288,7 @@ export class ArchetypeLoader {
           tools: fm.tools ?? [],
           model: fm.model,
           provider: fm.provider,
-          // systemPrompt intentionally omitted here — lazy loaded
+          // systemPrompt intentionally omitted here, lazy loaded
           isCustom: true,
           origin: 'local-markdown',
           sourcePath: filePath,

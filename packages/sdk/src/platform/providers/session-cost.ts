@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// session-cost.ts — the one session-cost resolver every cost surface reads.
+// session-cost.ts, the one session-cost resolver every cost surface reads.
 //
 // model-pricing.ts next door answers "what does this model cost" for a single
 // resolved model. This module is the layer above it: the resolution ORDER a
@@ -7,13 +7,13 @@
 // session total, and the budget-alert policy that total is compared against.
 //
 // Pricing resolution order (resolvePricing):
-//   1. `:free` suffix (the free-tier id convention) — always priced at $0.
+//   1. `:free` suffix (the free-tier id convention), always priced at $0.
 //   2. The registry's resolveModelPricing, when wired via
 //      setModelPricingResolver()/wireCostPricing(): manual `pricing.modelPrices`
 //      -> registration -> provider-served -> catalog -> honest unknown.
 //   3. The live model catalog, when a source has been wired via
-//      setPricingSource() — exact id match, then prefix/substring.
-//   4. STATIC_FALLBACK_PRICING — a small hand-maintained safety net for common
+//      setPricingSource(), exact id match, then prefix/substring.
+//   4. STATIC_FALLBACK_PRICING, a small hand-maintained safety net for common
 //      frontier models, used when nothing above has a source wired (e.g. tests)
 //      or nothing above matched (catalog not yet loaded, or a model this net
 //      covers that the catalog happens to miss).
@@ -45,7 +45,7 @@ export type PricingSourceKind = 'user' | 'provider' | 'catalog' | 'fallback';
 /** Result of a pricing lookup: the resolved (possibly zero) price, and whether it's real. */
 export interface PricingResult {
   pricing: ModelPricing;
-  /** False when no source recognized the model — the zero pricing is a placeholder, not a real price. */
+  /** False when no source recognized the model, the zero pricing is a placeholder, not a real price. */
   priced: boolean;
   /** Which source priced the model (present only when priced). */
   source?: PricingSourceKind;
@@ -54,7 +54,7 @@ export interface PricingResult {
 }
 
 // Hand-maintained safety net, used only when the live catalog has no source
-// wired or does not recognize the model. NOT the primary pricing source —
+// wired or does not recognize the model. NOT the primary pricing source,
 // see resolvePricing() below.
 const STATIC_FALLBACK_PRICING: Record<string, ModelPricing> = {
   // Free tier
@@ -144,7 +144,7 @@ function findInStaticFallback(modelId: string): ModelPricing | null {
 }
 
 /**
- * resolvePricing — resolve USD-per-1M-token pricing for a model ID, and
+ * resolvePricing, resolve USD-per-1M-token pricing for a model ID, and
  * whether that pricing is real (vs. an unpriced placeholder). See the module
  * header for the full resolution order.
  */
@@ -175,7 +175,7 @@ export function resolvePricing(modelId: string): PricingResult {
   const fallbackHit = findInStaticFallback(modelId);
   if (fallbackHit) return { pricing: fallbackHit, priced: true, source: 'fallback' };
 
-  // Genuinely unknown — no source recognizes this model. Report honestly
+  // Genuinely unknown, no source recognizes this model. Report honestly
   // rather than collapsing into the same zero a free model would return.
   return { pricing: { input: 0, output: 0 }, priced: false };
 }
@@ -184,7 +184,7 @@ export function resolvePricing(modelId: string): PricingResult {
  * The render-side source distinction for a priced model: "your price" for a
  * manual pricing.modelPrices entry, "catalog price, as of <date>" (or
  * provider-served/built-in equivalents) otherwise. Null when the model is
- * unpriced — callers render the explicit "price unknown" marker instead.
+ * unpriced, callers render the explicit "price unknown" marker instead.
  */
 export function describePricingSource(modelId: string): string | null {
   const result = resolvePricing(modelId);
@@ -204,7 +204,7 @@ export function describePricingSource(modelId: string): string | null {
 }
 
 /**
- * getPricing — resolve USD-per-1M-token pricing for a model ID.
+ * getPricing, resolve USD-per-1M-token pricing for a model ID.
  * Back-compat wrapper over resolvePricing(); returns zero for both genuinely
  * free and genuinely unknown models (use resolvePricing/isModelPriced to
  * distinguish the two).
@@ -219,16 +219,16 @@ export function isModelPriced(modelId: string): boolean {
 }
 
 /**
- * calcSessionCost — compute total session cost in USD given raw token counters
+ * calcSessionCost, compute total session cost in USD given raw token counters
  * and the active model ID. The one formula every cost surface totals with.
  *
- * inputTokens    — cumulative input tokens
- * outputTokens   — cumulative output tokens
- * cacheRead      — cumulative cache-read tokens
- * cacheWrite     — cumulative cache-write tokens
- * modelId        — registry model identifier
+ * inputTokens   , cumulative input tokens
+ * outputTokens  , cumulative output tokens
+ * cacheRead     , cumulative cache-read tokens
+ * cacheWrite    , cumulative cache-write tokens
+ * modelId       , registry model identifier
  *
- * Unpriced models contribute 0 to the total — only the display layer
+ * Unpriced models contribute 0 to the total, only the display layer
  * distinguishes "genuinely free/priced" from "unpriced".
  */
 export function calcSessionCost(
@@ -260,7 +260,7 @@ export function calcSessionCost(
 }
 
 /**
- * computeBudgetBreach — the pure predicate a render-time "OVER BUDGET" flag and
+ * computeBudgetBreach, the pure predicate a render-time "OVER BUDGET" flag and
  * a background budget-breach notifier both read, so they agree on exactly one
  * definition of "over budget". `budgetThreshold <= 0` means no budget is
  * configured (disabled), which can never be breached.
@@ -283,14 +283,14 @@ export const BUDGET_ALERT_USD_DEFAULT = 0;
 
 /**
  * The dot-path config key backing the session cost-budget alert threshold.
- * Shared by every reader and writer of the threshold — a cost panel's get/set,
- * a settings surface's synthetic entry, and readBudgetAlertUsd below — so the
+ * Shared by every reader and writer of the threshold, a cost panel's get/set,
+ * a settings surface's synthetic entry, and readBudgetAlertUsd below, so the
  * string literal lives in exactly one place.
  */
 export const BUDGET_ALERT_USD_CONFIG_KEY = 'behavior.budgetAlertUsd';
 
 /**
- * readBudgetAlertUsd — read the session cost-budget alert threshold (USD) from
+ * readBudgetAlertUsd, read the session cost-budget alert threshold (USD) from
  * config. The single source of truth a cost panel and a background
  * budget-breach notifier both read, so a threshold set in one is immediately
  * visible to the other. Falls back to BUDGET_ALERT_USD_DEFAULT (off) when the
@@ -303,7 +303,7 @@ export function readBudgetAlertUsd(configGet: (key: string) => unknown): number 
 }
 
 /**
- * The settings key holding the user's manual per-model prices — the
+ * The settings key holding the user's manual per-model prices, the
  * highest-precedence source in the ONE pricing resolver. Object map of
  * `provider:model` -> { input, output, cacheRead?, cacheWrite? } in USD per
  * 1M tokens.
@@ -314,7 +314,7 @@ export const MODEL_PRICES_CONFIG_KEY = 'pricing.modelPrices';
  * Persist a manual price for one `provider:model` key into
  * pricing.modelPrices, preserving every other entry. The registry's resolver
  * reads the key live per call, so the new price is visible to every cost
- * surface on the next render — no restart.
+ * surface on the next render, no restart.
  */
 export function writeManualModelPrice(
   config: BudgetAlertConfigAccess,

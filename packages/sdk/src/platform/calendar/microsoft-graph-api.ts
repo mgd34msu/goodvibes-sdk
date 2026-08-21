@@ -1,5 +1,5 @@
 /**
- * microsoft-graph-api.ts — the Microsoft Graph client over an access token and the
+ * microsoft-graph-api.ts, the Microsoft Graph client over an access token and the
  * injected HttpFetch. Lists calendars (me/calendars), lists events over a window
  * (me/calendars/{id}/calendarView, which returns expanded instances), and creates
  * events (me/calendars/{id}/events). A Prefer: outlook.timezone="UTC" header makes

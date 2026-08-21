@@ -1,5 +1,5 @@
 /**
- * memory-usage-detection.ts — heuristic reference detection (HOISTED to the SDK).
+ * memory-usage-detection.ts, heuristic reference detection (HOISTED to the SDK).
  *
  * Did the model's output plausibly USE an injected memory, or was the memory
  * merely present in the prompt with no detectable trace? Promoted verbatim from
@@ -12,7 +12,7 @@
  *   - 'present': the memory was injected but nothing in the output distinctively
  *     overlaps it.
  *
- * It is NOT a relevance score and NOT ground truth — distinctive-token overlap
+ * It is NOT a relevance score and NOT ground truth, distinctive-token overlap
  * can be coincidental, and a memory can influence an answer without lexical
  * overlap. Everywhere this signal is shown it must be labelled as heuristic
  * overlap (see MEMORY_USAGE_SIGNAL_NOTE). The bar requires either two distinctive

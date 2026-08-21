@@ -15,12 +15,12 @@
  * the SAME methodId through `invokeGatewayRestVerb`, so for a verb with no
  * handler the synthesized request re-enters `invokeGatewayMethodCall`, takes
  * the same arm, and synthesizes again. Before the rows existed the synthesized
- * request 404'd and the loop ended in one hop — which is the "plain 404" the
+ * request 404'd and the loop ended in one hop, which is the "plain 404" the
  * route-reconcile module documents. Adding the rows closed the cycle.
  *
  * Observed on a 1.18.0 daemon composed without mail deps: one
  * `GET /api/email/inbox` produced 256 nested dispatches and then answered
- * `503 ws-call-overloaded — Daemon is at its concurrent WS-call cap (256)`.
+ * `503 ws-call-overloaded, Daemon is at its concurrent WS-call cap (256)`.
  * Two things were wrong with that. The capability was not wired, which is a
  * 501 and a fixed answer, not a capacity problem that might clear on retry; and
  * a single request consumed the daemon's entire concurrent WS-call budget, so a
@@ -57,7 +57,7 @@ export const MAX_SYNTHESIZED_DISPATCH_DEPTH = 1;
 
 /**
  * True when `methodId`'s advertised binding is served by a gateway REST route
- * bound to that same methodId — i.e. dispatching it would re-enter the caller.
+ * bound to that same methodId, i.e. dispatching it would re-enter the caller.
  */
 export function isGatewayRestSelfDispatch(
   methodId: string,
@@ -80,7 +80,7 @@ export function isGatewayRestSelfDispatch(
  * Says which composition step is missing rather than only that the call
  * failed: every one of these verbs is registered by a composition that must be
  * handed its dependencies, and a daemon built without them is a normal,
- * supported configuration — not a fault to report as one.
+ * supported configuration, not a fault to report as one.
  */
 export function notWiredResponse(methodId: string): {
   status: number;
@@ -94,7 +94,7 @@ export function notWiredResponse(methodId: string): {
       error:
         `Gateway method is not invokable: ${methodId}. The descriptor is advertised and its route is real, `
         + 'but no handler is attached on this daemon, so the capability is not wired up in this composition. '
-        + 'This is a fixed answer, not a transient one — retrying will not change it.',
+        + 'This is a fixed answer, not a transient one, retrying will not change it.',
       code: 'NOT_INVOKABLE',
     },
   };

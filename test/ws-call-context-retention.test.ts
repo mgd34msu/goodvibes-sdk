@@ -3,7 +3,7 @@
  *
  * Regression guard for the ordinary-daemon (LAN) retained-context leak: the WS
  * control-plane 'call' path synthesizes operator-token Requests, and before the
- * fix it had no in-flight cap and buffered response bodies via text() — a
+ * fix it had no in-flight cap and buffered response bodies via text(), a
  * streaming (SSE) response pinned the Request + Response + a growing buffer
  * forever, and a parked burst retained one context per call without bound (the
  * ~206k-context shape from the 2026-07-14 OOM core).
@@ -108,7 +108,7 @@ describe('WS call path retained-context caps', () => {
     }
     expect(producerCancelled).toBe(true);
     expect(helper.wsCallStats().inFlight).toBe(0);
-    // GC is not single-pass deterministic — poll a few collections.
+    // GC is not single-pass deterministic, poll a few collections.
     let live = refs.length;
     for (let i = 0; i < 10 && live > 0; i++) {
       await new Promise((r) => setTimeout(r, 20));

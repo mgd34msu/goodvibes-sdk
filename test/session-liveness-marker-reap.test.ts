@@ -1,5 +1,5 @@
 /**
- * Tests for reapStaleLivenessMarkers — the reclaim half of the liveness-marker
+ * Tests for reapStaleLivenessMarkers, the reclaim half of the liveness-marker
  * lifecycle. `removeLivenessMarker` only runs on a clean exit, so before this
  * sweep existed every crashed session left a marker file behind permanently.
  */
@@ -117,7 +117,7 @@ describe('reapStaleLivenessMarkers', () => {
 
   test('the count cap drops the oldest survivors when the liveness rule cannot bound the directory', () => {
     // Every pid reports alive (the EPERM / reused-pid case), so nothing is
-    // reapable by the liveness rule alone — the cap is the only bound left.
+    // reapable by the liveness rule alone, the cap is the only bound left.
     for (let i = 0; i < 5; i++) putMarker(`survivor-${i}`, 100 + i, NOW - i * 1_000);
 
     const result = reapStaleLivenessMarkers(surface, { now: () => NOW, isPidAliveFn: alivePid, maxFiles: 2 });

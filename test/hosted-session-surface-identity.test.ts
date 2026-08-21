@@ -9,7 +9,7 @@
  * it read or wrote resolved against `~/.goodvibes/tui/settings.json`. Asked to
  * turn the wake word on, the model wrote `voice.wake.enabled` to the TUI's
  * store, read it straight back out of the same store, saw `true`, and reported
- * success — while the live agent process went on watching
+ * success, while the live agent process went on watching
  * `~/.goodvibes/agent/settings.json`, which nobody had touched. Every part of
  * that exchange was internally consistent and none of it was true.
  *
@@ -39,7 +39,7 @@ import {
 import { migrateDaemonOwnedConfig } from '../packages/sdk/src/platform/config/daemon-config-migration.ts';
 import { applyDaemonConnectedHostSplitMigrationPass } from '../packages/sdk/src/platform/config/manager-migration-passes.ts';
 
-/** A client-owned key — the exact one the lost session was about. */
+/** A client-owned key, the exact one the lost session was about. */
 const CLIENT_KEY = 'voice.wake.enabled';
 
 const roots: string[] = [];
@@ -121,7 +121,7 @@ describe('a hosted turn writes the surface it belongs to', () => {
     const result = await readRoutedConfigValue(host, CLIENT_KEY as never, { clientOwnedStore });
 
     expect(result.available).toBe(true);
-    // The agent's value, not the host's — the two deliberately disagree here.
+    // The agent's value, not the host's, the two deliberately disagree here.
     expect((result as { value: unknown }).value).toBe(false);
     expect(result.source).toBe(agentStore);
     expect(result.scope).toBe('client');
@@ -141,7 +141,7 @@ describe('a hosted turn writes the surface it belongs to', () => {
     });
 
     // Falling back to the host's `true` would report one product's setting as
-    // another's — the same lie in the other direction.
+    // another's, the same lie in the other direction.
     expect((result as { value: unknown }).value).toBe(false);
   });
 
@@ -179,7 +179,7 @@ describe('the daemon-owned config migration touches only what the daemon owns', 
     expect(result.migrated).toBe(true);
 
     const after = read(agentStore);
-    // The daemon reclaimed its own key — that is the move, and it is the whole
+    // The daemon reclaimed its own key, that is the move, and it is the whole
     // point of the migration.
     expect(after['surfaces']).toBeUndefined();
     // The agent's own settings are none of the migration's business. A value
@@ -225,7 +225,7 @@ describe('the connected-host split leaves a receipt for the value it introduced'
       (id, text) => { receipts.push({ id, text }); },
     );
 
-    // The split resolved to "yes, keep talking to the connected host" — which is
+    // The split resolved to "yes, keep talking to the connected host", which is
     // what the owner's machine ended up with, confirmed live.
     expect((migrated['daemon'] as Record<string, unknown>)['connectedHost']).toEqual({ enabled: true });
     // `daemon.enabled` is NOT rewritten: it still means what it always meant.

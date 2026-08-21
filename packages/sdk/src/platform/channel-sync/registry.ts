@@ -1,5 +1,5 @@
 /**
- * channel-sync/registry.ts — the routing table and the draft mirror.
+ * channel-sync/registry.ts, the routing table and the draft mirror.
  *
  * `assign` is an upsert keyed on (surfaceKind, channelId?): routing the same
  * channel again replaces the rule rather than accumulating rows that disagree

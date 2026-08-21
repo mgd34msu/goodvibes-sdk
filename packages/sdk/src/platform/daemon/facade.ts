@@ -81,12 +81,12 @@ interface ControlPlaneWebSocketPeer { data: ControlPlaneWebSocketData; send(mess
 // --- DaemonServer ---
 
 /**
- * DaemonServer — HTTP task server. Enabled by default via `daemon.enabled`
+ * DaemonServer, HTTP task server. Enabled by default via `daemon.enabled`
  * (loopback-bound), resolved via resolveDaemonEnabled.
  * All routes require Bearer token auth (set via enable()).
- * POST /task    — submit a task; returns agentId.
- * GET  /task/:id — returns agent status.
- * GET  /status  — server health check.
+ * POST /task   , submit a task; returns agentId.
+ * GET  /task/:id, returns agent status.
+ * GET  /status , server health check.
  */
 export class DaemonServer {
   private enabled = false;
@@ -119,7 +119,7 @@ export class DaemonServer {
   /** Decides whether THIS node is the one consuming inbound channels; see facade-cluster.ts. */
   private readonly clusterCoordinator: ClusterCoordinator;
   private readonly watcherRegistry: WatcherRegistry;
-  /** Trigger family supervisor; started/stopped with the daemon so an on-exit trigger outlives the turn that created it. Undefined when the host composed its own services without one — that means no triggers, not a failure. */
+  /** Trigger family supervisor; started/stopped with the daemon so an on-exit trigger outlives the turn that created it. Undefined when the host composed its own services without one, that means no triggers, not a failure. */
   private readonly triggerManager: RuntimeServices['triggerManager'] | undefined;
   private readonly platformServiceManager: PlatformServiceManager;
   private readonly distributedRuntime: RuntimeServices['distributedRuntime'];
@@ -152,7 +152,7 @@ export class DaemonServer {
   private approvalBrokerUnsubscribe: (() => void) | null = null;
   /** Unsubscribe from controlPlane config key watchers; cleared on stop(). */
   private _configWatchUnsub: (() => void) | null = null;
-  /** True while a config-driven restart is in progress — prevents re-entrancy. */
+  /** True while a config-driven restart is in progress, prevents re-entrancy. */
   private _restarting = false;
   /** Awaitable promise for the active restart cycle; null when idle. */
   private _restartingPromise: Promise<void> | null = null;
@@ -260,11 +260,11 @@ export class DaemonServer {
     // message to one has no screen to appear on. Same alerter, same reason.
     this.hostedSessions?.setOwnerAlerter(createDaemonOwnerAlerter(this.routeBindings, this.surfaceDeliveryHelper));
     // Whether this daemon is keeping itself current, asked over the wire
-    // rather than read out of a log on the host — see routes/update.ts.
+    // rather than read out of a log on the host, see routes/update.ts.
     registerUpdateGatewayMethods(this.runtimeServices.gatewayMethods, this.lifecycle);
     // Relay reachability read through the SAME controller getRelayReachability()
     // returns, so an in-process surface and a client over the wire cannot
-    // disagree about whether this daemon is reachable — see routes/relay.ts.
+    // disagree about whether this daemon is reachable, see routes/relay.ts.
     registerRelayGatewayMethods(this.runtimeServices.gatewayMethods, () => this.relayReachability);
     this.httpRouter.setDaemonStatusProviders({
       // Update/crash receipts, and which node currently reads the inbox.
@@ -311,7 +311,7 @@ export class DaemonServer {
    */
   enable(dangerConfig: DaemonDangerConfig, token?: string): boolean {
     if (!dangerConfig.daemon) {
-      logger.info('DaemonServer.enable: daemon disabled by config (daemon.enabled=false) — not enabling');
+      logger.info('DaemonServer.enable: daemon disabled by config (daemon.enabled=false), not enabling');
       return false;
     }
     this.enabled = true;
@@ -329,22 +329,22 @@ export class DaemonServer {
   /** The host the daemon is bound to. */
   get boundHost(): string { return this.host; }
 
-  /** The daemon's shared approval broker — the SAME broker the HTTP approvals routes resolve through. Exposed so embedders and boot-factory proof tests can seed/inspect approvals (bridge an external UI, or prove per-hunk approve/deny over the live wire). */
+  /** The daemon's shared approval broker, the SAME broker the HTTP approvals routes resolve through. Exposed so embedders and boot-factory proof tests can seed/inspect approvals (bridge an external UI, or prove per-hunk approve/deny over the live wire). */
   get approvals(): ApprovalBroker { return this.approvalBroker; }
 
-  /** The daemon's canonical single-writer memory registry — the SAME store the HTTP memory routes serve. Exposed so embedders and boot-factory proof tests can read back a wire write as a direct canonical-store read. */
+  /** The daemon's canonical single-writer memory registry, the SAME store the HTTP memory routes serve. Exposed so embedders and boot-factory proof tests can read back a wire write as a direct canonical-store read. */
   get memory(): RuntimeServices['memoryRegistry'] { return this.runtimeServices.memoryRegistry; }
-  /** The daemon's trigger-family supervisor — the same instance the fleet registry and the supervision tick use. */
+  /** The daemon's trigger-family supervisor, the same instance the fleet registry and the supervision tick use. */
   get triggers(): RuntimeServices['triggerManager'] | undefined { return this.runtimeServices.triggerManager; }
 
-  /** The daemon's runtime event bus — the SAME bus every service emits on. Exposed so an in-process embedder (see the `/embed` subpath) can subscribe to typed runtime events without going over the wire. */
+  /** The daemon's runtime event bus, the SAME bus every service emits on. Exposed so an in-process embedder (see the `/embed` subpath) can subscribe to typed runtime events without going over the wire. */
   get eventBus(): RuntimeEventBus { return this.runtimeBus; }
 
-  /** The daemon's shared session broker — the SAME broker the HTTP session routes drive. Exposed so an in-process embedder can submit input to a session directly. */
+  /** The daemon's shared session broker, the SAME broker the HTTP session routes drive. Exposed so an in-process embedder can submit input to a session directly. */
   get sessions(): SharedSessionBroker { return this.sessionBroker; }
 
   /**
-   * Cancel a running agent by id — the SAME cooperative-plus-abort cancellation
+   * Cancel a running agent by id, the SAME cooperative-plus-abort cancellation
    * the operator kill path uses: it flips the agent to `cancelled` and aborts the
    * agent's in-flight provider call so the turn stops mid-flight rather than
    * running to completion. Returns false for an unknown id. Exposed so an
@@ -356,7 +356,7 @@ export class DaemonServer {
   }
 
   /**
-   * Connect a single MCP server by config into this daemon's live MCP registry —
+   * Connect a single MCP server by config into this daemon's live MCP registry,
    * the SAME registry that namespaces tools as `mcp:<name>:<tool>`. Exposed so an
    * in-process embedder (the ACP adapter) can wire the MCP servers a client
    * declared in `session/new` into the session's tool surface. stdio transport
@@ -493,7 +493,7 @@ export class DaemonServer {
       }
       // Trigger family. start() always runs: it recovers persisted state (so an on-exit trigger from a
       // previous boot fires its honest unknown/daemon-restart payload) and arms the supervision tick,
-      // whose body no-ops while watchers.triggers.enabled is false — the flag takes effect without a restart.
+      // whose body no-ops while watchers.triggers.enabled is false, the flag takes effect without a restart.
       // A host that composed its own RuntimeServices without one simply gets no triggers.
       try {
         const r = this.triggerManager?.start();
@@ -575,7 +575,7 @@ export class DaemonServer {
       this._configWatchUnsub = null;
     }
 
-    // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon. Wrapped as well because stop() is reachable on a daemon whose start() never ran, where the watcher is not registered and stopWatcher() runs its gate check before discovering that — a clean shutdown must not depend on the gate, the same stance start()'s own cleanup path takes.
+    // Synchronous pre-stop teardown. Only stop the heartbeat watcher when start() engaged it (registered solely behind `watchers.enabled`); stopWatcher() runs requireFeatureGate('watcher-framework') and THROWS when that gate is off, which would break a clean shutdown of a watchers-disabled daemon. Wrapped as well because stop() is reachable on a daemon whose start() never ran, where the watcher is not registered and stopWatcher() runs its gate check before discovering that, a clean shutdown must not depend on the gate, the same stance start()'s own cleanup path takes.
     if (this.configManager.get('watchers.enabled')) { try { this.watcherRegistry.stopWatcher('daemon-heartbeat', 'daemon-stopped'); } catch (error) { logger.warn('DaemonServer: heartbeat watcher stop failed', { error: summarizeError(error) }); } }
     // Optional-chained: a host that composed its own RuntimeServices without a trigger family must shut down cleanly, not throw. When present, shutdown() is safe even if start() never ran or the family is disabled.
     this.triggerManager?.shutdown();
@@ -605,7 +605,7 @@ export class DaemonServer {
     this.agentTaskAdapterUnsub = null;
     await this.sessionBroker.stop();
     // Release sleep-inhibitor holds on a REAL shutdown (not an in-process
-    // restart cycle, where the runtime services — and their holds — live on):
+    // restart cycle, where the runtime services, and their holds, live on):
     // an exited daemon must never leave systemd-inhibit children blocking
     // host sleep with no owner.
     if (!this._restarting) {
@@ -642,7 +642,7 @@ export class DaemonServer {
 
     const restart = (): void => {
       if (this._restarting) {
-        // Change arrived mid-restart — queue a second cycle (check _restarting
+        // Change arrived mid-restart, queue a second cycle (check _restarting
         // before isRunning: stop() runs synchronously inside the restart IIFE).
         this._restartDirty = true;
         return;
@@ -892,7 +892,7 @@ export class DaemonServer {
     } catch (err) {
       const message = summarizeError(err);
       logger.error(`${logLabel}: agent spawn failed`, { error: message });
-      // Capacity-reached is backpressure, not a server error — return 429 so
+      // Capacity-reached is backpressure, not a server error, return 429 so
       // clients can apply the Retry-After hint and SDK retry policy handles it.
       const isCapacity = typeof message === 'string' && message.includes('capacity reached');
       if (isCapacity) {

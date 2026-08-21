@@ -1,6 +1,6 @@
 /**
  * Confirms inferFallbackContextWindow() sizes the newly-discoverable current
- * generation of models sensibly (Claude 5 family, GPT-5.6 family) — required
+ * generation of models sensibly (Claude 5 family, GPT-5.6 family), required
  * by the model-lists-can-never-be-stale item so a brand-new model surfaced
  * by live discovery doesn't get mis-sized by a flat, unrelated default.
  */

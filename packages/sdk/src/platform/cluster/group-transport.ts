@@ -1,11 +1,11 @@
 /**
- * group-transport.ts — one socket, two tenants.
+ * group-transport.ts, one socket, two tenants.
  *
  * The group layer owns the datagram socket. Leader election is a TENANT on it:
  * every election datagram is wrapped in the group envelope, signed with the
  * current group key, and unwrapped on the far side before the election state
  * machine ever sees it. The election is not aware of any of this, which is
- * exactly the point — it means group membership, rotation and revocation are
+ * exactly the point, it means group membership, rotation and revocation are
  * enforced in ONE place, at the edge, and no state machine downstream has to
  * remember to check.
  *
@@ -15,7 +15,7 @@
  *     election. Two groups sharing one multicast address are mutually
  *     invisible, and it costs one string compare to keep them that way;
  *
- *   - a node whose group key was rotated out — because it was REMOVED — stops
+ *   - a node whose group key was rotated out, because it was REMOVED, stops
  *     being heard on the same tick, without the election needing a concept of
  *     revocation at all.
  */
@@ -72,7 +72,7 @@ export interface GroupWireRouterOptions {
   readonly now: () => number;
   /** BEACON / ROSTER that verified against the group key. */
   readonly onGroupMessage: (envelope: ClusterEnvelope) => void;
-  /** JOIN / REJOIN and their replies — authenticated by the membership layer, not here. */
+  /** JOIN / REJOIN and their replies, authenticated by the membership layer, not here. */
   readonly onOutOfBandMessage: (raw: string, type: string) => void;
   /** A beacon from a DIFFERENT group. Advertisement only; never acted on. */
   readonly onForeignBeacon: (groupId: string, body: Record<string, unknown>, version: string) => void;
@@ -100,7 +100,7 @@ export class GroupWireRouter {
 
   constructor(private readonly options: GroupWireRouterOptions) {}
 
-  /** Start the underlying socket. Idempotent — both tenants may call it. */
+  /** Start the underlying socket. Idempotent, both tenants may call it. */
   async ensureStarted(): Promise<void> {
     if (this.started) return;
     this.started = true;
@@ -181,7 +181,7 @@ export class GroupWireRouter {
     //
     // Said ONCE. The election heartbeats every few seconds, so warning per
     // datagram would bury the machine's logs in a message whose answer never
-    // changes — which is what the first live run of this code actually did.
+    // changes, which is what the first live run of this code actually did.
     if (this.options.keyring.acceptedGenerations().length === 0) {
       this.counters.droppedNoGroup += 1;
       if (!this.announcedNoGroup) {
@@ -270,7 +270,7 @@ export class GroupWireRouter {
     this.counters.received += 1;
 
     // Join and rejoin traffic is authenticated by the membership layer against
-    // the join verifier or a roster public key — this node may not even hold a
+    // the join verifier or a roster public key, this node may not even hold a
     // key the sender could have used. Hand it over unopened.
     const peeked = peekEnvelope(raw);
     if (peeked && isOutOfBandMessageType(peeked.type)) {

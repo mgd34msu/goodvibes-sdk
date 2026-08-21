@@ -6,8 +6,8 @@
  * `runIdleRound` records `IDLE` on the fake SERVER one round trip before the
  * client registers the waiter that ends the round (`waitForUntagged`, inside
  * `waitForWake`). A test that reads `mailbox.commands` to decide the watcher is
- * listening, then pushes a one-shot wake edge — `deliver()`, `expunge()`, a
- * bare `push()` — can land that edge in the gap, where only the collector sees
+ * listening, then pushes a one-shot wake edge, `deliver()`, `expunge()`, a
+ * bare `push()`, can land that edge in the gap, where only the collector sees
  * it and nothing can act on it. Recovery is the 27-minute IDLE re-issue, which
  * these suites run on a `FakeClock` they never advance, so the wait never
  * completes at all. It is a hard timeout, not slowness, and no deadline fixes
@@ -21,8 +21,8 @@
  * which announce for themselves, nor a test that reaches IDLE through a helper.
  * The only reliable detector is to widen the window and see what stops passing.
  *
- * `watcherConnectionPort` does the widening from the test side — it delays the
- * one `waitForUntagged` call by `GOODVIBES_WAKE_RACE_PROBE_MS` — so the sweep
+ * `watcherConnectionPort` does the widening from the test side, it delays the
+ * one `waitForUntagged` call by `GOODVIBES_WAKE_RACE_PROBE_MS`, so the sweep
  * needs no patch to `idle-watcher.ts`, which is how both previous sweeps were
  * run and why neither was repeatable.
  *
@@ -68,7 +68,7 @@ const suites = readdirSync(TEST_DIR)
   .sort();
 
 if (suites.length === 0) {
-  console.error('sweep-wake-race: found no suites importing fake-imap-mailbox — the discovery is broken, not the suites');
+  console.error('sweep-wake-race: found no suites importing fake-imap-mailbox, the discovery is broken, not the suites');
   process.exit(1);
 }
 
@@ -77,9 +77,9 @@ if (suites.length === 0) {
  * it would pass whatever it carried. That is the one failure mode this sweep
  * cannot see by measurement, so it is checked by reading instead.
  *
- * Opening a connection directly — `probe-roundtrip-count.test.ts` counts round
+ * Opening a connection directly, `probe-roundtrip-count.test.ts` counts round
  * trips on one `open()`, and one test in the watcher suite reads
- * `bodyCapability` off a connection it closes immediately — runs no IDLE round
+ * `bodyCapability` off a connection it closes immediately, runs no IDLE round
  * and has no window to widen, so only the watcher-building form is required to
  * go through the harness.
  */
@@ -127,4 +127,4 @@ if (failed.length > 0) {
   process.exit(1);
 }
 
-console.log(`\nsweep-wake-race: clean — every suite survives a ${String(delayMs)} ms window.`);
+console.log(`\nsweep-wake-race: clean, every suite survives a ${String(delayMs)} ms window.`);

@@ -1,5 +1,5 @@
 /**
- * SchedulerTaskAdapter — bridges TaskScheduler scheduled job executions into
+ * SchedulerTaskAdapter, bridges TaskScheduler scheduled job executions into
  * the unified RuntimeTask registry.
  *
  * Each time a scheduled task fires (i.e. TaskRunRecord is created), a
@@ -8,7 +8,7 @@
  *
  * NOTE: This adapter writes directly to the Zustand store for performance,
  * bypassing TaskManager. Lifecycle validation is the caller's responsibility.
- * This is intentional — adapters are authoritative sources for their subsystem.
+ * This is intentional, adapters are authoritative sources for their subsystem.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -169,7 +169,7 @@ export class SchedulerTaskAdapter {
     }
 
     // Reconcile tracked runs that are no longer running.
-    // Build a Map for O(1) history lookups — acceptable O(n) build at current scheduler scale.
+    // Build a Map for O(1) history lookups, acceptable O(n) build at current scheduler scale.
     const historyByAgentId = new Map<string, TaskRunRecord>(allHistory.map((r) => [r.agentId, r]));
     const runningAgentIds = new Set(runningRuns.map((r) => r.agentId));
     const staleRunIds: string[] = [];

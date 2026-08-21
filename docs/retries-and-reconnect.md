@@ -1,10 +1,10 @@
-# Retries and Reconnect
+# Retries and reconnect
 
 This applies to both full-surface (Bun) and companion-surface (Hermes/browser) consumers unless otherwise noted.
 
 The SDK exposes retry and reconnect as first-class configuration instead of leaving them to ad hoc wrapper code.
 
-## HTTP Retry
+## HTTP retry
 
 All runtime-specific entrypoints can take a retry policy:
 
@@ -29,7 +29,7 @@ Use retry for:
 
 Avoid retrying unsafe mutations blindly unless your application has idempotency guarantees.
 
-## SSE Reconnect
+## SSE reconnect
 
 SSE reconnect is controlled through `realtime.sseReconnect`:
 
@@ -47,7 +47,7 @@ const sdk = createBrowserGoodVibesSdk({
 
 The SDK preserves `Last-Event-ID` and sends it on reconnect so the server can replay missed events when supported.
 
-## WebSocket Reconnect
+## WebSocket reconnect
 
 WebSocket reconnect is controlled through `realtime.webSocketReconnect`:
 
@@ -66,15 +66,15 @@ const sdk = createReactNativeGoodVibesSdk({
 ```
 
 
-## Idempotency Keys
+## Idempotency keys
 
 For non-GET mutations, the SDK automatically injects an `Idempotency-Key` header when the call is marked idempotent. This enables safe retry of state-changing operations without duplicate side effects.
 
 **Precedence chain (highest → lowest):**
 
-1. **`perMethodPolicy[methodId]`** — an explicit per-method retry policy set on the SDK options overrides everything else.
-2. **`contract.idempotent`** — the operator contract marks certain POST/PUT/PATCH/DELETE routes as idempotent (`idempotent: true`). Those methods automatically get an `Idempotency-Key` on each call.
-3. **HTTP-verb default** — safe methods (`GET`, `HEAD`, `OPTIONS`) are retried by default; unsafe methods are not retried unless explicitly marked idempotent.
+1. **`perMethodPolicy[methodId]`.** An explicit per-method retry policy set on the SDK options overrides everything else.
+2. **`contract.idempotent`.** The operator contract marks certain POST/PUT/PATCH/DELETE routes as idempotent (`idempotent: true`). Those methods automatically get an `Idempotency-Key` on each call.
+3. **HTTP-verb default.** Safe methods (`GET`, `HEAD`, `OPTIONS`) are retried by default. Unsafe methods are not retried unless explicitly marked idempotent.
 
 When an idempotent call is retried, the same `Idempotency-Key` UUID is used on each attempt. This lets the daemon detect and deduplicate retried requests.
 
@@ -101,7 +101,7 @@ const result = await sdk.operator.sessions.create({ title: 'My session' });
 
 Never retry unsafe mutations blindly. Only operations with application-level or contract-level idempotency guarantees are safe to retry.
 
-## Token Rotation
+## Token rotation
 
 If a long-lived client can rotate tokens, prefer:
 - `tokenStore`
@@ -109,15 +109,15 @@ If a long-lived client can rotate tokens, prefer:
 
 That lets reconnects use fresh credentials instead of a stale startup token.
 
-## Default Behavior
+## Default behavior
 
-Out of the box the SDK is conservative — retries and reconnect are **off** by default and must be opted into:
+Out of the box the SDK is conservative. Retries and reconnect are **off** by default and must be opted into:
 
 - **HTTP retry is off.** `DEFAULT_HTTP_RETRY_POLICY.maxAttempts` is `1` (one attempt, no retries). When you enable retries, only safe methods are retried by default (`retryOnMethods: ['GET', 'HEAD', 'OPTIONS']`) and `retryOnNetworkError` is `true`; default delays are `baseDelayMs: 250`, `maxDelayMs: 2000`, `backoffFactor: 2`.
 - **Stream / SSE reconnect is off.** `DEFAULT_STREAM_RECONNECT_POLICY.enabled` is `false`. When enabled, `maxAttempts` defaults to `10` (`DEFAULT_STREAM_MAX_ATTEMPTS`), with `baseDelayMs: 500` and `maxDelayMs: 30000`.
 - **WebSocket reconnect** likewise defaults to a finite `maxAttempts` of `10` (`DEFAULT_WS_MAX_ATTEMPTS`) when enabled, to prevent infinite auth-failure loops.
 
-## Recommended Defaults
+## Recommended defaults
 
 - Bun full-surface service:
   retry reads, SSE reconnect enabled
@@ -126,7 +126,7 @@ Out of the box the SDK is conservative — retries and reconnect are **off** by 
 - React Native / Expo:
   retry reads, WebSocket reconnect enabled
 
-## Next Reads
+## Next reads
 
 - [Transports](./transports.md)
 - [Performance and tuning](./performance.md)

@@ -1,5 +1,5 @@
 /**
- * acknowledge.ts — "heard you", recorded.
+ * acknowledge.ts, "heard you", recorded.
  *
  * ## The gap this closes
  *
@@ -7,7 +7,7 @@
  * shipped, the housekeeping pass has counted `expiredAcknowledgements` since
  * the same day, and the sweep has checked for an answer on every pass. All of
  * that was correct and none of it ever fired, because the only thing that could
- * WRITE an acknowledgement was the `occasions.answer` control-plane verb — a
+ * WRITE an acknowledgement was the `occasions.answer` control-plane verb, a
  * CLI/webui/API call. The nudge, meanwhile, was delivered to Telegram and to
  * the agent's conversation, where the reply to it is a sentence. Nobody ever
  * turned a sentence into a record.
@@ -35,10 +35,10 @@
  * so the sweep has one thing to check and there is no "acknowledged, but only
  * via the API" class of bug:
  *
- *  - `conversation` — he replied to the nudge where it landed and engaged with
+ *  - `conversation`, he replied to the nudge where it landed and engaged with
  *    the occasion. The turn records it as part of answering him.
- *  - `explicit`     — a surface's own ack verb.
- *  - `gift-flow`    — he is ANSWERING GIFT QUESTIONS about it. Being asked
+ *  - `explicit`    , a surface's own ack verb.
+ *  - `gift-flow`   , he is ANSWERING GIFT QUESTIONS about it. Being asked
  *    whether he has thought about a birthday while in the middle of choosing
  *    the present for it is the feature failing at its own job, so engagement
  *    with the interview acknowledges the occurrence by itself.
@@ -85,7 +85,7 @@ export interface AcknowledgeOutcome {
  * Two writes, in this order and for this reason. The answer goes down first
  * because it is what the sweep reads: if the process died between the two, the
  * push would already be muted and the worst outcome would be an open item that
- * is quiet but not marked spent — quiet either way. The other order could leave
+ * is quiet but not marked spent, quiet either way. The other order could leave
  * him acknowledged in his own mind and pushed at by the machine, which is the
  * failure this file exists to end.
  *
@@ -115,7 +115,7 @@ export async function acknowledgeOccurrence(
   const itemId = nudgeItemId(occasion.id, occurrence);
   const existing = await store.openItem(itemId);
   if (existing === undefined) {
-    // He acknowledged something that had not been raised yet — he got there
+    // He acknowledged something that had not been raised yet, he got there
     // first. The item is opened anyway, and opened quiet, so the pull can still
     // show it and the sweep can never decide to introduce it to him.
     await store.putOpenItem({
@@ -140,7 +140,7 @@ export async function acknowledgeOccurrence(
 /**
  * What to say back when an acknowledgement lands.
  *
- * Names the occasion and states BOTH halves — this one is quiet, everything
+ * Names the occasion and states BOTH halves, this one is quiet, everything
  * else still runs. The second half is not filler. When he complained about
  * being reminded of his own birthday hourly, the answer was to switch the whole
  * feature off, which also switched off his wife's birthday; a reply that says
@@ -148,7 +148,7 @@ export async function acknowledgeOccurrence(
  * happens rather than being discovered in November.
  */
 export function acknowledgementReply(occasionTitle: string): string {
-  return `Noted — you have ${occasionTitle} in hand, so I will stop raising it. `
+  return `Noted, you have ${occasionTitle} in hand, so I will stop raising it. `
     + 'It stays on your dates and I will still answer if you ask about it. '
     + 'Nothing else has changed; your other dates are unaffected.';
 }

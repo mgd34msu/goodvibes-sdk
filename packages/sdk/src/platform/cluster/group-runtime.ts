@@ -1,12 +1,12 @@
 /**
- * group-runtime.ts — the live group: beacons, gossip, admissions, rotation.
+ * group-runtime.ts, the live group: beacons, gossip, admissions, rotation.
  *
  * One instance per daemon. It owns the datagram socket, holds the keyring every
  * outbound datagram is signed with, and is the only thing in the system that
  * writes group key material.
  *
  * The operator-facing operations (create, join, key, nodes, forget, leave) live
- * next door in group-operations.ts and go through this object — so the CLI, the
+ * next door in group-operations.ts and go through this object, so the CLI, the
  * TUI and the web UI are three renderings of one implementation, never three
  * implementations.
  *
@@ -16,8 +16,8 @@
  * pretends to run in. It starts in `no-group`: it listens, so `cluster join`
  * can show the operator what is on the network, and it sends nothing, signs
  * nothing and gates nothing. `cluster status` says so in one line, and names
- * the two commands that fix it. Half-starting — joining the multicast group and
- * broadcasting unsigned — is the outcome this explicitly avoids.
+ * the two commands that fix it. Half-starting, joining the multicast group and
+ * broadcasting unsigned, is the outcome this explicitly avoids.
  */
 import { GroupAdmissionService, type AdmissionOutcome } from './group-admissions.js';
 import { digestSurfaceId, sealForMember, openSealedEnvelope } from './group-crypto.js';
@@ -145,7 +145,7 @@ export class ClusterGroupRuntime {
 
   constructor(private readonly options: ClusterGroupRuntimeOptions) {
     // Built here, not in start(), because the composition root needs
-    // `electionTransport()` while it is still WIRING — the coordinator is
+    // `electionTransport()` while it is still WIRING, the coordinator is
     // constructed with it before anything is started. Constructing the router
     // opens no socket and writes nothing; `ensureStarted` does that, and both
     // tenants may call it.
@@ -202,7 +202,7 @@ export class ClusterGroupRuntime {
     if (!this.options.settings.enabled) {
       // Switched off. Read the stored membership so `cluster status`, `key` and
       // `nodes` can still answer honestly about a group this machine belongs to
-      // — and open nothing: no socket, no beacon, no timers. Joining the
+      //, and open nothing: no socket, no beacon, no timers. Joining the
       // multicast group while the operator has the feature off would be exactly
       // the half-started behaviour this design refuses.
       this.options.logger.debug('cluster: sharing is switched off; the group layer is not on the network');
@@ -339,7 +339,7 @@ export class ClusterGroupRuntime {
     // Re-seed the replica with the group this machine has just joined. Without
     // this it keeps the empty group id it was constructed with, and every
     // incoming settings document is refused for belonging to a different group
-    // — which looks exactly like replication silently not working.
+    //, which looks exactly like replication silently not working.
     if (this.replication && this.replication.replica.groupId !== material.groupId) {
       this.replication.adopt(createConfigReplicaDocument(material.groupId));
     }
@@ -410,8 +410,8 @@ export class ClusterGroupRuntime {
    * The secret store the replication layer may touch.
    *
    * Narrowed to the group's own store so a replicated credential is written
-   * through this machine's SecretsManager — encrypted under this machine's own
-   * keyfile — rather than stored as somebody else's ciphertext.
+   * through this machine's SecretsManager, encrypted under this machine's own
+   * keyfile, rather than stored as somebody else's ciphertext.
    */
   private replicatedSecrets(): ReplicatedSecretStore | null {
     const secrets = this.options.secrets;
@@ -466,7 +466,7 @@ export class ClusterGroupRuntime {
    * Advertise this group.
    *
    * Carries the group id, the group's name, how many machines are in it, and
-   * this node's build — and NOTHING else. No surfaces, no configuration, no
+   * this node's build, and NOTHING else. No surfaces, no configuration, no
    * hostname, no username, no key. It is readable by anything on the network,
    * which is exactly why the group name defaults to something neutral and its
    * setting says plainly that it is visible.
@@ -522,7 +522,7 @@ export class ClusterGroupRuntime {
   async runHousekeeping(): Promise<void> {
     // Never two at once. The timer fires every 30 seconds and a pass that
     // rotates does several awaits, so without this a slow rotation would be
-    // overlapped by the next tick — which reads the material from BEFORE the
+    // overlapped by the next tick, which reads the material from BEFORE the
     // rotation and mints a second, competing generation for the same step.
     if (this.housekeeping) return;
     this.housekeeping = true;
@@ -571,7 +571,7 @@ export class ClusterGroupRuntime {
    * replicated state, so every member reaches the same answer without any
    * negotiation, and if that machine is off the next one takes over by itself.
    *
-   * If two of them mint at once — which a partition can cause — the tie is
+   * If two of them mint at once, which a partition can cause, the tie is
    * broken by `preferredKeyRecord`, not by whoever shouted first.
    */
   private isRotationMinter(now: number): boolean {
@@ -599,7 +599,7 @@ export class ClusterGroupRuntime {
    * Replace the group key.
    *
    * The announcement is signed with the OUTGOING generation, because that is
-   * the only key the recipients currently accept — announcing under the new key
+   * the only key the recipients currently accept, announcing under the new key
    * would be a message nobody could read. Only after it is on the wire does
    * this node move itself forward.
    *
@@ -636,7 +636,7 @@ export class ClusterGroupRuntime {
 
     await this.commitMaterial(rotated);
     // A removal also replaced the key the group signs with; publish its public
-    // half so every remaining member — and every member that joins later — can
+    // half so every remaining member, and every member that joins later, can
     // check a reply that claims to come from the group.
     if (cause === 'revocation' && this.state) {
       await this.commitState(withGroupSigningKey(this.state, {
@@ -704,14 +704,14 @@ export class ClusterGroupRuntime {
    * The envelope already verified under a group key this node holds, so the
    * sender is a member. What is still checked here: that a wrap addressed to
    * THIS node is present and opens. A rotation with no wrap for this node is a
-   * rotation this node was not included in — which is what a removed machine
+   * rotation this node was not included in, which is what a removed machine
    * sees, and it is right that it cannot follow.
    */
   private async onRekey(envelope: ClusterEnvelope): Promise<void> {
     const material = this.material;
     if (!material) return;
     // Our own announcement, arriving back through loopback. It deliberately
-    // carries no wrap for this machine — we already hold the key we minted —
+    // carries no wrap for this machine, we already hold the key we minted,
     // so without this the minting node warns that it was left out of its own
     // rotation, which is both wrong and alarming.
     if (envelope.nodeId === this.options.nodeId) return;
@@ -769,7 +769,7 @@ export class ClusterGroupRuntime {
    *
    * The salt is kept alongside because a machine cannot even attempt a join
    * until it can derive the verifier, and the salt is public by construction.
-   * Nothing here is authenticated and nothing here causes this node to act — it
+   * Nothing here is authenticated and nothing here causes this node to act, it
    * populates a list the operator chooses from and that is all.
    */
   private recordDiscoveredGroup(groupId: string, body: Record<string, unknown>, version: string): void {

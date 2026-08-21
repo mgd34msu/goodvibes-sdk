@@ -31,7 +31,7 @@ export interface TransportPanelSnapshot {
 }
 
 /**
- * TransportPanel — diagnostics data provider for transport protocol negotiations.
+ * TransportPanel, diagnostics data provider for transport protocol negotiations.
  *
  * Usage:
  * ```ts
@@ -217,7 +217,7 @@ export class TransportPanel {
 
   /**
    * Get all connections with recorded unsupported failures.
-   * These represent peers that could NOT proceed — surfaced explicitly
+   * These represent peers that could NOT proceed, surfaced explicitly
    * so operators know an inunsupported peer attempted connection.
    */
   public getUnsupportedFailures(): TransportNegotiationEntry[] {

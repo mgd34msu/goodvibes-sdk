@@ -27,7 +27,7 @@ import { buildReinjectedInstructions } from '../packages/sdk/src/platform/core/c
 /**
  * A minimal RuntimeEventBus whose emit() records (channel, payload) into the
  * supplied sink. The double-cast through the emit shape is the repo's standard
- * bus-fixture bridge (see makeRuntimeBus in the plugins observability test) —
+ * bus-fixture bridge (see makeRuntimeBus in the plugins observability test),
  * a typed factory, not an `any` suppression.
  */
 function makeCapturingBus(sink: Array<{ channel: string; payload: unknown }>): RuntimeEventBus {
@@ -118,7 +118,7 @@ describe('PermissionManager mode matrix', () => {
       expect(r.reasonCode).toBe('plan_mode');
       expect(r.sourceLayer).toBe('runtime_mode');
     }
-    // plan refuses structurally — it never prompts the user.
+    // plan refuses structurally, it never prompts the user.
     expect(prompts).toEqual([]);
   });
 
@@ -205,7 +205,7 @@ describe('plan-mode standing instruction', () => {
 
   test('survives compaction: the instruction chain is re-injected verbatim', () => {
     // getSystemPrompt() (with plan instruction appended) is the instruction
-    // chain compaction re-injects — so the plan instruction rides through.
+    // chain compaction re-injects, so the plan instruction rides through.
     const chain = appendPlanModeInstruction('SYSTEM PROMPT', 'plan');
     const section = buildReinjectedInstructions(chain, undefined);
     expect(section).not.toBeNull();

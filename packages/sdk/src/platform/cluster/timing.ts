@@ -1,5 +1,5 @@
 /**
- * timing.ts — every interval the state machine uses, derived from four
+ * timing.ts, every interval the state machine uses, derived from four
  * operator-facing settings.
  *
  * Only `heartbeatSeconds`, `masterTimeoutSeconds` and `bootProbeSeconds` are
@@ -32,8 +32,8 @@ export interface ClusterTiming {
   /** Watchdog cadence: master-liveness and suspend detection. */
   readonly watchdogTickMs: number;
   /**
-   * A tick this late — or a wall clock that ran this far ahead of the
-   * monotonic clock — means the host was suspended, not merely busy.
+   * A tick this late, or a wall clock that ran this far ahead of the
+   * monotonic clock, means the host was suspended, not merely busy.
    */
   readonly suspendThresholdMs: number;
   /** Backoff after a provider told us someone else is already consuming. */
@@ -41,7 +41,7 @@ export interface ClusterTiming {
   /**
    * Ceiling for the consumer-conflict backoff as it doubles.
    *
-   * A consumer conflict is not a transient network fault that clears itself —
+   * A consumer conflict is not a transient network fault that clears itself,
    * it means a DIFFERENT process holds the credential, and only a human can
    * decide which one should. Retrying at a constant rate forever is therefore
    * a hot loop against somebody else's API: on a node with no peer to hand the
@@ -52,7 +52,7 @@ export interface ClusterTiming {
    *
    * Proportional like everything else here, so a test rig that shortens the
    * timeouts shortens this too, with a fifteen-minute ceiling for a real
-   * install — long enough to stop hammering, short enough that fixing the
+   * install, long enough to stop hammering, short enough that fixing the
    * other process is noticed without a restart.
    */
   readonly consumerConflictBackoffMaxMs: number;

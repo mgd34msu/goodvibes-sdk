@@ -2,7 +2,7 @@
  * Tool result reconciliation types and utilities for GC-ORCH-015.
  *
  * Provides types and helpers for detecting and resolving unresolved tool calls
- * at turn end — ensuring no turn exits with dangling tool-call state.
+ * at turn end, ensuring no turn exits with dangling tool-call state.
  */
 import type { ToolCall, ToolResult } from '../types/tools.js';
 
@@ -19,7 +19,7 @@ export interface SyntheticToolResult extends ToolResult {
   /** The reason the reconciliation pass created this result. */
   readonly reason: ReconciliationReason;
   /**
-   * LLM-directed guidance for the model — separate from the operational `error`
+   * LLM-directed guidance for the model, separate from the operational `error`
    * field so telemetry and rendering can treat them independently.
    */
   readonly instruction?: string | undefined;
@@ -28,13 +28,13 @@ export interface SyntheticToolResult extends ToolResult {
 /**
  * Describes why the reconciler had to synthesize a tool result.
  *
- * - `'loop-exit-with-tool-use'`  — the turn loop exited (circuit breaker,
+ * - `'loop-exit-with-tool-use'` , the turn loop exited (circuit breaker,
  *   agent-spawn, etc.) while tool calls were still unresolved.
- * - `'malformed-stop-reason'`    — the provider signalled `tool_use` stop
+ * - `'malformed-stop-reason'`   , the provider signalled `tool_use` stop
  *   but returned zero tool calls (malformed response).
- * - `'exception-before-results'` — the turn threw before tool results could
+ * - `'exception-before-results'`, the turn threw before tool results could
  *   be added to the conversation.
- * - `'unknown'`                   — catch-all for unanticipated scenarios.
+ * - `'unknown'`                  , catch-all for unanticipated scenarios.
  */
 export type ReconciliationReason =
   | 'loop-exit-with-tool-use'
@@ -81,7 +81,7 @@ export function buildSyntheticResult(
   return {
     callId: call.id,
     success: false,
-    error: `[RECONCILED] Tool call '${call.name}' (id: ${call.id}) was not executed — the turn ended before results could be produced. Reason: ${reason}.`,
+    error: `[RECONCILED] Tool call '${call.name}' (id: ${call.id}) was not executed, the turn ended before results could be produced. Reason: ${reason}.`,
     instruction: 'Do not retry the same call unless you are certain the underlying condition has changed.',
     synthetic: true,
     reason,

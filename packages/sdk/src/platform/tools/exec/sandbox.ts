@@ -1,15 +1,15 @@
 /**
- * sandbox.ts — per-command OS-level execution boundary for the exec tool,
+ * sandbox.ts, per-command OS-level execution boundary for the exec tool,
  * backed by bubblewrap (`bwrap`) on Linux.
  *
  * GOAL. Shrink the approval tail: a command that runs inside a real OS boundary
- * — workspace writable, the rest of the filesystem read-only, /tmp isolated,
- * network off unless explicitly allowed — is far less able to do harm outside
+ *, workspace writable, the rest of the filesystem read-only, /tmp isolated,
+ * network off unless explicitly allowed, is far less able to do harm outside
  * that boundary, so the permission layer can auto-allow it (see
  * runtime/permissions/sandbox-policy.ts) instead of prompting. This module is
  * the RUNNER half: honest availability detection, pure bwrap-argv construction,
  * and a per-command plan. It composes with the existing credential-env scrub
- * (credential-env.ts) rather than replacing it — the scrubbed env is what bwrap
+ * (credential-env.ts) rather than replacing it, the scrubbed env is what bwrap
  * hands to the child.
  *
  * HONESTY. Detection never claims a boundary it cannot deliver. No bwrap (or a
@@ -21,7 +21,7 @@
  *
  * NOT a permission decision and NOT the frozen catastrophic block. The
  * unconditional catastrophic block (rm -rf /, dd to a device, mkfs, fork bomb …)
- * is enforced elsewhere and stays in force identically INSIDE the sandbox — a
+ * is enforced elsewhere and stays in force identically INSIDE the sandbox, a
  * boundary is not a licence for a catastrophic command.
  */
 
@@ -33,7 +33,7 @@ import type { ExecCommandResult } from './schema.js';
 
 /** Operator-facing per-command exec sandbox configuration (`sandbox.*`). */
 export interface ExecSandboxConfig {
-  /** Master switch. Default false — the sandbox is off unless explicitly enabled. */
+  /** Master switch. Default false, the sandbox is off unless explicitly enabled. */
   readonly enabled: boolean;
   /**
    * Command base names (e.g. `curl`, `git`, or `*` for all) whose network access
@@ -55,12 +55,12 @@ export interface SandboxAvailability {
   readonly backend: 'bubblewrap' | 'none';
   /** Resolved `bwrap` path when available. */
   readonly bwrapPath?: string | undefined;
-  /** Stated reason — a diagnosis when unavailable, a one-line summary when available. */
+  /** Stated reason, a diagnosis when unavailable, a one-line summary when available. */
   readonly reason: string;
   /**
    * Whether a `--unshare-net` boundary is trustworthy on THIS host. False when
    * bwrap is present but a trivial net-unshare probe did not succeed (so a
-   * "network disabled" claim would be unproven) — surfaced as `network: 'unknown'`.
+   * "network disabled" claim would be unproven), surfaced as `network: 'unknown'`.
    */
   readonly networkIsolationGuaranteed: boolean;
 }
@@ -84,7 +84,7 @@ export interface SandboxHostProbe {
 /**
  * Decide availability from a host probe. Pure. macOS and any non-Linux host are
  * reported unavailable this release (bubblewrap is Linux-only and no
- * sandbox-exec equivalent is wired) — never faked.
+ * sandbox-exec equivalent is wired), never faked.
  */
 export function detectSandboxAvailability(probe: SandboxHostProbe): SandboxAvailability {
   if (probe.platform !== 'linux') {
@@ -112,7 +112,7 @@ export function detectSandboxAvailability(probe: SandboxHostProbe): SandboxAvail
       bwrapPath: probe.bwrapPath,
       reason:
         `per-command exec sandbox unavailable: bubblewrap is installed (${probe.bwrapPath}) but a ` +
-        `trivial sandbox probe failed — unprivileged user namespaces are likely disabled on this host`,
+        `trivial sandbox probe failed, unprivileged user namespaces are likely disabled on this host`,
       networkIsolationGuaranteed: false,
     };
   }
@@ -148,7 +148,7 @@ export interface BwrapArgvInput {
  * The system root is bound read-only, /tmp and (optionally) $HOME are masked with
  * fresh tmpfs, then the workspace and any writable extras are bound read-write
  * LAST so they win over the read-only root even when nested under it. Network is
- * unshared unless explicitly enabled. The env is NOT set here — the caller hands
+ * unshared unless explicitly enabled. The env is NOT set here, the caller hands
  * bwrap the already-credential-scrubbed environment, which bwrap passes through.
  */
 export function buildBwrapArgv(input: BwrapArgvInput): string[] {
@@ -198,7 +198,7 @@ export interface ExecSandboxPlan {
   readonly escalationsGranted: string[];
   /**
    * Whether $HOME was masked with a tmpfs for this run. Recorded so the context
-   * note claims the mask only when it actually applied — a note that overstates
+   * note claims the mask only when it actually applied, a note that overstates
    * the boundary is the same defect as one that hides it.
    *
    * Optional so adding it does not break a consumer that builds a plan itself;
@@ -313,7 +313,7 @@ export function resolveExecSandboxPlan(input: ResolveSandboxPlanInput): ExecSand
 /**
  * The resolved sandbox context the exec runtime threads per call: the config,
  * the host availability, and whether the graduation-gated flag is on. Null on a
- * createExecTool with no sandbox wiring — then every command runs the unchanged
+ * createExecTool with no sandbox wiring, then every command runs the unchanged
  * non-sandboxed path.
  */
 export interface ExecSandboxRuntime {
@@ -331,7 +331,7 @@ export interface ExecSandboxRuntime {
   /**
    * Invoked each time a command actually runs inside the boundary. Wired at
    * the composition root to the announce-once containment receipt ("commands
-   * now run contained; escalations will ask") — the announcer keeps the
+   * now run contained; escalations will ask"), the announcer keeps the
    * once-semantics, this seam just reports the runs.
    */
   readonly onSandboxedRun?: (() => void) | undefined;
@@ -373,7 +373,7 @@ export function resolveRuntimeSandboxPlan(
  * escalations when the ask was DENIED (the caller then denies the command), or
  * null when there was nothing to ask or the ask was approved. The frozen
  * catastrophic block is enforced independently (guardExecCommand) and is
- * untouched here — this only ever gates the host-access escalation, never the
+ * untouched here, this only ever gates the host-access escalation, never the
  * command class.
  */
 export async function brokerSandboxEscalation(
@@ -383,7 +383,7 @@ export async function brokerSandboxEscalation(
   workingDirectory: string,
 ): Promise<{ deniedEscalations: string[] } | null> {
   if (!plan?.sandboxed) return null;
-  // A null return means this command WILL run inside the boundary — report it
+  // A null return means this command WILL run inside the boundary, report it
   // so the wired announcer can turn the first contained run into the one-time
   // "commands now run contained; escalations will ask" line.
   const reportContainedRun = (): null => {
@@ -419,19 +419,19 @@ export async function brokerSandboxEscalation(
  * daemon on `127.0.0.1:3421` was read as the user's machine lacking both.
  *
  * Naming the isolation is only half of it. A model told the daemon is
- * unreachable and nothing else will keep reaching for it — a second curl, then
- * systemctl, then a port check — because the note ruled out the route it had
+ * unreachable and nothing else will keep reaching for it, a second curl, then
+ * systemctl, then a port check, because the note ruled out the route it had
  * without naming another. So the note names the tools that DO answer the
  * question from outside the boundary, `goodvibes_context` and
  * `goodvibes_settings`, which is what turns a dead end into a next step.
  *
  * It names the isolation, the way through it, and the one action that changes
- * it, and stops. It is not a lecture and it is not repeated per line — one
+ * it, and stops. It is not a lecture and it is not repeated per line, one
  * field, once per result.
  */
 export function buildSandboxNote(plan: ExecSandboxPlan): string {
   if (!plan.sandboxed) {
-    return `not sandboxed: ${plan.unavailableReason ?? 'no boundary applied'} — this ran directly on the host.`;
+    return `not sandboxed: ${plan.unavailableReason ?? 'no boundary applied'}, this ran directly on the host.`;
   }
   const parts: string[] = ['sandboxed: this ran inside a boundary, not on the host'];
   if (plan.network === 'enabled') {
@@ -442,14 +442,14 @@ export function buildSandboxNote(plan: ExecSandboxPlan): string {
     );
   } else {
     parts.push(
-      `separate network namespace, so host localhost services are unreachable from here — the goodvibes daemon on 127.0.0.1:${DEFAULT_CONTROL_PLANE_PORT} refuses connections inside the boundary even while it is running on the host, so read daemon and settings state with the built-in goodvibes_context tool (mode "summary" for runtime and daemon state, "config_get" for a setting) and change settings with the built-in goodvibes_settings tool, both of which run outside this boundary, rather than retrying curl or systemctl in here (add the command to sandbox.egressAllowlist to share the host network instead)`,
+      `separate network namespace, so host localhost services are unreachable from here, the goodvibes daemon on 127.0.0.1:${DEFAULT_CONTROL_PLANE_PORT} refuses connections inside the boundary even while it is running on the host, so read daemon and settings state with the built-in goodvibes_context tool (mode "summary" for runtime and daemon state, "config_get" for a setting) and change settings with the built-in goodvibes_settings tool, both of which run outside this boundary, rather than retrying curl or systemctl in here (add the command to sandbox.egressAllowlist to share the host network instead)`,
     );
   }
   parts.push(
     `filesystem read-only outside the workspace, /tmp isolated${plan.homeMasked ? ' and $HOME masked' : ''}, credential-bearing environment variables removed, and partial device and process visibility`,
   );
   parts.push(
-    'absence observed here is not absence on the host — re-check on the host before concluding something is missing',
+    'absence observed here is not absence on the host, re-check on the host before concluding something is missing',
   );
   return `${parts.join('; ')}.`;
 }
@@ -457,7 +457,7 @@ export function buildSandboxNote(plan: ExecSandboxPlan): string {
 /**
  * Attach sandbox metadata to an exec result. Stays quiet (returns the result
  * unchanged) when there is no plan, or when the sandbox is off entirely and the
- * command simply ran unsandboxed — metadata appears only when the sandbox was
+ * command simply ran unsandboxed, metadata appears only when the sandbox was
  * active OR was requested-but-unavailable (the honest-unavailable receipt).
  */
 export function attachSandboxMeta(result: ExecCommandResult, plan: ExecSandboxPlan | null): ExecCommandResult {

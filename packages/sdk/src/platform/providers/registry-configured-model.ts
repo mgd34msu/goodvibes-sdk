@@ -1,10 +1,10 @@
 /**
- * registry-configured-model.ts — ProviderRegistry's live view of the
+ * registry-configured-model.ts, ProviderRegistry's live view of the
  * `provider.model` config key.
  *
  * MEASURED DEFECT this exists to prevent. `provider.model` was written through
  * the daemon's `POST /config`. It persisted to disk AND the daemon's in-memory
- * ConfigManager reported the new value — but the registry had read the key
+ * ConfigManager reported the new value, but the registry had read the key
  * exactly once, in its constructor, and kept the resolved registryKey for the
  * life of the process. A daemon runs for days, so every agent spawned after
  * that write still ran the model configured at boot. The write reported
@@ -13,9 +13,9 @@
  *
  * The fix is a re-read at USE time, not a cache with an invalidation hook: the
  * registry asks this follower on every `getCurrentModel()`, and the follower
- * asks ConfigManager. That covers BOTH write paths for free — an in-process
+ * asks ConfigManager. That covers BOTH write paths for free, an in-process
  * `set()`/`setDynamic()` and an external settings-file edit that the config
- * file watcher reloads — and it needs no `subscribe`, so hosts that construct
+ * file watcher reloads, and it needs no `subscribe`, so hosts that construct
  * the registry with a narrow config reader (`get` only) follow config changes
  * exactly like the daemon does.
  *
@@ -23,7 +23,7 @@
  *   - a config write supersedes an earlier in-process `setCurrentModel`,
  *     because the config value CHANGED since we last looked;
  *   - an in-process `setCurrentModel` supersedes the config value it was
- *     chosen over, because the config value has NOT changed since — so a UI
+ *     chosen over, because the config value has NOT changed since, so a UI
  *     model switch is not undone by the next read.
  */
 import { logger } from '../utils/logger.js';
@@ -45,7 +45,7 @@ export interface ConfiguredModelCandidate {
 export interface ConfiguredModelFollowerDeps {
   /** Reads the raw `provider.model` value from the live config. */
   readonly readConfiguredModel: () => unknown;
-  /** The models a bare configured id may resolve against — read lazily, never captured. */
+  /** The models a bare configured id may resolve against, read lazily, never captured. */
   readonly listModelCandidates: () => readonly ConfiguredModelCandidate[];
   /** Runtime bus for MODEL_CHANGED, or null when the host has none. */
   readonly runtimeBus?: RuntimeEventBus | null | undefined;
@@ -88,7 +88,7 @@ export class ConfiguredModelFollower {
 
   /**
    * Adopt a `provider.model` write made after construction. Returns the
-   * registryKey to use now — `currentRegistryKey` unchanged when config has
+   * registryKey to use now, `currentRegistryKey` unchanged when config has
    * not moved, when the configured value resolves to the same key, or when a
    * config read or resolution fails (a bad config value must never break model
    * resolution; the previous working model stays in force and the failure is

@@ -1,5 +1,5 @@
 /**
- * Email service — config, secret resolution, and orchestration.
+ * Email service, config, secret resolution, and orchestration.
  *
  * Config namespace: email.*
  * ─────────────────────────
@@ -10,20 +10,20 @@
  * extend beyond the built-in schema.
  *
  * Settings registered:
- *   email.enabled        boolean   — feature gate (default: false)
- *   email.imapHost       string    — IMAP TLS host (default: '')
- *   email.imapPort       number    — default 993
- *   email.smtpHost       string    — SMTP submission host (default: '')
- *   email.smtpPort       number    — 465 (TLS) or 587 (STARTTLS, default)
- *   email.username       string    — login username (default: '')
- *   email.passwordRef    string    — goodvibes:// secret reference only;
+ *   email.enabled        boolean  , feature gate (default: false)
+ *   email.imapHost       string   , IMAP TLS host (default: '')
+ *   email.imapPort       number   , default 993
+ *   email.smtpHost       string   , SMTP submission host (default: '')
+ *   email.smtpPort       number   , 465 (TLS) or 587 (STARTTLS, default)
+ *   email.username       string   , login username (default: '')
+ *   email.passwordRef    string   , goodvibes:// secret reference only;
  *                                    NEVER a raw password
- *   email.smtpPasswordRef string   — optional; a second goodvibes:// reference
+ *   email.smtpPasswordRef string  , optional; a second goodvibes:// reference
  *                                    for providers that issue separate SMTP
  *                                    credentials. Empty means "same password"
- *   email.fromAddress    string    — From: address for outbound mail
- *   email.mailbox        string    — mailbox to read; empty means INBOX
- *   email.draftsMailbox  string    — Drafts folder; empty means ask the server
+ *   email.fromAddress    string   , From: address for outbound mail
+ *   email.mailbox        string   , mailbox to read; empty means INBOX
+ *   email.draftsMailbox  string   , Drafts folder; empty means ask the server
  *
  * Secret resolution
  * ─────────────────
@@ -88,7 +88,7 @@ export type { EmailInboxUnreadableResponse, EmailMessageRead } from './email-rea
  * Calling this helper once before any email.* access ensures the traversal
  * succeeds.
  *
- * The helper is safe to call multiple times — it is a no-op after the first
+ * The helper is safe to call multiple times, it is a no-op after the first
  * call for a given configManager instance.
  */
 export function ensureEmailConfigDefaults(
@@ -130,17 +130,17 @@ export interface EmailConfig {
   /** SMTP connection security. Default: 'auto' (port-based). */
   readonly smtpSecurity: SmtpSecurityMode;
   readonly username: string;
-  /** Secret reference string — never a raw password. */
+  /** Secret reference string, never a raw password. */
   readonly passwordRef: string;
   /**
    * Secret reference for the SMTP password, when the provider issues one that
-   * differs from the IMAP password. Empty — the common case — means submission
+   * differs from the IMAP password. Empty, the common case, means submission
    * authenticates with `passwordRef` like everything else.
    */
   readonly smtpPasswordRef: string;
   readonly fromAddress: string;
   /**
-   * Mailbox to read. Empty — the common case — means INBOX. Set when the
+   * Mailbox to read. Empty, the common case, means INBOX. Set when the
    * account delivers to a folder, which is what a per-signup alias mailbox is.
    */
   readonly mailbox: string;
@@ -180,7 +180,7 @@ export interface EmailSummary {
   readonly mailbox: string;
   /**
    * Delivery-agent trace, top-most first. Written by the receiving mail
-   * server, so — unlike `To:` — a sender cannot set it. Safe to correlate on.
+   * server, so, unlike `To:`, a sender cannot set it. Safe to correlate on.
    */
   readonly deliveredTo: readonly string[];
   /**
@@ -228,7 +228,7 @@ export interface EmailInboxListInput {
   /** Restrict to messages the server dates on or after this day. */
   readonly since?: Date | undefined;
   /**
-   * Unread messages only. Default: true — the historical behaviour of
+   * Unread messages only. Default: true, the historical behaviour of
    * `checkInbox`. Setting it false lists everything, which is a different
    * SEARCH, not the same one filtered afterwards.
    */
@@ -248,7 +248,7 @@ export interface EmailInboxListResult {
    * sender writes.
    *
    * Ordered by UID, which the receiving server assigns, and never by `Date:`,
-   * which whoever sent the message wrote — a forged date must not be able to
+   * which whoever sent the message wrote, a forged date must not be able to
    * pin a message to the top of the owner's inbox.
    */
   readonly messages: readonly EmailSummary[];
@@ -263,7 +263,7 @@ export interface EmailInboxListResult {
   /**
    * FETCH responses on THIS page the client could not read. Absent means none.
    *
-   * Here because a short page used to be silent — see
+   * Here because a short page used to be silent, see
    * `EmailInboxUnreadableResponse` for the two facts that were being collapsed.
    * `total` cannot carry it: `total` counts the SEARCH match, and the loss
    * happens at the FETCH. Omitted when empty, so nothing consuming this shape
@@ -273,7 +273,7 @@ export interface EmailInboxListResult {
 }
 
 /**
- * The fields a draft is composed from. `from` is the only optional one —
+ * The fields a draft is composed from. `from` is the only optional one,
  * omitting it uses the configured `email.fromAddress`, which is what a caller
  * that is not choosing an identity should do.
  */
@@ -316,7 +316,7 @@ export interface EmailTransportPort {
 }
 
 export interface EmailServiceDeps {
-  /** Untyped config getter — reads the `email.*` namespace. */
+  /** Untyped config getter, reads the `email.*` namespace. */
   readonly getConfig: (key: string) => unknown;
   /** SecretsManager-compatible interface for resolving secret refs. */
   readonly secretsManager: {
@@ -341,7 +341,7 @@ export interface EmailServiceDeps {
    * Records that untrusted content entered the conversation.
    *
    * Reading a mailbox pulls in text written by anyone who knows the address,
-   * which is the same exposure as loading a web page — and the outward-effect
+   * which is the same exposure as loading a web page, and the outward-effect
    * guard only fires on exposure it has been told about. Injected rather than
    * reached for globally so the service stays testable and so a caller cannot
    * accidentally record into a different session's ledger.
@@ -356,7 +356,7 @@ export interface EmailServiceDeps {
      * Without it the guard downstream can only ask "has this process read
      * mail", which in a daemon is permanently true and therefore decides
      * nothing. With it, an outward action can be checked for DERIVATION from
-     * this message — which is the owner's named threat: an injection arriving
+     * this message, which is the owner's named threat: an injection arriving
      * by email.
      */
     readonly content?: string | undefined;
@@ -374,7 +374,7 @@ export class EmailService {
     this.deps = deps;
   }
 
-  /** Returns a redacted status summary — never includes secret values. */
+  /** Returns a redacted status summary, never includes secret values. */
   getStatus(): { config: EmailConfig; errors: string[]; ready: boolean } {
     const config = readEmailConfig(this.deps.getConfig);
     const errors = validateEmailConfig(config);
@@ -407,7 +407,7 @@ export class EmailService {
    * List the inbox, NEWEST FIRST: unread only by default, everything when
    * `unreadOnly` is false, optionally bounded by a date.
    *
-   * Read-only throughout — the mailbox is EXAMINEd and every fetch peeks, so
+   * Read-only throughout, the mailbox is EXAMINEd and every fetch peeks, so
    * listing mail never marks it read. Returns the matched `total` alongside
    * the truncated page.
    */
@@ -439,7 +439,7 @@ export class EmailService {
       // `fetchEnvelopeBatch`, not `fetchEnvelopes`. They run the same fetch;
       // the difference is that one of them answers the question this method
       // has to answer. `fetchEnvelopes` returns a list, and its own doc warns
-      // that "omission alone is not evidence of an expunge" — which is exactly
+      // that "omission alone is not evidence of an expunge", which is exactly
       // the inference a caller makes when a page comes back short with nothing
       // saying why. The responses that could not be read travel with the page.
       const batch = await client.fetchEnvelopeBatch(pageUids);
@@ -447,7 +447,7 @@ export class EmailService {
 
       // NEWEST FIRST. A search answers in ascending UID order and the page
       // keeps the highest UIDs, so `envelopes` is the newest N with the OLDEST
-      // of them at index 0 — which is the reverse of what anybody displaying a
+      // of them at index 0, which is the reverse of what anybody displaying a
       // mailbox wants, and the reverse of what this method's own contract now
       // promises. Ordered by UID rather than by the `Date:` header, because
       // the UID is assigned by the receiving server and `Date:` is written by
@@ -459,10 +459,10 @@ export class EmailService {
       // BODY.PEEK), which is now index 0. Taken from the page rather than from
       // the search results: the first search result is the oldest match and is
       // usually not on the page at all. Preview text taken from one message
-      // and shown against another is worse than no preview — it attributes
+      // and shown against another is worse than no preview, it attributes
       // words to a sender who did not write them, both in the listing and in
       // the untrusted-ingest record below.
-      // Failures are non-fatal — the inbox summary is still returned.
+      // Failures are non-fatal, the inbox summary is still returned.
       const previewTarget = page[0];
       let newestBodyPreview = '';
       if (previewTarget !== undefined) {
@@ -534,13 +534,13 @@ export class EmailService {
    *
    * Read-only (BODY.PEEK throughout) and attachment-metadata only. The full
    * body is MORE attacker-controlled text than a preview, not less, so it
-   * records the same untrusted ingest the listing does — one path into the
+   * records the same untrusted ingest the listing does, one path into the
    * product, one labelling.
    *
    * **`null` means gone, and only gone.** It used to mean gone OR "the server
    * answered and this client could not read the answer", and the one caller of
    * this method turns `null` into the sentence "no message with UID n is in
-   * the mailbox — it may have been moved or deleted since it was listed",
+   * the mailbox, it may have been moved or deleted since it was listed",
    * which in the second case is a false statement about the owner's mailbox.
    * An unreadable answer now THROWS, carrying what could not be read, because
    * every honest thing this signature can say about that case is "not the
@@ -556,7 +556,7 @@ export class EmailService {
       `The mail server answered the request for UID ${String(uid)} with `
       + `${String(read.problems.length)} response(s) this client could not read `
       + `(${read.problems.map((problem) => problem.detail).join('; ')}). The message has not `
-      + 'been shown to be gone — it is the answer about it that could not be read.',
+      + 'been shown to be gone, it is the answer about it that could not be read.',
     );
   }
 
@@ -651,7 +651,7 @@ export class EmailService {
    * than after something has already been sent.
    *
    * Origin is the CLAIMED sender domain, and is labelled as claimed wherever it
-   * surfaces. It is a useful label for the owner, never an identity check — the
+   * surfaces. It is a useful label for the owner, never an identity check, the
    * claim is why the content is untrusted, not a reason to trust it.
    */
   private recordIngest(entries: readonly { readonly from: string; readonly text?: string | undefined }[]): void {
@@ -675,11 +675,11 @@ export class EmailService {
 
   /**
    * Verify the configured IMAP and SMTP connections without sending mail or
-   * reading the inbox — a real connectivity + authentication check for a
+   * reading the inbox, a real connectivity + authentication check for a
    * connect-wizard "test connection" step. Does not require config.enabled;
    * callers that want to gate readiness on enabled should check separately.
    *
-   * Never throws — returns a result describing which stage (if any) failed,
+   * Never throws, returns a result describing which stage (if any) failed,
    * with a plain-language error message. Never includes the raw password.
    */
   async testConnection(): Promise<EmailConnectionTestResult> {
@@ -729,7 +729,7 @@ export class EmailService {
 
   /**
    * Send a plain-text email.
-   * Requires `confirm: true` at the call site — throws without it.
+   * Requires `confirm: true` at the call site, throws without it.
    *
    * Returns the `Message-ID` the sent message carried and the instant the
    * server accepted it, both taken from the send itself. A caller that needs

@@ -1,15 +1,15 @@
 /**
- * vibe-projection.ts — VIBE.md as a PROJECTION of memory records (see CHANGELOG 1.0.0).
+ * vibe-projection.ts, VIBE.md as a PROJECTION of memory records (see CHANGELOG 1.0.0).
  *
  * BEFORE memory unification, VIBE.md was a persona file read off disk and injected into the prompt
- * — a projection of ITSELF, a source of truth disjoint from the memory store. Memory unification
+ *, a projection of ITSELF, a source of truth disjoint from the memory store. Memory unification
  * demotes the file to an import/export FORMAT and makes the prompt block a
  * projection of first-class memory records:
  *
  *   - Persona/preference facts persist as MemoryRecords with cls 'constraint',
  *     scope project|team, tagged VIBE_PERSONA_TAG.
  *   - renderVibeProjection(records) emits the same '## GoodVibes Agent VIBE.md'
- *     prompt block from those records — the block the file used to emit.
+ *     prompt block from those records, the block the file used to emit.
  *   - The file round-trips THROUGH the record set (vibeBodyToConstraintOptions
  *     imports a VIBE.md body into records; the records export back through the
  *     normal MemoryStore bundle seam). The file is a format, not the truth.
@@ -29,7 +29,7 @@ export const VIBE_PERSONA_TAG = 'vibe';
 export const VIBE_PROJECTION_HEADING = '## GoodVibes Agent VIBE.md';
 
 /**
- * The precedence caveat. MUST accompany every projected block — persona records
+ * The precedence caveat. MUST accompany every projected block, persona records
  * never override explicit instructions, safety, tool contracts, confirmations, or
  * secret-handling.
  */
@@ -66,7 +66,7 @@ export function selectVibeRecords(
 
 function vibeLine(record: MemoryRecord): string {
   const detail = record.detail?.trim();
-  return detail && detail !== record.summary ? `- ${record.summary} — ${detail}` : `- ${record.summary}`;
+  return detail && detail !== record.summary ? `- ${record.summary}, ${detail}` : `- ${record.summary}`;
 }
 
 /**
@@ -100,7 +100,7 @@ export interface VibeImportOptions {
 const BULLET_PREFIX = /^\s*[-*]\s+/;
 
 /**
- * Turn a VIBE.md body into constraint MemoryAddOptions — the file demoted to an
+ * Turn a VIBE.md body into constraint MemoryAddOptions, the file demoted to an
  * IMPORT FORMAT. Each bullet line becomes one persona record so that editing a
  * single record later changes exactly one line of the projected block. A body
  * with no bullets becomes a single record carrying the whole body as detail.

@@ -11,7 +11,7 @@
  * Those two facts collided in the `ConfigManager` CONSTRUCTOR: the daemon-tier
  * overlay runs there, before any product has called its `ensure*` seeding, so a
  * daemon settings file containing `email.imapHost` made `resolvePath` throw
- * "section 'email' does not exist" — and every `ConfigManager` built against
+ * "section 'email' does not exist", and every `ConfigManager` built against
  * that directory failed to construct. A daemon that had been configured
  * correctly could not start.
  *
@@ -98,7 +98,7 @@ describe('a ConfigManager constructed over a daemon tier holding app-layer keys'
     expect(manager).toBeDefined();
     // And the daemon's value is the one that answers, which is the whole point
     // of the tier: a surface stored it, the daemon reads it back.
-    // 'email.*' is an app-layer section, not a CONFIG_SCHEMA key — `get()`'s
+    // 'email.*' is an app-layer section, not a CONFIG_SCHEMA key, `get()`'s
     // generic signature has no ConfigKey literal for it, so the key is cast to
     // `never` (the only type assignable to every `K extends ConfigKey`) and the
     // resulting `ConfigValue<never>` (itself `never`) is widened to `unknown`
@@ -111,9 +111,9 @@ describe('a ConfigManager constructed over a daemon tier holding app-layer keys'
 /**
  * A daemon that cannot ingest a setting must refuse LOUDLY, never mutely.
  *
- * The 23:09 incident: a daemon read `calendar.google.clientSecretRef` — the
+ * The 23:09 incident: a daemon read `calendar.google.clientSecretRef`, the
  * swept-credential reference a NEWER component wrote into the shared daemon
- * settings file — and exited 1 with nothing on stderr, nothing in the journal.
+ * settings file, and exited 1 with nothing on stderr, nothing in the journal.
  * It crash-looped 77 times overnight and the owner found out by everything
  * being dead.
  *
@@ -156,7 +156,7 @@ describe('settings ingestion: the exact 23:09 shape', () => {
     });
     expect(manager.get('calendar.google.clientSecretRef' as never) as unknown)
       .toBe('goodvibes://secrets/goodvibes/calendar.google.clientSecret');
-    // The incident shape is now ordinary, readable settings — not a notice and
+    // The incident shape is now ordinary, readable settings, not a notice and
     // certainly not an exit.
     expect(manager.getIngestionQuarantine()).toHaveLength(0);
   });
@@ -298,7 +298,7 @@ describe('settings ingestion: mixed versions', () => {
     expect(thrown?.name).toBe('SettingsIngestionRefusal');
     expect(lines).toHaveLength(1);
     expect(lines[0]).toContain('was migrated by a newer component (credential-sweep');
-    expect(lines[0]).toContain('is older than the floor (99.0.0) — update it');
+    expect(lines[0]).toContain('is older than the floor (99.0.0), update it');
     expect(lines[0]).not.toContain('controlPlane.port');
   });
 
@@ -318,7 +318,7 @@ describe('settings ingestion runs after the load-time migrations, not before', (
   test('a retired key the platform itself folds away is not reported as unknown', () => {
     // `sandbox.judgmentAutoApprove` is a key the legacy-settings migration
     // rewrites onto `sandbox.judgment` on every load. Screening the RAW file
-    // would report it as an unknown form of a key the reader knows — true of
+    // would report it as an unknown form of a key the reader knows, true of
     // the bytes on disk and false of the config the reader actually builds.
     // A key the platform is about to rewrite itself is not one it fails to
     // understand, so the migrations run first and the screen sees the result.
@@ -339,7 +339,7 @@ describe('the refusal reaches the operator even when the host has taken over std
     // goodvibes-tui replaces `process.stderr.write` while a screen is rendered
     // (runtime/terminal-output-guard.ts), recording writes instead of printing
     // them. A fatal settings refusal routed through that wrapper is recorded
-    // into a process that is about to stop existing — which is silence.
+    // into a process that is about to stop existing, which is silence.
     //
     // So the default writer is `writeSync(2, …)`. This pins that: with
     // `process.stderr.write` replaced by a recorder, the recorder must stay

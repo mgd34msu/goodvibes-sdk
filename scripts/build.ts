@@ -1,11 +1,11 @@
 /**
- * build.ts — rebuild every workspace package's dist.
+ * build.ts, rebuild every workspace package's dist.
  *
  * ## Why the output tree is never deleted up front
  *
  * This used to `rm -rf` every `packages/*` dist directory before running tsc.
- * The intent was only to drop ORPHANS — outputs left behind by a source file
- * that has since been renamed or deleted — but the cost was a window, minutes
+ * The intent was only to drop ORPHANS, outputs left behind by a source file
+ * that has since been renamed or deleted, but the cost was a window, minutes
  * long on a cold build, in which the SDK's compiled output did not exist.
  *
  * That window is not private to this repository. A consumer checkout dev-linked
@@ -13,14 +13,14 @@
  * `@pellux/goodvibes-*` import through this tree, so for the length of a
  * rebuild it could resolve NONE of them. Whole test files died at import with
  * "Cannot find module", and typechecks failed on imports that were perfectly
- * correct — always transiently, always passing on a lone re-run, which is the
+ * correct, always transiently, always passing on a lone re-run, which is the
  * hardest possible failure to attribute. It was seen live: an SDK build running
  * in one terminal turned a consumer's typecheck red in another.
  *
  * So the tree stays in place. `tsc -b --force` rewrites every output it owns,
  * so a file is only ever replaced, never briefly absent. Orphans are then
  * removed in one sub-second pass, using the emitted-file list tsc itself
- * reports — not a heuristic about timestamps, and not a guess.
+ * reports, not a heuristic about timestamps, and not a guess.
  */
 import { execFileSync } from 'node:child_process';
 import { readdirSync, rmSync, statSync } from 'node:fs';
@@ -104,15 +104,15 @@ function distFiles(): string[] {
  */
 function pruneOrphanedDistFiles(emitted: ReadonlySet<string>): void {
   if (emitted.size === 0) {
-    console.log('build: tsc reported no emitted files — skipping the orphan sweep');
+    console.log('build: tsc reported no emitted files, skipping the orphan sweep');
     return;
   }
   let removed = 0;
   for (const file of distFiles()) {
     if (emitted.has(file)) continue;
     // Only files tsc itself produces are orphan candidates. Everything else in
-    // dist belongs to a later step — prepare:sdk writes the contract artifacts
-    // there — and deleting those just to have them rewritten seconds later
+    // dist belongs to a later step, prepare:sdk writes the contract artifacts
+    // there, and deleting those just to have them rewritten seconds later
     // reintroduces, in miniature, the very gap this rewrite removed.
     if (!TSC_OUTPUT_SUFFIXES.some((suffix) => file.endsWith(suffix))) continue;
     // Ambient declarations are hand-written .d.ts inputs that prepare:sdk copies

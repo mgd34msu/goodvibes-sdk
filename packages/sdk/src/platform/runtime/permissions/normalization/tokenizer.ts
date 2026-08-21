@@ -1,5 +1,5 @@
 /**
- * Tokenizer — converts a raw shell command string into an ordered list
+ * Tokenizer, converts a raw shell command string into an ordered list
  * of CommandToken objects.
  *
  * Handles:
@@ -41,7 +41,7 @@ const OPERATOR_TOKENS = new Set(['&&', '||', ';', '|', '>', '>>', '<', '2>', '<<
 const HEREDOC_DELIMITER_END = /[\s;|&<>]/;
 
 /**
- * Returns the offset just past a heredoc body — the character after the line
+ * Returns the offset just past a heredoc body, the character after the line
  * whose trimmed text equals `delimiter`, or the end of input if the heredoc is
  * never terminated.
  *
@@ -131,7 +131,7 @@ function splitRaw(input: string, maxTokens: number): Array<{ value: string; posi
     //
     // The body is data handed to the receiving process, not shell source. Left
     // untokenized it was scanned as ordinary shell text, so `;`/`&&`/`|` inside
-    // the body split it into fabricated command segments — a heredoc carrying
+    // the body split it into fabricated command segments, a heredoc carrying
     // the characters `rm -rf` was reported as a denied destructive segment that
     // the shell would never execute. Consume the operator and delimiter as
     // tokens (the redirect stays visible) and skip the body.
@@ -216,7 +216,7 @@ function splitRaw(input: string, maxTokens: number): Array<{ value: string; posi
       continue;
     }
 
-    // Regular token — read until whitespace or operator
+    // Regular token, read until whitespace or operator
     let j = i;
     while (j < len) {
       const c = input[j]!;
@@ -244,7 +244,7 @@ function splitRaw(input: string, maxTokens: number): Array<{ value: string; posi
 export function tokenize(command: string): CommandToken[] {
   // Hard-truncate inputs that exceed the maximum length limit.
   // This emergency truncation bounds runtime independently of all
-  // other logic — if the string is too long, we cut it before any parsing.
+  // other logic, if the string is too long, we cut it before any parsing.
   const safe = command.length > MAX_INPUT_LENGTH ? command.slice(0, MAX_INPUT_LENGTH) : command;
   const raw = splitRaw(safe, MAX_TOKEN_COUNT);
   const tokens: CommandToken[] = [];

@@ -4,7 +4,7 @@ import type { MemoryImportResult } from './memory-store.js';
 import { runHonestMemorySearch, type HonestMemorySearchOptions, type HonestMemorySearchResult } from './memory-recall-contract.js';
 
 /**
- * MemoryRegistry — thin observable wrapper around the MemoryStore.
+ * MemoryRegistry, thin observable wrapper around the MemoryStore.
  * Panels subscribe via listeners; commands push/retrieve through this.
  */
 export class MemoryRegistry {

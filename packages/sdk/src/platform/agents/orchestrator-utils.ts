@@ -9,7 +9,7 @@ import { setAgentProgress, type ProgressAudience } from './progress-audience.js'
 
 /**
  * Re-exported so the runner reaches progress classification through the same
- * module it already reaches `summarizeToolArgs` through — one import, and the
+ * module it already reaches `summarizeToolArgs` through, one import, and the
  * label and its audience stay next to each other.
  */
 export { setAgentProgress, type ProgressAudience };
@@ -18,8 +18,8 @@ export { setAgentProgress, type ProgressAudience };
  * Compact an agent conversation when the model/provider itself reported
  * context exhaustion on a successful response (see isContextOverflowSignal).
  * The provider's report is authoritative over local estimates, so this runs
- * immediately — the same structural compaction as the runner's
- * prompt-too-long emergency path — before any further chat call.
+ * immediately, the same structural compaction as the runner's
+ * prompt-too-long emergency path, before any further chat call.
  * Returns true when compaction ran.
  */
 export function maybeCompactAfterModelContextWarning(opts: {

@@ -1,23 +1,23 @@
 /**
- * power-work-signals-envelope.test.ts — regression test for the work-signals
+ * power-work-signals-envelope.test.ts, regression test for the work-signals
  * envelope-shape defect.
  *
  * bindPowerWorkSignals (packages/sdk/src/platform/power/work-signals.ts) used
- * to declare its bus slice with a hand-written envelope shape —
- * `{ event: Record<string, unknown> }` — that has never matched the real
+ * to declare its bus slice with a hand-written envelope shape,
+ * `{ event: Record<string, unknown> }`, that has never matched the real
  * `EventEnvelope` (packages/transport-core/src/event-envelope.ts:
  * `type`/`ts`/optional trace-and-id fields/`payload`, never `event`). Every
  * handler read `envelope.event[key]`, i.e. `undefined[key]`, which throws.
  * RuntimeEventBus.emit() catches per-listener errors
  * (events/index.ts:_recordListenerError) rather than propagating them, so the
- * observable effect was silent: the sleep inhibitor was simply never taken —
+ * observable effect was silent: the sleep inhibitor was simply never taken,
  * PowerManager.holdWork/releaseWork were never called, and the host could
  * suspend mid-run.
  *
  * This test drives REAL envelopes through a REAL RuntimeEventBus, using the
  * real typed emitters (emitTurnSubmitted, emitAgentSpawning/Completed,
  * emitAutomationRunQueued/Completed) exactly as the orchestrator/agents/
- * automation subsystems call them — never a hand-shaped `{ event: ... }`
+ * automation subsystems call them, never a hand-shaped `{ event: ... }`
  * stub, which would pass against the bug just as happily as against the fix.
  */
 import { describe, expect, test } from 'bun:test';
@@ -32,13 +32,13 @@ import type { PowerManager } from '../packages/sdk/src/platform/power/manager.ts
 /**
  * work-signals.ts's own doc comment on `PowerWorkSignalBus` claims
  * "RuntimeEventBus.on is generic ... so it structurally satisfies this
- * non-generic signature without a cast at the call site" — the compiler
+ * non-generic signature without a cast at the call site", the compiler
  * disagrees: `AnyRuntimeEvent`'s member payloads have no index signature, so
  * `EventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>` is not assignable
  * to `EventEnvelope<string, Record<string, unknown>>`. This test intentionally
  * drives a REAL RuntimeEventBus (not a duck-typed stub) through
  * bindPowerWorkSignals, so the cast below only affects what the type checker
- * believes about `bus`'s static type — the exact same real bus instance is
+ * believes about `bus`'s static type, the exact same real bus instance is
  * still passed and used at runtime.
  */
 function bindOverRealBus(

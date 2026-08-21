@@ -17,7 +17,7 @@ export interface ControlPlaneConfig {
   host: string;
   port: number;
   /**
-   * An OVERRIDE for a genuinely external address — a tunnel or reverse proxy
+   * An OVERRIDE for a genuinely external address, a tunnel or reverse proxy
    * whose public address the bind cannot describe. Empty by default, and empty
    * is the normal state: the everyday base URL is DERIVED from
    * `hostMode`/`host`/`port`/`tls.mode` by `deriveControlPlaneBaseUrl`, so it
@@ -25,7 +25,7 @@ export interface ControlPlaneConfig {
    *
    * This is deliberately not a mirror of the bind. The removed `baseUrl` key
    * was one, had no writers, and drifted on three axes at once (port, scheme,
-   * and a hand-set host passed through verbatim) — set this ONLY when an
+   * and a hand-set host passed through verbatim), set this ONLY when an
    * off-box address genuinely differs from where the daemon listens.
    */
   publicBaseUrl: string;
@@ -57,7 +57,7 @@ export interface HttpListenerRuntimeConfig {
   port: number;
   trustProxy: boolean;
   /**
-   * Whether CF-Connecting-IP is honored — and only from a peer inside a
+   * Whether CF-Connecting-IP is honored, and only from a peer inside a
    * published Cloudflare range. Meaningless without `trustProxy`, which is why
    * it is a second key rather than a third value of the first one.
    */
@@ -94,9 +94,9 @@ export interface NetworkConfig {
  * Outbound relay reachability. When enabled, the daemon connects OUTBOUND to a
  * self-hostable, zero-knowledge relay and registers under an unguessable
  * rendezvous id so surfaces can reach it from outside the LAN. The relay never
- * sees plaintext — an end-to-end channel terminates inside the daemon.
+ * sees plaintext, an end-to-end channel terminates inside the daemon.
  * `relay.enabled` defaults ON, but no connection is ever made without an
- * explicitly configured `relay.url` — leave it empty to stay LAN-only.
+ * explicitly configured `relay.url`, leave it empty to stay LAN-only.
  */
 export interface RelayConfig {
   enabled: boolean;

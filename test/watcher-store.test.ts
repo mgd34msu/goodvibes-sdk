@@ -250,7 +250,7 @@ describe('watcher store: quarantine-don\'t-crash load', () => {
     // A CI matrix runner's filesystem rounded mtimes coarsely enough that a
     // tight corrupt-load loop produced all-equal mtimes; the old mtime-only
     // sort could then pick the JUST-quarantined file as the "oldest" victim,
-    // whose .why had not been written yet — deleting the file and leaving the
+    // whose .why had not been written yet, deleting the file and leaving the
     // receipt written afterwards orphaned (5 files, 6 receipts). This probe
     // constructs the tie deliberately instead of hoping a runner provides it.
     const dir = makeStoreDir();

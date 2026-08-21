@@ -2,7 +2,7 @@
 //
 // The WebAuthn (passkey) assertion-verification core for relay step-up. This is
 // pure crypto over node/Web Crypto (`crypto.subtle`) and a tiny CBOR reader for
-// the COSE public key — NO third-party WebAuthn library. It verifies exactly the
+// the COSE public key, NO third-party WebAuthn library. It verifies exactly the
 // thing a mutating relay call must prove: that a registered authenticator signed
 // a fresh, server-issued challenge for this relying party and origin, with the
 // presence/verification flags the policy requires, and without its signature

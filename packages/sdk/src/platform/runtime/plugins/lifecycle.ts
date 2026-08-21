@@ -52,7 +52,7 @@ export function canTransition(
 /**
  * Attempts a state transition and returns a typed result.
  *
- * This is a pure function — it has no side effects. The caller is responsible
+ * This is a pure function, it has no side effects. The caller is responsible
  * for updating the plugin record and emitting events.
  *
  * @param from - Current state.

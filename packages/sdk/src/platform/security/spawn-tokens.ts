@@ -48,16 +48,16 @@ interface CanSpawnResult {
  * Manages spawn tokens for the bounded recursive orchestration security model.
  *
  * Security model (3 layers):
- *   1. Policy gate   — recursionEnabled must be true
- *   2. Capacity gate — currentAgentCount < maxActiveAgents && depth <= maxDepth
- *   3. Token gate    — token must be valid, authentic, not expired, and canGenerate
+ *   1. Policy gate  , recursionEnabled must be true
+ *   2. Capacity gate, currentAgentCount < maxActiveAgents && depth <= maxDepth
+ *   3. Token gate   , token must be valid, authentic, not expired, and canGenerate
  */
 export class SpawnTokenManager {
   private secret: string;
   private tokens = new Map<string, SpawnToken>();
 
   constructor(sessionId: string) {
-    // Per-session random secret — never shared outside this instance
+    // Per-session random secret, never shared outside this instance
     this.secret = `${sessionId}:${randomBytes(32).toString('hex')}`;
   }
 
@@ -163,7 +163,7 @@ export class SpawnTokenManager {
       return { valid: false, reason: 'token not registered (revoked or foreign)' };
     }
     if (!this.verifySignature(token)) {
-      return { valid: false, reason: 'signature mismatch — token tampered' };
+      return { valid: false, reason: 'signature mismatch, token tampered' };
     }
     if (Date.now() > token.expiresAt) {
       return { valid: false, reason: 'token expired' };

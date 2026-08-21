@@ -1,5 +1,5 @@
 /**
- * SloCollector — collects SLO duration measurements from runtime events.
+ * SloCollector, collects SLO duration measurements from runtime events.
  *
  * Listens to the RuntimeEventBus and tracks four critical path latencies:
  * - turn_start_ms: TURN_SUBMITTED → first STREAM_DELTA

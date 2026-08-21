@@ -24,7 +24,7 @@ import type { UiTasksSnapshot } from './ui-read-models.js';
  * The EXACT slice of the runtime-services composition that
  * {@link createRuntimeFoundationClients} (and the transport/api factories it
  * composes) actually reads. Named and exported so a fork that composes its own
- * runtime services can construct the options from real objects it owns —
+ * runtime services can construct the options from real objects it owns,
  * without fabricating the SDK-internal remainder of RuntimeServices (memory
  * governor, cache registry, pause controller, schedulers, ...), none of which
  * this layer touches.

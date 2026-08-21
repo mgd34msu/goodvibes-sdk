@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/network
+ * Coverage-gap smoke test, platform/runtime/network
  * Verifies inbound/outbound TLS inspection functions return correct observable shapes.
  * Closes coverage gap: platform/runtime/network
  */
@@ -41,7 +41,7 @@ describe('platform/runtime/network — behavior smoke', () => {
   test('resolveInboundTlsContext returns context with tls undefined in default (off) mode', () => {
     const ctx = resolveInboundTlsContext(makeConfig(), 'controlPlane');
     expect(ctx).not.toBeNull(); // presence-only: context returned
-    // In 'off' mode no TLS credentials — tls is undefined
+    // In 'off' mode no TLS credentials, tls is undefined
     expect(ctx.tls).toBeUndefined();
   });
 

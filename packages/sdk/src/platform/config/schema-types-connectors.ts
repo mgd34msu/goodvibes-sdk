@@ -1,5 +1,5 @@
 /**
- * schema-types-connectors.ts — the `email.*` / `calendar.*` / `google.*`
+ * schema-types-connectors.ts, the `email.*` / `calendar.*` / `google.*`
  * connector domains' types.
  *
  * Split out the same way schema-types-owner-profile.ts and
@@ -10,7 +10,7 @@
  *
  * Types only. The defaults, the descriptions and the editable settings rows
  * are in schema-domain-connectors.ts, which is also where the `declare
- * module` merge into `GoodVibesConfig` lives — co-located with the defaults,
+ * module` merge into `GoodVibesConfig` lives, co-located with the defaults,
  * as every other domain does it.
  */
 
@@ -90,7 +90,7 @@ export type ConnectorsConfigKey =
  * Maps a connector key to its value type.
  *
  * Every key is written out, terminating in `never`, rather than collapsing
- * the repeated strings into a default arm — the completeness gate
+ * the repeated strings into a default arm, the completeness gate
  * (test/config-key-union-completeness.test.ts) reads these clauses out of
  * the source to prove no schema key is missing a typed accessor, and a
  * default arm would make most of them invisible to it.

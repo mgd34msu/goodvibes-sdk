@@ -1,11 +1,11 @@
 /**
- * oauth-flow.ts — the OAuth 2.0 machinery for calendar connectivity: the
+ * oauth-flow.ts, the OAuth 2.0 machinery for calendar connectivity: the
  * authorization-code flow with a loopback redirect and mandatory PKCE (the standard
  * native-app pattern, RFC 8252/7636), and the device-code flow (RFC 8628) as the
  * headless fallback. Token exchange, refresh, and revocation live here too.
  *
- * Every network call goes through the injected HttpFetch — this file never imports
- * a real fetch — so the full flow runs against fake servers in tests with no real
+ * Every network call goes through the injected HttpFetch, this file never imports
+ * a real fetch, so the full flow runs against fake servers in tests with no real
  * network and no real port. PKCE hashing/randomness reuse the SDK's runtime-neutral
  * crypto adapter.
  */
@@ -38,7 +38,7 @@ export class OAuthFlowError extends Error {
 /**
  * Refuse, by name, before any flow that cannot succeed.
  *
- * No client id ships with the product — whoever sets up the environment registers
+ * No client id ships with the product, whoever sets up the environment registers
  * their own OAuth app with the provider. So "not configured" is a normal state with
  * a concrete next step, and the message says exactly which key to set rather than
  * leaving the operator to guess whether the build is broken. It is thrown BEFORE
@@ -89,7 +89,7 @@ interface RawTokenResponse {
 /**
  * A conservative fallback lifetime (seconds) used when a provider's token response
  * omits `expires_in` or sends something we cannot parse as a positive number. Never
- * treat that as "never expires" — an access token that silently 401s later, with no
+ * treat that as "never expires", an access token that silently 401s later, with no
  * expiry recorded to trigger a proactive refresh, is worse than refreshing a bit
  * early. One hour matches the common real-world default (Google/Microsoft both
  * normally send 3600).
@@ -100,7 +100,7 @@ const DEFAULT_EXPIRES_IN_SECONDS = 3600;
  * Coerce a token response's `expires_in` into a positive number of seconds.
  * Accepts a real number, a numeric string (some providers send `"3600"` instead of
  * `3600`), and falls back to {@link DEFAULT_EXPIRES_IN_SECONDS} for anything else
- * (absent, non-numeric, zero, or negative) — this build never emits a token set with
+ * (absent, non-numeric, zero, or negative), this build never emits a token set with
  * no expiry at all, which the store would otherwise read as "connected forever".
  */
 function coerceExpiresInSeconds(raw: unknown): number {
@@ -133,8 +133,8 @@ export function parseTokenResponse(
     accessToken: json.access_token,
     ...(refreshToken ? { refreshToken } : {}),
     tokenType: typeof json.token_type === 'string' && json.token_type.length > 0 ? json.token_type : 'Bearer',
-    // Always set expiresAt — never omit it just because expires_in was absent or
-    // unparsable — a coerced/defaulted lifetime beats "never expires".
+    // Always set expiresAt, never omit it just because expires_in was absent or
+    // unparsable, a coerced/defaulted lifetime beats "never expires".
     expiresAt: now + coerceExpiresInSeconds(json.expires_in) * 1000,
     ...(scopes ? { scopes } : {}),
     obtainedAt: now,

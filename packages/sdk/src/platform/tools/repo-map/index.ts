@@ -1,11 +1,11 @@
-// repo_map — a model-invoked, token-budgeted repository map.
+// repo_map, a model-invoked, token-budgeted repository map.
 //
 // STANDING RULE: this is a tool the model CALLS, not passive always-on context
 // injection. It returns a ranked outline of the repo (a directory summary plus
 // the highest-centrality source files and their top-level exports), prioritized
 // by import-graph centrality with file size as a tie-break, and capped to a
 // token budget. It reuses the SDK's existing ImportGraph for structure and a
-// cheap regex for exports — no tree-sitter, no LLM, no process spawn.
+// cheap regex for exports, no tree-sitter, no LLM, no process spawn.
 import { statSync } from 'node:fs';
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep } from 'node:path';
@@ -124,8 +124,8 @@ export function createRepoMapTool(options: {
   projectRoot: string;
   /**
    * Per-file read-permission decision (wired to PermissionManager.previewReadAccess).
-   * A restricted file keeps its ranked path line but its exported symbols — which
-   * require reading the file — are withheld and the line is flagged.
+   * A restricted file keeps its ranked path line but its exported symbols, which
+   * require reading the file, are withheld and the line is flagged.
    */
   readAccessFilter?: ReadAccessFilter;
 }): Tool {

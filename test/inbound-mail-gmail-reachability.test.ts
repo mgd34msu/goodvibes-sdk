@@ -1,5 +1,5 @@
 /**
- * inbound-mail-gmail-reachability.test.ts — the Gmail inbound path, driven the
+ * inbound-mail-gmail-reachability.test.ts, the Gmail inbound path, driven the
  * way the daemon builds it.
  *
  * Why this file exists rather than another unit test
@@ -7,19 +7,19 @@
  * `GmailMailSource` was complete, tested and exported, and no production code
  * ever constructed one. `createInboundMailSourceFactory` took the builder as an
  * OPTIONAL dependency (`deps.gmail`), every test that exercised the Gmail arm
- * handed it one, and the only composition that could have supplied it —
- * `composeInboundMail`, via `createBuiltinChannelRuntime` — passed nothing. So
+ * handed it one, and the only composition that could have supplied it,
+ * `composeInboundMail`, via `createBuiltinChannelRuntime`, passed nothing. So
  * `deps.gmail` was `undefined` on every real machine, `create()` answered
  * `null` for `kind: 'gmail'`, and `selectionFacts` reported
- * `googleAdopted: options.gmail !== undefined` — permanently false. An owner
+ * `googleAdopted: options.gmail !== undefined`, permanently false. An owner
  * with Google adopted and no IMAP configured had no inbound mail at all, and
  * the field's own comment ("Supplied by a composition that has an adopted
  * Google credential") described wiring that did not exist.
  *
  * A test that hands the factory a builder cannot catch that: it is exactly what
  * passed while production had none. So every case here starts at
- * `composeInboundMail` with the option the daemon passes — a Gmail READER
- * resolver over a real adopted credential — and asserts a Gmail source that is
+ * `composeInboundMail` with the option the daemon passes, a Gmail READER
+ * resolver over a real adopted credential, and asserts a Gmail source that is
  * actually RUNNING, with a message actually delivered through it.
  *
  * Where the credential lives, and why that changed
@@ -29,7 +29,7 @@
  * scanning `~/.gmail-mcp` on every call; that scan is gone, because going
  * through a home directory looking for another tool's credential files is not
  * something to do unasked, and most machines have no such directory. Disk
- * credentials are still fully supported and still adopt exactly as they did —
+ * credentials are still fully supported and still adopt exactly as they did,
  * only now because someone asked for it. The state under test is therefore the
  * state AFTER adoption, which is the state a working machine is in.
  *
@@ -42,7 +42,7 @@
  * ────────────────────────────────────────
  * The client is a real `GoogleApiClient` over a real `GoogleTokenManager`. The
  * only substitution is `fetch`, which answers Google's four endpoints from a
- * table — the same seam `gateway-calendar-service.ts` already takes as
+ * table, the same seam `gateway-calendar-service.ts` already takes as
  * `GoogleCalendarGatewayServiceOptions.fetch`. Everything between the stored
  * credential and the delivered message is the shipped code.
  */
@@ -73,7 +73,7 @@ const MESSAGE_ID = 'msg-verification-1';
 
 const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
 /**
- * Headers yes, bodies no — "View your email message metadata such as labels and
+ * Headers yes, bodies no, "View your email message metadata such as labels and
  * headers, but not the email body", Google's own description, verbatim. The one
  * condition `surfaces.email.inbound.onInsufficientCapability: 'notice-only'`
  * can serve.
@@ -100,7 +100,7 @@ function adoptedHome(scope: string): string {
     refresh_token: 'refresh-token',
     access_token: 'stale-access-token',
     // Deliberately already expired, so the resolver's own call has to refresh
-    // rather than reusing a cached token — the path a restarted daemon takes.
+    // rather than reusing a cached token, the path a restarted daemon takes.
     expiry_date: Date.now() - 60_000,
     scope,
   }));
@@ -224,7 +224,7 @@ function composeOrNull(input: {
     'surfaces.email.inbound.enabled': true,
     // The shape the OWNER's machine has, not a shape that makes the code pass.
     //
-    // This read `JSON.stringify([WATCHED_ADDRESS])` — a full Gmail address —
+    // This read `JSON.stringify([WATCHED_ADDRESS])`, a full Gmail address,
     // and that single substitution hid a defect as complete as the one this
     // file was written for. `surfaces.email.inbound.accounts` is documented in
     // the config schema as "a JSON array of configured mailbox account
@@ -232,8 +232,8 @@ function composeOrNull(input: {
     // description is what the owner reads when he fills the key in. With
     // `primary` in it, the old `isGmailMailbox` compared it to the address
     // `users.getProfile` returned, found them unequal, looked for an IMAP host
-    // to read a domain off, found none — because this machine has never had
-    // IMAP set up, which is the entire premise — and answered false. `auto`
+    // to read a domain off, found none, because this machine has never had
+    // IMAP set up, which is the entire premise, and answered false. `auto`
     // then chose IMAP, the IMAP arm had no host to connect to, and the factory
     // answered `null`: the same end state as the defect the Gmail construction
     // fix closed, reached by a different route.
@@ -256,9 +256,9 @@ function composeOrNull(input: {
     // The config half of an ADOPTED credential. It is here rather than being
     // discovered because adoption is what puts it here: someone ran the adopt
     // command, the files on disk were read, and both halves landed in the
-    // daemon's own stores. Nothing scans `~/.gmail-mcp` on its own any more —
+    // daemon's own stores. Nothing scans `~/.gmail-mcp` on its own any more,
     // rummaging through a home directory for another tool's credential files
-    // is not something to do unasked — so the state under test is the state
+    // is not something to do unasked, so the state under test is the state
     // after adoption, which is the state a working machine is actually in.
     ...(input.noStoredCredential === true ? {} : {
       [GOOGLE_CONFIG_KEYS.oauthClientId]: 'client-id.apps.googleusercontent.com',
@@ -326,7 +326,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
    *
    * Fails if `composeInboundMail` stops constructing a `GmailMailSource`, if
    * `createDaemonGmailInboundReader` stops resolving an adopted credential, or
-   * if `createBuiltinChannelRuntime`'s option is removed — the last of those is
+   * if `createBuiltinChannelRuntime`'s option is removed, the last of those is
    * a compile error, because `gmailReader` is a required field rather than the
    * optional one that let production ship with nothing in it.
    */
@@ -354,7 +354,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
     const rig = compose();
     await rig.supervisor.start();
     // The first pass establishes the position and does not backfill, so the
-    // delivery is proved on the second pass — the one that has a cursor.
+    // delivery is proved on the second pass, the one that has a cursor.
     await rig.supervisor.start();
 
     const snapshot = await rig.supervisor.describeStatus();
@@ -379,7 +379,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
    * That last-but-two hop is why this test is in this file rather than beside
    * the unit tests. The facade's builder is a pass-through of `input.*`, and
    * replacing `capabilityPolicy: input.capabilityPolicy` with a hardcoded
-   * `'refuse-and-notify'` left every other test in the repository green — it
+   * `'refuse-and-notify'` left every other test in the repository green, it
    * was found by mutating the line, not by reading it. Nothing but an
    * end-to-end run asserts that hop.
    */
@@ -416,7 +416,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
   });
 
   /**
-   * The control. The SAME grant with the shipped default refuses instead —
+   * The control. The SAME grant with the shipped default refuses instead,
    * so the test above is the setting working, not the grant being enough.
    */
   test('the same metadata grant under the shipped default refuses and announces nothing', async () => {
@@ -438,7 +438,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
    * BOTH settings, and both because one of them alone proves nothing.
    *
    * `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` were declared in the
-   * config schema, shown in the settings UI, documented with their ranges — and
+   * config schema, shown in the settings UI, documented with their ranges, and
    * read by no code at all, because the only constructor that takes them was
    * never called. An assertion on the idle interval alone survives the
    * expecting one being hardcoded back to its default, which is the same shape
@@ -457,7 +457,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
     // Nothing is expected, so the idle interval is the one in force.
     expect(source.latency.worstCaseMs).toBe(41_000);
 
-    // Open one, and the interval in force must become the short one — the whole
+    // Open one, and the interval in force must become the short one, the whole
     // reason the source asks the predicate on every read rather than sampling
     // it once at construction.
     const expectations = (rig.supervisor as unknown as {
@@ -477,7 +477,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
     // "No credential" now means an empty STORE, which is what it means on a
     // machine where nobody has connected an account. It used to mean an empty
     // home directory, because the resolver scanned `~/.gmail-mcp` on every
-    // call — it no longer goes looking, so a bare home proves nothing either
+    // call, it no longer goes looking, so a bare home proves nothing either
     // way. The temp home is still bare, so both halves of "nothing here" hold.
     const bareHome = mkdtempSync(join(tmpdir(), 'gv-gmail-nohome-'));
     tmpRoots.push(bareHome);
@@ -518,7 +518,7 @@ describe('the Gmail inbound path is reachable from the daemon composition', () =
  *
  * Nothing here reaches into the source to call the predicate directly. Reading
  * `source.latency` is what `describeStatus` and the poll loop both do, and the
- * getter asks the predicate — so this is the production caller, driven the
+ * getter asks the predicate, so this is the production caller, driven the
  * production way.
  */
 describe('the running Gmail source probes for expectations without reaping them', () => {
@@ -565,7 +565,7 @@ describe('the running Gmail source probes for expectations without reaping them'
           recipientAddress: WATCHED_ADDRESS,
           purpose: 'signup verification',
           // The book's own minimum, so the window genuinely elapses in real
-          // time — this registry runs on the real clock.
+          // time, this registry runs on the real clock.
           windowMs: MIN_VERIFICATION_WINDOW_MS,
         });
         // The predicate sees it: the source is on the fast cadence.
@@ -573,7 +573,7 @@ describe('the running Gmail source probes for expectations without reaping them'
 
         await new Promise((resolve) => { setTimeout(resolve, 1_400); });
 
-        // Six probes — the half-minute of five-second polls that used to sit
+        // Six probes, the half-minute of five-second polls that used to sit
         // between an expiry and the sweep that was supposed to report it. Each
         // one correctly answers "nothing open"; none of them may consume it.
         for (let tick = 0; tick < 6; tick += 1) {
@@ -606,7 +606,7 @@ describe('the running Gmail source probes for expectations without reaping them'
  *
  * The credential is the evidence: `resolveGmailInboundReader` opened the grant,
  * Google answered, and `users.getProfile` named the address those credentials
- * read. The config key is a FILTER over that — it can say "watch a different
+ * read. The config key is a FILTER over that, it can say "watch a different
  * mailbox", and Gmail's API cannot read a different mailbox, so that is a real
  * `false`. What it must not do is be the only way to reach `true`, which is
  * what comparing it to the connected address made it.
@@ -678,7 +678,7 @@ describe('Gmail-ness comes from the credential, with accounts as a filter over i
    * Stated here rather than left implicit, because "absent" was the observation
    * that started this and it is a DIFFERENT question from the one above. An
    * empty list is the shipped default, and `composeInboundMail` answers `null`
-   * for it on purpose — "an empty list is honest about watching nothing rather
+   * for it on purpose, "an empty list is honest about watching nothing rather
    * than defaulting to a mailbox nobody named". A connected Google credential
    * does not change that: it says which mailbox could be read, not that the
    * owner asked for it to be. `surfaces.email.inbound.enabled` defaults to

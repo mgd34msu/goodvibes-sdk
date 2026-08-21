@@ -1,14 +1,14 @@
 /**
- * budget.ts — the three daily pools, and why drawing on them is a two-step.
+ * budget.ts, the three daily pools, and why drawing on them is a two-step.
  *
  * ── The pools ─────────────────────────────────────────────────────────────
  *
  *  - ITEM      the item price is checked against this.
  *  - OVERAGE   only charges that cannot be avoided on an approved purchase:
  *              sales tax, mandatory handling or booking fees, and the delivery
- *              option actually used. Discretionary add-ons — expedited shipping
+ *              option actually used. Discretionary add-ons, expedited shipping
  *              beyond what the ladder picks, insurance, gift wrap, extended
- *              warranties — are purchase decisions, not delivery costs, and are
+ *              warranties, are purchase decisions, not delivery costs, and are
  *              never charged here.
  *  - TOLERANCE the shortfall when the overage pool cannot cover even the
  *              cheapest delivery. Default OFF with a zero allowance, so
@@ -94,7 +94,7 @@ export interface BudgetStateSnapshot {
  *
  * Deliberately not a running counter: `snapshot()` filters spend records by the
  * CURRENT timezone every time it is asked. That is what makes changing
- * `daemon.timezone` unable to refill a spent pool — see day.ts.
+ * `daemon.timezone` unable to refill a spent pool, see day.ts.
  */
 export class BudgetLedger {
   private spend: SpendRecord[] = [];
@@ -146,7 +146,7 @@ export class BudgetLedger {
   /**
    * Hold budget for a purchase in flight.
    *
-   * Returns null when the draw does not fit what remains — the caller must treat
+   * Returns null when the draw does not fit what remains, the caller must treat
    * that as the decision, never as a reason to charge anyway.
    */
   reserve(input: {
@@ -207,7 +207,7 @@ export class BudgetLedger {
    * Reclaim reservations whose purchase died, and report what was reclaimed.
    *
    * Returns the swept entries rather than a count, because the platform rule for
-   * anything persisted across restarts is that its recoveries are DISCLOSED —
+   * anything persisted across restarts is that its recoveries are DISCLOSED,
    * an audit record naming what was reclaimed, not a silent tidy-up.
    */
   sweep(nowMs: number): readonly BudgetReservation[] {

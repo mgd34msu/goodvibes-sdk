@@ -1,5 +1,5 @@
 /**
- * payments-owner-chain-acceptance.test.ts — the owner's sentence, end to end.
+ * payments-owner-chain-acceptance.test.ts, the owner's sentence, end to end.
  *
  * ══ The bar ═══════════════════════════════════════════════════════════════
  *
@@ -9,14 +9,14 @@
  *  store immediately. tell me over telegram about the purchase."
  *
  * Every unit in this capability could pass its own tests while that sentence
- * remained impossible — which is exactly what happened: the decision layer was
+ * remained impossible, which is exactly what happened: the decision layer was
  * complete and had no caller, so `runCheckout` was unreachable and the daemon
  * had no way to begin a purchase at all.
  *
  * So this file drives the chain through the REAL control-plane verbs, resolved
  * from the live catalog by id, with the real handlers bound to the real service.
  * Nothing here reaches into `runCheckout` directly. If a verb is missing, its
- * schema is wrong, or the service is not wired, these fail — which is the point.
+ * schema is wrong, or the service is not wired, these fail, which is the point.
  *
  * ══ What is simulated, stated plainly ═════════════════════════════════════
  *
@@ -306,7 +306,7 @@ describe('reading the store\'s email, and telling him about it', () => {
       { senderAddress: 'orders@order-update.bestbuy.com', receivedAtMs: Date.now() },
       harness.recorded,
     );
-    // A different SUBDOMAIN of the same registrable domain still matches —
+    // A different SUBDOMAIN of the same registrable domain still matches,
     // stores routinely send from one and sell from another.
     expect(result.kind).toBe('matched');
   });
@@ -374,7 +374,7 @@ describe('reading the store\'s email, and telling him about it', () => {
     // OUR number, not the one the email stated.
     expect(message).toContain('USD 146.46');
     expect(message).not.toContain('1,946.46');
-    // None of the body survives — not the instruction, not the link, not a
+    // None of the body survives, not the instruction, not the link, not a
     // single sentence of it.
     expect(message).not.toContain('reply APPROVE');
     expect(message).not.toContain('bestbuy-receipts.example');

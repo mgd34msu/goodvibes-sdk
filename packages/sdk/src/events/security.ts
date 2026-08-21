@@ -1,5 +1,5 @@
 /**
- * SecurityEvent — discriminated union covering token scope and rotation audit events.
+ * SecurityEvent, discriminated union covering token scope and rotation audit events.
  *
  * These events are emitted by the ApiTokenAuditor during audit runs.
  * Consumers (diagnostics panel, ops handlers) subscribe to these to surface

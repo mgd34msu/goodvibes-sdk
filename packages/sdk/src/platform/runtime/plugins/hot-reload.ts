@@ -2,11 +2,11 @@
  * Safe hot-reload protocol for plugins.
  *
  * Implements the 6-phase hot-reload sequence:
- *   1. Quiesce   — stop accepting new work from the plugin
- *   2. Unregister — remove plugin's registrations (commands, tools, hooks)
+ *   1. Quiesce  , stop accepting new work from the plugin
+ *   2. Unregister, remove plugin's registrations (commands, tools, hooks)
  *   3. Unload    - deactivate and clean up the previous plugin instance
- *   4. Reload    — load the new version with a cache-bust timestamp
- *   5. Re-register — new instance calls init/activate (registers naturally)
+ *   4. Reload   , load the new version with a cache-bust timestamp
+ *   5. Re-register, new instance calls init/activate (registers naturally)
  *   6. Health check → active (healthy) or degraded (unhealthy)
  */
 
@@ -69,7 +69,7 @@ export interface HotReloadResult {
   degraded: boolean;
 }
 
-/** Default trivial health check — always returns healthy. */
+/** Default trivial health check, always returns healthy. */
 async function defaultHealthCheck(name: string): Promise<PluginHealthCheckResult> {
   return {
     healthy: true,
@@ -79,7 +79,7 @@ async function defaultHealthCheck(name: string): Promise<PluginHealthCheckResult
 }
 
 /**
- * runHotReload — Execute the safe 6-phase hot-reload protocol for a single
+ * runHotReload, Execute the safe 6-phase hot-reload protocol for a single
  * plugin.
  *
  * @param name      - Plugin name.
@@ -189,7 +189,7 @@ export async function runHotReload(
   }
 
   if (healthResult.healthy) {
-    logger.info(`[plugin-hot-reload] ${name}: hot-reload complete — active (${Date.now() - startTs}ms)`);
+    logger.info(`[plugin-hot-reload] ${name}: hot-reload complete, active (${Date.now() - startTs}ms)`);
     return {
       success: true,
       durationMs: Date.now() - startTs,
@@ -198,7 +198,7 @@ export async function runHotReload(
   } else {
     // Plugin loaded but health check failed → degraded.
     lcm.degradePlugin(name, `Health check failed: ${healthResult.message}`);
-    logger.warn(`[plugin-hot-reload] ${name}: hot-reload complete — degraded (${healthResult.message})`);
+    logger.warn(`[plugin-hot-reload] ${name}: hot-reload complete, degraded (${healthResult.message})`);
     return {
       success: true, // reload succeeded; just in degraded state
       durationMs: Date.now() - startTs,

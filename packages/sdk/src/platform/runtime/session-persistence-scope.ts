@@ -2,9 +2,9 @@
  * Shared types and scope resolution for session persistence.
  *
  * "Scope" is the question every persistence call answers before it touches a
- * file: WHICH directory does this call mean? There are two answers — the
+ * file: WHICH directory does this call mean? There are two answers, the
  * legacy per-call `workingDirectory` / `homeDirectory` / `surfaceRoot` triple,
- * and a declare-once `SessionSurface` — and both the durable-store half
+ * and a declare-once `SessionSurface`, and both the durable-store half
  * (session-persistence.ts) and the crash-snapshot half (session-recovery.ts)
  * route every path through the resolvers here, so the two sibling modules can
  * never disagree about where a file lives.
@@ -35,7 +35,7 @@ export type SessionSnapshot = {
  * Legacy per-call scope: `workingDirectory` / `homeDirectory` / `surfaceRoot`
  * resolved independently on every call. Kept working byte-for-byte unchanged
  * (an omitted `surfaceRoot` still silently falls back to the shared, unscoped
- * `.goodvibes/` directory) — this is the compat path. Every call through this
+ * `.goodvibes/` directory), this is the compat path. Every call through this
  * shape emits a one-time-per-process deprecation warning recommending a
  * `SessionSurface` instead. `surface` is declared here only so it can be typed
  * as `undefined`, making this shape and `SessionPersistenceSurfaceOptions`
@@ -51,7 +51,7 @@ export type SessionPersistenceLegacyOptions = {
 
 /**
  * Surface-based scope: every path is read directly off a declare-once
- * `SessionSurface` (see session-surface.ts) — no per-call scope argument is
+ * `SessionSurface` (see session-surface.ts), no per-call scope argument is
  * accepted alongside it, so there is no unscoped fallback to silently resolve
  * to and no way for a writer and a reader to disagree about a path as long as
  * they share the same surface.
@@ -83,7 +83,7 @@ export function warnLegacyOptionsOnce(): void {
   if (legacyOptionsWarned) return;
   legacyOptionsWarned = true;
   logger.warn(
-    'Session persistence called with legacy workingDirectory/homeDirectory/surfaceRoot options — pass a SessionSurface instead (see platform/runtime/session-surface.ts, createSessionSurface).',
+    'Session persistence called with legacy workingDirectory/homeDirectory/surfaceRoot options, pass a SessionSurface instead (see platform/runtime/session-surface.ts, createSessionSurface).',
   );
 }
 
@@ -152,7 +152,7 @@ export function resolveRecoveryFilePath(options: SessionPersistenceOptions | und
  * Resolve the DURABLE session-store directory (the one holding
  * `<sessionId>.jsonl` files SessionManager writes) for either call form. This
  * is the directory the recovery layer compares a snapshot against to decide
- * whether that snapshot's own session already saved something newer — see
+ * whether that snapshot's own session already saved something newer, see
  * `sessionStoreMtimeMs` in session-recovery.ts.
  */
 export function resolveSessionsDirPath(options?: SessionPersistenceOptions): string {
@@ -167,7 +167,7 @@ export function resolveSessionsDirPath(options?: SessionPersistenceOptions): str
  * The durable store file for one session inside an already-resolved sessions
  * directory. The filename stem comes from the SAME rule SessionManager.save
  * writes with (`sanitizeSessionName`), so this path is the file that session's
- * clean saves actually land in — not a lookalike derived from a second rule.
+ * clean saves actually land in, not a lookalike derived from a second rule.
  */
 export function resolveSessionStorePath(sessionsDir: string, sessionId: string): string {
   return join(sessionsDir, `${sanitizeSessionName(sessionId)}.jsonl`);
@@ -235,11 +235,11 @@ function sanitizeRecoverySessionId(sessionId: string): string {
 
 /**
  * The legacy, home-anchored, fully UNSCOPED shared recovery directory
- * (`~/.goodvibes/recovery/`, no surfaceRoot segment at all) — the oldest
+ * (`~/.goodvibes/recovery/`, no surfaceRoot segment at all), the oldest
  * layout, predating even the surfaceRoot-scoped `getRecoveryDir` above. It
  * cannot be mapped to a project deterministically (any project that ever ran
  * with this surfaceRoot before per-project scoping could have written here),
- * so it is never migrated (see session-migration.ts's header) — only
+ * so it is never migrated (see session-migration.ts's header), only
  * dual-read, one time, by the surface form of checkRecoveryFile /
  * loadRecoveryConversation / deleteRecoveryFile in session-recovery.ts.
  */

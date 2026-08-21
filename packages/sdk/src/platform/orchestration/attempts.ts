@@ -1,14 +1,14 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * attempts.ts — best-of-N sibling attempts for the orchestration engine.
+ * attempts.ts, best-of-N sibling attempts for the orchestration engine.
  *
  * A work item declared with `attempts: N` is expanded into N sibling items that
  * run the SAME pipeline INDEPENDENTLY, each in its own isolated worktree. When a
  * sibling passes, the engine does NOT auto-merge it: it parks the sibling in the
  * 'held-merge' state (worktree kept, diff inspectable) and, once EVERY sibling in
  * the group is terminal, exposes the group's candidates for a winner pick. A
- * winner is accepted explicitly (fleet.attempts.pick) — or PROPOSED by an
+ * winner is accepted explicitly (fleet.attempts.pick), or PROPOSED by an
  * optional judge model (fleet.attempts.judge), which only auto-picks when the
  * source item opted into `autoAcceptWinner`. Picking merges the winner's branch
  * through the existing sequential integration lane and cleans the losers'
@@ -48,7 +48,7 @@ export interface AttemptsCoordinatorDeps {
   readonly getWorkstream: (id: string) => Workstream | null;
   /** Route a (non-attempt terminal-passed item, or a picked winner) onto the sequential integration lane. */
   readonly enqueueIntegration: (workstream: Workstream, item: WorkItem) => void;
-  /** Remove a loser's worktree (clean → removed; dirty → kept — the existing cleanup rule). Never throws. */
+  /** Remove a loser's worktree (clean → removed; dirty → kept, the existing cleanup rule). Never throws. */
   readonly cleanupWorktree: (workstream: Workstream, item: WorkItem) => Promise<void>;
   /** The diff a candidate's worktree branch introduced over base, or null if it has no live worktree. */
   readonly diffItem: (item: WorkItem) => Promise<{ files: string[]; unifiedDiff: string; stat: string } | null>;
@@ -136,7 +136,7 @@ export function createAttemptsCoordinator(deps: AttemptsCoordinatorDeps): Attemp
         sib.attemptTotal = n;
         // Record the original spec id (when it had one) so a dependent that
         // referenced it can be resolved back to this group by the dependency
-        // gate — the seam that makes a NON-LEAF best-of-N item work.
+        // gate, the seam that makes a NON-LEAF best-of-N item work.
         if (spec.id) sib.attemptSourceId = spec.id;
         if (spec.autoAcceptWinner) sib.autoAcceptWinner = true;
         if (spec.budget) sib.itemBudget = spec.budget;
@@ -273,7 +273,7 @@ export function createAttemptsCoordinator(deps: AttemptsCoordinatorDeps): Attemp
     winner.attemptWinner = true;
     deps.enqueueIntegration(workstream, winner);
     // Losers: discard their work (clean the worktree) and mark terminal. A held
-    // loser passed its gates — it is 'passed' with an honest "not selected" note,
+    // loser passed its gates, it is 'passed' with an honest "not selected" note,
     // not a failure; a failed loser is left failed.
     for (const loser of losers) {
       if (loser.state === 'held-merge') {

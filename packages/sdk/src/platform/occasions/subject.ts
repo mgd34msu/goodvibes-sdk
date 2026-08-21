@@ -1,5 +1,5 @@
 /**
- * subject.ts — working out who an occasion is about.
+ * subject.ts, working out who an occasion is about.
  *
  * ## Why this exists
  *
@@ -35,7 +35,7 @@
  *
  * ## What "his own name" means
  *
- * `identity.name` and `identity.goesBy` from his profile — the two fields the
+ * `identity.name` and `identity.goesBy` from his profile, the two fields the
  * document already has for exactly this, read live from his file. There is no
  * name literal in this module and there is none in the tests that matter: the
  * behaviour is "a line whose subject is a name the owner declared for himself",
@@ -53,7 +53,7 @@ import type { Occasion, OccasionSubject } from './types.js';
  */
 const SELF_WORDS: readonly string[] = ['me', 'myself', 'mine', 'self'];
 
-/** True when a segment — with or without its `for` — declares the owner. */
+/** True when a segment, with or without its `for`, declares the owner. */
 export function isSelfAttribution(value: string): boolean {
   return SELF_WORDS.includes(normalizeProfileKey(value));
 }
@@ -65,7 +65,7 @@ export function isSelfAttribution(value: string): boolean {
  * `Our anniversary` → empty, because it names no one; `birthday` → empty.
  *
  * Deliberately only the possessive. A title is not a sentence to be mined for
- * names — the one place a title reliably names its subject is in front of an
+ * names, the one place a title reliably names its subject is in front of an
  * apostrophe-s, and reaching further would be the guessing this module exists
  * to avoid.
  */
@@ -79,7 +79,7 @@ export function possessiveSubject(title: string): string {
  *
  * A declared name contributes itself AND its first word, so `identity.name` of
  * "Mike Davis" recognises a line written as "Mike's birthday". The first word
- * only — the last name alone is a family name, and a family name matching would
+ * only, the last name alone is a family name, and a family name matching would
  * silence every relative sharing it.
  */
 export function ownerAliasSet(declaredNames: readonly string[]): ReadonlySet<string> {
@@ -120,13 +120,13 @@ export function resolveOccasionSubject(
  *
  * One rule, and it is narrow on purpose: something about him that he only has
  * to remember is something he already knows. His own birthday, his own
- * anniversary of anything. He does not need a message about it — least of all
- * an hourly one — so nothing is sent, and it stays visible to anything that
+ * anniversary of anything. He does not need a message about it, least of all
+ * an hourly one, so nothing is sent, and it stays visible to anything that
  * ASKS what is coming up.
  *
  * The narrowness is the load-bearing part. An occasion about him that wants an
- * ACTION — `Renew passport · 2026-11-02 · once · gift-giving` is the shape, and
- * the kind is the thing that says an action is wanted — is not covered, and
+ * ACTION, `Renew passport · 2026-11-02 · once · gift-giving` is the shape, and
+ * the kind is the thing that says an action is wanted, is not covered, and
  * keeps the ordinary two-boundary cadence. He does not know when his passport
  * expires. He does know when he was born.
  */

@@ -78,7 +78,7 @@ describe('runHonestMemorySearch — semantic fallback is honest, never a silent 
     expect(result.indexUnavailableReason).not.toBeNull();
     expect(result.indexUnavailableReason).toContain('disabled');
     expect(result.mode).toBe('literal');
-    // The literal fallback still finds the record — not a silent empty.
+    // The literal fallback still finds the record, not a silent empty.
     expect(result.records.map((r) => r.summary)).toEqual(['alpha deployment plan']);
     expect(result.caveat).toBeNull();
   });

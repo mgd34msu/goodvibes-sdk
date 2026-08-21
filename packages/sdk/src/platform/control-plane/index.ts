@@ -73,7 +73,7 @@ export type {
   SharedSessionRoutingIntent,
 } from './session-intents.js';
 // The one shared normalizer from a session's routing intent to an agent-spawn
-// routing input — public so every surface derives spawn routing identically
+// routing input, public so every surface derives spawn routing identically
 // instead of re-implementing the model/provider/fallback rules.
 export { buildSharedSessionAgentSpawnRoutingInput } from './session-intents.js';
 // Surface-presence check plus the freshness window the daemon itself applies:
@@ -96,7 +96,7 @@ export {
   sweepPreSplitControlPlaneStore,
 } from './pre-split-control-plane-sweep.js';
 export type { PreSplitControlPlaneSweepReport } from './pre-split-control-plane-sweep.js';
-// The one resolver every control-plane store file path goes through — the
+// The one resolver every control-plane store file path goes through, the
 // surface segment is mandatory, never a silent default (see the file header).
 export { controlPlaneStorePath } from './control-plane-store-paths.js';
 export type { ControlPlaneStorePathShellPaths } from './control-plane-store-paths.js';

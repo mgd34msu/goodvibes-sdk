@@ -1,23 +1,23 @@
 /**
- * Shared bare model ID resolver — the single place every user-facing entry
+ * Shared bare model ID resolver, the single place every user-facing entry
  * site routes through so a bare id like `claude-fable-5` "just works"
  * instead of requiring the `provider:model` registryKey format.
  *
  * Behavioral contract (owner-driven, from the live incident that produced
- * this item): a typed model reference resolves in this order —
- *   1. Already provider-qualified (`provider:model`) — pass through unchanged.
+ * this item): a typed model reference resolves in this order,
+ *   1. Already provider-qualified (`provider:model`), pass through unchanged.
  *      Storage stays provider-qualified; this is an input-resolution layer only.
  *   2. Provider already known from context (e.g. the request already carries
- *      a provider field) and that provider has this bare id — qualify to it.
+ *      a provider field) and that provider has this bare id, qualify to it.
  *   3. Unique across the whole registry (exactly one provider has this bare
- *      id) — auto-qualify to it.
- *   4. Ambiguous (more than one provider has this bare id) — error listing
+ *      id), auto-qualify to it.
+ *   4. Ambiguous (more than one provider has this bare id), error listing
  *      the actual candidate registryKeys, never a generic format lecture.
- *   5. Unknown (no provider has this bare id) — closest-match suggestions
+ *   5. Unknown (no provider has this bare id), closest-match suggestions
  *      by edit distance, plus a concrete valid example from the live
  *      registry.
  *
- * Every error produced here names real, currently-registered models —
+ * Every error produced here names real, currently-registered models,
  * the old "Model lookup requires a provider-qualified registryKey" class of
  * message (which taught the format but gave no example) is retired in favor
  * of one shared, example-carrying resolver.
@@ -30,7 +30,7 @@ export interface ModelIdCandidate {
 }
 
 export interface ModelIdResolutionOptions {
-  /** A provider already known from context — tried before the registry-wide rules. */
+  /** A provider already known from context, tried before the registry-wide rules. */
   readonly contextProviderId?: string | undefined;
   /** Max closest-match suggestions to include in an "unknown model" error. Default 3. */
   readonly maxSuggestions?: number | undefined;
@@ -40,7 +40,7 @@ export interface ModelIdResolutionOptions {
  * Resolve a user-typed model reference against the live registry's
  * candidate list. Returns the resolved provider-qualified registryKey, or
  * throws an Error carrying a concrete example / the real candidate list /
- * closest-match suggestions — never the old abstract format lecture.
+ * closest-match suggestions, never the old abstract format lecture.
  *
  * @param input - What the user typed: a bare model id or a `provider:model` registryKey.
  * @param candidates - The live registry's models (id/provider/registryKey), e.g. from `ProviderRegistry.listModels()`.
@@ -53,7 +53,7 @@ export function resolveModelReference(
 ): string {
   const trimmed = input.trim();
 
-  // Rule 1: already provider-qualified — pass through unchanged. Storage
+  // Rule 1: already provider-qualified, pass through unchanged. Storage
   // stays provider-qualified; downstream lookups report "not found" if the
   // qualified key doesn't actually exist (unchanged behavior, this layer
   // only resolves BARE ids).
@@ -76,12 +76,12 @@ export function resolveModelReference(
   if (matches.length > 1) {
     const registryKeys = matches.map((candidate) => candidate.registryKey).sort((a, b) => a.localeCompare(b));
     throw new Error(
-      `Model id '${trimmed}' is ambiguous — it is available on multiple providers: ${registryKeys.join(', ')}. ` +
+      `Model id '${trimmed}' is ambiguous, it is available on multiple providers: ${registryKeys.join(', ')}. ` +
         `Specify one explicitly, e.g. '${registryKeys[0]}'.`,
     );
   }
 
-  // Rule 5: unknown — closest-match suggestions plus a concrete valid example.
+  // Rule 5: unknown, closest-match suggestions plus a concrete valid example.
   throw new Error(buildUnknownModelMessage(trimmed, candidates, options.maxSuggestions ?? 3));
 }
 
@@ -107,7 +107,7 @@ function buildUnknownModelMessage(
 /**
  * Resolve the CONFIGURED model (the `provider.model` key) through the shared
  * resolver, wrapping any failure with the accepted forms plus a concrete
- * valid example — never the retired abstract format lecture. Unique bare ids
+ * valid example, never the retired abstract format lecture. Unique bare ids
  * auto-qualify; ambiguous ids list their real candidate registryKeys;
  * unknown ids carry closest-match suggestions.
  */
@@ -127,7 +127,7 @@ export function resolveConfiguredModelKey(
 
 /**
  * Closest model ids by Levenshtein edit distance, nearest first. No fuzzy-
- * match helper existed anywhere in the SDK before this — this is that small
+ * match helper existed anywhere in the SDK before this, this is that small
  * new function, scoped to model-id "did you mean" suggestions.
  */
 export function findClosestModelIds(input: string, candidateIds: readonly string[], limit = 3): string[] {

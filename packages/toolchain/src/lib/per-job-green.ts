@@ -1,5 +1,5 @@
 /**
- * per-job-green — the by-reference validation primitive.
+ * per-job-green, the by-reference validation primitive.
  *
  * Given a commit SHA, find that commit's push-CI run for a named workflow, wait
  * for it to complete, and assert EVERY job concluded `success` (per-job green,
@@ -9,10 +9,10 @@
  * Transient-error posture: EVERY GitHub API call (runs listing, per-run jobs,
  * check-suites, check-runs) goes through a bounded retry loop (default 8
  * attempts with 7s sleeps, configurable) before its status is treated as
- * final — the API's known flaky mode makes single-shot calls fail a meaningful
+ * final, the API's known flaky mode makes single-shot calls fail a meaningful
  * fraction of the time. When the runs listing stays unavailable after retries,
  * the Checks API (`check-suites` / `check-runs` on the commit) is the fallback.
- * "No run found yet" is never a failure — it waits and polls. Only an exhausted
+ * "No run found yet" is never a failure, it waits and polls. Only an exhausted
  * retry budget on a needed endpoint, a non-green job, or the deadline produces
  * a failure, and each names its source honestly.
  */
@@ -160,11 +160,11 @@ export function runIdFromDetailsUrl(detailsUrl: string | undefined): number | nu
  * is accepted only when its confirmed path matches `config.workflow`.
  *
  * Availability compromise: when the commit carries exactly ONE distinct
- * candidate and its confirmation is UNAVAILABLE (any non-200 — i.e. not a
+ * candidate and its confirmation is UNAVAILABLE (any non-200, i.e. not a
  * CONFIRMED mismatch), the sole candidate is accepted: no ambiguity exists on
  * the commit, and demanding confirmation during the very Actions-API outage the
  * fallback exists for would gut it. With MULTIPLE candidates, confirmation is
- * required — an unconfirmable set resolves to null (UNRESOLVED), never a guess.
+ * required, an unconfirmable set resolves to null (UNRESOLVED), never a guess.
  */
 async function resolveFallbackRunId(deps: PerJobGreenDeps, config: PerJobGreenConfig, candidateIds: readonly number[]): Promise<number | null> {
   const distinct = [...new Set(candidateIds)];
@@ -240,16 +240,16 @@ export async function verifyPerJobGreen(deps: PerJobGreenDeps, config: PerJobGre
     const { run, status } = await resolveRun(deps, config, sha);
 
     if (isTransientStatus(status)) {
-      // The runs listing stayed unavailable through its whole retry budget —
+      // The runs listing stayed unavailable through its whole retry budget,
       // try the Checks API before falling back to another poll cycle.
-      deps.logger.warn(`[per-job-green] Actions API unavailable (${status}) after retries — trying check-suites fallback for ${sha}`);
+      deps.logger.warn(`[per-job-green] Actions API unavailable (${status}) after retries, trying check-suites fallback for ${sha}`);
       const fallback = await evaluateCheckSuites(deps, config, sha);
       if (fallback) return fallback;
       deps.logger.warn('[per-job-green] check-suites fallback inconclusive; will retry');
     } else if (run) {
       if (run.status === 'completed') {
         if (run.conclusion !== 'success') {
-          // Rollup already failed — still enumerate jobs for an actionable message.
+          // Rollup already failed, still enumerate jobs for an actionable message.
           const failures = await evaluateRunJobs(deps, config, run.id);
           return {
             ok: false,

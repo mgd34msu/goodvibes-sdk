@@ -1,14 +1,14 @@
 /**
  * The body excerpt's card redaction, at the truncation boundary.
  *
- * `record()` redacts before it truncates, which is right — truncating first
+ * `record()` redacts before it truncates, which is right, truncating first
  * leaves a card number straddling the cap as a readable prefix. What was wrong
  * is the SIZE of what it redacted: a window of `cap + one maximum span`, on the
  * reasoning that a span starting just inside the cap is then always seen whole.
  *
  * That holds for one span. It fails for several, because redaction SHORTENS.
  * `[redacted:pan]` is fourteen characters against a nineteen-digit grouped
- * PAN's thirty-seven, so each replacement pulls everything after it leftwards —
+ * PAN's thirty-seven, so each replacement pulls everything after it leftwards,
  * and a span sitting beyond the window, seen only in part and therefore not
  * matched, slides back inside the final `slice(0, cap)` and is stored verbatim.
  *
@@ -86,9 +86,9 @@ describe('no card shape survives into a stored body excerpt', () => {
     // The measured construction. Searched 1830 combinations of span form,
     // preceding-redaction count and padding: under the windowed scan the worst
     // surviving run was SIX digits, at nine grouped spans and fifty characters
-    // of padding. Not the fifteen the report described — the redactor also
+    // of padding. Not the fifteen the report described, the redactor also
     // catches short digit runs as security codes, so a truncated PAN is mostly
-    // eaten on the way out — but six digits of a card is still six digits that
+    // eaten on the way out, but six digits of a card is still six digits that
     // did not need to be on disk, and scanning the whole body leaves none.
     const shrinkers = `${GROUPED} `.repeat(9);
     const body = `${shrinkers}${'y'.repeat(50)}${GROUPED}${'z'.repeat(80)}`;

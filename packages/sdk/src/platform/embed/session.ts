@@ -4,7 +4,7 @@
  * The thin, in-process embedding facade over the existing daemon boot factory.
  * It invents no runtime machinery: it wires `bootDaemon` to the daemon's
  * already-exposed runtime event bus, shared session broker, and approval broker,
- * and adds one convenience — bridging an injected `PermissionRequestHandler`
+ * and adds one convenience, bridging an injected `PermissionRequestHandler`
  * onto the broker so an embedder can answer permission asks with a callback
  * instead of driving the HTTP approvals routes.
  *
@@ -27,7 +27,7 @@ import { logger } from '../utils/logger.js';
 export interface EmbedSessionOptions {
   /** The workspace / project root the session operates against. */
   readonly workspace: string;
-  /** Injected home directory — the daemon stays entirely inside it. */
+  /** Injected home directory, the daemon stays entirely inside it. */
   readonly homeDirectory: string;
   /** Bearer token required by the HTTP surface. Omit for session-based auth. */
   readonly token?: string | undefined;
@@ -45,7 +45,7 @@ export interface EmbedSessionOptions {
    * MCP servers to connect into the session's tool surface at boot (e.g. the
    * servers an ACP client declares in `session/new`). Each is connected through
    * the daemon's live MCP registry (tools namespaced `mcp:<name>:<tool>`). stdio
-   * transport only — the registry spawns a process. A server that fails to
+   * transport only, the registry spawns a process. A server that fails to
    * connect is logged and skipped; it never aborts session creation.
    */
   readonly mcpServers?: readonly McpServerConfig[] | undefined;
@@ -67,9 +67,9 @@ export interface EmbeddedSession {
   readonly workspace: string;
   /** Base URL of the underlying daemon's HTTP surface. */
   readonly url: string;
-  /** The runtime event bus — subscribe with `.on(type, cb)` / `.onDomain(domain, cb)`. */
+  /** The runtime event bus, subscribe with `.on(type, cb)` / `.onDomain(domain, cb)`. */
   readonly events: RuntimeEventBus;
-  /** The approval broker — the seam permission asks flow through. */
+  /** The approval broker, the seam permission asks flow through. */
   readonly approvals: ApprovalBroker;
   /** The shared session broker backing this session. */
   readonly sessions: SharedSessionBroker;
@@ -90,8 +90,8 @@ export interface EmbeddedSession {
 
 /**
  * Create an embedded GoodVibes session bound to a workspace. Boots an in-process
- * daemon, exposes its runtime bus / session broker / approval broker, and — when
- * a `requestPermission` callback is given — bridges pending approvals to it.
+ * daemon, exposes its runtime bus / session broker / approval broker, and, when
+ * a `requestPermission` callback is given, bridges pending approvals to it.
  */
 export async function createEmbeddedSession(options: EmbedSessionOptions): Promise<EmbeddedSession> {
   const daemon = await bootDaemon({
@@ -109,7 +109,7 @@ export async function createEmbeddedSession(options: EmbedSessionOptions): Promi
 
   // Connect any embedder-declared MCP servers (e.g. an ACP client's session/new
   // servers) into the live MCP registry so their tools join the session surface.
-  // A single server's failure is logged and skipped — it never aborts the session.
+  // A single server's failure is logged and skipped, it never aborts the session.
   for (const mcpServer of options.mcpServers ?? []) {
     try {
       await server.registerMcpServer(mcpServer);

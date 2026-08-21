@@ -1,16 +1,16 @@
 /**
- * Stage A review fix round — CodeIndexStore lifecycle honesty:
+ * Stage A review fix round, CodeIndexStore lifecycle honesty:
  *
  *  1. reroot()-during-build race: an in-flight buildFull() started against
  *     tree A must ABORT (epoch check after every await) when the store is
- *     rerooted to tree B mid-build — never resuming with relative(newRoot,
+ *     rerooted to tree B mid-build, never resuming with relative(newRoot,
  *     oldPath) and writing wrong-rooted chunks into B's database. The abort
  *     is recorded honestly (abortReason) and never becomes lastBuild.
  *
  *  2. embedding-provider mismatch: after building under provider X, switching
  *     the default to Y must (a) surface an explicit mismatch string in
- *     stats(), (b) disable the vector search path — query vectors in Y-space
- *     against X-space rows are meaningless — degrading to lexical
+ *     stats(), (b) disable the vector search path, query vectors in Y-space
+ *     against X-space rows are meaningless, degrading to lexical
  *     symbol/path matching labeled 'lexical', and (c) force a full re-embed
  *     on the next buildFull(), after which the mismatch clears and search is
  *     semantic again.
@@ -77,7 +77,7 @@ describe('CodeIndexStore — reroot()-during-build race (epoch abort)', () => {
     writeFileSync(join(rootA, 'tree-a-file.ts'), 'export const treeAOnly = 1;\n');
     writeFileSync(join(rootB, 'tree-b-file.ts'), 'export const treeBOnly = 2;\n');
 
-    // Gate: the FIRST async embed signals it started, then blocks until released —
+    // Gate: the FIRST async embed signals it started, then blocks until released,
     // giving the test a deterministic mid-build window to reroot in.
     let releaseGate: () => void = () => {};
     const gate = new Promise<void>((resolve) => { releaseGate = resolve; });
@@ -145,7 +145,7 @@ describe('CodeIndexStore — embedding-provider mismatch honesty', () => {
     expect(semanticHits.length).toBeGreaterThan(0);
     expect(semanticHits.every((r) => r.label === 'semantic')).toBe(true);
 
-    // Provider switch: X-space vectors, Y-space queries — vector path must be skipped.
+    // Provider switch: X-space vectors, Y-space queries, vector path must be skipped.
     const { provider: providerY, calls: yCalls } = makeProvider('prov-y');
     registry.register(providerY, { makeDefault: true });
 

@@ -1,5 +1,5 @@
 /**
- * Permission emitters — typed emission wrappers for PermissionEvent domain.
+ * Permission emitters, typed emission wrappers for PermissionEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

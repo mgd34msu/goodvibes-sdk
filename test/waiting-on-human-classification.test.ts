@@ -4,7 +4,7 @@
  * ONE waiting-on-human state class: an approval ask, a READY best-of-N pick,
  * and a merge conflict all classify as first-class attention in the fleet
  * snapshot, all fan out as FLEET_NODE_BLOCKED_ON_USER on the wire (via the
- * emit-bridge), and all push through the same needs-input source — so every
+ * emit-bridge), and all push through the same needs-input source, so every
  * surface inherits glyph, count, jump key, and push from the classification.
  */
 import { describe, expect, test } from 'bun:test';

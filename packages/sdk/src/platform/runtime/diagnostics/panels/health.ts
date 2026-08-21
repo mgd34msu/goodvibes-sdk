@@ -33,7 +33,7 @@ const PLAYBOOK_NAMES: ReadonlyMap<string, string> = new Map([
 ]);
 
 /**
- * HealthPanel — diagnostic data provider for runtime health telemetry.
+ * HealthPanel, diagnostic data provider for runtime health telemetry.
  *
  * Subscribes to health aggregator updates and maintains a current
  * HealthDashboardData snapshot for the panel to render.

@@ -7,7 +7,7 @@ import type { Database } from 'bun:sqlite';
 /**
  * `sqlite-vec` is an optionalDependency and this loader is reached from
  * synchronous store constructors, so it cannot be awaited. Resolved through
- * `createRequire` at the one call that needs it instead — the same technique,
+ * `createRequire` at the one call that needs it instead, the same technique,
  * and for the same reason, as the `bun:sqlite` resolution in
  * knowledge/browser-history/readers.ts: a static import puts the specifier on
  * the module graph, and a graph that cannot link is a process that dies at
@@ -51,7 +51,7 @@ export function resolveSqliteVecPath(): string {
 }
 
 /**
- * Thrown when the RUNTIME PLATFORM cannot load SQLite extensions at all —
+ * Thrown when the RUNTIME PLATFORM cannot load SQLite extensions at all,
  * most commonly a macOS-compiled binary, where bun:sqlite links Apple's
  * system SQLite, which ships with extension loading disabled. This is a
  * permanent capability limit of the platform, not a defect in the build:

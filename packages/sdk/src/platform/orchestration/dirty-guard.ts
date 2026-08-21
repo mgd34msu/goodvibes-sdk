@@ -1,28 +1,28 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Dirty-residue guard (see CHANGELOG 0.38.0) — prevents an orchestration
+ * Dirty-residue guard (see CHANGELOG 0.38.0), prevents an orchestration
  * engine run's scoped commit from sweeping in uncommitted changes that were
  * ALREADY sitting in the working tree before this engine launched (typically
  * residue left behind by a previously killed run sharing the same
  * `projectRoot`, since phase-runner.ts's WorkItem.touchedPaths accumulates
- * across phases/retries and never resets — see phase-runner.ts runPhase).
+ * across phases/retries and never resets, see phase-runner.ts runPhase).
  *
  * Mechanism: snapshot every dirty path + a binary-safe content hash at
  * engine-launch time (`snapshotDirtyTree`). At scoped-commit time, a
  * candidate path is excluded only when it was ALREADY dirty at launch AND
- * its content hash is unchanged since launch — i.e. this run never touched
+ * its content hash is unchanged since launch, i.e. this run never touched
  * it. A path that was clean at launch, or whose hash changed, is included:
  * this run is the one that dirtied (or re-dirtied) it.
  *
  * `snapshotDirtyTree` is deliberately SYNCHRONOUS (Bun.spawnSync, mirroring
- * GitService's own sync helpers — initRepo/isGitRepo/getRepoRoot,
+ * GitService's own sync helpers, initRepo/isGitRepo/getRepoRoot,
  * platform/git/service.ts) rather than shelling out through simple-git's
  * async API: the engine factory (engine.ts) is a synchronous function that
  * must have a settled snapshot before its first phase can possibly reach a
  * commit, and a promise backed by real child-process I/O cannot be relied
  * on to resolve within a caller's microtask-only wait (subprocess exit is
- * delivered via the event loop's macrotask phases, not microtasks) — a real
+ * delivered via the event loop's macrotask phases, not microtasks), a real
  * regression seen against tests that only drain microtasks. One blocking
  * `git status` call at launch (paid once, exactly like GitService.initRepo)
  * avoids that whole class of timing hazard entirely.
@@ -33,7 +33,7 @@ import { join } from 'node:path';
 import { logger } from '../utils/logger.js';
 import { summarizeError } from '../utils/error-display.js';
 
-/** Dirty paths under this prefix are GoodVibes' own internal state, never a candidate for a scoped commit — excluded from the snapshot so they never pollute the 'dirty-tree-at-launch' event. */
+/** Dirty paths under this prefix are GoodVibes' own internal state, never a candidate for a scoped commit, excluded from the snapshot so they never pollute the 'dirty-tree-at-launch' event. */
 const INTERNAL_STATE_PREFIX = '.goodvibes/';
 
 /** Content hash of a file's current working-tree bytes. Binary-safe (raw bytes, not text). Returns null when the path does not exist on disk (a working-tree deletion). */
@@ -67,7 +67,7 @@ export type DirtyLaunchSnapshot = ReadonlyMap<string, string | null>;
  * everywhere else.
  *
  * Record shape: each NUL-terminated record is `XY<space><path>`. A rename or
- * copy (X or Y is 'R'/'C') is split across TWO NUL-terminated fields — the
+ * copy (X or Y is 'R'/'C') is split across TWO NUL-terminated fields, the
  * destination first, then the origin. We keep the destination (the actual
  * scoped-commit candidate, already in this record) and consume the following
  * origin field so it is never mis-parsed as its own dirty path.
@@ -84,7 +84,7 @@ function parsePorcelainPaths(output: string): Set<string> {
     const y = record[1]!;
     // A rename/copy record is followed by a second NUL-separated field (the
     // origin path). Consume it so the next iteration does not treat it as a
-    // standalone status record — done before any early-continue below.
+    // standalone status record, done before any early-continue below.
     if (x === 'R' || y === 'R' || x === 'C' || y === 'C') i++;
     const path = record.slice(3);
     if (path.startsWith(INTERNAL_STATE_PREFIX)) continue;
@@ -129,7 +129,7 @@ export interface ScopedCommitExclusion {
  *  - it appears in `launchSnapshot` (it was already dirty before this run), AND
  *  - its current content hash equals the hash recorded at launch (this run
  *    never actually changed it).
- * Everything else is included — a path absent from the snapshot was clean
+ * Everything else is included, a path absent from the snapshot was clean
  * at launch (this run is what dirtied it), and a path whose hash changed
  * was genuinely touched by this run even though it started out dirty.
  */

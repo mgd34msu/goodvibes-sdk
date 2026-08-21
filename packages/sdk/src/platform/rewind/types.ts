@@ -1,7 +1,7 @@
 /**
- * types.ts — shapes for the unified message-anchored rewind service.
+ * types.ts, shapes for the unified message-anchored rewind service.
  *
- * Rewind JOINS the platform's three existing history systems — it never adds a
+ * Rewind JOINS the platform's three existing history systems, it never adds a
  * fourth. Given a session turn anchor it can restore the filesystem (the
  * nearest workspace checkpoint), the conversation (truncate session state to
  * the anchor), or both, by reusing those stores through the ports below.
@@ -34,7 +34,7 @@ export interface RewindCheckpointView {
 /** The outcome of a workspace checkpoint restore, as rewind needs it. */
 export interface RewindRestoreResult {
   readonly checkpointId: string;
-  /** The pre-restore safety checkpoint — the undo point that makes the rewind reversible. */
+  /** The pre-restore safety checkpoint, the undo point that makes the rewind reversible. */
   readonly safetyCheckpointId: string | null;
   readonly restoredFiles: readonly string[];
   readonly removedFiles: readonly string[];
@@ -47,7 +47,7 @@ export interface RewindCheckpointDiff {
 
 /**
  * The workspace-checkpoint store port. The real WorkspaceCheckpointManager
- * satisfies this (list / diff / restore) — rewind reuses it, never a new store.
+ * satisfies this (list / diff / restore), rewind reuses it, never a new store.
  */
 export interface RewindWorkspacePort {
   list(filter?: { readonly sessionId?: string | undefined }): Promise<readonly RewindCheckpointView[]>;
@@ -65,7 +65,7 @@ export interface RewindWorkspacePort {
  * was one an in-process consumer built around a conversation it was holding.
  * That stopped being true the moment a port had to resolve a conversation per
  * session: a daemon that wires a port and hosts no conversation for the session
- * being asked about answered "0 messages to drop" — indistinguishable, to every
+ * being asked about answered "0 messages to drop", indistinguishable, to every
  * reader, from a conversation that is genuinely already at the anchor. That is
  * the worst shape a wrong answer can take, because it reads as a confident one.
  *
@@ -94,7 +94,7 @@ export interface RewindConversationOutcome extends RewindConversationAvailabilit
 
 /**
  * The conversation store port. Wired by a consumer that can reach a mutable
- * conversation — an in-process one it holds (e.g. a ConversationManager), or a
+ * conversation, an in-process one it holds (e.g. a ConversationManager), or a
  * surface that offered its live conversation over the control plane. Absent →
  * conversation rewind is honestly reported unavailable rather than faked, and a
  * port present but unable to answer for a given session says so through
@@ -156,7 +156,7 @@ export interface RewindUndo {
   readonly conversation: { readonly undoSnapshotId: string } | null;
 }
 
-/** The receipt of an applied rewind — visible, and reversible via `undo`. */
+/** The receipt of an applied rewind, visible, and reversible via `undo`. */
 export interface RewindReceipt {
   readonly sessionId: string;
   readonly turnId: string | null;

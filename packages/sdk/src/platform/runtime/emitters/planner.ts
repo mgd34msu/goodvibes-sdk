@@ -1,5 +1,5 @@
 /**
- * Planner emitters — typed emission wrappers for adaptive planner events.
+ * Planner emitters, typed emission wrappers for adaptive planner events.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

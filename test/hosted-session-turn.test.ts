@@ -5,8 +5,8 @@
  *
  * Everything else about hosted sessions can be true while the one claim that
  * matters is false: that this is the SAME loop a terminal runs, not a lighter
- * one wearing its name. So this drives an actual turn — model call, tool call,
- * tool result, second model call — through `createHostedSessionRuntime` over a
+ * one wearing its name. So this drives an actual turn, model call, tool call,
+ * tool result, second model call, through `createHostedSessionRuntime` over a
  * real client floor, and checks the three things that make it that loop:
  *
  *  - the tool the model asked for actually ran, out of the registry

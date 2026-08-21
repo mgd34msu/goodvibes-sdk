@@ -1,7 +1,7 @@
 /**
  * manager.ts
  *
- * CompactionManager — orchestrates the full compaction lifecycle state machine.
+ * CompactionManager, orchestrates the full compaction lifecycle state machine.
  *
  * Responsibilities:
  * - Gate all compaction behind the `session-compaction` capability gate (behavior.compactionStrategy)
@@ -67,7 +67,7 @@ export interface CompactionManagerOptions {
   sessionId: string;
   /** Runtime event bus for emitting CompactionEvents. */
   bus: RuntimeEventBus;
-  /** Capability-gate manager — used to gate on `session-compaction`. */
+  /** Capability-gate manager, used to gate on `session-compaction`. */
   flags: FeatureFlagManager;
   /** Model context window size (tokens). */
   contextWindow: number;
@@ -80,7 +80,7 @@ export interface CompactionManagerOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * CompactionManager — manages the full lifecycle of session context compaction.
+ * CompactionManager, manages the full lifecycle of session context compaction.
  *
  * All compaction is gated behind the `session-compaction` capability gate.
  * When the flag is disabled, `compact()` is a no-op and returns the original
@@ -175,7 +175,7 @@ export class CompactionManager {
 
     // ── Check threshold ──────────────────────────────────────────────────────
     if (trigger === 'auto' && !isPromptTooLong && tokenCount < threshold) {
-      // Below threshold — go straight to done without compacting
+      // Below threshold, go straight to done without compacting
       this._transition('done');
       this._transition('idle');
       logger.debug('[CompactionManager] below threshold; no compaction needed', {
@@ -251,7 +251,7 @@ export class CompactionManager {
         const reason = `Quality score ${qualityScore.score.toFixed(2)} below threshold ${LOW_QUALITY_THRESHOLD}; escalating from ${strategy} to ${escalated}`;
         strategySwitchReason = reason;
 
-        logger.warn('[CompactionManager] low quality score — switching strategy', {
+        logger.warn('[CompactionManager] low quality score, switching strategy', {
           sessionId: this._sessionId,
           fromStrategy: strategy,
           toStrategy: escalated,
@@ -287,11 +287,11 @@ export class CompactionManager {
             strategy: escalated,
             error,
           });
-          // Fall back to the original output — restore to the original strategy state
+          // Fall back to the original output, restore to the original strategy state
           this._state = strategyToState(strategy);
         }
       } else {
-        // Already at ceiling strategy (collapse or reactive) — log but continue
+        // Already at ceiling strategy (collapse or reactive), log but continue
         logger.debug('[CompactionManager] low quality at ceiling strategy; no escalation possible', {
           sessionId: this._sessionId,
           strategy,
@@ -393,7 +393,7 @@ export class CompactionManager {
         failReason: 'No boundary commit available for repair.',
       };
     }
-    // The repair's own default is a hardcoded 80_000 — "80% of a typical 100K
+    // The repair's own default is a hardcoded 80_000, "80% of a typical 100K
     // context window", a fair guess when it was written. This manager holds
     // the REAL window for the model in play, so the ceiling is computed from
     // it rather than assumed: on a 1M-token model that constant was throwing

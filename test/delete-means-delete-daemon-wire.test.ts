@@ -2,9 +2,9 @@
  * delete-means-delete-daemon-wire.test.ts
  *
  * DELETE-MEANS-DELETE, proven over a REAL bootDaemon (isolated home,
- * ephemeral port, token auth — the boot-daemon-factory R1 pattern).
+ * ephemeral port, token auth, the boot-daemon-factory R1 pattern).
  *
- * PART A — companion-chat close vs delete:
+ * PART A, companion-chat close vs delete:
  *   - POST .../close soft-closes (history preserved, still gettable).
  *   - DELETE on an ACTIVE companion session is rejected 409 SESSION_ACTIVE.
  *   - DELETE on a CLOSED companion session hard-removes it: the on-disk
@@ -12,7 +12,7 @@
  *     and it is absent from the list even with includeClosed=true.
  *   - A second DELETE of the same id is an honest 404, never a 200-noop.
  *
- * PART B — the new spine sessions.delete verb:
+ * PART B, the new spine sessions.delete verb:
  *   - DELETE on an ACTIVE shared session is rejected 409 SESSION_ACTIVE.
  *   - DELETE on a CLOSED shared session hard-removes it: 404 on GET, absent
  *     from the list, and the session-deleted lifecycle event fires on the
@@ -59,7 +59,7 @@ function companionFilePath(sessionId: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// PART A — companion-chat close vs delete
+// PART A, companion-chat close vs delete
 // ---------------------------------------------------------------------------
 
 describe('companion.chat.sessions close vs delete', () => {
@@ -81,7 +81,7 @@ describe('companion.chat.sessions close vs delete', () => {
     const closeBody = await closeRes.json() as { sessionId: string; status: string };
     expect(closeBody.status).toBe('closed');
 
-    // Preserved — still on disk, still gettable.
+    // Preserved, still on disk, still gettable.
     expect(existsSync(companionFilePath(sessionId))).toBe(true);
     const getRes = await fetch(`${daemon.url}/api/companion/chat/sessions/${sessionId}`, { headers: auth() });
     expect(getRes.status).toBe(200);
@@ -131,7 +131,7 @@ describe('companion.chat.sessions close vs delete', () => {
     // The on-disk record file is GONE, not just closed.
     expect(existsSync(filePath)).toBe(false);
 
-    // Absent outright — not merely filtered.
+    // Absent outright, not merely filtered.
     const getRes = await fetch(`${daemon.url}/api/companion/chat/sessions/${sessionId}`, { headers: auth() });
     expect(getRes.status).toBe(404);
 
@@ -159,7 +159,7 @@ describe('companion.chat.sessions close vs delete', () => {
 });
 
 // ---------------------------------------------------------------------------
-// PART B — sessions.delete (the new spine hard-delete verb)
+// PART B, sessions.delete (the new spine hard-delete verb)
 // ---------------------------------------------------------------------------
 
 describe('sessions.delete (spine hard-delete verb)', () => {
@@ -264,7 +264,7 @@ describe('sessions.delete (spine hard-delete verb)', () => {
               sawDeleted = true;
             }
           } catch {
-            // non-JSON frame (heartbeat/ready) — ignore
+            // non-JSON frame (heartbeat/ready), ignore
           }
         }
         if (sawDeleted) break;

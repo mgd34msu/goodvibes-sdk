@@ -1,5 +1,5 @@
 /**
- * sandbox-escalation-wiring.ts — compose the sandbox-escalation seam + the
+ * sandbox-escalation-wiring.ts, compose the sandbox-escalation seam + the
  * optional model-judgment tier at the runtime composition root.
  *
  * Kept out of services.ts so the wiring (broker routing + the judgment tier +
@@ -42,8 +42,8 @@ export interface EscalationWiringDeps {
 
 /**
  * Build the exec-sandbox escalation handler: escalations ride the approval
- * broker, and — while the `sandbox.judgment` setting is annotate or
- * auto-approve — the judgment tier annotates the ask (annotate, the default)
+ * broker, and, while the `sandbox.judgment` setting is annotate or
+ * auto-approve, the judgment tier annotates the ask (annotate, the default)
  * or additionally auto-approves a looks-safe verdict (auto-approve, an
  * explicit opt-in). Every judgment leaves a receipt.
  */

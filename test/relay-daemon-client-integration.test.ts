@@ -6,7 +6,7 @@
  * A real Bun relay server, a real daemon-side registration terminating the E2E
  * channel and replaying tunneled requests against the mock-daemon fixtures, and
  * the real `createOperatorSdk` client on the far side. Nothing about the typed
- * client is relay-aware — it just calls `sdk.approvals.list()` and gets the
+ * client is relay-aware, it just calls `sdk.approvals.list()` and gets the
  * daemon's answer back through the encrypted tunnel.
  */
 import { afterAll, describe, expect, test } from 'bun:test';

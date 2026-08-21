@@ -16,7 +16,7 @@
  *     - CONSUMED_METHOD_IDS is the inventoried subset and every id exists.
  *     - OPERATOR_ROUTES entries match the contract http bindings verbatim.
  *     - CONTRACT_VERSION equals the committed contract's product version
- *       (artifact vs artifact — never the live build VERSION).
+ *       (artifact vs artifact, never the live build VERSION).
  *     - a TypedDict/alias pair is emitted per consumed method.
  *     - the checked-in file matches a fresh generation (in-test drift guard).
  */
@@ -114,7 +114,7 @@ describe('HA python client — generated transport', () => {
   });
 
   test('CONTRACT_VERSION equals the committed contract product version', () => {
-    // Artifact vs artifact — decoupled from the live build VERSION.
+    // Artifact vs artifact, decoupled from the live build VERSION.
     expect(py).toContain(`CONTRACT_VERSION: str = ${JSON.stringify(haContract.product.version)}`);
   });
 

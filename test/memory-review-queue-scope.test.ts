@@ -6,13 +6,13 @@ import { MemoryEmbeddingProviderRegistry, MemoryRegistry, MemoryStore } from '..
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 /**
- * Item 7 — reviewQueue scope filter
+ * Item 7, reviewQueue scope filter
  *
  * Verifies that:
  * 1. MemoryStore.reviewQueue(limit) still works with no scope (backward compat).
  * 2. MemoryStore.reviewQueue(limit, scope) filters to only that scope.
  * 3. MemoryRegistry.reviewQueue(limit, scope) correctly delegates.
- * 4. scope filter applies BEFORE the limit slice — not post-fetch.
+ * 4. scope filter applies BEFORE the limit slice, not post-fetch.
  * 5. The HTTP handler returns scoped results correctly (via integration-routes).
  */
 
@@ -102,7 +102,7 @@ describe('MemoryStore.reviewQueue scope filter (Item 7)', () => {
     for (let i = 0; i < 5; i++) {
       await store.add({ scope: 'session', cls: 'fact', summary: `session record ${i}` });
     }
-    // Request only 2 project records — should get exactly 2 project records
+    // Request only 2 project records, should get exactly 2 project records
     const result = store.reviewQueue(2, 'project');
     expect(result.length).toBe(2);
     expect(result.every((r) => r.scope === 'project')).toBe(true);

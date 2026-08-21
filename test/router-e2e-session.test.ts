@@ -89,7 +89,7 @@ function makeSessionHandlers(
 }
 
 // ---------------------------------------------------------------------------
-// describe: session routes — happy paths
+// describe: session routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e session — POST /api/sessions (happy path)', () => {
@@ -162,7 +162,7 @@ describe('router-e2e session — messages (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: session routes — failure paths
+// describe: session routes, failure paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e session — failure paths', () => {

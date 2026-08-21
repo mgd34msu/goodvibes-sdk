@@ -1,7 +1,7 @@
 /**
  * operator-contract-schemas-memory-projection.ts
  *
- * Wire schemas for the memory.projections.list / memory.projections.get verbs —
+ * Wire schemas for the memory.projections.list / memory.projections.get verbs,
  * the live read view over standing (project/team) memory records rendered as
  * markdown. Split out of operator-contract-schemas-runtime.ts to keep that file
  * under the 800-line source cap; the memory record/enum schemas it reuses are
@@ -22,7 +22,7 @@ import {
 
 const MEMORY_TEMPORAL_STATUS_SCHEMA = enumSchema(['active', 'pending', 'expired']);
 
-/** One entry in the live memory projection — standing-record metadata + temporal status. */
+/** One entry in the live memory projection, standing-record metadata + temporal status. */
 export const MEMORY_PROJECTION_ENTRY_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   filename: STRING_SCHEMA,

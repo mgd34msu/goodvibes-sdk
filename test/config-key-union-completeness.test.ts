@@ -1,12 +1,12 @@
 /**
- * ConfigKey union / ConfigValue mapping completeness — the drift-class gate.
+ * ConfigKey union / ConfigValue mapping completeness, the drift-class gate.
  *
  * The published ConfigKey string-literal union and the ConfigValue<K> typed-
  * accessor mapping (platform/config/schema-types.ts) are hand-maintained,
  * while the actual key set is defined by the schema DOMAIN modules and
  * aggregated into CONFIG_SCHEMA (schema.ts). Because schema.ts casts the
  * aggregate (`as ConfigSetting[]`), a domain can add keys without the union or
- * mapping learning about them — the compiler never complains, and consumers
+ * mapping learning about them, the compiler never complains, and consumers
  * hit "not assignable to ConfigKey" and cast around it (the fleet.maxSize
  * find, 2026-07-14: 23 keys across checkin.*, learning.consolidation.*,
  * power.*, voice.local.*, fleet.maxSize had schema definitions but no union
@@ -31,7 +31,7 @@ import { CONFIG_SCHEMA } from '../packages/sdk/src/platform/config/schema.js';
  * schema-types-owner-profile.ts took the `profile.*` key union and its own
  * value map, which schema-types.ts folds in with one arm each). Reading only
  * the original file would have made this gate silently stop covering whichever
- * domain moved — which is the fail-open it exists to prevent, so the list is
+ * domain moved, which is the fail-open it exists to prevent, so the list is
  * explicit and the anchors below match a FAMILY of declarations rather than
  * one fixed name.
  */
@@ -60,7 +60,7 @@ const SCHEMA_TYPE_SOURCES = schemaTypeSources();
  *
  * Both extractors below pair single quotes across a whole declaration, so ONE
  * apostrophe in a prose comment inside the union ("the daemon's own mailbox")
- * re-pairs every quote after it and silently truncates the extracted set — the
+ * re-pairs every quote after it and silently truncates the extracted set, the
  * gate keeps passing while it has stopped covering the tail of the union. That
  * is exactly the fail-open this file exists to prevent, so the comment text is
  * removed rather than trusted to stay apostrophe-free.
@@ -71,8 +71,8 @@ function withoutComments(body: string): string {
 
 /**
  * Every `export type <Something>ConfigKey =` declaration, so a domain that
- * carries its own key union — schema-types-owner-profile.ts,
- * schema-types-payments.ts, schema-types-daemon.ts — is covered by the same
+ * carries its own key union, schema-types-owner-profile.ts,
+ * schema-types-payments.ts, schema-types-daemon.ts, is covered by the same
  * parse rather than being invisible to it.
  */
 const KEY_UNION_ANCHOR = /export type \w*ConfigKey =/g;
@@ -162,7 +162,7 @@ describe('ConfigKey union completeness (fail-closed against the schema domains)'
 
   test('the schema defines a sane number of keys (extraction sanity floor)', () => {
     // If CONFIG_SCHEMA ever collapses (import/aggregation breakage), the two
-    // completeness tests would vacuously pass on an empty set — fail loudly.
+    // completeness tests would vacuously pass on an empty set, fail loudly.
     expect(schemaKeys.length).toBeGreaterThan(300);
   });
 
@@ -181,7 +181,7 @@ describe('ConfigKey union completeness (fail-closed against the schema domains)'
   });
 
   // Red-test the gate itself: seed a miss and prove the checker catches it in
-  // both directions — the gate cannot silently rot into a vacuous pass.
+  // both directions, the gate cannot silently rot into a vacuous pass.
   test('the checker CATCHES a seeded missing key', () => {
     const union = extractUnionMembers(source);
     const seeded = new Set(union);
@@ -202,7 +202,7 @@ describe('ConfigKey union completeness (fail-closed against the schema domains)'
   // mailbox keys with a `// the daemon's own mailbox` comment above them cut the
   // extracted union from 300-odd members to 259, because the apostrophe
   // re-paired every quote after it. The sanity floor below caught it, but only
-  // because the loss was large — a comment nearer the end of the union would
+  // because the loss was large, a comment nearer the end of the union would
   // have dropped a handful of keys and still cleared the floor.
   test('an apostrophe in a comment inside the union cannot truncate the extracted set', () => {
     const withApostrophe = [

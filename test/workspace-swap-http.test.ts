@@ -1,9 +1,9 @@
 /**
- * B3 — HTTP integration test for POST /config runtime.workingDir.
+ * B3, HTTP integration test for POST /config runtime.workingDir.
  *
  * Uses the real route handler (createDaemonSystemRouteHandlers) wired with a
  * real WorkspaceSwapManager backed by tmp directories. No full DaemonServer
- * boot is required — we test at the route-handler layer.
+ * boot is required, we test at the route-handler layer.
  */
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
 import { mkdirSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
@@ -176,7 +176,7 @@ describe('POST /config runtime.workingDir — HTTP integration', () => {
       rerootStores: async () => {},
     });
     const ctx = makeSystemContext(daemonHome, workingDir, swapManager);
-    // request a subdir of a file — mkdir will fail
+    // request a subdir of a file, mkdir will fail
     const req = makeRequest('/api/config', { key: 'runtime.workingDir', value: join(filePath, 'subdir') });
     const handlers = createDaemonSystemRouteHandlers(ctx as unknown as Parameters<typeof createDaemonSystemRouteHandlers>[0]);
     const response = await handlers.postConfig(req);

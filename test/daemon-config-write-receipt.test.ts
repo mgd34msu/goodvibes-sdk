@@ -1,10 +1,10 @@
 /**
- * daemon-config-write-receipt.test.ts — POST /config reports what the host HOLDS.
+ * daemon-config-write-receipt.test.ts, POST /config reports what the host HOLDS.
  *
  * The route used to echo the request back, so it said `success: true` for any
  * write it managed to hand to the config manager. It could not distinguish a
  * value that took from one that was coerced, dropped, or overridden by another
- * tier, and it never named the store — which is the whole question when an agent
+ * tier, and it never named the store, which is the whole question when an agent
  * writes over the control plane into the DAEMON's settings and then reads the
  * key back out of its OWN settings file.
  *

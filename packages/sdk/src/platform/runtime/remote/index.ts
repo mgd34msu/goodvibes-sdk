@@ -1,5 +1,5 @@
 /**
- * Remote Substrate — Public API
+ * Remote Substrate, Public API
  *
  * Barrel export and `createRemoteSubstrate()` factory.
  *
@@ -192,7 +192,7 @@ export {
 // ── RemoteSubstrate facade ────────────────────────────────────────────────────
 
 /**
- * RemoteSubstrate — high-level facade wiring together all remote substrate components.
+ * RemoteSubstrate, high-level facade wiring together all remote substrate components.
  *
  * This class composes DurableIdentityManager, ReconnectEngine, RemoteStateSyncer,
  * and RemoteObservabilityProvider into a single, lifecycle-managed unit.

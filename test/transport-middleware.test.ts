@@ -4,8 +4,8 @@
  * Covers:
  * 1. Middleware execution order (outer-first, onion model)
  * 2. Context mutation propagated through chain
- * 3. Error propagation — middleware error surfaces as SDKError{kind:'unknown'}
- * 4. Signal propagation — signal available in ctx
+ * 3. Error propagation, middleware error surfaces as SDKError{kind:'unknown'}
+ * 4. Signal propagation, signal available in ctx
  * 5. ctx.response / ctx.durationMs / ctx.error set correctly
  * 6. sdk.use() appends to chain, stateless rebuild each call
  */

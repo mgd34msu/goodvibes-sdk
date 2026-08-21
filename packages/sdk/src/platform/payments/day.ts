@@ -1,18 +1,18 @@
 /**
- * day.ts — what "today" means for a budget that resets daily.
+ * day.ts, what "today" means for a budget that resets daily.
  *
  * The daemon had no timezone concept before this. Schedules carried per-schedule
  * IANA names (scheduler/scheduler.ts, automation/schedules.ts) and `device.location.*`
  * is a paired phone's GPS permission, but nothing described where the daemon
  * itself thinks it is. A daily budget cannot be built without that, so
  * `daemon.timezone` is added as a GENERAL daemon setting rather than a payments
- * one — the next feature that needs a calendar day should not add a second.
+ * one, the next feature that needs a calendar day should not add a second.
  *
  * ── The midnight split is accepted, not smoothed ──────────────────────────
  *
  * Owner ruled it explicitly: $100 at 23:59 and $100 at 00:00 both go through.
  * A daily budget has a boundary and a boundary can be sat on. Anything that
- * "fixed" this — a rolling 24-hour window, a cooldown either side of midnight —
+ * "fixed" this, a rolling 24-hour window, a cooldown either side of midnight,
  * would be a different feature than the one he asked for, and the rolling
  * version is worse in the ordinary case because he could not predict when his
  * budget refreshed. There is a test that asserts the split behaves this way, so
@@ -23,7 +23,7 @@
  * Every spend record keeps its UTC instant. Today's totals are derived by
  * filtering those instants through the CURRENT timezone, never by incrementing a
  * stored counter. Otherwise changing `daemon.timezone` would roll the day over
- * and hand back a fresh budget — a trivial way around the limit, reachable by
+ * and hand back a fresh budget, a trivial way around the limit, reachable by
  * anything that can write daemon config.
  */
 

@@ -1,7 +1,7 @@
 /**
  * Tests for the writing-style-matched draft reply composer and lane descriptor.
  *
- * All tests are deterministic — no Date.now(), Math.random(), or I/O.
+ * All tests are deterministic, no Date.now(), Math.random(), or I/O.
  */
 
 import { describe, expect, it } from 'bun:test';
@@ -215,7 +215,7 @@ describe('replySubject', () => {
 });
 
 // ---------------------------------------------------------------------------
-// extractStyleProfile — empty corpus
+// extractStyleProfile, empty corpus
 // ---------------------------------------------------------------------------
 
 describe('extractStyleProfile — empty corpus', () => {
@@ -230,7 +230,7 @@ describe('extractStyleProfile — empty corpus', () => {
 });
 
 // ---------------------------------------------------------------------------
-// extractStyleProfile — corpus with bodies
+// extractStyleProfile, corpus with bodies
 // ---------------------------------------------------------------------------
 
 describe('extractStyleProfile — corpus with bodies', () => {

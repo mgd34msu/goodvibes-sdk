@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Workspace swap failed event — verifies that the normalizeError path
+ * Workspace swap failed event, verifies that the normalizeError path
  * correctly handles workspace-swap-related errors through the error display pipeline.
  */
 describe('workspace swap failed', () => {

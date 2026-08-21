@@ -225,7 +225,7 @@ function requireWorkerAuth(
   options: GoodVibesCloudflareWorkerOptions,
 ): Response | null {
   const expected = options.workerAuthToken ?? env.GOODVIBES_WORKER_TOKEN ?? '';
-  // allowUnauthenticated bypasses token checks for the entire worker — use only
+  // allowUnauthenticated bypasses token checks for the entire worker, use only
   // when the worker sits behind a trusted network perimeter (e.g. private VPC).
   if (!expected && options.allowUnauthenticated === true) return null;
   if (!expected) {

@@ -1,5 +1,5 @@
 /**
- * session-persistence-surface.test.ts — the dual API on session-persistence.ts:
+ * session-persistence-surface.test.ts, the dual API on session-persistence.ts:
  * every function keeps working with the legacy `{ workingDirectory, homeDirectory,
  * surfaceRoot }` options (byte-compatible, but deprecated with a one-time warning),
  * and now also accepts `{ surface: SessionSurface }`, which resolves every path
@@ -7,7 +7,7 @@
  *
  * Also covers the two new prompted-recovery primitives, `consumeRecovery` and
  * `removeRecoveryPoint` (session-persistence.ts), which are surface-only (no
- * legacy option form — they are new, there is nothing to stay compatible with).
+ * legacy option form, they are new, there is nothing to stay compatible with).
  */
 import { afterEach, describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
@@ -89,7 +89,7 @@ describe('session-persistence: legacy form stays byte-compatible and warns once'
   test('repeated legacy calls emit the migration warning at most once, and never more on repeat calls', () => {
     // Session-persistence.ts's deprecation flag is process-global (module state
     // shared across every test file bun runs in this process), so we cannot
-    // assert this is the very FIRST warning the process has ever seen — an
+    // assert this is the very FIRST warning the process has ever seen, an
     // earlier-sorted test file may have already tripped it. What we CAN assert,
     // order-independently, is the "once" guarantee itself: firing the legacy
     // path repeatedly never adds more than one occurrence of the migration
@@ -116,12 +116,12 @@ describe('session-persistence: surface and legacy options cannot be mixed (compi
     const { surface, workingDirectory } = tempSurface();
     // NOTE: bun test does not type-check test files (packages/sdk/tsconfig.json
     // excludes **/*.test.ts, and this repo's `pretest` tsc build only compiles
-    // src/**/*.ts — see package.json). So this assertion documents the intended
+    // src/**/*.ts, see package.json). So this assertion documents the intended
     // compile-time contract (as the sibling type-tests under test/types/ do for
     // other exported types) but is not currently enforced by any `bun test` or
     // `bun run test` gate; it would only be caught by running `tsc` directly
     // against this file, which the repo does not do today.
-    // @ts-expect-error — surface and workingDirectory are mutually exclusive; SessionPersistenceOptions is a discriminated union, not two independently-optional bags.
+    // @ts-expect-error, surface and workingDirectory are mutually exclusive; SessionPersistenceOptions is a discriminated union, not two independently-optional bags.
     const mixed: SessionPersistenceOptions = { surface, workingDirectory };
     // Reference `mixed` so the (deliberately not-typechecked-at-runtime) line
     // above isn't reported as an unused variable if a stricter lint ever runs.
@@ -155,7 +155,7 @@ describe('session-persistence: consumeRecovery', () => {
     const result = consumeRecovery(surface, 'sess-passive');
     // The contract: consumeRecovery hands back raw data. There is no side
     // channel, applied conversation, or mutation beyond the snapshot file's
-    // own deletion — verified by there being nothing else to observe here
+    // own deletion, verified by there being nothing else to observe here
     // besides the returned snapshot and the deleted file (already asserted above).
     expect(Array.isArray(result.snapshot?.messages)).toBe(true);
   });
@@ -233,7 +233,7 @@ describe('session-persistence: one snapshot in, one snapshot out (never a bulk c
   test('R1: keyless consumeRecovery of a legacy-shared-only snapshot actually retires it', () => {
     // Reproduction: a snapshot that lives ONLY in the legacy shared dir was
     // loaded and reported consumed:true, but the keyless delete never looked
-    // in that directory — so the file survived and was re-offered forever.
+    // in that directory, so the file survived and was re-offered forever.
     const { surface } = tempSurface();
     const legacyDir = resolveSharedDirectory(surface.homeDirectory, 'recovery');
     mkdirSync(legacyDir, { recursive: true });
@@ -250,7 +250,7 @@ describe('session-persistence: one snapshot in, one snapshot out (never a bulk c
     const result = consumeRecovery(surface);
     expect(result.consumed).toBe(true);
     expect(result.snapshot?.messages[0]?.content).toBe('legacy body');
-    // consumed:true now means what it says — the file is gone, in whichever
+    // consumed:true now means what it says, the file is gone, in whichever
     // directory it actually lived.
     expect(existsSync(legacyPath)).toBe(false);
     // A second keyless consume has nothing left to offer.
@@ -280,7 +280,7 @@ describe('session-persistence: one snapshot in, one snapshot out (never a bulk c
 describe('session-persistence: requireSurface rejects a partial hand-rolled surface', () => {
   test('a surface object missing its recoveryFile method fails with the clear construction message', () => {
     const { surface } = tempSurface();
-    // Every string field present, the method missing — the exact shape a
+    // Every string field present, the method missing, the exact shape a
     // hand-rolled "surface-like" object takes. Before the check covered
     // recoveryFile, this passed validation and died later with an opaque
     // "surface.recoveryFile is not a function".
@@ -356,7 +356,7 @@ describe('session-persistence: legacy shared recovery dual-read (one-time offer)
     const result = consumeRecovery(surface, 'legacy-only');
     expect(result.consumed).toBe(true);
     expect(result.snapshot?.messages[0]?.content).toBe('legacy body');
-    // Retired from the legacy shared location — the one-time offer is spent.
+    // Retired from the legacy shared location, the one-time offer is spent.
     expect(existsSync(legacyPath)).toBe(false);
   });
 

@@ -2,7 +2,7 @@
  * The registry-level "picker-open re-check" hook: ProviderRegistry.refreshLiveModelDiscovery()
  * is what a picker-open handler (or an explicit user refresh command) calls. Proves, under a
  * mocked provider API, that a brand-new model neither the registry's static baseline nor the
- * third-party catalog knows about yet becomes selectable immediately after the check — the
+ * third-party catalog knows about yet becomes selectable immediately after the check, the
  * root problem this item exists to fix.
  */
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -60,7 +60,7 @@ async function withMockedFetch<T>(
   fn: () => Promise<T> | T,
 ): Promise<T> {
   const original = globalThis.fetch;
-  // @ts-expect-error — test double, narrower than the full fetch overload set
+  // @ts-expect-error, test double, narrower than the full fetch overload set
   globalThis.fetch = async (url: string | URL | Request) => handler(String(url));
   try {
     return await fn();
@@ -71,11 +71,11 @@ async function withMockedFetch<T>(
 
 describe('ProviderRegistry.refreshLiveModelDiscovery — the picker-open re-check hook', () => {
   // These tests assert on what the anthropic provider does when its live
-  // /v1/models call is mocked — a brand-new model appears, a 503 surfaces an
+  // /v1/models call is mocked, a brand-new model appears, a 503 surfaces an
   // honest error. The provider only attempts that call when it is configured
   // with a key, so pin a deterministic test key for the whole file rather than
   // inheriting whatever ANTHROPIC_API_KEY the ambient environment happens to
-  // carry (present on a dev box, absent in CI — the difference that made the
+  // carry (present on a dev box, absent in CI, the difference that made the
   // 503 case pass locally and fail in CI).
   let ambientAnthropicKey: string | undefined;
   beforeAll(() => {
@@ -106,7 +106,7 @@ describe('ProviderRegistry.refreshLiveModelDiscovery — the picker-open re-chec
               { status: 200 },
             );
           }
-          // Any other provider's live-discovery call in this sweep — fail closed to dated-static.
+          // Any other provider's live-discovery call in this sweep, fail closed to dated-static.
           return new Response('not found', { status: 404 });
         },
         async () => {

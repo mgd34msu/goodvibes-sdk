@@ -41,7 +41,7 @@ export function listSharedSessionMessages(
  * AGENT_CANCELLED payload, and the daemon's pending-surface-reply poller writes
  * the same agent's rendered answer when it observes the finished record. Both
  * call the broker's completeAgent, so a conversation stored every assistant
- * reply twice — and because the next turn's prompt is built from that
+ * reply twice, and because the next turn's prompt is built from that
  * transcript, the model was shown every one of its own answers twice.
  *
  * Matching is by agent id plus the presence of a terminal `status` in the

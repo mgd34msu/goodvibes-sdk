@@ -1,9 +1,9 @@
 /**
- * BinaryDownloader — downloads and caches platform-specific LSP server binaries.
+ * BinaryDownloader, downloads and caches platform-specific LSP server binaries.
  *
  * Binaries are cached in an explicit project-owned .goodvibes/bin/ directory.
  * Downloads happen lazily on first use and are skipped if the binary already exists.
- * Never throws — returns null on any failure so callers can fall back gracefully.
+ * Never throws, returns null on any failure so callers can fall back gracefully.
  */
 
 import { existsSync, mkdirSync, chmodSync, unlinkSync, renameSync } from 'fs';
@@ -18,7 +18,7 @@ type PlatformKey = 'linux-x64' | 'linux-arm64' | 'darwin-x64' | 'darwin-arm64';
 function getPlatformKey(): PlatformKey | null {
   const platform = process.platform;
   const arch = process.arch;
-  // Windows is not supported — goodvibes-sdk targets Linux and macOS only.
+  // Windows is not supported, goodvibes-sdk targets Linux and macOS only.
   // Windows users would need WSL.
 
   if (platform === 'linux' && arch === 'x64') return 'linux-x64';
@@ -44,7 +44,7 @@ interface BinarySpec {
  * Assets are gzipped single binaries with SHA256 sidecar files for verification.
  *
  * gopls: Not available as prebuilt binary. Installed via `go install` if Go is
- * on PATH — see ensureGopls(). If Go is not installed, gopls is unavailable.
+ * on PATH, see ensureGopls(). If Go is not installed, gopls is unavailable.
  */
 const BINARY_SPECS: BinarySpec[] = [
   {
@@ -60,7 +60,7 @@ const BINARY_SPECS: BinarySpec[] = [
   },
 ];
 
-// gopls is handled separately via `go install` — see ensureGopls()
+// gopls is handled separately via `go install`, see ensureGopls()
 
 /**
  * Get the path where a binary would be cached.
@@ -151,7 +151,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
     // Fetch the raw bytes first so we can verify SHA256 before decompression
     const rawBytes = await downloadRes.arrayBuffer();
 
-    // SHA256 verification — rust-analyzer publishes .sha256 sidecar files
+    // SHA256 verification, rust-analyzer publishes .sha256 sidecar files
     const sha256Asset = release.assets?.find(a => a.name === assetName + '.sha256');
     if (sha256Asset) {
       const sha256Res = await instrumentedFetch(sha256Asset.browser_download_url, {
@@ -167,7 +167,7 @@ async function downloadBinary(binaryDir: string, name: string): Promise<string |
           hasher.update(new Uint8Array(rawBytes));
           const actualHash = hasher.digest('hex');
           if (actualHash !== expectedHash) {
-            logger.error('BinaryDownloader: SHA256 mismatch — download may be corrupted or tampered', {
+            logger.error('BinaryDownloader: SHA256 mismatch, download may be corrupted or tampered', {
               name, expected: expectedHash, actual: actualHash,
             });
             return null;
@@ -234,7 +234,6 @@ async function ensureGopls(binaryDir: string): Promise<string | null> {
     return destPath;
   }
 
-  // Check if go is available
   const goPath = Bun.which('go');
   if (!goPath) {
     logger.warn('BinaryDownloader: go not found on PATH, cannot install gopls');
@@ -273,11 +272,10 @@ async function ensureGopls(binaryDir: string): Promise<string | null> {
 }
 
 /**
- * Ensure a binary is available — download if needed.
+ * Ensure a binary is available, download if needed.
  * Returns the path to the binary, or null if unavailable.
  */
 export async function ensureBinary(binaryDir: string, name: string): Promise<string | null> {
-  // Check cache first
   const cached = getBinaryPath(binaryDir, name);
   if (existsSync(cached)) return cached;
 

@@ -60,7 +60,7 @@ export interface ASTGuardResult {
 /**
  * Evaluates a command using the baseline flat segmentation pipeline.
  *
- * Catastrophic segments (root deletion, raw disk destruction, fork bombs —
+ * Catastrophic segments (root deletion, raw disk destruction, fork bombs,
  * see catastrophicReason in the classifier; that list is frozen) are denied
  * unconditionally. Everything else is gated by `allowedClasses`: the caller
  * decides which classification tiers pass, so class-level risk stays with
@@ -83,7 +83,7 @@ function baselineGuard(
         allowed: false,
         denialMessage:
           `Command denied (safety block): "${asSingleLine(command)}"\n` +
-          `Unconditionally blocked destructive command — ${reason}.\n` +
+          `Unconditionally blocked destructive command, ${reason}.\n` +
           `This block is not affected by permission settings.`,
         astModeActive: false,
       };
@@ -127,7 +127,7 @@ function astGuard(
   // parseError on any command node it could not structure; when present, the
   // AST is unreliable, so we defer to the baseline flat-segmentation path
   // rather than trust a degraded tree. This is never a hard error and never a
-  // blanket allow — baselineGuard applies the same frozen catastrophic block
+  // blanket allow, baselineGuard applies the same frozen catastrophic block
   // and class gating the non-AST path always has.
   if (collectCommandNodes(ast).some((node) => node.parseError !== undefined)) {
     return baselineGuard(command, allowedClasses);

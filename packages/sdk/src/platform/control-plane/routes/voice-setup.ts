@@ -1,5 +1,5 @@
 /**
- * routes/voice-setup.ts — handlers for the managed local-voice provisioning
+ * routes/voice-setup.ts, handlers for the managed local-voice provisioning
  * verbs over the live provisioner + config (see voice/provisioning/*), and for
  * the wake-word artifacts served alongside them.
  *
@@ -7,7 +7,7 @@
  * composition reason worth stating: this group is already wired into the gateway,
  * so the same service object gains three methods and the registration site does
  * not change. A new group would have meant editing the verb-group composition
- * file for a capability that is provisioning a pinned voice artifact — which is
+ * file for a capability that is provisioning a pinned voice artifact, which is
  * exactly what this module already is.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
@@ -77,7 +77,7 @@ export function createWakeProvisionHandler(service: VoiceSetupGatewayService): G
  * The control plane says so in as many words: "GET/DELETE params arrive as query
  * strings that cannot be soundly type-checked", so nothing coerces or validates
  * them before a handler runs. A `typeof value === 'number'` test therefore
- * silently rejects `offset=524288` and falls back to 0 — which for a chunked read
+ * silently rejects `offset=524288` and falls back to 0, which for a chunked read
  * means the client re-fetches the first chunk forever, or reassembles a file out
  * of repeated openings and verifies it against a checksum it can never match.
  * Loud on a bad value, correct on a good one, is the only safe shape.

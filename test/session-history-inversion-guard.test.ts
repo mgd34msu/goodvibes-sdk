@@ -4,7 +4,7 @@
  * BLOCKER inversion guard: closed sessions are HISTORY. This is the exact
  * "299 on disk, serves 0" scenario expressed as a test. Seed many closed
  * sessions whose closedAt is ancient (far past any grace), boot, run the GC
- * sweep repeatedly, and assert that ALL of them remain listable and on disk —
+ * sweep repeatedly, and assert that ALL of them remain listable and on disk,
  * memory eviction may drop bodies, but nothing is ever deleted off disk by the
  * default sweep. Covers BOTH deletion authorities: the companion manager
  * (_gcSweep) and the broker (gcSweep / sweepSharedSessions).
@@ -89,7 +89,7 @@ describe('inversion guard — the 299-closed-chat scenario is never mass-deleted
       // Every closed session loaded and listable.
       expect(manager.listSessions({ includeClosed: true, limit: 1000 }).sessions).toHaveLength(N);
 
-      // Run the sweep repeatedly (idempotent) — the closedAt is a day old.
+      // Run the sweep repeatedly (idempotent), the closedAt is a day old.
       manager._gcSweep();
       manager._gcSweep();
       manager._gcSweep();

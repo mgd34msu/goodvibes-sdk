@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/web-search/providers
+ * Coverage-gap smoke test, platform/web-search/providers
  * Constructs each web-search provider with minimal context and asserts
  * both the provider shape and that search() returns a Promise that
  * resolves or rejects with the expected result shape.
@@ -57,7 +57,7 @@ function assertProviderShape(
 
 /**
  * Invoke provider.search() with a minimal query and a short-abort signal.
- * Providers with no API keys will reject — that is acceptable.
+ * Providers with no API keys will reject, that is acceptable.
  * We assert that the return value is a Promise (not a thrown sync error).
  */
 async function assertSearchReturnsPromise(provider: MinimalProvider): Promise<void> {

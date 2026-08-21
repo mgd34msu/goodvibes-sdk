@@ -1,7 +1,7 @@
 /**
  * strategies/microcompact.ts
  *
- * Micro-compaction strategy — lightweight token reduction by summarising only
+ * Micro-compaction strategy, lightweight token reduction by summarising only
  * the oldest turns in the conversation, preserving recent messages intact.
  *
  * This is the lowest-latency strategy: no LLM call, purely structural.
@@ -31,12 +31,12 @@ export function runMicrocompact(input: StrategyInput): StrategyOutput {
   const warnings: string[] = [];
 
   if (messages.length <= keepRecent) {
-    // Nothing to compact — return messages unchanged
+    // Nothing to compact, return messages unchanged
     warnings.push('microcompact: message count within keep window; no reduction applied');
     return {
       messages: [...messages] as ProviderMessage[],
       tokensAfter: tokensBefore,
-      summary: 'No compaction applied — message count within keep window.',
+      summary: 'No compaction applied, message count within keep window.',
       strategy,
       durationMs: Date.now() - startMs,
       warnings,

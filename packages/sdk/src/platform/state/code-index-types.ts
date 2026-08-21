@@ -6,7 +6,7 @@
  */
 import type { CodeChunk } from './code-index-chunking.js';
 
-/** Honest per-build skip/degrade counters — every excluded or fallback file is counted, never silently dropped. */
+/** Honest per-build skip/degrade counters, every excluded or fallback file is counted, never silently dropped. */
 export interface CodeIndexSkipReport {
   readonly tooLarge: number;
   /** Files skipped because the per-build file-count bound (maxFiles) was already reached. */
@@ -23,7 +23,7 @@ export interface CodeIndexBuildStats {
   readonly filesScanned: number;
   readonly filesIndexed: number;
   readonly filesUnchanged: number;
-  /** Chunks embedded and written by THIS build (changed/new files only — unchanged files' pre-existing chunks are counted separately). */
+  /** Chunks embedded and written by THIS build (changed/new files only, unchanged files' pre-existing chunks are counted separately). */
   readonly chunksIndexed: number;
   /** Pre-existing chunks belonging to files this build found unchanged (no re-chunk, no re-embed). */
   readonly chunksUnchanged: number;
@@ -32,7 +32,7 @@ export interface CodeIndexBuildStats {
   readonly startedAt: number;
   readonly completedAt: number;
   readonly durationMs: number;
-  /** Present exactly when the build was aborted (reroot()/close() during the walk) — partial results were discarded, not recorded as lastBuild. */
+  /** Present exactly when the build was aborted (reroot()/close() during the walk), partial results were discarded, not recorded as lastBuild. */
   readonly abortReason?: string | undefined;
 }
 
@@ -51,13 +51,13 @@ export interface CodeIndexStats {
   readonly indexedChunks: number;
   readonly embeddingProviderId: string;
   readonly embeddingProviderLabel: string;
-  /** False when the only active provider is the deterministic hashed one — semantic retrieval is a weak lexical-ish signal in that mode. */
+  /** False when the only active provider is the deterministic hashed one, semantic retrieval is a weak lexical-ish signal in that mode. */
   readonly semanticRetrievalAvailable: boolean;
   /**
    * Present exactly when the stored vectors were embedded under a DIFFERENT
-   * provider than the current default — the vector search path is disabled
+   * provider than the current default, the vector search path is disabled
    * (lexical fallback only) until a rebuild re-embeds. Human-readable, e.g.
-   * "embeddings built with X, current provider Y — rebuild to re-embed".
+   * "embeddings built with X, current provider Y, rebuild to re-embed".
    */
   readonly embeddingProviderMismatch?: string | undefined;
   readonly building: boolean;

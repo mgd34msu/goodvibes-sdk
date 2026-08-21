@@ -17,7 +17,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 
 /**
  * HomeGraphService.syncSnapshot() starts a self-improvement pump
- * fire-and-forget behind an AbortController — it sleeps in 15s rounds and
+ * fire-and-forget behind an AbortController, it sleeps in 15s rounds and
  * calls the semantic service (and therefore fetch) between them, for the rest
  * of the process. dispose() aborts it.
  */

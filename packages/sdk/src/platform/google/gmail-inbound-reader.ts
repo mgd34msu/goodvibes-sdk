@@ -1,5 +1,5 @@
 /**
- * gmail-inbound-reader.ts — turning an adopted Google credential into the two
+ * gmail-inbound-reader.ts, turning an adopted Google credential into the two
  * things `GmailMailSource` needs, or saying why there are none.
  *
  * This is the composition the inbound path did not have. `GmailMailSource` was
@@ -8,7 +8,7 @@
  * that has an adopted Google credential." No such composition existed. So
  * `deps.gmail` was `undefined` on every machine, the factory answered `null`
  * for `kind: 'gmail'`, and an owner who had connected Google and never set up
- * IMAP had no inbound mail at all — while `source-selection.ts` told him "no
+ * IMAP had no inbound mail at all, while `source-selection.ts` told him "no
  * Google credentials have been adopted on this machine".
  *
  * What a caller gets back is deliberately NOT a source
@@ -23,7 +23,7 @@
  * ────────────────────────────────────
  * `collectHistoryDelta` gates on `GoogleTokenManager.scopes()`, and that list
  * is EMPTY for credentials read from the encrypted secret store until a refresh
- * has happened — the store records no scope list, and the real set arrives on
+ * has happened, the store records no scope list, and the real set arrives on
  * the refresh response. A source built over an unrefreshed store credential
  * would therefore refuse its first delta with `no-gmail-scope`, which is a
  * terminal verdict, and report a perfectly good mailbox as unreadable. So
@@ -72,14 +72,14 @@ export interface GmailInboundReader {
    *
    * Present because "is the watched mailbox a Gmail one" cannot otherwise be
    * answered on the machine this exists to serve. The existing test reads the
-   * configured IMAP host and concludes from its domain — which answers `false`
+   * configured IMAP host and concludes from its domain, which answers `false`
    * for an owner who has Google connected and has never configured IMAP at all,
    * sending automatic selection to the source he does not have.
    */
   readonly address: string;
   /** The `collectHistoryDelta` I/O slice, over the same client that refreshed the token. */
   readonly history: HistoryDeltaDeps;
-  /** `users.getProfile().historyId` — see `GoogleApiClient.currentHistoryId`. */
+  /** `users.getProfile().historyId`, see `GoogleApiClient.currentHistoryId`. */
   readonly currentHistoryId: () => Promise<GoogleApiResult<string>>;
 }
 
@@ -141,7 +141,7 @@ export async function resolveGmailInboundReader(
   }
   if (connection === null) return NOT_CONNECTED;
 
-  // One call that does four jobs — see the module header. Wrapped because a
+  // One call that does four jobs, see the module header. Wrapped because a
   // transport that throws rather than answering must not reject out of start().
   let profile: GoogleApiResult<{ readonly emailAddress: string }>;
   try {
@@ -160,7 +160,7 @@ export async function resolveGmailInboundReader(
   // After the profile call the token has been refreshed, so this is the grant's
   // real scope list. An empty one here means Google's token response carried no
   // `scope` field and the credential recorded none either, which is not the
-  // same fact as "the grant has no Gmail scope" — and letting
+  // same fact as "the grant has no Gmail scope", and letting
   // `collectHistoryDelta` read it as the second would announce a terminal
   // no-gmail-scope failure for a mailbox that may be perfectly readable.
   if (connection.tokens.scopes().length === 0) {

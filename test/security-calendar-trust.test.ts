@@ -188,7 +188,7 @@ const OWN_EVENT_ICS = [
   'END:VCALENDAR',
 ].join('\r\n');
 
-/** No ORGANIZER at all — the source said nothing, so it is somebody else's. */
+/** No ORGANIZER at all, the source said nothing, so it is somebody else's. */
 const ANONYMOUS_EVENT_ICS = [
   'BEGIN:VCALENDAR',
   'VERSION:2.0',
@@ -261,7 +261,7 @@ describe('externally-sourced event content', () => {
   test('an .ics import and a subscription are external unconditionally; CalDAV defaults to external', () => {
     expect(calendarEventIsExternallySourced({ kind: 'ics-import' }, { summary: 'x' })).toBe(true);
     // CalDAV says nothing about the organizer here, so it reads as somebody
-    // else's — the same default direction a provider event has.
+    // else's, the same default direction a provider event has.
     expect(calendarEventIsExternallySourced({ kind: 'caldav', calendarId: 'personal' }, { summary: 'x' })).toBe(true);
     expect(
       calendarEventIsExternallySourced(
@@ -378,7 +378,7 @@ describe('provider organizer signals', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Arrival is not ingest — the rule this whole design is shaped around
+// Arrival is not ingest, the rule this whole design is shaped around
 // ---------------------------------------------------------------------------
 
 describe('a subscription poll records nothing; reading it records', () => {
@@ -410,7 +410,7 @@ describe('a subscription poll records nothing; reading it records', () => {
     // already called from an arrival path in a consumer: goodvibes-agent's
     // calendar-subscription-registry `refresh()` calls `store.events(name)` to
     // count and persist after a timer fired. If `events()` recorded, wiring the
-    // recorder in that consumer would turn every timer tick into an ingest —
+    // recorder in that consumer would turn every timer tick into an ingest,
     // the exact remote off switch this file exists to prevent.
     const ledger = new UntrustedContentLedger();
     const subscriptions = store(recorderInto(ledger), feedBody('Standup'));
@@ -454,8 +454,8 @@ describe('a subscription poll records nothing; reading it records', () => {
     expect(ingests[0]?.at).toBe(new Date(FIXED_NOW).toISOString());
     expect(ingests[0]?.origin).toContain("subscription 'Shared Team Calendar'");
     expect(ingests[0]?.origin).toContain(maskFeedUrl(FEED_URL));
-    // The feed URL is a read credential — a Google/Outlook "secret address"
-    // grants access — so the raw path must never reach an origin an operator
+    // The feed URL is a read credential, a Google/Outlook "secret address"
+    // grants access, so the raw path must never reach an origin an operator
     // (or a refusal message) sees.
     expect(ingests[0]?.origin).not.toContain('private-9f2c1b7a4e');
     expect(ingests[0]?.content).toContain('Standup');
@@ -567,7 +567,7 @@ describe('a CalDAV collection is the owner\'s own server, so the organizer decid
   test('an event the configured CalDAV account organized records NO ingest', async () => {
     // Reading his own calendar must not poison the turn. Before this was
     // narrowed, every CalDAV read recorded, and `createUntrustedContentPort`'s
-    // `evaluateOutwardEffect` wrapper passes no `content` — so every later
+    // `evaluateOutwardEffect` wrapper passes no `content`, so every later
     // browser outward action in the turn took the coarse "any origin -> refuse"
     // branch with no derivation check at all.
     const ledger = new UntrustedContentLedger();
@@ -743,7 +743,7 @@ describe('an invitation cannot compose an outward action', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Event content cannot initiate work — proved by scanning the source
+// Event content cannot initiate work, proved by scanning the source
 // ---------------------------------------------------------------------------
 
 describe('no calendar module can initiate work', () => {
@@ -751,7 +751,7 @@ describe('no calendar module can initiate work', () => {
 
   /**
    * Every module that handles calendar event content: the package itself, plus
-   * the three files outside it that serve `calendar.*` — the two gateway
+   * the three files outside it that serve `calendar.*`, the two gateway
    * backends' route layer and the Google-backed implementation. A scan of the
    * package alone would miss the file that actually talks to Google.
    */
@@ -804,7 +804,7 @@ describe('no calendar module can initiate work', () => {
     const end = source.indexOf('async refreshDue');
     // Both anchors must have been FOUND. `indexOf` returns -1 on a miss, and
     // `slice(-1, n)` yields the LAST CHARACTER of the source rather than an
-    // empty string — on which every `not.toContain` below passes and this test
+    // empty string, on which every `not.toContain` below passes and this test
     // silently stops checking anything. A length guard does not catch that,
     // because a one-character haystack has a length greater than zero.
     expect(start).toBeGreaterThanOrEqual(0);

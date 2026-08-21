@@ -1,13 +1,13 @@
 /**
  * watcher-recovery-window.test.ts
  *
- * `watchers.recoveryWindowMinutes` — "Recovery window for watcher restart and
- * missed-event catch-up" — had a schema row, a 0…1440 range, a default of 10,
+ * `watchers.recoveryWindowMinutes`, "Recovery window for watcher restart and
+ * missed-event catch-up", had a schema row, a 0…1440 range, a default of 10,
  * and no reader anywhere in the repository.
  *
  * What it now governs is the restore path in `WatcherRegistry.ensureLoaded()`.
  * A watcher that was running when the process stopped is re-armed on its
- * interval, but re-arming alone means it does nothing until the first tick — on
+ * interval, but re-arming alone means it does nothing until the first tick, on
  * a long poller, a restart cost that much extra blindness on top of the outage.
  * `startWatcher` has always run once immediately for the same reason; the
  * restore path did not. The window decides whether the restart takes that
@@ -15,8 +15,8 @@
  * gap is too wide for the checkpoint to bracket and the watcher waits for its
  * normal tick.
  *
- * Each case below is the SAME persisted watcher restored twice — once with a
- * window that contains its outage and once with a window that does not — so the
+ * Each case below is the SAME persisted watcher restored twice, once with a
+ * window that contains its outage and once with a window that does not, so the
  * only variable is the config value.
  */
 

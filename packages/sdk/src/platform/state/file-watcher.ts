@@ -27,7 +27,7 @@ const DEFAULT_ENV_GLOBS = [
 ];
 
 /**
- * FileWatcher — watches key project files and invalidates caches on change.
+ * FileWatcher, watches key project files and invalidates caches on change.
  *
  * Uses Node.js/Bun-native `fs.watch`. Debounces events per-file (100ms).
  * On change:
@@ -275,7 +275,7 @@ export class FileWatcher {
       // Rough heuristic: ~4 bytes per token (same as ReadTool/ProjectIndex)
       tokenEstimate = Math.ceil(size / 4);
     } catch {
-      // File may have been deleted — leave token estimate as undefined
+      // File may have been deleted, leave token estimate as undefined
     }
     this.projectIndex.upsertFile(absPath, tokenEstimate);
 

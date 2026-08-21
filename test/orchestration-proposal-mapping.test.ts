@@ -1,5 +1,5 @@
 /**
- * BIG-3 item 1 — PlanProposal → CreateWorkstreamInput assembly
+ * BIG-3 item 1, PlanProposal → CreateWorkstreamInput assembly
  * (proposal-workstream.ts fromPlanProposal). Proves the honest mapping: one
  * work item per proposal item (title + brief → title/task), the SAME
  * engineer→review phase template fromChainSpec uses (parameterized by
@@ -58,7 +58,7 @@ describe('fromPlanProposal — item mapping', () => {
     const spec = fromPlanProposal(proposal, cfg);
     // Default capacity = item count (3), so independent items run concurrently.
     expect(spec.phases).toEqual(engineerReviewPhases('scoped', 3));
-    // fromChainSpec is the same template at capacity 1 — the only difference.
+    // fromChainSpec is the same template at capacity 1, the only difference.
     const chain = fromChainSpec({ id: 'x', task: 't' }, cfg);
     expect(chain.phases).toEqual(engineerReviewPhases('scoped', 1));
     expect(spec.phases.map((p) => p.kind)).toEqual(chain.phases.map((p) => p.kind));

@@ -1,5 +1,5 @@
 /**
- * remote-execution-composition.ts — running work somewhere other than here.
+ * remote-execution-composition.ts, running work somewhere other than here.
  *
  * Four collaborators that only make sense together, so they are built together
  * rather than as four unrelated lines in the middle of the runtime composition:
@@ -8,7 +8,7 @@
  *     them; RemoteSupervisor drives them and is meaningless without it.
  *
  *   - SandboxSessionRegistry owns the sandboxes a tool call can be confined to,
- *     and McpRegistry is the thing that confines them — an MCP server started
+ *     and McpRegistry is the thing that confines them, an MCP server started
  *     without the sandbox registry runs its tools directly on the host.
  *
  * The pairing in each case is the point: handing the supervisor a registry it

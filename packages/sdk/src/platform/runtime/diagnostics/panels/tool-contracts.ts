@@ -19,7 +19,7 @@ import { logger } from '../../../utils/logger.js';
 import { summarizeError } from '../../../utils/error-display.js';
 
 /**
- * ToolContractsPanel — diagnostics data provider for tool contract verification.
+ * ToolContractsPanel, diagnostics data provider for tool contract verification.
  *
  * Usage:
  * ```ts

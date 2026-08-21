@@ -1,12 +1,12 @@
 /**
- * SecurityPanel — diagnostics data provider for token scope and rotation audits.
+ * SecurityPanel, diagnostics data provider for token scope and rotation audits.
  *
  * Wraps an `ApiTokenAuditor` and exposes a snapshot of the current audit state
  * for the diagnostics view. Consumers subscribe to change notifications and
  * call `getSnapshot()` to retrieve a fresh rendering-ready view.
  *
  * This panel is push-passive: it does not drive timers. Callers trigger audits
- * by calling `runAudit()` — typically on a schedule or on relevant events.
+ * by calling `runAudit()`, typically on a schedule or on relevant events.
  */
 
 import { logger } from '../../../utils/logger.js';
@@ -52,7 +52,7 @@ export interface SecurityPanelSnapshot {
 // ---------------------------------------------------------------------------
 
 /**
- * SecurityPanel — diagnostics data provider for token scope and rotation audits.
+ * SecurityPanel, diagnostics data provider for token scope and rotation audits.
  *
  * @remarks
  * Instantiated by the diagnostics bootstrap (deferred wiring pattern, same as
@@ -103,7 +103,7 @@ export class SecurityPanel {
   }
 
   /**
-   * getSnapshot — Returns the current security audit snapshot.
+   * getSnapshot, Returns the current security audit snapshot.
    * Returns an empty snapshot if no audit has been run yet.
    */
   public getSnapshot(): SecurityPanelSnapshot {

@@ -14,18 +14,18 @@ export type ToolExecutionPhase =
  * to configure routing, phase skipping, timeouts, and cancellation.
  *
  * All existing Tool implementations remain valid; PhasedTool is purely additive.
- * The `execute` contract is unchanged — callers that use the base ToolRegistry
+ * The `execute` contract is unchanged, callers that use the base ToolRegistry
  * path continue working without modification.
  */
 export interface PhasedTool extends Tool {
   /**
    * Tool category for permission classification and audit.
    *
-   * - `read`     — reads data without side effects (files, network GETs)
-   * - `write`    — creates or modifies persistent state (files, database)
-   * - `execute`  — runs arbitrary code or shell commands
-   * - `delegate` — spawns sub-agents or recursive tool calls
-   * - `network`  — performs network I/O beyond simple reads
+   * - `read`    , reads data without side effects (files, network GETs)
+   * - `write`   , creates or modifies persistent state (files, database)
+   * - `execute` , runs arbitrary code or shell commands
+   * - `delegate`, spawns sub-agents or recursive tool calls
+   * - `network` , performs network I/O beyond simple reads
    */
   category: 'read' | 'write' | 'execute' | 'delegate' | 'network';
 

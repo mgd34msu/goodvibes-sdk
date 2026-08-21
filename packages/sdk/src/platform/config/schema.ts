@@ -9,7 +9,7 @@
  * module contributes its own `declare module … { interface GoodVibesConfig }`
  * block. Those blocks only exist in a program that has loaded the module, and
  * the VALUE imports below (`import { clusterConfigDefaults } from …`) do NOT
- * survive declaration emit — TypeScript drops an import from a `.d.ts` when the
+ * survive declaration emit, TypeScript drops an import from a `.d.ts` when the
  * emitted declarations do not reference its types.
  *
  * The result was a published type that silently omitted domains. Measured
@@ -22,7 +22,7 @@
  *
  * A bare side-effect import IS preserved in the emitted `.d.ts` (verified by
  * inspecting dist/platform/config/schema.d.ts), so these lines are what carries
- * the augmentations to consumers. `import type {}` is not — it is erased.
+ * the augmentations to consumers. `import type {}` is not, it is erased.
  *
  * These modules are already imported for their values below, so this adds no
  * runtime cost and no new dependency; it only pins them into the declarations.

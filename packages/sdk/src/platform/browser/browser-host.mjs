@@ -6,7 +6,7 @@
  * Attaching to a browser the user already has open requires a CDP WebSocket
  * handshake. Bun's node:http client does not raise the upgrade event for a 101
  * response, so Playwright's WebSocket client waits forever and every attach
- * times out — while the identical code works under Node. Attaching is not
+ * times out, while the identical code works under Node. Attaching is not
  * optional: it is the path that works when a site refuses an automated browser,
  * which is the case that started this work.
  *
@@ -215,7 +215,7 @@ const handlers = {
    * Drops the connection without ending the browser.
    *
    * A browser this process attached to belongs to whoever opened it. Nothing
-   * here closes it — the transport goes away and the browser keeps running.
+   * here closes it, the transport goes away and the browser keeps running.
    */
   async release() {
     state.browser = null;

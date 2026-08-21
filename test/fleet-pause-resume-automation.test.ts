@@ -60,7 +60,7 @@ async function flushMicrotasks(rounds = 8): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// d2 — pause <-> resume
+// d2, pause <-> resume
 // ---------------------------------------------------------------------------
 
 describe('fleet registry — pause/resume (d2)', () => {
@@ -156,7 +156,7 @@ describe('fleet registry — pause/resume (d2)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// d4 — /schedule automation jobs in the fleet tree
+// d4, /schedule automation jobs in the fleet tree
 // ---------------------------------------------------------------------------
 
 describe('adaptAutomationJob', () => {
@@ -184,7 +184,7 @@ describe('fleet registry — automation jobs in the fleet tree (d4)', () => {
 
   test('present automationManager dep: enumerates jobs as schedule-kind nodes, namespaced apart from workflow ScheduleEntry ids', () => {
     const job = makeAutomationJob({ id: 'nightly', enabled: true });
-    // A workflow-tool ScheduleEntry happens to share the literal name "nightly" —
+    // A workflow-tool ScheduleEntry happens to share the literal name "nightly",
     // must not collide with the automation job's node id.
     const scheduleEntry: ScheduleEntry = { name: 'nightly', interval: '1h', command: 'x', enabled: true };
     const registry = createProcessRegistry(makeDeps({
@@ -221,7 +221,7 @@ describe('fleet registry — automation jobs in the fleet tree (d4)', () => {
     const affected = registry.kill(nodeId);
     expect(affected).toEqual([nodeId]); // dispatched, reported synchronously
     // Not yet settled: still present or already gone depending on microtask
-    // timing is irrelevant — what matters is it settles by next tick.
+    // timing is irrelevant, what matters is it settles by next tick.
     await flushMicrotasks();
     expect(registry.getNode(nodeId)).toBeNull();
     registry.dispose();

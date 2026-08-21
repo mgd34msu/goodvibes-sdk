@@ -1,7 +1,7 @@
 /**
  * strategies/reactive.ts
  *
- * Reactive compaction strategy — emergency compaction triggered when the
+ * Reactive compaction strategy, emergency compaction triggered when the
  * provider returns a prompt-too-long error.
  *
  * This strategy must shrink the context aggressively and immediately, with

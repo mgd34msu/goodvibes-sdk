@@ -1,9 +1,9 @@
 /**
- * manager.ts — the trigger supervisor.
+ * manager.ts, the trigger supervisor.
  *
  * Owns all three watcher kinds over one spine: the same backoff ladder, the
  * same strike breaker, the same persisted ring buffer, the same recovery
- * housekeeping. The kinds differ only in how an observation is produced —
+ * housekeeping. The kinds differ only in how an observation is produced,
  * a probe, a matched stream batch, or a child process ending.
  *
  * Everything with an effect is injected (probe I/O, process host, stream host,
@@ -82,7 +82,7 @@ export class TriggerManager {
     if (!this.config.enabled) throw new TriggerDisabledError(operation);
   }
 
-  /** The last recovery/sweep report — what was reaped, and why. */
+  /** The last recovery/sweep report, what was reaped, and why. */
   get recoveryReport(): TriggerRecoveryReport | null {
     return this.lastRecovery;
   }
@@ -168,7 +168,7 @@ export class TriggerManager {
    * supervised children and runs due condition checks.
    *
    * Without this, on-exit triggers would only fire if something happened to
-   * call pollProcesses() — which is the "correct code nothing calls" shape.
+   * call pollProcesses(), which is the "correct code nothing calls" shape.
    * Safe to call when the family is disabled: the tick body no-ops on the live
    * config, so flipping the flag on later starts real work without a restart.
    */
@@ -498,8 +498,8 @@ export class TriggerManager {
       at: now,
       outcome: 'failed',
       detail: outcome.breakerOpened
-        ? `${error} — breaker opened after ${outcome.strikes} consecutive failures; reset it to resume`
-        : `${error} — retrying in ${outcome.delayMs}ms`,
+        ? `${error}, breaker opened after ${outcome.strikes} consecutive failures; reset it to resume`
+        : `${error}, retrying in ${outcome.delayMs}ms`,
       durationMs: now - startedAt,
     };
     let next: TriggerRecord = {

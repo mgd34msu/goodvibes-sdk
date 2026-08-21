@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * eval-gate.ts — the standing eval gate (CI-runnable).
+ * eval-gate.ts, the standing eval gate (CI-runnable).
  *
  *   bun run eval:gate
  *
@@ -11,7 +11,7 @@
  * regresses beyond the threshold versus the baseline. A clean run exits 0.
  *
  * Per-job honesty: every scenario's PASS/FAIL and score is printed, and the
- * final summary states floor failures and regressions explicitly — no silent
+ * final summary states floor failures and regressions explicitly, no silent
  * green. A missing baseline is a hard failure (the gate cannot do its
  * regression job without one), pointing at `bun run eval:baseline`.
  */
@@ -34,7 +34,7 @@ const baseline = await loadBaseline(BASELINE_PATH, PROJECT_ROOT);
 if (!baseline) {
   console.error(
     '[eval-gate] FAIL: no checked-in baseline at eval/baseline.json. ' +
-      'The gate needs a baseline to detect regressions — generate one with: bun run eval:baseline',
+      'The gate needs a baseline to detect regressions, generate one with: bun run eval:baseline',
   );
   process.exit(1);
 }

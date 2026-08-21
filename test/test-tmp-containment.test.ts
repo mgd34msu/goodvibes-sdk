@@ -8,7 +8,7 @@
  * written and the suite leaked on GREEN runs. Counting directories is what
  * caught it. Every assertion here counts.
  *
- * Targets this repo's containment — `scripts/test-run-tmp.ts` (the run
+ * Targets this repo's containment, `scripts/test-run-tmp.ts` (the run
  * parent's lifecycle and the env redirect) plus `scripts/stale-tmp-sweep.ts`
  * (reclaiming what a signal-killed run could not remove). Those two modules
  * are what `scripts/test.ts`, `scripts/leak-scan.ts`,
@@ -167,7 +167,7 @@ describe('end to end, under the real runner', () => {
    * When this file is executed by `bun run test` (or `scripts/leak-scan.ts`),
    * the runner has already redirected TMPDIR into a run parent. This is the
    * assertion that fails if somebody removes the redirection from either entry
-   * point — the unit tests above would all still pass, because they call the
+   * point, the unit tests above would all still pass, because they call the
    * helper directly with a scratch root of their own.
    *
    * Under a raw `bun test` the flag is absent and there is nothing to assert;

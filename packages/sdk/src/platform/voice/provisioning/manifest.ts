@@ -1,5 +1,5 @@
 /**
- * manifest.ts — the PINNED local-voice runtime manifest: exact versions, URLs,
+ * manifest.ts, the PINNED local-voice runtime manifest: exact versions, URLs,
  * byte sizes, and sha256 checksums for the managed engines + default models the
  * provisioner installs.
  *
@@ -8,12 +8,12 @@
  * its build here (verified against the real asset); a platform with no pinned,
  * verified build reports `unsupported` honestly instead of downloading blind.
  *
- * TTS — Piper (MIT). The official release tarball bundles the piper binary, its
+ * TTS, Piper (MIT). The official release tarball bundles the piper binary, its
  * shared libs, AND espeak-ng-data, so one archive provisions the whole engine.
- * Default voice: en_US-lessac-medium — a widely-used, well-regarded medium
+ * Default voice: en_US-lessac-medium, a widely-used, well-regarded medium
  * en_US voice (good quality/size balance at ~63 MB) from rhasspy/piper-voices.
  *
- * STT — whisper.cpp (MIT). whisper.cpp publishes NO official prebuilt binary for
+ * STT, whisper.cpp (MIT). whisper.cpp publishes NO official prebuilt binary for
  * Linux/macOS in its GitHub releases (only source), and this provisioner never
  * compiles on the user's machine, so goodvibes builds the bundle reproducibly
  * and HOSTS it at the append-only `voice-runtimes-v1` release tag (with a
@@ -97,7 +97,7 @@ export const WHISPER_UNSUPPORTED_REASON =
  * ships no official prebuilt binaries, so goodvibes builds them reproducibly
  * (scripts/build-whisper-bundle.ts, static ggml, stripped) and pins the
  * artifact here. `bundle.url` points at the hosted asset once uploaded to the
- * append-only `voice-runtimes-v1` tag, and is null until then — the byte count
+ * append-only `voice-runtimes-v1` tag, and is null until then, the byte count
  * and sha256 are ALWAYS pinned, so a sideloaded copy of the same bytes (dropped
  * at the managed archive path) verifies against the same pin and installs
  * identically whether or not a URL is set.
@@ -109,7 +109,7 @@ export interface WhisperEngineManifest {
   readonly binaryRelPath: string;
 }
 
-/** A whisper ggml model (hosted on Hugging Face — real, stable URLs). */
+/** A whisper ggml model (hosted on Hugging Face, real, stable URLs). */
 export interface WhisperModelManifest {
   readonly id: string;
   readonly bin: VerifiedDownloadSpec;
@@ -140,7 +140,7 @@ export const WHISPER_ENGINES: Partial<Record<VoicePlatform, WhisperEngineManifes
 };
 
 /**
- * The default STT model: base.en — the standard quality/size balance (~148MB).
+ * The default STT model: base.en, the standard quality/size balance (~148MB).
  *
  * Pinned to an IMMUTABLE Hugging Face commit revision, not the mutable `main`
  * branch ref: an upstream re-export/re-quantize on main would otherwise change

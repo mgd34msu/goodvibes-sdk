@@ -1,5 +1,5 @@
 /**
- * client-seam-conversation-rewind-host.test.ts — the surface holding a
+ * client-seam-conversation-rewind-host.test.ts, the surface holding a
  * conversation is the one that answers for it.
  *
  * ── The failure being closed ──────────────────────────────────────────────
@@ -7,7 +7,7 @@
  * Files rewind works from anywhere; the messages do not. Once the surfaces
  * became pure clients, a rewind driven from the web app asked the daemon, the
  * daemon looked in a conversation registry nothing outside it could populate,
- * and answered "0 messages to drop". Not an error — a confident number, and
+ * and answered "0 messages to drop". Not an error, a confident number, and
  * indistinguishable from a real zero.
  *
  * So the assertions that matter are about which answer comes back for which
@@ -21,7 +21,7 @@
  * route handlers, so the lease, the take/answer pairing and the refusals are the
  * real ones. Only the transport is local.
  *
- * Ported from the terminal app's suite when this module was hoisted — the same
+ * Ported from the terminal app's suite when this module was hoisted, the same
  * pins now cover every surface that offers a conversation.
  */
 import { describe, expect, test } from 'bun:test';

@@ -1,4 +1,4 @@
-# Public Surface — @pellux/goodvibes-sdk
+# Public surface: @pellux/goodvibes-sdk
 
 > **Runtime surfaces**: See [`docs/surfaces.md`](./surfaces.md) for the full/companion surface split, supported runtimes, and CI enforcement details.
 
@@ -6,15 +6,15 @@ This document is the single canonical source of truth for the public entry point
 
 ## Stability levels
 
-- **stable** — Semver-guaranteed. Breaking changes require a major bump.
-- **beta** — API is settled but may have minor adjustments between minor releases.
-- **preview** — Under active development. May change without notice in any release.
+- **stable.** Semver-guaranteed. Breaking changes require a major bump.
+- **beta.** API is settled but may have minor adjustments between minor releases.
+- **preview.** Under active development. May change without notice in any release.
 
 ---
 
 ## Root entry point
 
-### `.` — `@pellux/goodvibes-sdk`
+### `.`: `@pellux/goodvibes-sdk`
 
 **Status:** stable
 
@@ -26,7 +26,7 @@ Use this for general SDK consumption when you don't need a subsystem-specific en
 
 ## Subsystem entry points
 
-### `./auth` — `@pellux/goodvibes-sdk/auth`
+### `./auth`: `@pellux/goodvibes-sdk/auth`
 
 **Status:** stable
 
@@ -34,25 +34,25 @@ Authentication client, token stores, and auth types. Exports `createGoodVibesAut
 
 **Stability contract:** public method signatures are stable. Internal token format may change between major versions.
 
-### `./client-auth` — `@pellux/goodvibes-sdk/client-auth`
+### `./client-auth`: `@pellux/goodvibes-sdk/client-auth`
 
 **Status:** beta
 
 Low-level authentication primitives, including `AutoRefreshCoordinator`, platform-specific token stores (browser, iOS keystore, Android keychain, Expo secure store), and auto-refresh options. Use `./auth` for the recommended public authentication surface; import from `./client-auth` only when you need direct access to platform-specific token store implementations or the coordinator.
 
-### `./contracts` — `@pellux/goodvibes-sdk/contracts`
+### `./contracts`: `@pellux/goodvibes-sdk/contracts`
 
 **Status:** stable
 
 ACP operator/peer contract types, runtime event domains, and method IDs. Used by both operator and peer clients.
 
-### `./contracts/node` — `@pellux/goodvibes-sdk/contracts/node`
+### `./contracts/node`: `@pellux/goodvibes-sdk/contracts/node`
 
 **Status:** stable
 
 Contract extensions for file-based artifact types. Used on the full (Bun) surface.
 
-### `./contracts/operator-contract.json` — `@pellux/goodvibes-sdk/contracts/operator-contract.json`
+### `./contracts/operator-contract.json`: `@pellux/goodvibes-sdk/contracts/operator-contract.json`
 
 **Status:** stable
 
@@ -60,7 +60,7 @@ Raw JSON schema for the operator ACP contract. Suitable for tooling and validato
 
 > **Bundle-budget note:** JSON artifacts are static and excluded from gzip bundle-budget tracking. See `bundle-budgets.json` comments.
 
-### `./contracts/peer-contract.json` — `@pellux/goodvibes-sdk/contracts/peer-contract.json`
+### `./contracts/peer-contract.json`: `@pellux/goodvibes-sdk/contracts/peer-contract.json`
 
 **Status:** stable
 
@@ -68,19 +68,19 @@ Raw JSON schema for the peer ACP contract.
 
 > **Bundle-budget note:** JSON artifacts are static and excluded from gzip bundle-budget tracking.
 
-### `./daemon` — `@pellux/goodvibes-sdk/daemon`
+### `./daemon`: `@pellux/goodvibes-sdk/daemon`
 
 **Status:** stable
 
 Daemon HTTP API types, route helpers, and server bootstrap utilities.
 
-### `./observer` — `@pellux/goodvibes-sdk/observer`
+### `./observer`: `@pellux/goodvibes-sdk/observer`
 
 **Status:** beta
 
 Observability helpers: `createConsoleObserver`, `createOpenTelemetryObserver`, and associated observer types. The root `@pellux/goodvibes-sdk` entry also re-exports this surface via `export *`; either import path is valid. Prefer `./observer` when you need tree-shaking control.
 
-### `./operator` — `@pellux/goodvibes-sdk/operator`
+### `./operator`: `@pellux/goodvibes-sdk/operator`
 
 **Status:** stable
 
@@ -89,7 +89,7 @@ The operator surface is intentionally resource-oriented (`sessions`,
 `tasks`, `approvals`) because it is used by human/operator UIs that browse and
 act on daemon resources.
 
-### `./peer` — `@pellux/goodvibes-sdk/peer`
+### `./peer`: `@pellux/goodvibes-sdk/peer`
 
 **Status:** stable
 
@@ -99,13 +99,13 @@ The peer surface is intentionally capability-oriented (`pairing`, `peer`,
 available. This differs from the operator client by design; both clients share
 the same generated contract ids underneath.
 
-### `./errors` — `@pellux/goodvibes-sdk/errors`
+### `./errors`: `@pellux/goodvibes-sdk/errors`
 
 **Status:** stable
 
 Shared error types and error-contract helpers.
 
-### `./events` and explicit event-domain subpaths — `@pellux/goodvibes-sdk/events`
+### `./events` and explicit event-domain subpaths: `@pellux/goodvibes-sdk/events`
 
 **Status:** beta
 
@@ -120,39 +120,39 @@ Supported event domain subpaths are: `agents`, `automation`, `communication`,
 `turn`, `ui`, `watchers`, `workflows`, and `workspace`. Event implementation
 modules are not exported as deep package subpaths.
 
-### `./transport-core` — `@pellux/goodvibes-sdk/transport-core`
+### `./transport-core`: `@pellux/goodvibes-sdk/transport-core`
 
 **Status:** stable
 
 Abstract transport interfaces, base classes, and shared transport types.
 
-### `./transport-direct` — `@pellux/goodvibes-sdk/transport-direct`
+### `./transport-direct`: `@pellux/goodvibes-sdk/transport-direct`
 
 **Status:** stable
 
 In-process direct transport (zero-latency, same-process communication). See
 [Transports](./transports.md) for the canonical facade description.
 
-### `./transport-http` — `@pellux/goodvibes-sdk/transport-http`
+### `./transport-http`: `@pellux/goodvibes-sdk/transport-http`
 
 **Status:** stable
 
 HTTP/REST transport implementation.
 
-### `./transport-realtime` — `@pellux/goodvibes-sdk/transport-realtime`
+### `./transport-realtime`: `@pellux/goodvibes-sdk/transport-realtime`
 
 **Status:** stable
 
 SSE/WebSocket realtime transport implementation.
 
-### `./browser` — `@pellux/goodvibes-sdk/browser`
+### `./browser`: `@pellux/goodvibes-sdk/browser`
 
 **Status:** stable
 
 Browser-optimized full SDK entry. Browser-safe entry with browser-appropriate
 reconnect/retry defaults and the complete operator route contract.
 
-### `./browser/knowledge` — `@pellux/goodvibes-sdk/browser/knowledge`
+### `./browser/knowledge`: `@pellux/goodvibes-sdk/browser/knowledge`
 
 **Status:** stable
 
@@ -160,7 +160,7 @@ Scoped browser SDK entry for the base knowledge/wiki system. It includes base
 `knowledge.*` routes plus shared auth, provider, session, account, control, and
 SSE helpers without loading Home Assistant Home Graph route metadata.
 
-### `./browser/homeassistant` — `@pellux/goodvibes-sdk/browser/homeassistant`
+### `./browser/homeassistant`: `@pellux/goodvibes-sdk/browser/homeassistant`
 
 **Status:** stable
 
@@ -168,7 +168,7 @@ Scoped browser SDK entry for Home Assistant panels. It includes
 `homeassistant.homeGraph.*` routes plus shared auth, provider, session, account,
 control, and SSE helpers without loading the base knowledge/wiki route table.
 
-### `./browser/agent` — `@pellux/goodvibes-sdk/browser/agent`
+### `./browser/agent`: `@pellux/goodvibes-sdk/browser/agent`
 
 **Status:** stable
 
@@ -177,25 +177,25 @@ Scoped browser SDK entry for the Agent-owned knowledge environment. It routes
 provider, session, account, control, and SSE helpers. Exports
 `createBrowserAgentSdk` and the `BrowserAgentSdk` type.
 
-### `./web` — `@pellux/goodvibes-sdk/web`
+### `./web`: `@pellux/goodvibes-sdk/web`
 
 **Status:** stable
 
 Web (browser + service workers) SDK entry.
 
-### `./workers` — `@pellux/goodvibes-sdk/workers`
+### `./workers`: `@pellux/goodvibes-sdk/workers`
 
 **Status:** preview
 
 Cloudflare Worker bridge for optional daemon batch integration. Exports `createGoodVibesCloudflareWorker` and structural Worker/Queue types. Use this when manually deploying a Worker that proxies `/batch/*` to the daemon, enqueues batch tick signals, consumes Cloudflare Queue messages, or runs scheduled ticks. Normal Worker-hosted clients that only need operator HTTP calls should keep using `./web`. SDK-owned Cloudflare provisioning is exposed through daemon `/api/cloudflare/*` routes rather than this Worker entry point, including token bootstrap, discovery, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2.
 
-### `./react-native` — `@pellux/goodvibes-sdk/react-native`
+### `./react-native`: `@pellux/goodvibes-sdk/react-native`
 
 **Status:** stable
 
 React Native SDK entry. Excludes Node.js-only transports.
 
-### `./expo` — `@pellux/goodvibes-sdk/expo`
+### `./expo`: `@pellux/goodvibes-sdk/expo`
 
 **Status:** stable
 
@@ -205,7 +205,7 @@ Expo-specific SDK entry built on top of `react-native`.
 
 ## Platform surface (`./platform/...`)
 
-### Explicit platform entrypoints — `@pellux/goodvibes-sdk/platform...`
+### Explicit platform entrypoints: `@pellux/goodvibes-sdk/platform...`
 
 **Status:** beta
 
@@ -221,7 +221,7 @@ There is no root `@pellux/goodvibes-sdk/platform` entry. Runtime-boundary helper
 `@pellux/goodvibes-sdk/platform/knowledge`; Home Assistant Home Graph extends
 that base through `@pellux/goodvibes-sdk/platform/knowledge/home-graph`.
 
-#### Platform subpaths — exact export map entries
+#### Platform subpaths: exact export map entries
 
 The following subpaths are the complete list of exported platform paths.
 Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPORTED` error.
@@ -266,7 +266,7 @@ Importing any path not in this table will produce an `ERR_PACKAGE_PATH_NOT_EXPOR
 | `platform/providers` | LLM provider registry, catalog, capabilities; includes `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` (added in 0.35.0), plus the shared bare-model-id resolver (`resolveModelReference`, `findClosestModelIds`, `ModelIdCandidate`, `ModelIdResolutionOptions`) so consumers stop vendoring it | beta |
 | `platform/rewind` | Unified message-anchored rewind service (`UnifiedRewindService`) over the existing workspace-checkpoint / conversation / file-undo stores, plus its ports and plan/receipt IO types, so a consumer can construct it and thread the workspace + conversation ports | beta |
 | `platform/runtime` | Curated runtime surface exposing bootstrap, observability, operations, security, shell, state, transport, and UI as namespaces | beta |
-| `platform/runtime/feature-announcements` | One-time feature announcement store (`FeatureAnnouncementStore`), startup announcement collection (`collectStartupAnnouncements`), sandbox-containment announcer (`createSandboxContainmentAnnouncer`), and the shared announcement ids/text — the store path and ids are shared across surfaces so announcements deduplicate everywhere | beta |
+| `platform/runtime/feature-announcements` | One-time feature announcement store (`FeatureAnnouncementStore`), startup announcement collection (`collectStartupAnnouncements`), sandbox-containment announcer (`createSandboxContainmentAnnouncer`), and the shared announcement ids and text. The store path and ids are shared across surfaces so announcements deduplicate everywhere | beta |
 | `platform/runtime/observability` | Curated observability re-exports from the runtime surface | beta |
 | `platform/runtime/permissions/localhost-fetch-approval` | `buildLocalhostFetchApproval`: the config-aware, one-time-approval gate for fetch requests targeting localhost, shared by every surface's fetch tool wiring (`LocalhostFetchApprovalDeps`, `LocalhostFetchApproval`) | beta |
 | `platform/runtime/permissions/sandbox-policy` | The sandbox-aware exec permission input: `decideSandboxedExec` (turns a base "ask" into an "allow" for a command that runs entirely inside the boundary with no host-access need, or into a named-escalation ask) plus its `SandboxPolicyDecision`/`Effect`/`Input` types, so a consumer can wire its approval flow to the sandbox policy | beta |

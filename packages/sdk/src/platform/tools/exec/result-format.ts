@@ -1,5 +1,5 @@
 /**
- * Exec result formatting — turns an ExecCommandResult into the record the tool
+ * Exec result formatting, turns an ExecCommandResult into the record the tool
  * returns, honoring the caller's verbosity.
  *
  * Split out of runtime.ts so the denial branch below has room to state its
@@ -9,15 +9,15 @@
  * caller believe it showed everything. `minimal` used to return
  * `stdout.split('\n')[0]` bare, so a 42-line device listing arrived as one line
  * that read exactly like a complete answer, and the reader concluded the other
- * 41 devices did not exist. Every drop this module performs — line clamping for
- * verbosity, or an upstream overflow cut — now leaves a counted marker in the
+ * 41 devices did not exist. Every drop this module performs, line clamping for
+ * verbosity, or an upstream overflow cut, now leaves a counted marker in the
  * stream text itself, at every verbosity, for stdout and stderr both.
  */
 import type { ExecCommandResult, ExecVerbosity } from './schema.js';
 
 /**
  * How many leading lines of a stream each verbosity keeps; `null` keeps all.
- * The dropped remainder is never silent — see {@link shapeStream}.
+ * The dropped remainder is never silent, see {@link shapeStream}.
  */
 const LINES_KEPT: Record<ExecVerbosity, number | null> = {
   count_only: 0,
@@ -60,13 +60,13 @@ export function shapeStream(
     const plural = droppedLines === 1 ? '' : 's';
     markers.push(
       kept.length === 0
-        ? `[${droppedLines} ${stream} line${plural} omitted — raise verbosity or add a filter]`
-        : `[+${droppedLines} more ${stream} line${plural} — raise verbosity or add a filter]`,
+        ? `[${droppedLines} ${stream} line${plural} omitted, raise verbosity or add a filter]`
+        : `[+${droppedLines} more ${stream} line${plural}, raise verbosity or add a filter]`,
     );
   }
   if (overflowTruncated) {
     markers.push(
-      `[${stream} was cut at the output size limit and is incomplete — narrow the command or read the overflow file]`,
+      `[${stream} was cut at the output size limit and is incomplete, narrow the command or read the overflow file]`,
     );
   }
 
@@ -134,7 +134,7 @@ export function formatResult(result: ExecCommandResult, verbosity: ExecVerbosity
         cmd: result.cmd,
         exit_code: result.exit_code,
         success: result.success,
-        // Counts only — but a dropped stream still says so, with its count.
+        // Counts only, but a dropped stream still says so, with its count.
         ...(stdout.text !== '' && { stdout: stdout.text }),
         ...(stderr.text !== '' && { stderr: stderr.text }),
         ...(stdout.droppedLines > 0 && { stdout_dropped_lines: stdout.droppedLines }),

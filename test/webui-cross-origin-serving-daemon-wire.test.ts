@@ -8,7 +8,7 @@
  * Coverage (per the SDK-DEPLOY brief):
  *   1. Both capabilities OFF (default): GET / and OPTIONS behave exactly as today
  *      (401 without a token, 404 with one), and no Access-Control-Allow-Origin is
- *      ever emitted — byte-parity with the pre-change daemon.
+ *      ever emitted, byte-parity with the pre-change daemon.
  *   2. Serving ON: GET / serves the bundle index.html same-origin without a token,
  *      hashed assets serve, and SPA navigation routes fall back to index.html.
  *   3. API precedence holds: /api/* is dispatched to the API, never served as a
@@ -183,7 +183,7 @@ describe('bundle serving ON — same-origin, public, SPA fallback', () => {
   test('a traversal-shaped request never leaks a file outside the bundle', async () => {
     // The URL layer collapses every `..` (literal or percent-encoded) before the
     // daemon sees it, so a traversal attempt can only ever resolve inside the
-    // bundle root — it must return the app shell / 404, never system file bytes.
+    // bundle root, it must return the app shell / 404, never system file bytes.
     const res = await fetch(`${servingOn.url}/%2e%2e/%2e%2e/etc/passwd`);
     const body = await res.text();
     expect(body).not.toContain('root:');
@@ -223,7 +223,7 @@ describe('API precedence + auth hold with serving ON', () => {
     // The forward floor is only load-bearing if the router actually WRITES it:
     // clients read it on the /status probe they already make, and a constant
     // threaded into a context with no emitter is an inert gate. Pinned on both
-    // daemons — bundle serving on and off — because bundle serving is what was
+    // daemons, bundle serving on and off, because bundle serving is what was
     // shadowing this route in the first place.
     const withServing = await fetch(`${servingOn.url}/status`, { headers: auth() });
     const withoutServing = await fetch(`${servingOff.url}/status`, { headers: auth() });

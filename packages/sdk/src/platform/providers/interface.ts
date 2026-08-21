@@ -84,7 +84,7 @@ export interface ProviderRuntimeMetadata {
      * diagnostics only. Which levels apply is per model, not per provider, so
      * the request path resolves them again per request; a provider that sends
      * no reasoning field at all omits this. Never read it to decide what to
-     * send — see `resolveEffortForModel`.
+     * send, see `resolveEffortForModel`.
      */
     readonly supportedReasoningEfforts?: readonly string[] | undefined;
     readonly cacheStrategy?: string | undefined;
@@ -184,13 +184,13 @@ export interface ProviderBatchAdapter {
  * undated model list (the stale/dead-array anti-pattern) apart from a
  * provider that is legitimately populated some other way:
  *
- * - `live-discovery`  — the provider fetches its own model list from a live
+ * - `live-discovery` , the provider fetches its own model list from a live
  *   API (its `models` array may start empty and populate asynchronously;
  *   see `live-model-discovery.ts` for the shared fetch/cache/diff helpers).
- * - `dated-static`    — the provider ships a complete, hand-maintained model
+ * - `dated-static`   , the provider ships a complete, hand-maintained model
  *   list as of a specific date (`asOf`), because the backend has no
  *   model-listing API. Must be paired with a non-empty `models` array.
- * - `catalog-backed`  — the provider's own `models` array is intentionally
+ * - `catalog-backed` , the provider's own `models` array is intentionally
  *   secondary; its real selectable models come from the shared, independently
  *   refreshed model catalog (e.g. the synthetic failover provider).
  */
@@ -222,20 +222,20 @@ export interface LLMProvider {
    * network-scanned providers never pass through the check at all). Every
    * provider registered via `ProviderRegistry.register()` MUST declare one
    * of the three kinds above regardless of whether its `models` array is
-   * currently empty or populated — a non-empty array with no declared
+   * currently empty or populated, a non-empty array with no declared
    * source is rejected exactly like an empty one, or registration throws.
    */
   readonly modelSource?: ProviderModelSource | undefined;
   /**
-   * How this provider's credentials are obtained — the registration-time
+   * How this provider's credentials are obtained, the registration-time
    * contract behind the one request-time credential resolver (env -> secrets
    * store -> subscription accounts):
-   *   - 'resolver'     — API key flows from the shared resolver chain; a key
+   *   - 'resolver'    , API key flows from the shared resolver chain; a key
    *                      written to the secrets store re-registers the
    *                      provider live (no restart anywhere).
-   *   - 'anonymous'    — local/keyless endpoints (ollama, lm-studio, ...).
-   *   - 'subscription' — OAuth subscription tokens resolved per request.
-   *   - 'oauth'        — service-OAuth flows outside the subscription store.
+   *   - 'anonymous'   , local/keyless endpoints (ollama, lm-studio, ...).
+   *   - 'subscription', OAuth subscription tokens resolved per request.
+   *   - 'oauth'       , service-OAuth flows outside the subscription store.
    * ProviderRegistry.register() REFUSES a provider that declares none (same
    * fail-closed mechanism as the model-source contract): an auth path the
    * resolver cannot see would let status say green while chat 401s.
@@ -248,21 +248,21 @@ export interface LLMProvider {
    * Returns true if this provider has a valid API key or other credentials
    * configured. When false, any chat() call will fail with an auth error.
    *
-   * Optional — providers that don't implement this are assumed configured.
+   * Optional, providers that don't implement this are assumed configured.
    */
   isConfigured?(): boolean;
   /**
    * The provider's registration-time auth state, exposed synchronously so
    * keyless-readiness derivations (onboarding copy, default-model pairing
-   * checks — see keyless-default.ts) read the SAME state that decides
-   * {@link isConfigured} instead of restating it. Optional — providers that
+   * checks, see keyless-default.ts) read the SAME state that decides
+   * {@link isConfigured} instead of restating it. Optional, providers that
    * don't implement it are treated per {@link isConfigured} alone.
    */
   describeAuthState?(): ProviderAuthState;
 }
 
 /**
- * A provider's registration-time auth state — the single source keyless-UX
+ * A provider's registration-time auth state, the single source keyless-UX
  * derivations read (see keyless-default.ts). `anonymousReady` means the
  * provider genuinely works RIGHT NOW without a stored credential; a "no API
  * key needed" promise may only ever be generated from that field.
@@ -307,7 +307,7 @@ export interface ChatRequest {
   systemPrompt?: string | undefined;
   /**
    * Requested reasoning depth. Which levels a model really accepts is
-   * per-model, not a fixed union — see `reasoning-effort.ts`. Adapters resolve
+   * per-model, not a fixed union, see `reasoning-effort.ts`. Adapters resolve
    * this against the model's own options before it reaches the wire, so a
    * level the model does not offer snaps down rather than earning a 400.
    */
@@ -316,7 +316,7 @@ export interface ChatRequest {
    * The resolved options for this exact model, when the caller already has
    * them (it holds the `ModelDefinition`). Adapters fall back to resolving
    * from the model id alone when this is absent, so passing it is an accuracy
-   * improvement — live catalog data instead of the curated family table —
+   * improvement, live catalog data instead of the curated family table,
    * rather than a requirement.
    */
   reasoningEffortSpec?: ReasoningEffortSpec | undefined;
@@ -326,7 +326,7 @@ export interface ChatRequest {
   onDelta?: ((delta: StreamDelta) => void) | undefined;
   /**
    * Called before each same-provider retry of a retryable transport error
-   * (e.g. a dropped connection mid-stream). Informational only — the
+   * (e.g. a dropped connection mid-stream). Informational only, the
    * provider's own retry loop (`withRetry`) resubmits the request itself;
    * this callback exists so callers can surface retry progress (bus events,
    * UI) without re-triggering the resubmission themselves.
@@ -357,7 +357,7 @@ export interface ChatResponse {
     cacheReadTokens?: number;  // Anthropic: tokens read from prompt cache
     cacheWriteTokens?: number; // Anthropic: tokens written to prompt cache
   };
-  /** Normalized stop reason — use this for cross-provider comparisons. */
+  /** Normalized stop reason, use this for cross-provider comparisons. */
   stopReason: ChatStopReason;
   /**
    * Raw stop reason string emitted by the underlying provider, preserved for
@@ -379,7 +379,7 @@ export interface ChatResponse {
    * Rate-limit / quota snapshot parsed from THIS response's headers (populated on
    * every response, not just 429s), when the provider carried recognized headers.
    * Undefined when no rate-limit header was present. Fields are only set when a
-   * header genuinely carried them — never a fabricated "full quota". See
+   * header genuinely carried them, never a fabricated "full quota". See
    * rate-limit-headers.ts. Downstream, the runtime records this into the
    * QuotaWindowTracker so consumers can render remaining quota before a limit.
    */

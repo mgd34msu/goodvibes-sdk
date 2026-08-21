@@ -1,24 +1,24 @@
 /**
- * Evaluation Harness — built-in benchmark suites.
+ * Evaluation Harness, built-in benchmark suites.
  *
  * These suites are the stable benchmark set checked in CI. They exercise the
  * PRODUCTION scoring and budget-evaluation code paths (PerfMonitor,
  * scoreScenario, the gate) end to end and deterministically.
  *
- * HONESTY NOTE — what is real vs. synthetic here:
+ * HONESTY NOTE, what is real vs. synthetic here:
  *   - REAL: each scenario's `durationMs` is its own wall-clock runtime
  *     (`Date.now() - t0`), an actual measurement of this process.
  *   - SYNTHETIC PLACEHOLDERS: the render-cycle timings (`syntheticRenderCycles`),
  *     the injected SLO/queue/overhead metrics passed to `PerfMonitor.evaluate`,
  *     and the token/cost figures are fixtures chosen to drive the scoring path
- *     down known branches — they are NOT captured from a live workload. Every
+ *     down known branches, they are NOT captured from a live workload. Every
  *     such value below is flagged inline with `synthetic placeholder`.
  *
  * This module deliberately does not present fabricated timings/costs as real
  * measurements. A future suite that captures live workload metrics can add
  * genuinely-measured scenarios alongside these.
  *
- * Each scenario's id must be stable across runs — it is used as the
+ * Each scenario's id must be stable across runs, it is used as the
  * baseline key for regression detection.
  */
 
@@ -31,7 +31,7 @@ import { createInitialSurfacePerfState } from '../store/domains/surface-perf.js'
 /**
  * Generate a deterministic burst of SYNTHETIC render-cycle durations (ms).
  *
- * These are formula-derived fixtures, not measured frame timings — they exist
+ * These are formula-derived fixtures, not measured frame timings, they exist
  * to feed the PerfMonitor budget path a known, reproducible input so the
  * scoring branches can be asserted deterministically. Not a real workload
  * sample.
@@ -77,7 +77,7 @@ const corePerformanceScenarios: EvalScenario[] = [
       surfacePerf.recentCycles = cycles;
       surfacePerf.heapUsedBytes = 50 * 1024 * 1024; // synthetic placeholder: 50 MiB stable
 
-      // synthetic placeholder metrics — fixtures chosen to sit under budget,
+      // synthetic placeholder metrics, fixtures chosen to sit under budget,
       // not measurements captured from a live turn.
       const perfReport = monitor.evaluate({
         surfacePerf,
@@ -114,7 +114,7 @@ const corePerformanceScenarios: EvalScenario[] = [
       const surfacePerf = createInitialSurfacePerfState();
       surfacePerf.heapUsedBytes = 60 * 1024 * 1024; // synthetic placeholder
 
-      // synthetic placeholder metrics — fixtures, not live measurements.
+      // synthetic placeholder metrics, fixtures, not live measurements.
       const perfReport = monitor.evaluate({
         surfacePerf,
         extraMetrics: {
@@ -149,7 +149,7 @@ const corePerformanceScenarios: EvalScenario[] = [
       const monitor = createPerfMonitor();
       const surfacePerf = createInitialSurfacePerfState();
 
-      // Two consecutive evaluations with negligible heap growth — synthetic
+      // Two consecutive evaluations with negligible heap growth, synthetic
       // placeholder heap samples, not a captured memory trace.
       surfacePerf.heapUsedBytes = 80 * 1024 * 1024;
       surfacePerf.lastMemorySampleAt = t0 - 60_000; // 1 minute ago
@@ -179,7 +179,7 @@ const corePerformanceScenarios: EvalScenario[] = [
 const safetyBaselineScenarios: EvalScenario[] = [
   {
     id: 'safety:clean-run-no-violations',
-    name: 'Clean Run — No Safety Violations',
+    name: 'Clean Run, No Safety Violations',
     suite: 'safety-baseline',
     description: 'Verifies a clean scenario run scores 100 on the safety dimension.',
     tags: ['safety'],
@@ -264,7 +264,7 @@ const costTokenScenarios: EvalScenario[] = [
       return {
         completed: true,
         durationMs: Date.now() - t0,
-        // synthetic placeholder token/cost fixture — not a metered spend.
+        // synthetic placeholder token/cost fixture, not a metered spend.
         tokens: { input: 500, output: 100 },
         costUsd: 0.0005, // synthetic placeholder, under the $0.001 target
         safetyViolations: 0,
@@ -278,7 +278,7 @@ const costTokenScenarios: EvalScenario[] = [
 /**
  * All built-in benchmark suites.
  *
- * Suite names are stable — used as keys in baselines.
+ * Suite names are stable, used as keys in baselines.
  */
 export const BUILTIN_SUITES: Record<string, EvalScenario[]> = {
   'core-performance': corePerformanceScenarios,

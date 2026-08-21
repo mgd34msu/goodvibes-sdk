@@ -1,5 +1,5 @@
 /**
- * store.ts — durable state for hosted sessions.
+ * store.ts, durable state for hosted sessions.
  *
  * A hosted session that is allowed to survive a client's departure must also
  * survive the daemon restarting, or "survive-detach" means "survives until the
@@ -18,8 +18,8 @@
  *    than lost.
  *  - SWEEP. Terminated sessions are retired once they are older than
  *    `terminatedRetentionMs`; the sweep runs at init and on a timer.
- *  - DISCLOSURE. `load()` returns exactly what happened — restored, rejected,
- *    swept, and truncated counts — so the manager can state it rather than the
+ *  - DISCLOSURE. `load()` returns exactly what happened, restored, rejected,
+ *    swept, and truncated counts, so the manager can state it rather than the
  *    numbers living only in a log line nobody reads.
  *
  * Writes are atomic (tmp file + rename), so a crash mid-write leaves the
@@ -51,7 +51,7 @@ export interface HostedSessionStoreLimits {
   readonly terminatedRetentionMs: number;
 }
 
-/** What a load pass actually did — the disclosure half of the doctrine. */
+/** What a load pass actually did, the disclosure half of the doctrine. */
 export interface HostedSessionLoadReport {
   readonly restored: readonly PersistedHostedSession[];
   /** Files that failed validation, by filename, with the reason. */
@@ -171,7 +171,7 @@ export class HostedSessionStore {
     }
 
     // Bound the directory. Terminated sessions go first (they are history),
-    // then the least recently updated — never a session that is still live in
+    // then the least recently updated, never a session that is still live in
     // this process, because load runs before any session is composed.
     if (restored.length > this.limits.maxSessions) {
       const ordered = [...restored].sort((a, b) => rankForEviction(a.record) - rankForEviction(b.record));
@@ -237,7 +237,7 @@ export class HostedSessionStore {
 
   /**
    * Apply the per-session message bound to a `ConversationManager.toJSON()`
-   * payload. Unknown shapes pass through untouched — the bound is a cap on a
+   * payload. Unknown shapes pass through untouched, the bound is a cap on a
    * known field, not a rewrite of a payload this store does not understand.
    */
   boundConversation(conversation: unknown): unknown {

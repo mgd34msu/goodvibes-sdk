@@ -9,7 +9,7 @@
  * - Telemetry buffer fill gauge
  *
  * It also holds the process's ACTIVE TRACER, which `telemetry.otelMode`
- * governs — see {@link platformTracer}.
+ * governs, see {@link platformTracer}.
  */
 import { RuntimeMeter } from './telemetry/meter.js';
 import { RuntimeTracer } from './telemetry/tracer.js';
@@ -30,8 +30,8 @@ let activeTracer: RuntimeTracer = DISABLED_TRACER;
 /**
  * The tracer the platform's instrumentation opens spans on.
  *
- * `telemetry.otelMode` used to be checked in exactly one place —
- * `createTelemetryProvider`, which had no callers — while the live meter in this
+ * `telemetry.otelMode` used to be checked in exactly one place,
+ * `createTelemetryProvider`, which had no callers, while the live meter in this
  * module was built with no reference to it at all. So 'off', 'in-process' and
  * 'remote-export' produced identical behaviour: no spans, ever, because nothing
  * held a tracer to open one on.
@@ -158,7 +158,7 @@ export interface RuntimeMetricsSnapshot {
  * Snapshot all metric instruments as a JSON-serialisable object.
  *
  * Reachable two ways: the `runtime.metrics.get` operator method (typed IO,
- * catalog-registered — see method-catalog-runtime.ts and routes/runtime-
+ * catalog-registered, see method-catalog-runtime.ts and routes/runtime-
  * metrics.ts), and its REST binding `GET /api/runtime/metrics`. Consumers
  * needing this shape directly (not through the operator client) can import
  * `snapshotMetrics`/`RuntimeMetricsSnapshot` from

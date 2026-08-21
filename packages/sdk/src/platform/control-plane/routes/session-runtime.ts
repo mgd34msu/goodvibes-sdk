@@ -2,7 +2,7 @@
  * routes/session-runtime.ts
  *
  * Per-session permission mode (get/set) and context-usage exposure on the
- * operator wire — the session-scoped RPCs that were missing, so a remote
+ * operator wire, the session-scoped RPCs that were missing, so a remote
  * surface (webui) can read/write a session's permission mode and read its
  * context-window pressure instead of only touching the daemon-wide
  * `permissions.mode` config the way the in-process TUI reads per-session
@@ -11,14 +11,14 @@
  * SCOPE OF TRUTH: the daemon can only get/set the permission mode of, and read
  * the context usage of, the LIVE LOCAL runtime it actually hosts. A request
  * for any other session id is an honest 404 (SESSION_NOT_LOCAL) rather than a
- * fabricated answer — mirroring the honest-refusal pattern the fleet archive
+ * fabricated answer, mirroring the honest-refusal pattern the fleet archive
  * verbs use (routes/fleet.ts).
  *
  * MODE-CHANGE EVENT: `sessions.permissionMode.set` mutates `permissions.mode`
  * through the ordinary config surface, which the already-wired
  * `bindPermissionModeChangeEvent` binding (permissions/mode-change-emitter.ts,
  * attached in runtime/services.ts) turns into a runtime.permissions
- * PERMISSION_MODE_CHANGED event — so surfaces stay in sync without this verb
+ * PERMISSION_MODE_CHANGED event, so surfaces stay in sync without this verb
  * emitting its own event.
  *
  * HONESTY (context usage): the token figure is the estimator's
@@ -113,7 +113,7 @@ export class SessionLiveTurnControlsHolder {
    * The single slot above is the interactive host's: one process, one
    * conversation, and `sessions.toolCalls.cancel` against "the local runtime"
    * means that one. A daemon hosting sessions runs many at the same time, and
-   * "the local runtime" is no longer a single thing — so each hosted loop binds
+   * "the local runtime" is no longer a single thing, so each hosted loop binds
    * under its own id and the verbs resolve by id first, falling back to the
    * single slot for the interactive case that has always worked that way.
    */
@@ -212,7 +212,7 @@ function requireLiveTurnControls(controls: SessionRuntimeControls, sessionId: st
   const live = controls.getLiveTurnControls(sessionId);
   if (!live) {
     throw new GatewayVerbError(
-      'No interactive runtime is bound on this daemon — live-turn controls are unavailable for this session.',
+      'No interactive runtime is bound on this daemon, live-turn controls are unavailable for this session.',
       'LIVE_TURN_CONTROLS_UNAVAILABLE',
       404,
     );
@@ -263,7 +263,7 @@ export function createSessionQueuedMessageEditHandler(controls: SessionRuntimeCo
     }
     if (!live.editQueuedMessage(messageId, text)) {
       throw new GatewayVerbError(
-        `Message ${messageId} is not in the pending queue (already delivered — delivered messages are immutable).`,
+        `Message ${messageId} is not in the pending queue (already delivered, delivered messages are immutable).`,
         'MESSAGE_NOT_QUEUED',
         404,
       );
@@ -283,7 +283,7 @@ export function createSessionQueuedMessageDeleteHandler(controls: SessionRuntime
     }
     if (!live.deleteQueuedMessage(messageId)) {
       throw new GatewayVerbError(
-        `Message ${messageId} is not in the pending queue (already delivered — delivered messages are immutable).`,
+        `Message ${messageId} is not in the pending queue (already delivered, delivered messages are immutable).`,
         'MESSAGE_NOT_QUEUED',
         404,
       );
@@ -378,7 +378,7 @@ export function createSessionRuntimeControls(deps: {
  * Attach the session-runtime handlers to the descriptors already registered
  * (without a handler) from ../method-catalog-control-core.ts's static builtin
  * array. Call once, at RuntimeServices construction time. A missing descriptor
- * is a silent no-op — the same rationale as routes/fleet.ts.
+ * is a silent no-op, the same rationale as routes/fleet.ts.
  */
 export function registerSessionRuntimeGatewayMethods(
   catalog: GatewayMethodCatalog,

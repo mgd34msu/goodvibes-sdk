@@ -1,8 +1,8 @@
 /**
- * ansi-sanitize.test.ts — stripDangerousAnsi.
+ * ansi-sanitize.test.ts, stripDangerousAnsi.
  *
  * The contract under test: after this function, a string cannot move the
- * cursor, switch screens, retitle the window, or ring the bell — and SGR
+ * cursor, switch screens, retitle the window, or ring the bell, and SGR
  * color/style codes survive intact, because colorized output is the one
  * legitimate, non-navigating use of the escape channel.
  *

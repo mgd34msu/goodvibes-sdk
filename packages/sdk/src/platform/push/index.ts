@@ -1,5 +1,5 @@
 /**
- * push/index.ts — the browser-push module barrel (VAPID custody, subscription
+ * push/index.ts, the browser-push module barrel (VAPID custody, subscription
  * store, RFC 8291 encryption, and the delivery path). Daemon-side only; not
  * part of the runtime-neutral or browser bundles.
  */

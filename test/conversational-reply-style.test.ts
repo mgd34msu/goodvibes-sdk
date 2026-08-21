@@ -2,8 +2,8 @@
  * A conversational spawn must not be asked for a completion report.
  *
  * The reported defect: "Hey, are you there?" sent to the owner's ntfy topic
- * came back as a filled-in report — a Summary heading, `Changes: None`,
- * `Decisions:`, `Issues:`, `Uncertainties:` — because the conversation gate
+ * came back as a filled-in report, a Summary heading, `Changes: None`,
+ * `Decisions:`, `Issues:`, `Uncertainties:`, because the conversation gate
  * classified the message as conversation and then spawned an agent under the
  * standard base prompt, which orders EVERY agent to close with that report.
  *

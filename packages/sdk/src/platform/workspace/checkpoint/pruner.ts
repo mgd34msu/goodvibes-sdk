@@ -1,7 +1,7 @@
 /**
  * pruner.ts
  *
- * `WorkspaceCheckpointPruner` — the `Pruner` implementation `RetentionPolicy`
+ * `WorkspaceCheckpointPruner`, the `Pruner` implementation `RetentionPolicy`
  * drives to enforce retention limits on workspace checkpoints. Split out of
  * manager.ts (which was at the 800-line cap) as a self-contained collaborator;
  * see manager.ts's `gc()` for how it is wired and why reclamation only works on
@@ -20,7 +20,7 @@ import { SideGitRunner, CHECKPOINT_REF_PREFIX } from './side-git.js';
 
 /**
  * `Pruner` implementation for `RetentionPolicy` that deletes checkpoint REFS
- * (not filesystem paths — that is what `SnapshotPruner`, the compaction-side
+ * (not filesystem paths, that is what `SnapshotPruner`, the compaction-side
  * pruner, does, and reusing it here would be a no-op at best since our
  * "artifacts" are refs+objects, not files). Actual object reclamation is a
  * single `git gc --prune=now` run once by `WorkspaceCheckpointManager.gc()`

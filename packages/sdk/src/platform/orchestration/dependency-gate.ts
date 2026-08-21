@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * dependency-gate.ts — the per-tick dependency pre-pass (BIG-3 item 2),
+ * dependency-gate.ts, the per-tick dependency pre-pass (BIG-3 item 2),
  * extracted from engine.ts so the engine stays under its line cap. Pure but for
  * the item-state mutations and the events it emits through the injected `emit`.
  */
@@ -25,9 +25,9 @@ import type { OrchestrationEvent, Workstream } from './types.js';
  * at its first claim they stay passed (passed is terminal), so a mid-pipeline
  * item (currentPhaseId past the first phase) is never re-gated. A retried item
  * (engine.retryItem) is reset back to the first phase and is therefore re-gated
- * here — which is exactly why a failed dependency's dependents recover only once
+ * here, which is exactly why a failed dependency's dependents recover only once
  * the dependency is retried AND passes. A FAILED dependency keeps the dependent
- * blocked (recoverable), never fails it — refuse-not-kill.
+ * blocked (recoverable), never fails it, refuse-not-kill.
  */
 export function applyDependencyGates(workstream: Workstream, emit: (event: OrchestrationEvent) => void): void {
   const first = firstPhase(workstream);

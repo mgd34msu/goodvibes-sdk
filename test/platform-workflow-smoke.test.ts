@@ -13,7 +13,7 @@ describe('platform/workflow — smoke', () => {
 
   test('fireTriggers resolves to empty array when triggerManager has no triggers', async () => {
     const { fireTriggers } = await import('../packages/sdk/src/platform/workflow/index.js');
-    // fireTriggers(event, triggerManager) — stub a manager with no triggers
+    // fireTriggers(event, triggerManager), stub a manager with no triggers
     const event = { path: 'test/event', payload: {} };
     const emptyManager = { list: () => [] };
     const result = await fireTriggers(

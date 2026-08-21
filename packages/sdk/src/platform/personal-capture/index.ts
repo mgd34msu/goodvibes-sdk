@@ -1,5 +1,5 @@
 /**
- * personal-capture — recording what the owner tells you about himself.
+ * personal-capture, recording what the owner tells you about himself.
  *
  * Three pieces, deliberately separable:
  *  - `authority.ts` decides whether THIS turn may write to the profile.

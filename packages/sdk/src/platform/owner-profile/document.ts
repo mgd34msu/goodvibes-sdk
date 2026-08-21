@@ -1,10 +1,10 @@
 /**
- * document.ts — Markdown text in, projection out.
+ * document.ts, Markdown text in, projection out.
  *
  * Parsing is LENIENT by construction: there is no path in this file that
  * discards, rewrites or normalises a line it did not understand. An unknown
  * heading, an unknown `key:` line, a table, a code fence, a nested list, an HTML
- * comment — all end up in `rawLines` exactly as written, and the ones this
+ * comment, all end up in `rawLines` exactly as written, and the ones this
  * module cannot type are served as prose.
  *
  * Two hazards drive the shape of the scanner:
@@ -44,7 +44,7 @@ import {
 /** The em-dash marker that opens a provenance suffix. */
 export const PROVENANCE_MARKER = ' — ';
 
-/** ` — <surface>, <YYYY-MM-DD>, "<verbatim>"`, anchored to the end of a line. */
+/** `, <surface>, <YYYY-MM-DD>, "<verbatim>"`, anchored to the end of a line. */
 const PROVENANCE_SUFFIX = new RegExp(
   `^ — (${PROFILE_SURFACES.join('|')}), (\\d{4}-\\d{2}-\\d{2}), "([\\s\\S]*)"$`,
 );
@@ -55,8 +55,8 @@ const WAS_COMMENT = /^\s*<!-- was: (.*) \(superseded (\d{4}-\d{2}-\d{2})\) -->\s
 /**
  * A mechanical field line, recognised at COLUMN 0 only.
  *
- * Indentation means the line belongs to something else — a nested bullet, an
- * indented block — so `  Gym: the Y` under a `- Places` bullet stays prose
+ * Indentation means the line belongs to something else, a nested bullet, an
+ * indented block, so `  Gym: the Y` under a `- Places` bullet stays prose
  * rather than becoming a field the writer would later rewrite.
  */
 const FIELD_LINE = /^([A-Za-z][A-Za-z ]*?)\s*:\s*(.+)$/;
@@ -65,11 +65,11 @@ const FIELD_LINE = /^([A-Za-z][A-Za-z ]*?)\s*:\s*(.+)$/;
  * A fence marker: at least three of ` or ~, after up to three spaces of indent.
  *
  * The character and the RUN LENGTH are both captured because both decide
- * whether a later marker closes this block — see {@link fenceMarkerOf}.
+ * whether a later marker closes this block, see {@link fenceMarkerOf}.
  */
 const FENCE_LINE = /^ {0,3}(`{3,}|~{3,})/;
 
-/** A bullet or numbered list item — never a mechanical field. */
+/** A bullet or numbered list item, never a mechanical field. */
 const BULLET_LINE = /^\s*([-*+]|\d+[.)])\s/;
 
 /** The fence a line opens or closes with, or `null` when it is not a fence line. */
@@ -93,7 +93,7 @@ export function fenceMarkerOf(line: string): FenceMarker | null {
  * standard way to show fenced markdown inside markdown, and a `~~~` line is
  * ordinary content inside a backtick block. Getting this wrong does not merely
  * mis-parse: the scanner desynchronises, so real content after the block is read
- * as fenced and sample content inside it is read as real — which is how a line
+ * as fenced and sample content inside it is read as real, which is how a line
  * in his code block became a live field and a later write landed inside it.
  */
 export function fenceCloses(open: FenceMarker, marker: FenceMarker): boolean {
@@ -335,7 +335,7 @@ function dominantLineEnding(rawLines: readonly string[]): '\n' | '\r\n' {
  * Record a `<!-- was: … -->` comment as history for the field it names.
  *
  * A comment whose content does not name a known field of the enclosing section
- * is not history — it is one of his own HTML comments, and it falls through to
+ * is not history, it is one of his own HTML comments, and it falls through to
  * prose so it is still served rather than silently classified as machinery.
  */
 function recordWasComment(
@@ -377,7 +377,7 @@ function recordWasComment(
  * dropped or silently preferred.
  *
  * Every duplicate's index is REMEMBERED, though. A `forget` that removed only
- * the active line would leave the value in the file and still report success —
+ * the active line would leave the value in the file and still report success,
  * a false receipt on a delete, which is exactly what delete-means-delete exists
  * to prevent. The writer needs to know where all of them are.
  */

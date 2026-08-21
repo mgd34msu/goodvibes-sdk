@@ -31,7 +31,7 @@ const SHARED_SESSION_KIND_SCHEMA = enumSchema(['tui', 'agent', 'webui', 'compani
  * READ-path kind schema: an OPEN enum. The known kinds are the same set as
  * {@link SHARED_SESSION_KIND_SCHEMA}, but response/output validation must accept
  * an unknown `kind` string per-record instead of hard-failing the whole envelope
- * — a mixed-version daemon (or a future build) can emit a kind this reader does
+ *, a mixed-version daemon (or a future build) can emit a kind this reader does
  * not model, and the tolerant normalizer downstream (`normalizeSharedSessionRecord`)
  * already maps an unknown kind to the documented 'tui' fallback while preserving
  * the raw value under `metadata.wireKind`. See
@@ -79,7 +79,7 @@ export const SHARED_SESSION_PARTICIPANT_SCHEMA = objectSchema({
 }, ['surfaceKind', 'surfaceId', 'lastSeenAt']);
 
 /**
- * Input to sessions.register — the idempotent registration + heartbeat upsert
+ * Input to sessions.register, the idempotent registration + heartbeat upsert
  * keyed on the caller-supplied `sessionId`. Carries the identity spine
  * (kind + project + participant triple). Re-calling with the same id is the
  * heartbeat (advances participant.lastSeenAt).
@@ -268,7 +268,7 @@ export const SHARED_SESSION_CREATE_OUTPUT_SCHEMA = objectSchema({
  * Output of sessions.register. Beyond the record it carries honest lifecycle
  * disposition: `reopened` is true only when this call reopened a closed session,
  * and `conflict` is present (status:'closed') when register targeted a closed
- * session WITHOUT reopen:true — the heartbeat was recorded but the session was
+ * session WITHOUT reopen:true, the heartbeat was recorded but the session was
  * left closed.
  */
 export const SHARED_SESSION_REGISTER_OUTPUT_SCHEMA = objectSchema({
@@ -474,7 +474,7 @@ const PROVIDER_MODEL_SNAPSHOT_SCHEMA = objectSchema({
     inputPerMillionTokens: NUMBER_SCHEMA,
     outputPerMillionTokens: NUMBER_SCHEMA,
     currency: enumSchema(['USD']),
-    // Provenance of the served rates: 'user' (manual/registration — "your
+    // Provenance of the served rates: 'user' (manual/registration, "your
     // price"), 'provider' (provider-served), 'catalog' (dated catalog).
     // asOf is the ISO date of the catalog/provider snapshot; user prices
     // are undated.
@@ -709,7 +709,7 @@ export const MEMORY_LINK_SCHEMA = objectSchema({
 }, ['fromId', 'toId', 'relation', 'createdAt']);
 
 // distance may be Infinity for a no-vector-match fallback; JSON serializes that to
-// null, so the wire field is nullable — honest about the "not ranked by vector" case.
+// null, so the wire field is nullable, honest about the "not ranked by vector" case.
 export const MEMORY_SEMANTIC_RESULT_SCHEMA = objectSchema({
   record: MEMORY_RECORD_SCHEMA,
   distance: nullableSchema(NUMBER_SCHEMA),

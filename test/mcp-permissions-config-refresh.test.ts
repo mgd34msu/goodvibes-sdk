@@ -6,7 +6,7 @@
  * server's current config. The method used to return early whenever the name
  * was already known, so an in-place config edit (re-adding the same server
  * with new allowedPaths / allowedHosts) left the first insert's profile in
- * place forever — listServerSecurity() then reported the old values and the
+ * place forever, listServerSecurity() then reported the old values and the
  * edit looked like it had never landed, even though the reload reported the
  * server as changed.
  */

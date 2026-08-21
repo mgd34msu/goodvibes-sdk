@@ -1,5 +1,5 @@
 /**
- * Runtime Events — barrel re-exports and RuntimeEventBus.
+ * Runtime Events, barrel re-exports and RuntimeEventBus.
  *
  * Import from this module to access the typed event system:
  * ```ts
@@ -94,8 +94,8 @@ export interface RuntimeEventBusOptions {
  * {@link configureRuntimeEventBusDefaults}, which is how the
  * `runtime.eventBus.maxListeners` config key reaches buses this module cannot
  * see the construction of. Every SDK bus but the two daemon ones is built by a
- * component that holds no ConfigManager — the plugin lifecycle manager's
- * fallback bus is the standing example — so a per-call-site argument would
+ * component that holds no ConfigManager, the plugin lifecycle manager's
+ * fallback bus is the standing example, so a per-call-site argument would
  * leave the key governing two buses out of three.
  */
 let defaultMaxListeners = MAX_LISTENERS;
@@ -111,7 +111,7 @@ let defaultMaxListeners = MAX_LISTENERS;
  *
  * A value that is not a positive number leaves the current default in place. A
  * hand-edited settings file is the only way to get one, and a `NaN` cap would
- * silently switch the leak check off entirely — the opposite of what raising
+ * silently switch the leak check off entirely, the opposite of what raising
  * the number is for.
  *
  * Buses built BEFORE this call keep the cap they were constructed with, and an
@@ -148,28 +148,28 @@ function extractErrorMessage(err: unknown): string {
 }
 
 /**
- * RuntimeEventBus — typed event bus for domain-structured runtime events.
+ * RuntimeEventBus, typed event bus for domain-structured runtime events.
  *
  * Supports two subscription modes:
- * - `on(eventType, callback)` — subscribe to a specific event type
- * - `onDomain(domain, callback)` — subscribe to all events in a domain
+ * - `on(eventType, callback)`, subscribe to a specific event type
+ * - `onDomain(domain, callback)`, subscribe to all events in a domain
  *
  * All events are wrapped in a RuntimeEventEnvelope providing traceId,
  * sessionId, timestamps, and source context.
  *
  * This is the authoritative event transport for runtime domain signaling.
  *
- * DISPATCH ORDERING GUARANTEE (contract — pinned by
+ * DISPATCH ORDERING GUARANTEE (contract, pinned by
  * test/runtime-event-bus-dispatch-contract.test.ts): {@link RuntimeEventBus.emit} NEVER invokes
  * a subscriber synchronously. Each matching handler is deferred to its own
- * `queueMicrotask`, so emit() always returns to its caller — and the caller's
- * remaining synchronous statements run — BEFORE any listener fires. A component
+ * `queueMicrotask`, so emit() always returns to its caller, and the caller's
+ * remaining synchronous statements run, BEFORE any listener fires. A component
  * may therefore emit an event from the MIDDLE of a state mutation without risk
  * that a subscriber observes the half-applied state: by the time a listener
  * runs, the mutating call has already completed and the state has settled. This
  * asynchronous-dispatch ordering is load-bearing for event-ordering safety
  * across the runtime (e.g. the orchestration zombie-reap path relies on
- * listeners never seeing a mutation mid-flight) — do NOT replace queueMicrotask
+ * listeners never seeing a mutation mid-flight), do NOT replace queueMicrotask
  * with synchronous invocation.
  */
 export class RuntimeEventBus {
@@ -210,7 +210,7 @@ export class RuntimeEventBus {
         set.delete(callback as EnvelopeListener);
         if (set.size === 0) this._listeners.delete(eventType);
         throw new RangeError(
-          `[RuntimeEventBus] listener cap exceeded — maxListeners=${this._maxListeners} eventType=${String(eventType)}`
+          `[RuntimeEventBus] listener cap exceeded, maxListeners=${this._maxListeners} eventType=${String(eventType)}`
         );
       }
       logger.warn('[RuntimeEventBus] possible listener leak detected', {
@@ -244,7 +244,7 @@ export class RuntimeEventBus {
         set.delete(callback as EnvelopeListener);
         if (set.size === 0) this._domainListeners.delete(domain);
         throw new RangeError(
-          `[RuntimeEventBus] domain listener cap exceeded — maxListeners=${this._maxListeners} domain=${String(domain)}`
+          `[RuntimeEventBus] domain listener cap exceeded, maxListeners=${this._maxListeners} domain=${String(domain)}`
         );
       }
       logger.warn('[RuntimeEventBus] possible domain listener leak detected', {
@@ -269,7 +269,7 @@ export class RuntimeEventBus {
    * @see emitTurnSubmitted, emitToolReceived, etc. in `src/runtime/emitters/`
    *
    * Domain-keyed overload: when the domain is statically known, the envelope
-   * type is narrowed to the corresponding DomainEventMap entry — no cast needed.
+   * type is narrowed to the corresponding DomainEventMap entry, no cast needed.
    *
    * @param domain - Domain this event belongs to.
    * @param envelope - The fully-formed envelope to dispatch.
@@ -385,7 +385,7 @@ export class RuntimeEventBus {
       { sessionId: 'runtime-bus', source: 'runtime-bus' }
     ) as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>;
 
-    // Dispatch directly — no queueMicrotask, no recursion path through emit().
+    // Dispatch directly, no queueMicrotask, no recursion path through emit().
     const typeListeners = this._listeners.get('OPS_LISTENER_MISBEHAVING');
     if (typeListeners) {
       for (const h of Array.from(typeListeners)) {

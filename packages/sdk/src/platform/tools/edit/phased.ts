@@ -16,8 +16,8 @@ import type { FileStateCache } from '../../state/file-cache.js';
 /**
  * Create a phased edit tool.
  *
- * Category  : `write` — edit operations mutate files on disk.
- * Cancellable: `false` — mid-flight edits could corrupt open transactions;
+ * Category  : `write`, edit operations mutate files on disk.
+ * Cancellable: `false`, mid-flight edits could corrupt open transactions;
  *   the executor waits for completion before processing cancellation.
  *
  * @param fileCache - Shared FileStateCache instance for OCC conflict detection.

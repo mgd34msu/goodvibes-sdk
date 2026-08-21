@@ -1,20 +1,20 @@
 /**
- * interactive.ts — PTY-backed prompt-answer path for the exec tool.
+ * interactive.ts, PTY-backed prompt-answer path for the exec tool.
  *
  * PROBLEM. All exec spawn paths pipe stdout/stderr and leave stdin unwired, so
  * a child that stops to ask a question (an `ssh` host-key confirmation, a
  * `gh auth login` flow, a `sudo` password ask) hangs until the timeout and the
  * exchange is lost. Many of those prompts are written to and read from the
  * controlling terminal (`/dev/tty`), so even piping stdin would not reach them
- * — the child needs a real PTY.
+ *, the child needs a real PTY.
  *
  * APPROACH. Prompt-prone commands (and any command with `interactive: true`)
  * run under a PTY allocated by the host's `script(1)` binary (util-linux on
  * Linux, the BSD variant on macOS). The PTY wrapper is nested INSIDE the
- * sandbox argv — `[...sandboxArgv, script, ...]` — so when the per-command
+ * sandbox argv, `[...sandboxArgv, script, ...]`, so when the per-command
  * bwrap boundary is active it stays the outermost layer and holds unchanged
  * under the PTY. When output goes quiet on a prompt-shaped tail, the pending
- * prompt text is surfaced through the injected `requestPromptAnswer` seam —
+ * prompt text is surfaced through the injected `requestPromptAnswer` seam,
  * wired at the composition root to the SAME approval broker as a permission
  * ask, so every surface's existing approval/attention machinery renders it.
  * The typed answer is written to the PTY and the run continues; the full
@@ -22,14 +22,14 @@
  * result transcript.
  *
  * DETECTION LIMITS (honest). There is no in-band signal that a child is
- * blocked reading its terminal — the only observable signals are the output
+ * blocked reading its terminal, the only observable signals are the output
  * stream and time. Detection is therefore a heuristic: an unterminated final
  * line that looks like a question (ends with `:` or `?`, or carries a
  * `[y/N]` / `(yes/no)` style choice) followed by a quiet window with the
  * process still alive. This misses prompts that do not match the shapes below
  * (a bare `> ` REPL prompt, localized text, full-screen TUIs) and cannot see
  * a no-echo password read that printed nothing. A prompt that is never
- * answered — seam unwired, surface ignored it, or the human walked away —
+ * answered, seam unwired, surface ignored it, or the human walked away,
  * ends in the normal timeout, with the detected prompt text reported on the
  * result (`pending_prompt`) so the failure is diagnosable instead of a silent
  * hang. PTY output merges stderr into stdout by nature; interactive results
@@ -53,7 +53,7 @@ export interface PtyAvailability {
   readonly scriptPath?: string | undefined;
   /** util-linux (`script -qefc cmd /dev/null`) vs BSD (`script -q /dev/null sh -c cmd`) argv shape. */
   readonly flavor?: 'util-linux' | 'bsd' | undefined;
-  /** Stated reason — a diagnosis when unavailable, a one-line summary when available. */
+  /** Stated reason, a diagnosis when unavailable, a one-line summary when available. */
   readonly reason: string;
 }
 
@@ -191,7 +191,7 @@ export interface ExecPromptAnswer {
 
 /**
  * The resolved interactive context the exec runtime threads per call. Null on
- * a createExecTool with no interactive wiring — then every command runs the
+ * a createExecTool with no interactive wiring, then every command runs the
  * unchanged pipe-based path.
  */
 export interface ExecInteractionRuntime {
@@ -213,7 +213,7 @@ const RECENT_OUTPUT_CONTEXT_CHARS = 2000;
 
 /**
  * Whether this command should take the PTY path: explicit `interactive: true`,
- * or a prompt-prone base command — in both cases only when the host actually
+ * or a prompt-prone base command, in both cases only when the host actually
  * has a PTY backend (never faked; unavailable → the unchanged pipe path).
  */
 export function shouldRunInteractive(
@@ -236,7 +236,7 @@ interface InteractiveRunInput {
   readonly env: Record<string, string>;
   readonly timeoutMs: number;
   readonly startTime: number;
-  /** Sandbox argv prefix — prepended UNCHANGED so the boundary wraps the PTY. */
+  /** Sandbox argv prefix, prepended UNCHANGED so the boundary wraps the PTY. */
   readonly sandboxArgv: readonly string[];
   readonly interaction: ExecInteractionRuntime;
   readonly signal?: AbortSignal | undefined;
@@ -269,7 +269,7 @@ export async function runInteractiveCommand(input: InteractiveRunInput): Promise
   let promptsAnswered = 0;
   let promptDeclined = false;
   let pendingPrompt: string | undefined;
-  /** Transcript length at the last brokered ask — re-ask only on NEW output. */
+  /** Transcript length at the last brokered ask, re-ask only on NEW output. */
   let askedAtLength = -1;
   let askInFlight = false;
 
@@ -379,7 +379,7 @@ export async function runInteractiveCommand(input: InteractiveRunInput): Promise
   exited = true;
   clearTimeout(killTimer);
   if (signal) signal.removeEventListener('abort', onAbort);
-  // Bounded drain — a PTY grandchild can hold the pipe open past the kill.
+  // Bounded drain, a PTY grandchild can hold the pipe open past the kill.
   await Promise.race([io.then(() => undefined, () => undefined), sleep(500)]);
   await watcher;
 

@@ -4,7 +4,7 @@
  * Automatically registers providers when their API keys are detected in the environment.
  *
  * When a user has an API key set in their environment (e.g. GROQ_API_KEY),
- * auto-register that provider using catalog data — zero manual configuration.
+ * auto-register that provider using catalog data, zero manual configuration.
  *
  * Multi-endpoint providers (e.g. ZenMux) are handled by registering separate
  * provider instances for each endpoint, routed by the model's native API format.
@@ -58,7 +58,7 @@ export interface AutoRegisterEntry extends CatalogProvider {
  * Well-known providers that can be auto-registered from environment variables.
  *
  * Each entry maps to one registered LLM provider instance. Multi-endpoint
- * providers (e.g. ZenMux) appear multiple times — once per endpoint — with
+ * providers (e.g. ZenMux) appear multiple times, once per endpoint, with
  * distinct `id` and `name` values (e.g. 'zenmux' and 'zenmux-anthropic').
  *
  * Order determines registration priority when multiple providers offer the
@@ -345,7 +345,7 @@ export function createProviderFromEntry(entry: AutoRegisterEntry, apiKey: string
 // ---------------------------------------------------------------------------
 
 /**
- * autoRegisterProviders — scan catalog providers, check env vars, register
+ * autoRegisterProviders, scan catalog providers, check env vars, register
  * any providers not already in the registry.
  *
  * Called during startup after `initCatalog()`. Safe to call multiple times;

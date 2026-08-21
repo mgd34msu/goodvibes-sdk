@@ -1,9 +1,9 @@
 /**
- * connection-repair.ts — finishing an adoption that only half landed.
+ * connection-repair.ts, finishing an adoption that only half landed.
  *
  * The owner ran `/google adopt`. It reported success. The secret half went into
- * the store; the config half — the OAuth client id, and the reference naming
- * where its secret lives — did not reach anywhere the daemon reads, because the
+ * the store; the config half, the OAuth client id, and the reference naming
+ * where its secret lives, did not reach anywhere the daemon reads, because the
  * `calendar` config section did not exist to write into outside the one product
  * that carried a seeder for it. The result is a machine holding half a
  * credential, which reports "no Google account connected" exactly as loudly as
@@ -11,13 +11,13 @@
  *
  * Moving stored credentials between tiers cannot fix that: there is nothing in
  * any tier to move. What DOES fix it is the thing the adoption already does,
- * run again — and the files it reads are still on the machine, untouched,
+ * run again, and the files it reads are still on the machine, untouched,
  * because adoption never writes them.
  *
  * ── The boundary, and why it is where it is ─────────────────────────────────
  *
  * This does NOT adopt credentials on someone's behalf. It runs only when the
- * secret store already holds a Google credential — which is to say only when
+ * secret store already holds a Google credential, which is to say only when
  * someone already ran an adoption or a setup on this machine and it half
  * landed. Finishing what a person started is repair. Starting it for them
  * would be the daemon deciding on its own to take up credentials belonging to
@@ -55,7 +55,7 @@ export interface GoogleConnectionRepairResult {
  * Complete a Google connection whose config half never landed.
  *
  * Every value that moves goes through the ordinary adoption path, so it is
- * routed and scoped by the same rules any other write is — this adds no second
+ * routed and scoped by the same rules any other write is, this adds no second
  * way to store a credential.
  */
 export async function repairHalfLandedGoogleConnection(deps: {
@@ -100,7 +100,7 @@ export async function repairHalfLandedGoogleConnection(deps: {
   return {
     outcome: 'repaired',
     detail:
-      'A Google credential was stored without the client id that goes with it — the setup reported success and left the daemon holding half a connection. '
+      'A Google credential was stored without the client id that goes with it, the setup reported success and left the daemon holding half a connection. '
       + 'The missing half has been written from the same files the credential came from, which were read and left untouched.',
   };
 }

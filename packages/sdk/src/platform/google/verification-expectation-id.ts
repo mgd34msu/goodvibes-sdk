@@ -7,7 +7,7 @@
  * `id` was validated only as "a non-empty string after trimming". A
  * one-megabyte `id` passed. Thirty-two records carrying one survived a real
  * `sweep('recovery')` as `retained: 32, removed: 0`, and the store re-persisted
- * a 32 MB file that is entirely well-formed — and that will be read back and
+ * a 32 MB file that is entirely well-formed, and that will be read back and
  * re-persisted at every boot for as long as it exists. Bounding three fields
  * out of four bounds nothing.
  */
@@ -40,7 +40,7 @@ const EXPECTATION_ID_SHAPE = /^[A-Za-z0-9._:-]+$/;
  *
  * One function, used by BOTH the live verb and the load path, because the
  * §9.2 property is that a file on disk cannot mint an expectation the live API
- * would have refused — and the inverse is just as load-bearing: an `id` the
+ * would have refused, and the inverse is just as load-bearing: an `id` the
  * live API accepts and the load path refuses is an expectation that works
  * until the next restart and then silently disappears, because the store
  * re-validates every entry it writes.

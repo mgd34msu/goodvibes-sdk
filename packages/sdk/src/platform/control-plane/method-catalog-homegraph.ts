@@ -134,7 +134,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     write: true,
     // With no `artifactId` the service creates the artifact instead, and the
     // store refuses an input with no content source (`Artifact input requires
-    // dataBase64, text, path, or uri`, platform/artifacts/store.ts) — this verb
+    // dataBase64, text, path, or uri`, platform/artifacts/store.ts), this verb
     // only forwards `path` and `uri`. So: an existing artifact by id, or a
     // reference to fetch. The multipart and raw-body upload modes carry their
     // content in the HTTP request and never reach this schema.
@@ -258,7 +258,7 @@ export const builtinGatewayHomeGraphMethodDescriptors: readonly GatewayMethodDes
     // A review has to name what it is reviewing: `reviewFact requires issueId,
     // nodeId, or sourceId.` (knowledge/home-graph/review.ts). Any one of the
     // three is a complete call, so it is a union rather than three required
-    // fields. `action` stays required — it was already declared, and it is the
+    // fields. `action` stays required, it was already declared, and it is the
     // one field the caller must always supply.
     inputSchema: branchedSchema(
       bodyEnvelopeSchema({

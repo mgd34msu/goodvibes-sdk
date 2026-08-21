@@ -14,7 +14,7 @@
  * Verb tails follow docs/decisions/2026-07-06-core-verb-spec.md: register is
  * `create`, unregister is `delete`, the collection read is `list`, the public
  * key read is `get`. `verify` (send a live test push to prove the round trip)
- * is not a generic CRUD word — it is documented in the `push-delivery` exempt
+ * is not a generic CRUD word, it is documented in the `push-delivery` exempt
  * category in packages/contracts/src/core-verbs.ts.
  *
  * Like the other handler-registered verb groups (fleet.*, checkpoints.*,
@@ -40,7 +40,7 @@ const PUSH_SUBSCRIPTION_KEYS_SCHEMA = objectSchema({
   auth: STRING_SCHEMA,
 }, ['p256dh', 'auth']);
 
-/** The wire-safe (redacted) subscription view — no capability URL, no key material. */
+/** The wire-safe (redacted) subscription view, no capability URL, no key material. */
 const PUBLIC_PUSH_SUBSCRIPTION_SCHEMA = objectSchema({
   id: STRING_SCHEMA,
   principalId: STRING_SCHEMA,
@@ -74,7 +74,7 @@ export const builtinGatewayPushMethodDescriptors: readonly GatewayMethodDescript
   methodDescriptor({
     id: 'push.subscriptions.create',
     title: 'Register Web Push Subscription',
-    description: 'Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity — a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.',
+    description: 'Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity, a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.',
     category: 'push',
     scopes: ['write:push'],
     transport: ['ws'],
@@ -88,7 +88,7 @@ export const builtinGatewayPushMethodDescriptors: readonly GatewayMethodDescript
   methodDescriptor({
     id: 'push.subscriptions.reconcile',
     title: 'Reconcile Web Push Subscription',
-    description: 'Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place — updating a stale endpoint the daemon had been holding — then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.',
+    description: 'Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place, updating a stale endpoint the daemon had been holding, then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.',
     category: 'push',
     scopes: ['write:push'],
     transport: ['ws'],

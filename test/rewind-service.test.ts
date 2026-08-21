@@ -1,5 +1,5 @@
 /**
- * UnifiedRewindService — plan/apply over the existing history stores.
+ * UnifiedRewindService, plan/apply over the existing history stores.
  *
  * Covers the dry-run preview + confirm-token gate, the symmetric undo point the
  * apply records (restore-the-restore), honest degradation when a store is not
@@ -105,7 +105,7 @@ describe('rewind.apply — confirm gate', () => {
     const first = await service.apply(anchor, 'files', { confirmToken: plan.token });
     expect(first.refused).toBe(false);
     expect(first.receipt?.files?.restored).toBe(true);
-    // Token is spent — a replay is rejected.
+    // Token is spent, a replay is rejected.
     await expect(service.apply(anchor, 'files', { confirmToken: plan.token })).rejects.toBeInstanceOf(RewindTokenError);
   });
 
@@ -131,7 +131,7 @@ describe('rewind.apply — symmetric undo point (restore-the-restore)', () => {
     // The workspace restore was asked to take a safety checkpoint.
     expect(restoreCalls).toEqual([{ id: 'wcp_a', safety: true }]);
     expect(receipt.files?.safetyCheckpointId).toBe('wcp_safety');
-    // The receipt's undo block points back at that safety checkpoint — reversing the rewind.
+    // The receipt's undo block points back at that safety checkpoint, reversing the rewind.
     expect(receipt.undo.files).toEqual({ restoreCheckpointId: 'wcp_safety' });
     expect(receipt.files?.restoredFileCount).toBe(2);
     expect(receipt.files?.removedFileCount).toBe(1);
@@ -182,7 +182,7 @@ describe('rewind — receipt events', () => {
 //
 // The gap this closes: the daemon wired a conversation port whose registry
 // nothing outside the daemon could populate, so a rewind of a session hosted by
-// a client answered "0 messages to drop" — indistinguishable from a session
+// a client answered "0 messages to drop", indistinguishable from a session
 // already at the anchor. Exercised over a real GatewayMethodCatalog with the
 // handlers attached the way the daemon attaches them.
 // ---------------------------------------------------------------------------

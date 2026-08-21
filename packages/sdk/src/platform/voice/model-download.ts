@@ -1,15 +1,15 @@
 /**
- * model-download.ts — atomic download of a local voice model (piper/kokoro
+ * model-download.ts, atomic download of a local voice model (piper/kokoro
  * .onnx voices and their .json configs).
  *
  * The incident: a voice model download was interrupted, leaving a TRUNCATED
- * .onnx at the final path, which was then fed straight to piper — which aborted
+ * .onnx at the final path, which was then fed straight to piper, which aborted
  * (an onnxruntime load failure) on the malformed model. The fix is atomicity +
  * verification: fetch into a temp file in the SAME directory, verify the byte
  * count against Content-Length (when the server sent one) and against a
  * non-trivial floor + expected magic, then rename into place. A partial download
  * is never visible at the final path, and a failed download is cleaned up and
- * reported honestly — never silently left half-written.
+ * reported honestly, never silently left half-written.
  *
  * The `renameSync` is atomic because the temp file shares the destination's
  * directory (and thus filesystem); a cross-device rename would not be atomic.
@@ -35,7 +35,7 @@ export interface VoiceModelDownloadOptions {
   /** Abort the download after this many ms (default 120000). */
   readonly timeoutMs?: number | undefined;
   /**
-   * Verify the ONNX protobuf magic (first byte 0x08 — the ir_version field tag).
+   * Verify the ONNX protobuf magic (first byte 0x08, the ir_version field tag).
    * Defaults to true when destPath ends in `.onnx`. Set false for `.json` configs.
    */
   readonly expectOnnxMagic?: boolean | undefined;
@@ -46,7 +46,7 @@ export type VoiceModelDownloadResult =
   | { readonly ok: false; readonly error: string };
 
 function looksLikeHtml(bytes: Uint8Array): boolean {
-  // Skip leading whitespace, then check for a '<' — a rate-limit/error page
+  // Skip leading whitespace, then check for a '<', a rate-limit/error page
   // served with 200 is the classic "downloaded 900 bytes of HTML" corruption.
   let i = 0;
   while (i < bytes.length && (bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0a || bytes[i] === 0x0d)) i += 1;
@@ -110,7 +110,7 @@ export async function downloadVoiceModel(options: VoiceModelDownloadOptions): Pr
     logger.info('voice model downloaded', { path: options.destPath, bytes: bytes.length });
     return { ok: true, path: options.destPath, bytes: bytes.length };
   } catch (error) {
-    // Clean up any partial temp file — a failed download never lingers.
+    // Clean up any partial temp file, a failed download never lingers.
     try {
       if (existsSync(tmpPath)) unlinkSync(tmpPath);
     } catch (cleanupError) {

@@ -158,7 +158,7 @@ describe('paginateItems', () => {
     const withInsertion = [{ id: 'item-0', createdAt: 0 }, ...original];
     const page2 = paginateItems(withInsertion, 3, page1.nextCursor!, (x) => x.id);
     if ('error' in page2) throw new Error(page2.error);
-    // item-4, item-5, item-6 should appear — item-0 (before cursor) is not re-shown
+    // item-4, item-5, item-6 should appear, item-0 (before cursor) is not re-shown
     expect(page2.items.map((x) => x.id)).toEqual(['item-4', 'item-5', 'item-6']);
     expect(page2.hasMore).toBe(false);
   });
@@ -208,7 +208,7 @@ describe('paginateItems', () => {
     const withoutItem2 = items.filter((x) => x.id !== 'item-2');
     const result = paginateItems(withoutItem2, 3, cursor, (x) => x.id);
     if ('error' in result) throw new Error(result.error);
-    // Falls back to 0 — items 1, 3, 4 (first three)
+    // Falls back to 0, items 1, 3, 4 (first three)
     expect(result.items.map((x) => x.id)).toEqual(['item-1', 'item-3', 'item-4']);
   });
 });
@@ -221,7 +221,7 @@ function makeAutomationContext(
   jobs: Array<{ id: string }> = [],
   runs: Array<{ id: string; jobId: string; status: string; queuedAt: number }> = [],
 ): DaemonRuntimeRouteContext {
-  // Minimal stub — only methods needed for getAutomationJobs/Runs
+  // Minimal stub, only methods needed for getAutomationJobs/Runs
   return {
     automationManager: {
       listJobs: () => jobs,
@@ -441,7 +441,7 @@ describe('getAutomationRuns', () => {
     expect(ids[0]).toBe('r20');
     // r10 follows
     expect(ids).toContain('r10');
-    // r30 was deleted — should not appear
+    // r30 was deleted, should not appear
     expect(ids).not.toContain('r30');
   });
 });
@@ -552,9 +552,9 @@ function makeKnowledgeItemsWithTs(
   return Array.from({ length: count }, (_, i) => ({
     id: `k${i + 1}`,
     name: `item ${i + 1}`,
-    // updatedAt descending: k1 = count*1000 (newest), kN = 1000 (oldest) — matches byUpdatedAtDesc
+    // updatedAt descending: k1 = count*1000 (newest), kN = 1000 (oldest), matches byUpdatedAtDesc
     updatedAt: (count - i) * 1000,
-    // createdAt ascending (OPPOSITE order) — proves cursor keys on updatedAt, not createdAt
+    // createdAt ascending (OPPOSITE order), proves cursor keys on updatedAt, not createdAt
     createdAt: (i + 1) * 100,
   }));
 }
@@ -663,7 +663,7 @@ describe('knowledge sources — getKnowledgeSources', () => {
 describe('knowledge sources — mid-walk deletion recovery', () => {
   test('deleted cursor item: recovery resumes from insertion point via updatedAt, no duplicates (descending order)', async () => {
     // 8 items sorted descending by updatedAt: k1=8000, k2=7000, ..., k8=1000.
-    // createdAt is in ASCENDING order (100, 200, ...) — opposite of updatedAt — so this
+    // createdAt is in ASCENDING order (100, 200, ...), opposite of updatedAt, so this
     // test will FAIL if the extractor reads createdAt and PASS only when it reads updatedAt.
     // Page 1 (limit=3): k1, k2, k3. cursor encodes id=k3, updatedAt=6000.
     // k3 deleted. Page 2 must resume from k4 (first item with updatedAt < 6000).
@@ -680,15 +680,15 @@ describe('knowledge sources — mid-walk deletion recovery', () => {
     const itemsAfterDelete = items.filter((x) => x.id !== 'k3');
     const handlersAfterDelete = createDaemonKnowledgeRouteHandlers(makeKnowledgeContext(itemsAfterDelete));
 
-    // Walk page 2 — must get k4, k5, k6; must NOT restart from k1/k2
+    // Walk page 2, must get k4, k5, k6; must NOT restart from k1/k2
     // (with old createdAt extractor: createdAt order is ascending so cursor's recorded value
-    //  would be k3.createdAt=300 and scan would land at wrong position — this assertion catches it)
+    //  would be k3.createdAt=300 and scan would land at wrong position, this assertion catches it)
     const urlStr = `http://localhost/api/knowledge/sources?limit=3&cursor=${page1.nextCursor!}`;
     const resp2 = await handlersAfterDelete.getKnowledgeSources(new URL(urlStr));
     const page2 = await resp2.json() as { items: Array<{ id: string }>; hasMore: boolean; nextCursor?: string };
     expect(page2.items.map((x) => x.id)).toEqual(['k4', 'k5', 'k6']);
     expect(page2.hasMore).toBe(true); // k7, k8 remain
-    // Decisive: k1, k2 must NOT appear — any duplicate means createdAt-keyed recovery misfired
+    // Decisive: k1, k2 must NOT appear, any duplicate means createdAt-keyed recovery misfired
     expect(page2.items.every((x) => x.id !== 'k1' && x.id !== 'k2')).toBe(true);
   });
 
@@ -723,7 +723,7 @@ describe('knowledge sources — mid-walk deletion recovery', () => {
     expect(page2Ids.includes('k1')).toBe(false);
     expect(page2Ids.includes('k2')).toBe(false);
     expect(page2Ids.includes('k3')).toBe(false);
-    // k4 must be in page 2 (updatedAt=5000 < cursor's 6000 — first item past boundary)
+    // k4 must be in page 2 (updatedAt=5000 < cursor's 6000, first item past boundary)
     expect(page2Ids[0]).toBe('k4');
   });
 });
@@ -780,7 +780,7 @@ describe('knowledge nodes — getKnowledgeNodes', () => {
 describe('knowledge nodes — mid-walk deletion recovery', () => {
   test('deleted cursor item: recovery resumes from insertion point via updatedAt, no duplicates (descending order)', async () => {
     // 8 items sorted descending by updatedAt: k1=8000, k2=7000, ..., k8=1000.
-    // createdAt is ASCENDING (100, 200, ...) — opposite of updatedAt — decisive test:
+    // createdAt is ASCENDING (100, 200, ...), opposite of updatedAt, decisive test:
     // if extractor reads createdAt the insertion point will be wrong and the assertion fails.
     // Page 1 (limit=3): k1, k2, k3. cursor encodes id=k3, updatedAt=6000.
     // k3 deleted. Page 2 must resume from k4 (first item with updatedAt < 6000).
@@ -799,7 +799,7 @@ describe('knowledge nodes — mid-walk deletion recovery', () => {
     const urlStr = `http://localhost/api/knowledge/nodes?limit=3&cursor=${page1.nextCursor!}`;
     const resp2 = await handlersAfterDelete.getKnowledgeNodes(new URL(urlStr));
     const page2 = await resp2.json() as { items: Array<{ id: string }>; hasMore: boolean; nextCursor?: string };
-    // Decisive: k4, k5, k6 — NOT k1/k2 (restart-from-zero) or wrong items (createdAt misfired)
+    // Decisive: k4, k5, k6, NOT k1/k2 (restart-from-zero) or wrong items (createdAt misfired)
     expect(page2.items.map((x) => x.id)).toEqual(['k4', 'k5', 'k6']);
     expect(page2.hasMore).toBe(true); // k7, k8 remain
     expect(page2.items.every((x) => x.id !== 'k1' && x.id !== 'k2')).toBe(true);
@@ -872,7 +872,7 @@ describe('getAutomationRuns — mid-walk deletion recovery', () => {
     const urlStr = `http://localhost/api/automation/runs?limit=3&cursor=${page1.nextCursor!}`;
     const resp2 = await handlersAfterDelete.getAutomationRuns(new URL(urlStr));
     const page2 = await resp2.json() as { items: Array<{ id: string }>; hasMore: boolean; nextCursor?: string };
-    // r5 (5000), r4 (4000), r3 (3000) expected — not a restart from r8/r7
+    // r5 (5000), r4 (4000), r3 (3000) expected, not a restart from r8/r7
     expect(page2.items.map((x) => x.id)).toEqual(['r5', 'r4', 'r3']);
     expect(page2.hasMore).toBe(true); // r2, r1 remain
     expect(page2.items.every((x) => x.id !== 'r8' && x.id !== 'r7')).toBe(true);

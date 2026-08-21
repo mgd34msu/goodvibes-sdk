@@ -131,7 +131,7 @@ export interface SlackSocketModeClientOptions {
   readonly onEnvelope: (envelope: SlackSocketModeEnvelope, client: SlackSocketModeClient) => void | Promise<void>;
   readonly WebSocketImpl?: typeof WebSocket | undefined;
   /**
-   * The socket closed on its own — not because `stop()` was called.
+   * The socket closed on its own, not because `stop()` was called.
    *
    * A node under LAN leadership has to know: it holds the Slack surface on the
    * strength of being able to read it, and a dropped socket means it cannot.
@@ -147,13 +147,13 @@ export interface SlackSocketModeClientOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * SlackIntegration — handles inbound webhook verification/parsing and outbound
+ * SlackIntegration, handles inbound webhook verification/parsing and outbound
  * message posting for Slack slash commands and interactions.
  *
  * Env vars:
- *   SLACK_WEBHOOK_URL      — incoming webhook URL for outbound posting
- *   SLACK_BOT_TOKEN        — Bot User OAuth token (xoxb-…) for API calls
- *   SLACK_SIGNING_SECRET   — used to verify X-Slack-Signature on inbound
+ *   SLACK_WEBHOOK_URL     , incoming webhook URL for outbound posting
+ *   SLACK_BOT_TOKEN       , Bot User OAuth token (xoxb-…) for API calls
+ *   SLACK_SIGNING_SECRET  , used to verify X-Slack-Signature on inbound
  */
 export class SlackIntegration {
   constructor(
@@ -346,7 +346,7 @@ export class SlackIntegration {
       };
     }
 
-    // Slash command — fields come as top-level form values
+    // Slash command, fields come as top-level form values
     return {
       type: 'slash_command',
       command: typeof body.command === 'string' ? body.command : '',

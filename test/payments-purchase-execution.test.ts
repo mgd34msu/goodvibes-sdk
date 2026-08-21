@@ -1,12 +1,12 @@
 /**
- * payments-purchase-execution.test.ts — the daemon actually buying something.
+ * payments-purchase-execution.test.ts, the daemon actually buying something.
  *
  * ══ What is being proved, and what would make each proof worthless ════════
  *
  * Two things at once, and they pull in opposite directions:
  *
  *  1. **The card reaches the merchant and nothing else.** Every read path back
- *     to it is closed — the control-plane response, a snapshot taken after the
+ *     to it is closed, the control-plane response, a snapshot taken after the
  *     fill, an error message, the driver's own thrown text.
  *  2. **Nothing in the flow knows a merchant.** The whole thing runs against two
  *     fixture stores that share no markup, no label wording, no element
@@ -21,7 +21,7 @@
  *
  *   ALPHA  table-driven US store. `$1,299.00`. Standard `autocomplete="cc-*"`
  *          tokens, so its card fields are caught structurally.
- *   BETA   div-and-span European store. `1.299,00 €` — dot thousands, comma
+ *   BETA   div-and-span European store. `1.299,00 €`, dot thousands, comma
  *          decimal, trailing symbol. NO autocomplete attributes at all and
  *          German field names, so its card fields are caught only by the name
  *          patterns and the value-based layer.
@@ -29,7 +29,7 @@
  * ══ The sentinel ══════════════════════════════════════════════════════════
  *
  * The card number below is a Luhn-valid test PAN that belongs to no issuer, and
- * every containment assertion searches for it in both spellings — as typed, and
+ * every containment assertion searches for it in both spellings, as typed, and
  * as a page might reformat it. No test in this file ever contacts a real
  * merchant: both fixtures bind to port 0 on loopback and their "place order"
  * endpoint records what it received instead of shipping anything.
@@ -68,7 +68,7 @@ import { BudgetLedger, type BudgetLimits } from '../packages/sdk/src/platform/pa
 import type { CardMetadata } from '../packages/sdk/src/platform/payments/types.js';
 /**
  * `OwnerSuppliedText` and `CurrencyCode` are branded, so a plain string literal
- * satisfies neither — the brands exist precisely so text that did not come from
+ * satisfies neither, the brands exist precisely so text that did not come from
  * the owner cannot be passed off as text that did. These fixtures go through
  * the declared seams rather than casting past them:
  * `unsafeOwnerSuppliedTextForTests` is the module's own named test seam, and
@@ -106,7 +106,7 @@ import {
   fixtureSnapshotPage,
 } from './helpers/fixture-snapshot-page.js';
 
-/** A recognised currency code, or a loud failure — never a silent cast. */
+/** A recognised currency code, or a loud failure, never a silent cast. */
 function currency(code: string): CurrencyCode {
   const parsed = parseCurrencyCode(code);
   if (parsed === null) throw new Error(`test fixture used an unparseable currency code: ${code}`);
@@ -172,7 +172,7 @@ class SentinelCardStore implements CardMaterialStore {
  * Assert a blob of text holds no part of the card.
  *
  * Checks the reformatted spellings too, because a page that renders the number
- * with spaces defeats an exact search while looking like a pass — which is the
+ * with spaces defeats an exact search while looking like a pass, which is the
  * worst possible outcome for an assertion whose whole job is to notice.
  */
 function expectNoCardMaterial(label: string, text: string): void {
@@ -281,8 +281,8 @@ function buildHarness(options: HarnessOptions): Harness {
 
   const merchantJudge = {
     async judge(input: { readonly registrableDomain: string }) {
-      // The judge is handed exactly one field — the validated registrable
-      // domain — and nothing from the page.
+      // The judge is handed exactly one field, the validated registrable
+      // domain, and nothing from the page.
       const qualifies = input.registrableDomain === 'bestbuy.com';
       return {
         qualifies,
@@ -302,7 +302,7 @@ function buildHarness(options: HarnessOptions): Harness {
     ledger,
     purchases,
     // The gates below claim hasShippingAddress: true, so the store has to
-    // actually hold one — runCheckout reads the address through deps.addresses
+    // actually hold one, runCheckout reads the address through deps.addresses
     // rather than trusting the gate flag.
     addresses: { async read(): Promise<PostalAddress> { return SHIPPING_ADDRESS; } },
     notifier: {
@@ -399,7 +399,7 @@ describe('the card never comes back', () => {
     expect(outcome.kind).toBe('purchased');
 
     // The verb, exercised through the real route handler, against a service
-    // that runs the real fill — so this is the response a surface would get.
+    // that runs the real fill, so this is the response a surface would get.
     const registry = new CheckoutRegistry(new MemoryCheckoutJournal());
     const redactor = new CardMaterialRedactor();
     const driver = new FixtureCheckoutDriver({ merchant: alpha, pageUrl: `${RECOGNISED_ORIGIN}/checkout` });
@@ -562,7 +562,7 @@ describe('a snapshot after the fill', () => {
       const snapshot = await takeSnapshot(page, 'session-1', 'page-1', { guard: harness.redactor });
 
       expectNoCardMaterial(`the ${merchant.shape} snapshot`, JSON.stringify(snapshot));
-      // The fields are still addressable — the model can ask for another fill.
+      // The fields are still addressable, the model can ask for another fill.
       expect(snapshot.elements.some((element) => element.cardField === true)).toBe(true);
     });
   }
@@ -589,7 +589,7 @@ describe('a snapshot after the fill', () => {
     const snapshot = await takeSnapshot(page, 'session-1', 'page-1');
 
     expectNoCardMaterial('an unguarded snapshot', JSON.stringify(snapshot));
-    // The ordinary field is untouched — the suppression is targeted, not blanket.
+    // The ordinary field is untouched, the suppression is targeted, not blanket.
     expect(snapshot.elements.some((element) => element.value === 'SAVE10')).toBe(true);
   });
 
@@ -1013,7 +1013,7 @@ describe('one notification, and the merchant decides what silence means', () => 
     expect(harness.notices[0]?.kind).toBe('approval');
     // The domain that actually takes the card, not the one the page named.
     // The domain that actually TAKES THE CARD is named, and the handoff is
-    // explained rather than hidden — a storefront's protection does not
+    // explained rather than hidden, a storefront's protection does not
     // necessarily follow the card to a different company.
     expect(harness.notices[0]?.message).toContain('jeffsgadgets.biz');
     expect(harness.notices[0]?.message.toLowerCase()).toContain('payment page is on');

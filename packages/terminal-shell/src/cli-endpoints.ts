@@ -1,5 +1,5 @@
 /**
- * cli-endpoints.ts — the shared config keys, defaults, and display resolution
+ * cli-endpoints.ts, the shared config keys, defaults, and display resolution
  * for the three network endpoints a front-end's daemon exposes: the control
  * plane, the plain HTTP listener, and the web UI.
  */
@@ -48,7 +48,7 @@ export interface RuntimeEndpointBinding {
    * with NO default case: an unrecognized mode yields an undefined binding and
    * the daemon throws in its constructor before ever binding. Displays must
    * therefore never present the host/port below as a definite binding when
-   * this is false — the fallback values exist only so display code has
+   * this is false, the fallback values exist only so display code has
    * something structured to show alongside the warning.
    */
   readonly recognized: boolean;
@@ -58,14 +58,14 @@ export interface RuntimeEndpointBinding {
  * THE one display seam for endpoint bindings: every surface that renders a
  * binding as text goes through this, so no surface can present the resolver's
  * loopback fallback as a definite bind for a hostMode the SDK cannot handle
- * (its bind resolver has no default case — the daemon throws before binding).
+ * (its bind resolver has no default case, the daemon throws before binding).
  * The recognized case renders the familiar `<mode> <host>:<port>`.
  */
 export function formatRuntimeEndpointBinding(binding: RuntimeEndpointBinding): string {
   if (binding.recognized) {
     return `${binding.hostMode} ${binding.host}:${binding.port}`;
   }
-  return `'${binding.hostMode}' — not a recognized host mode (expected local|network|custom); the daemon cannot bind this endpoint until it is corrected`;
+  return `'${binding.hostMode}', not a recognized host mode (expected local|network|custom); the daemon cannot bind this endpoint until it is corrected`;
 }
 
 export function hostModeForHostname(hostname: string): RuntimeHostMode {
@@ -85,7 +85,7 @@ export function resolveRuntimeEndpointBinding(
   // Port coercion is anchored PER ENDPOINT to what the SDK actually does with
   // the stored value, so a display never disagrees with the machinery:
   //   - controlPlane / httpListener bind via resolveHostBinding, which is fed
-  //     `Number(raw ?? default)` and applies `customPort || DEFAULT` — a
+  //     `Number(raw ?? default)` and applies `customPort || DEFAULT`, a
   //     stored 0 or non-numeric value collapses to the endpoint default.
   //   - web goes through the SDK's own resolveWebPort, which every surface
   //     that announces, links a channel account, or serves over tailscale
@@ -104,7 +104,7 @@ export function resolveRuntimeEndpointBinding(
     return { hostMode, configuredHost, host: '127.0.0.1', port, recognized: true };
   }
   // Unrecognized hostMode ('LAN', 'Network', '', a trimmed variant, …): the
-  // SDK bind path has NO default case for this — resolveHostBinding returns
+  // SDK bind path has NO default case for this, resolveHostBinding returns
   // undefined and the daemon throws before binding. There IS no real binding
   // to display; recognized:false tells callers to warn instead of asserting
   // the loopback fallback below as fact.

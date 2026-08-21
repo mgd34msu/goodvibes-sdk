@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 // ---------------------------------------------------------------------------
-// SessionChangeTracker — tracks files written/edited during the current session
+// SessionChangeTracker, tracks files written/edited during the current session
 // ---------------------------------------------------------------------------
 
 /**

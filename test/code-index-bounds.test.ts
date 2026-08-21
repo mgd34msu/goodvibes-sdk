@@ -1,5 +1,5 @@
 /**
- * Repo code index (Stage A) — CodeIndexStore bounds + honest skip
+ * Repo code index (Stage A), CodeIndexStore bounds + honest skip
  * reporting: maxFiles/maxFileBytes/binary/gitignore exclusions all appear in
  * the skip report with honest counts, and .gitignore'd paths are never indexed.
  */
@@ -78,7 +78,7 @@ describe('CodeIndexStore — bounds honesty', () => {
     expect(stats.filesScanned).toBe(3);
     expect(stats.filesIndexed).toBe(1);
     expect(stats.skip.overFileCap).toBe(2);
-    // The two bounds report separately — the byte budget was never hit here.
+    // The two bounds report separately, the byte budget was never hit here.
     expect(stats.skip.overTotalBytes).toBe(0);
   });
 
@@ -102,7 +102,7 @@ describe('CodeIndexStore — bounds honesty', () => {
   test('nested .gitignore files are honored relative to their own directory', async () => {
     const root = makeRoot();
     mkdirSync(join(root, 'sub'), { recursive: true });
-    // No root .gitignore at all — only the nested one excludes.
+    // No root .gitignore at all, only the nested one excludes.
     writeFileSync(join(root, 'sub', '.gitignore'), 'ignored.ts\n');
     writeFileSync(join(root, 'sub', 'ignored.ts'), 'export const nestedSecret = 1;\n');
     writeFileSync(join(root, 'sub', 'kept.ts'), 'export const nestedKept = 1;\n');
@@ -142,7 +142,7 @@ describe('CodeIndexStore — bounds honesty', () => {
     store.init();
 
     const stats = await store.buildFull();
-    // Every counter is a real, non-negative, reportable number — never undefined/NaN.
+    // Every counter is a real, non-negative, reportable number, never undefined/NaN.
     for (const value of Object.values(stats.skip)) {
       expect(Number.isFinite(value)).toBe(true);
       expect(value).toBeGreaterThanOrEqual(0);

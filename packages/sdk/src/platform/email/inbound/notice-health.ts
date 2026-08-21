@@ -1,5 +1,5 @@
 /**
- * notice-health.ts — a refusal to announce arriving mail, made VISIBLE.
+ * notice-health.ts, a refusal to announce arriving mail, made VISIBLE.
  *
  * docs/inbound-email.md §3.4b: *"A terminal state is announced, not merely
  * recorded... Silent permanent death is the failure this entire round exists to
@@ -9,7 +9,7 @@
  * mail is arriving, every message is recorded, and not one of them is announced
  * to anybody.
  *
- * The refusals that reach here are the STRUCTURAL ones — `no-route-binding`,
+ * The refusals that reach here are the STRUCTURAL ones, `no-route-binding`,
  * `surface-delivery-disabled`, `no-deliverable-target`,
  * `unsupported-delivery-surface`, `empty-text`. The intake deliberately does
  * not throw on any of them, and that decision is right: throwing would pin the
@@ -23,7 +23,7 @@
  *
  * So a permanent refusal is not merely recorded. It is latched here, counted,
  * logged once per condition, and folded into the two things a person actually
- * reads — `email.inbound.status` and the health entry, which reports `degraded`
+ * reads, `email.inbound.status` and the health entry, which reports `degraded`
  * for exactly as long as the condition lasts.
  *
  * Why the announcement is not itself a notice
@@ -35,7 +35,7 @@
  * through the route that is refusing, and would be refused for the same reason,
  * which is a loop that reports nothing and buries the real refusal under a
  * second one. The honest surfaces are the ones that do not depend on the broken
- * path — the status verb, the health entry, and the log — and this file drives
+ * path, the status verb, the health entry, and the log, and this file drives
  * all three.
  *
  * Once per CONDITION, not once per message
@@ -53,7 +53,7 @@ import { logger } from '../../utils/logger.js';
 /** One refusal to announce, as the intake reports it. */
 export interface InboundNoticeRefusalEvent {
   /**
-   * The refusal's own name — `no-route-binding`, `surface-delivery-disabled`,
+   * The refusal's own name, `no-route-binding`, `surface-delivery-disabled`,
    * `route-binding-disabled`, … Kept as a plain string rather than narrowed to
    * `SurfaceNoticeRefusal` because the cause is sometimes finer-grained than
    * the delivery layer's vocabulary: a missing binding because the owner has
@@ -64,7 +64,7 @@ export interface InboundNoticeRefusalEvent {
   readonly reason: string;
   /** What is wrong, in one sentence, for a person. */
   readonly detail: string;
-  /** The remedial step. Never empty — a report with no fix is a complaint. */
+  /** The remedial step. Never empty, a report with no fix is a complaint. */
   readonly fix: string;
   /** When this message was refused, ISO. */
   readonly at: string;
@@ -84,7 +84,7 @@ export interface InboundNoticeRefusalState extends InboundNoticeRefusalEvent {
  *
  * Deliberately not an `InboundMailObserver`: an observer is a fan-out of events
  * that may have no subscriber, and this is a piece of STATE two collaborators
- * share — the intake writes it, `status` and `health()` read it. Routing it
+ * share, the intake writes it, `status` and `health()` read it. Routing it
  * through the observer stream is what the previous shape did with everything
  * else, and the composition root's observer implements `terminalFailure` and
  * `stateChanged` and nothing else, so a note posted there would have gone
@@ -151,7 +151,7 @@ export function createInboundNoticeHealth(
         action: next.fix,
         since: next.since,
         // Never phrased as a claim about the owner. This line says what the
-        // daemon did — recorded, did not announce — and nothing about what he
+        // daemon did, recorded, did not announce, and nothing about what he
         // has or has not seen, which is the wording fault §13.8 records.
         announcedToOwner: false,
       });

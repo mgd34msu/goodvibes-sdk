@@ -54,7 +54,7 @@ describe('the thresholds, pinned', () => {
 
   test(`${String(MIN_SHARED_WORDS)} shared words is derivation; fewer is not`, () => {
     // Both phrases are kept UNDER MIN_SHARED_CHARS so this isolates the word
-    // signal — the two checks overlap, and a longer phrase would be caught by
+    // signal, the two checks overlap, and a longer phrase would be caught by
     // the span rule regardless of its word count.
     const eight = 'one two three four five six seven eight';
     const seven = 'one two three four five six seven';
@@ -66,7 +66,7 @@ describe('the thresholds, pinned', () => {
 
   test('a long verbatim token with no prose around it is caught by the span rule alone', () => {
     // The case that raising MIN_SHARED_CHARS would break. No spaces, so it
-    // normalizes to a single word and the word rule cannot fire — only the
+    // normalizes to a single word and the word rule cannot fire, only the
     // span rule can, which is exactly why the span rule exists.
     const token = 'ZXhhbXBsZXRva2VudmFsdWVub3RyZWFsbHlhc2VjcmV0MDE5OA';
     expect(token.length).toBeGreaterThanOrEqual(MIN_SHARED_CHARS);
@@ -86,7 +86,7 @@ describe('recipient redirection — the field where length is the wrong test', (
   const VENDOR = 'accounts-payable@vendor.example';
 
   test('a redirected recipient IS caught, though it is under both length thresholds', () => {
-    // 3 words, 31 characters — a length test misses it entirely, while the
+    // 3 words, 31 characters, a length test misses it entirely, while the
     // whole attack is that mail goes somewhere else.
     expect(VENDOR.split(/[^a-z0-9]+/i).filter(Boolean).length).toBeLessThan(MIN_SHARED_WORDS);
     expect(VENDOR.length).toBeLessThan(MIN_SHARED_CHARS);

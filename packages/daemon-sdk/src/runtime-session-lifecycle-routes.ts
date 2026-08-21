@@ -3,7 +3,7 @@
  *
  * Shared-session lifecycle route handlers (get / close / reopen / detach /
  * delete). Split out of runtime-session-routes.ts (see CHANGELOG 1.0.0) to stay under the
- * repo's grandfathered line-cap ceiling (see scripts/check-line-cap.ts) — a
+ * repo's grandfathered line-cap ceiling (see scripts/check-line-cap.ts), a
  * pure file-organization move: these four handlers already formed a
  * cohesive, self-contained unit (single-session lifecycle actions), disjoint
  * from the message/steer/follow-up/task handlers that remain in the
@@ -42,7 +42,7 @@ export async function handleSharedSessionLifecycle(
 
 /**
  * DELETE /api/sessions/:sessionId (see CHANGELOG 1.0.0). Hard-removes the session record +
- * its messages/inputs — distinct from `close`, which preserves history.
+ * its messages/inputs, distinct from `close`, which preserves history.
  * Requires the session already closed: an active session yields an honest
  * 409 ('close it, then delete') rather than yanking state out from under a
  * live participant/agent. Idempotent-honest: an unknown OR already-deleted
@@ -59,7 +59,7 @@ export async function handleDeleteSharedSession(
   }
   if (result === 'active') {
     return jsonErrorResponse(
-      { error: 'Session is active — close it, then delete.', code: 'SESSION_ACTIVE' },
+      { error: 'Session is active, close it, then delete.', code: 'SESSION_ACTIVE' },
       { status: 409 },
     );
   }

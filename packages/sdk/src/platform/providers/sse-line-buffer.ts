@@ -1,5 +1,5 @@
 /**
- * Canonical SSE line-buffer — handles both LF (\n) and CRLF (\r\n) line endings.
+ * Canonical SSE line-buffer, handles both LF (\n) and CRLF (\r\n) line endings.
  * Standardised on /\r?\n/ per RFC 7230 and the W3C SSE spec.
  */
 export class SseLineBuffer {

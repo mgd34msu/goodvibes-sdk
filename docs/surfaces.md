@@ -1,14 +1,14 @@
-# Published Surface Matrix
+# Published surface matrix
 
 > Consumer surface map. For internal runtime boundary details see [Runtime Boundary Model](./runtime-surfaces.md).
 
 The `@pellux/goodvibes-sdk` package has companion-safe client surfaces and
 Bun-only daemon/platform surfaces.
 
-See also: [Public Surface reference](./public-surface.md) — the canonical list of every
-stable subpath — and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
+See also: [Public surface reference](./public-surface.md), the canonical list of every
+stable subpath, and [Channel surfaces](./channel-surfaces.md) for the channel runtime.
 
-## Daemon And Platform Surfaces (Bun-only)
+## Daemon and platform surfaces (Bun-only)
 
 The full surface provides the agentic harness: tool execution, LSP and tree-sitter intelligence, MCP client/registry, workflow trigger executor, daemon HTTP server, file-based artifact storage, file state and KV caching, git service integration, ACP connection management, and companion pairing.
 
@@ -28,27 +28,27 @@ This surface makes direct use of Bun runtime APIs, including `Bun.spawn`, `Bun.f
 
 **Requires a Bun runtime to import and execute.**
 
-## Root, Operator, And Companion Surfaces (multi-runtime)
+## Root, operator, and companion surfaces (multi-runtime)
 
 The companion surface provides auth, transport (HTTP/SSE/WebSocket), runtime events, contracts, errors, observer hooks, and the optional Cloudflare Worker bridge for daemon batch queue/tick integration. It is intentionally runtime-neutral: no Bun globals, no `node:*` imports. Cloudflare account/Queue/Worker provisioning is a daemon route concern under `/api/cloudflare/*`, not companion-side service logic.
 
 Imported via:
-- package root (`@pellux/goodvibes-sdk`) — default daemon-connected client facade
-- `./react-native` — React Native (Hermes)
-- `./browser` — browser environments
-- `./browser/knowledge`, `./browser/homeassistant`, `./browser/agent` — scoped browser companion clients (base knowledge/wiki, Home Assistant panels, and the Agent-owned knowledge environment)
-- `./web` — web + service workers (same runtime contract as `./browser`)
-- `./workers` — manual Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
-- `./expo` — Expo (same runtime contract as `./react-native`)
-- `./auth` — auth client, token stores
-- `./client-auth` — low-level client auth primitives / platform token stores
-- `./errors` — typed error surface
-- `./events`, `./events/<domain>` — typed runtime event domains
-- `./contracts` — ACP contract types and method IDs
-- `./operator` — operator/control-plane client
-- `./observer` — observer helpers
-- `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime` — transport primitives; see [Transports](./transports.md) for the `./transport-direct` facade description
-- `./peer` — peer ACP client
+- package root (`@pellux/goodvibes-sdk`): default daemon-connected client facade
+- `./react-native`: React Native (Hermes)
+- `./browser`: browser environments
+- `./browser/knowledge`, `./browser/homeassistant`, `./browser/agent`: scoped browser companion clients (base knowledge/wiki, Home Assistant panels, and the Agent-owned knowledge environment)
+- `./web`: web and service workers (same runtime contract as `./browser`)
+- `./workers`: manual Cloudflare Worker bridge for daemon batch proxying, queue tick signals, queue consumers, and scheduled ticks
+- `./expo`: Expo (same runtime contract as `./react-native`)
+- `./auth`: auth client, token stores
+- `./client-auth`: low-level client auth primitives or platform token stores
+- `./errors`: typed error surface
+- `./events`, `./events/<domain>`: typed runtime event domains
+- `./contracts`: ACP contract types and method IDs
+- `./operator`: operator/control-plane client
+- `./observer`: observer helpers
+- `./transport-core`, `./transport-direct`, `./transport-http`, `./transport-realtime`: transport primitives. See [Transports](./transports.md) for the `./transport-direct` facade description
+- `./peer`: peer ACP client
 
 This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers, and Bun. Metro's bundler (React Native) and standard browser bundlers (Vite, webpack, esbuild) can trace and bundle these entry points without modification.
 
@@ -61,10 +61,10 @@ This surface works on Hermes (React Native / Expo), browser, Cloudflare Workers,
 | Browser | Companion only | Web UI apps |
 | Cloudflare Workers / workerd / Miniflare 4 | Companion only | Use `/web` for normal operator HTTP clients; use `/workers` only when manually deploying the GoodVibes Worker bridge for optional daemon batch queue/tick integration |
 
-## Runtimes NOT supported
+## Runtimes not supported
 
-- **Node.js** — Not in the consumer list. The published surface does not advertise Node support. If you need Node support, open an issue.
+- **Node.js.** Not in the consumer list. The published surface does not advertise Node support. If you need Node support, open an issue.
 
 ## Enforcement
 
-CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles — `react-native.js`, `expo.js`, `browser.js`, `browser-homeassistant.js`, `browser-knowledge.js`, `web.js`, `workers.js`, `auth.js` — contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.
+CI job `platform-matrix` (`rn-bundle` dimension, implemented in `test/rn-bundle-node-imports.test.ts`) verifies that the companion entry point dist bundles, `react-native.js`, `expo.js`, `browser.js`, `browser-homeassistant.js`, `browser-knowledge.js`, `web.js`, `workers.js`, `auth.js`, contain no `Bun.*` identifiers and no `node:*` imports. Any match fails CI and blocks release.

@@ -2,7 +2,7 @@
  * checkin/briefing.ts
  *
  * Turns a state snapshot into the compact briefing the model judges. Pure and
- * deterministic so it is testable without any live services — the daemon binds
+ * deterministic so it is testable without any live services, the daemon binds
  * a CheckinStateReader to the real sessions/channels/automation, and this
  * renders whatever that reader returns.
  */

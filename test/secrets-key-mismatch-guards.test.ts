@@ -104,7 +104,7 @@ describe('SecretsManager key-mismatch guards', () => {
     // Select the warning for THIS test's store by path, not merely the first
     // one that says "cannot be read". `inspect()` reports every candidate store
     // it can see, and the project-scope candidates are derived by walking the
-    // ancestors of `projectRoot` — so whichever directory the temp root happens
+    // ancestors of `projectRoot`, so whichever directory the temp root happens
     // to sit under contributes stores too, including a real `~/.goodvibes`
     // store belonging to the person running the suite. Matching on the text
     // alone made the assertion depend on that: it read back a stranger's

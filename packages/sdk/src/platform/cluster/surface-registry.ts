@@ -1,10 +1,10 @@
 /**
- * surface-registry.ts — which inbound surfaces THIS node can actually serve.
+ * surface-registry.ts, which inbound surfaces THIS node can actually serve.
  *
  * The registry is the answer to the question the ruling turns on: a node must
  * never win an election for something it cannot serve. Winning a surface with
  * no credential for it, or with that surface switched off locally, starves the
- * node that could have served it — the loser stands down, the winner reads
+ * node that could have served it, the loser stands down, the winner reads
  * nothing, and the topic goes unread by anybody on the network.
  *
  * So membership is not a configuration list. A surface is in here only because
@@ -44,7 +44,7 @@ export class ClusterSurfaceRegistry {
    *
    * They must stay reachable for exactly one more `stopSurface`. Leaving with
    * a RESIGN means asserting to the whole network that this node has stopped
-   * reading — and if the gate were already unreachable there would be nothing
+   * reading, and if the gate were already unreachable there would be nothing
    * to stop, so the assertion would be false and the successor would start
    * against a consumer still running. They are dropped by `forget` once the
    * election has actually stopped.
@@ -57,7 +57,7 @@ export class ClusterSurfaceRegistry {
   /**
    * Add a consumer. Returns an unregister function.
    *
-   * Several gates may share one surface — the ntfy stream and a diagnostic
+   * Several gates may share one surface, the ntfy stream and a diagnostic
    * tap on the same topic, say. They start in registration order and stop in
    * the reverse, so a consumer another depends on is up first and down last.
    */
@@ -88,8 +88,8 @@ export class ClusterSurfaceRegistry {
         this.notify(surfaceId);
         return;
       }
-      // The LAST consumer for this surface. It leaves the servable set and —
-      // through the listener — leaves the election, because holding a seat
+      // The LAST consumer for this surface. It leaves the servable set and,
+      // through the listener, leaves the election, because holding a seat
       // with nothing behind it is the starvation case this file exists to
       // prevent. It moves to `retiring` with its gate STILL ATTACHED: the
       // ordered stand-down that follows has to actually stop the consumer

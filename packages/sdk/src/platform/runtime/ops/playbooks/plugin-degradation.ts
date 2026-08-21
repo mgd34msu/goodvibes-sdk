@@ -2,7 +2,7 @@
  * Playbook: Plugin Degradation
  *
  * Diagnoses and resolves scenarios where a plugin is operating in a
- * degraded state — returning errors, crashing, or producing incorrect output.
+ * degraded state, returning errors, crashing, or producing incorrect output.
  */
 import type { Playbook, DiagnosticCheckResult } from '../types.js';
 import { safeCheck } from '../safe-check.js';

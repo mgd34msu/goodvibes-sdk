@@ -2,8 +2,8 @@
  * Fail-safe, bounded export queue with exponential-backoff retry.
  *
  * Guarantees:
- * - Never blocks the caller — all export work is dequeued asynchronously.
- * - Never throws — all errors are caught and logged.
+ * - Never blocks the caller, all export work is dequeued asynchronously.
+ * - Never throws, all errors are caught and logged.
  * - Drops oldest entries when full (back-pressure relief).
  * - Shutdown drain waits up to the configured timeout before returning.
  */
@@ -74,7 +74,7 @@ export class ExportQueue {
 
   /** True while a drain loop is running. */
   private _draining = false;
-  /** True after shutdown() is called — no new enqueues accepted. */
+  /** True after shutdown() is called, no new enqueues accepted. */
   private _shutdown = false;
 
   /**
@@ -119,7 +119,7 @@ export class ExportQueue {
     if (batch.length === 0) return;
 
     if (this._size >= this._config.maxSize) {
-      // Drop oldest — advance head
+      // Drop oldest, advance head
       const dropped = this._ring[this._head];
       this._head = (this._head + 1) % this._config.maxSize;
       this._size--;
@@ -132,7 +132,7 @@ export class ExportQueue {
         });
       }
       // structured logger, not console
-      logger.warn('[ExportQueue] Queue overflow — dropped oldest batch', { maxSize: this._config.maxSize });
+      logger.warn('[ExportQueue] Queue overflow, dropped oldest batch', { maxSize: this._config.maxSize });
     }
 
     this._ring[this._tail] = { batch, enqueuedAt: Date.now() };
@@ -235,14 +235,14 @@ export class ExportQueue {
         if (attempt < maxRetries) {
           const delay = computeDelay(attempt, this._config.retry);
           // structured logger, not console
-          logger.warn('[ExportQueue] Export attempt failed — retrying', { attempt: attempt + 1, delayMs: delay, error: lastError });
+          logger.warn('[ExportQueue] Export attempt failed, retrying', { attempt: attempt + 1, delayMs: delay, error: lastError });
           await sleep(delay);
         }
       }
     }
 
     // All retries exhausted; use structured logging.
-    logger.error('[ExportQueue] Export failed after all retries — batch dropped', {
+    logger.error('[ExportQueue] Export failed after all retries, batch dropped', {
       attempts,
       spanCount: entry.batch.length,
       error: lastError,

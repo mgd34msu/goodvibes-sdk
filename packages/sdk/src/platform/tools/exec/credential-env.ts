@@ -1,5 +1,5 @@
 /**
- * credential-env.ts — scrub credential-bearing environment variables out of the
+ * credential-env.ts, scrub credential-bearing environment variables out of the
  * environment handed to spawned tool processes.
  *
  * WHY. A shell command the model runs inherits this process's environment by
@@ -8,7 +8,7 @@
  * command has no need for and could exfiltrate. This module removes the
  * well-known credential-bearing variables from the base environment before it is
  * passed to a spawn, and reports exactly which variable NAMES were withheld (by
- * name only — never the value) so the exec result can state the scrub honestly.
+ * name only, never the value) so the exec result can state the scrub honestly.
  *
  * NOT a permission decision and NOT the frozen catastrophic-command block. This
  * is an environment hygiene step on the spawn path. A credential a command
@@ -58,7 +58,7 @@ export function isCredentialEnvName(name: string): boolean {
 
 /** Injectable scrub configuration (wired from `permissions.exec.*` config by the consumer). */
 export interface CredentialEnvScrubConfig {
-  /** Master switch. Default true — the scrub is on unless a consumer disables it. */
+  /** Master switch. Default true, the scrub is on unless a consumer disables it. */
   readonly enabled?: boolean | undefined;
   /** Variable names always kept, overriding the credential matchers (case-insensitive). */
   readonly allowlist?: readonly string[] | undefined;

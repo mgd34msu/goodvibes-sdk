@@ -1,13 +1,13 @@
 /**
- * progress-audience.ts — who a progress line is written for.
+ * progress-audience.ts, who a progress line is written for.
  *
  * The defect this exists to fix: the owner messaged the bot on Telegram and
  * received these, as chat messages, in the middle of the exchange:
  *
- *     registry — email send
- *     fetch — standard
+ *     registry, email send
+ *     fetch, standard
  *     find
- *     exec — standard
+ *     exec, standard
  *
  * That is `AgentRecord.progress`. The orchestrator maintains it as one short
  * line naming the tool it is running and a scrap of that tool's arguments
@@ -16,7 +16,7 @@
  * the raw string to `deliverProgress`, and the same string was republished as an
  * `AGENT_PROGRESS` runtime event which the channel renderer turned into a
  * `status` line. The channel's status renderer strips the `Turn 3 · ` prefix, so
- * what landed on the phone was the bare tool name and its argument summary —
+ * what landed on the phone was the bare tool name and its argument summary,
  * tool-selection diagnostics, delivered as if they were the assistant speaking.
  *
  * The line itself is not wrong. It is exactly right for an operator surface: the

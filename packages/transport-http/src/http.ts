@@ -118,7 +118,7 @@ function isTransportError(error: unknown): error is TransportFailure {
 }
 
 export function normalizeTransportError(error: unknown): Error {
-  // Fast path: already a structured SDK error — return directly, no re-wrapping needed.
+  // Fast path: already a structured SDK error, return directly, no re-wrapping needed.
   // Covers HttpStatusError (subclass) and GoodVibesSdkError (e.g. SSE stream errors) alike.
   if (error instanceof GoodVibesSdkError) {
     return error;

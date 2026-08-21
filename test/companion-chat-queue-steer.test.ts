@@ -2,13 +2,13 @@
  * companion-chat-queue-steer.test.ts
  *
  * Queue-when-busy sends + the steer verb (companion.chat.messages.steer):
- * Q1: a send during an active turn QUEUES — transcript-visible immediately
+ * Q1: a send during an active turn QUEUES, transcript-visible immediately
  *     with deliveryState 'queued', answered after the current turn, marker
  *     cleared when its turn starts
  * Q2: steer jumps the queue AND cancels the active turn through the honest
  *     stop path; previously queued messages keep their places behind it
  * Q3: steer with no turn running is an ordinary send
- * Q4: turns are strictly sequential — never concurrent against one
+ * Q4: turns are strictly sequential, never concurrent against one
  *     conversation, no matter how fast sends arrive
  */
 
@@ -36,7 +36,7 @@ function makeGate(): { open: () => void; wait: Promise<void> } {
 /**
  * A provider whose Nth chatStream call yields `reply-N `, then (if a gate is
  * registered for N) blocks until the gate opens, then finishes. Tracks the
- * maximum number of concurrently running streams — the sequential-turns
+ * maximum number of concurrently running streams, the sequential-turns
  * invariant under test.
  */
 function makeSequencedProvider(gates: Record<number, { wait: Promise<void> }>) {

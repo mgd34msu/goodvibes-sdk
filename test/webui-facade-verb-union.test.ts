@@ -23,7 +23,7 @@ import type { OperatorMethodContract } from '../packages/contracts/src/types.ts'
  * This started as `{...} as unknown as OperatorMethodContract`, and the cast
  * was hiding two disagreements with the contract: `source: 'daemon'` is not a
  * GatewayMethodSource ('builtin' | 'plugin'), and the required `category` was
- * absent. `satisfies` keeps it honest — a field added upstream now breaks this
+ * absent. `satisfies` keeps it honest, a field added upstream now breaks this
  * fixture instead of being silently absorbed.
  */
 type ContractVerb = NonNullable<OperatorMethodContract['http']>['method'];
@@ -49,7 +49,7 @@ function methodContract(id: string, verb: ContractVerb, path: string): OperatorM
  * `JSON.parse` and asserted to the manifest type, so a verb outside the union
  * can reach it at runtime even though no well-typed literal can produce one.
  * The cast is confined to that single field and exists to construct invalid
- * input for a rejection test — not to make a fixture compile.
+ * input for a rejection test, not to make a fixture compile.
  */
 function methodContractWithUnsupportedVerb(id: string, verb: string, path: string): OperatorMethodContract {
   const base = methodContract(id, 'GET', path);

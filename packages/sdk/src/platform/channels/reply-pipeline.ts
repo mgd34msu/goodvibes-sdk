@@ -27,13 +27,13 @@ const DEFAULT_PROGRESS_INTERVAL_MS = 7_500;
  * progress notification.
  *
  * Owner ruling: a progress notification is warranted only when silence would
- * be worse — when the work has been running long enough that a person would
+ * be worse, when the work has been running long enough that a person would
  * reasonably wonder whether it died. Below this floor an exchange produces
  * exactly ONE notification, the answer, which is what asking a question is
  * supposed to feel like.
  *
  * Measured from `pending.createdAt` (when the reply was queued for this
- * agent), so it bounds the WHOLE run rather than the gap between ticks — the
+ * agent), so it bounds the WHOLE run rather than the gap between ticks, the
  * pacing interval already does the latter, and pacing alone still let a
  * three-second conversational turn produce a "starting" push before its
  * answer. Applied ahead of `force`, because forcing exists to bypass pacing
@@ -99,7 +99,7 @@ interface ReplyBufferState {
   readonly pending: TrackedChannelReply;
   readonly events: ChannelRenderEvent[];
   /**
-   * Ids of events already published to the surface — the delta watermark.
+   * Ids of events already published to the surface, the delta watermark.
    * Progress updates render only the events NOT in this set, so a notification
    * carries what just happened rather than the whole accumulated log replayed
    * from the top on every tick.
@@ -134,14 +134,14 @@ export class ChannelReplyPipeline {
   private readonly now: () => number;
   private readonly buffers = new Map<string, ReplyBufferState>();
   /**
-   * Tail of the in-flight delivery chain for each agent — the serialization
+   * Tail of the in-flight delivery chain for each agent, the serialization
    * point that makes "read the watermark, publish, mark delivered" atomic.
    *
    * Two callers reach this concurrently by design: `handleEnvelope` fires on
    * every bus event, and the daemon's pending-reply poller calls
    * `deliverProgress(..., force)` on its own 2s tick. Both used to read the
    * same unmarked watermark while a publish was still in flight, so each one
-   * selected the same events plus whatever had arrived since — the reader got
+   * selected the same events plus whatever had arrived since, the reader got
    * a ladder of notifications where each body was a strict SUPERSET of the one
    * before it. The single-call delta was already correct; the interleaving was
    * not.
@@ -206,14 +206,14 @@ export class ChannelReplyPipeline {
   /**
    * Run `task` with no other delivery for the same agent in flight.
    *
-   * Serializing the whole read-decide-publish-mark body — rather than only
-   * reserving the watermark before the await — is deliberate. Reserving the
+   * Serializing the whole read-decide-publish-mark body, rather than only
+   * reserving the watermark before the await, is deliberate. Reserving the
    * watermark alone stops the superset ladder, but it leaves the two OTHER
    * pieces of state this method reads before the await and writes after it
    * racing: `lastDeliveredText` (the identical-body suppression) and
    * `lastDeliveredAt` (the pacing interval). Under a reserve-only fix two
    * callers still both pass the pacing check and both publish, so one message
-   * still arrives as two notifications — disjoint instead of nested, which is
+   * still arrives as two notifications, disjoint instead of nested, which is
    * a smaller bug of the same kind. With the section serialized, the second
    * caller observes the first one's marks and correctly suppresses itself.
    *
@@ -264,12 +264,12 @@ export class ChannelReplyPipeline {
   }
 
   /**
-   * `audience` classifies `explicitText` only — the buffered events carry their
+   * `audience` classifies `explicitText` only, the buffered events carry their
    * own. It defaults to `operator` for the same reason the field does
    * everywhere else: a caller who hands over a status string without saying who
    * wrote it is handing over `AgentRecord.progress`, which is the orchestrator's
    * running tool name and a scrap of its arguments. That reached the owner's
-   * phone as `registry — email send`. See agents/progress-audience.ts.
+   * phone as `registry, email send`. See agents/progress-audience.ts.
    */
   async deliverProgress(
     agentId: string,
@@ -294,7 +294,7 @@ export class ChannelReplyPipeline {
     const policy = await this.resolvePolicy(state.pending.surfaceKind);
     // Every surface gets the status line, ntfy included. Blanking it for ntfy
     // made the owner's primary channel the only one with no "what is happening
-    // now" at all — and it was inert anyway, because the progress phase used to
+    // now" at all, and it was inert anyway, because the progress phase used to
     // discard explicitText entirely. buildRenderedText bounds it to one line.
     // ...as long as it was written FOR the reader. Operator status is dropped
     // here rather than filtered downstream, so it never enters the rendered
@@ -307,7 +307,7 @@ export class ChannelReplyPipeline {
     // Progress-phase events ONLY. The buffer is appended to by the bus while
     // this call is queued, so by the time a tick actually runs the agent may
     // already have completed and pushed its final events. Rendering the whole
-    // buffer let a progress notification carry "Agent completed in 5ms" — and,
+    // buffer let a progress notification carry "Agent completed in 5ms", and,
     // worse, consume the watermark for a final-phase event, which would then
     // be missing from the final body. What the agent is DOING is progress;
     // what it SAID is the final's to deliver.
@@ -367,14 +367,14 @@ export class ChannelReplyPipeline {
     //
     // Buffered events are rendered only if the reader has not already been sent
     // them. Rendering the lot made the final body a strict SUPERSET of every
-    // progress update before it — so the exact-body check below could never
+    // progress update before it, so the exact-body check below could never
     // fire, and one trivial message arrived as three notifications, each
     // repeating the previous one plus a little more.
     //
     // This used to end in a floor: when everything had already been delivered,
     // a synthesised status event rendered "Completed" so that a run "never ends
     // in silence". Owner ruling: it should. Work that produced nothing to
-    // report reports nothing, and a bare acknowledgement is not a message —
+    // report reports nothing, and a bare acknowledgement is not a message,
     // it is a notification whose entire content is that a notification was
     // possible. The guarantee that a CONVERSATION always gets an answer moved
     // to where it belongs, upstream, where there is still a model to ask
@@ -382,7 +382,7 @@ export class ChannelReplyPipeline {
     const candidateEvents = finalEvents.length > 0 ? finalEvents : state.events;
     const renderEvents = selectUndeliveredEvents(state, candidateEvents);
     const text = buildRenderedText(explicitText, renderEvents, policy, 'final');
-    // Nothing to say, so say nothing — but close the run out.
+    // Nothing to say, so say nothing, but close the run out.
     //
     // Two ways here: a run that finished with no output at all, and a body that
     // rendered to nothing after the completion report was stripped out of it.
@@ -396,7 +396,7 @@ export class ChannelReplyPipeline {
     }
     // A chain that keeps tracking (ntfy workflow chains) can reach this more
     // than once. An identical final body is a duplicate notification, not a
-    // second outcome — publish it once.
+    // second outcome, publish it once.
     if (text && state.lastDeliveredText === text) {
       if (!options.keepTracking) this.untrack(agentId);
       return null;
@@ -408,7 +408,7 @@ export class ChannelReplyPipeline {
     // completed agent as unhandled, re-appended its answer to the shared
     // session, and retried the same failing send. The observable symptom was
     // every Telegram answer stored twice with nothing delivered. The send is
-    // still allowed to fail — it just fails once, loudly, and stops.
+    // still allowed to fail, it just fails once, loudly, and stops.
     let result: ChannelRenderResult | null = null;
     let deliveryError: unknown = null;
     try {

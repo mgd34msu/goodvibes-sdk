@@ -1,5 +1,5 @@
 /**
- * client-seam-session-dispatch.test.ts — work that arrives for a session a
+ * client-seam-session-dispatch.test.ts, work that arrives for a session a
  * surface hosts reaches the loop, and reaches it exactly once.
  *
  * ── Why this seam exists ──────────────────────────────────────────────────
@@ -9,7 +9,7 @@
  * hosts it). As a client it owns neither: the daemon holds the register, and the
  * surface only needs to RECEIVE dispatch for the sessions it is running.
  *
- * The failure that matters is not "nothing arrives" — that is visible. It is a
+ * The failure that matters is not "nothing arrives", that is visible. It is a
  * message being CONSUMED without being run: acknowledged on the wire, removed
  * from the queue, and never answered. Whoever sent it sees delivered and waits
  * forever. So the ordering here is run-then-acknowledge, and a runner that
@@ -172,7 +172,7 @@ describe('the reply half: what the surface reports back about the run it started
     dispatch.setContinuationRunner(() => ({ agentId: 'a1' }) as never);
     dispatch.activate(wire.client);
     await tick();
-    // Collected, and the agent named — but not finished, so nothing claims an
+    // Collected, and the agent named, but not finished, so nothing claims an
     // answer that does not exist yet.
     expect(wire.calls).toEqual([{ inputId: 'i1', options: { agentId: 'a1' } }]);
 

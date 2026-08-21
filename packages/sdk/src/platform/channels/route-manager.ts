@@ -125,7 +125,7 @@ export class RouteBindingManager {
    * "bindings are turned off", and from the outside those are the same answer:
    * `listBindings()` returns `[]` for both, `getBinding()` returns `undefined`
    * for both, and `resolve()` returns `undefined` for both. Inbound mail is the
-   * case that made it matter — with `integrations.routeBinding` off it resolved
+   * case that made it matter, with `integrations.routeBinding` off it resolved
    * no notice route, recorded every arriving message as `no-route-binding`, and
    * went on reporting healthy while announcing nothing. An unrelated flag
    * turning a capability into a recorder is only diagnosable if the flag's

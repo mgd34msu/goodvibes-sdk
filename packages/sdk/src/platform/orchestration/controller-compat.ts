@@ -1,12 +1,12 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Controller-compat (see CHANGELOG 0.38.0) — stage 1 of the 3-stage WrfcController
+ * Controller-compat (see CHANGELOG 0.38.0), stage 1 of the 3-stage WrfcController
  * migration.
  *
  * `fromChainSpec()` produces the canned two-phase engineer->review
  * WORKSTREAM SPEC that a `WrfcController.createChain(ownerRecord)` call
- * would otherwise start — a NEW opt-in surface for callers that want the
+ * would otherwise start, a NEW opt-in surface for callers that want the
  * engine-backed pipeline. It returns a `CreateWorkstreamInput` (a spec), not
  * a live `Workstream`: realizing one (generated ids, initialized item
  * state) is the engine's own responsibility via
@@ -20,7 +20,7 @@
  * before. This function is additive only.
  * STAGE 2 (later, feature-flagged): WrfcController.createChain internally
  * builds a workstream via this same helper and delegates execution to the
- * engine — the public seam (createChain's signature and the three entry
+ * engine, the public seam (createChain's signature and the three entry
  * points) stays byte-for-byte unchanged.
  * STAGE 3 (future wave): retire the standalone WrfcController state machine
  * once parity is proven.
@@ -37,7 +37,7 @@ import type { PhaseSpec } from './types.js';
  * definition of the standard two-phase pipeline; both the compat single-chain
  * bridge (`fromChainSpec`, capacity 1) and the multi-item proposal assembly
  * (`fromPlanProposal`, proposal-workstream.ts, capacity = item count) build
- * their phases from it — "the same phase template fromChainSpec uses",
+ * their phases from it, "the same phase template fromChainSpec uses",
  * parameterized only by the per-phase `capacity` knob so N proposal items can
  * run the engineer phase concurrently (dependency-gated) while a single chain
  * stays at capacity 1. Both phases carry the same commit scope; nothing else

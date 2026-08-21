@@ -1,5 +1,5 @@
 /**
- * Default routing policy — maps notification level + domain verbosity to a
+ * Default routing policy, maps notification level + domain verbosity to a
  * NotificationTarget. This is the base layer; other policies (quiet-typing,
  * batch) layer on top.
  */

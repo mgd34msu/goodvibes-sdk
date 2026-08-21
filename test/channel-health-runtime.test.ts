@@ -1,12 +1,12 @@
 /**
- * channel-health-runtime.test.ts — a channel's reported state answers "is this
+ * channel-health-runtime.test.ts, a channel's reported state answers "is this
  * working right now", not "is a token present in config".
  *
  * The lived symptom: a Telegram bot whose ingress had died still reported
  * `healthy` on every surface, because the reported state was computed from
  * credential presence alone. `BuiltinChannelRuntime.telegramIngressStatus()`
  * existed and knew the truth, and nothing called it. Four surfaces were worse
- * still — Slack, Discord, ntfy and the generic webhook reported `healthy`
+ * still, Slack, Discord, ntfy and the generic webhook reported `healthy`
  * whenever their delivery switch was on, without checking for a credential at
  * all.
  *
@@ -142,7 +142,7 @@ describe('channel health reflects the runtime, not the configuration', () => {
       deliveryEnabled: (surface) => surface === 'telegram',
     });
 
-    // Ingress was never armed on this node — the shipped symptom exactly: the
+    // Ingress was never armed on this node, the shipped symptom exactly: the
     // token is present, nothing is reading updates, the owner gets no reply.
     expect(runtime.telegramIngressStatus()?.running ?? false).toBe(false);
     expect(snapshot.state).toBe('dead');
@@ -407,7 +407,7 @@ describe('the doctor answers the same health question as the status', () => {
 
 describe('health state resolution', () => {
   test('an armed Telegram webhook is healthy even though no poll loop runs', () => {
-    // Reading `running` alone would call a correctly armed webhook dead — the
+    // Reading `running` alone would call a correctly armed webhook dead, the
     // same class of wrong answer pointing the other way.
     const observation = observeTelegramRuntime({
       mode: 'webhook',
@@ -429,7 +429,7 @@ describe('health state resolution', () => {
   });
 
   test('a running path that still reports a failure is degraded, not healthy', () => {
-    // No built-in observer produces this today — the provider manager clears
+    // No built-in observer produces this today, the provider manager clears
     // lastError on a successful start, and an error marks the surface stopped.
     // The rule is pinned anyway: a plugin (or a future observer) that reports
     // "up, but the last attempt failed" must not be rounded up to healthy, and

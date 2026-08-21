@@ -12,7 +12,7 @@
  *  2. orchestrator-runner.ts's runAgentTask() calls
  *     context.registerConversationSource() right after creating the agent's
  *     ConversationManager, and context.releaseConversationSource() exactly
- *     once when the run ends — proven end-to-end against the real turn loop
+ *     once when the run ends, proven end-to-end against the real turn loop
  *     with a stub LLM provider, not a reimplementation of the loop.
  */
 import { describe, expect, test } from 'bun:test';
@@ -34,7 +34,7 @@ import type { FeatureFlagManager } from '../packages/sdk/src/platform/runtime/fe
 describe('AgentOrchestrator — conversation-sink wiring', () => {
   test('setConversationSink wires register/release into createRunContext(); unset → both undefined so orchestrator-runner\'s ?.() calls are no-ops', () => {
     const orchestrator = new AgentOrchestrator({ messageBus: new AgentMessageBus() });
-    // createRunContext() reads this.toolDeps!.providerRegistry! directly —
+    // createRunContext() reads this.toolDeps!.providerRegistry! directly,
     // give it just enough to not throw; the actual routing methods are not
     // exercised by this test (it only asserts the register/release wiring).
     (orchestrator as unknown as { toolDeps: { providerRegistry: object } }).toolDeps = { providerRegistry: {} };

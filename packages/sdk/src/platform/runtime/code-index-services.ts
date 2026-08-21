@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// code-index-services.ts — repo source-tree code index wiring.
+// code-index-services.ts, repo source-tree code index wiring.
 //
 // Constructs a product's repo source-tree code index: CodeIndexStore
 // (@pellux/goodvibes-sdk/platform/state). Extracted into its own module rather than built inline in
@@ -9,8 +9,8 @@
 // createWorkstreamServices's one-function-bundle shape).
 //
 // Schema-initialized eagerly (mirrors memoryStore: construction + init()
-// happen unconditionally so the store is queryable — /codebase status, the
-// fleet node — even before any build has ever run). The actual walk/chunk/
+// happen unconditionally so the store is queryable, /codebase status, the
+// fleet node, even before any build has ever run). The actual walk/chunk/
 // embed build is NEVER auto-triggered by default: the hundreds of existing
 // test fixtures (and every headless invocation) construct RuntimeServices
 // without asking for a full source-tree walk, and init() alone never runs
@@ -21,13 +21,13 @@
 // REALITY-WINS DIVERGENCE from the SDK's own shape: the SDK's
 // RuntimeServicesOptions exposes autoStartCodeIndex as a constructor-time
 // boolean because that call site is a library entrypoint threaded by each
-// embedder. createRuntimeServices has no such per-call knob — auto-start is
+// embedder. createRuntimeServices has no such per-call knob, auto-start is
 // decided from a host-local config key instead
 // (CODE_INDEX_ENABLED_CONFIG_KEY, default OFF), so every construction path
 // (interactive main.ts, the daemon, and every test fixture) shares one
 // honest, user-visible on/off switch rather than needing to thread a new
 // boolean through every call site. With it off (the default), `/codebase
-// build` is the explicit, visible trigger — exactly the shape this design
+// build` is the explicit, visible trigger, exactly the shape this design
 // asks for.
 //
 // Shares memoryEmbeddingRegistry with MemoryStore (constructed in
@@ -44,7 +44,7 @@ import { readBooleanConfig } from './alert-gating.js';
 
 /**
  * Host-local synthetic config key (not in the ConfigKey union) that
- * gates the code index's auto-build on construction. Default OFF — see this
+ * gates the code index's auto-build on construction. Default OFF, see this
  * module's header doc. Surfaced in /config via a synthetic entry
  * (settings-modal-data.ts) exactly like behavior.notifyAfterSeconds.
  */
@@ -62,7 +62,7 @@ export const CODE_INDEX_MAX_TOTAL_BYTES = 256 * 1024 * 1024;
 
 export interface CodeIndexServicesDeps {
   readonly workingDirectory: string;
-  /** The owning product's storage scope — the `<surfaceRoot>` the index file sits under. */
+  /** The owning product's storage scope, the `<surfaceRoot>` the index file sits under. */
   readonly surfaceRoot: string;
   readonly configManager: Pick<ConfigManager, 'get'>;
   readonly memoryEmbeddingRegistry: MemoryEmbeddingProviderRegistry;
@@ -105,7 +105,7 @@ export function codeIndexDbPath(workingDirectory: string, surfaceRoot: string): 
 }
 
 /**
- * Build the runtime's `rerootStores` implementation — called by
+ * Build the runtime's `rerootStores` implementation, called by
  * WorkspaceSwapManager after it has verified a new working directory.
  *
  * Only working-tree-bound stores move. The memory store is deliberately NOT
@@ -140,7 +140,7 @@ export function isCodeIndexAutoStartEnabled(configManager: Pick<ConfigManager, '
 
 /**
  * Constructs the CodeIndexStore. Schema-init runs unconditionally
- * (init() never throws — it degrades to an honest `available: false` +
+ * (init() never throws, it degrades to an honest `available: false` +
  * recorded error on failure, mirrored by CodeIndexStats/describeDegradation);
  * the initial full build only fires when isCodeIndexAutoStartEnabled() is
  * true, via the SAME fire-and-forget scheduleBuild() an explicit

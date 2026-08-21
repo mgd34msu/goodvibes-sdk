@@ -66,8 +66,8 @@ export interface DaemonConfig {
    * Identity of the RUNNING artifact for the auto-update loop: its version
    * (compared against release tags) and optionally the executable the swap
    * replaces. The SDK's own daemon CLI passes its release version; an
-   * embedding host passes ITS artifact identity. Absent — the embedded
-   * default — means the host manages updates and the loop stays off (the
+   * embedding host passes ITS artifact identity. Absent, the embedded
+   * default, means the host manages updates and the loop stays off (the
    * SDK package version is never assumed to be the shipped artifact).
    */
   updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
@@ -75,7 +75,7 @@ export interface DaemonConfig {
    * True when this process was told to run out of a home that is NOT the
    * machine's default (`--daemon-home`, `GOODVIBES_DAEMON_HOME`, a test
    * harness's temp tree). Such a daemon never adopts the machine's service
-   * unit — see DaemonLifecycleRuntimeOptions.hasOverriddenHome for the
+   * unit, see DaemonLifecycleRuntimeOptions.hasOverriddenHome for the
    * incident that made this necessary.
    */
   hasOverriddenHome?: boolean | undefined;
@@ -85,8 +85,8 @@ export interface DaemonConfig {
    * A process has exactly one. A host that gates its own inbound consumers
    * (goodvibes-tui's daemon gates its inbox poller) builds the coordinator
    * itself, registers its gates, and passes it here so the daemon's Telegram
-   * and ntfy consumers ride the same leadership. Absent — the embedded
-   * default — means the daemon composes its own from `cluster.*` config.
+   * and ntfy consumers ride the same leadership. Absent, the embedded
+   * default, means the daemon composes its own from `cluster.*` config.
    *
    * Passing one that is ALREADY started is fine: start() is idempotent.
    */
@@ -95,7 +95,7 @@ export interface DaemonConfig {
    * The LAN group verbs to serve on `/api/cluster/*`.
    *
    * These are the single implementation behind the `cluster` CLI subcommands,
-   * the TUI's `/cluster` command and any web UI — which is what makes a command
+   * the TUI's `/cluster` command and any web UI, which is what makes a command
    * run against a REMOTE daemon behave exactly like one run on that machine.
    * Absent means those paths are simply unrouted, which is the honest answer
    * for an embedder that composes no group runtime.
@@ -105,7 +105,7 @@ export interface DaemonConfig {
    * Turn on daemon-hosted sessions (`sessions.hosted.*`).
    *
    * Absent means this daemon hosts no conversation loops and the verbs refuse
-   * honestly — which is the right answer for an embedder that has not stated
+   * honestly, which is the right answer for an embedder that has not stated
    * how a workspace floor is built, because that statement is where its trust
    * posture lives. See daemon/hosted-sessions-composition.ts.
    */
@@ -186,7 +186,7 @@ export type SurfaceNoticeRefusal =
   | 'no-deliverable-target'
   | 'delivery-failed';
 
-/** The outcome of one surface notice. Never a bare boolean — see above. */
+/** The outcome of one surface notice. Never a bare boolean, see above. */
 export type SurfaceNoticeDelivery =
   | { readonly delivered: true }
   | {

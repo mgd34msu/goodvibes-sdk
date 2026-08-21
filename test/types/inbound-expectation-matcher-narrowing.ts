@@ -2,7 +2,7 @@
  * Compile-time pin for §12 gate #35's type half: the inbound path cannot
  * register or hydrate an expectation.
  *
- * The runtime half lives in `inbound-mail-expectation-registry.test.ts` — the
+ * The runtime half lives in `inbound-mail-expectation-registry.test.ts`, the
  * matcher's own-key set is exactly `matchCandidate` and `consumeMatch`, and it
  * is a plain object rather than the book. But a runtime check cannot observe a
  * type, and the type is where the guarantee is first enforced: `registry
@@ -16,7 +16,7 @@
  * `ExpectationMatcher` is internal wiring and is not on the package's export
  * map: importing it through `@pellux/goodvibes-sdk` would mean publishing a
  * subpath for it, which would make the very seam this gate narrows part of the
- * public surface. Reaching into `src` instead does not work either — it drags
+ * public surface. Reaching into `src` instead does not work either, it drags
  * the whole implementation tree into this project, which has no `node` types
  * and no DOM lib, and buries the one assertion under three hundred
  * `Cannot find name 'Buffer'` errors. `dist/**.d.ts` is self-contained, is what

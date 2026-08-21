@@ -1,5 +1,5 @@
 /**
- * plaintext-credential-sweep.ts — getting credentials out of config files.
+ * plaintext-credential-sweep.ts, getting credentials out of config files.
  *
  * The sibling migration moves a credential that is in the wrong STORE. This one
  * handles the credential that is not in a store at all: a literal password
@@ -8,7 +8,7 @@
  *
  * Three routes produced these, all now closed at the write end:
  *
- *   - the settings modal, for any key missing from the secret-key set —
+ *   - the settings modal, for any key missing from the secret-key set,
  *     `surfaces.email.password` and `surfaces.calendar.caldavPassword` were
  *     both missing, and both have schema descriptions reading "Stored in the
  *     daemon secret tier, never in config";
@@ -87,7 +87,7 @@ export interface SweepableSecrets {
  * The reference a config key holds once its value lives in the store.
  *
  * The provider segment is NOT decoration. `goodvibes://secrets/<KEY>` does not
- * parse — the parser reads the first path segment as the provider name, so a
+ * parse, the parser reads the first path segment as the provider name, so a
  * key there resolves to no known provider and `normalizeSecretRef` returns
  * null. Combined with the old passthrough in `resolveSecretInput`, this sweep
  * would have replaced a working plaintext password with a reference that
@@ -173,7 +173,7 @@ export async function sweepPlaintextCredentials(
    * Record the minimum reader version this rewrite requires, in the settings
    * file the rewrite landed in.
    *
-   * This sweep rewrites SHARED state — `~/.goodvibes/daemon/settings.json` is
+   * This sweep rewrites SHARED state, `~/.goodvibes/daemon/settings.json` is
    * read by every component on the machine, and they are not all the same
    * version at the same moment. A `goodvibes://secrets/…` reference written
    * onto `calendar.google.clientSecretRef` is a form an older reader could not

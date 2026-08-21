@@ -20,7 +20,7 @@ export const AGENT_TOOL_SCHEMA: ToolDefinition = {
     'wait (returns current status immediately if terminal, or polls up to timeoutMs capped at 5000ms; always non-blocking for the main conversation), ' +
     'message (send a message to an agent), ' +
     'wrfc-chains (list all WRFC chains in current session with status/scores), ' +
-    'wrfc-history (detailed event history for a specific WRFC chain — reviews, scores, issues, gates), ' +
+    'wrfc-history (detailed event history for a specific WRFC chain, reviews, scores, issues, gates), ' +
     'cohort-status (JSON summary of all agents in a named cohort), ' +
     'cohort-report (markdown table report for all agents in a named cohort).' +
     ' Discovery: use mode=list to see all agents and their status, mode=templates to see available agent templates. ' +
@@ -259,7 +259,7 @@ export interface AgentProviderRoutingPolicy {
  * into a single WRFC owner chain by the topology guard. Set by the collapse
  * guards (wrfc-batch-policy.ts / the TUI wrfc-agent-guard), threaded onto the
  * owner AgentRecord and then the WrfcChain. It lets the controller mechanically
- * recognise — and never fail the review on — the parallelism/spawn-count
+ * recognise, and never fail the review on, the parallelism/spawn-count
  * constraints the collapse itself made unsatisfiable, and lets the host state
  * the collapse plainly to the user. Never set by the model-facing tool call.
  */
@@ -288,7 +288,7 @@ export interface AgentInput {
   context?: string | undefined;
   /**
    * Internal: the write authority to bind this run's `profile` capture tool to.
-   * Set by the composition root from the turn's channel, never by model output —
+   * Set by the composition root from the turn's channel, never by model output,
    * see personal-capture/authority.ts. Deliberately absent from the tool's own
    * JSON schema so a model cannot ask for it.
    */
@@ -317,7 +317,7 @@ export interface AgentInput {
    *                    controller parses, plus its prose Summary/Changes/
    *                    Decisions/Issues/Uncertainties sections.
    * - 'conversational' A reply to a person. No completion report, no section
-   *                    headings, no template — just the answer.
+   *                    headings, no template, just the answer.
    *
    * Set by the conversation-first gate, which already knows an inbound channel
    * message is conversation rather than work. Deliberately NOT in the agent
@@ -330,7 +330,7 @@ export interface AgentInput {
    * orchestration-engine item's dedicated git worktree in `worktree`
    * isolation mode (see platform/orchestration/worktree-isolation.ts).
    * Omitted ⇒ the orchestrator's default working directory, exactly as
-   * before this field existed. Internal — not part of any user-facing agent
+   * before this field existed. Internal, not part of any user-facing agent
    * template surface.
    */
   workingDirectory?: string | undefined;

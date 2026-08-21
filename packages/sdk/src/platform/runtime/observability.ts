@@ -229,7 +229,7 @@ export type { SecuritySettingReport, SecuritySettingsReporter } from './security
 
 // ── Runtime metrics ────────────────────────────────────────────────────────
 // The process-wide RuntimeMeter snapshot (HTTP/LLM/auth/transport counters,
-// gauges, histograms) plus per-model tool-format telemetry — see metrics.ts
+// gauges, histograms) plus per-model tool-format telemetry, see metrics.ts
 // and telemetry/tool-format-telemetry.ts. Reachable on the wire via the
 // `runtime.metrics.get` operator method; exported here for a consumer that
 // wants the same accessor and its typed shape directly.

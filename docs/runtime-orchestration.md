@@ -1,4 +1,4 @@
-# Runtime Orchestration
+# Runtime orchestration
 
 GoodVibes runtime orchestration is the daemon-side loop that turns user input
 into provider calls, tool execution, agent work, workflow events, and persisted
@@ -11,7 +11,7 @@ Public API surfaces:
 
 > See [Public surface reference](./public-surface.md) for stability status and the full list of exported platform subpaths.
 
-## Turn Loop
+## Turn loop
 
 The core orchestrator owns normal chat/task turns. It resolves the active
 provider/model, checks context limits, builds prompt context, streams provider
@@ -79,7 +79,7 @@ Agent features include:
 The `agent` tool exposes these operations to the LLM when the host registers
 the full tool runtime.
 
-## Archetypes And Templates
+## Archetypes and templates
 
 Agent archetypes describe named worker roles. Built-ins cover roles such as
 orchestrator, engineer, reviewer, tester, researcher, integrator, and general.
@@ -121,20 +121,20 @@ The WRFC controller tracks:
 - claim-verification status (`claimsVerified`)
 
 For large tasks, the owner can run a **compound chain**: it decomposes the work
-into `WrfcSubtask` records — each with its own engineer/reviewer/fixer cycle and
+into `WrfcSubtask` records, each with its own engineer, reviewer, and fixer cycle and
 `WrfcSubtaskState` (`pending`, `engineering`, `reviewing`, `fixing`, `passed`,
-`failed`) — then spawns an **integrator** to merge the passed subtasks before the
+`failed`), then spawns an **integrator** to merge the passed subtasks before the
 chain's final full-scope review. A separate **verifier** role checks
-engineer/fixer self-reports against the actual on-disk changes; the
+engineer and fixer self-reports against the actual on-disk changes. The
 `claimsVerified` flag records whether those work claims were confirmed (`false`
-flags phantom work — claimed changes that are not present). The full `WORKFLOW_*`
+flags phantom work, claimed changes that are not present). The full `WORKFLOW_*`
 event set for these transitions lives in the
 [Runtime events reference](./reference-runtime-events.md).
 
 Constraint propagation is documented in
 [WRFC constraint propagation](./wrfc-constraint-propagation.md).
 
-## Runtime Events
+## Runtime events
 
 The runtime bus publishes typed events for turns, sessions, agents, workflows,
 tools, communication, providers, routes, state, security, telemetry, and
@@ -151,7 +151,7 @@ audio can react to `STREAM_END`, but they must keep the turn alive until
 Generated event schemas live in
 [Runtime events reference](./reference-runtime-events.md).
 
-## OpenAI-Compatible Ingress
+## OpenAI-compatible ingress
 
 The authenticated daemon exposes an OpenAI-compatible ingress at `/v1` by
 default. This is an interoperability layer for tools that already know how to
@@ -210,14 +210,14 @@ multi-event sequences and fire a configured action when their conditions pass.
 The hook workbench can load, save, reload, scaffold, simulate, inspect, import,
 and export managed hook config.
 
-## Workflow Triggers
+## Workflow triggers
 
 Workflow triggers evaluate hook events and run configured actions when
 conditions match. Conditions support field-path lookup, comparisons, boolean
 logic, and event-derived values. Actions can dispatch shell work or agent work
 depending on the registered trigger definition.
 
-## Runtime Store And State
+## Runtime store and state
 
 Runtime state is split between transient event/state managers and durable
 stores. The runtime subtree includes:
@@ -248,21 +248,21 @@ The state subsystem supplies SQLite/KV stores, file state cache, file undo,
 file watcher, project index, memory vector store, mode manager, and telemetry
 recorder.
 
-## Profiles, Bookmarks, And Export
+## Profiles, bookmarks, and export
 
 Profiles hold named display, provider/model, and behavior overrides that can be
 switched per session. Bookmarks are named save-points inside sessions for quick
 navigation and branching. Export renderers produce JSON, Markdown, and HTML
 session exports with optional sensitive-data redaction.
 
-## Code Intelligence
+## Code intelligence
 
 The intelligence layer provides language detection, tree-sitter parsing, LSP
 diagnostics, symbol extraction, outline parsing, and hover support. It degrades
 when a backend is unavailable and is used by tools, analysis flows, and shell/
 code-aware runtime features.
 
-## ACP And Remote Runners
+## ACP and remote runners
 
 ACP manages agent communication protocol envelopes, handshake state,
 connections, and manager lifecycle. Remote runtime support covers runner pools,

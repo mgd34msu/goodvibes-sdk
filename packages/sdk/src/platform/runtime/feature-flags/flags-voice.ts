@@ -2,7 +2,7 @@
  * Voice capability registry entries, spread into FEATURE_FLAGS by flags.ts.
  *
  * Split into its own module because flags.ts sits at the 800-line source cap
- * and a capability declaration is not something to compress to fit — the
+ * and a capability declaration is not something to compress to fit, the
  * description is what a settings surface renders, so it has to say what the
  * feature does and why its default is what it is.
  *
@@ -28,12 +28,12 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
       + 'in a browser tab. Each is opted in by its own voice.wake.surfaces.* row. '
       + 'Tuned through voice.wake.*, whose threshold, patience and cooldown rows govern how '
       + 'readily it fires, and whose supervisor rows bound how a crashing detector is retried. '
-      + 'The model\'s published recall figures are measured on synthesised speech only — no human '
-      + 'recording of the phrase exists — while its false-accept figures are measured on real speech.',
+      + 'The model\'s published recall figures are measured on synthesised speech only, no human '
+      + 'recording of the phrase exists, while its false-accept figures are measured on real speech.',
     defaultState: 'disabled',
     tier: 3,
     runtimeToggleable: true,
-    // `notOperable` is GONE, in the same change that wired capture up — which is
+    // `notOperable` is GONE, in the same change that wired capture up, which is
     // the rule this field carried in writing. The terminal and the agent open a
     // recorder subprocess and the browser tab opens getUserMedia; all three feed
     // the engine frames and all three hand the utterance after a wake to the same

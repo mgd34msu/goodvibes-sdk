@@ -3,7 +3,7 @@
  *
  * `google-setup-flow.ts` sequences steps and assembles a report; it is
  * deliberately free of Google specifics and names this module as the place the
- * concrete work lives. That module was written, tested and shipped — and this
+ * concrete work lives. That module was written, tested and shipped, and this
  * one never was, so every flow module underneath it (`google-console-flow`,
  * `google-client-intake`, `google-app-password-flow`, `google-client-download`)
  * had no caller outside its own tests. The feature was green and unreachable at
@@ -96,7 +96,7 @@ function failed(detail: string, problem: string, fix: string): GoogleStepRunnerR
 }
 
 // ---------------------------------------------------------------------------
-// Path A — app password
+// Path A, app password
 // ---------------------------------------------------------------------------
 
 function browserReadyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
@@ -226,7 +226,7 @@ function gmailVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       : failed(
         'Could not connect to Gmail.',
         outcome.detail,
-        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped — say so and I will walk you through making a new one.',
+        'If IMAP reports AUTHENTICATIONFAILED the app password was mistyped, say so and I will walk you through making a new one.',
       );
   };
 }
@@ -240,8 +240,8 @@ function calendarIcsRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
     // credential in URL form, so it is collected by the person, not scraped.
     return needsHuman(
       'The private calendar address has not been captured.',
-      'Google exposes the private iCal address only in the calendar settings UI, and it is a credential — anyone holding it can read the calendar.',
-      `Open ${spec.url ?? 'Google Calendar settings'}, pick the calendar, click "Integrate calendar", copy the address under "Secret address in iCal format", and paste it here — I will store it in the encrypted store.`,
+      'Google exposes the private iCal address only in the calendar settings UI, and it is a credential, anyone holding it can read the calendar.',
+      `Open ${spec.url ?? 'Google Calendar settings'}, pick the calendar, click "Integrate calendar", copy the address under "Secret address in iCal format", and paste it here, I will store it in the encrypted store.`,
     );
   };
 }
@@ -259,12 +259,12 @@ function calendarVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
     const outcome = await verify();
     return outcome.ok
       ? done(outcome.detail)
-      : failed('Could not read the calendar feed.', outcome.detail, 'Copy the private address again and paste it here — I will store it.');
+      : failed('Could not read the calendar feed.', outcome.detail, 'Copy the private address again and paste it here, I will store it.');
   };
 }
 
 // ---------------------------------------------------------------------------
-// Path B — OAuth
+// Path B, OAuth
 // ---------------------------------------------------------------------------
 
 /** Remembered between the gcloud steps of a single run. */
@@ -321,7 +321,7 @@ function oauthClientRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
     const intake = await obtainClientCredentials(deps);
     if (!intake.ok) {
       // A console walkthrough that stops at a sign-in or a dialog is a human
-      // handoff, not a failure — the other routes are genuine failures.
+      // handoff, not a failure, the other routes are genuine failures.
       const route = deps.clientIntake?.kind ?? 'console-walkthrough';
       return route === 'console-walkthrough'
         ? needsHuman('The OAuth client was not created.', intake.problem, intake.fix)
@@ -354,7 +354,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client is configured.',
         'Authorization needs a client id and secret, and one or both are missing.',
-        'Nothing to authorize against yet — say the word and I will set the client up first.',
+        'Nothing to authorize against yet, say the word and I will set the client up first.',
       );
     }
 
@@ -363,7 +363,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
       return failed(
         'No OAuth client secret is stored.',
         'Authorization needs the client secret and the encrypted store does not hold one.',
-        'Nothing to authorize against yet — say the word and I will set the client up first.',
+        'Nothing to authorize against yet, say the word and I will set the client up first.',
       );
     }
 
@@ -387,7 +387,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
 
       // Printing beats driving. Google's sign-in wall rejects automated
       // browsers, so a printed link is both the most reliable route and the
-      // smallest ask — one click, which is the entire budget for this flow.
+      // smallest ask, one click, which is the entire budget for this flow.
       if (deps.announceConsentUrl !== undefined) {
         deps.announceConsentUrl(url);
       } else if (deps.openUrl !== undefined) {
@@ -399,7 +399,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
 
       let code: string;
       try {
-        // Rejects on mismatch, error redirect, or timeout — all of which mean
+        // Rejects on mismatch, error redirect, or timeout, all of which mean
         // the person did not finish, which is a clean stop rather than a fault.
         const received = await listener.waitForCode(CONSENT_TIMEOUT_MS);
         code = received.code;
@@ -450,7 +450,7 @@ function oauthAuthorizeRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
  * The proving step.
  *
  * "A refresh token is stored" was the old answer and it is not evidence of
- * anything a person cares about — the owner's credential was stored, reported
+ * anything a person cares about, the owner's credential was stored, reported
  * connected, and refused the first calendar call it was asked to make. So this
  * uses the credential: it reads the mailbox and reads the calendar, and says
  * what it read. Both are reads; nothing is sent and nothing is changed.
@@ -501,7 +501,7 @@ function oauthVerifyRunner(deps: GoogleSetupActionDeps): GoogleStepRunner {
  * Bind every step of one path to the function that performs it.
  *
  * The executor throws on a missing runner, so a path is either completely bound
- * or fails loudly at the first gap — there is no silent skip.
+ * or fails loudly at the first gap, there is no silent skip.
  */
 export function buildGoogleSetupRunners(
   path: GoogleSetupPath,
@@ -523,7 +523,7 @@ export function buildGoogleSetupRunners(
 
   // The existing-client path is two steps and no gcloud state, because a
   // stored client means the project, the APIs, the branding and the audience
-  // all already exist — that is what having a client id MEANS. Walking those
+  // all already exist, that is what having a client id MEANS. Walking those
   // steps again is exactly the defect this path was added to remove.
   if (path === 'existing-client') {
     runners.set('oauth-authorize', oauthAuthorizeRunner(deps));
@@ -543,8 +543,8 @@ export function buildGoogleSetupRunners(
 export type { GoogleClientCredentials };
 
 // The contracts and the adoption route moved to their own modules when this
-// file outgrew the line cap. Re-exported here so every existing importer — and
-// the package index — keeps resolving them from the same place.
+// file outgrew the line cap. Re-exported here so every existing importer, and
+// the package index, keeps resolving them from the same place.
 export type { GoogleClientIntakeChoice, GoogleSetupActionDeps } from './setup-action-deps.js';
 export {
   adoptExistingGoogleCredentials,

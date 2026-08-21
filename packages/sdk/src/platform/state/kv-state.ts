@@ -14,8 +14,8 @@ const RESERVED_KEYS = new Set(['id', 'started_at', '__proto__', 'constructor', '
 /**
  * The only filenames this module's housekeeping will ever touch.
  *
- * The state directory is SHARED with live, unrelated data — `retries.json`,
- * `agent-tracking.json`, `workflows/` — which is exactly why the append-only
+ * The state directory is SHARED with live, unrelated data, `retries.json`,
+ * `agent-tracking.json`, `workflows/`, which is exactly why the append-only
  * retention registry deliberately excludes the whole directory. Nothing outside
  * this one shape is listed, stat-ed, or removed.
  */
@@ -30,7 +30,7 @@ const SESSION_KEEP_COUNT = 50;
 
 /**
  * Age bound: a session file whose last write is older than this belongs to a
- * session nothing is going to resume. Fourteen days is deliberately generous —
+ * session nothing is going to resume. Fourteen days is deliberately generous,
  * the file is small, and the count bound is what actually holds the store flat
  * on an active machine.
  */
@@ -45,7 +45,7 @@ interface ReapBounds {
   readonly maxAgeMs: number;
 }
 
-/** What one reap pass actually reclaimed — the disclosure payload. */
+/** What one reap pass actually reclaimed, the disclosure payload. */
 interface ReapOutcome {
   readonly filesRemoved: number;
   readonly bytesReclaimed: number;
@@ -70,7 +70,7 @@ function errorCode(err: unknown): string | undefined {
  *
  * ENOENT is success, not failure: another process's pass got there first, which
  * is precisely the outcome wanted. It returns false so the bytes are not counted
- * twice across two concurrent reapers — each pass discloses what it actually
+ * twice across two concurrent reapers, each pass discloses what it actually
  * reclaimed. Any other error (a permission problem, a locked file) leaves the
  * file alone and is logged at debug; housekeeping never escalates into a failure
  * for the session that triggered it.
@@ -94,7 +94,7 @@ function removeSessionFile(path: string, name: string): boolean {
  * every removal tolerates the file already being gone. A second pass over an
  * already-reaped directory finds no candidates and removes nothing.
  *
- * `protectedFileName` is never a candidate — the caller's own session file must
+ * `protectedFileName` is never a candidate, the caller's own session file must
  * survive its own recovery even when it is months old (a long-dormant session
  * being resumed is the exact case the age bound would otherwise destroy).
  */
@@ -109,7 +109,7 @@ function reapSessionFiles(
     names = readdirSync(stateDir);
   } catch {
     // Absent or unreadable directory: nothing to reclaim. Housekeeping is never
-    // a reason to fail — or even warn at — the session that triggered it.
+    // a reason to fail, or even warn at, the session that triggered it.
     return NOTHING_REAPED;
   }
 
@@ -123,7 +123,7 @@ function reapSessionFiles(
       if (!stats.isFile()) continue;
       candidates.push({ path, name, mtimeMs: stats.mtimeMs, size: stats.size });
     } catch {
-      // Vanished between readdir and stat — a concurrent pass won the race.
+      // Vanished between readdir and stat, a concurrent pass won the race.
     }
   }
 
@@ -152,7 +152,7 @@ function reapSessionFiles(
 /**
  * Say what was reclaimed. Silent deletion is indistinguishable from data loss,
  * so a pass that removed anything reports the counts and the byte total by
- * directory. A pass that removed nothing stays quiet — that is the common case
+ * directory. A pass that removed nothing stays quiet, that is the common case
  * on every boot and every timer tick, and logging it would bury the lines that
  * matter. Counts, a directory path and a byte total only: never file contents.
  */
@@ -173,12 +173,12 @@ export interface KVStateOptions {
   /**
    * A legacy, unscoped stateDir to fall back to for reads when the scoped
    * `stateDir` has no file yet for this session id (dual-read, one release
-   * only — see the session-surface migration, runtime/session-migration.ts).
+   * only, see the session-surface migration, runtime/session-migration.ts).
    * Consulted ONLY when the scoped file is absent; a hit is copied forward
    * into the scoped location on the next persist, so subsequent reads never
    * need the fallback again. Copy-forward never moves or deletes its source, so
    * this directory's `session_*.json` files would otherwise strand there
-   * permanently — nothing else in the SDK reclaims them. The housekeeping sweep
+   * permanently, nothing else in the SDK reclaims them. The housekeeping sweep
    * therefore applies the AGE bound (and only the age bound) here as well; see
    * `KVState.sweep` for why a count bound would be unsafe in a directory that is
    * shared with other products.
@@ -193,7 +193,7 @@ export interface KVStateOptions {
 }
 
 /**
- * KVState — Session-scoped persistent key-value store.
+ * KVState, Session-scoped persistent key-value store.
  *
  * Storage: <stateDir>/session_{id}.json
  * Session ID: 8-char hex string, auto-generated if not provided.
@@ -210,7 +210,7 @@ export class KVState {
   private sessionId: string;
   private stateDir: string;
   private filePath: string;
-  /** Basename of this instance's own file — the one name housekeeping must never touch. */
+  /** Basename of this instance's own file, the one name housekeeping must never touch. */
   private readonly fileName: string;
   private data: Record<string, unknown> | null = null;
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -293,7 +293,7 @@ export class KVState {
   }
 
   async load(): Promise<void> {
-    // Recovery point. Loading — not construction — is when the process actually
+    // Recovery point. Loading, not construction, is when the process actually
     // re-attaches to the state directory, and it is also the first moment this
     // instance's own file is known and can be exempted. Construction only
     // records paths: tools/index.ts builds a KVState during tool registration
@@ -321,7 +321,7 @@ export class KVState {
       try {
         legacyLoaded = this.validateLoaded(await this.legacyStore.load(), 'legacy state file', 'absent');
       } catch (err) {
-        logger.warn('KVState: legacy state file unreadable — ignoring it and starting clean', {
+        logger.warn('KVState: legacy state file unreadable, ignoring it and starting clean', {
           sessionId: this.sessionId,
           error: summarizeError(err),
         });
@@ -353,7 +353,7 @@ export class KVState {
    * agent that finishes just after a debounced write started has two writes in
    * flight, and `JsonFileStore.save` renames atomically without saying which
    * rename lands last. Unordered, the earlier write's older view can land second
-   * and put back a key `clear` removed — which a resumed session then reads as
+   * and put back a key `clear` removed, which a resumed session then reads as
    * still set.
    *
    * `this.data` is passed by reference, as it always was: `save` serialises it
@@ -382,7 +382,7 @@ export class KVState {
   /**
    * Count-bounded reap of a state directory, on demand.
    *
-   * This is NOT what keeps the store bounded — for a long time nothing called
+   * This is NOT what keeps the store bounded, for a long time nothing called
    * it, and every session file the SDK had ever written accumulated forever.
    * The bounds are now enforced by each instance's own housekeeping (see
    * {@link KVState.load}), which runs both this count bound and an age bound at
@@ -423,7 +423,7 @@ export class KVState {
    * bytes that parse to something that is not a state record: `null`, `[]`,
    * `123`, `"…"`. A crash can leave any of those, and every one of them would
    * otherwise be installed as `this.data` and served to callers as if it were
-   * their session state — `list()` would spread an array, `get()` would read
+   * their session state, `list()` would spread an array, `get()` would read
    * properties off a number.
    *
    * `onInvalid: 'throw'` is used for the SCOPED file, matching this class's
@@ -443,7 +443,7 @@ export class KVState {
     if (onInvalid === 'throw') {
       throw new Error(`KVState failed to load ${label}: parsed content is not a session state object`);
     }
-    logger.warn('KVState: legacy state file is not a session state object — ignoring it and starting clean', {
+    logger.warn('KVState: legacy state file is not a session state object, ignoring it and starting clean', {
       sessionId: this.sessionId,
     });
     return null;
@@ -454,7 +454,7 @@ export class KVState {
    * {@link SWEEP_INTERVAL_MS}.
    *
    * The timer exists because startup-only housekeeping in a process that stays
-   * up for days reclaims nothing after its first minute — a long-lived surface
+   * up for days reclaims nothing after its first minute, a long-lived surface
    * spawning agents all week would cross both bounds without ever restarting.
    * It is unref'd, so it can never be the reason a process refuses to exit, and
    * `dispose()` clears it.
@@ -485,7 +485,7 @@ export class KVState {
    * The age bound cannot: a file untouched for the full TTL belongs to a session
    * no surface has resumed in that whole window, and the dual-read only ever
    * fires for the exact session id being resumed. Leaving the legacy directory
-   * entirely unswept was the other option and is not acceptable — copy-forward
+   * entirely unswept was the other option and is not acceptable, copy-forward
    * never deletes the source, so those files strand there permanently and
    * nothing else in the SDK reclaims them.
    *

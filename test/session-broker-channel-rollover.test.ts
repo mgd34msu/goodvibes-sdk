@@ -5,18 +5,18 @@
  * (`sessionPolicy: 'create-or-bind'`) named a shared session that had been
  * closed when its host was killed. Every inbound message then resolved to that
  * closed record and hit the guard in session-broker-intent.ts, which threw
- * SESSION_CLOSED/409 — correct for an HTTP caller that named a session id, and
+ * SESSION_CLOSED/409, correct for an HTTP caller that named a session id, and
  * wrong for a channel, where nothing on the far side can read a 409 and open a
  * new chat. The Telegram poller caught it, logged "advancing past it", and
  * advanced its cursor. Two of his messages were eaten outright.
  *
  * The fix treats a binding's `sessionId` as a routing HINT that is validated on
- * every resolve and healed when its target is unusable — for ANY reason, not
+ * every resolve and healed when its target is unusable, for ANY reason, not
  * just closure. These tests pin all of it:
  *
  *  - the observed scenario (closed) rolls over, rebinds and lands the message;
  *  - the rebind survives a restart, because it went through the store;
- *  - a MISSING target rolls over too — the shape a node sees after a surface
+ *  - a MISSING target rolls over too, the shape a node sees after a surface
  *    election or a restore from backup, since sessions do not replicate;
  *  - a caller that NAMED a closed session id still gets its 409, so the fix
  *    cannot widen into the webui companion's contract;
@@ -113,7 +113,7 @@ describe('a channel whose bound session was closed rolls over instead of black-h
   test('the observed scenario: the message lands in a NEW session and the route is rebound', async () => {
     const { broker, routeBindings, notices } = await makeHarness(scratch());
     const binding = await bindChat(routeBindings);
-    // `create-or-bind` is what upsertBinding writes by default — the policy the
+    // `create-or-bind` is what upsertBinding writes by default, the policy the
     // owner's own route carried, and the one that promises this rollover.
     expect(binding.sessionPolicy).toBe('create-or-bind');
 
@@ -154,7 +154,7 @@ describe('a channel whose bound session was closed rolls over instead of black-h
     const rolled = await first.broker.submitMessage(channelSubmit(binding, 'first after the close'));
     await first.broker.stop();
 
-    // Fresh stores over the SAME files — the restart.
+    // Fresh stores over the SAME files, the restart.
     const second = await makeHarness(dir);
     expect(second.routeBindings.getBinding(binding.id)?.sessionId).toBe(rolled.session.id);
 

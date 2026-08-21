@@ -1,5 +1,5 @@
 /**
- * Hotspot sampler tests — accuracy of sliding-window frequency tracking
+ * Hotspot sampler tests, accuracy of sliding-window frequency tracking
  * and latency percentile computation.
  */
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
@@ -125,7 +125,7 @@ describe('SelectorHotspotSampler — sliding window', () => {
     // Record 5 samples at t=0
     for (let i = 0; i < 5; i++) s.record('sel', 1);
 
-    // Advance 6 seconds — these samples are now outside the window
+    // Advance 6 seconds, these samples are now outside the window
     advanceFakeNow(6_000);
 
     // Record 2 new samples at t=6s
@@ -173,7 +173,7 @@ describe('SelectorHotspotSampler — hotspot flags', () => {
 
   test('isLatencyHotspot is true when p95 > 5ms', () => {
     const s = new SelectorHotspotSampler({ windowMs: 60_000 });
-    // 100 samples, values 1..100 — p95 will be ~95ms
+    // 100 samples, values 1..100, p95 will be ~95ms
     for (let i = 1; i <= 100; i++) s.record('sel', i);
     const hs = s.getHotspot('sel')!;
     expect(hs.isLatencyHotspot).toBe(true);

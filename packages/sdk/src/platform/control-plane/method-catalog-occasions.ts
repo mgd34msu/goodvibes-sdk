@@ -1,7 +1,7 @@
 /**
  * method-catalog-occasions.ts
  *
- * Contract descriptors for the proactive occasions verbs (`occasions.*`) — the
+ * Contract descriptors for the proactive occasions verbs (`occasions.*`), the
  * owner's important dates and plans, and the loop that raises them before they
  * matter. See `docs/occasions.md` for the decision record.
  *
@@ -18,13 +18,13 @@
  * remove one with a confirmation, read and set plans, pull what is outstanding,
  * and read what the machine-owned store is holding. A consumer that had to
  * compute anything beyond calling these and rendering the answers would be a
- * second implementation of a rule that lives in the daemon — most dangerously
+ * second implementation of a rule that lives in the daemon, most dangerously
  * the rule that a nudge never carries the date.
  *
  * ## Two verbs answer with dates and one never does
  *
  * `occasions.list` returns the date and the day count. That is the owner asking
- * his own system what it holds over an authenticated verb — the explicit ask
+ * his own system what it holds over an authenticated verb, the explicit ask
  * that unlocks a closed-tier read. `occasions.pending` returns the nudge as it
  * would be delivered, and its `subjects` carry a proximity WORD rather than any
  * number, because that payload is what reaches a message channel.
@@ -269,8 +269,8 @@ export const OCCASIONS_PENDING_OUTPUT_SCHEMA = objectSchema({
 /**
  * One destination a nudge was pushed to, and what came of it.
  *
- * Reported per destination because `occasions.nudgeChannel` is a list — Telegram
- * AND the agent is the owner's ruling — and one boolean for the batch would not
+ * Reported per destination because `occasions.nudgeChannel` is a list, Telegram
+ * AND the agent is the owner's ruling, and one boolean for the batch would not
  * say WHICH channel went quiet. A channel he believes is reaching him and is not
  * is the failure this whole feature exists to avoid.
  */
@@ -374,7 +374,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.propose',
     title: 'Propose An Important Date',
-    description: 'Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath — the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.',
+    description: 'Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/propose' },
@@ -394,7 +394,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.remove',
     title: 'Remove An Important Date',
-    description: 'Remove one occasion and every record the machine kept against it — answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.',
+    description: 'Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/remove' },
@@ -405,7 +405,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.answer',
     title: 'Answer An Occasion Nudge',
-    description: 'Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.',
+    description: 'Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline, it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/answer' },
@@ -415,7 +415,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.acknowledge',
     title: 'Acknowledge An Occasion',
-    description: 'Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.',
+    description: 'Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/acknowledge' },
@@ -435,7 +435,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.interview.answer',
     title: 'Answer A Gift Interview Question',
-    description: 'Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift — that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.',
+    description: 'Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift, that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/interview/answer' },
@@ -465,7 +465,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.pending',
     title: 'Pull Outstanding Occasions',
-    description: 'Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.',
+    description: 'Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge, it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.',
     category: 'occasions',
     scopes: ['read:occasions'],
     http: { method: 'GET', path: '/api/occasions/pending' },
@@ -475,7 +475,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.sweep',
     title: 'Run The Approach Sweep Now',
-    description: 'Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel — a comma-separated list, so Telegram and the agent both get it — and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing — nothing is dropped, it waits.',
+    description: 'Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel, a comma-separated list, so Telegram and the agent both get it, and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing, nothing is dropped, it waits.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/sweep' },
@@ -485,7 +485,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.conflict.resolve',
     title: 'Close A Date Conflict',
-    description: 'Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically — two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.',
+    description: 'Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.',
     category: 'occasions',
     scopes: ['write:occasions'],
     http: { method: 'POST', path: '/api/occasions/conflict/resolve' },
@@ -495,7 +495,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.plans.list',
     title: 'List Plans',
-    description: 'Return every plan declared in the owner profile — a dated range with attributes — plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.',
+    description: 'Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.',
     category: 'occasions',
     scopes: ['read:occasions'],
     http: { method: 'GET', path: '/api/occasions/plans' },
@@ -525,7 +525,7 @@ export const builtinGatewayOccasionsMethodDescriptors: readonly GatewayMethodDes
   methodDescriptor({
     id: 'occasions.state',
     title: 'Occasions State Disclosure',
-    description: 'What the machine-owned store is holding — counts of answers, gift records, open items, interviews and calendar mirrors — plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.',
+    description: 'What the machine-owned store is holding, counts of answers, gift records, open items, interviews and calendar mirrors, plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.',
     category: 'occasions',
     scopes: ['read:occasions'],
     http: { method: 'GET', path: '/api/occasions/state' },

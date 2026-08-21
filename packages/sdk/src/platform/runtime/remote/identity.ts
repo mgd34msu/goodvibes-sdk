@@ -1,11 +1,11 @@
 /**
- * Remote Substrate — Durable Identity Manager
+ * Remote Substrate, Durable Identity Manager
  *
  * Implements globally unique, stable identifiers for
  * sessionId, taskId, and agentId that survive transport changes and reconnects.
  *
  * The identity manager maintains the canonical set of IDs for a remote
- * substrate instance. Reconnects do not change these IDs — only explicit
+ * substrate instance. Reconnects do not change these IDs, only explicit
  * refresh calls (for new tasks) increment the generation counter.
  */
 
@@ -23,7 +23,7 @@ export interface IdentitySnapshot {
 }
 
 /**
- * DurableIdentityManager — creates and maintains stable IDs across reconnects.
+ * DurableIdentityManager, creates and maintains stable IDs across reconnects.
  *
  * Once created, the sessionId is permanent for the lifetime of this manager.
  * The taskId and agentId can be refreshed (incrementing generation) when
@@ -33,14 +33,14 @@ export interface IdentitySnapshot {
  * @example
  * ```ts
  * const identity = new DurableIdentityManager();
- * // sessionId/taskId/agentId are stable — safe to pass across reconnects
+ * // sessionId/taskId/agentId are stable, safe to pass across reconnects
  * const { sessionId, taskId } = identity.current;
  *
- * // After reconnect — same IDs
+ * // After reconnect, same IDs
  * await reconnect();
  * identity.current.sessionId === sessionId; // true
  *
- * // Starting a new task — refresh task/agent IDs
+ * // Starting a new task, refresh task/agent IDs
  * identity.refreshTaskIdentity();
  * identity.current.taskId !== taskId; // true
  * ```
@@ -78,7 +78,7 @@ export class DurableIdentityManager {
   /**
    * The current durable identity snapshot.
    *
-   * This reference is stable across reconnects — the same object is returned
+   * This reference is stable across reconnects, the same object is returned
    * until `refreshTaskIdentity()` is called.
    */
   get current(): DurableIdentity {
@@ -89,7 +89,7 @@ export class DurableIdentityManager {
    * Refresh the task and agent identifiers for a new remote task.
    *
    * The sessionId is preserved. The generation counter increments.
-   * Call this when starting a new task on the remote substrate —
+   * Call this when starting a new task on the remote substrate,
    * not when reconnecting to an existing task.
    *
    * @returns The new durable identity.

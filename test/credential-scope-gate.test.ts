@@ -9,7 +9,7 @@
  *
  * `scripts/check-credential-scope.ts` is the answer: a secret-store write must
  * name a credential the registry classifies, or state its scope at the call
- * site. This exercises the gate against fixtures — a build gate nobody has
+ * site. This exercises the gate against fixtures, a build gate nobody has
  * tested is a build gate that passes everything.
  */
 

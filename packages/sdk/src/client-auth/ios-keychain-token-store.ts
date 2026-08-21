@@ -6,7 +6,7 @@
  * Uses `Keychain.setGenericPassword` / `getGenericPassword` /
  * `resetGenericPassword` to persist tokens in the iOS Keychain.
  *
- * `react-native-keychain` is an **optional peer dependency** — this module
+ * `react-native-keychain` is an **optional peer dependency**, this module
  * does NOT import it at the top level.
  *
  * ## Installation
@@ -111,7 +111,7 @@ async function loadKeychain(): Promise<KeychainModule> {
     return _mod;
   } catch {
     throw new GoodVibesSdkError(
-      'react-native-keychain is not installed — the iOS Keychain token store cannot be initialised. ' +
+      'react-native-keychain is not installed, the iOS Keychain token store cannot be initialised. ' +
         'This optional peer dependency is required to persist tokens in the iOS Keychain. ' +
         'Run `npm install react-native-keychain && npx pod-install` and rebuild your app.',
       {
@@ -164,7 +164,7 @@ export interface IOSKeychainTokenStore extends GoodVibesTokenStore {
  * blob in the keychain password slot. The username slot is fixed to
  * `'goodvibes-sdk'`.
  *
- * `react-native-keychain` is an **optional peer dependency** — install it with:
+ * `react-native-keychain` is an **optional peer dependency**, install it with:
  *
  * ```sh
  * npm install react-native-keychain

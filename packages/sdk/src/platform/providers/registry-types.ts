@@ -11,7 +11,7 @@ import type { ModelLimitsService } from './model-limits.js';
 import type { ManualModelPrice } from './model-pricing.js';
 import type { ReasoningEffortSpec } from './reasoning-effort.js';
 
-/** Model capability tier — controls system prompt verbosity. */
+/** Model capability tier, controls system prompt verbosity. */
 export type ModelTier = 'free' | 'standard' | 'premium' | 'subscription';
 
 /** Per-model token limits for output, tool results, tool calls, and reasoning. */
@@ -51,7 +51,7 @@ export interface ModelDefinition {
   tier?: ModelTier | undefined;
   tokenLimits?: TokenLimits | undefined;
   /**
-   * Registration-supplied rates (USD per 1M tokens) — set by custom
+   * Registration-supplied rates (USD per 1M tokens), set by custom
    * provider/model files or runtime registration. Resolves as a user-origin
    * price, outranked only by a manual config price. Absent means the
    * registration stated no price (NOT free): pricing falls through to

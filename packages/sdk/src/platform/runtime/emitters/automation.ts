@@ -1,5 +1,5 @@
 /**
- * Automation emitters — typed wrappers for AutomationEvent domain.
+ * Automation emitters, typed wrappers for AutomationEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

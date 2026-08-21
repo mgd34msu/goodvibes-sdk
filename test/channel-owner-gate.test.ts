@@ -1,9 +1,9 @@
 /**
  * Owner allowlist gate for chat channels: the allowlist self-seeds from the
  * first identified sender (whoever pairs/configures the channel proves it by
- * messaging first — no separate add-yourself step exists), unknown senders are
+ * messaging first, no separate add-yourself step exists), unknown senders are
  * ignored with one log line and no session, and a paired owner can approve,
- * deny, or steer a pending permission ask by replying in the channel — routed
+ * deny, or steer a pending permission ask by replying in the channel, routed
  * through the same ApprovalBroker the TUI and webui use.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -222,7 +222,7 @@ describe('owner channel reply resolves a pending permission ask', () => {
     const decision = await decisionPromise;
     expect(decision.approved).toBe(false);
     // The guidance is MODEL-VISIBLE: it rides the structured declined decision
-    // delivered to the waiting tool call as `reason` — not only the audit note —
+    // delivered to the waiting tool call as `reason`, not only the audit note,
     // so the model adapts ("use the staging database instead") instead of
     // seeing a bare deny.
     expect(decision.reason).toBe('use the staging database instead');

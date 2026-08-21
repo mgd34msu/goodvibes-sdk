@@ -1,5 +1,5 @@
 /**
- * Spoken-turn — the shared spoken-output (live TTS) policy engine.
+ * Spoken-turn, the shared spoken-output (live TTS) policy engine.
  *
  * SDK owns POLICY: the sentence chunker, the bounded 2-slot synthesis window
  * with merge coalescing, the transient-failure retry/backoff with honest

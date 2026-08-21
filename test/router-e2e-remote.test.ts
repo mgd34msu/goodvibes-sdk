@@ -25,7 +25,7 @@ import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js
 import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
-// describe: remote routes — happy paths
+// describe: remote routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e remote — GET /api/remote (happy path)', () => {
@@ -141,7 +141,7 @@ describe('router-e2e remote — GET /api/remote (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: remote routes — failure paths
+// describe: remote routes, failure paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e remote — failure paths', () => {

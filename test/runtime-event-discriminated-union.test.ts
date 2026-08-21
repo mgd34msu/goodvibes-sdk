@@ -17,10 +17,10 @@ import { describe, expect, test } from 'bun:test';
 import type { AgentEvent } from '../packages/sdk/src/events/agents.js';
 import type { SessionEvent } from '../packages/sdk/src/events/session.js';
 
-// TurnEvent imports PartialToolCall from providers/interface — both relative, bun handles it.
+// TurnEvent imports PartialToolCall from providers/interface, both relative, bun handles it.
 import type { TurnEvent } from '../packages/sdk/src/events/turn.js';
 
-// WorkflowEvent imports WrfcState from agents/wrfc-types — relative, bun handles it.
+// WorkflowEvent imports WrfcState from agents/wrfc-types, relative, bun handles it.
 import type { WorkflowEvent } from '../packages/sdk/src/events/workflows.js';
 
 // ---------------------------------------------------------------------------
@@ -107,7 +107,7 @@ function describeTurnEvent(event: TurnEvent): string {
 }
 
 // ---------------------------------------------------------------------------
-// Exhaustive switch — compile-time never check in default branch.
+// Exhaustive switch, compile-time never check in default branch.
 // If a new variant is added to AgentEvent without a matching case, TS errors.
 // ---------------------------------------------------------------------------
 

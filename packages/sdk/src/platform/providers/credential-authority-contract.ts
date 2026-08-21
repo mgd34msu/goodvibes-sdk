@@ -1,11 +1,11 @@
 /**
- * Registration-time credential-authority contract — the structural
+ * Registration-time credential-authority contract, the structural
  * enforcement half of the ONE request-time credential resolver.
  *
  * Every provider registered through ProviderRegistry.register() must declare
  * how its credentials are obtained (LLMProvider.credentialAuthority:
  * 'resolver' | 'anonymous' | 'subscription' | 'oauth'). A provider that
- * declares none is REFUSED, fail-closed — exactly like the model-source
+ * declares none is REFUSED, fail-closed, exactly like the model-source
  * contract (model-source-contract.ts): an auth path the resolver cannot see
  * is how a status badge stays green while chat 401s.
  */
@@ -31,7 +31,7 @@ export function verifyProviderCredentialAuthority(
     message:
       `Provider '${provider.name}' declares no credential authority. Every registered provider must state `
       + `how its credentials are obtained (credentialAuthority: 'resolver' | 'anonymous' | 'subscription' | 'oauth') `
-      + `so the shared credential resolver covers its auth path — status and chat availability must derive from `
+      + `so the shared credential resolver covers its auth path, status and chat availability must derive from `
       + `the same source. Registration refused.`,
   };
 }

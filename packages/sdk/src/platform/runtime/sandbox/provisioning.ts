@@ -9,8 +9,8 @@ import { renderQemuWrapperTemplate } from './qemu-wrapper-template.js';
 /**
  * Modes for the scaffold this module writes into the operator's own workspace.
  *
- * These are not platform state stores under `~/.goodvibes` — they are files an
- * operator reads, edits, runs, and may commit — so they keep the ordinary
+ * These are not platform state stores under `~/.goodvibes`, they are files an
+ * operator reads, edits, runs, and may commit, so they keep the ordinary
  * readable modes they have always had rather than the owner-only mode the
  * atomic-write helper defaults to. Stating them explicitly also makes the
  * result independent of the process umask.

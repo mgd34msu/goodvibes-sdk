@@ -1,5 +1,5 @@
 /**
- * settings.ts — every `voice.wake.*` row, resolved into runtime behaviour once.
+ * settings.ts, every `voice.wake.*` row, resolved into runtime behaviour once.
  *
  * ONE READER, SO A ROW CANNOT QUIETLY CONFIGURE NOTHING
  *
@@ -19,8 +19,8 @@
  *    voice-activity floor with no VAD model to run, or `speex` suppression on a
  *    runtime that cannot run the filter, would otherwise mean audio flowing
  *    unfiltered through a stage the user believes is screening it. `speex` itself
- *    is no longer such a case on either shipped surface — the filter is a
- *    WebAssembly module the platform carries, and both hosts run it — so the
+ *    is no longer such a case on either shipped surface, the filter is a
+ *    WebAssembly module the platform carries, and both hosts run it, so the
  *    blocker is now reserved for a surface that genuinely cannot.
  *  - A {@link WakeSettingLimitation} means the detector runs, with one row not in
  *    force, and says which. Retaining audio needs a filesystem, so a browser tab
@@ -52,10 +52,10 @@ export interface WakeSurfaceCapabilities {
    *
    * Left out, it is ANSWERED rather than assumed: the platform carries SpeexDSP's
    * preprocessor as a WebAssembly module, so the answer is whether this runtime
-   * has WebAssembly — see `noiseSuppressionSupport()`. Both shipped surfaces do,
+   * has WebAssembly, see `noiseSuppressionSupport()`. Both shipped surfaces do,
    * and both apply the stage, which is why `speex` runs rather than refusing.
    *
-   * A surface that genuinely cannot — a JavaScript runtime with no WebAssembly —
+   * A surface that genuinely cannot, a JavaScript runtime with no WebAssembly,
    * passes `false` and gets a blocker with that reason, because the wrong reading
    * of this flag is the exact lie the row exists to prevent: audio captured
    * unfiltered while the setting claims a filter is running.
@@ -65,8 +65,8 @@ export interface WakeSurfaceCapabilities {
    * The speech gate is loaded on this surface and will actually screen frames.
    *
    * A head IS pinned now ({@link WAKE_VAD_MODEL}) and provisions with the wake
-   * models, but loading an inference session is the host's job on every surface —
-   * exactly as it is for the classifier and the embedding — so this stays
+   * models, but loading an inference session is the host's job on every surface,
+   * exactly as it is for the classifier and the embedding, so this stays
    * host-declared. A host sets it once it has passed the gate's session to the
    * engine; until then `voice.wake.vadThreshold` above 0 is refused rather than
    * silently skipped, because a frame reaching the classifier unscreened while
@@ -153,7 +153,7 @@ export type WakeSettingReader = (key: string) => unknown;
 
 /**
  * Every key {@link resolveWakeRuntimeSettings} reads. Exported so a test can
- * assert it against the schema's `voice.wake.*` rows in both directions — a row
+ * assert it against the schema's `voice.wake.*` rows in both directions, a row
  * the resolver ignores is a row that configures nothing.
  */
 export const WAKE_SETTING_KEYS: readonly string[] = [
@@ -235,7 +235,7 @@ export interface WakeEnablementCompanion {
  *
  * Turning `voice.wake.enabled` on while `voice.wake.surfaces.<surface>` is off
  * is a silent no-op: the setting reports success, the value really is stored,
- * and no microphone ever opens. That cost the owner an entire session — he
+ * and no microphone ever opens. That cost the owner an entire session, he
  * enabled the feature, was told it was enabled, and nothing listened.
  *
  * A master switch whose delivery row is off is not a configuration the user
@@ -261,7 +261,7 @@ export function resolveWakeEnablementCompanion(
     value: true,
     message:
       `${surfaceRow} was off, which would have left wake detection enabled and nothing listening on the `
-      + `${surface} surface — the feature needs both rows. It has been turned on too, so this surface is `
+      + `${surface} surface, the feature needs both rows. It has been turned on too, so this surface is `
       + 'actually listening.',
   };
 }

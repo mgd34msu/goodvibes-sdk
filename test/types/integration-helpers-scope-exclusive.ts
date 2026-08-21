@@ -6,7 +6,7 @@
  * paths; one constructed with the loose `workingDirectory` / `homeDirectory`
  * pair reads the unscoped legacy ones. Accepting BOTH at once would leave the
  * question "which paths does this service actually mean?" answerable only at
- * runtime — the exact ambiguity that produced continuity answers from
+ * runtime, the exact ambiguity that produced continuity answers from
  * directories nothing had written to. The assertions below fail to compile if
  * the two shapes ever stop being mutually exclusive, mirroring the same pin
  * `SessionPersistenceOptions` carries in session-persistence-scope.ts.
@@ -30,7 +30,7 @@ const legacyScoped: ui.IntegrationHelpersContext = {
 };
 
 // Mixing them is not.
-// @ts-expect-error — a surface and the loose workingDirectory/homeDirectory pair are mutually exclusive; the surface already names the project root.
+// @ts-expect-error, a surface and the loose workingDirectory/homeDirectory pair are mutually exclusive; the surface already names the project root.
 const mixed: ui.IntegrationHelpersContext = {
   ...services,
   surface,
@@ -39,7 +39,7 @@ const mixed: ui.IntegrationHelpersContext = {
 };
 
 // A context with neither shape is not a valid construction either.
-// @ts-expect-error — the scope half is required: a service must know which directories it means.
+// @ts-expect-error, the scope half is required: a service must know which directories it means.
 const scopeless: ui.IntegrationHelpersContext = { ...services };
 
 // Reference the bindings so they are not reported as unused.

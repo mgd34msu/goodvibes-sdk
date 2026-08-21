@@ -5,7 +5,7 @@
  * cap are pruned oldest-first (active runs never pruned), the cap holds across
  * a store reload (restart), and the MemoryGovernor trim hook actually reclaims.
  * Companion gate: every background self-improvement trigger routes through the
- * governed scheduler — no caller bypasses it with a direct scheduleBackground
+ * governed scheduler, no caller bypasses it with a direct scheduleBackground
  * self-improve.
  */
 import { describe, expect, test } from 'bun:test';
@@ -57,7 +57,7 @@ describe('no self-improve scheduler bypasses (gate)', () => {
     const root = 'packages/sdk/src';
     // Files allowed to call selfImprove directly:
     //  - semantic/service.ts: the scheduler itself + the answer path (deferRepair task-queue pass)
-    //  - home-graph/sync-self-improvement.ts: the delayed, single-flight sync pump —
+    //  - home-graph/sync-self-improvement.ts: the delayed, single-flight sync pump,
     //    governed via a between-rounds isBackgroundWorkPaused() gate plus
     //    { stopWhenPaused: true } threaded into the runner's per-gap yield
     //    points (real for space-scoped rounds), and the in-run admission gate
@@ -72,7 +72,7 @@ describe('no self-improve scheduler bypasses (gate)', () => {
       // passes through runSelfImproveUnlocked's in-run admission check.
       'platform/knowledge/service-jobs.ts',
       // The operator-invoked Home Graph refinement verb (foreground, targeted
-      // gapIds) — admission-gated in-run like every non-deferRepair run.
+      // gapIds), admission-gated in-run like every non-deferRepair run.
       'platform/knowledge/home-graph/refinement.ts',
     ]);
     const offenders: string[] = [];
@@ -93,7 +93,7 @@ describe('no self-improve scheduler bypasses (gate)', () => {
       offenders,
       `New .selfImprove( caller(s) outside the governed allowlist: ${offenders.join(', ')}. ` +
       'Background self-improvement triggers must route through KnowledgeSemanticService.queueBackgroundSelfImprove ' +
-      '(floor + coalescing + zero-gap backoff + governor pause) — never a direct scheduleBackground self-improve.',
+      '(floor + coalescing + zero-gap backoff + governor pause), never a direct scheduleBackground self-improve.',
     ).toEqual([]);
   });
 
@@ -105,7 +105,7 @@ describe('no self-improve scheduler bypasses (gate)', () => {
     // regression: only the reindex shape was pinned, so the pump call could
     // silently drop it).
     expect(text).toMatch(/reason: 'homegraph-sync'[\s\S]{0,400}\}, \{ stopWhenPaused: true \}\)/);
-    // And the pump loop itself gates between rounds on the pause probe —
+    // And the pump loop itself gates between rounds on the pause probe,
     // stopWhenPaused alone only stops a round already in flight.
     expect(text).toMatch(/isBackgroundWorkPaused\(\)/);
     // The per-ingest path routes through the governed scheduler.

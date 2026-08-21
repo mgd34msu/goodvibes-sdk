@@ -124,12 +124,12 @@ export function createDaemonKnowledgeRouteHandlers(
       });
     },
     getKnowledgeUsage: async (url) => {
-      const targetKind = url.searchParams.get('targetKind') ?? undefined;
+      const targetKind = readKnowledgeSubjectKind(url.searchParams.get('targetKind') ?? undefined);
       const targetId = url.searchParams.get('targetId') ?? undefined;
       const usageKind = url.searchParams.get('usageKind') ?? undefined;
       return Response.json({
         usage: context.knowledgeService.listUsageRecords(readLimit(url, 100), {
-          ...(targetKind ? { targetKind: targetKind as 'source' | 'node' | 'issue' } : {}),
+          ...(targetKind ? { targetKind } : {}),
           ...(targetId ? { targetId } : {}),
           ...(usageKind ? { usageKind: usageKind as KnowledgeUsageKind } : {}),
         }),
@@ -137,12 +137,12 @@ export function createDaemonKnowledgeRouteHandlers(
     },
     getKnowledgeCandidates: async (url) => {
       const status = url.searchParams.get('status') ?? undefined;
-      const subjectKind = url.searchParams.get('subjectKind') ?? undefined;
+      const subjectKind = readKnowledgeSubjectKind(url.searchParams.get('subjectKind') ?? undefined);
       const subjectId = url.searchParams.get('subjectId') ?? undefined;
       return Response.json({
         candidates: context.knowledgeService.listConsolidationCandidates(readLimit(url, 100), {
           ...(status ? { status: status as KnowledgeCandidateStatus } : {}),
-          ...(subjectKind ? { subjectKind: subjectKind as 'source' | 'node' | 'issue' } : {}),
+          ...(subjectKind ? { subjectKind } : {}),
           ...(subjectId ? { subjectId } : {}),
         }),
       });
@@ -335,6 +335,11 @@ const knowledgeBodySchemas = createRouteBodySchemaRegistry({
     };
   }),
 });
+
+/** Usage/candidate kind filter, validated rather than cast so an unknown value drops the filter instead of reaching the service typed as a literal it is not. */
+function readKnowledgeSubjectKind(value: string | undefined): 'source' | 'node' | 'issue' | undefined {
+  return value === 'source' || value === 'node' || value === 'issue' ? value : undefined;
+}
 
 function readKnowledgeAnswerMode(value: unknown): 'concise' | 'standard' | 'detailed' | undefined {
   return value === 'concise' || value === 'standard' || value === 'detailed' ? value : undefined;
@@ -901,12 +906,12 @@ function extractKnowledgeItemId(item: unknown): string | undefined {
  * (see `KnowledgeSourceRecord` / `KnowledgeNodeRecord` in
  * `platform/knowledge/types.ts`).  The production store sorts both collections
  * by `byUpdatedAtDesc` (newest-first by updatedAt), so the cursor's position
- * key MUST encode `updatedAt` — not `createdAt` — to land at the correct
+ * key MUST encode `updatedAt`, not `createdAt`, to land at the correct
  * insertion point after a mid-walk deletion.
  *
  * Semantic note: `updatedAt` mutates when an item is modified.  A mid-walk
  * update moves the item to the front of the list (it gains a new updatedAt
- * value) and its old position disappears — identical in effect to a deletion.
+ * value) and its old position disappears, identical in effect to a deletion.
  * The insertion-point scan (findIndex(ts < cursor.value)) handles this
  * correctly: the old position is gone, so the scan skips past it naturally.
  *
@@ -929,7 +934,7 @@ function extractKnowledgeItemUpdatedAt(item: unknown): number | undefined {
  *
  * ### Fetch cap
  * The knowledge store accepts a `limit` argument but does not support
- * cursor/offset range queries — the full in-memory collection must be loaded to
+ * cursor/offset range queries, the full in-memory collection must be loaded to
  * perform cursor-based slicing.  We cap the load at 5 000 items.  If the store
  * grows beyond this, source-level pagination on the store API should be added
  * and this cap raised accordingly.
@@ -945,7 +950,7 @@ function handleGetKnowledgeSources(
   }
   const limit = readLimit(url, 100);
   const rawCursor = url.searchParams.get('cursor');
-  // Load the full in-memory collection (capped at 5_000 — see JSDoc note above).
+  // Load the full in-memory collection (capped at 5_000, see JSDoc note above).
   const { items: allItems } = context.knowledgeService.querySources({ limit: 5_000, ...spaceQuery });
   const items = allItems as readonly unknown[];
   const result = paginateItems(
@@ -970,7 +975,7 @@ function handleGetKnowledgeSources(
  * With pagination params: returns `PaginatedResponse`-shaped `{ items, nextCursor, hasMore }`.
  *
  * ### Fetch cap
- * Same limitation as `handleGetKnowledgeSources` — capped at 5 000 items.
+ * Same limitation as `handleGetKnowledgeSources`, capped at 5 000 items.
  */
 function handleGetKnowledgeNodes(
   context: DaemonKnowledgeRouteContext,
@@ -983,7 +988,7 @@ function handleGetKnowledgeNodes(
   }
   const limit = readLimit(url, 100);
   const rawCursor = url.searchParams.get('cursor');
-  // Load the full in-memory collection (capped at 5_000 — see JSDoc note above).
+  // Load the full in-memory collection (capped at 5_000, see JSDoc note above).
   const { items: allItems } = context.knowledgeService.queryNodes({ limit: 5_000, ...spaceQuery });
   const items = allItems as readonly unknown[];
   const result = paginateItems(

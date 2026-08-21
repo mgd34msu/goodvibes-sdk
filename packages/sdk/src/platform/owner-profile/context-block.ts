@@ -1,11 +1,11 @@
 /**
- * context-block.ts — the open tier, rendered for system context.
+ * context-block.ts, the open tier, rendered for system context.
  *
  * docs/owner-profile.md §11.2 splits the profile in two. The OPEN tier is
  * useless if it has to be asked for and harmless in context, so it is rendered
- * here as a short block and injected once per turn. The CLOSED tier — his name,
+ * here as a short block and injected once per turn. The CLOSED tier, his name,
  * every contact detail, his home address, everything commercial, how to reach
- * him, his defaults, and the People / Places / Work / Notes sections entirely —
+ * him, his defaults, and the People / Places / Work / Notes sections entirely,
  * is NEVER bulk-injected. That is what makes "an outbound message cannot leak
  * his home address" a structural fact rather than a hope: the address was never
  * in context to leak.
@@ -22,7 +22,7 @@
  *     cached base string, or it compounds once per tool round.
  *  2. **Absent means absent.** A profile that is disabled, unavailable or empty
  *     renders `''` and the caller appends nothing. It never renders a placeholder
- *     saying the profile could not be read — that would be prompt noise on every
+ *     saying the profile could not be read, that would be prompt noise on every
  *     turn, and it would put the file path in front of the model for no reason.
  *
  * This module deliberately imports no Node built-in. It takes the reads it needs
@@ -102,7 +102,7 @@ let openTierSource: OpenTierBlockSource | null = null;
  *
  * A process-level registration rather than a dependency threaded through every
  * prompt assembler, for two reasons. There is exactly ONE owner profile per
- * machine — it is the daemon's file, not a per-session or per-agent object — so
+ * machine, it is the daemon's file, not a per-session or per-agent object, so
  * there is nothing for a parameter to disambiguate. And the alternative, adding
  * a field to the orchestrator context types, would mean a wide diff across
  * files three other rounds are editing right now, to carry a value that is the
@@ -119,8 +119,8 @@ export function registerOpenTierContextBlock(source: OpenTierBlockSource | null)
 /**
  * The current block, or `''`.
  *
- * Called once per model invocation. With nothing registered — a surface with no
- * daemon, a test, a build where the profile is off — it is a null check and a
+ * Called once per model invocation. With nothing registered, a surface with no
+ * daemon, a test, a build where the profile is off, it is a null check and a
  * constant, which is what keeps this safe to call unconditionally from the hot
  * path of every turn.
  */

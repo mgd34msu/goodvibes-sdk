@@ -1,5 +1,5 @@
 /**
- * Daemon build compatibility floor — the reverse of client-compatibility.ts.
+ * Daemon build compatibility floor, the reverse of client-compatibility.ts.
  *
  * That module is the DAEMON's half of the handshake: the daemon publishes the
  * oldest client build it will let participate, and a client that falls below it
@@ -9,7 +9,7 @@
  * daemon it did not start and cannot see, over a base URL that may point at
  * another machine, and every capability it has is something the daemon performs
  * on its behalf. A verb the client depends on may simply not exist in the build
- * that answers — and what the client observes when that happens is a 400 or a
+ * that answers, and what the client observes when that happens is a 400 or a
  * 404 on one call, which reads as a broken feature rather than as an old
  * daemon. The client then keeps running, half-working, against a peer it has no
  * reason to suspect.
@@ -19,7 +19,7 @@
  * (daemon-sdk/control-routes.ts `getStatus` → `{ status, version, … }`). Below
  * the floor it refuses with a sentence naming both versions and the one action
  * that fixes it, exactly as the settings reader-floor refusal does
- * (config/settings-reader-floor.ts `describeFloorRefusal`) — because the key or
+ * (config/settings-reader-floor.ts `describeFloorRefusal`), because the key or
  * the verb that happened to fail is the symptom and the version is the cause.
  *
  * The floor is the CONSUMER's, not the SDK's: the TUI, the agent and the web UI
@@ -46,7 +46,7 @@ export interface DaemonCompatibilityVerdict {
  *
  * Reads the body rather than a header, deliberately: `/status` has carried
  * `version` since the route existed, so every daemon a client can reach already
- * answers this — no new endpoint, no contract change, and no dependence on a
+ * answers this, no new endpoint, no contract change, and no dependence on a
  * build new enough to have added a header. A body that is not an object, or
  * carries no usable `version`, yields undefined rather than a guess.
  */
@@ -66,8 +66,8 @@ export function readDaemonVersion(statusPayload: unknown): string | undefined {
  * The three outcomes mirror `evaluateClientCompatibility`, including the part
  * that matters most: a daemon whose version cannot be read is 'unknown', NOT
  * 'ok'. A build that cannot prove it carries a required behavior is treated as
- * one that does not. An absent FLOOR is a different thing — a client that is
- * not asking for anything — and yields 'ok'.
+ * one that does not. An absent FLOOR is a different thing, a client that is
+ * not asking for anything, and yields 'ok'.
  *
  * `daemonLabel` names the peer in the sentence (a base URL, a host name) so an
  * operator with two daemons on the LAN learns WHICH one is old. Absent, the
@@ -101,7 +101,7 @@ export function evaluateDaemonCompatibility(input: {
   if (compareBuildVersions(daemonVersion, floor) < 0) {
     return {
       status: 'daemon-update-required',
-      message: `${peer} is running build ${daemonVersion}; this client requires ${floor} or newer — update the daemon.`,
+      message: `${peer} is running build ${daemonVersion}; this client requires ${floor} or newer, update the daemon.`,
       daemonVersion,
       floor,
     };
@@ -117,8 +117,8 @@ export function evaluateDaemonCompatibility(input: {
 /**
  * The one-shot form: hand it a parsed `/status` body and a floor, get a verdict.
  *
- * The shape a client attaching to a daemon actually has — it already probes
- * `/status` for liveness — so adopting the check is one call at the site that
+ * The shape a client attaching to a daemon actually has, it already probes
+ * `/status` for liveness, so adopting the check is one call at the site that
  * probe returns to, rather than a version field a consumer has to remember to
  * pull out first.
  */

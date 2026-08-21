@@ -90,7 +90,7 @@ describe('per-job-green', () => {
           status: 200,
           body: {
             check_runs: [
-              // Another push workflow's check run appears FIRST — resolution
+              // Another push workflow's check run appears FIRST, resolution
               // must not take it just because it parses.
               { name: 'voice-runtimes / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/1' },
               { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/222/job/2' },

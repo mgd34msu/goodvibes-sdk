@@ -3,8 +3,8 @@
  *
  * `voice.wake.inputDevice` named a PipeWire node on the owner's Bluetooth
  * headset. The headset was away. The recorder was handed a target that does not
- * exist and the listener captured NOTHING — no error, no status line, no
- * frames — while showing every sign of listening. It had to be remediated by
+ * exist and the listener captured NOTHING, no error, no status line, no
+ * frames, while showing every sign of listening. It had to be remediated by
  * hand. A pinned device that is absent must never again equal silence.
  *
  * These pin the four cases the fix owes: an absent pin falls back loudly and
@@ -119,7 +119,7 @@ describe('an absent pinned device falls back and keeps listening', () => {
   test('the binding names the missing device and moves to the system default', async () => {
     const binding = await resolveAudioInputBinding(HEADSET, async () => [mic('alsa_input.pci-0000_00_1f.3.analog-stereo')]);
     expect(binding.state).toBe('fallback');
-    // Empty means the OS default source — the pin is NOT passed through.
+    // Empty means the OS default source, the pin is NOT passed through.
     expect(binding.device).toBe('');
     expect(binding.usable).toBe(true);
     expect(binding.message).toContain(HEADSET);
@@ -177,7 +177,7 @@ describe('when the pinned device returns, capture moves back with one line', () 
     await new Promise((resolve) => setTimeout(resolve, 5));
 
     expect(wake.capture.opened).toEqual(['']);
-    // Still one announcement — a timer that repeats "still not connected" every
+    // Still one announcement, a timer that repeats "still not connected" every
     // interval is the log spam this codebase has already been bitten by.
     expect(wake.bindings).toHaveLength(1);
     await wake.listener.stop();
@@ -253,7 +253,7 @@ describe('an empty pin is unchanged, and an unlistable host is not punished', ()
   });
 
   test('no enumerator leaves the pin exactly as written', async () => {
-    // Every surface that never had device listing must behave as before —
+    // Every surface that never had device listing must behave as before,
     // refusing to listen because we cannot enumerate would be a regression.
     const binding = await resolveAudioInputBinding(HEADSET);
     expect(binding.state).toBe('unverified');
@@ -334,7 +334,7 @@ describe('the device listings hosts actually run are parsed here, once', () => {
 describe('the listening indicator reflects capture truth, not intent', () => {
   /**
    * The boot this pins, observed on the owner's machine: the headset mic was
-   * present and default, wake was enabled, the models verified — and the banner
+   * present and default, wake was enabled, the models verified, and the banner
    * said "listening for the wake phrase" while `pactl source-outputs` was
    * empty, the source was SUSPENDED, no pw-record existed, and not one wake or
    * capture line was written for the whole boot. The listener sat in `starting`
@@ -492,7 +492,7 @@ describe('auto means a recorder that captures, not the first one installed', () 
    *     -> 448000 bytes
    *
    * `auto` takes pw-record because it is first in the probe order and installed,
-   * so capture produced nothing at all — no stream in `pactl list short
+   * so capture produced nothing at all, no stream in `pactl list short
    * source-outputs`, no recorder child, and not one line written anywhere.
    */
   const installed = (command: string): boolean => command === 'pw-record' || command === 'parecord';

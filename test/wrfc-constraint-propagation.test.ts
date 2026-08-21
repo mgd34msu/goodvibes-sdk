@@ -403,7 +403,7 @@ describe('Review → planned-fix propagation', () => {
 
 // ---------------------------------------------------------------------------
 // A3-A6 (planned-fix rework): the fixer constraint-continuity defect class is
-// STRUCTURALLY GONE — no fixer agent's echoed constraints can ever touch the
+// STRUCTURALLY GONE, no fixer agent's echoed constraints can ever touch the
 // chain. The planned path re-reviews the MERGED result with the authoritative
 // constraint list, derived from the ORIGINAL ask, never from task output.
 // ---------------------------------------------------------------------------
@@ -460,7 +460,7 @@ describe('Planned fix — authoritative constraints survive to the terminal gate
     emitAgentCompleted(h.bus, firstReviewer);
     await flushMicrotasks(40);
 
-    // Every task in the fix workstream merged (the stub resolved 'merged') —
+    // Every task in the fix workstream merged (the stub resolved 'merged'),
     // task-level green. The chain is NOT complete: it sits in 'reviewing',
     // waiting on the original-contract re-run.
     expect(fixRuns).toHaveLength(1);
@@ -502,7 +502,7 @@ describe('Planned fix — authoritative constraints survive to the terminal gate
 });
 
 // ---------------------------------------------------------------------------
-// A7: Empty-list no-op — reviewer side
+// A7: Empty-list no-op, reviewer side
 // ---------------------------------------------------------------------------
 
 describe('Empty-list no-op — reviewer side', () => {
@@ -523,7 +523,7 @@ describe('Empty-list no-op — reviewer side', () => {
 });
 
 // ---------------------------------------------------------------------------
-// A8: Empty-list no-op — fixer side
+// A8: Empty-list no-op, fixer side
 // ---------------------------------------------------------------------------
 
 describe('Empty-list no-op — planned-fix side', () => {
@@ -547,7 +547,7 @@ describe('Empty-list no-op — planned-fix side', () => {
 });
 
 // ---------------------------------------------------------------------------
-// A9: Gate retry — same-chain fix
+// A9: Gate retry, same-chain fix
 // ---------------------------------------------------------------------------
 
 function createGateHarness(gateName: string) {
@@ -648,7 +648,7 @@ describe('Gate retry — same-chain fix', () => {
       { constraintId: 'c2', satisfied: true, evidence: 'no external deps' },
     ]);
 
-    // Wait for WORKFLOW_FIX_ATTEMPTED (gate processing is async — runs real subprocess)
+    // Wait for WORKFLOW_FIX_ATTEMPTED (gate processing is async, runs real subprocess)
     const fixPromise = waitForEvent(bus, 'WORKFLOW_FIX_ATTEMPTED');
     emitAgentCompleted(bus, reviewerRecord.id);
     await fixPromise;
@@ -885,7 +885,7 @@ describe('WORKFLOW_CONSTRAINTS_ENUMERATED emitted exactly once', () => {
     emitAgentCompleted(h.bus, reviewerAgentId());
     await flushMicrotasks(40);
 
-    // Still exactly 1 — the fix cycle does NOT re-emit
+    // Still exactly 1, the fix cycle does NOT re-emit
     expect(enumeratedCount()).toBe(1);
     expect(chain.constraintsEnumerated).toBe(true);
 

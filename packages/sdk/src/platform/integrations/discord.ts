@@ -86,7 +86,7 @@ export interface DiscordGatewayClientOptions {
   readonly onDispatch: (dispatch: DiscordGatewayDispatch, client: DiscordGatewayClient) => void | Promise<void>;
   readonly WebSocketImpl?: typeof WebSocket | undefined;
   /**
-   * The gateway closed on its own — not because `stop()` was called.
+   * The gateway closed on its own, not because `stop()` was called.
    *
    * A node under LAN leadership holds the Discord surface on the strength of
    * being able to read it, and a dropped gateway means it cannot. Staying
@@ -116,13 +116,13 @@ export const DiscordGatewayIntent = {
 // ---------------------------------------------------------------------------
 
 /**
- * DiscordIntegration — handles inbound interaction verification/parsing and
+ * DiscordIntegration, handles inbound interaction verification/parsing and
  * outbound message posting for Discord slash commands and webhooks.
  *
  * Env vars:
- *   DISCORD_WEBHOOK_URL   — webhook URL for outbound posting
- *   DISCORD_BOT_TOKEN     — bot token for Discord API calls
- *   DISCORD_PUBLIC_KEY    — Ed25519 public key for interaction verification
+ *   DISCORD_WEBHOOK_URL  , webhook URL for outbound posting
+ *   DISCORD_BOT_TOKEN    , bot token for Discord API calls
+ *   DISCORD_PUBLIC_KEY   , Ed25519 public key for interaction verification
  */
 export class DiscordIntegration {
   constructor(

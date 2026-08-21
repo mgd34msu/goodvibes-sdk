@@ -1,5 +1,5 @@
 /**
- * ForensicsRegistry — in-memory store for FailureReport objects.
+ * ForensicsRegistry, in-memory store for FailureReport objects.
  *
  * Maintains a bounded circular buffer of reports (newest last), keyed by
  * report ID for O(1) lookup. Supports `latest()`, `getById()`, raw report

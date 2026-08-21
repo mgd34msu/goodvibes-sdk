@@ -6,7 +6,7 @@
  *
  * REFUSALS ARE READ BY SHAPE, NOT BY CLASS. `invokeGatewayMethodCall` used to
  * honor `instanceof GatewayVerbError` and nothing else, so a handler registered
- * by a consuming runtime — which compiles against its own error class — had
+ * by a consuming runtime, which compiles against its own error class, had
  * every refusal collapsed into a blanket 500. The daemon product's confirmation
  * gate refuses with a 403 the caller is meant to answer; as a 500 it read as a
  * daemon fault and no client could act on it.
@@ -26,7 +26,7 @@ import {
 import { methodDescriptor, objectSchema, STRING_SCHEMA } from '../packages/sdk/src/platform/control-plane/method-catalog-shared.ts';
 import { DaemonControlPlaneHelper, type DaemonControlPlaneContext } from '../packages/sdk/src/platform/daemon/control-plane.ts';
 
-/** A refusal class a consuming runtime defines for itself — not our class. */
+/** A refusal class a consuming runtime defines for itself, not our class. */
 class HandlerError extends Error {
   readonly code: string;
   readonly status: number;

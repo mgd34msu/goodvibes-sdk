@@ -38,7 +38,7 @@ describe('mintPairingHandoff', () => {
     expect(parsed).not.toBeNull();
     expect(parsed!.token).toBe('tok-1');
     expect(parsed!.offers).toEqual(['notifications', 'relay']);
-    // The QR content is a deep link — never a raw JSON blob.
+    // The QR content is a deep link, never a raw JSON blob.
     expect(handoff.deepLink!.startsWith('https://app.example')).toBe(true);
     expect(handoff.deepLink).not.toContain('{');
     // A secure-context origin carries a posture with NO LAN notice (never a nag)
@@ -56,7 +56,7 @@ describe('mintPairingHandoff', () => {
       webOrigin: 'http://workshop.local:3141',
     });
     expect(handoff.posture?.secureContext).toBe(false);
-    // The one honest line is the SDK export, byte-for-byte — never a local rewording.
+    // The one honest line is the SDK export, byte-for-byte, never a local rewording.
     expect(pairingPostureNotice(handoff.posture)).toBe(LAN_PLAIN_HTTP_NOTICE);
     const caps = formatPostureCapabilities(handoff.posture);
     expect(caps.length).toBe(3);
@@ -103,16 +103,16 @@ describe('defaultPairingTokenName', () => {
 describe('formatPairingOffers copy', () => {
   test('each offer renders label — consequence', () => {
     const lines = formatPairingOffers(['notifications', 'passkey']);
-    expect(lines[0]).toContain('Notifications —');
-    expect(lines[1]).toContain('Passkey —');
+    expect(lines[0]).toContain('Notifications,');
+    expect(lines[1]).toContain('Passkey,');
   });
   test('the one honest LAN line is the SDK export, a single line', () => {
     expect(LAN_PLAIN_HTTP_NOTICE.split('\n')).toHaveLength(1);
     expect(LAN_PLAIN_HTTP_NOTICE).toContain('unencrypted on your LAN');
   });
   test('capability labels are plain-language, no jargon', () => {
-    const posture = { origin: 'http://box.local', scheme: 'http' as const, privateNetwork: true, secureContext: false, notice: LAN_PLAIN_HTTP_NOTICE, capabilities: [{ capability: 'push' as const, available: false, reason: 'needs https — available via tailscale' }] };
+    const posture = { origin: 'http://box.local', scheme: 'http' as const, privateNetwork: true, secureContext: false, notice: LAN_PLAIN_HTTP_NOTICE, capabilities: [{ capability: 'push' as const, available: false, reason: 'needs https, available via tailscale' }] };
     const lines = formatPostureCapabilities(posture);
-    expect(lines[0]).toBe('  Push notifications — needs https — available via tailscale');
+    expect(lines[0]).toBe('  Push notifications, needs https, available via tailscale');
   });
 });

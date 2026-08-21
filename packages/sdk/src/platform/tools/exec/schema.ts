@@ -61,7 +61,7 @@ export const EXEC_TOOL_SCHEMA = {
           background: {
             type: 'boolean',
             description:
-              'Run detached — returns immediately with a process_id.'
+              'Run detached, returns immediately with a process_id.'
               + ' Use bg_status <id>, bg_output <id>, bg_stop <id> to manage.',
           },
           retry: {
@@ -133,7 +133,7 @@ export const EXEC_TOOL_SCHEMA = {
               + ' plain pipe path. PTY output merges stderr into stdout (result notes pty: true).',
           },
         },
-        // cmd or cmd_base64 required — validated at runtime
+        // cmd or cmd_base64 required, validated at runtime
       },
       minItems: 1,
       maxItems: 10,
@@ -146,7 +146,7 @@ export const EXEC_TOOL_SCHEMA = {
       type: 'string',
       description:
         'Global working directory applied to all commands unless overridden per-command.'
-        + ' Optional — defaults to the session\'s working directory when omitted.',
+        + ' Optional, defaults to the session\'s working directory when omitted.',
     },
     timeout_ms: {
       type: 'integer',
@@ -339,7 +339,7 @@ export interface ExecCommandResult {
   /**
    * Set when the guard refused the command before execution. Nothing ran, so
    * the reason is the whole result and reporting must not be shortened by
-   * verbosity — see formatResult in exec/runtime.ts.
+   * verbosity, see formatResult in exec/runtime.ts.
    */
   denied?: boolean | undefined;
   /** Structured denial: full reason plus the per-segment classification breakdown. */
@@ -384,7 +384,7 @@ export interface ExecCommandResult {
   prompts_answered?: number | undefined;
   /**
    * The detected-but-unanswered terminal prompt at the moment the run ended
-   * (timeout, decline, or cancellation) — the honest diagnosis of what the
+   * (timeout, decline, or cancellation), the honest diagnosis of what the
    * child was waiting on.
    */
   pending_prompt?: string | undefined;

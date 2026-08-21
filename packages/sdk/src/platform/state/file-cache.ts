@@ -19,7 +19,7 @@ export interface CacheEntry {
   tokenEstimate: number;
   /** Cumulative tokens saved by cache hits. */
   tokensSaved: number;
-  /** OCC version counter — increments on every external modification. */
+  /** OCC version counter, increments on every external modification. */
   version: number;
 }
 
@@ -41,7 +41,7 @@ interface LRUNode {
 }
 
 /**
- * FileStateCache — File state tracking with Optimistic Concurrency Control.
+ * FileStateCache, File state tracking with Optimistic Concurrency Control.
  *
  * Tracks files that have been read by tools/agents, detects external modifications,
  * and provides conflict information for OCC workflows.
@@ -102,7 +102,7 @@ export class FileStateCache {
       return { status: 'unchanged', entry: { ...node.entry } };
     }
 
-    // Modified externally — return modified status with optional diff
+    // Modified externally, return modified status with optional diff
     let diff: string | undefined;
     if (this.mode === 'with_content' && node.entry.content !== undefined) {
       diff = unifiedDiff(node.entry.content, currentContent, filePath);
@@ -298,7 +298,7 @@ interface HunkLine {
 }
 
 function computeHunks(oldLines: string[], newLines: string[], CONTEXT = 3): string[] {
-  // Simple O(n*m) LCS-based diff — practical for reasonable file sizes
+  // Simple O(n*m) LCS-based diff, practical for reasonable file sizes
   const edits = computeEdits(oldLines, newLines);
   if (edits.length === 0) return [];
 

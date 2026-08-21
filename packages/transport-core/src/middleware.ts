@@ -26,7 +26,7 @@ export interface TransportContext {
   method: string;
   /** Fully-qualified request URL. */
   url: string;
-  /** Request headers (mutable — middleware may add/override). */
+  /** Request headers (mutable, middleware may add/override). */
   headers: Record<string, string>;
   /** Request body (undefined for GET/HEAD). */
   body: unknown;
@@ -38,11 +38,11 @@ export interface TransportContext {
   };
   /** AbortSignal for the request. Propagated from caller options. */
   signal?: AbortSignal | undefined;
-  /** The HTTP response object — set after `next()` resolves successfully. */
+  /** The HTTP response object, set after `next()` resolves successfully. */
   response?: Response | undefined;
-  /** Round-trip duration in milliseconds — set after `next()` resolves. */
+  /** Round-trip duration in milliseconds, set after `next()` resolves. */
   durationMs?: number | undefined;
-  /** Error thrown by the fetch or a downstream middleware — set on failure. */
+  /** Error thrown by the fetch or a downstream middleware, set on failure. */
   error?: unknown | undefined;
   /**
    * Set to `true` when the error originated from within the middleware chain
@@ -150,7 +150,7 @@ export function composeMiddleware(
           throw err;
         }
       } else {
-        // End of chain — execute the real fetch.
+        // End of chain, execute the real fetch.
         const sendAt = Date.now();
         try {
           ctx.response = await innerFetch(ctx);

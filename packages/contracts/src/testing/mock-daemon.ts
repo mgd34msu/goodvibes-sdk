@@ -1,5 +1,5 @@
 /**
- * testing/mock-daemon.ts — generate schema-valid sample responses for every
+ * testing/mock-daemon.ts, generate schema-valid sample responses for every
  * cataloged operator method, straight from the contract's own JSON Schemas.
  *
  * Consumers (the webui Playwright suite, the Home Assistant test fixtures) have
@@ -7,13 +7,13 @@
  * drifts silently the moment a method's output schema changes. This generator
  * removes the hand-authoring: given the operator contract manifest, it walks
  * each method's `outputSchema` and produces a minimal, deterministic,
- * schema-valid body — the single source those mocks can be generated from.
+ * schema-valid body, the single source those mocks can be generated from.
  *
  * The walk is deterministic (no randomness, no clock) so a regenerated fixture
- * set is byte-identical unless the contract itself changed — the property that
+ * set is byte-identical unless the contract itself changed, the property that
  * lets a checked-in fixture artifact carry a drift check.
  *
- * Scope: this understands the JSON Schema subset the contract generator emits —
+ * Scope: this understands the JSON Schema subset the contract generator emits,
  * object (properties/required), array (items), string (enum), number/integer,
  * boolean, null, and anyOf unions. It is a fixture generator, not a full JSON
  * Schema materializer; an unrecognized shape yields null rather than throwing,

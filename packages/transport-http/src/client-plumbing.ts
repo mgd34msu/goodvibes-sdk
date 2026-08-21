@@ -17,7 +17,7 @@ const RISKY_SCHEMA_PATTERN_CHECKS: readonly RegExp[] = [
  * Delegates to `RequiredNamedKeys` rather than mapping over `keyof T` directly.
  * A contract input whose schema sets `additionalProperties: true` renders as
  * `Base & { readonly [key: string]: unknown }`, and `keyof` that intersection is
- * `string | number` — so a direct mapped type iterates the index keys instead of
+ * `string | number`, so a direct mapped type iterates the index keys instead of
  * the declared ones and yields `never`. That made `MethodArgs` below conclude
  * "no required fields", and hand the caller an OPTIONAL input argument, for
  * every open-envelope verb: 139 of the 443 operator methods.
@@ -34,8 +34,8 @@ export type MethodArgs<TInput, TOptions> =
     ? [input?: undefined, options?: TOptions]
     // `[TInput] extends [object]` rather than `TInput extends object`: the bare
     // form is a DISTRIBUTIVE conditional, so a union input is split and the
-    // whole tail — including `RequiredKeys`, a mapped type doing one `Pick` per
-    // property — is evaluated once per member. A method whose input is
+    // whole tail, including `RequiredKeys`, a mapped type doing one `Pick` per
+    // property, is evaluated once per member. A method whose input is
     // `Base & (A | B | C)` (see method-catalog-shared.ts `branchedSchema`, used
     // by the verbs whose required set is conditional) therefore cost three full
     // passes over a thirty-property object, and with several such methods in
@@ -45,7 +45,7 @@ export type MethodArgs<TInput, TOptions> =
     // Nothing here wanted per-member behaviour. The question being asked is
     // "is this input an object at all", and the answer for a union is the same
     // for every member. Wrapping in a tuple asks it once, and yields one
-    // argument tuple instead of a union of them — which is also the more usable
+    // argument tuple instead of a union of them, which is also the more usable
     // signature for a caller.
     : [TInput] extends [object]
       ? [RequiredKeys<TInput>] extends [never]
@@ -59,7 +59,7 @@ export type MethodArgs<TInput, TOptions> =
  * `OmitNamed` rather than `Omit<TInput, Extract<keyof TInput, TKeys>>` for the
  * same reason as `RequiredKeys` above: against an open envelope, `keyof TInput`
  * is `string | number`, so the omit removed nothing recognisable and the result
- * collapsed to the bare index signature — every remaining field, and its
+ * collapsed to the bare index signature, every remaining field, and its
  * requiredness, silently dropped from the helper's argument type.
  */
 export type WithoutKeys<TInput, TKeys extends PropertyKey> =
@@ -80,7 +80,7 @@ export function splitClientArgs<TInput, TOptions>(
   if (args.length > 2) {
     throw new ContractError(`Contract client helper expected at most 2 arguments but received ${args.length}.`);
   }
-  // drop misleading non-null assertions — args[0]/args[1] may be undefined.
+  // drop misleading non-null assertions, args[0]/args[1] may be undefined.
   return [args[0] as TInput | undefined, args[1] as TOptions | undefined];
 }
 
@@ -97,7 +97,7 @@ export function clientInputRecord<TInput>(input: TInput | undefined): Record<str
  * Fixed path fields are spread LAST so the explicit positional path parameter the
  * caller named always wins over a same-named field on the input object. The public
  * `WithoutKeys` type already strips path keys from the input for TypeScript callers,
- * but JS consumers get no such protection — without this ordering a stray
+ * but JS consumers get no such protection, without this ordering a stray
  * `{ sessionId: 'other' }` could redirect the request to a different resource id
  * than the caller positionally specified.
  */

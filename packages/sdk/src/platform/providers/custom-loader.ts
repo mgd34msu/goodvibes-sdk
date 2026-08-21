@@ -52,7 +52,7 @@ export interface CustomProviderConfig {
       multimodal: boolean;
     };
     reasoningEffort?: string[] | undefined;
-    /** Model capability tier — controls system prompt verbosity. */
+    /** Model capability tier, controls system prompt verbosity. */
     tier?: 'free' | 'standard' | 'premium' | undefined;
     /**
      * Optional rates in USD per 1M tokens. Omitting it means this model's
@@ -104,7 +104,7 @@ function resolveApiKey(config: CustomProviderConfig): string {
 
 /**
  * Validate a single parsed JSON object against the CustomProviderConfig schema.
- * Returns { valid, errors } — errors is empty when valid.
+ * Returns { valid, errors }, errors is empty when valid.
  */
 function validateCustomProvider(data: unknown): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -239,7 +239,6 @@ export async function loadCustomProviders(
     return { providers, models, warnings };
   }
 
-  // Phase 1: Parse and validate all provider files, instantiate provider objects.
   // Collect valid entries; skip invalid ones with warnings.
   const validConfigs: Array<{ cfg: CustomProviderConfig; provider: LLMProvider; apiKey: string }> = [];
 
@@ -272,7 +271,7 @@ export async function loadCustomProviders(
     const { valid, errors } = validateCustomProvider(parsed);
     if (!valid) {
       warnings.push(
-        `[custom-loader] Skipping '${filename}' — validation errors:\n  ${errors.join('\n  ')}`,
+        `[custom-loader] Skipping '${filename}', validation errors:\n  ${errors.join('\n  ')}`,
       );
       continue;
     }
@@ -316,7 +315,6 @@ export async function loadCustomProviders(
     validConfigs.push({ cfg, provider, apiKey });
   }
 
-  // Phase 2: Ingest context windows concurrently for all valid providers.
   // Runs only when options.ingestContextWindows is true.
   const ingestionResults: Array<Map<string, number> | null> = validConfigs.map(() => null);
   if (options.ingestContextWindows && options.contextIngestion && validConfigs.length > 0) {
@@ -349,7 +347,6 @@ export async function loadCustomProviders(
     }
   }
 
-  // Phase 3: Build model definitions and populate output arrays.
   for (let i = 0; i < validConfigs.length; i++) {
     const { cfg, provider } = validConfigs[i]!;
     const apiContextMap = ingestionResults[i]! ?? null;

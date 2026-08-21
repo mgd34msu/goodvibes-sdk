@@ -3,7 +3,7 @@
  *
  * The capability-bundle manifest format. A bundle is a distributable unit
  * (plugin/skill/hook-pack/policy-pack) that declares EXACTLY which capabilities
- * it needs, up front, so the runtime can grant it ONLY what it declared —
+ * it needs, up front, so the runtime can grant it ONLY what it declared,
  * deny-by-default at the surface level, not just the security-capability level.
  *
  * This layers on the existing plugin capability model (`PluginCapability`,
@@ -12,10 +12,10 @@
  * `shell.exec`, `register.*`) are reused verbatim; the bundle adds four
  * *surface* declarations the plugin model did not capture:
  *
- *   - `tools`        — gateway/agent tool ids the bundle registers
- *   - `hooks`        — runtime hook/event names the bundle subscribes to
+ *   - `tools`       , gateway/agent tool ids the bundle registers
+ *   - `hooks`       , runtime hook/event names the bundle subscribes to
  *   - `configDomains`— config domains the bundle reads
- *   - `channels`     — channel surfaces the bundle touches
+ *   - `channels`    , channel surfaces the bundle touches
  *
  * The enforcement contract (`createBundleCapabilityGuard`) is the load-bearing
  * piece: a bundle that tries to register a tool, subscribe a hook, read a config
@@ -228,7 +228,7 @@ export class BundleCapabilityViolation extends Error {
     readonly capabilityName: string,
   ) {
     super(
-      `Bundle '${bundleId}' attempted to use ${surface} '${capabilityName}' which it did not declare — ` +
+      `Bundle '${bundleId}' attempted to use ${surface} '${capabilityName}' which it did not declare, ` +
         'a bundle receives only its declared capabilities.',
     );
     this.name = 'BundleCapabilityViolation';

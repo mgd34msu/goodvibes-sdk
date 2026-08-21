@@ -1,5 +1,5 @@
 /**
- * routes/email-composition.ts — the daemon's own mailbox.
+ * routes/email-composition.ts, the daemon's own mailbox.
  *
  * Adapts the platform `EmailService` onto the `EmailGatewayService` slice the
  * `email.*` verb handlers are written against. Assembled here rather than in
@@ -13,14 +13,14 @@
  *
  * Three layers, in order, so each is one idea:
  *
- *  1. `createServiceBackedGateway` — the mapping onto `EmailService`, and the
+ *  1. `createServiceBackedGateway`, the mapping onto `EmailService`, and the
  *     one place its errors become honest statuses. `EmailService` throws
- *     plain-language `Error`s — "Email is not enabled", "Email config is
- *     invalid", an IMAP/SMTP refusal — and collapsing all of them into 500
+ *     plain-language `Error`s, "Email is not enabled", "Email config is
+ *     invalid", an IMAP/SMTP refusal, and collapsing all of them into 500
  *     would report the operator's own unfinished setup as a server fault.
- *  2. `instrumentEmailGateway` — unfinished setup reported in the operator's
+ *  2. `instrumentEmailGateway`, unfinished setup reported in the operator's
  *     own key names, and an operational log line per verb.
- *  3. `createDaemonEmailGatewayService` — which of those a given composition
+ *  3. `createDaemonEmailGatewayService`, which of those a given composition
  *     gets.
  *
  * Every address in a log field is a digest. See `email/address-digest.ts` for
@@ -51,7 +51,7 @@ import type {
 /**
  * One operational log line about a mail verb.
  *
- * Addresses arrive here already reduced to a digest — see `address-digest.ts`
+ * Addresses arrive here already reduced to a digest, see `address-digest.ts`
  * for why, and note that this signature makes it awkward to pass anything else:
  * the fields are scalars a log can hold, not a message a log should not.
  */
@@ -69,7 +69,7 @@ export interface EmailCompositionDeps {
   /**
    * The ledger a mailbox read is recorded into.
    *
-   * Defaults to the process-wide one — the SAME ledger the daemon's browser
+   * Defaults to the process-wide one, the SAME ledger the daemon's browser
    * engine records page reads into (routes/browser-composition.ts). Sharing it
    * is the point: reading a stranger's page and reading a stranger's mail are
    * the same kind of exposure, and a send made afterwards discloses both from
@@ -80,7 +80,7 @@ export interface EmailCompositionDeps {
    * Why the mailbox is not usable yet, in the operator's own key names.
    *
    * Supplied when the settings come from the daemon's `surfaces.email.*` keys,
-   * because the service's own validation reports `email.imapHost is required` —
+   * because the service's own validation reports `email.imapHost is required`,
    * a key that operator does not have and cannot set. Absent for a plain
    * `email.*` composition, where that wording is the correct wording.
    */
@@ -187,7 +187,7 @@ export function createServiceBackedGateway(service: EmailService): EmailGatewayS
           // Built only from what the server actually told us: the folder it
           // landed in, and the APPENDUID when the server advertises UIDPLUS.
           // Without a uid there is no per-draft identifier to hand back, and
-          // the mailbox alone is the honest answer — better than a synthetic
+          // the mailbox alone is the honest answer, better than a synthetic
           // id that no later fetch could resolve.
           draftId: result.uid === null ? result.mailbox : `${result.mailbox}:${String(result.uid)}`,
           ...(result.uid === null ? {} : { uid: result.uid }),
@@ -318,7 +318,7 @@ export function createDaemonEmailGatewayService(
  * exemption needs.
  *
  * Lives here rather than at the verb-group root so the whole mail composition
- * — service, instrumentation, and now the owner's own addresses — is decided
+ *, service, instrumentation, and now the owner's own addresses, is decided
  * in one file. The addresses are read from the daemon's configuration and from
  * nowhere a message can reach; empty leaves the taint refusal in force rather
  * than guessing at an identity. See security/owner-identity.ts.

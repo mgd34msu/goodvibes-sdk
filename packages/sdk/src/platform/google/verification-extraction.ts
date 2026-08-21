@@ -1,5 +1,5 @@
 /**
- * verification-extraction.ts — pulling ONE artifact out of a matched message.
+ * verification-extraction.ts, pulling ONE artifact out of a matched message.
  *
  * Split out of `verification-expectations.ts`, which had reached the
  * eight-hundred-line cap exactly, so the fix that stopped a read from reaping
@@ -17,8 +17,8 @@
  *  - everything not extracted comes back as an `UntrustedContentEnvelope`,
  *    labelled and inert, and no decision path reads it.
  *
- * The two types it needs from the book — `CandidateEmail` and
- * `VerificationExpectation` — are imported `type`-only, so the module graph has
+ * The two types it needs from the book, `CandidateEmail` and
+ * `VerificationExpectation`, are imported `type`-only, so the module graph has
  * exactly one runtime edge and it runs this way: the book imports the parsing,
  * never the reverse.
  */
@@ -53,7 +53,7 @@ export interface VerificationExtraction {
    * elsewhere; the real one is `platform/security/untrusted-content.ts` and the
    * mirror is gone. The difference is not cosmetic: the envelope carries
    * `UNTRUSTED_CONTENT_RULE` with the text, so the standing instruction and the
-   * content it applies to cannot be separated by anything downstream — which is
+   * content it applies to cannot be separated by anything downstream, which is
    * exactly what a hand-written `label` string could not guarantee.
    */
   readonly untrustedBody: UntrustedContentEnvelope;
@@ -106,7 +106,7 @@ function collectLinks(body: string): readonly CandidateLink[] {
     } catch {
       continue;
     }
-    // `new URL` is what resolves userinfo tricks such as https://github.com@evil.com/ —
+    // `new URL` is what resolves userinfo tricks such as https://github.com@evil.com/,
     // its hostname is evil.com, which is what gets validated.
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') continue;
     if (!parsed.hostname) continue;
@@ -139,7 +139,7 @@ function extractCode(body: string): string | null {
   const labelled = CODE_NEAR_LABEL.exec(body);
   if (labelled?.[1]) return labelled[1].toUpperCase();
   // Without a labelled code, a bare number is only read as a code when the message is
-  // about verification at all — otherwise any account number or amount in the body
+  // about verification at all, otherwise any account number or amount in the body
   // would be handed back as if it were a token.
   if (!VERIFICATION_CONTEXT.test(body)) return null;
   const digits = STANDALONE_DIGIT_CODE.exec(body);
@@ -152,7 +152,7 @@ function extractCode(body: string): string | null {
  *
  * Precedence: a link whose host is validated against the signup domain, then a code,
  * then nothing. If the message carries links but none of them are hosted at the signup
- * domain, the result is a refusal naming both hosts rather than a fallback to a code —
+ * domain, the result is a refusal naming both hosts rather than a fallback to a code,
  * a message pointing somewhere else is not a message to salvage a token from.
  */
 export function extractVerification(
@@ -166,7 +166,7 @@ export function extractVerification(
   // A signup alias was minted for one service, so a subdomain of that service
   // is still that service. A login address is one the owner already gave out,
   // so the weaker correlation is compensated by demanding the EXACT domain the
-  // agent is authenticating against — no parent, no sibling subdomain.
+  // agent is authenticating against, no parent, no sibling subdomain.
   const matching = expectation.kind === 'login'
     ? links.find((link) => normalizeDomain(link.host) === normalizeDomain(expectation.serviceDomain))
     : links.find((link) => hostMatchesServiceDomain(link.host, expectation.serviceDomain));

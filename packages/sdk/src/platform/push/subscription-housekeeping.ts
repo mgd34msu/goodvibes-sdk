@@ -1,5 +1,5 @@
 /**
- * push/subscription-housekeeping.ts — recovery-time and periodic garbage
+ * push/subscription-housekeeping.ts, recovery-time and periodic garbage
  * collection for the browser-push subscription store.
  *
  * `push-subscriptions.json` outlives every restart, so the standing rule for
@@ -10,26 +10,26 @@
  * `checkpoints-moved.json`, so a removal is never indistinguishable from data
  * loss.
  *
- * WHAT THIS DELIBERATELY DOES NOT DO — the owner's ruling of 2026-07-26: "as
+ * WHAT THIS DELIBERATELY DOES NOT DO, the owner's ruling of 2026-07-26: "as
  * long as it is transparent to the user and the user never has to resubscribe
  * or anything like that and everything keeps working, it's fine. otherwise it
  * needs to remain unbounded. i want zero friction."
  *
  * So a subscription is removed ONLY on evidence that it is already dead:
  *
- *  - `unusable`          — its own endpoint/key material fails the same content
+ *  - `unusable`         , its own endpoint/key material fails the same content
  *                          validation registration applies, so no delivery to it
  *                          could ever succeed. (Legacy records only: nothing
  *                          that fails validation can be registered any more.)
- *  - `malformed`         — the record is torn or missing required fields; it
+ *  - `malformed`        , the record is torn or missing required fields; it
  *                          cannot be addressed at all.
- *  - `failure-threshold` — the push service has refused it for at least
+ *  - `failure-threshold`, the push service has refused it for at least
  *                          `failureThreshold` consecutive deliveries, the same
  *                          bound the delivery path already prunes on. This sweep
  *                          only catches records a crash left behind mid-prune.
  *
  * There is NO age TTL, by design. Ninety days without a successful delivery is
- * not evidence a device is gone — it may simply have had nothing to receive.
+ * not evidence a device is gone, it may simply have had nothing to receive.
  * The only way to turn age into evidence would be a probe push, which is
  * user-visible noise, so age alone never removes anything. A quiet device that
  * still works keeps working, forever, without the operator resubscribing.
@@ -56,7 +56,7 @@ export type PushSubscriptionRemovalReason = 'unusable' | 'malformed' | 'failure-
 export interface PushSubscriptionRemoval {
   readonly subscriptionId: string;
   readonly principalId: string;
-  /** Origin only — the full endpoint is a capability URL and stays off disclosure. */
+  /** Origin only, the full endpoint is a capability URL and stays off disclosure. */
   readonly endpointOrigin: string;
   readonly endpointHash: string;
   readonly reason: PushSubscriptionRemovalReason;
@@ -112,7 +112,7 @@ interface HousekeepingLog extends Record<string, unknown> {
   readonly reports: readonly PushSubscriptionSweepReport[];
 }
 
-/** Keep the disclosure log bounded — it is persisted state too. */
+/** Keep the disclosure log bounded, it is persisted state too. */
 const MAX_DISCLOSURE_REPORTS = 20;
 
 /** The result of judging a loaded record set: what survives and what is proven dead. */
@@ -179,7 +179,7 @@ export function decidePushSweep(
         endpointOrigin: endpointOriginOf(entry.endpoint),
         endpointHash: hashEndpoint(entry.endpoint),
         reason: 'unusable',
-        evidence: `${problem.field}: ${problem.reason} — no delivery to this record could ever succeed`,
+        evidence: `${problem.field}: ${problem.reason}, no delivery to this record could ever succeed`,
         removedAt: now,
       });
       continue;
@@ -220,7 +220,7 @@ export function summarizePushSweep(decision: PushSweepDecision): string {
     ? ''
     : ` ${decision.crowded.length} principal(s) hold more than the warning threshold `
       + `(${decision.crowded.map((c) => `${c.principalId}: ${c.count} > ${c.warnAbove}`).join(', ')}); `
-      + 'all of them were kept — a working device is never removed to make room.';
+      + 'all of them were kept, a working device is never removed to make room.';
   if (decision.removed.length === 0) {
     return `Push subscription housekeeping: nothing was provably dead (${decision.kept.length} retained).${crowding}`;
   }
@@ -252,7 +252,7 @@ export class PushHousekeepingDisclosure {
 
   /**
    * Record one report. A pass that removed nothing AND found no crowding writes
-   * nothing — the log is for things a person needs to know about, not a
+   * nothing, the log is for things a person needs to know about, not a
    * heartbeat.
    */
   async record(report: PushSubscriptionSweepReport): Promise<void> {

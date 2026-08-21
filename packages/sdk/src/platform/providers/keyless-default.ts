@@ -1,10 +1,10 @@
 /**
- * keyless-default.ts — the single honest source for "does the default model
+ * keyless-default.ts, the single honest source for "does the default model
  * work without an API key?".
  *
  * PROBLEM. The shipped default model (`provider.model`, e.g.
  * `openrouter:openrouter/free`) was promised as keyless by onboarding copy
- * written by hand, while its provider was registered auth-required — a fresh
+ * written by hand, while its provider was registered auth-required, a fresh
  * install's first prompt ended in a dead-end 401. The promise and the
  * registration state had no structural connection.
  *
@@ -12,7 +12,7 @@
  * `isConfigured()` (see {@link ProviderAuthState}); onboarding copy is
  * GENERATED from that readiness, and the only branch that can ever produce a
  * "no API key needed" promise is the branch proven keyless by the provider's
- * own auth state — a false promise is structurally unwritable. Consumers that
+ * own auth state, a false promise is structurally unwritable. Consumers that
  * still hardcode a keyless claim gate it with
  * {@link assertKeylessDefaultPairing}, which fails loudly when the claimed
  * pairing points at an auth-required provider.
@@ -23,7 +23,7 @@
  */
 import type { LLMProvider, ProviderAuthState } from './interface.js';
 
-/** The honest keyless readiness of a model's provider, derived — never asserted. */
+/** The honest keyless readiness of a model's provider, derived, never asserted. */
 export type DefaultModelReadiness =
   | {
       /** The provider genuinely works right now without a stored credential. */
@@ -38,7 +38,7 @@ export type DefaultModelReadiness =
       readonly provider: string;
     }
   | {
-      /** Auth-required and unconfigured — the first prompt must ask for a key. */
+      /** Auth-required and unconfigured, the first prompt must ask for a key. */
       readonly kind: 'needs-key';
       readonly modelKey: string;
       readonly provider: string;
@@ -73,7 +73,7 @@ function authStateOf(provider: LLMProvider): ProviderAuthState {
 
 /**
  * Resolve the default model's keyless readiness from live registration state.
- * Never throws — an unresolvable model key is itself an honest answer.
+ * Never throws, an unresolvable model key is itself an honest answer.
  */
 export function resolveDefaultModelReadiness(
   registry: ModelProviderSource,
@@ -99,7 +99,7 @@ export function resolveDefaultModelReadiness(
   return { kind: 'needs-key', modelKey, provider: provider.name, authEnvVars: auth.authEnvVars };
 }
 
-/** Onboarding copy for the default model — generated, never hand-written. */
+/** Onboarding copy for the default model, generated, never hand-written. */
 export interface OnboardingModelCopy {
   /** True ONLY when the provider's own auth state proves keyless readiness. */
   readonly keyless: boolean;
@@ -111,7 +111,7 @@ export interface OnboardingModelCopy {
 
 /**
  * Generate the onboarding copy for a model from its derived readiness. The
- * `keyless: true` branch — the only source of a "no API key needed" promise —
+ * `keyless: true` branch, the only source of a "no API key needed" promise,
  * is reachable solely from a `keyless` readiness, which itself only comes
  * from the provider's registered auth state. Every other branch honestly asks
  * for (or acknowledges) a key.
@@ -122,7 +122,7 @@ export function buildOnboardingModelCopy(readiness: DefaultModelReadiness): Onbo
       return {
         keyless: true,
         headline: 'Start now',
-        detail: `Use the default model (${readiness.modelKey}) — no API key needed`,
+        detail: `Use the default model (${readiness.modelKey}), no API key needed`,
       };
     case 'configured':
       return {
@@ -152,8 +152,8 @@ export function buildOnboardingModelCopy(readiness: DefaultModelReadiness): Onbo
 /**
  * The pairing gate for any surface that CLAIMS a keyless default: fails
  * loudly unless the default model's provider genuinely works without a key.
- * A keyless-default claim pointing at an auth-required provider — the exact
- * defect that shipped a dead-end 401 — cannot pass this check.
+ * A keyless-default claim pointing at an auth-required provider, the exact
+ * defect that shipped a dead-end 401, cannot pass this check.
  */
 export function assertKeylessDefaultPairing(
   registry: ModelProviderSource,

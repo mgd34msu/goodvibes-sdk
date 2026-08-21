@@ -44,7 +44,7 @@ export { summarizeToolArgs } from './orchestrator-utils.js';
  * registerConversationSource/releaseConversationSource, wired post-
  * construction in runtime/services.ts (AgentOrchestrator is constructed
  * before AgentManager there, so this is a setter rather than a constructor
- * dependency — same pattern as setRuntimeBus).
+ * dependency, same pattern as setRuntimeBus).
  */
 export interface AgentConversationSink {
   readonly register: (agentId: string, source: () => ConversationMessageSnapshot[]) => void;
@@ -54,7 +54,7 @@ export interface AgentConversationSink {
 /**
  * Cooperative cancellation bridge: where AgentOrchestrator
  * looks up a per-agent AbortSignal registered by an orchestration engine's
- * work-item run. Same shape/wiring precedent as AgentConversationSink — a
+ * work-item run. Same shape/wiring precedent as AgentConversationSink, a
  * setter rather than a constructor dependency, wired post-construction in
  * runtime/services.ts (production backing is
  * AgentManager.registerCancellationSignal/getCancellationSignal).
@@ -75,7 +75,7 @@ type ResolvedAgentProviderRouting = {
 };
 
 /**
- * True when `tool` is the profile capture tool — i.e. it can be re-bound to one
+ * True when `tool` is the profile capture tool, i.e. it can be re-bound to one
  * turn's write authority. Structural rather than a name match so a host that
  * registers its own capture tool under the same contract is bound too.
  */
@@ -120,7 +120,7 @@ type AgentOrchestratorToolDeps = {
   readonly workflowServices: ReturnType<typeof import('../tools/workflow/index.js').createWorkflowServices>;
   /**
    * Permission gate applied to this orchestrator's background/subagent tool
-   * calls (see AgentOrchestratorRunContext.permissionManager). Optional — when
+   * calls (see AgentOrchestratorRunContext.permissionManager). Optional, when
    * omitted, background runs are ungated exactly as before background
    * permission enforcement existed.
    */
@@ -165,7 +165,7 @@ type AgentOrchestratorToolDeps = {
 };
 
 /**
- * AgentOrchestrator — runs AgentRecord tasks in-process.
+ * AgentOrchestrator, runs AgentRecord tasks in-process.
  *
  * Each agent gets its own scoped ToolRegistry containing only the tools
  * listed in record.tools. The execution loop itself now lives in
@@ -174,11 +174,11 @@ type AgentOrchestratorToolDeps = {
 export class AgentOrchestrator {
   /**
    * Keyed by working directory. A ToolRegistry is permanently bound to one
-   * cwd at construction (every tool factory closes over it — see
+   * cwd at construction (every tool factory closes over it, see
    * tools/index.ts registerAllTools), so a distinct cwd genuinely needs its
    * own registry, not a mutable field. The default cwd
    * (`this.toolDeps.workingDirectory`) is cached under its own key exactly
-   * like the single `fullRegistry` field this replaces — same lazy-build,
+   * like the single `fullRegistry` field this replaces, same lazy-build,
    * same channel-version invalidation, same object identity once built.
    */
   private fullRegistries = new Map<string, ToolRegistry>();
@@ -188,7 +188,7 @@ export class AgentOrchestrator {
    * A non-default cwd is given no index to share, so `registerAllTools` builds
    * one for it. Every reference to that index then lives inside the tool
    * closures of a registry we are about to drop, and it holds a debounced flush
-   * timer — so nothing could flush or release it and it went out with the
+   * timer, so nothing could flush or release it and it went out with the
    * garbage collector at best. The shared index for the DEFAULT cwd is never
    * in here: that one belongs to the composition root, and disposing a
    * borrowed object is how a live session loses its index.
@@ -224,7 +224,7 @@ export class AgentOrchestrator {
 
   /**
    * Wire the conversation-snapshot bridge (Part C6; see
-   * AgentConversationSink). Pass null to detach — createRunContext() then
+   * AgentConversationSink). Pass null to detach, createRunContext() then
    * omits the register/release callbacks entirely and orchestrator-runner's
    * `?.()` calls become no-ops.
    */
@@ -234,7 +234,7 @@ export class AgentOrchestrator {
 
   /**
    * Wire the cancellation bridge (see AgentCancellationSource). Pass
-   * null to detach — createRunContext() then omits getCancellationSignal
+   * null to detach, createRunContext() then omits getCancellationSignal
    * entirely and orchestrator-runner's `?.()` call becomes a no-op, so every
    * tool call runs with `opts` undefined exactly as before this change.
    */
@@ -376,7 +376,7 @@ export class AgentOrchestrator {
    *
    * Fire-and-forget on purpose: the disposal scope is synchronous, and one
    * index whose final write fails must not strand the owners queued behind it.
-   * The timer — the part that leaks — is cancelled synchronously inside
+   * The timer, the part that leaks, is cancelled synchronously inside
    * `ProjectIndex.dispose()` before the flush it awaits, so the leak is closed
    * whether or not the write lands.
    */
@@ -395,7 +395,7 @@ export class AgentOrchestrator {
   /**
    * Returns the fully-populated ToolRegistry for this orchestrator's DEFAULT
    * working directory. Used by companion chat to execute tool calls emitted
-   * by the LLM — companion chat has no per-call cwd override, so this always
+   * by the LLM, companion chat has no per-call cwd override, so this always
    * resolves to `this.toolDeps.workingDirectory`. Delegates to the
    * lazy-initialized internal registry cache.
    */
@@ -406,9 +406,9 @@ export class AgentOrchestrator {
   /**
    * Lazily build and cache the full ToolRegistry for `workingDirectory`
    * (default: `this.toolDeps.workingDirectory`, unchanged from before this
-   * cache became keyed). A non-default cwd — a spawned agent's dedicated
+   * cache became keyed). A non-default cwd, a spawned agent's dedicated
    * worktree (AgentRecord.workingDirectory, see AgentInput.workingDirectory)
-   * — gets its OWN fresh fileCache/projectIndex rather than reusing the
+   *, gets its OWN fresh fileCache/projectIndex rather than reusing the
    * shared session's: those are scoped to the default cwd and would
    * otherwise silently index/search the wrong directory.
    */
@@ -416,7 +416,7 @@ export class AgentOrchestrator {
     const channelVersion = this.channelRegistry?.getVersion() ?? -1;
     if (this.fullRegistryChannelVersion !== channelVersion) {
       // Dropping the registries drops the only references to the indexes built
-      // for them, so release those first — a channel plugin being installed or
+      // for them, so release those first, a channel plugin being installed or
       // removed must not be a way to accumulate orphaned flush timers.
       this.releaseOwnedProjectIndexes();
       this.fullRegistries.clear();
@@ -473,7 +473,7 @@ export class AgentOrchestrator {
     for (const tool of fullRegistry.list()) {
       if (!allowed.has(tool.definition.name)) continue;
       // The profile tool writes under an authority the MODEL must not be able to
-      // assert — a sentence inside a forwarded email claiming to be the owner
+      // assert, a sentence inside a forwarded email claiming to be the owner
       // would otherwise walk straight through the write gate. So the authority
       // the composition root resolved for this turn is bound onto the instance
       // this run sees, and never appears in the tool's arguments.
@@ -556,7 +556,7 @@ export class AgentOrchestrator {
     currentModel: ActiveModelRef,
     modelRegistry: readonly ModelDefinition[],
   ): ResolvedAgentProviderRouting {
-    // A bare model override resolves via the shared resolver — the
+    // A bare model override resolves via the shared resolver, the
     // record's own `provider` field (when present) is passed as context so
     // "model X on provider Y" qualifies immediately instead of demanding the
     // user already know the provider:model registryKey format.
@@ -735,7 +735,7 @@ export class AgentOrchestrator {
 
   /**
    * Run an agent task described by the given record. Honors
-   * `record.workingDirectory` when set (see AgentInput.workingDirectory) —
+   * `record.workingDirectory` when set (see AgentInput.workingDirectory),
    * every tool this run's registry exposes is bound to that cwd instead of
    * the orchestrator's default.
    */

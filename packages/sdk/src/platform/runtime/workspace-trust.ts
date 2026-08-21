@@ -1,12 +1,12 @@
 /**
- * workspace-trust.ts — per-workspace trust gate.
+ * workspace-trust.ts, per-workspace trust gate.
  *
  * The first time GoodVibes opens a workspace (a cwd / project root it has no
  * prior decision for), that workspace is "undecided": only read-category
  * tools run; the first write, execute, or delegate tool request raises the
- * trust question AT THAT MOMENT — the exact point it has a real consequence —
+ * trust question AT THAT MOMENT, the exact point it has a real consequence,
  * instead of silently failing or being decided by a side effect of the
- * product's own droppings. This is NOT a parallel permission checker — the
+ * product's own droppings. This is NOT a parallel permission checker, the
  * decision is consulted by the real permission machinery at its final ask
  * layer (the requestPermission callback wired in bootstrap-core.ts), so it
  * composes with, and cannot drift from, the existing PermissionManager layer
@@ -16,7 +16,7 @@
  * is no more grandfathering: a workspace that already carries prior GoodVibes
  * runtime state gets no special treatment (that side-effect-based shortcut
  * used to paper over the fact that the first session's write attempts were
- * silently denied without ever recording a real decision — now that the first
+ * silently denied without ever recording a real decision, now that the first
  * attempt properly raises the question and persists the answer, the shortcut
  * is unnecessary and would only hide a decision the user should actually see
  * once, even on an upgrade).
@@ -32,14 +32,14 @@ type AskCallback = (request: PermissionPromptRequest) => Promise<PermissionPromp
 /**
  * Wrap the permission machinery's final ask callback with the workspace trust
  * gate. This runs inside PermissionManager's own layer chain (it IS the ask
- * layer), so it composes with — and cannot drift from — the real machinery.
+ * layer), so it composes with, and cannot drift from, the real machinery.
  *
  * - Trusted workspace: every category passes through to `ask` unchanged.
  * - Restricted workspace with an EXPLICIT prior decision: non-read categories
- *   are denied outright, same as before — that IS what "restricted" means
+ *   are denied outright, same as before, that IS what "restricted" means
  *   once the user has actually chosen it.
  * - Undecided workspace (no decision yet, ever): the first non-read request
- *   raises `requestTrustDecision()` — one modal, persisted via `setLevel` —
+ *   raises `requestTrustDecision()`, one modal, persisted via `setLevel`,
  *   and, if the answer is 'trusted', the ORIGINAL request is forwarded to
  *   `ask` so the very thing the user just approved actually happens instead
  *   of failing anyway. Concurrent requests that arrive before the first
@@ -79,7 +79,7 @@ interface PersistedWorkspaceTrust {
 const TRUST_FILE = 'trust.json';
 
 /**
- * detectPriorWorkspaceState — true if <workingDirectory>/.goodvibes already
+ * detectPriorWorkspaceState, true if <workingDirectory>/.goodvibes already
  * holds GoodVibes RUNTIME state from a prior session. Deliberately keyed on
  * generated state (sessions/checkpoints/state/memory/onboarding marker), not on
  * committed scaffolding like .goodvibes/agents or GOODVIBES.md, so a checked-out
@@ -109,7 +109,7 @@ export function detectPriorWorkspaceState(workingDirectory: string, surfaceRoot:
         return true;
       }
     } catch {
-      // Unreadable — treat as absent rather than crash the gate.
+      // Unreadable, treat as absent rather than crash the gate.
     }
   }
   return false;
@@ -128,7 +128,7 @@ export interface PersistedWorkspaceTrustView {
 }
 
 /**
- * readPersistedWorkspaceTrust — read <cwd>/.goodvibes/<surfaceRoot>/trust.json WITHOUT the
+ * readPersistedWorkspaceTrust, read <cwd>/.goodvibes/<surfaceRoot>/trust.json WITHOUT the
  * side effects of WorkspaceTrustManager.load() (which grandfathers and persists).
  * Reporting surfaces (`status`/`doctor`) must never mutate trust state, so they
  * use this pure reader instead of constructing a manager.
@@ -145,14 +145,14 @@ export function readPersistedWorkspaceTrust(
       return { level: parsed.level, grandfathered: parsed.grandfathered ?? false };
     }
   } catch {
-    // Unreadable/corrupt — report undecided rather than crash the report.
+    // Unreadable/corrupt, report undecided rather than crash the report.
   }
   return { level: 'undecided', grandfathered: false };
 }
 
 export interface WorkspaceTrustManagerOptions {
   readonly shellPaths: WorkspaceTrustPaths;
-  /** The owning product's storage scope — the `<surfaceRoot>` segment trust.json sits under. */
+  /** The owning product's storage scope, the `<surfaceRoot>` segment trust.json sits under. */
   readonly surfaceRoot: string;
 }
 
@@ -172,7 +172,7 @@ export class WorkspaceTrustManager {
    * Load the persisted decision, if one exists. No grandfathering: a
    * workspace with no persisted decision stays undecided (the gate treats it
    * as restricted, and the first non-read tool request raises the trust
-   * question via `trustGatedAsk`'s `requestTrustDecision` callback) — even
+   * question via `trustGatedAsk`'s `requestTrustDecision` callback), even
    * one that already carries prior GoodVibes runtime state. `grandfathered`
    * on an already-persisted decision is read-only history from before this
    * fix (status/doctor still report it honestly); nothing new is ever
@@ -192,7 +192,7 @@ export class WorkspaceTrustManager {
     return this.level !== null;
   }
 
-  /** Undecided workspaces read as 'restricted' — the safe default before a choice. */
+  /** Undecided workspaces read as 'restricted', the safe default before a choice. */
   getLevel(): WorkspaceTrustLevel {
     return this.level ?? 'restricted';
   }

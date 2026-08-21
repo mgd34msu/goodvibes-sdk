@@ -1,12 +1,12 @@
 /**
- * wrangler-CLI harness — @pellux/goodvibes-sdk Workers parity test.
+ * wrangler-CLI harness, @pellux/goodvibes-sdk Workers parity test.
  *
  * Spawns `wrangler dev --local` against test/workers-wrangler/worker.ts and
  * exercises the same endpoint surface as the Miniflare harness in
  * test/workers/workers.test.ts.
  *
  * IMPORTANT: `wrangler dev --local` uses Miniflare 4 as its local runtime
- * layer internally — it is NOT the raw workerd binary. Both this harness and
+ * layer internally, it is NOT the raw workerd binary. Both this harness and
  * the standalone Miniflare harness share the same Miniflare 4 runtime, which
  * means EventSource IS available in both harnesses (Miniflare injects it).
  * The production EventSource absence can only be verified via a real CF
@@ -38,7 +38,7 @@ import { createServer } from 'node:net';
 import { describe, test, expect, beforeAll, afterAll } from 'bun:test';
 
 // ---------------------------------------------------------------------------
-// Wrangler availability check — skip all tests if wrangler is not accessible.
+// Wrangler availability check, skip all tests if wrangler is not accessible.
 // wrangler ships as a devDependency; invoke via bunx in this project.
 // ---------------------------------------------------------------------------
 function checkWranglerAvailable(): boolean {
@@ -88,7 +88,7 @@ async function findAvailablePort(): Promise<number> {
 
 beforeAll(async () => {
   if (!wranglerAvailable) {
-    // wrangler is not accessible via bunx — fail fast with a clear message.
+    // wrangler is not accessible via bunx, fail fast with a clear message.
     // Install via: npm install -g wrangler  OR ensure devDependencies are installed (bun install).
     throw new Error('[wrangler.test.ts] FAIL: wrangler unavailable via bunx. Run `bun install` or install wrangler globally.');
   }
@@ -151,7 +151,7 @@ beforeAll(async () => {
         break;
       }
     } catch {
-      // Not ready yet — keep polling.
+      // Not ready yet, keep polling.
     }
   }
 
@@ -190,7 +190,7 @@ async function get(path: string): Promise<{ status: number; body: unknown }> {
 }
 
 // ---------------------------------------------------------------------------
-// Tests — match the Miniflare harness assertions
+// Tests, match the Miniflare harness assertions
 // ---------------------------------------------------------------------------
 
 describe('Workers wrangler: smoke', () => {
@@ -308,7 +308,7 @@ describe('Workers wrangler: globals audit', () => {
   // wrangler dev --local uses Miniflare 4 internally as its local runtime layer.
   // Both this harness and the Miniflare standalone harness share the same
   // Miniflare 4 runtime, which injects EventSource as a simulation artifact.
-  // EventSource === true in BOTH harnesses — the gap cannot be exercised locally
+  // EventSource === true in BOTH harnesses, the gap cannot be exercised locally
   // without a real Cloudflare deployment (CF_API_TOKEN required).
   //
   // See test/workers/NOTES.md for the runtime boundary.
@@ -321,7 +321,7 @@ describe('Workers wrangler: globals audit', () => {
 
     // wrangler dev --local routes through Miniflare 4, which injects EventSource.
     // This matches the standalone Miniflare harness (both true).
-    // A real production Workers deployment would return false — not testable locally.
+    // A real production Workers deployment would return false, not testable locally.
     expect(globals.EventSource).toBe(true);
   }, 10_000);
 

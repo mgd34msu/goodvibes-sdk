@@ -5,7 +5,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { ConfigError } from '../packages/sdk/src/platform/types/errors.js';
 
 /**
- * Item 5b — tts.speed config key
+ * Item 5b, tts.speed config key
  *
  * Verifies that:
  * 1. TtsConfig interface has a `speed` field typed as number.

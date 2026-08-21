@@ -55,7 +55,7 @@ describe('notifyCompletion', () => {
   });
 
   test('does not throw when durationMs > 30000 (desktop notification path is non-fatal)', () => {
-    // Desktop notification may fail in test env — must not throw
+    // Desktop notification may fail in test env, must not throw
     expect(() => notifyCompletion('Title', 'Message', 30001)).not.toThrow();
   });
 

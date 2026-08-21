@@ -46,7 +46,7 @@ describe('parseNpmPack + full run', () => {
     expect(parseNpmPack(out)).toEqual({ files: ['package.json', 'bin/goodvibes'], unpackedBytes: 2048 });
   });
   // npm 12 emits an object keyed by package name. Reading [0] off it yields an
-  // empty file list, which reported EVERY required path as missing — a healthy
+  // empty file list, which reported EVERY required path as missing, a healthy
   // package failing its own install gate. Both shapes must parse identically.
   test('parses the npm 12 object-keyed shape identically to the array shape', () => {
     const out = JSON.stringify({

@@ -7,7 +7,7 @@ import { describe, expect, test } from 'bun:test';
 describe('platform/export — smoke', () => {
   test('exportToJSON returns a string for minimal session data', async () => {
     const { exportToJSON } = await import('../packages/sdk/src/platform/export/index.js');
-    // exportToJSON(messages, metadata?, options?) — pass empty messages array.
+    // exportToJSON(messages, metadata?, options?), pass empty messages array.
     const result = exportToJSON([]);
     expect(typeof result).toBe('string');
     expect(result.length).toBeGreaterThan(0);

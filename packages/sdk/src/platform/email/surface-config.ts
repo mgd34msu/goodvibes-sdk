@@ -1,10 +1,10 @@
 /**
- * surface-config.ts — driving `EmailService` from the daemon's own mailbox keys.
+ * surface-config.ts, driving `EmailService` from the daemon's own mailbox keys.
  *
  * `EmailService` reads a flat `email.*` namespace (`email.imapHost`,
  * `email.passwordRef`, …). The daemon's own mailbox is configured under
  * `surfaces.email.*`, which is a different shape for a good reason: it sits in
- * the `surfaces.` domain so it inherits that domain's daemon-ownership rule —
+ * the `surfaces.` domain so it inherits that domain's daemon-ownership rule,
  * the daemon is the process that acts on the mailbox, so the daemon tier is the
  * only home for its settings and its password.
  *
@@ -69,7 +69,7 @@ const SMTP_PASSWORD_SECRET_KEY = daemonSecretKeyFor(SMTP_PASSWORD_CONFIG_KEY);
  * `GOODVIBES_SURFACES_EMAIL_IMAP_PASSWORD`, because the derivation splits
  * camelCase into the same underscore parts a dotted path produces. So the chain
  * is two entries, not three, and a password stored by either spelling is found
- * by the other — which is the behaviour anyone would expect and nobody would
+ * by the other, which is the behaviour anyone would expect and nobody would
  * think to check.
  */
 const SHARED_PASSWORD_CHAIN: readonly string[] = [
@@ -147,8 +147,8 @@ export interface SurfaceEmailSettings {
   readonly imapHost: string | undefined;
   readonly imapPort: number;
   /**
-   * `surfaces.email.imap.secure`. True — the default, and every hosted provider
-   * — means implicit TLS on the IMAP port. False means a plain connection, which
+   * `surfaces.email.imap.secure`. True, the default, and every hosted provider
+   *, means implicit TLS on the IMAP port. False means a plain connection, which
    * is what a mail server on localhost or a fake in a test offers.
    */
   readonly imapSecure: boolean;
@@ -185,7 +185,7 @@ export function readSurfaceEmailSettings(getConfig: ConfigReader): SurfaceEmailS
     mailbox: readString(getConfig, `${SURFACE_EMAIL_PREFIX}.imap.mailbox`),
     // Left absent when unset, rather than defaulted to the literal 'Drafts'
     // this setting used to fall back to. An unset folder now means the server
-    // is asked which one carries the `\Drafts` flag — the answer that gets
+    // is asked which one carries the `\Drafts` flag, the answer that gets
     // Gmail's `[Gmail]/Drafts` right instead of creating a stray folder.
     draftsMailbox: readString(getConfig, `${SURFACE_EMAIL_PREFIX}.imap.draftsMailbox`),
   };
@@ -198,7 +198,7 @@ export function readSurfaceEmailSettings(getConfig: ConfigReader): SurfaceEmailS
  * same reader can back a service that also reads something else.
  *
  * `email.enabled` reports whether the mailbox is CONFIGURED. The daemon's own
- * mailbox has no separate enable switch — an operator who filled in a host, an
+ * mailbox has no separate enable switch, an operator who filled in a host, an
  * account and a password has enabled it, and asking them to also set a boolean
  * would only produce a mailbox that silently does nothing.
  */
@@ -322,8 +322,8 @@ export async function describeSurfaceEmailConfigProblem(
 
 /**
  * The same `EmailService` deps, reading the daemon's mailbox instead of the
- * `email.*` namespace. Everything else — transport, sender-claim describer,
- * ingest recorder, socket overrides — is passed through unchanged.
+ * `email.*` namespace. Everything else, transport, sender-claim describer,
+ * ingest recorder, socket overrides, is passed through unchanged.
  */
 export function withSurfaceEmailConfig(deps: EmailServiceDeps): EmailServiceDeps {
   return {

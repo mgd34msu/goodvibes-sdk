@@ -1,5 +1,5 @@
 /**
- * push-to-talk.ts — the voice-input session both surfaces drive.
+ * push-to-talk.ts, the voice-input session both surfaces drive.
  *
  * This is the OTHER consumer of the capture primitive, and the one that has been
  * missing outright on the terminal: whisper is provisioned there and transcribes
@@ -8,7 +8,7 @@
  * The state machine is small and identical on both surfaces, which is exactly why
  * it belongs here rather than in each of them: start (asking for the device is
  * its own visible phase, because a permission prompt takes real time), record,
- * stop, transcribe, done — with a device release on every path out, including the
+ * stop, transcribe, done, with a device release on every path out, including the
  * failing ones. A microphone left open after a failed transcription is the bug
  * users notice and never report precisely.
  *
@@ -42,7 +42,7 @@ export type PushToTalkPhase = 'idle' | 'requesting' | 'recording' | 'stopping' |
 export interface PushToTalkOptions {
   /**
    * Opens the device. Wrapped here so `voice.wake.noiseSuppression` reaches voice
-   * input as well as wake detection — the row is shared, so the filter must be —
+   * input as well as wake detection, the row is shared, so the filter must be,
    * see {@link createNoiseSuppressingOpener}. A host passes its plain opener.
    */
   readonly openCapture: AudioCaptureOpener;
@@ -80,7 +80,7 @@ export interface PushToTalkOptions {
    */
   readonly speechRetriggerMs?: number | undefined;
   /**
-   * Silence that ends capture on its own. 0 — the push-to-talk default — leaves
+   * Silence that ends capture on its own. 0, the push-to-talk default, leaves
    * stopping to the user, because someone holding a key through a pause has not
    * finished talking.
    */
@@ -143,7 +143,7 @@ export class PushToTalkSession {
 
   /**
    * Open the device and start recording. Rejects with an
-   * {@link AudioCaptureError} so a surface can render the specific reason — no
+   * {@link AudioCaptureError} so a surface can render the specific reason, no
    * recorder installed, permission refused, plain-http origin.
    */
   async start(): Promise<void> {

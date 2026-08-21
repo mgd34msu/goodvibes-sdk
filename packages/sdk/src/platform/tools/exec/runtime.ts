@@ -66,13 +66,13 @@ function decodeCmd(cmdInput: ExecCommandInput): string {
  * Resolve the effective working directory for an exec call.
  *
  * An explicit `working_dir` on the input always wins. Otherwise falls back to
- * `defaultWorkingDirectory` — the session/tool-context working directory,
- * threaded in by the caller (see createExecTool) — so a model that omits
+ * `defaultWorkingDirectory`, the session/tool-context working directory,
+ * threaded in by the caller (see createExecTool), so a model that omits
  * working_dir still runs in a sensible place instead of failing outright
  * after the user has already approved the call (the approval card's
  * "Directory" line is sourced from the same session working directory
  * independently of this arg, so it was already showing the truth the whole
- * time — see permissions/prompt.ts on the TUI side). Throws only when
+ * time, see permissions/prompt.ts on the TUI side). Throws only when
  * neither is available, which should not happen in practice since every
  * tool-registration path supplies a defaultWorkingDirectory.
  */
@@ -144,7 +144,7 @@ function computeRetryDelay(
   maxDelayMs: number = 30_000,
 ): number {
   if (backoff === 'fixed') return delayMs;
-  // Full jitter: random in [0, min(base * 2^attempt, maxDelay)] — avoids thundering herd
+  // Full jitter: random in [0, min(base * 2^attempt, maxDelay)], avoids thundering herd
   const cap = Math.min(delayMs * Math.pow(2, attempt), maxDelayMs);
   return randomInt(0, Math.max(1, Math.floor(cap) + 1));
 }
@@ -282,7 +282,7 @@ async function runCommand(
   const sandboxPlan = resolveRuntimeSandboxPlan(sandbox, cmdStr, workingDirectory, cwd);
   // Containment posture: a composition that REQUIRES the boundary gets a
   // refusal when no boundary was applied, instead of the silent host fallback
-  // (policy.ts). `host-allowed` — every existing caller — is unchanged.
+  // (policy.ts). `host-allowed`, every existing caller, is unchanged.
   const uncontained = containmentRefusal(policy, cmdStr, sandboxPlan);
   if (uncontained) return attachSandboxMeta(uncontained, sandboxPlan);
   const sandboxArgv = sandboxPlan?.sandboxed ? sandboxPlan.argvPrefix : [];
@@ -301,7 +301,7 @@ async function runCommand(
   // Scrub credential-bearing vars out of the inherited base env, then layer the
   // model-supplied per-command env on top (an explicit per-command opt-in that a
   // withheld var is legitimately wanted). withheld_env reports only names the
-  // command did NOT re-provide, by name only — never values.
+  // command did NOT re-provide, by name only, never values.
   const scrubbed = scrubCredentialEnv(buildCleanEnv(), scrub);
   const mergedEnv = { ...scrubbed.env, ...cmdInput.env };
   const withheldEnv = scrubbed.withheld.filter((name) => !(cmdInput.env && name in cmdInput.env));
@@ -323,10 +323,10 @@ async function runCommand(
   }
 
   // Cooperative cancellation is wired for the foreground and
-  // progress-streamed paths (the common cases — progress auto-engages once
+  // progress-streamed paths (the common cases, progress auto-engages once
   // timeout_ms exceeds PROGRESS_AUTO_THRESHOLD_MS, which the 120s default
   // timeout always does). `until`-pattern commands are explicitly deferred
-  // — the timeout kill-timer they already have still
+  //, the timeout kill-timer they already have still
   // applies, just not an external AbortSignal.
   if (cmdInput.until) {
     return attachWithheld(await runUntil(processManager, overflowHandler, cmdStr, cmdInput, cwd, mergedEnv, timeoutMs, startTime, sandboxArgv));
@@ -672,15 +672,15 @@ export function isRetryableExecResult(
   result: ExecCommandResult,
   allowed?: ReadonlyArray<'network' | 'lock' | 'busy' | 'oom'>,
 ): boolean {
-  // Timed-out commands are never auto-retried — callers must decide
+  // Timed-out commands are never auto-retried, callers must decide
   if (result.timed_out) return false;
-  // Cancelled commands must never be retried — retrying
+  // Cancelled commands must never be retried, retrying
   // after an operator/engine kill would defeat the cancellation entirely.
   if (result.cancelled) return false;
 
   const combined = `${result.stdout}\n${result.stderr}`;
 
-  // Terminal errors — always skip retry
+  // Terminal errors, always skip retry
   const TERMINAL_PATTERNS = [
     /ENOENT/,           // missing binary / file
     /EACCES/,           // permission denied
@@ -750,7 +750,7 @@ async function runWithRetry(
     if (attempt < maxRetries) {
       // Classify error: if we can determine it's terminal, stop immediately
       if (!isRetryableExecResult(lastResult, retryOn)) {
-        logger.debug('exec: terminal error — not retrying', { cmd: cmdStr, attempt, stderr: lastResult.stderr.slice(0, 200) });
+        logger.debug('exec: terminal error, not retrying', { cmd: cmdStr, attempt, stderr: lastResult.stderr.slice(0, 200) });
         return { ...lastResult, retries: attempt };
       }
       const delay = computeRetryDelay(attempt, delayMs, backoff, maxDelayMs);
@@ -777,18 +777,18 @@ async function executeResolvedCommand(
   // ── Everything below is judged HERE, and not inside runCommand ───────────
   //
   // This is the one point EVERY path goes through: foreground, retried,
-  // interactive, and — the one that mattered — detached. The background branch
+  // interactive, and, the one that mattered, detached. The background branch
   // below returns before `runWithRetry`, so anything checked inside runCommand
   // is simply not checked for a `background: true` command.
   //
   // Measured on a real host under the daemon's own service environment: one
   // witness command reported 5 processes and a masked $HOME in the foreground
   // (the boundary) and 581 with $HOME readable in the background (the host).
-  // The boundary never failed — this path never entered it.
+  // The boundary never failed, this path never entered it.
   //
   // The frozen catastrophic block had the same hole: the exec docs call it
   // unconditional, and on the detached path it did not run at all. Moving the
-  // call here makes that sentence true. The LIST is untouched — this changes
+  // call here makes that sentence true. The LIST is untouched, this changes
   // where the existing block runs, never what is on it.
   //
   // Class risk (kill/rm/docker/sudo…) remains the permission layer's decision
@@ -814,10 +814,10 @@ async function executeResolvedCommand(
   const bgSpecial = handleBgSpecialCommand(processManager, cmdStr);
   if (bgSpecial) return bgSpecial;
   if (cmdInput.background) {
-    // Background processes intentionally outlive this tool call — cancelling
+    // Background processes intentionally outlive this tool call, cancelling
     // the caller's item/agent must not kill a process the user asked to
     // detach, so `signal` is deliberately not threaded here. They are also NOT
-    // sandboxed — a bwrap boundary is --die-with-parent, so wrapping one would
+    // sandboxed, a bwrap boundary is --die-with-parent, so wrapping one would
     // kill the very process the caller asked to detach. That exemption is real
     // and stays; what does NOT stay is it being silent. The frozen catastrophic
     // block and the owner-terminal guard both ran above, and a composition that
@@ -1003,7 +1003,7 @@ export function createExecTool(
         if (fileOpWarnings && fileOpWarnings.length > 0) responseData.warnings = fileOpWarnings;
 
         // Populate a top-level error summary on failure so any consumer keying off
-        // `.error` alone (not just `.output`) still gets a coherent signal — the
+        // `.error` alone (not just `.output`) still gets a coherent signal, the
         // per-command diagnostics remain in `output` in full.
         const failed = results.filter((r) => !r.success);
         const errorSummary = failed.length > 0

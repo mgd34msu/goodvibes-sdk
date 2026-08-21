@@ -4,7 +4,7 @@
  * The actionable body returned by the control-plane gateway's streaming/live entry points
  * (createEventStream, renderWebUi) when the gateway is explicitly turned off via the
  * controlPlane.gateway setting. The setting defaults ON (a stock daemon streams), so this only
- * reaches an operator who deliberately disabled it — hence the response NAMES the setting and
+ * reaches an operator who deliberately disabled it, hence the response NAMES the setting and
  * tells them how to restore streaming instead of being a bare 503 dead end.
  *
  * Kept in its own module so the (grandfathered, shrink-only) gateway.ts does not grow.

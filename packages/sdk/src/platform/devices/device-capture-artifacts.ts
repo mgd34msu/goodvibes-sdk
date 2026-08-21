@@ -1,5 +1,5 @@
 /**
- * device-capture-artifacts.ts — retained camera/screen captures from a paired device.
+ * device-capture-artifacts.ts, retained camera/screen captures from a paired device.
  *
  * Retention is 24 hours by default (owner ruling 2026-07-25: "Capture artifact
  * retention: 24 hours"). A capture is evidence for one piece of work, not an
@@ -10,7 +10,7 @@
  * independently, so this store validates by CONTENT, never by existence:
  *  - a record whose file is missing is reaped ('file-missing'),
  *  - a record whose file no longer hashes to the recorded digest is reaped
- *    ('content-mismatch') — that is exactly the crash-torn / half-written /
+ *    ('content-mismatch'), that is exactly the crash-torn / half-written /
  *    zero-filled case that an `if (exists) return cached` check would serve as
  *    if it were real,
  *  - a file with no record is reaped as an orphan ('orphan-file'), which is

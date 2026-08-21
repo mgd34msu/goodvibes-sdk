@@ -17,7 +17,7 @@ export interface WatcherStoreSnapshot {
  * snapshot: nothing needs doing, the state comes back on its own.
  */
 const WATCHER_STORE_RECOVERY =
-  'Watcher state rebuilds from live registrations on the next load (daemon boot, daemon tick, or a client reconnect) — nothing further is required.';
+  'Watcher state rebuilds from live registrations on the next load (daemon boot, daemon tick, or a client reconnect), nothing further is required.';
 
 function sortWatchers(watchers: readonly WatcherRecord[]): WatcherRecord[] {
   return [...watchers].sort((a, b) => a.label.localeCompare(b.label) || a.id.localeCompare(b.id));
@@ -41,8 +41,8 @@ export function loadWatcherSnapshot(storePath: string): WatcherStoreSnapshot | n
 /**
  * Load a watcher store snapshot, never throwing on a corrupt file.
  *
- * A file this reader cannot trust — unparseable JSON, a torn/zero-tailed
- * write, or the wrong shape — is moved aside by the shared quarantine helper
+ * A file this reader cannot trust, unparseable JSON, a torn/zero-tailed
+ * write, or the wrong shape, is moved aside by the shared quarantine helper
  * with a `.why` receipt, and this returns null exactly as it does for "no
  * snapshot yet". Callers (daemon boot, daemon tick, TUI, agent) all rebuild
  * watcher state from live registrations on a null return, so a corrupt
@@ -72,8 +72,8 @@ export function saveWatcherSnapshot(watchers: readonly WatcherRecord[], storePat
 
 /**
  * Save a watcher store snapshot atomically via the shared helper: temp file
- * beside the target, fsync, rename over it, stale-temp sweep first. A reader —
- * or a process that dies mid-write — only ever sees a complete snapshot.
+ * beside the target, fsync, rename over it, stale-temp sweep first. A reader,
+ * or a process that dies mid-write, only ever sees a complete snapshot.
  */
 export function saveWatcherSnapshotToPath(watchers: readonly WatcherRecord[], storePath: string): void {
   writeJsonFileAtomic(storePath, buildSnapshot(watchers));
@@ -82,12 +82,12 @@ export function saveWatcherSnapshotToPath(watchers: readonly WatcherRecord[], st
 /**
  * Save a watcher snapshot the way a background tick needs it saved: a write
  * that fails is logged at error level with the store path and the errno, and
- * reported in the returned outcome — never thrown.
+ * reported in the returned outcome, never thrown.
  *
  * The registry persists on every list refresh, and the fleet registry's
  * coalesced tick calls that list on a timer. An exception raised there has no
  * caller above it to catch anything, so it reaches the top as an uncaught
- * exception and takes the process with it — which is precisely what happened
+ * exception and takes the process with it, which is precisely what happened
  * on a live machine when a concurrent writer's sweep removed this store's temp
  * file mid-write and the `chmod` came back ENOENT. Watcher state costs nothing
  * to lose (see {@link WATCHER_STORE_RECOVERY}); the host process does not.

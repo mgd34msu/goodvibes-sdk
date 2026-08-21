@@ -1,5 +1,5 @@
 /**
- * types.ts — shared types and validation primitives for the inbound-email
+ * types.ts, shared types and validation primitives for the inbound-email
  * persisted stores: cursor-store.ts, record-store.ts, expectation-store.ts,
  * and housekeeping.ts.
  *
@@ -14,7 +14,7 @@
 export type HousekeepingTrigger = 'recovery' | 'periodic' | 'manual';
 
 /**
- * The cursor shape settled by docs/inbound-email.md §4 — verbatim, not
+ * The cursor shape settled by docs/inbound-email.md §4, verbatim, not
  * re-decided here. Keyed by (account, mailbox) so the store cannot grow with
  * traffic: one record per watched mailbox, not one per message.
  */
@@ -36,7 +36,7 @@ export interface MailboxCursor {
 //
 // Each of these is a pure content check with no side effects, used by the
 // stores' standalone `validate*(value: unknown): T | null` functions, which
-// re-check EVERY field and return `null` for a torn record — never throw,
+// re-check EVERY field and return `null` for a torn record, never throw,
 // never repair.
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -62,7 +62,7 @@ export function isParsableIsoDate(value: unknown, maxLength = 64): value is stri
  * `MAX_RETAINED_CONTENT_CHARS` in `platform/security/untrusted-content.ts`.
  * Not imported from there: that constant is module-private in a file this
  * round does not touch (platform/security/ is owned by the parallel taint
- * round — see docs/inbound-email.md §10). Keep this value in lockstep with
+ * round, see docs/inbound-email.md §10). Keep this value in lockstep with
  * that file if it ever changes; both cap the same failure mode, an unbounded
  * copy of untrusted body text living forever in a daemon that never restarts.
  */

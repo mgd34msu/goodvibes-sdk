@@ -3,10 +3,10 @@
  *
  * VAPID (RFC 8292) key custody and request signing for browser push.
  *
- * KEY CUSTODY — the load-bearing rule of this file:
+ * KEY CUSTODY, the load-bearing rule of this file:
  *  - The daemon generates one P-256 keypair on first need.
  *  - The WHOLE keypair (including the private component) is persisted only
- *    through the SecretsManager, exactly like any other credential — into the
+ *    through the SecretsManager, exactly like any other credential, into the
  *    secure store, or the plaintext secrets file, per the active secret policy.
  *    It is NEVER written into the config, so it can never ride out in the
  *    secret-free config snapshot.
@@ -20,14 +20,14 @@
 import { createPrivateKey, generateKeyPairSync, sign as cryptoSign, type JsonWebKey } from 'node:crypto';
 import { DEFAULT_VAPID_SUBJECT, VAPID_SUBJECT_HINT, isValidVapidSubject } from './vapid-subject.js';
 
-/** The narrow slice of SecretsManager this module needs — get/set one secret. */
+/** The narrow slice of SecretsManager this module needs, get/set one secret. */
 export interface VapidSecretStore {
   get(key: string): Promise<string | null>;
   set(key: string, value: string): Promise<void>;
 }
 
 interface StoredVapidKeypair {
-  /** Uncompressed P-256 public point, base64url — safe to hand out. */
+  /** Uncompressed P-256 public point, base64url, safe to hand out. */
   readonly publicKey: string;
   /** The private key as a JWK. Secret; never leaves this module. */
   readonly privateJwk: JsonWebKey;
@@ -35,7 +35,7 @@ interface StoredVapidKeypair {
 
 export interface VapidManagerOptions {
   /**
-   * The `sub` claim of the VAPID JWT — a `mailto:` or `https:` contact the push
+   * The `sub` claim of the VAPID JWT, a `mailto:` or `https:` contact the push
    * service can reach. Defaults to {@link DEFAULT_VAPID_SUBJECT} when unset.
    */
   readonly subject?: string | undefined;

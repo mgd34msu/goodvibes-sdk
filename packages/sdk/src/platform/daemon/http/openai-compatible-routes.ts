@@ -143,7 +143,7 @@ function resolveModel(
     };
   }
 
-  // Accepts either a provider-qualified registryKey or a bare model id — bare
+  // Accepts either a provider-qualified registryKey or a bare model id, bare
   // ids resolve via the shared resolver (unique -> auto-qualify; ambiguous or
   // unknown -> a rich error naming real candidates from the live registry).
   const models = registry.listModels();

@@ -4,12 +4,12 @@
  * The proactive check-in service: it reads the check-in config, gates on
  * enabled + quiet hours, assembles the briefing, asks the judge whether to
  * contact the user, delivers through the channel deliverer when the judgment
- * says yes, and writes a receipt for EVERY run — the loop that makes the
+ * says yes, and writes a receipt for EVERY run, the loop that makes the
  * platform able to reach out first, accountably.
  *
  * It rides the existing automation scheduler: syncScheduledJob keeps a single
  * `kind: 'checkin'` automation job in step with the config, and attach() wires
- * the manager's check-in evaluator to this.evaluate — so when the scheduler
+ * the manager's check-in evaluator to this.evaluate, so when the scheduler
  * fires the job, this loop runs (checkin-execution.ts records the run).
  */
 import type { AutomationManager } from '../automation/index.js';
@@ -35,7 +35,7 @@ const DEFAULT_CADENCE = '0 */4 * * *';
  * The narrow config surface the check-in reads/writes. Intentionally string-
  * keyed rather than typed against the ConfigKey union: the checkin.* keys live
  * in the config DEFAULTS tree (schema-domain-runtime.ts) and flat settings, and
- * the daemon binds this via a small adapter over its ConfigManager — this keeps
+ * the daemon binds this via a small adapter over its ConfigManager, this keeps
  * the (grandfathered, shrink-only) schema-types.ts ConfigKey union untouched.
  */
 export interface CheckinConfigAccess {
@@ -102,7 +102,7 @@ export class CheckinService {
   /**
    * Keep a single kind:'checkin' automation job in step with the config: create
    * it (enabled) when missing, update its cadence, and toggle enabled to match.
-   * Best-effort — the automation subsystem must be enabled for a job to exist;
+   * Best-effort, the automation subsystem must be enabled for a job to exist;
    * when it is off, createJob throws and we leave scheduling for when it is on.
    */
   async syncScheduledJob(): Promise<void> {
@@ -121,7 +121,7 @@ export class CheckinService {
         await automation.createJob({
           name: 'Proactive check-in',
           kind: 'checkin',
-          prompt: '(proactive check-in — briefing assembled at run time)',
+          prompt: '(proactive check-in, briefing assembled at run time)',
           schedule: { kind: 'cron', expression: config.cadence },
           target: { kind: 'isolated', createIfMissing: true },
           enabled: true,
@@ -135,7 +135,7 @@ export class CheckinService {
       });
       await automation.setEnabled(job.id, config.enabled);
     } catch {
-      // Automation disabled or transient failure — the schedule syncs on the
+      // Automation disabled or transient failure, the schedule syncs on the
       // next setConfig/attach once the automation subsystem is enabled.
     }
   }

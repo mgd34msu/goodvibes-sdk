@@ -449,14 +449,14 @@ function readSurfaceAnswerStatus(value: unknown): 'completed' | 'failed' | 'canc
     : undefined;
 }
 
-/** Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver — a live surface reports
+/** Handle POST /api/sessions/:sessionId/inputs/:inputId/deliver, a live surface reports
  * collection (`{consumed:true}` = completed, else delivered); optional body, null/bare = consumed:false.
  *
  * `agentId` is the surface naming the agent that is answering this input: it
  * binds the reply so a message that arrived over a channel and was dispatched
  * to a surface gets its answer routed back, on the same path the daemon's own
  * spawn takes. `answer` (with `consumed:true`) is that agent's finished output,
- * reported when the surface's turn ends — the daemon writes it into the shared
+ * reported when the surface's turn ends, the daemon writes it into the shared
  * session and pushes it down the reply pipeline. */
 async function handleDeliverSharedSessionInput(
   context: DaemonRuntimeRouteContext, sessionId: string, inputId: string, req: Request,
@@ -506,7 +506,7 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
 
   const input = buildSharedSessionMessageInput(sessionId, body, message);
 
-  // kind='followup' — always queues/spawns a follow-up turn via followUpMessage()
+  // kind='followup', always queues/spawns a follow-up turn via followUpMessage()
   if (kind === 'followup') {
     const followUpSubmission = await callOrSessionClosed(() => context.sessionBroker.followUpMessage(input));
     if (followUpSubmission instanceof Response) return followUpSubmission;
@@ -515,7 +515,7 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
     });
   }
 
-  // kind='message' — companion main-chat send. Delegates to dedicated handler to avoid
+  // kind='message', companion main-chat send. Delegates to dedicated handler to avoid
   // inline duplication of session-resolution with submitMessage().
   if (kind === 'message') {
     return handleCompanionMessageKind(context, sessionId, req, input);
@@ -529,7 +529,7 @@ async function handlePostSharedSessionMessage(context: DaemonRuntimeRouteContext
   });
 }
 
-/** Handles kind='message' companion main-chat messages — short-circuits before
+/** Handles kind='message' companion main-chat messages, short-circuits before
  * sessionBroker.submitMessage() so conversation messages route to the existing session instead of spawning continuation work. */
 async function handleCompanionMessageKind(
   context: DaemonRuntimeRouteContext,
@@ -588,7 +588,7 @@ function buildCompanionMessageMetadata(input: SharedSessionMessageInput): Record
   return Object.keys(metadata).length > 0 ? metadata : undefined;
 }
 
-/** Handle GET /api/sessions/:id/events — a session-scoped SSE stream for turn events
+/** Handle GET /api/sessions/:id/events, a session-scoped SSE stream for turn events
  * (STREAM_DELTA, TURN_COMPLETED, etc.) and agent events. */
 async function handleGetSharedSessionEvents(
   context: DaemonRuntimeRouteContext,
@@ -735,7 +735,7 @@ function readProviderFailurePolicy(value: unknown): SharedSessionRoutingIntent['
 // (REASONING_EFFORT_SEVERITY). Duplicated as a literal list rather than
 // imported: daemon-sdk is a lower-level package the sdk package depends on,
 // so importing the other way would be circular. Which levels a given model
-// actually accepts is per-model — this only rejects a typo, same as the
+// actually accepts is per-model, this only rejects a typo, same as the
 // sdk-side schema and route validators for this field.
 const REASONING_EFFORT_LEVELS = new Set([
   'none', 'instant', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max',
@@ -774,7 +774,7 @@ async function respondToSessionSubmission(
   ) {
     // queued-for-surface: the input is queued for a live registered surface to
     // collect (sessions.inputs.list) and deliver (sessions.inputs.deliver). No
-    // daemon executor is spawned — the surface owns turn execution.
+    // daemon executor is spawned, the surface owns turn execution.
     return context.recordApiResponse(req, path, Response.json({
       session: toSharedSessionRecordResponse(submission.session.id, submission.session),
       message: submission.userMessage ?? null,
@@ -826,7 +826,7 @@ async function respondToSessionSubmission(
   }, { status: 202 }));
 }
 
-function handleRuntimeTaskAction(context: DaemonRuntimeRouteContext, taskId: string, action: string, _req: Request): Response {
+function handleRuntimeTaskAction(context: DaemonRuntimeRouteContext, taskId: string, action: 'cancel' | 'retry', _req: Request): Response {
   if (!context.runtimeStore || !context.runtimeDispatch) {
     return jsonErrorResponse({ error: 'Runtime store unavailable' }, { status: 503 });
   }
@@ -854,6 +854,9 @@ function handleRuntimeTaskAction(context: DaemonRuntimeRouteContext, taskId: str
     }, 'DaemonServer.handleRuntimeTaskAction');
     if (spawnResult instanceof Response) return spawnResult;
     context.runtimeDispatch.transitionRuntimeTask(taskId, 'queued', {
+      // Ownership moves to the agent this retry spawned: cancel reads this field,
+      // and leaving the dead agent's id here made a later cancel a silent no-op.
+      owner: spawnResult.id,
       startedAt: undefined,
       endedAt: undefined,
       error: undefined,
@@ -865,7 +868,9 @@ function handleRuntimeTaskAction(context: DaemonRuntimeRouteContext, taskId: str
       agentId: spawnResult.id,
     });
   }
-  return jsonErrorResponse({ error: 'Unsupported task action' }, { status: 400 });
+  // Exhaustive: a new action literal on the handler interface fails to compile here.
+  const unsupported: never = action;
+  return jsonErrorResponse({ error: `Unsupported task action: ${String(unsupported)}` }, { status: 400 });
 }
 
 function handleGetTaskStatus(context: DaemonRuntimeRouteContext, agentId: string): Response {

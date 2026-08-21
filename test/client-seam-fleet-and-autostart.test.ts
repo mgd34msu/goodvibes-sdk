@@ -1,5 +1,5 @@
 /**
- * client-seam-fleet-and-autostart.test.ts — the two policies that were written
+ * client-seam-fleet-and-autostart.test.ts, the two policies that were written
  * twice, once per surface product.
  *
  * FLEET UNION. The failure guarded here is not a crash. It is a view that shows
@@ -7,8 +7,8 @@
  * daemon's scheduled work and observed agents silently absent, with nothing
  * saying so. That is strictly worse than showing nothing, because a person reads
  * a short row list as "nothing else is running". So the merge and its precedence
- * are pinned — local wins on a shared id, because the local copy is live and
- * actionable while the daemon's arrives over a poll — plus the degrade path that
+ * are pinned, local wins on a shared id, because the local copy is live and
+ * actionable while the daemon's arrives over a poll, plus the degrade path that
  * must not lose rows.
  *
  * DAEMON AUTOSTART. Both surface products grew this independently, arrived at
@@ -52,7 +52,7 @@ describe('the fleet is local rows union the daemon\'s', () => {
 
   test('a row both halves carry appears once, from the LOCAL copy', () => {
     const merged = mergeFleetNodes([node('shared', 'live local label')], [node('shared', 'stale daemon label')]);
-    // One row, not two — and from the half that is live and can be interrupted,
+    // One row, not two, and from the half that is live and can be interrupted,
     // steered and killed from here.
     expect(merged).toHaveLength(1);
     expect(merged[0]?.label).toBe('live local label');
@@ -154,7 +154,7 @@ describe('one bounded boot-time start of an installed-but-stopped daemon', () =>
       sleep: noSleep,
     });
     // A reachable daemon is never restarted, and a held port belongs to whoever
-    // is holding it — stepping on either turns a transient state into an outage.
+    // is holding it, stepping on either turns a transient state into an outage.
     expect(outcome).toEqual({ action: 'none', reason: reason as never });
     expect(started).toEqual([]);
   });
@@ -209,7 +209,7 @@ describe('one bounded boot-time start of an installed-but-stopped daemon', () =>
       pollIntervalMs: 1,
       waitTimeoutMs: 5,
       // A no-op sleep terminates because the wait is attempt-counted rather than
-      // wall-clock — the drift one of the two originals had and the other did not.
+      // wall-clock, the drift one of the two originals had and the other did not.
       sleep: noSleep,
     });
     expect(outcome.action).toBe('start-failed');

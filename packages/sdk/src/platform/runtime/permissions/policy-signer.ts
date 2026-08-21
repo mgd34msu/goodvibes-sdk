@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * GC-PERM-011 — Policy signing and provenance for the permissions runtime.
+ * GC-PERM-011, Policy signing and provenance for the permissions runtime.
  *
  * Provides HMAC-SHA256-based signature creation and verification for policy
  * bundles. Used by the policy loader to validate bundle integrity before
@@ -27,20 +27,20 @@ export type PolicyBundleId = string;
 /**
  * Signature validation outcome for a loaded policy bundle.
  *
- * - `valid`    — Signature present and verified against the payload.
- * - `invalid`  — Signature present but verification failed (tampered/wrong key).
- * - `missing`  — No signature field present in the bundle (returned by verifyBundle directly).
- * - `unsigned` — Bundle has no signature field; loader uses this in non-managed mode.
- * - `skipped`  — Signature check was bypassed (no key supplied).
+ * - `valid`   , Signature present and verified against the payload.
+ * - `invalid` , Signature present but verification failed (tampered/wrong key).
+ * - `missing` , No signature field present in the bundle (returned by verifyBundle directly).
+ * - `unsigned`, Bundle has no signature field; loader uses this in non-managed mode.
+ * - `skipped` , Signature check was bypassed (no key supplied).
  */
 export type SignatureStatus = 'valid' | 'invalid' | 'missing' | 'unsigned' | 'skipped';
 
 /**
  * Describes the origin of the policy bundle for audit and UI display.
  *
- * - `local-file`  — Loaded from a local filesystem path.
- * - `remote-url`  — Fetched from a remote URL (managed infra).
- * - `inline`      — Embedded directly in runtime configuration.
+ * - `local-file` , Loaded from a local filesystem path.
+ * - `remote-url` , Fetched from a remote URL (managed infra).
+ * - `inline`     , Embedded directly in runtime configuration.
  * - `test-fixture`— Created by test infrastructure; never production.
  */
 export type ProvenanceSource = 'local-file' | 'remote-url' | 'inline' | 'test-fixture';
@@ -84,12 +84,12 @@ export interface VerifyResult {
 // ── Canonical serialisation ───────────────────────────────────────────────────
 
 /**
- * canonicalise — Produces a deterministic JSON string for the given value.
+ * canonicalise, Produces a deterministic JSON string for the given value.
  *
  * Keys are sorted recursively so that the representation is stable
  * regardless of insertion order, ensuring consistent HMAC inputs.
  *
- * @param value — The value to serialise.
+ * @param value, The value to serialise.
  */
 export function canonicalise(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -107,15 +107,15 @@ export function canonicalise(value: unknown): string {
 // ── Signing ───────────────────────────────────────────────────────────────────
 
 /**
- * signBundle — Creates a signed policy bundle from a payload.
+ * signBundle, Creates a signed policy bundle from a payload.
  *
  * Generates a hex-encoded HMAC-SHA256 signature over the canonical JSON
  * of the payload and embeds it in the returned `SignedPolicyBundle`.
  *
- * @param bundleId — Unique identifier for this bundle.
- * @param payload  — The policy payload to sign.
- * @param key      — Raw signing key (Buffer or hex string).
- * @param issuer   — Optional human-readable issuer label.
+ * @param bundleId, Unique identifier for this bundle.
+ * @param payload , The policy payload to sign.
+ * @param key     , Raw signing key (Buffer or hex string).
+ * @param issuer  , Optional human-readable issuer label.
  */
 export function signBundle<T>(
   bundleId: PolicyBundleId,
@@ -144,7 +144,7 @@ export function signBundle<T>(
 // ── Verification ──────────────────────────────────────────────────────────────
 
 /**
- * verifyBundle — Validates the HMAC-SHA256 signature of a policy bundle.
+ * verifyBundle, Validates the HMAC-SHA256 signature of a policy bundle.
  *
  * Computes the expected HMAC over the canonical payload and performs
  * a constant-time comparison against the stored signature to prevent
@@ -153,8 +153,8 @@ export function signBundle<T>(
  * Returns `{ ok: false, status: 'missing' }` when the bundle carries no
  * signature field. Callers decide whether to accept unsigned bundles.
  *
- * @param bundle — The bundle to verify.
- * @param key    — The verification key (Buffer or hex string).
+ * @param bundle, The bundle to verify.
+ * @param key   , The verification key (Buffer or hex string).
  */
 export function verifyBundle<T>(
   bundle: SignedPolicyBundle<T>,
@@ -227,7 +227,7 @@ export function verifyBundle<T>(
     return {
       ok: false,
       status: 'invalid',
-      message: `Bundle "${bundle.bundleId}": signature mismatch — payload may be tampered.`,
+      message: `Bundle "${bundle.bundleId}": signature mismatch, payload may be tampered.`,
     };
   }
 

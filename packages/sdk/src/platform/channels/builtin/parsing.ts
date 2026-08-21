@@ -62,7 +62,7 @@ export function readStringList(value: unknown): string[] | undefined {
  * channel is served by the daemon: an operator setting up Slack or Discord for
  * a machine that may hand the surface over at failover needs to say "this
  * belongs to the daemon, not to this checkout". Refusing the value here would
- * have silently downgraded such a request to `project` — the setup would report
+ * have silently downgraded such a request to `project`, the setup would report
  * success and put the token somewhere the daemon does not read back.
  *
  * The default stays `project` rather than following the key's ownership: these

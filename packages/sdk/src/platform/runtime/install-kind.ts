@@ -1,5 +1,5 @@
 /**
- * install-kind.ts — how a running process was installed, decided from its own
+ * install-kind.ts, how a running process was installed, decided from its own
  * executable path rather than assumed, and what command replaces an in-place
  * swap for each kind.
  *
@@ -10,13 +10,13 @@
 /**
  * How this running process was installed:
  *   - "binary": a standalone `bun build --compile` executable with no
- *     package-manager ancestry — the suite installer's install path. Swappable
+ *     package-manager ancestry, the suite installer's install path. Swappable
  *     in place.
  *   - "bun-global-package": the vendored binary shipped inside an npm/bun-managed
- *     package install (execPath contains a `node_modules` path segment — true
+ *     package install (execPath contains a `node_modules` path segment, true
  *     for both a global add and a local project dependency). Managed by the
  *     package manager; swapping the vendored file in place would fight the next
- *     upgrade, so this is never swapped — the user re-runs their package manager.
+ *     upgrade, so this is never swapped, the user re-runs their package manager.
  *   - "source": running directly via the `bun` interpreter, not a compiled
  *     binary at all.
  */
@@ -41,7 +41,7 @@ export const BINARY_INSTALL_COMMAND = 'curl -fsSL https://goodvibes.sh/install.s
  * The exact command to tell the user to run instead of an in-place swap.
  *
  * A package-managed install is updated through the package manager, which needs
- * the PACKAGE name — and that is the calling product's own, not something this
+ * the PACKAGE name, and that is the calling product's own, not something this
  * module can know. Pass it; the source-run case ignores it and points at the
  * installer, because a source checkout has no package to upgrade.
  */

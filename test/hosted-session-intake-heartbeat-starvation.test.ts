@@ -1,8 +1,8 @@
 /**
  * hosted-session-intake-heartbeat-starvation.test.ts
  *
- * The defect: `HostedSessionSpineIntake.tick()` awaited `deliver(...)` — the
- * whole turn — from inside its own re-entrancy guard. While ANY one hosted
+ * The defect: `HostedSessionSpineIntake.tick()` awaited `deliver(...)`, the
+ * whole turn, from inside its own re-entrancy guard. While ANY one hosted
  * session was answering, the guard was held, so no later tick ran and no OTHER
  * session was heartbeated on the shared spine. Two consequences the daemon
  * actually showed:
@@ -17,7 +17,7 @@
  *    it is what this file is about.
  *
  * The fix: the guard covers SCHEDULING only. Delivery is detached into a
- * per-session lane — a session's own turns stay serial, other sessions do not
+ * per-session lane, a session's own turns stay serial, other sessions do not
  * wait behind them, and heartbeats keep going while a slow turn is in flight.
  */
 import { describe, expect, test } from 'bun:test';
@@ -98,7 +98,7 @@ describe('one hosted turn must not starve every session heartbeat', () => {
     await intake.tick();
     expect(deliveriesStarted).toBe(1);
     expect(spine.heartbeats).toEqual(['slow-session', 'other-session']);
-    // The turn has NOT finished — nothing about it has been marked consumed.
+    // The turn has NOT finished, nothing about it has been marked consumed.
     expect(spine.consumed).toEqual([]);
 
     // Ticks two and three land while that same turn is still running. Under the

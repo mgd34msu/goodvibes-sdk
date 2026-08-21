@@ -4,7 +4,7 @@
  *
  * `idle-watcher.ts` knows how to hold an IDLE and `poll-loop.ts` knows how to
  * find what arrived. Neither knows what to do when the socket dies, when the
- * credential is refused, or when the server turns out not to support push —
+ * credential is refused, or when the server turns out not to support push,
  * and those are the cases that decide whether this capability is worth having,
  * because they are the ones that end with the owner hearing nothing.
  *
@@ -13,15 +13,15 @@
  * **No message is lost across a reconnect.** Recovery is not "resume the
  * stream"; it is "ask what is above the persisted cursor". Whatever arrived
  * while the socket was down is above the cursor, so the first thing a fresh
- * connection does — before IDLE, before polling — is drain the delta. The
+ * connection does, before IDLE, before polling, is drain the delta. The
  * cursor advances only behind completed work, so a crash mid-message
  * re-delivers rather than skips, and dedup absorbs the duplicate.
  *
  * **"Cannot" and "not yet" stay different.** A watcher waiting out a backoff
  * is `degraded`, never `insufficient`. Nothing is lost by waiting; the delta
  * is still above the cursor. `insufficient` is reserved for a verdict about
- * capability — a refused credential, an unopenable mailbox, a server that will
- * not hand over message data — and in that state the watcher does not run,
+ * capability, a refused credential, an unopenable mailbox, a server that will
+ * not hand over message data, and in that state the watcher does not run,
  * says so once, and re-probes on a timer so that fixing the cause does not
  * need a restart.
  *
@@ -76,7 +76,7 @@ import type { MailboxCursor } from './types.js';
 
 /**
  * The watcher's constructor arguments, its published status, and the two retry
- * ceilings — declared in `watcher-types.ts` and re-exported here, because
+ * ceilings, declared in `watcher-types.ts` and re-exported here, because
  * `watcher.ts` is the name every consumer imports.
  */
 export type {
@@ -230,14 +230,14 @@ export class InboundMailboxWatcher {
         // `.catch(() => undefined)`. One transient disk error ended inbound
         // mail permanently, with `email.inbound.status` still reporting a
         // healthy IDLE. Held rather than handled here, because the connection
-        // has to be released first — the same rule `settleTerminal` follows.
+        // has to be released first, the same rule `settleTerminal` follows.
         unexpected = error;
       } finally {
         this.mode = 'inactive';
         await connection.close().catch(() => undefined);
       }
       if (unexpected !== NOTHING_THREW) await this.handleUnexpectedFailure(unexpected);
-      // After the socket is released, never while holding it — see
+      // After the socket is released, never while holding it, see
       // `settleTerminal`.
       await this.settleTerminal();
     }
@@ -248,7 +248,7 @@ export class InboundMailboxWatcher {
    *
    * Classified rather than logged: a full disk is a wait, an unwritable state
    * directory is a decision, and the two need different answers. Either way the
-   * loop stays alive and the verdict stops saying healthy — the failure this
+   * loop stays alive and the verdict stops saying healthy, the failure this
    * catch exists to prevent is not the throw, it is the silence after it.
    */
   private async handleUnexpectedFailure(error: unknown): Promise<void> {
@@ -272,7 +272,7 @@ export class InboundMailboxWatcher {
    *
    * Deliberately outside the `finally` that closes the connection, and this
    * placement is the whole point of the method. An `insufficient` watcher does
-   * not run — and one that sat on an open IMAP connection for an hour while
+   * not run, and one that sat on an open IMAP connection for an hour while
    * refusing to read from it would still be holding one of the provider's
    * simultaneous-connection slots. Gmail allows fifteen and `EmailService`
    * takes a fresh one per request, so spending one on a mailbox we have
@@ -302,9 +302,9 @@ export class InboundMailboxWatcher {
 
     // The connect-time body probe (§3.4d "Scope sufficiency applies to both").
     // Only two outcomes reach here: a connection that demonstrated it cannot
-    // read message content never becomes a `MailboxConnection` at all — the
+    // read message content never becomes a `MailboxConnection` at all, the
     // port raises `ImapBodyCapabilityError` and `handleOpenFailure` reports it
-    // terminal with the `bodies-unfetchable` remedy — so what survives is
+    // terminal with the `bodies-unfetchable` remedy, so what survives is
     // `readable` or `unproven`, and the difference between those two is
     // recorded rather than flattened. `unproven` is an empty mailbox, which is
     // not a capability problem and does not stop the watcher; it is still a
@@ -322,7 +322,7 @@ export class InboundMailboxWatcher {
       signal: this.shutdown.signal,
     });
     if (position.outcome === 'search-failed') {
-      // A refused SEARCH is routinely transient (§13.1) — never terminal here.
+      // A refused SEARCH is routinely transient (§13.1), never terminal here.
       const search = classifyReadFailure(position.error, 'search');
       if (search.terminal) {
         this.reportTerminal(search.verdict, search.notice);
@@ -373,7 +373,7 @@ export class InboundMailboxWatcher {
     // reading message CONTENT, and it is passed here rather than dropped
     // because dropping it is what made the whole check inert: a connection
     // whose mailbox was empty comes back `unproven`, and without this argument
-    // the tracker recorded `idle-push` — a healthy light for a watcher that has
+    // the tracker recorded `idle-push`, a healthy light for a watcher that has
     // never shown it can read a message. `verdictForOpenConnection` weighs it
     // ahead of the transport for the reason recorded there.
     this.tracker.record(verdictForOpenConnection({
@@ -384,7 +384,7 @@ export class InboundMailboxWatcher {
     // `connectBackoff` is deliberately NOT reset here. A connection that opens
     // and then cannot drain has demonstrated nothing about the condition the
     // backoff exists to space out, and resetting on the open turned every
-    // reconnect into attempt zero — a flat half-second between logins for as
+    // reconnect into attempt zero, a flat half-second between logins for as
     // long as the drain kept failing. `drainOnce` resets it, on the completed
     // drain. `authRetried` does clear here, because a server that accepted
     // this sign-in HAS disproved the thing that flag remembers.
@@ -506,7 +506,7 @@ export class InboundMailboxWatcher {
    * failures clears here, and ONLY here.
    *
    * One place rather than three, because these three counters answer the same
-   * question — "has anything actually worked lately?" — and three copies of
+   * question, "has anything actually worked lately?", and three copies of
    * that answer is three chances for one of them to keep counting through a
    * mailbox that has been healthy for a week. The escalations they feed are
    * about CONSECUTIVE failures for exactly this reason: one bad minute a week
@@ -537,7 +537,7 @@ export class InboundMailboxWatcher {
   /**
    * A drain that did not complete.
    *
-   * A refused FETCH means the mailbox opens and its contents are withheld —
+   * A refused FETCH means the mailbox opens and its contents are withheld,
    * arrival can be observed and never read, which is a capability verdict and
    * not something reconnecting fixes. A dead socket is a reconnect. A sink
    * that refused a message is neither: the message is still above the cursor
@@ -574,7 +574,7 @@ export class InboundMailboxWatcher {
    * shape is the server's and the parser is ours, and neither changes between
    * attempts, so a batch that will not read has no next time in which to read.
    *
-   * Between the two lies the failure this method exists to make impossible —
+   * Between the two lies the failure this method exists to make impossible,
    * a mailbox retrying an unreadable batch forever, delivering nothing,
    * reporting `degraded`, and opening a connection every few hundred
    * milliseconds against a provider that counts them. The owner is told once,

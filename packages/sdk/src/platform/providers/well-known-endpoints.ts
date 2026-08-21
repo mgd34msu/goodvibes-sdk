@@ -25,15 +25,15 @@
  * These constants are never used when a user-supplied value is present.
  */
 export const WELL_KNOWN_LOCAL_ENDPOINTS = Object.freeze({
-  /** Ollama — default listen address (loopback) */
+  /** Ollama, default listen address (loopback) */
   ollama: 'http://127.0.0.1:11434',
-  /** LM Studio — default OpenAI-compat server */
+  /** LM Studio, default OpenAI-compat server */
   lmStudio: 'http://127.0.0.1:1234',
-  /** llama.cpp — default HTTP server */
+  /** llama.cpp, default HTTP server */
   llamaCpp: 'http://localhost:8080',
-  /** LiteLLM — default proxy gateway */
+  /** LiteLLM, default proxy gateway */
   liteLLM: 'http://localhost:4000',
-  /** Copilot Proxy — operator-managed local gateway */
+  /** Copilot Proxy, operator-managed local gateway */
   copilotProxy: 'http://localhost:3000',
 } as const);
 

@@ -1,5 +1,5 @@
 /**
- * path-shadow.ts — decide whether the copy of a command the updater maintains
+ * path-shadow.ts, decide whether the copy of a command the updater maintains
  * is actually the copy the user's shell runs.
  *
  * The platform's update guarantee is "one verified swap mechanism, nothing
@@ -24,9 +24,9 @@
  *     import TypeScript.
  *
  * Removal is deliberately conservative. A copy is only ever offered for
- * removal when it is recognisably one of OUR programs — a link into an
+ * removal when it is recognisably one of OUR programs, a link into an
  * installed `@pellux/goodvibes-*` package, or a file that answers
- * `--version` with `<command> <semver>` — and only when it lives inside the
+ * `--version` with `<command> <semver>`, and only when it lives inside the
  * user's own home directory. Everything else is reported and left alone.
  */
 
@@ -67,7 +67,7 @@ export interface CommandCopy {
   readonly command: string;
   /** The PATH directory the copy was found in. */
   readonly directory: string;
-  /** `<directory>/<command>` — the path the shell would execute. */
+  /** `<directory>/<command>`, the path the shell would execute. */
   readonly path: string;
   /** Zero-based position of `directory` in PATH. Lower wins. */
   readonly pathIndex: number;
@@ -85,7 +85,7 @@ export interface CommandShadowReport {
   readonly command: string;
   /** Every copy found, in PATH order. */
   readonly copies: readonly CommandCopy[];
-  /** The copy the shell actually runs — the first on PATH. Absent when the command is not on PATH at all. */
+  /** The copy the shell actually runs, the first on PATH. Absent when the command is not on PATH at all. */
   readonly winner?: CommandCopy | undefined;
   /** The copy in the install directory. Absent when the install directory is not on PATH. */
   readonly installed?: CommandCopy | undefined;
@@ -229,9 +229,9 @@ function packageRemoval(packageName: string, resolvedPath: string): ShadowRemova
 
 /**
  * True when a `--version` line is one of ours: `<command> <dotted numbers>`,
- * which is the exact shape every goodvibes command prints. Anything else —
+ * which is the exact shape every goodvibes command prints. Anything else,
  * an unrelated program that happens to share the name, a wrapper script, a
- * `--version` that errors — fails, and the copy stays `unknown`.
+ * `--version` that errors, fails, and the copy stays `unknown`.
  */
 export function versionLineIdentifiesCommand(line: string | undefined, command: string): string | undefined {
   if (!line) return undefined;
@@ -354,7 +354,7 @@ function describeVersion(copy: CommandCopy): string {
 /**
  * Renders one shadowed command as plain lines: which path wins, what version
  * each copy is, and the exact command that fixes it. No jargon, no severity
- * words — the user needs to know which file answers when they type the name.
+ * words, the user needs to know which file answers when they type the name.
  */
 export function describeShadowReport(report: CommandShadowReport): string[] {
   const lines: string[] = [];

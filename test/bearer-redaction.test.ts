@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Bearer/token redaction — verifies that redactSensitiveData strips
+ * Bearer/token redaction, verifies that redactSensitiveData strips
  * Bearer tokens and API keys from error strings before they appear in logs.
  */
 describe('bearer redaction', () => {

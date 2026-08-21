@@ -24,13 +24,13 @@ import type { DaemonSystemRouteContext, WatcherRecord } from './system-route-typ
  *
  * Both are late-bound: the router is constructed before the lifecycle sidecar
  * and the cluster coordinator exist. Absent means the section is simply not in
- * the payload, which is what an embedder without those subsystems should see —
+ * the payload, which is what an embedder without those subsystems should see,
  * never a fabricated default.
  */
 export interface DaemonStatusProviders {
   /**
    * The running artifact's own release version, when this host ships one. The
-   * platform build is reported separately and is never a stand-in for it —
+   * platform build is reported separately and is never a stand-in for it,
    * see ControlRouteContext.buildVersion in daemon-sdk/src/control-routes.ts.
    */
   readonly buildVersion?: (() => string | null) | undefined;
@@ -181,7 +181,7 @@ export function buildSystemRouteContext(input: {
 
   if (!input.swapManager) {
     logger.warn(
-      'DaemonSystemRouteContext: initialized without swapManager — POST /config runtime.workingDir will be rejected',
+      'DaemonSystemRouteContext: initialized without swapManager, POST /config runtime.workingDir will be rejected',
     );
   }
 

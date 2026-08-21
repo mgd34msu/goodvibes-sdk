@@ -1,5 +1,5 @@
 /**
- * group-settings.ts — the `cluster.*` settings the group layer reads.
+ * group-settings.ts, the `cluster.*` settings the group layer reads.
  *
  * Kept apart from settings.ts (which resolves the election's timing) so the two
  * concerns can be changed independently, and so a consumer that only wants one
@@ -16,7 +16,7 @@ export interface ClusterGroupSettings {
    * Whether this machine takes part at all.
    *
    * The same `cluster.enabled` the election reads. With it off, the group layer
-   * opens no socket, sends no beacon and runs no timers — it only reads what is
+   * opens no socket, sends no beacon and runs no timers, it only reads what is
    * already stored, so `cluster status`, `cluster key` and `cluster nodes` can
    * still answer honestly about a group this machine belongs to but is not
    * currently participating in.

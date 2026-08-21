@@ -3,7 +3,7 @@
  *
  * The invisible migration: a user config populated with legacy featureFlags
  * entries (and the renamed sandbox.judgmentAutoApprove key) is rewritten onto
- * the per-domain settings keys on first load — no user edits, one persisted
+ * the per-domain settings keys on first load, no user edits, one persisted
  * rewrite, honest receipts. Covers the pure mapping (migrateLegacyFeatureToggles)
  * and the ConfigManager.load() integration including the write-back that makes
  * the migration run exactly once.
@@ -92,7 +92,7 @@ describe('migrateLegacyFeatureToggles — pure mapping', () => {
       featureFlags: { 'compaction-distiller-strategy': 'disabled' },
       behavior: { compactionStrategy: 'distiller' },
     } as never);
-    // Legacy resolved a dark distiller selection back to structured — preserved explicitly.
+    // Legacy resolved a dark distiller selection back to structured, preserved explicitly.
     expect((distillerOffWithSelection.config as Record<string, Record<string, unknown>>)['behavior']?.['compactionStrategy']).toBe('structured');
   });
 

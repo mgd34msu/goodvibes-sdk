@@ -4,7 +4,7 @@ export const DEFAULT_MAX_REQUEST_BODY_BYTES = 1_000_000;
  * Reads and discards the remainder of a request body reader.
  *
  * Bun (and Node) keep-alive connection reuse depends on the previous
- * request's body having been fully read off the wire — `stream.cancel()`
+ * request's body having been fully read off the wire, `stream.cancel()`
  * signals "stop delivering chunks to me" but does not, in practice, drain the
  * underlying connection buffer, which leaves the NEXT request on a reused
  * connection stalled for several seconds waiting for the runtime to notice
@@ -12,7 +12,7 @@ export const DEFAULT_MAX_REQUEST_BODY_BYTES = 1_000_000;
  * `Bun.serve()` with no SDK code involved). Actively reading-and-discarding
  * the rest of the body is the correct fix: it costs a little time
  * proportional to the bytes the caller already sent, but leaves the
- * connection immediately reusable. Best-effort — a drain failure must not
+ * connection immediately reusable. Best-effort, a drain failure must not
  * mask the caller's own response/error.
  */
 async function drainReader(reader: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
@@ -37,7 +37,7 @@ async function drainBody(body: ReadableStream<Uint8Array> | null): Promise<void>
 }
 
 function payloadTooLargeResponse(maxBytes: number): Response {
-  // Honest refusal: state the actual limit rather than a bare "too large" —
+  // Honest refusal: state the actual limit rather than a bare "too large",
   // a caller (browser composer, webhook sender, etc.) needs the number to
   // decide whether to retry with a different transport (e.g. the artifact
   // multipart/raw-body upload path) or shrink the payload.
@@ -67,7 +67,7 @@ export async function readTextBodyWithinLimit(
       total += value.byteLength;
       if (total > maxBytes) {
         // Keep reading (and discarding) the rest of this oversized body
-        // rather than cancelling — see drainReader's doc comment.
+        // rather than cancelling, see drainReader's doc comment.
         await drainReader(reader);
         return payloadTooLargeResponse(maxBytes);
       }

@@ -1,5 +1,5 @@
 /**
- * source-factory.ts — building the source the selection chose.
+ * source-factory.ts, building the source the selection chose.
  *
  * The supervisor decides WHICH source reads the mailbox; this file is the one
  * place that knows how to construct one. Split out for the same reason
@@ -12,7 +12,7 @@
  * `MailboxConnectionPort.open()` is called again on every reconnect, and this
  * factory resolves the password inside it. A password rotated while the daemon
  * is running is therefore picked up by the next reconnect rather than at the
- * next restart — and a credential that is missing entirely throws from inside
+ * next restart, and a credential that is missing entirely throws from inside
  * `open()`, on the watcher's own connection path, where `classifyOpenFailure`
  * already turns it into a `credentials-missing` verdict with the step that
  * fixes it. That is why nothing here catches it: a second, quieter report of
@@ -25,14 +25,14 @@
  * here for the same reason an IMAP password is not: they are composition-root
  * facts, and a factory that reached for them itself could not be exercised
  * without a machine that has Google adopted on it. `composeInboundMail` builds
- * the builder — over `GoogleApiClient.historyDeltaPort()` and
- * `currentHistoryId()`, which exist now — and passes it here.
+ * the builder, over `GoogleApiClient.historyDeltaPort()` and
+ * `currentHistoryId()`, which exist now, and passes it here.
  *
  * `deps.gmail` remains OPTIONAL, and that is a seam rather than a shrug: a test
  * exercising the IMAP arm should not have to supply a Gmail one. What is no
  * longer optional is the daemon composition's Gmail READER, so the shape that
- * used to reach production — every arm complete, nothing injected, `create()`
- * answering `null` on every machine — cannot recur silently.
+ * used to reach production, every arm complete, nothing injected, `create()`
+ * answering `null` on every machine, cannot recur silently.
  *
  * When there is no builder, `create()` returns `null` and the supervisor
  * REPORTS that; it does not fall back to IMAP. The refusal is the point:
@@ -75,7 +75,7 @@ import type { InboundMailSourceFactory } from './supervisor.js';
  * The Gmail poll cadence, resolved from config into milliseconds.
  *
  * A named type rather than two loose numbers because they travel together
- * through three hops and are trivially swappable at every one of them — the
+ * through three hops and are trivially swappable at every one of them, the
  * fast one is five seconds and the slow one is sixty, and nothing about
  * `(number, number)` would stop a caller getting them the wrong way round.
  */
@@ -97,7 +97,7 @@ export interface GmailPollIntervals {
  * schema row, a validated range, and a description the owner reads in the
  * settings UI, and not one reader. Leaving the builder to pick its own numbers
  * would have made that permanent, because the composition that can see the
- * config is not the one that knows how to talk to Google — so the numbers have
+ * config is not the one that knows how to talk to Google, so the numbers have
  * to cross that boundary explicitly or they never cross it at all.
  *
  * Resolved once, where config lives, and arriving here already in
@@ -115,7 +115,7 @@ export type GmailSourceBuilder = (input: GmailPollIntervals & {
    * Included because `GmailMailSourceDeps.capabilityRecheckMs` defaults to the
    * watcher's constant when omitted, and a Gmail source silently re-probing on
    * a different schedule from the one the owner configured is the same class of
-   * defect as the two above — a setting that appears to apply and does not.
+   * defect as the two above, a setting that appears to apply and does not.
    */
   readonly capabilityRecheckMs: number;
   /**
@@ -124,7 +124,7 @@ export type GmailSourceBuilder = (input: GmailPollIntervals & {
    * Handed in for the same reason the two intervals are: the composition that
    * can see the config is not the one that knows how to talk to Google, so the
    * value crosses that boundary explicitly or it never crosses it at all. This
-   * is the key the schema has described since it was added and nothing read —
+   * is the key the schema has described since it was added and nothing read,
    * `notice-only` and `refuse-and-notify` were the same behaviour until this
    * argument existed.
    */
@@ -134,7 +134,7 @@ export type GmailSourceBuilder = (input: GmailPollIntervals & {
 export interface InboundMailSourceFactoryDeps {
   /** Reads `surfaces.email.*`. The daemon tier, and only the daemon tier. */
   readonly getConfig: ConfigReader;
-  /** Where the mail password is read from. One store — see `resolveEmailPassword`. */
+  /** Where the mail password is read from. One store, see `resolveEmailPassword`. */
   readonly secrets: SecretReader;
   /**
    * The real sockets. A test passes one whose members throw.
@@ -156,7 +156,7 @@ export interface InboundMailSourceFactoryDeps {
    * credential through `createDaemonGmailInboundReader`.
    *
    * Optional so the IMAP arm can be exercised without one. It was optional
-   * before too, and nothing filled it — the daemon composition now does, and
+   * before too, and nothing filled it, the daemon composition now does, and
    * ITS option is required, which is where the reachability is enforced rather
    * than here.
    */
@@ -171,8 +171,8 @@ const GMAIL_POLL_IDLE_DEFAULT_SECONDS = 60;
  * The Gmail cadence, read from the owner's settings.
  *
  * Read HERE rather than plumbed in from the composition root, because this is
- * already the module that reads `surfaces.email.*` to build a source — it takes
- * a `ConfigReader` for exactly that — and a second hop through the caller would
+ * already the module that reads `surfaces.email.*` to build a source, it takes
+ * a `ConfigReader` for exactly that, and a second hop through the caller would
  * be two places that have to agree about two numbers.
  *
  * The schema's 2-60 s and 10-3600 s ranges are NOT restated. `ConfigManager`
@@ -186,7 +186,7 @@ const GMAIL_POLL_IDLE_DEFAULT_SECONDS = 60;
  * The key literals sit INSIDE the `getConfig(...)` calls rather than being
  * passed to a local helper that reads them, and that is deliberate.
  * `test/inbound-email-config-schema.test.ts` decides whether a key is read by
- * looking for the key's own text inside a config-read call — a doc comment
+ * looking for the key's own text inside a config-read call, a doc comment
  * naming it does not count, which is the distinction that caught these two in
  * the first place. A helper taking the key as an argument would be a genuine
  * read that the repository's own gate could not see, which is a worse place to
@@ -214,7 +214,7 @@ function positiveSeconds(value: unknown, fallback: number): number {
  *
  * An unrecognised value falls back to the shipped default rather than being
  * passed on. `ConfigManager.set()` refuses anything outside the enum, so the
- * only way to get here with something else is a hand-edited config file — and
+ * only way to get here with something else is a hand-edited config file, and
  * the safe direction for an unreadable value is the policy that stops rather
  * than the one that announces mail it can never act on.
  */
@@ -305,7 +305,7 @@ export function createInboundMailSourceFactory(
         });
       }
 
-      // No host and no account is not a source that failed to connect — it is
+      // No host and no account is not a source that failed to connect, it is
       // a mailbox nobody configured. Answering `null` puts that in status with
       // the step that fixes it, rather than opening a socket to nothing and
       // reporting the resulting DNS failure as a capability verdict.

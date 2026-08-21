@@ -1,5 +1,5 @@
 /**
- * health.ts — provider reachability and runtime-metadata queries.
+ * health.ts, provider reachability and runtime-metadata queries.
  * Pure functions that do not hold mutable state; called by ProviderRegistry.
  */
 import type { LLMProvider, ProviderRuntimeMetadata, ProviderRuntimeMetadataDeps } from './interface.js';

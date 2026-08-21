@@ -7,8 +7,8 @@
  * `invokeGatewayMethodCall` calls `startTurnForOwnerRequest(explicitUserRequest)`
  * as its FIRST statement, before dispatch. `startTurn()` moves the ledger
  * watermark to the end, so a `profile.set` carrying `explicitUserRequest: true`
- * — the flag a genuine owner request carries, and the one `refuseNonUserRequest`
- * rewards — pushed the page the agent had just read out of the window and then
+ *, the flag a genuine owner request carries, and the one `refuseNonUserRequest`
+ * rewards, pushed the page the agent had just read out of the window and then
  * asked what had been read. Measured before the fix: the identical write was
  * refused with the page in the window and ALLOWED after one turn start. Layer 2
  * protected nothing on exactly the path the design says it protects.
@@ -17,7 +17,7 @@
  * watermark it displaced, and the derivation check runs over a window one
  * boundary wide. Exact containment runs over everything retained, because a
  * value appearing verbatim in a stranger's text is not a coincidence however
- * long ago it was read — and scoping that to a turn would let an attacker
+ * long ago it was read, and scoping that to a turn would let an attacker
  * defeat it by waiting.
  *
  * These cases are written against the real ledger and the real gate, with the
@@ -224,7 +224,7 @@ describe('the ledger windows themselves', () => {
 
     ledger.startTurn();
     expect(ledger.taintSourcesSinceLastTurnBoundary()).toHaveLength(0);
-    // Retained survives every boundary — that is what pass 2 relies on.
+    // Retained survives every boundary, that is what pass 2 relies on.
     expect(ledger.taintSourcesRetained()).toHaveLength(1);
   });
 
@@ -242,7 +242,7 @@ describe('the ledger windows themselves', () => {
     expect(ledger.taintSourcesThisTurn()).toEqual([]);
     expect(ledger.taintSourcesSinceLastTurnBoundary()).toEqual([]);
     expect(ledger.taintSourcesRetained()).toEqual([]);
-    // Exposure is still recorded — the coarse check keeps working.
+    // Exposure is still recorded, the coarse check keeps working.
     expect(ledger.hasIngestedThisTurn()).toBe(true);
   });
 });

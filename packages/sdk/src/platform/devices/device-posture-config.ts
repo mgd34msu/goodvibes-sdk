@@ -1,9 +1,9 @@
 /**
- * device-posture-config.ts — the mapping from the `device.*` settings to the
+ * device-posture-config.ts, the mapping from the `device.*` settings to the
  * policy structs the device stores and the capability service enforce.
  *
  * This mapping used to live in one consumer (the agent's phone-device-service),
- * which meant every OTHER daemon host — the terminal app's daemon included —
+ * which meant every OTHER daemon host, the terminal app's daemon included,
  * ran the device feature on the struct defaults and silently ignored what the
  * owner had set. The mapping is not surface-specific: the same eleven keys mean
  * the same thing to every host, so it belongs here with the contract, and each
@@ -15,7 +15,7 @@
  *  - A value that is not the shape the key declares (a number that is not
  *    finite or not positive, an enum value outside its list) reads as the STOCK
  *    value rather than being passed through. A broken setting must never turn
- *    into a broken posture — and never into a wider one.
+ *    into a broken posture, and never into a wider one.
  *
  *  - Nothing is cached. Each function reads through to the reader every time it
  *    is called, so a host that resolves policy per request (see
@@ -139,7 +139,7 @@ export function readDeviceCapabilityPolicy(reader: DevicePostureConfigReader): D
 
 /**
  * How long one capability request may take. Read on its own as well as through
- * the policy, because it is also the deadline on the confirmation prompt — a
+ * the policy, because it is also the deadline on the confirmation prompt, a
  * question nobody answers must not outlive the request it belongs to.
  */
 export function readDeviceRequestTimeoutMs(reader: DevicePostureConfigReader): number {
@@ -152,7 +152,7 @@ export function readDeviceRequestTimeoutMs(reader: DevicePostureConfigReader): n
 
 /**
  * Grant-ledger bounds. `maxGrantsTotal` and `maxAuditRecords` have no settings
- * key — they are absolute safety bounds on persisted state — so the struct
+ * key, they are absolute safety bounds on persisted state, so the struct
  * defaults stand for them.
  */
 export function readDeviceGrantPolicy(reader: DevicePostureConfigReader): DeviceGrantPolicy {

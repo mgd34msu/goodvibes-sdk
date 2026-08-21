@@ -1,39 +1,39 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * WorktreeIsolationManager — the engine-side driver for `worktree` isolation
+ * WorktreeIsolationManager, the engine-side driver for `worktree` isolation
  * mode (see WorkstreamIsolation, types.ts, and IsolatedWorktree, worktree.ts).
  *
  * Owns three things the engine calls into at well-defined lifecycle points:
  *
- *   ensureWorktree()      — at an item's FIRST claim (engine.ts runItemPhase),
+ *   ensureWorktree()     , at an item's FIRST claim (engine.ts runItemPhase),
  *                           create its dedicated worktree if it doesn't have
  *                           one yet. Idempotent across an item's phases (a
  *                           worktree persists for the item's whole run).
- *   enqueueIntegration()  — when a passed item's pipeline terminates, queue its
+ *   enqueueIntegration() , when a passed item's pipeline terminates, queue its
  *                           branch onto the SINGLE sequential integration lane
  *                           (completion order, not claim order). A conflict
  *                           keeps the worktree + branch and lets the lane
- *                           continue with the next item — never auto-resolved,
+ *                           continue with the next item, never auto-resolved,
  *                           never silently dropped.
- *   cleanupTerminated()   — when an item fails or is killed, remove its
+ *   cleanupTerminated()  , when an item fails or is killed, remove its
  *                           worktree ONLY if the tree is clean; a dirty tree
  *                           is KEPT (data safety) and counted against the
  *                           kept-worktree cap (oldest-first eviction).
- *   reconcileOrphans()    — at import (a resumed/crashed workstream), find any
+ *   reconcileOrphans()   , at import (a resumed/crashed workstream), find any
  *                           on-disk `ws/<wsShort>/*` worktree not already
  *                           recorded on one of the imported items and either
  *                           ADOPT it (the item still has unresolved work) or
- *                           REPORT it (leave in place for the operator — NEVER
+ *                           REPORT it (leave in place for the operator, NEVER
  *                           deleted on sight).
  *
  * Location + naming: worktrees live under
  * `<projectRoot>/.goodvibes/.worktrees/ws/<wsShort>/<itemShort>` on branch
- * `ws/<wsShort>/<itemShort>` — deterministic from (workstreamId, itemId), so
+ * `ws/<wsShort>/<itemShort>`, deterministic from (workstreamId, itemId), so
  * `ensureWorktree` and `reconcileOrphans` agree on where a given item's
  * worktree lives without any extra bookkeeping.
  *
- * SYNCHRONOUS orphan scan (deliberate — mirrors dirty-guard.ts's
+ * SYNCHRONOUS orphan scan (deliberate, mirrors dirty-guard.ts's
  * snapshotDirtyTree precedent): `reconcileOrphans` must resolve BEFORE the
  * engine's first tick() can claim any item, or a claim could race the async
  * git listing and create a second worktree at the same deterministic path an
@@ -62,7 +62,7 @@ export interface WorktreeIsolationManagerDeps {
    * untracked files present instead of broken-by-default. The wiring is
    * responsible for capturing/recording the honest outcome (e.g. onto the
    * worktree registry record); a thrown/rejected setup NEVER fails worktree
-   * creation — a broken setup is surfaced as a visible state, not a lost
+   * creation, a broken setup is surfaced as a visible state, not a lost
    * worktree. Absent → today's behavior (no provisioning).
    */
   readonly runSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
@@ -74,19 +74,19 @@ export interface ItemWorktreeHandle {
 }
 
 export interface WorktreeIsolationManager {
-  /** Ensure this item has a dedicated worktree (idempotent — created once, at first claim). Only meaningful when workstream.isolation === 'worktree'. */
+  /** Ensure this item has a dedicated worktree (idempotent, created once, at first claim). Only meaningful when workstream.isolation === 'worktree'. */
   ensureWorktree(workstream: Workstream, item: WorkItem): Promise<ItemWorktreeHandle>;
   /**
    * Enqueue a just-passed item's branch onto the sequential integration lane.
    * Resolves once THIS item's attempt (merged/conflict/empty) and any
    * resulting cleanup has settled. Callers that don't need to wait may let
-   * the returned promise run fire-and-forget (errors are caught internally —
+   * the returned promise run fire-and-forget (errors are caught internally,
    * this never rejects).
    */
   enqueueIntegration(workstream: Workstream, item: WorkItem): Promise<void>;
   /** Fail/kill cleanup rule: remove the item's worktree if clean, else KEEP it (data safety). No-op if the item never got a worktree. Never throws. */
   cleanupTerminated(workstream: Workstream, item: WorkItem): Promise<void>;
-  /** Synchronous orphan scan — see the module doc. Call once, right after registering an imported workstream, before start()/tick(). */
+  /** Synchronous orphan scan, see the module doc. Call once, right after registering an imported workstream, before start()/tick(). */
   reconcileOrphans(workstream: Workstream): void;
   /**
    * The diff an item's worktree branch introduced over base (best-of-N candidate
@@ -161,7 +161,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       item.worktreeBranch = instance.branch;
       deps.emit({ type: 'item-worktree-created', workstreamId: workstream.id, itemId: item.id, path: instance.path, branch: instance.branch });
       // Cold-start setup: install deps, run codegen, carry over untracked
-      // files. Never fails worktree creation — the wiring records the honest
+      // files. Never fails worktree creation, the wiring records the honest
       // outcome (including a failure) as a visible worktree state.
       if (deps.runSetup) {
         try {
@@ -202,7 +202,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       // Cap eviction never destroys work: uncommitted state is committed onto
       // the item branch first, only the directory is removed, and the branch
       // is KEPT (see IsolatedWorktree.evict). If preservation fails, the
-      // directory is left in place — an over-cap directory beats lost work —
+      // directory is left in place, an over-cap directory beats lost work,
       // and the tree stays kept/attributed rather than falsely announced gone.
       try {
         preservedCommit = (await instance.evict()).preservedCommit;
@@ -242,7 +242,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
       if (outcome.status === 'merged') {
         item.mergeState = 'merged';
         item.mergeHash = outcome.hash;
-        // A retry that lands clears the prior conflict markers — the tree is
+        // A retry that lands clears the prior conflict markers, the tree is
         // reclaimed below and nothing may keep reading as conflicted.
         item.conflictFiles = undefined;
         item.worktreeKept = false;
@@ -263,9 +263,9 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
         keepWorktree(workstream, item, instance, `merge-conflict: ${outcome.files.join(', ') || 'unknown files'}`);
         return;
       }
-      // 'empty' — the item branch carries no commits beyond base: an honest
+      // 'empty', the item branch carries no commits beyond base: an honest
       // no-op, not a failure. Nothing to merge, so trivially "merged" (no
-      // hash — there is no merge commit to report) and the worktree is
+      // hash, there is no merge commit to report) and the worktree is
       // reclaimed like any other successfully-integrated item.
       item.mergeState = 'merged';
       item.conflictFiles = undefined;
@@ -282,7 +282,7 @@ export function createWorktreeIsolationManager(deps: WorktreeIsolationManagerDep
   function enqueueIntegration(workstream: Workstream, item: WorkItem): Promise<void> {
     const run = integrationLane.then(() => integrateOne(workstream, item));
     // Chain off a NEVER-REJECTING tail so one item's (already internally
-    // caught) failure can't skip the lane forward for the next enqueue —
+    // caught) failure can't skip the lane forward for the next enqueue,
     // integrateOne never actually throws past its own try/catch, but this is
     // cheap insurance against a future change forgetting that invariant.
     integrationLane = run.catch((error) => {

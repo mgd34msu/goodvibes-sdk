@@ -6,13 +6,13 @@
  * event stream hands it. These tests pin what that stream actually carries.
  *
  * The frames a renderer needs are emitted on TWO domains:
- *   - `turn`  — STREAM_DELTA (the text), LLM_RESPONSE_RECEIVED (the usage),
+ *   - `turn` , STREAM_DELTA (the text), LLM_RESPONSE_RECEIVED (the usage),
  *               TURN_COMPLETED (the end).
- *   - `tools` — TOOL_RECEIVED (the call), TOOL_SUCCEEDED / TOOL_FAILED (the
+ *   - `tools`, TOOL_RECEIVED (the call), TOOL_SUCCEEDED / TOOL_FAILED (the
  *               result).
  *
  * `DEFAULT_DOMAINS` contains `turn` and NOT `tools`. A stream on the defaults
- * therefore delivered everything the model SAID and nothing it DID — the
+ * therefore delivered everything the model SAID and nothing it DID, the
  * "before" this file also pins, so the reason RENDER_GRADE_SESSION_DOMAINS
  * exists cannot quietly stop being true.
  */
@@ -62,7 +62,7 @@ async function readStreamText(
  * the same emitter functions the Orchestrator calls, stamped with the hosted
  * session's id the way `createEmitterContext(sessionId, turnId)` stamps them.
  *
- * Using the real emitters is the point — a tool event that moved off the
+ * Using the real emitters is the point, a tool event that moved off the
  * `tools` domain, or a delta that stopped carrying its session id, has to break
  * this test rather than pass it.
  */
@@ -139,7 +139,7 @@ describe('hosted-session event stream carries render-grade frames', () => {
 
     // The text the model produced.
     expect(types).toContain('STREAM_DELTA');
-    // What it DID — the frames DEFAULT_DOMAINS drops on the floor.
+    // What it DID, the frames DEFAULT_DOMAINS drops on the floor.
     expect(types).toContain('TOOL_RECEIVED');
     expect(types).toContain('TOOL_SUCCEEDED');
     // The accounting, so a remote renderer can show real token numbers.

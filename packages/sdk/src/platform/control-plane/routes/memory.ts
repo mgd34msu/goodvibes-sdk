@@ -1,5 +1,5 @@
 /**
- * routes/memory.ts — handler for the ops.memory.get observability verb over the
+ * routes/memory.ts, handler for the ops.memory.get observability verb over the
  * live MemoryGovernor (see runtime/memory/memory-governor.ts for the policy).
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';

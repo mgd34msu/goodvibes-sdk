@@ -23,7 +23,7 @@ export const LARGE_FIRST_SNAPSHOT_OVERRIDE = 'allowLargeFirstSnapshot';
  * Default ceiling for the first-ever snapshot's file sweep. Deliberately
  * generous: a real source tree (with node_modules/build output gitignored)
  * sits far below this, while a mistaken sweep of a home directory or an
- * over-broad root blows past it — the exact case that produced an orphaned
+ * over-broad root blows past it, the exact case that produced an orphaned
  * multi-GiB checkpoint store rooted at $HOME.
  */
 export const DEFAULT_MAX_FIRST_SNAPSHOT_FILES = 50_000;
@@ -62,7 +62,7 @@ export function broadRootRefusalMessage(root: string, reason: string): string {
 /** Honest, count-and-override-naming message for a refused oversized first snapshot. */
 export function firstSnapshotTooLargeMessage(root: string, count: number, limit: number): string {
   return (
-    `WorkspaceCheckpointManager: refusing the first checkpoint of "${root}" — ` +
+    `WorkspaceCheckpointManager: refusing the first checkpoint of "${root}", ` +
     `a full sweep would capture ${count} files (limit ${limit}). ` +
     `This usually means the root is too broad. Set ${LARGE_FIRST_SNAPSHOT_OVERRIDE} to proceed anyway.`
   );

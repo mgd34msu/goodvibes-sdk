@@ -2,7 +2,7 @@
  * What is already set up.
  *
  * Idempotency here is deliberately not a journal of "steps I previously ran".
- * A journal lies as soon as anything changes outside the flow — a revoked app
+ * A journal lies as soon as anything changes outside the flow, a revoked app
  * password, a deleted OAuth client, a project someone removed. Instead every
  * check probes the actual state: is the secret present, is the config written,
  * does the credential still work. Re-running after a partial failure therefore
@@ -94,7 +94,7 @@ export async function detectGoogleSetupState(deps: {
 /**
  * A plain-language description of the current state, for `--check` and for the
  * opening line of a run so the owner can see what will be skipped. Contains no
- * secret values — only whether each one is present.
+ * secret values, only whether each one is present.
  */
 export function describeGoogleSetupState(state: GoogleSetupState): readonly string[] {
   const lines: string[] = [];
@@ -121,7 +121,7 @@ export function describeGoogleSetupState(state: GoogleSetupState): readonly stri
         : state.publishingStatus === 'testing'
           ? 'WARNING: the app is still in Testing, so this credential expires seven days after it was issued'
           : 'publishing status has not been read yet, so the credential lifetime is unknown';
-    lines.push(`OAuth: authorized — ${expiry}.`);
+    lines.push(`OAuth: authorized, ${expiry}.`);
   } else if (state.oauthClientId !== null) {
     lines.push('OAuth: a client exists but the agent has not been authorized yet.');
   } else {

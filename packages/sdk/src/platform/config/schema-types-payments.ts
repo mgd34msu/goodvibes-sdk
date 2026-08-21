@@ -5,7 +5,7 @@
  *
  * Card MATERIAL is deliberately absent from every type here. The number,
  * expiry, CVV and cardholder name live in the daemon secret store under keys
- * derived by `daemonSecretKeyFor`, never in config — see docs/payments.md §3.
+ * derived by `daemonSecretKeyFor`, never in config, see docs/payments.md §3.
  */
 
 /** Which delivery tier to prefer, ordinal against what a checkout offers. */
@@ -16,7 +16,7 @@ export type ShippingTierPreference = 'normal' | 'fast' | 'fastest';
  *
  * `'stored'` is the default and the owner's ruling: autonomous action requires
  * it, because a purchase that stops to ask for a code is an attended purchase.
- * `'prompt'` disables unattended purchasing — surfaces state that at the moment
+ * `'prompt'` disables unattended purchasing, surfaces state that at the moment
  * of selection. See docs/decisions/2026-07-27-the-cvv-is-stored.md.
  */
 export type CvvHandling = 'stored' | 'prompt';

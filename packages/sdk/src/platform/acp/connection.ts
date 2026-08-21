@@ -1,5 +1,5 @@
 /**
- * AcpConnection — Per-subagent ACP connection.
+ * AcpConnection, Per-subagent ACP connection.
  *
  * Spawns a child process via Bun.spawn and connects to it via ClientSideConnection
  * using ndJsonStream over stdio. Implements the ACP Client interface so the
@@ -86,7 +86,7 @@ export function mapAcpUsage(usage: AcpPromptUsage | null | undefined): AgentUsag
  *
  * Lifecycle:
  *   1. Construct with spawn params
- *   2. Call run() — spawns child, performs ACP handshake, starts a session
+ *   2. Call run(), spawns child, performs ACP handshake, starts a session
  *   3. Resolves with SubagentResult when the subagent completes or is cancelled
  *   4. Call cancel() to abort
  */
@@ -159,7 +159,7 @@ export class AcpConnection {
       // ndJsonStream requires a Web WritableStream<Uint8Array> so it can call
       // .getWriter() internally.  Wrap the FileSink in a WritableStream adapter.
       if (!this.childProcess.stdin) {
-        throw new AcpError('ACP subprocess stdin not available — was it spawned with stdin: "pipe"?');
+        throw new AcpError('ACP subprocess stdin not available, was it spawned with stdin: "pipe"?');
       }
       const bunStdin = this.childProcess.stdin as import('bun').FileSink;
       const stdinStream = new WritableStream<Uint8Array>({
@@ -176,7 +176,7 @@ export class AcpConnection {
 
       const stream = ndJsonStream(
         stdinStream,
-        // Bun's piped stdout is ReadableStream-shaped at runtime — getReader() works
+        // Bun's piped stdout is ReadableStream-shaped at runtime, getReader() works
         // correctly. The double-cast is safe here because Bun's ReadStream implements the
         // same interface, unlike stdin (FileSink) which lacks getWriter().
         this.childProcess.stdout as unknown as ReadableStream<Uint8Array>,

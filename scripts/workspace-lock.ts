@@ -7,7 +7,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SDK_ROOT = resolve(__dirname, '..');
 
 /**
- * Where the lock lives — the SHARED git directory, not this checkout.
+ * Where the lock lives, the SHARED git directory, not this checkout.
  *
  * A linked worktree has its own `.tmp`, so keying the lock off the checkout
  * gave every worktree a private lock and two builds ran at once. They then
@@ -43,7 +43,7 @@ const LOCK_INFO_PATH = resolve(LOCK_DIR, 'owner.json');
  *
  * Raised when the lock moved to the shared git directory. It now serializes
  * every worktree of this repository rather than each one separately, which is
- * the point — but it also means a legitimate queue is longer than it used to
+ * the point, but it also means a legitimate queue is longer than it used to
  * be. A full suite is minutes, and several queued back to back are routinely
  * more than ten, so the old ceiling turned ordinary waiting into a failure.
  *

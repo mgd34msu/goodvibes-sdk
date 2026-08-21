@@ -2,12 +2,12 @@ import { type ConfigSettingDefinition, intRange, numRange, port } from './schema
 
 /**
  * Per-project worktree cold-start setup (resolveWorktreeSetupConfig). Both fields
- * are arrays, so — like notifications.webhookUrls / wrfc.gates — they are NOT
+ * are arrays, so, like notifications.webhookUrls / wrfc.gates, they are NOT
  * scalar ConfigKeys; read them via getCategory('worktree').setup. The domain is
  * augmented onto GoodVibesConfig here (co-located with its default below) so
  * schema-types.ts stays under its grandfathered line ceiling; registering it is
  * what keeps get('worktree.setup.*') from throwing "section 'worktree' does not
- * exist" — the daemon reads those keys via a cast.
+ * exist", the daemon reads those keys via a cast.
  */
 export interface WorktreeConfig {
   setup: { commands: string[]; carryOverGlobs: string[] };
@@ -314,7 +314,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     default: '',
     description:
       'Override for a genuinely external control-plane address (tunnel or reverse proxy). '
-      + 'Leave empty — the everyday base URL is derived from hostMode/host/port/tls.mode, '
+      + 'Leave empty, the everyday base URL is derived from hostMode/host/port/tls.mode, '
       + 'so it cannot drift. Set this only when an off-box address differs from the bind.',
   },
   {
@@ -422,7 +422,7 @@ export const runtimePrimaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'httpListener.trustCloudflare',
     type: 'boolean',
     default: false,
-    description: 'Read the real client IP from CF-Connecting-IP, and only when the connecting peer is inside a published Cloudflare range. Requires httpListener.trustProxy: with it off, CF-Connecting-IP is ignored no matter what this says. The range check is the point — without it any peer could send a CF-Connecting-IP header and choose which address the rate limiter and the audit log recorded. Leave off unless this listener genuinely sits behind Cloudflare.',
+    description: 'Read the real client IP from CF-Connecting-IP, and only when the connecting peer is inside a published Cloudflare range. Requires httpListener.trustProxy: with it off, CF-Connecting-IP is ignored no matter what this says. The range check is the point, without it any peer could send a CF-Connecting-IP header and choose which address the rate limiter and the audit log recorded. Leave off unless this listener genuinely sits behind Cloudflare.',
   },
   {
     key: 'httpListener.tls.mode',
@@ -590,7 +590,7 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     key: 'relay.enabled',
     type: 'boolean',
     default: true,
-    description: 'Connect the daemon OUTBOUND to a zero-knowledge relay for reachability from outside the LAN. Default on, but no connection is ever made without an explicitly configured relay.url — leave the URL empty to keep the daemon LAN-only.',
+    description: 'Connect the daemon OUTBOUND to a zero-knowledge relay for reachability from outside the LAN. Default on, but no connection is ever made without an explicitly configured relay.url, leave the URL empty to keep the daemon LAN-only.',
   },
   {
     key: 'relay.url',
@@ -640,7 +640,7 @@ export const runtimeSecondaryConfigSettings: ConfigSettingDefinition[] = [
     default: false,
     description:
       'When false (default), turn emitters emit a redacted prompt summary {length, sha256, first100chars} instead of raw prompt/response content. ' +
-      'Set to true ONLY for debugging in non-production environments — raw prompts may contain PII, secrets, or proprietary data. ' +
+      'Set to true ONLY for debugging in non-production environments, raw prompts may contain PII, secrets, or proprietary data. ' +
       'When true at startup, a WARN log is emitted to make the configuration visible to ops.',
   },
   {

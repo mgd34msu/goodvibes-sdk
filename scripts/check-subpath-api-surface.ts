@@ -1,5 +1,5 @@
 /**
- * check-subpath-api-surface.ts — the published surface api:check cannot see.
+ * check-subpath-api-surface.ts, the published surface api:check cannot see.
  *
  * ## Why this exists
  *
@@ -10,7 +10,7 @@
  *   - 140 subpaths publish types, exporting 6 361 symbols between them;
  *   - 806 of those symbols (12.7%) appear anywhere in the two api-extractor
  *     rollups;
- *   - 78 of the 140 subpaths have ZERO symbols in either rollup — among them
+ *   - 78 of the 140 subpaths have ZERO symbols in either rollup, among them
  *     `./platform/email`, `./platform/google`, `./platform/config`,
  *     `./platform/cluster`, `./platform/devices` and `./platform/channels`.
  *
@@ -22,7 +22,7 @@
  * That is a missing gate, not a documentation gap. Consumer forks IMPLEMENT
  * some of these contracts: goodvibes-tui and goodvibes-agent each build their
  * own runtime graph and hand it to `registerRuntimePollers`. Adding a REQUIRED
- * member to `RuntimePollerOwners` breaks every one of them, and it happened —
+ * member to `RuntimePollerOwners` breaks every one of them, and it happened,
  * `cancelHostedAgentRuns` went in as required and surfaced only because
  * somebody checked by hand.
  *
@@ -31,10 +31,10 @@
  * One TypeScript program over all 140 entry points, ~1.5 s, recording per
  * subpath:
  *
- *   - every exported name and kind — a removal or rename is caught;
- *   - for every exported interface, its REQUIRED member names — a member added
+ *   - every exported name and kind, a removal or rename is caught;
+ *   - for every exported interface, its REQUIRED member names, a member added
  *     without `?` is caught, which is the incident above;
- *   - the emitted DECLARATION TEXT of every export, comments stripped — so a
+ *   - the emitted DECLARATION TEXT of every export, comments stripped, so a
  *     member whose type changes, a parameter added, a return type narrowed or a
  *     type alias rewritten is caught. This is the part the previous version did
  *     not have, and stated it did not have: it recorded names only, so
@@ -66,7 +66,7 @@
  * import directly: it publishes three entry points (`.`, `./conformance`,
  * `./terminal-output-guard`) and had nothing watching them, so a change to its
  * public surface could reach a consumer with no review step in between. A
- * package joins by appending one entry — the mechanism is identical for all.
+ * package joins by appending one entry, the mechanism is identical for all.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -171,7 +171,7 @@ function record(pkg: TrackedPackage): void {
   writeFileSync(pkg.snapshot, render(snapshot));
   console.log(
     `subpath-api-surface: wrote ${relative(SDK_ROOT, pkg.snapshot)}`
-    + ` — ${pkg.name}, ${entryPoints.size} subpaths,`
+    + `, ${pkg.name}, ${entryPoints.size} subpaths,`
     + ` ${Object.values(snapshot).reduce((n, e) => n + e.length, 0)} exports.`,
   );
 }
@@ -209,7 +209,7 @@ function check(pkg: TrackedPackage): void {
   if (committedText === rendered) {
     const exports = Object.values(committed).reduce((n, e) => n + e.length, 0);
     console.log(
-      `subpath-api-surface: OK — ${pkg.name}, ${Object.keys(committed).length} subpaths,`
+      `subpath-api-surface: OK, ${pkg.name}, ${Object.keys(committed).length} subpaths,`
       + ` ${exports} exports match the committed surface.`,
     );
     return;

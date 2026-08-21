@@ -1,23 +1,23 @@
 /**
- * platform/devices — paired-device capabilities as agent tools.
+ * platform/devices, paired-device capabilities as agent tools.
  *
  * The contract spine for using a paired phone's camera, screen, location,
  * clipboard, and device commands from the agent. Native contract over the
- * existing peer transport — deliberately not an MCP server.
+ * existing peer transport, deliberately not an MCP server.
  *
  * Layout:
- *  - device-capability-contract — the node-kind-neutral capability catalog and
+ *  - device-capability-contract, the node-kind-neutral capability catalog and
  *    node profile resolution (runtime-neutral).
- *  - device-peer-work — the wire shape of one request/response (runtime-neutral).
- *  - device-grants — durable "always allow" grants, with revocation and GC.
- *  - device-capture-artifacts — retained captures under a 24h TTL, validated
+ *  - device-peer-work, the wire shape of one request/response (runtime-neutral).
+ *  - device-grants, durable "always allow" grants, with revocation and GC.
+ *  - device-capture-artifacts, retained captures under a 24h TTL, validated
  *    by content rather than existence.
- *  - device-housekeeping — recovery-time and periodic sweeps, with disclosure.
- *  - device-capability-service — the single path a capability is reached through.
- *  - device-policy-source — fixed policy or live resolver, shared by all three.
- *  - device-posture-config — the `device.*` settings → policy structs mapping.
- *  - device-posture-runtime — one call that stands the feature up in a host.
- *  - device-phone-tool — the `phone` tool every host registers on its registry.
+ *  - device-housekeeping, recovery-time and periodic sweeps, with disclosure.
+ *  - device-capability-service, the single path a capability is reached through.
+ *  - device-policy-source, fixed policy or live resolver, shared by all three.
+ *  - device-posture-config, the `device.*` settings → policy structs mapping.
+ *  - device-posture-runtime, one call that stands the feature up in a host.
+ *  - device-phone-tool, the `phone` tool every host registers on its registry.
  */
 export {
   DEVICE_CAPABILITY_CONTRACT_VERSION,

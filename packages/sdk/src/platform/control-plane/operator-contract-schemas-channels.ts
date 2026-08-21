@@ -376,7 +376,7 @@ export const CHANNEL_TEST_SEND_INPUT_SCHEMA = objectSchema({
  * The honest outcome of a live per-channel test message: `delivered` reflects
  * whether the daemon's channel delivery router actually accepted and sent it.
  * A failed send is `delivered:false` with the real `error` (an unconfigured or
- * unsupported surface, a provider/transport error) — never a fabricated
+ * unsupported surface, a provider/transport error), never a fabricated
  * success. `responseId` is the surface's own message id when it returns one;
  * some surfaces deliver without one, so its absence does not imply failure when
  * `delivered` is true.
@@ -393,7 +393,7 @@ export const CHANNEL_TEST_SEND_OUTPUT_SCHEMA = objectSchema({
  * The handler reads `target`, then `input`, then `query`, and refuses when all
  * three are absent or blank (`Target resolution requires target, input, or
  * query.`). No single one of them is required, so the contract has to say "one
- * of" — a union, not a required array.
+ * of", a union, not a required array.
  */
 export const CHANNEL_TARGET_RESOLVE_INPUT_SCHEMA: Record<string, unknown> = branchedSchema(
   bodyEnvelopeSchema({

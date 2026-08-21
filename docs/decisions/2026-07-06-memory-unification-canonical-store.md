@@ -1,36 +1,36 @@
 # Decision: one canonical memory store (bundle-reconciled interim, daemon-owned target), the recall-honesty contract as the cross-surface contract, and VIBE.md as a projection of persona records
 
 Date: 2026-07-06
-Scope: Wave 6 SDK coherence — W6-C2 (memory unification, E6)
+Scope: Wave 6 SDK coherence, W6-C2 (memory unification, E6)
 Status: accepted
 
 ## Context
 
 The MemoryStore engine (`packages/sdk/src/platform/state/memory-store.ts`) is a
-single good engine — rich `MemoryRecord`, literal + semantic search, an
-`exportBundle`/`importBundle` seam — but it is instantiated as THREE disjoint
+single good engine, rich `MemoryRecord`, literal + semantic search, an
+`exportBundle`/`importBundle` seam, but it is instantiated as THREE disjoint
 SQLite files, one per surface:
 
-- the SDK daemon runtime — `<workingDir>/.goodvibes/<surface>/memory.sqlite`
+- the SDK daemon runtime, `<workingDir>/.goodvibes/<surface>/memory.sqlite`
   (`packages/sdk/src/platform/runtime/services.ts:425`);
-- the agent — `<userRoot>/goodvibes-agent/memory.sqlite`, user-global
+- the agent, `<userRoot>/goodvibes-agent/memory.sqlite`, user-global
   (`goodvibes-agent/src/runtime/services.ts:639`);
-- the TUI — `<workingDir>/.goodvibes/tui/memory.sqlite`, per-project
+- the TUI, `<workingDir>/.goodvibes/tui/memory.sqlite`, per-project
   (`goodvibes-tui/src/runtime/services.ts:390`).
 
 A fact learned on one surface is invisible to the others. That is the E6 silo.
 `VIBE.md` (`goodvibes-agent/src/agent/vibe-file.ts`) is a second, separate
-persona source of truth — a file read off disk and injected, a projection of
+persona source of truth, a file read off disk and injected, a projection of
 itself, disjoint from the store. The agent's Wave-4 W4-A1 memory-honesty
 discipline (`goodvibes-agent/src/agent/memory-prompt.ts`,
-`goodvibes-agent/src/tools/agent-local-registry-memory.ts`) — semantic-by-default
+`goodvibes-agent/src/tools/agent-local-registry-memory.ts`), semantic-by-default
 recall, a 60% injection floor tied to the store's own baseline, flagged-record
-exclusion, and honest degraded states — lives on ONE surface only.
+exclusion, and honest degraded states, lives on ONE surface only.
 
 Decisive storage fact: `SQLiteStore` is backed by **sql.js** (WASM). Every open
 loads the whole database into memory; every `save()` rewrites the entire file via
 `writeFileSync`. There is no row locking and no WAL. Two live processes writing
-the SAME file therefore clobber each other on save — a whole-file lost update
+the SAME file therefore clobber each other on save, a whole-file lost update
 that would DELETE memory. That rules out the naive "point every surface at one
 shared file and let them all write it live" reading of the interim.
 
@@ -48,21 +48,20 @@ reads/writes `add`/`search`/`searchSemantic` THROUGH it over the session spine.*
 One process = one writer, which is the only way sql.js's whole-file save model is
 safe under concurrent surfaces, and it matches the one-platform charter (the
 daemon is the cross-visible identity). **Deferred out of Wave 6** because it adds
-new operator/wire methods on top of the daemon's existing memory routes — that
-serializes the land on the contract artifacts and gates the release train — and it
+new operator/wire methods on top of the daemon's existing memory routes, that
+serializes the land on the contract artifacts and gates the release train, and it
 cannot be proven under the no-real-daemons test rule. It also does not remove the
 need for a local-embedded fallback: the agent and TUI must both keep working with
 no daemon running (offline), so a daemon-only store would REGRESS the offline
 surface and would need the embedded fallback anyway.
 
 **RATIFIED Wave-6 step:** collapse all three instantiation sites onto ONE canonical
-PATH — `resolveCanonicalMemoryDbPath(homeDir)` → `~/.goodvibes/shared/memory.sqlite`
-— so there is a single logical store identity, and deliver cross-surface recall
+PATH, `resolveCanonicalMemoryDbPath(homeDir)` → `~/.goodvibes/shared/memory.sqlite`, so there is a single logical store identity, and deliver cross-surface recall
 through **sequential/owned access plus a no-loss bundle FOLD/RECONCILE primitive**
-(`foldMemoryStores`, built on the existing `exportBundle`/`importBundle` seam — the
+(`foldMemoryStores`, built on the existing `exportBundle`/`importBundle` seam, the
 `memory-sync.ts` prior art). A surface that cannot hold the canonical file live
 (offline agent, offline TUI, a future webui with no filesystem access) folds its
-records INTO the canonical store and hydrates FROM it — id-keyed, no overwrite, no
+records INTO the canonical store and hydrates FROM it, id-keyed, no overwrite, no
 drop, idempotent. This delivers the E6 outcome (a record written by any surface is
 recallable from another) without the sql.js clobber and without a new wire contract.
 
@@ -74,11 +73,11 @@ daemon single-writer is the correct concurrency owner and is sequenced next, whe
 the release train can absorb the new wire methods.
 
 Rejected:
-- **Two disjoint SQLite instances** — the E6 silo itself.
-- **Naive concurrent shared-file writers** — sql.js `save()` is a whole-file
+- **Two disjoint SQLite instances**, the E6 silo itself.
+- **Naive concurrent shared-file writers**, sql.js `save()` is a whole-file
   overwrite, so concurrent live writers clobber = data loss, the exact honesty
   violation E6 must not introduce (brief risk #3).
-- **Folding the goodvibes-plugin `.goodvibes/memory/*.json` files in** — those are
+- **Folding the goodvibes-plugin `.goodvibes/memory/*.json` files in**, those are
   assistant-authoring scaffolding, out of the product boundary.
 
 ### 2. The recall-honesty contract is the cross-surface contract
@@ -92,7 +91,7 @@ re-deriving (and re-weakening) it. Under a unified, cross-surface store a dishon
 recall costs more, not less, so this discipline becomes MORE load-bearing: the
 floor is the store's own baseline (60, never a starving 70), flagged
 (stale/contradicted) records are excluded regardless of confidence, and an
-unavailable index degrades to a literal fallback WITH a stated reason — never a
+unavailable index degrades to a literal fallback WITH a stated reason, never a
 silent empty that reads as "nothing was ever stored."
 
 Rejected: dropping the floor/degraded-state discipline under unification.
@@ -106,11 +105,11 @@ scope project|team, tagged `vibe`). `renderVibeProjection(records)`
 to an import/export FORMAT: `vibeBodyToConstraintOptions` imports a VIBE.md body
 into constraint records (one per bullet, so a single-record edit changes exactly
 one projected line), and the records export back through the normal bundle seam.
-The projected block keeps the **precedence caveat verbatim** — persona instructions
+The projected block keeps the **precedence caveat verbatim**, persona instructions
 are followed only when they do not conflict with explicit user instructions, safety
 policy, tool contracts, confirmation requirements, or secret-handling rules.
 
-Rejected: VIBE.md as an independent source of truth — E6 requires it be a
+Rejected: VIBE.md as an independent source of truth, E6 requires it be a
 projection.
 
 ## Consequences

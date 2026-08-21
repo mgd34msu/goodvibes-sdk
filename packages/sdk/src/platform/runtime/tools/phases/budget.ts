@@ -4,7 +4,7 @@ import type { ToolRuntimeContext } from '../context.js';
 import type { BudgetExceedReason, PhaseResult, ToolExecutionPhase, ToolExecutionRecord } from '../types.js';
 
 /**
- * budget — Budget enforcement phase for the tool execution pipeline.
+ * budget, Budget enforcement phase for the tool execution pipeline.
  *
  * This phase is inserted at two points:
  *  - "entry": just before execute (checks elapsed wall-clock time).
@@ -14,7 +14,7 @@ import type { BudgetExceedReason, PhaseResult, ToolExecutionPhase, ToolExecution
  * typed `budgetExceedReason` so the executor can surface a diagnostic
  * event before terminating the pipeline.
  *
- * All budget fields are optional in ToolRuntimeContext.budget — an absent
+ * All budget fields are optional in ToolRuntimeContext.budget, an absent
  * field means "unlimited" and the corresponding check is skipped.
  */
 
@@ -36,7 +36,7 @@ export async function budgetPhase(
   // config-derived default budget (runtime.toolBudget.*).
   const budget = context.budget ?? defaultBudget;
 
-  // No budget constraints — fast path
+  // No budget constraints, fast path
   if (!budget) {
     return ok(start, phaseName);
   }
@@ -45,7 +45,7 @@ export async function budgetPhase(
 
   // ── Time budget (checked at both entry and exit) ────────────────────────
   // All budget comparisons use strict > so that a value exactly at the limit is
-  // still allowed — enforcement fires only when the limit is truly exceeded.
+  // still allowed, enforcement fires only when the limit is truly exceeded.
   if (budget.maxMs !== undefined && elapsedMs > budget.maxMs) {
     return exceed(start, phaseName, 'BUDGET_EXCEEDED_MS', {
       limitMs: budget.maxMs,
@@ -65,7 +65,7 @@ export async function budgetPhase(
       });
     }
 
-    // Cost budget: same — only enforce when the tool result carries a cost.
+    // Cost budget: same, only enforce when the tool result carries a cost.
     const costUsd = getCostUsd(record);
     if (budget.maxCostUsd !== undefined && costUsd !== undefined && costUsd > budget.maxCostUsd) {
       return exceed(start, phaseName, 'BUDGET_EXCEEDED_COST', {

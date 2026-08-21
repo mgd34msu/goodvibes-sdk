@@ -6,10 +6,10 @@
  * state history without re-running mutations.
  *
  * Step controls:
- *   - `stepBack()` / `stepForward()` — move the cursor one position.
- *   - `seekTo(index)` — jump to an absolute index.
- *   - `seekToTime(epochMs)` — seek to the nearest event at or before a timestamp.
- *   - `exitTimeTravel()` — return the cursor to the live tail.
+ *   - `stepBack()` / `stepForward()`, move the cursor one position.
+ *   - `seekTo(index)`, jump to an absolute index.
+ *   - `seekToTime(epochMs)`, seek to the nearest event at or before a timestamp.
+ *   - `exitTimeTravel()`, return the cursor to the live tail.
  *
  * The "live" position is represented as cursor === size (one past the last
  * stored event). When live, `getCurrentSnapshot()` returns undefined, signalling
@@ -19,7 +19,7 @@ import type { TimelineEvent, TimeTravelCursor } from './types.js';
 import { DEFAULT_TIMELINE_BUFFER_SIZE } from './types.js';
 
 /**
- * TimelineBuffer — fixed-capacity ring buffer of TimelineEvent snapshots.
+ * TimelineBuffer, fixed-capacity ring buffer of TimelineEvent snapshots.
  *
  * Indices are stable within a session (they increment monotonically via
  * the `seq` field on each event). The cursor is an offset into the live
@@ -34,7 +34,7 @@ export class TimelineBuffer {
   private _nextSeq: number = 1;
 
   /**
-   * @param maxSize — Maximum events to retain. Must be >= 2.
+   * @param maxSize, Maximum events to retain. Must be >= 2.
    * @default DEFAULT_TIMELINE_BUFFER_SIZE
    */
   constructor(maxSize: number = DEFAULT_TIMELINE_BUFFER_SIZE) {
@@ -89,7 +89,7 @@ export class TimelineBuffer {
    * If the cursor is live it advances with the tail (stays live).
    * If the cursor is pinned (time-travel mode), it stays pinned.
    *
-   * @param event — Event without `seq` (assigned here).
+   * @param event, Event without `seq` (assigned here).
    * @returns The stored TimelineEvent with its assigned `seq`.
    */
   public append(event: Omit<TimelineEvent, 'seq'>): TimelineEvent {
@@ -182,7 +182,7 @@ export class TimelineBuffer {
    * Seek the cursor to an absolute logical index.
    * Clamps to [0, size] where size === live.
    *
-   * @param index — Target index (size = live).
+   * @param index, Target index (size = live).
    */
   public seekTo(index: number): void {
     const s = this.size;
@@ -194,7 +194,7 @@ export class TimelineBuffer {
    * If no events exist before the timestamp, seeks to index 0.
    * If all events are before or equal, seeks to the newest.
    *
-   * @param epochMs — Target timestamp.
+   * @param epochMs, Target timestamp.
    */
   public seekToTime(epochMs: number): void {
     const all = this.getAll();

@@ -2,7 +2,7 @@
  * ProcessManager: a timeout terminates a process only when the caller allows it.
  *
  * The watchdog used to SIGTERM/SIGKILL unconditionally, so a routine timeout on
- * a process the caller did not own — a browser, an editor, a server — destroyed
+ * a process the caller did not own, a browser, an editor, a server, destroyed
  * it, reported `exitCode: null` that read as an ordinary cancellation, and
  * logged nothing. `kill_on_timeout: false` bounds the wait without ending the
  * process, and `timedOut` records that the deadline passed either way.

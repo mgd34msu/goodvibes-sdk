@@ -31,7 +31,7 @@ export type WrfcConfigLike = {
   /**
    * How many times a chain will auto-retry a transport-classified child-agent
    * failure (respawning the same role) before failing the chain outright.
-   * Separate from maxFixAttempts — a transport blip is not a fix cycle. Default: 1.
+   * Separate from maxFixAttempts, a transport blip is not a fix cycle. Default: 1.
    */
   transportRetryLimit: number;
   /**

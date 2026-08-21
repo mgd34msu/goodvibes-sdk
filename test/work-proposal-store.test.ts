@@ -1,5 +1,5 @@
 /**
- * Pending work proposals — the housekeeping contract.
+ * Pending work proposals, the housekeeping contract.
  *
  * A proposal outlives the turn that created it, so it has to be bounded,
  * expiring, content-validated, reaped on recovery, and disclosed. The
@@ -33,7 +33,7 @@ function makeInput(overrides: Record<string, unknown> = {}) {
  *
  * listPending only returns delivery-confirmed proposals, so a fixture that
  * skips markDelivered models a proposal whose notice never reached the
- * channel — which is deliberately unanswerable. See the dedicated test for
+ * channel, which is deliberately unanswerable. See the dedicated test for
  * that case; every other fixture here goes through this helper.
  */
 function propose(
@@ -78,7 +78,7 @@ describe('WorkProposalStore lifecycle', () => {
 describe('WorkProposalStore delivery confirmation', () => {
   // The owner cannot answer a proposal they were never shown. Delivery used to
   // be a discarded boolean, so a proposal whose notice was silently refused
-  // stayed pending and answerable — and the next unrelated message could be
+  // stayed pending and answerable, and the next unrelated message could be
   // matched against it.
   test('a proposal is not answerable until its notice is confirmed', () => {
     const store = new WorkProposalStore();

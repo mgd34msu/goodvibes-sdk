@@ -1,5 +1,5 @@
 /**
- * device-capability-service.ts — the one path a paired device's camera, screen,
+ * device-capability-service.ts, the one path a paired device's camera, screen,
  * location, clipboard, or device command is reached through.
  *
  * Every request walks the same seven steps, in this order, with no shortcuts:
@@ -7,7 +7,7 @@
  *   2. configuration must allow the capability at all,
  *   3. the request's inputs must satisfy the capability's declared fields,
  *   4. a live grant is looked up (re-read from disk, never cached in process),
- *   5. with no grant, the person is asked — ask-every-time is the default for
+ *   5. with no grant, the person is asked, ask-every-time is the default for
  *      EVERY capture and effect, and "always allow" is offered on every
  *      capability per the owner ruling of 2026-07-25,
  *   6. the work is dispatched to the node over the peer transport,
@@ -51,7 +51,7 @@ export interface DeviceCapabilityPolicy {
 }
 
 /**
- * Stock policy — matches the owner rulings exactly: ask every time by default,
+ * Stock policy, matches the owner rulings exactly: ask every time by default,
  * "always allow" offered on every capability, 24h capture retention, clipboard
  * read present and grantable.
  */
@@ -158,7 +158,7 @@ export interface DeviceCapabilityServiceOptions {
   readonly listNodes: () => readonly DeviceNodeProfile[];
   /**
    * A fixed posture, or a resolver called once per request so a settings change
-   * governs the NEXT request rather than waiting for a restart — the same
+   * governs the NEXT request rather than waiting for a restart, the same
    * liveness `device.nodes.maxPaired` already has at the pairing path. See
    * device-policy-source.ts.
    */
@@ -167,7 +167,7 @@ export interface DeviceCapabilityServiceOptions {
 
 /**
  * Whether a durable grant may be offered for this capability under the current
- * configuration. Under the stock policy this is true for EVERY capability —
+ * configuration. Under the stock policy this is true for EVERY capability,
  * the ruling offers "always allow" on front camera, screen capture, precise
  * location, and clipboard alike.
  */
@@ -188,7 +188,7 @@ export function isAllowAlwaysOffered(
  * The deadline one request gives the device, from the configured posture and
  * whatever the caller asked for.
  *
- * A caller may ask for a SHORTER deadline than the configured one and get it —
+ * A caller may ask for a SHORTER deadline than the configured one and get it,
  * a surface that will stop waiting after ten seconds should not leave a phone
  * working for sixty. It can never ask for a LONGER one: `device.requestTimeoutMs`
  * is the posture, and a caller that could extend it would be setting the posture
@@ -257,8 +257,8 @@ export class DeviceCapabilityService {
    * Run one capability on one node.
    *
    * A grant is consulted but never assumed: `grants.find()` re-reads the store,
-   * so a grant revoked from any surface — or expired, or belonging to a node
-   * that has since been unpaired — falls through to the confirmation prompt
+   * so a grant revoked from any surface, or expired, or belonging to a node
+   * that has since been unpaired, falls through to the confirmation prompt
    * instead of being honoured.
    */
   async request(input: {
@@ -269,7 +269,7 @@ export class DeviceCapabilityService {
     readonly sessionId?: string | undefined;
     /**
      * A shorter deadline for the device than the configured one. Clamped by
-     * `resolveDeviceRequestTimeoutMs` — it can only shorten, never extend.
+     * `resolveDeviceRequestTimeoutMs`, it can only shorten, never extend.
      */
     readonly timeoutMs?: number | undefined;
   }): Promise<DeviceCapabilityOutcome> {
@@ -335,7 +335,7 @@ export class DeviceCapabilityService {
     // because this is the one path a capability is reached through: the `phone`
     // tool checked its own arguments, and when the control-plane verb became a
     // second caller the host half would otherwise have been simply absent from
-    // it — a malformed request travelling to somebody's phone before anything
+    // it, a malformed request travelling to somebody's phone before anything
     // noticed.
     //
     // Ordered before the confirmation prompt on purpose. Asking a person to
@@ -393,7 +393,7 @@ export class DeviceCapabilityService {
       if (response.decision === 'always') {
         if (!allowAlwaysOffered) {
           // The prompt never offered it, so an 'always' answer is honoured for
-          // this request only — a durable grant is not written behind a policy
+          // this request only, a durable grant is not written behind a policy
           // that says it may not exist.
           authority = 'confirmed-once';
         } else {

@@ -5,13 +5,13 @@
  * into the live session origination path WITHOUT every channel adapter having to
  * call it by hand. The composition root (registerGatewayVerbGroups, which already
  * constructs the principal and channel-profile registries) installs this once; it
- * decorates the shared broker's `submitMessage` — the single transport intake
- * chokepoint every adapter funnels an inbound message through — so each inbound
+ * decorates the shared broker's `submitMessage`, the single transport intake
+ * chokepoint every adapter funnels an inbound message through, so each inbound
  * message gets its sender attributed and its channel's profile applied at the
  * moment the session is originated.
  *
  * submitMessage's input carries the NARROW transport surface kind (a Slack/Signal/
- * etc. surface, never a product surface like webui/agent — those originate via
+ * etc. surface, never a product surface like webui/agent, those originate via
  * sessions.register, a different path), so decorating it is inherently scoped to
  * channel inbound. The enrichment only augments the session/message metadata (it
  * never drops or rewrites a caller field), so an unmapped sender is stamped with
@@ -40,7 +40,7 @@ export interface InboundIntakeEnrichmentDeps {
    * Optional: the channel ingress-policy manager. When present, a sender who
    * is not a named principal but whom this surface's owner allowlist already
    * authorizes is attributed to the honest owner principal instead of the
-   * unknown one — see {@link attributeInboundSession}. Absent (a narrower
+   * unknown one, see {@link attributeInboundSession}. Absent (a narrower
    * composition, or every existing test) keeps the prior unknown-principal
    * behavior exactly.
    */

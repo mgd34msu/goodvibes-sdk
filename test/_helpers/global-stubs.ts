@@ -9,8 +9,8 @@
  *    test body. The test throws, the line never runs, and every later file gets
  *    the stub.
  *  - A test freezes `Date.now` for the duration of an async body. Any
- *    background work running concurrently in the same process — a retry
- *    backoff, a staleness check, an idle sweep — reads a clock that never
+ *    background work running concurrently in the same process, a retry
+ *    backoff, a staleness check, an idle sweep, reads a clock that never
  *    advances and silently misbehaves.
  *
  * This helper makes the restore automatic and unconditional: it runs in
@@ -27,7 +27,7 @@
  * all; use `freezeNow` only where the code reads the global clock directly and
  * accepts no clock parameter.
  *
- * IMPORTANT — call `trackGlobalStubs()` at the top level of each test file.
+ * IMPORTANT, call `trackGlobalStubs()` at the top level of each test file.
  * `bun test` caches modules across files, so a helper that registered its
  * `afterEach` at import time would bind that hook only to the first file that
  * imported it and every later file would silently get no restore.
@@ -49,7 +49,7 @@ export interface GlobalStubRegistry {
   global(key: string, value: unknown): void;
   /** Restore everything now. Runs automatically after each test; idempotent. */
   restoreAll(): void;
-  /** Outstanding stubs — used by this helper's own guard test. */
+  /** Outstanding stubs, used by this helper's own guard test. */
   readonly size: number;
 }
 

@@ -37,9 +37,9 @@ export interface InspectableDomain {
 export interface HotspotAnalysisView {
   /** The full hotspot report, or undefined when no sampler is attached. */
   readonly report: HotspotReport | undefined;
-  /** Top churn hotspots (highest calls/sec) — up to 5. */
+  /** Top churn hotspots (highest calls/sec), up to 5. */
   readonly topChurn: HotspotReport['hotspots'];
-  /** Top latency hotspots (highest p95) — up to 5. */
+  /** Top latency hotspots (highest p95), up to 5. */
   readonly topLatency: HotspotReport['hotspots'];
   /** Whether any churn hotspots are above threshold. */
   readonly hasChurnHotspots: boolean;
@@ -56,7 +56,7 @@ export interface HotspotAnalysisView {
 export type HotspotReportProvider = () => HotspotReport | undefined;
 
 /**
- * StateInspectorPanel — on-demand runtime state snapshot provider.
+ * StateInspectorPanel, on-demand runtime state snapshot provider.
  *
  * Domains are registered at construction time. Call `getSnapshot()` to
  * capture the current state of all registered domains.
@@ -66,7 +66,7 @@ export type HotspotReportProvider = () => HotspotReport | undefined;
  * the current view.
  *
  * Unlike event-driven panels, this panel does not maintain an internal
- * buffer — each `getSnapshot()` call produces a fresh snapshot.
+ * buffer, each `getSnapshot()` call produces a fresh snapshot.
  */
 export class StateInspectorPanel {
   private readonly _domains: InspectableDomain[];
@@ -208,7 +208,7 @@ export class StateInspectorPanel {
 
   /**
    * Register a callback invoked when the domain registry changes.
-   * Note: callbacks are NOT invoked on every state mutation — call
+   * Note: callbacks are NOT invoked on every state mutation, call
    * `getSnapshot()` on demand to retrieve current state.
    *
    * @returns An unsubscribe function.

@@ -1,11 +1,11 @@
 /**
- * store-types.ts — the input and view shapes `store.ts` takes and answers with.
+ * store-types.ts, the input and view shapes `store.ts` takes and answers with.
  *
  * Split out of `store.ts` only because that file reached the repo's 800-line
  * cap. Nothing here has behaviour, and nothing here is a second definition of
  * anything: every shape is the one the store already used, moved verbatim, and
  * `store.ts` re-exports each of them so no import path anywhere else changes.
- * The class and its methods deliberately stayed put — the method list is a
+ * The class and its methods deliberately stayed put, the method list is a
  * tested contract, and moving a method off the class to win lines would break
  * that contract for a reason that has nothing to do with the contract.
  */
@@ -116,7 +116,7 @@ export interface ForgetProfileInput {
    * INTERNAL. A raw line index, retained because the writer splices by index
    * and the core module's own tests address lines that way.
    *
-   * Deliberately NOT a parameter of any verb — `PROFILE_FORGET_INPUT_SCHEMA`
+   * Deliberately NOT a parameter of any verb, `PROFILE_FORGET_INPUT_SCHEMA`
    * does not accept it and `routes/owner-profile.ts` does not read it, so it is
    * unreachable from the control plane. A caller that supplies it gets the
    * non-replayable path: `commit` refuses rather than replaying, because the

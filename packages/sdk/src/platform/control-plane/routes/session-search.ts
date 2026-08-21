@@ -11,14 +11,14 @@
  *
  * DELIBERATELY a standalone read-only helper, NOT a `SharedSessionBroker`
  * method: the brief's file_ownership marks session-broker.ts read-only for
- * S2 ("add a search method only if unavoidable — prefer a read-only query
+ * S2 ("add a search method only if unavoidable, prefer a read-only query
  * helper; coordinate with S3 which also reads the broker"). Everything here
- * is built from the broker's existing public `listSessions()` — no new
+ * is built from the broker's existing public `listSessions()`, no new
  * broker state, no new broker method.
  *
  * Bounded in-memory filter+sort: the store is
  * single-user scale, so a full unbounded scan per call is intentional (no
- * index) — this ceiling is a deliberate, documented decision.
+ * index), this ceiling is a deliberate, documented decision.
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
@@ -93,7 +93,7 @@ function clampLimit(raw: unknown): number {
   return Math.min(Math.floor(n), SESSIONS_SEARCH_MAX_LIMIT);
 }
 
-/** Structural dep — only the read surface `sessions.search` needs. */
+/** Structural dep, only the read surface `sessions.search` needs. */
 export type SessionSearchBroker = Pick<SharedSessionBroker, 'listSessions'>;
 
 export function createSessionsSearchHandler(broker: SessionSearchBroker): GatewayMethodHandler {
@@ -111,8 +111,8 @@ export function createSessionsSearchHandler(broker: SessionSearchBroker): Gatewa
     // Always fetch WITH closed sessions from the broker (its own default),
     // then apply the wire-level closed policy ourselves below: sessions.search
     // deliberately defaults to EXCLUDING closed sessions unless
-    // includeClosed:true is explicit — the opposite of
-    // SharedSessionBroker.listSessions' own default — because a "search"
+    // includeClosed:true is explicit, the opposite of
+    // SharedSessionBroker.listSessions' own default, because a "search"
     // surface should not surface dead sessions by default.
     const all: readonly SharedSessionRecord[] = broker.listSessions(Number.MAX_SAFE_INTEGER, {
       project,
@@ -157,7 +157,7 @@ export function createSessionsSearchHandler(broker: SessionSearchBroker): Gatewa
  * Attach the `sessions.search` handler to the descriptor already registered
  * (without a handler) from ../method-catalog-control-core.ts's static
  * builtin array. Call once, at RuntimeServices construction time. A missing
- * descriptor is a silent no-op — see routes/fleet.ts's
+ * descriptor is a silent no-op, see routes/fleet.ts's
  * `registerFleetGatewayMethods` for the same rationale.
  */
 export function registerSessionSearchGatewayMethod(catalog: GatewayMethodCatalog, broker: SessionSearchBroker): void {

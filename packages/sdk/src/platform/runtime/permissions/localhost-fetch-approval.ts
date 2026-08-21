@@ -1,11 +1,11 @@
 /**
- * localhost-fetch-approval.ts — the one-tap "allow for this project" ask for
+ * localhost-fetch-approval.ts, the one-tap "allow for this project" ask for
  * fetches to loopback dev servers.
  *
  * STANDING RULE (same as sandbox escalations and MCP elicitations): the ask
  * rides the ONE approval broker so every surface's existing approval UI
  * renders it. Approving persists `fetch.allowLocalhost` in the PROJECT
- * settings tier, so the question is asked once per project and never again —
+ * settings tier, so the question is asked once per project and never again,
  * including across restarts. Denying refuses this fetch with an honest
  * tool-result reason; a later fetch may ask again.
  *

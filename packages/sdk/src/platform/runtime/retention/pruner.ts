@@ -1,7 +1,7 @@
 /**
  * pruner.ts
  *
- * `SnapshotPruner` — handles safe file-system deletion of expired checkpoint
+ * `SnapshotPruner`, handles safe file-system deletion of expired checkpoint
  * artifacts on behalf of `RetentionPolicy`.
  *
  * Safety contract:
@@ -70,7 +70,7 @@ export class SnapshotPruner {
       }
 
       if (dryRun) {
-        // In dry-run mode record the candidate separately — no deletedIds populated.
+        // In dry-run mode record the candidate separately, no deletedIds populated.
         candidateIds.push(record.id);
         byClass[record.retentionClass].candidateIds.push(record.id);
         continue;
@@ -127,7 +127,7 @@ export class SnapshotPruner {
    *  - Path must be absolute (prevent accidental relative-path deletions).
    *  - Raw path must not contain `..` segments checked BEFORE normalization.
    *    (After `path.normalize()`, traversal sequences are resolved and the `..`
-   *    check becomes dead code — e.g. `/foo/../../etc/passwd` normalizes to
+   *    check becomes dead code, e.g. `/foo/../../etc/passwd` normalizes to
    *    `/etc/passwd` which no longer contains `..`.  We therefore inspect the
    *    raw input first.)
    *  - Normalized path must still be absolute as a belt-and-suspenders check.

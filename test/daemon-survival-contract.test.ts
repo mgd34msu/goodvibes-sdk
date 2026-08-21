@@ -128,7 +128,7 @@ describe('systemd install path: detected version gates the unit; lingering is ve
       expect(unit).toContain('RestartMaxDelaySec=300');
       expect(commands).toContain('systemctl --version');
       expect(commands.some((c) => c.startsWith('loginctl enable-linger '))).toBe(true);
-      expect(status.lingerNote).toMatch(/lingering: enabled for .+ — the daemon starts at boot\./);
+      expect(status.lingerNote).toMatch(/lingering: enabled for .+, the daemon starts at boot\./);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -288,7 +288,7 @@ describe('daemon receipts surfaced on next surface connect', () => {
       const path = join(scratch, 'daemon-receipts.json');
       // The clock is PINNED for every store in this test, including the
       // reloads. What is under test is delivery-once across a restart, not
-      // retention — and an absolute fixture date read against the real clock
+      // retention, and an absolute fixture date read against the real clock
       // tests retention by accident: this file previously wrote a receipt at a
       // fixed 2026-07-12 09:05 and passed only until that moment fell outside
       // the 14-day retention window, at which point the reload legitimately

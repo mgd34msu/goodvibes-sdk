@@ -9,7 +9,7 @@ export async function handleDiscordSurfaceWebhook(req: Request, context: Surface
     await context.serviceRegistry.resolveSecret('discord', 'publicKey')
     ?? process.env.DISCORD_PUBLIC_KEY;
   if (!publicKey) {
-    logger.warn('handleDiscordSurfaceWebhook: DISCORD_PUBLIC_KEY not set — rejecting');
+    logger.warn('handleDiscordSurfaceWebhook: DISCORD_PUBLIC_KEY not set, rejecting');
     return Response.json({ error: 'Webhook not configured' }, { status: 503 });
   }
 
@@ -170,7 +170,7 @@ export async function handleDiscordInteractionPayload(
       })().catch((error: unknown) => {
         // The slash-command path answers Discord immediately with a deferred
         // response and then does the work detached, so nothing downstream can
-        // observe a failure here — this block had no catch at all, which made a
+        // observe a failure here, this block had no catch at all, which made a
         // throw an unhandled rejection with not one line logged, and left the
         // user staring at "working…" forever. It reports through the same
         // per-surface ingress alarm every other inbound path uses.

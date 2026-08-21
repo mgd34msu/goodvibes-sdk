@@ -8,9 +8,9 @@
 /**
  * The three possible states for a feature flag.
  *
- * - `enabled`  — the feature is active
- * - `disabled` — the feature is inactive (default for all gates)
- * - `killed`   — the feature has been emergency-killed and cannot be re-enabled
+ * - `enabled` , the feature is active
+ * - `disabled`, the feature is inactive (default for all gates)
+ * - `killed`  , the feature has been emergency-killed and cannot be re-enabled
  *                until it is explicitly un-killed
  */
 export type FlagState = 'enabled' | 'disabled' | 'killed';
@@ -19,13 +19,13 @@ export type FlagState = 'enabled' | 'disabled' | 'killed';
  * Why a REGISTERED capability cannot operate, regardless of how it is
  * configured.
  *
- * - `no-runtime-wiring` — the platform half exists and is tested, but no
+ * - `no-runtime-wiring`, the platform half exists and is tested, but no
  *   surface drives it yet. Typical while an SDK capability lands ahead of the
  *   consumers that will use it, because consumers pin a published SDK version
  *   and cannot compile against it until it publishes.
- * - `missing-host-dependency` — the code is wired, but something the host must
+ * - `missing-host-dependency`, the code is wired, but something the host must
  *   provide (a library, a binary, a device) is absent.
- * - `unsupported-platform` — this operating system or runtime cannot run it.
+ * - `unsupported-platform`, this operating system or runtime cannot run it.
  */
 export type FeatureInoperableReason =
   | 'no-runtime-wiring'
@@ -46,7 +46,7 @@ export interface FeatureInoperability {
   readonly reason: FeatureInoperableReason;
   /**
    * Written for a user to read in a settings surface, at the moment they try
-   * to turn the feature on. States plainly that it is not available and why —
+   * to turn the feature on. States plainly that it is not available and why,
    * never a log line nobody sees.
    */
   readonly detail: string;
@@ -85,7 +85,7 @@ export interface FeatureFlag {
 
   /**
    * Set when the capability cannot operate at all in this build. Absent means
-   * it works when enabled — the normal case, so nothing else has to change.
+   * it works when enabled, the normal case, so nothing else has to change.
    *
    * Setting this makes the gate refuse the feature regardless of configuration
    * and gives surfaces something honest to render. Remove it in the same

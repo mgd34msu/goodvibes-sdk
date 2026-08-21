@@ -1,5 +1,5 @@
 /**
- * Adapter behavioral coverage — Telegram adapter.
+ * Adapter behavioral coverage, Telegram adapter.
  */
 import { describe, expect, test } from 'bun:test';
 import { handleTelegramSurfaceWebhook } from '../packages/sdk/src/platform/adapters/telegram/index.js';
@@ -186,7 +186,7 @@ describe('telegram adapter — standard bot commands', () => {
       replied: true,
     });
 
-    // The route is bound — the daemon can now talk back to this chat...
+    // The route is bound, the daemon can now talk back to this chat...
     expect(calls.map((call) => call.kind)).toEqual(['authorizeSurfaceIngress', 'upsertBinding']);
     // ...and crucially, no agent was spawned and no task was submitted.
     expect(calls.some((call) => call.kind === 'trySpawnAgent')).toBe(false);

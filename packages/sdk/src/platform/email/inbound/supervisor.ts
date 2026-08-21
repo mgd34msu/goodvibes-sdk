@@ -1,11 +1,11 @@
 /**
- * supervisor.ts — inbound mail's lifecycle owner (docs/inbound-email.md §3.5).
+ * supervisor.ts, inbound mail's lifecycle owner (docs/inbound-email.md §3.5).
  *
  * IMAP has no inbound HTTP request, so email is the second of the two adapter
  * lifecycle shapes: a stateful supervisor with `start()` / `stop()` / `status`,
  * owned by `BuiltinChannelRuntime` and armed at boot, exactly like
- * `TelegramIngressSupervisor`. Everything under it — IDLE, the poll fallback,
- * capability classification, backoff, the cursor rules, dedup — already exists
+ * `TelegramIngressSupervisor`. Everything under it, IDLE, the poll fallback,
+ * capability classification, backoff, the cursor rules, dedup, already exists
  * and is already tested; this file starts it, stops it, and tells the truth
  * about what it is doing.
  *
@@ -15,7 +15,7 @@
  * **It rehydrates before it serves.** `runRecoverySweep()` runs first, so a
  * cursor for an account no longer in config, a torn record and an already-
  * expired expectation are gone before the first message is looked at. Then the
- * expectation registry hydrates with each record's ORIGINAL absolute expiry —
+ * expectation registry hydrates with each record's ORIGINAL absolute expiry,
  * never a fresh window, because a restart that extended a grant would be a
  * grant nobody remembers issuing (§9.2). Only then is a source started, and it
  * resumes from the persisted cursor, so mail that arrived across the daemon's
@@ -35,7 +35,7 @@
  *
  * **It cannot start work.** It holds stores, a sink, a source factory and a
  * notice sender. There is no agent manager, no session broker and no reply
- * queue in any signature in this file — §2.1's structural removal, at the one
+ * queue in any signature in this file, §2.1's structural removal, at the one
  * seam that would otherwise have been handed all of them.
  */
 
@@ -101,7 +101,7 @@ export type {
  */
 export interface InboundMailSupervisorStatus {
   readonly mode: InboundMailboxWatcherStatus['mode'];
-  /** Why this mode — and, when inactive, exactly what to fix. */
+  /** Why this mode, and, when inactive, exactly what to fix. */
   readonly reason: string;
   readonly running: boolean;
 }
@@ -119,7 +119,7 @@ export type InboundMailConfigPort = Pick<ConfigManager, 'get'>;
  * not be exercised without a machine that has them.
  *
  * Returning `null` means "this build cannot serve that source" and is reported
- * as such — never silently answered with the other one.
+ * as such, never silently answered with the other one.
  */
 export interface InboundMailSourceFactory {
   create(input: {
@@ -139,8 +139,8 @@ export interface InboundMailSupervisorDeps {
   readonly sources: InboundMailSourceFactory;
   /**
    * The facts `selectInboundMailSource` needs and this module cannot know: is a
-   * Gmail source available, is the mail account a Gmail one, and — when the
-   * first is false — why. Asked at `start()`, so a credential adopted after
+   * Gmail source available, is the mail account a Gmail one, and, when the
+   * first is false, why. Asked at `start()`, so a credential adopted after
    * boot is seen on the next start rather than the next restart.
    */
   readonly selectionFacts: () => Promise<Omit<InboundSourceSelectionInput, 'configured'>>;
@@ -162,7 +162,7 @@ export interface InboundMailSupervisorDeps {
    * Whether arriving mail is actually reaching the owner.
    *
    * Written by the intake, read here. A structural notice refusal completes the
-   * pass — the cursor advances and the message is never re-announced — so the
+   * pass, the cursor advances and the message is never re-announced, so the
    * watcher goes on looking perfectly healthy while every message it finds goes
    * unannounced. That is the condition this reads, and it is why `health()`
    * reports `degraded` for it and `status.reason` says so in words.
@@ -241,7 +241,7 @@ export class InboundMailSupervisor {
    * first, so a config change re-decides cleanly rather than layering a second
    * source on top of the first.
    *
-   * Concurrent calls share one start rather than racing — the cluster
+   * Concurrent calls share one start rather than racing, the cluster
    * coordinator and a config-change restart can both arrive, and two
    * simultaneous starts against one mailbox is the duplicate-notice failure
    * the cluster gate exists to prevent, reproduced inside a single process.
@@ -274,7 +274,7 @@ export class InboundMailSupervisor {
     //
     // Neither step is allowed to prevent the watcher from starting. `start()`
     // is called by the cluster gate and by a config change, and an unguarded
-    // rejection here rejected out of both — no source, no `settle()`, and a
+    // rejection here rejected out of both, no source, no `settle()`, and a
     // health entry with no reason in it. Housekeeping is maintenance: it makes
     // the state tidier, and a mailbox that goes unread because the tidying
     // failed is a strictly worse outcome than a mailbox read with a stale
@@ -299,8 +299,8 @@ export class InboundMailSupervisor {
 
     const facts = await this.deps.selectionFacts();
     // Spread whole, not field by field: `selectionFacts` answers exactly the
-    // selector's input minus `configured`, so `gmailUnavailable` — the REASON
-    // behind a false `googleAdopted` — cannot be dropped by a copied field list.
+    // selector's input minus `configured`, so `gmailUnavailable`, the REASON
+    // behind a false `googleAdopted`, cannot be dropped by a copied field list.
     const selection = selectInboundMailSource({
       configured: this.deps.config.get('surfaces.email.inbound.source'),
       ...facts,
@@ -324,7 +324,7 @@ export class InboundMailSupervisor {
     if (source === null) {
       // Reported, never substituted. Serving the other source here would leave
       // the owner with a setting that says one thing while the daemon does
-      // another — the silent degradation §3.4b refuses everywhere else.
+      // another, the silent degradation §3.4b refuses everywhere else.
       return this.settle('inactive',
         `inbound mail selected the ${selection.source} source (${selection.detail}), and this `
         + 'build has no way to construct it. The other source is NOT used in its place; '
@@ -360,10 +360,10 @@ export class InboundMailSupervisor {
    * saying `true` for a loop that had already returned. A run loop can end in
    * exactly three ways and each has to be answered:
    *
-   *   - the signal fired — a deliberate stop, and `stop()` settles the status;
-   *   - it returned on its own — the source decided it was done, which nothing
+   *   - the signal fired, a deliberate stop, and `stop()` settles the status;
+   *   - it returned on its own, the source decided it was done, which nothing
    *     asked it to do, so it is reported as a stop with the reason unknown;
-   *   - it threw — the failure is named, routed to the observer as a terminal
+   *   - it threw, the failure is named, routed to the observer as a terminal
    *     failure (the observer is where the OWNER is reached from), and put in
    *     `status`.
    *
@@ -404,7 +404,7 @@ export class InboundMailSupervisor {
     try {
       this.deps.observer?.terminalFailure?.(failure);
     } catch {
-      // A notification route that throws must not become a second failure —
+      // A notification route that throws must not become a second failure,
       // the same rule the watcher applies at its own observer call.
     }
   }
@@ -415,7 +415,7 @@ export class InboundMailSupervisor {
    *
    * This is the seam that makes `recheckNow()` real. It existed on
    * `InboundMailboxWatcher`, was delegated verbatim by `ImapMailSource`, and was
-   * called by NOTHING — its own comment said "called when configuration
+   * called by NOTHING, its own comment said "called when configuration
    * changed" while no configuration change reached it, because nothing
    * subscribed to any `surfaces.email.*` key anywhere. An owner who fixed a
    * wrong IMAP host waited out `capabilityRecheckMinutes` to find out whether it
@@ -424,14 +424,14 @@ export class InboundMailSupervisor {
    *
    * Deliberately NOT a restart. `start()` re-runs the recovery sweep, re-decides
    * the source and rebuilds the dedup cache, none of which a corrected password
-   * warrants — and a restart per settings save is how a mailbox ends up
+   * warrants, and a restart per settings save is how a mailbox ends up
    * reconnecting in a loop while somebody is still typing. The reconnect the
    * watcher was going to make anyway is simply made now.
    *
    * A no-op when nothing is running, and a no-op on a source that declares no
    * `recheckNow`. Both are honest answers to "look again", not swallowed
    * failures: whether there is anything to look again AT is the source's own
-   * business — see `InboundMailSource.recheckNow`.
+   * business, see `InboundMailSource.recheckNow`.
    */
   recheckNow(): void {
     this.source?.recheckNow?.();
@@ -440,7 +440,7 @@ export class InboundMailSupervisor {
   /**
    * Stop reading and release the connection.
    *
-   * Does not resolve until the source has genuinely stopped — the cluster
+   * Does not resolve until the source has genuinely stopped, the cluster
    * handoff depends on that promise being honest, because the successor node
    * is told to start only after this resolves, and two nodes both holding a
    * connection to one mailbox both notify.
@@ -488,7 +488,7 @@ export class InboundMailSupervisor {
     // Every read is guarded, and the guard is the whole point of this method
     // existing in the shape it does. `email.inbound.status` is the ONE verb
     // that can explain a broken inbound path, and it used to fail outright on
-    // an unreadable cursor file — erroring in exactly the state it exists to
+    // an unreadable cursor file, erroring in exactly the state it exists to
     // disclose. A store it cannot read is reported AS unreadable, in `stores`,
     // rather than taking the answer down with it.
     const unavailable = new Map<InboundMailStoreHealth['store'], string>();
@@ -508,7 +508,7 @@ export class InboundMailSupervisor {
     const records = await read('records', () => this.deps.records.list(), []);
     // Counted against the FILE, not against the filtered list above. Deriving
     // the disclosure from a view is what let `retention.records.kept` report
-    // two while ten sat on disk — see `InboundMailStore.count`.
+    // two while ten sat on disk, see `InboundMailStore.count`.
     const recordCounts = await read('records', () => this.deps.records.count(), { stored: 0, live: 0 });
     const open = await read('expectations', async () => this.deps.expectations.list(), []);
     const stores = this.describeStores(unavailable);
@@ -578,7 +578,7 @@ export class InboundMailSupervisor {
    * One entry per persisted store: read normally, discarded, or unreadable now.
    *
    * Always all three, in a fixed order, because an omitted store reads as a
-   * store with nothing to say — and "nothing to say" is the wrong answer about
+   * store with nothing to say, and "nothing to say" is the wrong answer about
    * a file whose contents were thrown away.
    */
   private describeStores(
@@ -629,8 +629,8 @@ export class InboundMailSupervisor {
    * The dedup window, in milliseconds.
    *
    * Read from config so the window is tunable, and NOT because it has a
-   * correctness floor. It used to say it did — "it must outlast a restart
-   * cycle" — and that was structurally false: the cache is built fresh three
+   * correctness floor. It used to say it did, "it must outlast a restart
+   * cycle", and that was structurally false: the cache is built fresh three
    * lines above, inside `runStart()`, which also runs on a config-change
    * restart and on a cluster-gate handoff. A restart does not expire the claim,
    * it destroys the cache, and no value here changes that. A floor guarding a
@@ -638,7 +638,7 @@ export class InboundMailSupervisor {
    * nothing.
    *
    * What the window genuinely bounds is two passes inside ONE process arriving
-   * at the same message — an IDLE wake overlapping a fallback poll, or a retry
+   * at the same message, an IDLE wake overlapping a fallback poll, or a retry
    * after a failed pass. Those are seconds apart, so any sane value works and
    * the default is generous rather than critical. What actually stops a
    * restart-crossing duplicate ANNOUNCEMENT is the record store: `intake.ts`
@@ -654,7 +654,7 @@ export class InboundMailSupervisor {
   /**
    * The caller's observer with the two facts `status` is built from kept.
    *
-   * Every call forwards. Nothing is filtered — the adapter reads the stream,
+   * Every call forwards. Nothing is filtered, the adapter reads the stream,
    * it does not consume from it.
    */
   private observer(): InboundMailObserver {
@@ -669,7 +669,7 @@ export class InboundMailSupervisor {
         } else if (this.loop !== null) {
           // The OTHER direction, which used to be missing entirely. The
           // capability re-probe runs hourly precisely so that fixing a password
-          // or a scope does not need a restart — and with only the
+          // or a scope does not need a restart, and with only the
           // `insufficient` arm written, the recovery reached the verdict and
           // never reached the status: `health()` went on answering `degraded`,
           // and `status` went on saying `inactive`, for a watcher that was

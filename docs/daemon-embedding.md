@@ -1,6 +1,6 @@
 # Daemon Embedding
 
-This is the **full surface** — Bun runtime required. See [Runtime Surfaces](./surfaces.md).
+This is the **full surface**. Bun runtime required. See [Runtime surfaces](./surfaces.md).
 
 ## What the daemon surface gives you
 
@@ -146,6 +146,6 @@ const sdk = createGoodVibesSdk({
 
 ## Related
 
-- [Daemon Batch Processing](./daemon-batch-processing.md) — opt-in provider Batch API queuing through the daemon.
-- [Provider & Model API Reference](./provider-model-api.md) — model-catalog discovery, live model selection, and `providers`-domain SSE events.
+- [Daemon batch processing](./daemon-batch-processing.md): opt-in provider Batch API queuing through the daemon.
+- [Provider and model API reference](./provider-model-api.md): model-catalog discovery, live model selection, and `providers`-domain SSE events.
 - [Runtime Surfaces](./surfaces.md), [Error Kinds](./error-kinds.md), and [Observability](./observability.md).

@@ -1,5 +1,5 @@
 /**
- * config-live-file-watch.test.ts — external edits apply live.
+ * config-live-file-watch.test.ts, external edits apply live.
  *
  * A settings file changed by another process (or by hand) is reloaded and
  * surfaced through the same subscribe() pipeline an in-process set() uses, with
@@ -51,7 +51,7 @@ const WATCH_TEST_TIMEOUT_MS = 90_000;
  * became the baseline and the watcher never fired again. Re-saving handed the
  * watcher a change it could not have baselined away, turning a permanently
  * silent watcher green. The watcher now owns its baseline synchronously
- * (config-file-watcher.ts), so a single write is enough — and these tests
+ * (config-file-watcher.ts), so a single write is enough, and these tests
  * write exactly once, which is what makes them able to catch a regression.
  */
 async function waitForCondition(predicate: () => boolean, label: string): Promise<void> {
@@ -87,11 +87,11 @@ describe('config live file watch', () => {
       );
     };
     try {
-      // Another process writes the settings file directly — ONCE. No re-save
+      // Another process writes the settings file directly, ONCE. No re-save
       // loop: one external write must be enough.
       externalEdit();
 
-      // Wait for the poll + reload to surface the change — no fixed sleep, and
+      // Wait for the poll + reload to surface the change, no fixed sleep, and
       // no budget a merely-loaded runner can blow through.
       await waitForCondition(() => seen.length > 0, 'the external edit reaching the subscriber');
     } finally {
@@ -110,7 +110,7 @@ describe('config live file watch', () => {
    * Regression guard for the watcher-startup race.
    *
    * The write happens in the SAME synchronous tick in which the watch is armed
-   * — the exact window in which fs.watchFile's asynchronous baseline stat used
+   *, the exact window in which fs.watchFile's asynchronous baseline stat used
    * to swallow an edit permanently. The watcher captures its baseline
    * synchronously before arming the poll, so this single write is still seen.
    *

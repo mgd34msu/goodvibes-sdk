@@ -1,5 +1,5 @@
 /**
- * state-store.ts — everything the MACHINE knows about occasions.
+ * state-store.ts, everything the MACHINE knows about occasions.
  *
  * The split this file exists for: an occasion declaration is a durable fact
  * about the owner's life, so it lives in his profile where he can hand-edit it.
@@ -21,8 +21,8 @@
  *  - **Reaped on schedule.** An answer dies with its occurrence, which is what
  *    makes "declining goes silent until the date passes, then asks fresh next
  *    year" a property of the data rather than a rule someone must remember.
- *  - **Swept.** {@link OccasionStateStore.sweep} drops orphans — state whose
- *    occasion is no longer declared — and ages out gift history past its
+ *  - **Swept.** {@link OccasionStateStore.sweep} drops orphans, state whose
+ *    occasion is no longer declared, and ages out gift history past its
  *    retention.
  *  - **Discloses.** {@link OccasionStateStore.disclose} says what it is holding
  *    and what the last sweep removed, including whether the file was found
@@ -34,7 +34,7 @@
  * is atomic and says nothing about ORDER, and this store has genuinely
  * concurrent writers: the sweep runs on a timer while an answer arrives over a
  * channel and an interview step lands from the agent. Unordered, the sweep's
- * snapshot — taken before the answer existed — can land second and put the file
+ * snapshot, taken before the answer existed, can land second and put the file
  * back without it. The owner then gets asked again about something he already
  * answered, which is the exact failure the acknowledgement store was built to
  * stop.
@@ -91,7 +91,7 @@ function emptySnapshot(): OccasionStateSnapshot {
 }
 
 // ---------------------------------------------------------------------------
-// Content validation — one record at a time
+// Content validation, one record at a time
 // ---------------------------------------------------------------------------
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -267,7 +267,7 @@ function validSweepReport(value: unknown): OccasionSweepReport | null {
  * Rebuild a snapshot record by record.
  *
  * Nothing throws. A file that is JSON but holds the wrong shape yields whatever
- * of it was well formed, and the count of what was not is logged — so a
+ * of it was well formed, and the count of what was not is logged, so a
  * half-corrupt file costs him the corrupt half, not the whole history.
  */
 export function validateOccasionState(
@@ -288,7 +288,7 @@ export function validateOccasionState(
   // Reconciliation runs at LOAD, before any caller can read an open item and
   // before any sweep can act on one. A machine mid-way through the old
   // repeating cadence therefore goes quiet the moment the fixed daemon boots,
-  // rather than one sweep later — which on an hourly sweep would have been one
+  // rather than one sweep later, which on an hourly sweep would have been one
   // more push about his own birthday, and one more is the whole complaint.
   let reconciled = 0;
   const openItems = take('openItems', validOpenItem).map((item) => {
@@ -344,7 +344,7 @@ export class OccasionStateStore {
    * Read the file once, discarding what it cannot understand.
    *
    * `loadOrDiscard` rather than `load`: this store's owner has a rule for a torn
-   * record — drop it, record the fact, disclose it — and a store that only threw
+   * record, drop it, record the fact, disclose it, and a store that only threw
    * would make every later call fail forever over one unreadable byte,
    * INCLUDING the disclosure call that exists to explain exactly that state.
    */
@@ -371,7 +371,7 @@ export class OccasionStateStore {
     if (reconciled > 0) {
       this.reconciledOpenItems = reconciled;
       logger.info(
-        'occasions: settled open nudges written under the old repeating cadence — '
+        'occasions: settled open nudges written under the old repeating cadence, '
         + 'they stay open and stop being pushed',
         { path: this.filePath, reconciled },
       );
@@ -456,7 +456,7 @@ export class OccasionStateStore {
   }
 
   // -------------------------------------------------------------------------
-  // Open items — the one mechanism behind "nothing unresolved is dropped"
+  // Open items, the one mechanism behind "nothing unresolved is dropped"
   // -------------------------------------------------------------------------
 
   async openItems(): Promise<readonly OpenItem[]> {
@@ -483,8 +483,8 @@ export class OccasionStateStore {
    *
    * No tombstone and no resolved flag: a resolved item is gone, matching the
    * profile's own delete-means-delete rule. What survives resolution is the
-   * thing that answers "what happened" — the acknowledgement, or the gift
-   * record — not a husk of the question.
+   * thing that answers "what happened", the acknowledgement, or the gift
+   * record, not a husk of the question.
    */
   async resolveOpenItem(id: string): Promise<boolean> {
     const snapshot = await this.state();

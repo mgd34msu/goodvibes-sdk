@@ -1,5 +1,5 @@
 /**
- * exec-posture.ts — how much authority a hosted run's exec tool carries.
+ * exec-posture.ts, how much authority a hosted run's exec tool carries.
  *
  * ── What went wrong ────────────────────────────────────────────────────────
  *
@@ -11,7 +11,7 @@
  * afterwards, which is right for a terminal (a person asked for it and is
  * reading the answer) and wrong for a turn nobody is watching. A daemon-hosted
  * conversational turn used that path to reach the whole process table, the
- * owner's `/proc`, and his tmux session — where it typed.
+ * owner's `/proc`, and his tmux session, where it typed.
  *
  * ── The two postures ───────────────────────────────────────────────────────
  *
@@ -21,7 +21,7 @@
  *
  * `workstream` is a work chain the owner authorized, composed by the product
  * with the host explicitly granted. The boundary still applies wherever it is
- * available — the difference is only what happens in its absence.
+ * available, the difference is only what happens in its absence.
  *
  * The owner's terminal is off limits in BOTH. It is not a sandbox question and
  * a boundary is not what would have stopped it: nothing this platform runs

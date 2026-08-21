@@ -123,7 +123,7 @@ export type MemoryApiRegistry = Pick<
  * (Stage A, see CHANGELOG 0.38.0). Deliberately NOT folded into MemoryApi:
  * CodeContextResult/CodeIndexStats are a different record shape than
  * MemoryRecord, and code-index retrieval carries no cls/reviewState/trustTier
- * provenance semantics — see createCodeIndexApi / createMemoryApi below.
+ * provenance semantics, see createCodeIndexApi / createMemoryApi below.
  */
 export interface CodeIndexApi {
   search(query: string, opts?: { limit?: number }): readonly CodeContextResult[];

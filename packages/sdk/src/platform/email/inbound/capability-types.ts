@@ -1,10 +1,10 @@
 /**
- * capability-types.ts — the vocabulary for "can this watcher do its job".
+ * capability-types.ts, the vocabulary for "can this watcher do its job".
  *
  * Split out of `ports.ts`, which holds the whole inbound seam and had eleven
  * lines of headroom under the repository's 800-line source cap. This round adds
- * two capability reasons — `gmail-metadata-only` and
- * `gmail-metadata-notice-only` — and they did not fit.
+ * two capability reasons, `gmail-metadata-only` and
+ * `gmail-metadata-notice-only`, and they did not fit.
  *
  * The split is along a real seam rather than at a convenient line number. Three
  * modules already name this vocabulary and nothing else in `ports.ts`:
@@ -26,11 +26,11 @@ import type { EmailCapabilityFailureNotice } from '../imap-client.js';
 /**
  * The watcher's three runtime states.
  *
- *   - `healthy` — doing what it was configured to do.
- *   - `degraded` — running with less than it wanted. Polling because the
+ *   - `healthy`, doing what it was configured to do.
+ *   - `degraded`, running with less than it wanted. Polling because the
  *     server offers no push, or backing off through a reconnect. Expectations
  *     still get satisfied; mail still arrives; it is slower or noisier.
- *   - `insufficient` — it CANNOT do the job: the mailbox will not open, or the
+ *   - `insufficient`, it CANNOT do the job: the mailbox will not open, or the
  *     credential is refused. The watcher does not run, and the owner is told
  *     rather than left with a channel that looks armed and is not.
  *
@@ -57,7 +57,7 @@ export type InboundCapabilityReason =
   | 'reconnecting'
   /**
    * degraded: the server refused for a reason about ITSELF rather than the
-   * account — a connection limit, a capacity refusal, a temporary fault.
+   * account, a connection limit, a capacity refusal, a temporary fault.
    *
    * Named after what the server actually claimed, not after the commonest
    * cause. Calling a `[SERVERBUG]` a connection limit would put a specific and
@@ -68,8 +68,8 @@ export type InboundCapabilityReason =
   /**
    * insufficient: no credential is stored where the daemon reads secrets.
    *
-   * Distinct from a refused one because the fix is different — the secret is
-   * missing rather than wrong — and telling an owner to replace a password he
+   * Distinct from a refused one because the fix is different, the secret is
+   * missing rather than wrong, and telling an owner to replace a password he
    * never stored sends him looking for the wrong thing.
    */
   | 'credentials-missing'
@@ -83,14 +83,14 @@ export type InboundCapabilityReason =
   | 'uidvalidity-missing'
   /**
    * insufficient: the mailbox opened, would not say where it ends, and asking
-   * directly did not settle it either — so there is no high-water mark to
+   * directly did not settle it either, so there is no high-water mark to
    * start from.
    *
    * `[UIDNEXT n]` on `EXAMINE` is a SHOULD in RFC 3501, not a MUST, and
    * servers do omit it. That alone is NOT this reason: the watcher derives the
    * mark from a `UID SEARCH` instead, which is the same question asked
    * directly, and carries on. This reason is what remains when the derivation
-   * also produces no answer — the mailbox reports messages present and the
+   * also produces no answer, the mailbox reports messages present and the
    * search names none of them.
    *
    * Distinct from `uidvalidity-missing`, which it otherwise resembles. There,
@@ -119,7 +119,7 @@ export type InboundCapabilityReason =
    * situations: `fetch-refused` is minted from a FAILED envelope fetch, so
    * nothing is readable there, and here everything except the body is. That is
    * the whole reason `notice-only` can mean something on this one reason and
-   * nothing on any other — see `capability-policy.ts`.
+   * nothing on any other, see `capability-policy.ts`.
    */
   | 'gmail-metadata-only'
   /**
@@ -129,7 +129,7 @@ export type InboundCapabilityReason =
    * `degraded`, not `insufficient`: the source polls and delivers. What it
    * cannot do is satisfy a verification expectation. A separate reason rather
    * than the same one with a different state, because the tracker announces on
-   * a change of state OR reason — so switching the policy while the daemon runs
+   * a change of state OR reason, so switching the policy while the daemon runs
    * tells the owner the behaviour changed.
    */
   | 'gmail-metadata-notice-only'
@@ -137,7 +137,7 @@ export type InboundCapabilityReason =
    * insufficient: the server ANSWERED the fetch and this client could not read
    * the answer, for long enough that retrying has stopped being an answer.
    *
-   * Distinct from `fetch-refused`, which is a refusal — a `NO` or a `BAD`, the
+   * Distinct from `fetch-refused`, which is a refusal, a `NO` or a `BAD`, the
    * server declining. This is the opposite shape: the server is cooperating,
    * the two ends do not agree on the wire format, and so every retry produces
    * the same unreadable response. One of those is a permission problem at the
@@ -147,7 +147,7 @@ export type InboundCapabilityReason =
    *
    * A single unreadable answer is NOT this. The cursor stays below the message
    * and the batch is fetched again, because an answer that could not be read
-   * is not evidence the message is gone — that retry is the correct behaviour
+   * is not evidence the message is gone, that retry is the correct behaviour
    * and it is `reconnecting` while it lasts. This reason is what that retrying
    * escalates to once drains have come back unreadable
    * `MAX_CONSECUTIVE_UNREADABLE_DRAINS` times in a row with no completed drain
@@ -158,7 +158,7 @@ export type InboundCapabilityReason =
    */
   | 'fetch-unreadable'
   /**
-   * insufficient: the daemon's OWN state — the cursor file — cannot be
+   * insufficient: the daemon's OWN state, the cursor file, cannot be
    * written, and has not been writable for long enough that waiting is no
    * longer a plausible answer.
    *
@@ -183,7 +183,7 @@ export type InboundCapabilityReason =
   | 'watcher-stopped-unexpectedly'
   /**
    * insufficient: the server ACCEPTED a body fetch and returned nothing
-   * usable — an empty section for a message whose own BODYSTRUCTURE declared a
+   * usable, an empty section for a message whose own BODYSTRUCTURE declared a
    * text part with octets in it.
    *
    * Deliberately not `fetch-refused`. That one means the server said no; this
@@ -239,7 +239,7 @@ export interface InboundMailTerminalFailure {
   readonly mailbox: string;
   readonly reason: InboundCapabilityReason;
   readonly detail: string;
-  /** The owner-facing sentence. One per failure — see `capability.ts`. */
+  /** The owner-facing sentence. One per failure, see `capability.ts`. */
   readonly fix: string;
   readonly at: string;
   /**
@@ -247,7 +247,7 @@ export interface InboundMailTerminalFailure {
    * one.
    *
    * `ImapOpenError` and `EmailCredentialUnavailableError` both expose it, and
-   * `describeEmailCapabilityFailure` reads it off either structurally — so a
+   * `describeEmailCapabilityFailure` reads it off either structurally, so a
    * missing credential and a rejected one reach the owner by one path, and a
    * supervisor does not import both modules to tell them apart. Null for
    * failures raised here rather than there.

@@ -1,7 +1,7 @@
 /**
  * channel-inbox-list-verb.test.ts
  *
- * `channels.inbox.list` — the eighth and last of the channels route-reconcile
+ * `channels.inbox.list`, the eighth and last of the channels route-reconcile
  * debt, and the only one whose answer this SDK cannot produce on its own.
  *
  * The other seven were served here (routes/channel-sync.ts). This one is served
@@ -11,16 +11,16 @@
  *
  *   1. The descriptor no longer claims to be uncallable, and its advertised
  *      path is in the gateway REST table.
- *   2. A host-attached handler is reachable over BOTH transports a client has —
+ *   2. A host-attached handler is reachable over BOTH transports a client has,
  *      the methodId invoke (what the WebSocket `call` frame and the generic
  *      `/api/control/gateway-methods/:id/invoke` endpoint both run) and the
- *      plain REST path `GET /api/channels/inbox` — and both reach the SAME
+ *      plain REST path `GET /api/channels/inbox`, and both reach the SAME
  *      handler with the same params, rather than two implementations of one
  *      idea. The fixture stands in for the daemon's real Slack/Discord/IMAP
  *      mirror, which is not reachable from this package.
  *   3. The declared `read:channels` scope is enforced on that path.
- *   4. A build that attaches NO handler — every SDK-only process, which has no
- *      mailbox — answers 501 NOT_INVOKABLE naming the missing composition step,
+ *   4. A build that attaches NO handler, every SDK-only process, which has no
+ *      mailbox, answers 501 NOT_INVOKABLE naming the missing composition step,
  *      not the bare 404 a caller used to get. That is the honest answer, and it
  *      is why removing `invokable: false` did not just move the lie.
  */
@@ -45,7 +45,7 @@ const METHOD_ID = 'channels.inbox.list';
 /**
  * A stand-in for a host's synced provider mirror: two Slack items, one email
  * item, and an IMAP account whose last sync failed. Deliberately shaped like
- * the real thing — the failing provider contributes no items AND says why, and
+ * the real thing, the failing provider contributes no items AND says why, and
  * `partial` is true because those items exist and are not in the answer.
  */
 const MIRROR = [
@@ -90,7 +90,7 @@ function readString(invocation: GatewayMethodInvocation, field: string): string 
 /**
  * Attach a fixture inbox handler the way a host does: look the SDK's descriptor
  * up and re-register it WITH a handler. No descriptor or schema is authored
- * here — that is the whole point of the seam.
+ * here, that is the whole point of the seam.
  */
 function fixtureHost(): FixtureHost {
   const catalog = new GatewayMethodCatalog();
@@ -125,7 +125,7 @@ function fixtureHost(): FixtureHost {
 
 function helperFor(catalog: GatewayMethodCatalog): DaemonControlPlaneHelper {
   // Only `context.gatewayMethods` is touched on the invoke/scope path, so a
-  // minimal stub is sufficient and honest — the same shape
+  // minimal stub is sufficient and honest, the same shape
   // runtime-metrics-gateway-verb.test.ts uses for the identical path.
   return new DaemonControlPlaneHelper({ gatewayMethods: catalog } as unknown as DaemonControlPlaneContext);
 }
@@ -176,7 +176,7 @@ describe('the catalog entry', () => {
     expect(Object.keys(output.properties ?? {}).sort()).toEqual(
       ['cursor', 'hasMore', 'items', 'nextCursor', 'partial', 'providers', 'total', 'truncated'],
     );
-    // A client can rely on these being present in every answer — which is what
+    // A client can rely on these being present in every answer, which is what
     // makes "zero items" readable rather than ambiguous.
     expect([...(output.required ?? [])].sort()).toEqual(
       ['hasMore', 'items', 'partial', 'providers', 'total', 'truncated'],
@@ -295,7 +295,7 @@ describe('an SDK-only build, with no inbox composition', () => {
 
     // Not 404 (the id IS cataloged) and not 200 (nothing can answer). The path
     // routes back to this same methodId, so there is no other implementation to
-    // reach and the answer is terminal — self-dispatch guard, not a retry.
+    // reach and the answer is terminal, self-dispatch guard, not a retry.
     expect(result.status).toBe(501);
     const body = result.body as { code?: string; error?: string };
     expect(body.code).toBe('NOT_INVOKABLE');

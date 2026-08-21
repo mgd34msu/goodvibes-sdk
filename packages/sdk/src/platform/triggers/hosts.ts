@@ -1,5 +1,5 @@
 /**
- * hosts.ts — the real effects behind the trigger family's ports.
+ * hosts.ts, the real effects behind the trigger family's ports.
  *
  * manager.ts holds the policy and takes every effect as an injected port, so
  * this file is the one place where that policy meets an actual subprocess and
@@ -9,7 +9,7 @@
  * The on-exit host is deliberately built on ProcessManager rather than a fresh
  * Bun.spawn: ProcessManager already owns the credential-env scrub, the live
  * output collection, the SIGTERM→SIGKILL watchdog and the terminating-signal
- * capture — every one of which an honest termination payload needs. Building a
+ * capture, every one of which an honest termination payload needs. Building a
  * second, thinner spawn path here would mean an on-exit trigger silently had
  * weaker guarantees than a plain background command.
  */
@@ -70,7 +70,7 @@ export function createProcessManagerTriggerHost(processManager: ProcessManager):
     },
 
     /**
-     * Reporting only — the trigger never re-binds to this pid. A pid from a
+     * Reporting only, the trigger never re-binds to this pid. A pid from a
      * previous daemon boot very likely belongs to somebody else's process by
      * now, so this answers "is anything alive there" and nothing stronger.
      */

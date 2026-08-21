@@ -1,11 +1,11 @@
 /**
- * model-picker-provider-filter.ts — the two-group ordering a model picker
+ * model-picker-provider-filter.ts, the two-group ordering a model picker
  * shows over a provider list: a small "popular" group first, then everything
  * else, each alphabetized.
  *
  * The popular set is a curated display convenience, not a capability
  * statement: membership only decides which group a provider is listed under.
- * A provider absent from it is equally usable — it simply sorts into the
+ * A provider absent from it is equally usable, it simply sorts into the
  * second group.
  */
 

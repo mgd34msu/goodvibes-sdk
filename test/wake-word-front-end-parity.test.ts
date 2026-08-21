@@ -7,7 +7,7 @@
  * docs/wake-word-model.md stops describing the running detector.
  *
  * The reference values in test/fixtures/wake-word-front-end.json are MEASURED,
- * not chosen — produced by running openWakeWord's own melspectrogram.onnx,
+ * not chosen, produced by running openWakeWord's own melspectrogram.onnx,
  * openWakeWord's embedding_model.onnx and the published hey_goodvibes 1.0.0
  * classifier over these exact inputs.
  */

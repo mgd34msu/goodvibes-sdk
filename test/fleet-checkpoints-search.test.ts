@@ -4,7 +4,7 @@
  * bootDaemon parity proof for fleet.snapshot / fleet.list / checkpoints.* /
  * sessions.search, each proven over a REAL live daemon (bootDaemon, port 0,
  * isolated home) via the generic gateway-method invoke endpoint
- * `POST /api/control-plane/methods/{methodId}/invoke` — mirrors the R1
+ * `POST /api/control-plane/methods/{methodId}/invoke`, mirrors the R1
  * pattern in test/boot-daemon-factory.test.ts (real HTTP, honest
  * failure/validation shape, no mocked daemon internals).
  *
@@ -14,8 +14,8 @@
  * (e.g. `watcher-framework`, default disabled) or requires a real provider,
  * and there is no HTTP route to toggle a feature flag on a black-box
  * bootDaemon instance. This suite therefore proves fleet.snapshot/fleet.list
- * over the real (here: empty) ProcessRegistry — correct shape, filtering,
- * pagination, and honest 400s — which is the full surface this brief owns;
+ * over the real (here: empty) ProcessRegistry, correct shape, filtering,
+ * pagination, and honest 400s, which is the full surface this brief owns;
  * ProcessRegistry's own aggregation from live sources is pre-existing,
  * already-tested machinery from an earlier wave, not part of this
  * verb-registration brief.
@@ -146,7 +146,7 @@ interface InvokeResult<T extends WireError = WireError> {
 /**
  * Call a gateway method through the generic invoke endpoint (real HTTP).
  *
- * Params ride in the envelope's `body` — for a handler verb (no http
+ * Params ride in the envelope's `body`, for a handler verb (no http
  * binding) that is the channel S1's invoke-layer input gate
  * (invoke-input-validation.ts) validates against the typed inputSchema, so
  * these calls exercise both the gate and the handler. The `query` channel
@@ -243,7 +243,7 @@ describe('fleet/checkpoints/search — fleet.snapshot / fleet.list', () => {
 describe('fleet/checkpoints/search — checkpoints.list / create / diff / restore', () => {
   // A fresh bootDaemon `work` tmpdir is EMPTY, whose git tree hash equals the
   // canonical empty-tree constant WorkspaceCheckpointManager also uses as the
-  // "no parent yet" sentinel (manager.ts:349-357) — so the very first
+  // "no parent yet" sentinel (manager.ts:349-357), so the very first
   // checkpoint on a truly empty workspace is itself a no-op (tree unchanged).
   // Seed a real file (and change it before each subsequent create) so every
   // create() in this suite produces a genuine, non-noop checkpoint.
@@ -302,7 +302,7 @@ describe('fleet/checkpoints/search — checkpoints.list / create / diff / restor
     // creating a brand-new untracked one: a plain `git diff <commit>`
     // (WorkspaceCheckpointManager.diff's single-arg "against WORKING" path,
     // manager.ts:420-437) does not surface untracked files, only tracked
-    // modifications — so the diff must touch a file the side-git index
+    // modifications, so the diff must touch a file the side-git index
     // already knows about to show up in `files`.
     writeFileSync(join(work, 'fleet-search-checkpoint-seed-1.txt'), 'modified after diff-base checkpoint\n');
     const diff = await invokeVerb<CheckpointsDiffResponse>('checkpoints.diff', { body: { a: checkpointId } });

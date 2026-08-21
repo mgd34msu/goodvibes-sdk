@@ -1,5 +1,5 @@
 /**
- * detector.ts — turning a stream of per-frame scores into wake events.
+ * detector.ts, turning a stream of per-frame scores into wake events.
  *
  * The classifier emits a score every 80 ms. Acting on each one directly is what
  * makes a wake word feel unreliable in both directions: a single noisy frame
@@ -7,10 +7,10 @@
  * rolling window. Two rules fix that, and this module is only those two rules
  * plus their bookkeeping:
  *
- *  - **patience** — a run of `patienceFrames` consecutive frames must all clear
+ *  - **patience**, a run of `patienceFrames` consecutive frames must all clear
  *    the threshold before the wake is confirmed. At the default of 2 that is
  *    about 160 ms of agreement for one extra frame of latency.
- *  - **cooldown** — after a confirmed wake, `cooldownMs` of further detections
+ *  - **cooldown**, after a confirmed wake, `cooldownMs` of further detections
  *    are dropped, so one utterance cannot fire twice.
  *
  * Kept separate from the engine and free of any I/O so the behaviour is
@@ -39,7 +39,7 @@ export const WAKE_DETECTOR_DEFAULTS: WakeDetectorTuning = {
 /**
  * Per-model patience/cooldown state machine.
  *
- * One instance per model — two models running concurrently have independent
+ * One instance per model, two models running concurrently have independent
  * runs and independent cooldowns, so a wake on one does not mask the other.
  */
 export class WakeDetector {

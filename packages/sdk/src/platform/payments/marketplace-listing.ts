@@ -1,5 +1,5 @@
 /**
- * marketplace-listing.ts — when a marketplace domain is not enough on its own.
+ * marketplace-listing.ts, when a marketplace domain is not enough on its own.
  *
  * ══ The owner's ruling ════════════════════════════════════════════════════
  *
@@ -20,7 +20,7 @@
  * The flow the owner designed is: know the final total → notify him → run the
  * window → pay. An auction has no final total until it ends, so that flow cannot
  * execute at all. Bidding is also an open-ended commitment rather than a
- * purchase — the thing he authorised was buying an item at a price, not entering
+ * purchase, the thing he authorised was buying an item at a price, not entering
  * a contest whose cost is decided later by strangers.
  *
  * The same reasoning covers Best Offer and anything else where the price is not
@@ -35,10 +35,10 @@
  *
  * ══ Why reading a page here is acceptable, and how it stays safe ══════════
  *
- * Purchase gates must not run on page-derived signals — that is the injection
+ * Purchase gates must not run on page-derived signals, that is the injection
  * surface the rest of this capability closes. The distinction that makes this
  * one acceptable: the figures are rendered by **eBay**, on a domain already
- * validated, in eBay's own feedback widget — not by the seller — and the
+ * validated, in eBay's own feedback widget, not by the seller, and the
  * security boundary is unchanged, since the checkout is on ebay.com with eBay's
  * buyer protection behind it.
  *
@@ -48,7 +48,7 @@
  *    recognised to approval-required and can never move one the other way. No
  *    reputation figure promotes a domain that was not already recognised.
  *  - **Unreadable means not-major.** Missing, ambiguous, an unexpected page
- *    shape, or a number that cannot be attributed specifically to selling — all
+ *    shape, or a number that cannot be attributed specifically to selling, all
  *    fail closed and he is asked.
  *  - A figure from a seller-controlled region of the page is not accepted.
  *    Sellers control listing descriptions; they do not control eBay's feedback
@@ -60,7 +60,7 @@
 
 /** Where on the page a figure was found. Anything seller-controlled is refused. */
 export type FigureRegion =
-  /** eBay's own feedback widget — the only region whose numbers are accepted. */
+  /** eBay's own feedback widget, the only region whose numbers are accepted. */
   | 'platform-widget'
   /** The seller's listing description or storefront copy. */
   | 'seller-controlled'
@@ -75,7 +75,7 @@ export type ListingSaleFormat = 'fixed-price' | 'auction' | 'best-offer' | 'unkn
  *
  * `'unknown'` is the honest default and is treated as `'third-party'` wherever
  * the distinction gates anything. `saleType` is read off the page, so a hostile
- * listing would simply claim to be first-party — the strict default is what
+ * listing would simply claim to be first-party, the strict default is what
  * stops that claim from buying leniency. Turning on a policy that trusts this
  * field requires it to come from a trusted extractor rather than page text.
  */
@@ -88,7 +88,7 @@ export function isThirdPartySale(saleType: SaleType | undefined): boolean {
 
 /** Seller-side reputation, as read from the platform's own widget. */
 export interface SellerReputation {
-  /** Feedback ratings earned AS A SELLER — not the combined headline score. */
+  /** Feedback ratings earned AS A SELLER, not the combined headline score. */
   readonly sellerFeedbackCount: number | null;
   /** Positive percentage AS A SELLER. */
   readonly sellerPositivePercent: number | null;
@@ -103,7 +103,7 @@ export interface MarketplaceListing {
   /**
    * Whether the marketplace or a third party is selling.
    *
-   * Modelled here — with the checkout domain and the seller identity — so that
+   * Modelled here, with the checkout domain and the seller identity, so that
    * flipping marketplaces to approval-required, or splitting first-party from
    * third-party sales, is a CONFIGURATION edit rather than a rewrite.
    */
@@ -127,7 +127,7 @@ export interface MarketplaceListingThresholds {
    * Defaults to null: eBay does not expose a member-since date in a place that
    * can be read reliably and attributed with confidence, and a threshold that
    * silently fails closed on every listing would make the whole eBay path
-   * unusable while looking like a working check. Reported rather than guessed —
+   * unusable while looking like a working check. Reported rather than guessed,
    * see the note in the payments design doc.
    */
   readonly minAccountAgeDays: number | null;
@@ -141,7 +141,7 @@ export const DEFAULT_MARKETPLACE_LISTING_THRESHOLDS: MarketplaceListingThreshold
 };
 
 export type ListingVerdictOutcome =
-  /** Refused outright — no window, no approval path. */
+  /** Refused outright, no window, no approval path. */
   | 'refuse'
   /** Qualifies; the domain's own verdict stands. */
   | 'qualifies'
@@ -157,7 +157,7 @@ export interface MarketplaceListingVerdict {
 function readable(reputation: SellerReputation | undefined): boolean {
   if (reputation === undefined) return false;
   // Only the platform's own widget counts. Seller-controlled and undetermined
-  // regions are both unreadable — if we cannot tell them apart, we do not guess.
+  // regions are both unreadable, if we cannot tell them apart, we do not guess.
   if (reputation.region !== 'platform-widget') return false;
   if (reputation.sellerFeedbackCount === null) return false;
   if (reputation.sellerPositivePercent === null) return false;
@@ -169,7 +169,7 @@ function readable(reputation: SellerReputation | undefined): boolean {
 /**
  * Evaluate one marketplace listing.
  *
- * Returns `'refuse'` for an auction — terminal, before any reputation question
+ * Returns `'refuse'` for an auction, terminal, before any reputation question
  * is asked, because no reputation makes an open-ended commitment into a purchase
  * with a knowable total.
  */
@@ -182,7 +182,7 @@ export function evaluateMarketplaceListing(
       outcome: 'refuse',
       reason:
         'This is an auction, so I will not bid on it. There is no final price until it ends, which '
-        + 'means I cannot show you the total and wait before paying — and bidding commits you to '
+        + 'means I cannot show you the total and wait before paying, and bidding commits you to '
         + 'something open-ended rather than buying an item at a price.',
     };
   }

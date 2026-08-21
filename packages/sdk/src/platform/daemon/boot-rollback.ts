@@ -1,15 +1,15 @@
 /**
  * Crash-loop auto-rollback: the safety net under the self-update loop.
  *
- * An update that verified its checksums can still be a bad build — one that
+ * An update that verified its checksums can still be a bad build, one that
  * dies during startup on THIS host. Until now the kept `<path>.previous` copy
  * only came back by hand (`/update rollback`), which is exactly the command an
  * owner cannot run when the thing that will not start is the daemon.
  *
  * The rule: every boot records a start attempt before doing anything that can
  * fail, and clears it once the daemon is fully started. When a boot finds that
- * the three attempts before it never reached a fully-started daemon — and they
- * were rapid, within the crash-loop window — the startup path restores each
+ * the three attempts before it never reached a fully-started daemon, and they
+ * were rapid, within the crash-loop window, the startup path restores each
  * kept previous file over the live one, records a receipt saying so, and hands
  * over to the restored binary instead of repeating the same failure a fourth
  * time.
@@ -35,7 +35,7 @@ export const CRASH_LOOP_FAILED_START_THRESHOLD = 3;
 export interface CrashLoopRollbackInput {
   /**
    * Consecutive PREVIOUS start attempts that never reached a fully-started
-   * daemon (this boot excluded — it has not failed yet).
+   * daemon (this boot excluded, it has not failed yet).
    */
   readonly failedStarts: number;
   /** When an automatic rollback last fired, if no fully-started boot cleared it since. */
@@ -70,14 +70,14 @@ export interface CrashLoopReceiptInput {
 
 /**
  * The owner-facing receipt for an automatic rollback. It names what happened,
- * how the daemon decided, and which files went back — a restart that silently
+ * how the daemon decided, and which files went back, a restart that silently
  * changed versions would be worse than the crash loop it fixed.
  */
 export function crashLoopRollbackReceipt(input: CrashLoopReceiptInput): string {
   const files = input.restored.map((target) => target.label).join(', ');
   return (
     `rolled back to the previously installed version at ${formatReceiptTime(input.at)}`
-    + ` — the last update failed to start ${input.failedStarts} times in a row (${files} restored from the kept previous copy);`
+    + `, the last update failed to start ${input.failedStarts} times in a row (${files} restored from the kept previous copy);`
     + ` the version that failed is now the kept previous copy, so /update rollback rolls forward onto it again`
   );
 }

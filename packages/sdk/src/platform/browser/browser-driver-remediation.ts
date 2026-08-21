@@ -3,13 +3,13 @@
  * actually installed the product they are running.
  *
  * This exists because every driver-missing message once named a single package
- * manager command. That command does work for one install method — but telling
+ * manager command. That command does work for one install method, but telling
  * someone who downloaded a release binary to install an npm package silently
  * changes their install method, and it is not the fix for their situation. The
  * fix has to name the thing they did.
  *
  * Which install method that is, and what the release calls its assets, are
- * facts about a PRODUCT, not about browsing — the SDK ships no release assets
+ * facts about a PRODUCT, not about browsing, the SDK ships no release assets
  * and has no installer. So the shape of the answer lives here and the product
  * supplies the particulars, including the same install-kind detector its own
  * update path uses, so a message here can never disagree with what applying an
@@ -22,7 +22,7 @@ export type BrowserDriverInstallKind = 'binary' | 'global-package' | 'source';
 /** The product-specific facts a driver-missing message has to name. */
 export interface BrowserDriverInstallProfile {
   /**
-   * The product's install-kind detector — the same one its update path uses,
+   * The product's install-kind detector, the same one its update path uses,
    * so remediation and `update apply` can never describe different machines.
    */
   readonly detectInstallKind: (execPath: string) => BrowserDriverInstallKind;
@@ -42,7 +42,7 @@ export interface BrowserDriverInstallProfile {
    * The product's own sentence for "a package manager is also a route in".
    *
    * Parameterized rather than written here because it names the PRODUCT as the
-   * actor — "the agent then installs the driver for itself" — and a shared
+   * actor, "the agent then installs the driver for itself", and a shared
    * module that guesses at that either says something wrong or retreats to a
    * passive voice that tells the reader less. Omitted = the neutral sentence.
    */

@@ -27,7 +27,7 @@ import type { ProviderRegistry } from '../packages/sdk/src/platform/providers/re
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
 // ---------------------------------------------------------------------------
-// Stubs — identical pattern to model-routes-secrets-skipped.test.ts
+// Stubs, identical pattern to model-routes-secrets-skipped.test.ts
 // ---------------------------------------------------------------------------
 
 function makeConfigManager(): ConfigManager {
@@ -312,7 +312,7 @@ describe('DaemonHttpRouter: OTLP metrics ingest → observable on GET /events', 
 });
 
 // ---------------------------------------------------------------------------
-// B5 — Sentinel gating: empty payloads must NOT produce observability events
+// B5, Sentinel gating: empty payloads must NOT produce observability events
 // ---------------------------------------------------------------------------
 
 describe('Sentinel gating: empty payloads do not emit events', () => {

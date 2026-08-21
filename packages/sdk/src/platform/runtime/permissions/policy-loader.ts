@@ -1,12 +1,12 @@
 /**
- * GC-PERM-011 — Policy loader with signature validation.
+ * GC-PERM-011, Policy loader with signature validation.
  *
  * Wraps the raw policy bundle loading path with a signature validation
  * step. In managed mode, bundles with invalid or missing signatures are
  * rejected. In non-managed mode, unsigned bundles are allowed through
  * with a `SignatureStatus` of `'unsigned'` for UI display.
  *
- * This module does NOT perform I/O itself — it accepts a pre-parsed
+ * This module does NOT perform I/O itself, it accepts a pre-parsed
  * `SignedPolicyBundle` so callers control the loading strategy.
  */
 
@@ -72,7 +72,7 @@ export interface PolicyLoadResult {
 // ── Error class ───────────────────────────────────────────────────────────────
 
 /**
- * PolicySignatureError — Thrown when a managed-mode bundle fails signature
+ * PolicySignatureError, Thrown when a managed-mode bundle fails signature
  * validation and the caller opts into strict error throwing.
  *
  * Managed mode MUST reject bundles with invalid or missing signatures.
@@ -139,7 +139,7 @@ export interface PolicyLoaderOptions {
 // ── Core loader ───────────────────────────────────────────────────────────────
 
 /**
- * loadPolicyBundle — Validates and loads a signed policy bundle.
+ * loadPolicyBundle, Validates and loads a signed policy bundle.
  *
  * Performs signature verification and returns the extracted rules with
  * a full provenance record. In managed mode, bundles that are unsigned,
@@ -148,8 +148,8 @@ export interface PolicyLoaderOptions {
  * In non-managed mode, unsigned bundles are accepted with status `'unsigned'`
  * so the UI can display a warning.
  *
- * @param bundle  — The pre-parsed signed bundle object.
- * @param options — Loader behaviour options.
+ * @param bundle , The pre-parsed signed bundle object.
+ * @param options, Loader behaviour options.
  *
  * @example
  * ```ts
@@ -189,10 +189,10 @@ export function loadPolicyBundle(
   if (!signingEnabled) {
     signatureStatus = 'skipped';
   } else if (!signingKey) {
-    // No key supplied — skip verification (permitted in non-managed mode)
+    // No key supplied, skip verification (permitted in non-managed mode)
     signatureStatus = 'skipped';
   } else if (!bundle.signature) {
-    // Key supplied but bundle has no signature — unsigned in non-managed, rejected in managed
+    // Key supplied but bundle has no signature, unsigned in non-managed, rejected in managed
     signatureStatus = 'unsigned';
   } else {
     const result = verifyBundle(bundle, signingKey);
@@ -234,13 +234,13 @@ export function loadPolicyBundle(
 }
 
 /**
- * createUnsignedBundle — Convenience helper for non-managed/test usage.
+ * createUnsignedBundle, Convenience helper for non-managed/test usage.
  *
  * Creates a bare `SignedPolicyBundle` without a signature. The resulting
  * bundle will be accepted in non-managed mode with status `'unsigned'`.
  *
- * @param bundleId — Unique identifier for this bundle.
- * @param payload  — The policy payload.
+ * @param bundleId, Unique identifier for this bundle.
+ * @param payload , The policy payload.
  */
 export function createUnsignedBundle(
   bundleId: PolicyBundleId,

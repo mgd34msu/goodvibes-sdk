@@ -241,7 +241,7 @@ export function createDaemonSystemRouteHandlers(
       }
       // Report what the host now HOLDS, not what the caller asked for.
       //
-      // Echoing the request back made this route say "success" for any write —
+      // Echoing the request back made this route say "success" for any write,
       // it could not distinguish a value that took from one that was coerced,
       // dropped, or overridden. It also never named the store, and the store is
       // the whole question here: an agent writes over the control plane into the
@@ -250,7 +250,7 @@ export function createDaemonSystemRouteHandlers(
       // said they were different files.
       const current = context.configManager.get(key);
       const source = context.configManager.describeConfigKeySource?.(key);
-      // A daemon-owned key does NOT live in the host's surface settings file —
+      // A daemon-owned key does NOT live in the host's surface settings file,
       // it lives in the daemon's own store. Reporting the surface path for it
       // would name the wrong file, which is the confusion this replaces.
       const persistedTo = (source?.daemonOwned ? source.daemonTierPath : null)
@@ -267,7 +267,7 @@ export function createDaemonSystemRouteHandlers(
       }
       // Name the OWNER as well as the file. "Saved" is only meaningful once a
       // caller knows whether the value landed where the runtime that acts on it
-      // will read it — the whole point of daemon-owned config scope.
+      // will read it, the whole point of daemon-owned config scope.
       return Response.json({
         success: true,
         key,
@@ -464,7 +464,7 @@ async function handleApprovalAction(
   // The full decision reach travels over HTTP, not just note/remember: a tier
   // grant, a deny reason, and an argument-modifying approval (e.g. the typed
   // answer to a command's terminal prompt) must all reach the same broker
-  // resolution the in-process path uses. Malformed values are honest 400s —
+  // resolution the in-process path uses. Malformed values are honest 400s,
   // silently dropping them is exactly the defect this closes.
   const rememberTier = readRememberTier(payload.rememberTier);
   if (rememberTier instanceof Response) {
@@ -555,7 +555,7 @@ function readModifiedArgs(value: unknown): Record<string, unknown> | undefined |
 }
 
 /**
- * What the broker actually recorded, derived from the RETURNED record —
+ * What the broker actually recorded, derived from the RETURNED record,
  * never echoed from the request. An already-resolved approval keeps its
  * original decision, so this stays honest when a late approve/deny no-ops.
  */

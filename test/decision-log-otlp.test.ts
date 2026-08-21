@@ -2,7 +2,7 @@
  * decision-log-otlp.test.ts
  *
  * The permission/policy decision log maps to OpenTelemetry (OTLP) span and log
- * semantics and exports as OTLP/HTTP JSON — export-only, off by default, no new
+ * semantics and exports as OTLP/HTTP JSON, export-only, off by default, no new
  * heavyweight dependency. Pins: the emitted payload validates against the OTLP
  * JSON shape for BOTH a span-style and a log-style record; the shared attribute
  * mapping; the off-by-default / no-endpoint no-ops; and a live POST round-trip
@@ -209,8 +209,8 @@ describe('exportDecisions POST round-trip', () => {
 // Everything above exercises `exportDecisions` directly. None of it says the
 // exporter is ever CALLED: it had zero call sites, so
 // `telemetry.decisionOtlpEnabled` promised an export that nothing could
-// perform. These drive the production seam — a real ConfigManager, through
-// `createPermissionConfigReader`, into `PermissionManager.checkDetailed` — and
+// perform. These drive the production seam, a real ConfigManager, through
+// `createPermissionConfigReader`, into `PermissionManager.checkDetailed`, and
 // assert on what a collector receives, at both positions of the enabled key.
 
 const permissionRoots: string[] = [];

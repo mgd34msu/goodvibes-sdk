@@ -1,5 +1,5 @@
 /**
- * gh-source fetchFailureLogs seeds REAL failing-job log text — not a pointer.
+ * gh-source fetchFailureLogs seeds REAL failing-job log text, not a pointer.
  *
  * A fake `gh` executable on PATH serves canned API responses: the check-runs
  * listing (whose ids double as Actions job ids) and each job's raw log. The

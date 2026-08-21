@@ -1,5 +1,5 @@
 /**
- * Runtime health monitoring system — barrel exports and factory.
+ * Runtime health monitoring system, barrel exports and factory.
  *
  * Usage:
  * ```ts

@@ -400,7 +400,7 @@ function renderMarkdownToHtml(text: string): string {
       continue;
     }
 
-    // Inline content — wrap in paragraph
+    // Inline content, wrap in paragraph
     if (!inParagraph) {
       out.push('<p>');
       inParagraph = true;

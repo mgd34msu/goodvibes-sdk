@@ -1,11 +1,11 @@
 /**
- * voice-capture.test.ts — the capture path both voice consumers share.
+ * voice-capture.test.ts, the capture path both voice consumers share.
  *
  * Every assertion here covers a failure that is SILENT rather than loud, which is
  * why they are worth pinning:
  *
  *  - a recorder's stdout arrives in sizes that have nothing to do with a frame,
- *    and mis-cutting frames does not error — it shifts the front end off the
+ *    and mis-cutting frames does not error, it shifts the front end off the
  *    framing the classifier was trained at and the detector simply never fires;
  *  - int16 magnitudes vs normalised -1..1 audio look identical in a buffer and
  *    score two orders of magnitude apart;
@@ -198,7 +198,7 @@ describe('the utterance policy', () => {
     for (let i = 0; i < 20; i += 1) expect(recorder.push(silent)).toBeNull();
     expect(recorder.heardSpeech).toBe(false);
     // Two frames of 80ms to clear the 150ms retrigger. One is not enough on
-    // purpose — a single loud frame is as likely a breath as a syllable, and
+    // purpose, a single loud frame is as likely a breath as a syllable, and
     // arming on it is what lets a room tick start the silence-stop clock.
     expect(recorder.push(loud)).toBeNull();
     expect(recorder.heardSpeech).toBe(false);
@@ -254,14 +254,14 @@ describe('the utterance policy', () => {
  * Deterministic pseudo-random noise at a target RMS, on the int16 magnitude
  * scale. A constant fill would give every analysis frame an identical level and
  * hide exactly the frame-to-frame scatter the margin exists to clear, so the
- * noise is real noise — just reproducible.
+ * noise is real noise, just reproducible.
  */
 function noise(samples: number, rms: number, seed = 1): Float32Array {
   const out = new Float32Array(samples);
   let state = seed >>> 0;
   for (let i = 0; i < samples; i += 1) {
     state = (state * 1664525 + 1013904223) >>> 0;
-    // Uniform on [-1, 1), whose RMS is 1/sqrt(3) — scaled up to land on `rms`.
+    // Uniform on [-1, 1), whose RMS is 1/sqrt(3), scaled up to land on `rms`.
     out[i] = ((state / 0x1_0000_0000) * 2 - 1) * rms * Math.SQRT2 * Math.sqrt(1.5);
   }
   return out;
@@ -277,7 +277,7 @@ function preRollWithPhrase(ambientRms: number, speechRms: number): Float32Array 
 
 describe('the silence floor measures the room instead of assuming it', () => {
   test('THE DEFECT: steady room noise above the fixed floor rides every capture to the ceiling', () => {
-    // A fan, a compressor, traffic — anything holding the room at 300 RMS, above
+    // A fan, a compressor, traffic, anything holding the room at 300 RMS, above
     // the fixed 180. No frame is ever silent, so silenceStopMs never accumulates
     // and the capture runs the full ceiling however long ago the speaker stopped.
     const roomRms = 300;
@@ -350,7 +350,7 @@ describe('the silence floor measures the room instead of assuming it', () => {
     // that level, and the clamps that guard the measurement do not apply to it.
     expect(resolveSilenceFloorRms({ override: 40, ambient: loudRoom, sampleRate: 16_000 })).toBe(40);
     expect(40).toBeLessThan(VOICE_INPUT_SILENCE_RMS);
-    // 0 is "unset", which is what the schema default carries — it must adapt,
+    // 0 is "unset", which is what the schema default carries, it must adapt,
     // not pin the floor at zero and call every frame speech.
     const adapted = resolveSilenceFloorRms({ override: 0, ambient: loudRoom, sampleRate: 16_000 });
     expect(adapted).toBeGreaterThan(VOICE_INPUT_SILENCE_RMS);
@@ -493,7 +493,7 @@ describe('the floor follows the room, because the room does not hold still', () 
 
   test('the following floor may pass the one-shot cap, because gain moves the whole scale', () => {
     // A room at 2000 with speech at 12000 is a perfectly separable 15 dB, and the
-    // 8x cap the pre-roll measurement uses would pin the floor at 1440 — under
+    // 8x cap the pre-roll measurement uses would pin the floor at 1440, under
     // the room, so nothing is ever silent. The rolling path is bounded by the
     // SPEECH it hears instead, which is the bound that actually matters.
     const audio = [...frames(50, 12_000, 300), ...frames(150, 2000, 400)];
@@ -507,7 +507,7 @@ describe('the floor follows the room, because the room does not hold still', () 
 
   test('the floor is never raised over a third of the speech, whatever the room does', () => {
     // 2000 of room under 4000 of speech is 6 dB, which level alone cannot
-    // separate. Unbounded, the floor would land on the room * 4 = 8000 — over the
+    // separate. Unbounded, the floor would land on the room * 4 = 8000, over the
     // speaker, so nothing would ever be heard at all. The guard holds it under
     // the voice and the capture ends at the ceiling, which is the old failure and
     // a far better one.
@@ -522,7 +522,7 @@ describe('the floor follows the room, because the room does not hold still', () 
       const { speechLevelRms } = recorder.endpointing;
       // The invariant, checked on every frame rather than at the end: the floor
       // is at most a third of the tracked speech, or the starting floor, whichever
-      // is higher — the rolling path may only ever RAISE, never lower.
+      // is higher, the rolling path may only ever RAISE, never lower.
       expect(recorder.effectiveSilenceRms)
         .toBeLessThanOrEqual(Math.max(400, speechLevelRms / VOICE_INPUT_SPEECH_FLOOR_RATIO) + 1e-6);
     }
@@ -593,14 +593,14 @@ describe('a breath is loud without being speech', () => {
     for (const frame of frames(30, 50, 750)) recorder.push(frame);
     expect(recorder.trailingSilenceMs).toBe(600);
 
-    // 100ms — under the 150ms retrigger. The wait PAUSES rather than resetting:
+    // 100ms, under the 150ms retrigger. The wait PAUSES rather than resetting:
     // the run may still turn out to be a tick, and it does.
     for (const frame of frames(5, 3000, 780)) expect(recorder.push(frame)).toBeNull();
     expect(recorder.trailingSilenceMs).toBe(600);
     recorder.push(frames(1, 50, 790)[0]!);
     expect(recorder.trailingSilenceMs).toBe(600 + 100 + 20);
 
-    // 200ms — past the retrigger. The speaker is talking again.
+    // 200ms, past the retrigger. The speaker is talking again.
     for (const frame of frames(10, 3000, 800)) expect(recorder.push(frame)).toBeNull();
     expect(recorder.trailingSilenceMs).toBe(0);
 
@@ -646,7 +646,7 @@ describe('a breath is loud without being speech', () => {
 describe('captureMaxSeconds 0 means no ceiling', () => {
   test('a long capture is never cut, and 0 is not read as "stop immediately"', () => {
     // 0 seconds is 0 samples, and a length-vs-0 comparison is true on the very
-    // first frame — the failure this has to not have.
+    // first frame, the failure this has to not have.
     const recorder = new VoiceInputRecorder({ captureMaxSeconds: 0, silenceStopMs: 0 });
     const frame = new Float32Array(1280).fill(2000);
     expect(recorder.push(frame)).toBeNull();
@@ -724,8 +724,8 @@ describe('the recorder command line, against what the real tools accept', () => 
     for (const backend of RECORDER_PROBE_ORDER) {
       const joined = buildRecorderCommand(backend, {}).args.join(' ');
       expect(joined).toContain('16000');
-      // Each tool spells the format its own way — sox takes a bit depth and an
-      // encoding rather than a format name — so the shape is checked per tool
+      // Each tool spells the format its own way, sox takes a bit depth and an
+      // encoding rather than a format name, so the shape is checked per tool
       // instead of grepping for one spelling that only some of them use.
       expect(joined).toMatch(/s16|S16|-b 16 -e signed-integer/);
       // Mono, again spelled per tool: --channels 1, --channels=1, -c 1, -ac 1.

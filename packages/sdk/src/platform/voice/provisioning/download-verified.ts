@@ -1,5 +1,5 @@
 /**
- * download-verified.ts — atomic, checksum-verified download of one managed
+ * download-verified.ts, atomic, checksum-verified download of one managed
  * voice-runtime component (engine archive or model file).
  *
  * Extends the item-5 atomic pattern (temp file in the same directory, then
@@ -72,7 +72,7 @@ const verificationCache = new Map<string, { size: number; mtimeMs: number; match
 /**
  * Like {@link fileMatches} but cached by (path, size, mtime): repeated status
  * polls do not synchronously re-read and re-hash a 63MB model on every call.
- * A file whose size or mtime changed is re-verified with the full hash —
+ * A file whose size or mtime changed is re-verified with the full hash,
  * provisioning decisions (download skip/replace) always use the full hash.
  */
 export function fileMatchesCached(path: string, spec: VerifiedDownloadSpec): boolean {
@@ -95,7 +95,7 @@ export function fileMatchesCached(path: string, spec: VerifiedDownloadSpec): boo
 
 /**
  * Download a component to `destPath` atomically, verifying size + sha256.
- * Skips (returns skipped:true) when the file already matches — this is what
+ * Skips (returns skipped:true) when the file already matches, this is what
  * makes a re-run resumable. Never leaves a partial or unverified file in place.
  */
 export async function downloadVerifiedFile(options: VerifiedDownloadOptions): Promise<VerifiedDownloadResult> {

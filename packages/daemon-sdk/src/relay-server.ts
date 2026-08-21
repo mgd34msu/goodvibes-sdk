@@ -13,7 +13,7 @@
 //      pipe before any application data, so the relay only ever sees ciphertext
 //      plus connection metadata (who paired with whom, byte counts, timing).
 //
-// There are NO accounts and NO stored state — a public instance is protected
+// There are NO accounts and NO stored state, a public instance is protected
 // only by caps and rate limits so it cannot be turned into a liability. The
 // core `RelayHub` is runtime-neutral and socket-agnostic (testable without a
 // real server); `createBunRelayServer` is the thin Bun.serve adapter.
@@ -122,7 +122,7 @@ export class RelayHub {
     this.rateLimiter = new HandshakeRateLimiter(this.limits.maxHandshakesPerMinutePerAddr);
   }
 
-  /** Current occupancy — surfaces/monitoring can read this. */
+  /** Current occupancy, surfaces/monitoring can read this. */
   stats(): { readonly daemons: number; readonly pipes: number } {
     return { daemons: this.daemons.size, pipes: this.pipes.size };
   }
@@ -256,7 +256,7 @@ export class RelayConnection {
     }
     if (this.role === 'daemon') {
       if (!this.hub._daemonToClient(bytes)) {
-        // Unknown/closed pipe — ignore silently (client may have just left).
+        // Unknown/closed pipe, ignore silently (client may have just left).
       }
       return;
     }

@@ -289,7 +289,7 @@ export function registerAllTools(
      * Resolves the host's real runtime session id, called fresh on each task-tool
      * invocation. Without it the task tool writes every ref into the unowned
      * legacy namespace and owner-existence reaping over the task graph cannot
-     * run — the bounds still apply, but nothing is keyed to a real session.
+     * run, the bounds still apply, but nothing is keyed to a real session.
      */
     resolveSessionId?: (() => string) | undefined;
     sandboxSessionRegistry?: SandboxSessionRegistry | undefined;
@@ -311,7 +311,7 @@ export function registerAllTools(
     secretsManager?: Pick<SecretsManager, 'get' | 'set' | 'getGlobalHome'> | null | undefined;
     overflowHandler?: OverflowHandler | undefined;
     changeTracker?: SessionChangeTracker | undefined;
-    /** Project memory registry — when present, `state mode=memory set` mirrors writes into retrievable records. */
+    /** Project memory registry, when present, `state mode=memory set` mirrors writes into retrievable records. */
     memoryRegistry?: import('../state/index.js').MemoryRegistry | undefined;
     /**
      * Where the owner profile store and occasions service arrive once the
@@ -392,7 +392,7 @@ export function registerAllTools(
      * A hosted CONVERSATIONAL turn states `required`, and then an absent
      * boundary is a refusal rather than a silent fallback. A hosted WORKSTREAM
      * that genuinely needs the host is granted `host-allowed` per spawn by the
-     * product composing it — the posture never arrives from the model, the
+     * product composing it, the posture never arrives from the model, the
      * wire, or a tool argument. See exec/containment.ts.
      */
     execContainment?: ExecContainmentRequirement | undefined;
@@ -558,7 +558,7 @@ export function registerAllTools(
   // Scoped under the surface (surfaceRoot is required above, so this is
   // always the scoped form); dual-reads the old unscoped .goodvibes/state
   // for a pre-existing session_*.json exactly once, then copies it forward
-  // into the scoped location — see KVStateOptions.legacyStateDir.
+  // into the scoped location, see KVStateOptions.legacyStateDir.
   //
   // This is also the store's retention point: KVState reaps stale
   // session_*.json files from BOTH directories at its first load and then on a

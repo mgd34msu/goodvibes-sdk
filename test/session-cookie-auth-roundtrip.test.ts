@@ -94,7 +94,7 @@ function makeCompanionRouteContext(manager: CompanionChatManager): CompanionChat
 
 /**
  * Build a minimal createDaemonControlRouteHandlers context wired to real
- * UserAuthManager and optional sharedToken — matching the production wiring.
+ * UserAuthManager and optional sharedToken, matching the production wiring.
  */
 function makeControlRouteHandlers(
   req: Request,
@@ -125,7 +125,7 @@ function makeControlRouteHandlers(
       return { principalId: 'shared-token', principalKind: 'token' as const, admin: true, scopes: [] };
     }
     // Mirrors ControlPlaneGateway.describeAuthenticatedPrincipal (control-plane.ts):
-    // a pairing token is a distinct token-kind principal, not a user session —
+    // a pairing token is a distinct token-kind principal, not a user session,
     // it has no `roles`/`username`, so it must be handled before the fallthrough
     // that reads those fields off the remaining 'session' branch.
     if (result.kind === 'pairing-token') {
@@ -257,7 +257,7 @@ describe('authenticateOperatorToken session validation when sharedToken is set',
     const authResult = userAuth.authenticate('testuser', 'testpass123');
     if (!authResult.ok) throw new Error('Expected successful auth');
     const session = userAuth.createSession(authResult.user.username);
-    // Revoke the session — it should no longer validate
+    // Revoke the session, it should no longer validate
     userAuth.revokeSession(session.token);
 
     const result = authenticateOperatorToken(session.token, { sharedToken, userAuth });

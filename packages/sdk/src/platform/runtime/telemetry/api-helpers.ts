@@ -246,7 +246,7 @@ export function isErrorEventType(type: string): boolean {
  * Filter metric labels against the allowlist to prevent high-cardinality
  * label injection into metrics backends. Non-allowlisted keys are dropped.
  *
- * Note: full event attribute payloads (for telemetry records) are NOT filtered —
+ * Note: full event attribute payloads (for telemetry records) are NOT filtered,
  * this is only applied when building metric instrument labels.
  */
 export function filterMetricLabels(labels: Record<string, unknown>): Record<string, unknown> {

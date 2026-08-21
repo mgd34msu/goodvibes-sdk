@@ -200,11 +200,11 @@ export interface DaemonEnabledReader {
 /**
  * Resolve whether the local session daemon should run.
  *
- * `daemon.enabled` governs (default `true` — daemon on by default,
+ * `daemon.enabled` governs (default `true`, daemon on by default,
  * loopback-bound). The deprecated `danger.daemon` alias that used to
  * override this was removed in CHANGELOG 1.0.0 (its explicit-`false` off-switch is
  * preserved for existing users by a one-time config migration onto
- * `daemon.enabled`, applied at {@link ConfigManager.load} — see migrations.ts).
+ * `daemon.enabled`, applied at {@link ConfigManager.load}, see migrations.ts).
  *
  * This lives in the shared SDK config module (not TUI-local) so the standalone
  * daemon CLI and the TUI's adopt-or-start path resolve the flag identically.
@@ -234,7 +234,7 @@ export interface ConnectedHostDialReader {
  * every other caller reached without trouble, the conflation silently killed
  * the session-inputs poll (refused every two seconds, thousands of log lines an
  * hour), the conversation-rewind host registration, the approvals update
- * stream, and the hosted-conversation handoff — while the session spine, the
+ * stream, and the hosted-conversation handoff, while the session spine, the
  * memory spine and the operator tools dialed the SAME host successfully,
  * because they never read the flag. The features that refused and the features
  * that worked disagreed about whether the daemon existed.

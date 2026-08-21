@@ -1,5 +1,5 @@
 /**
- * config-replication-policy.ts — which settings may cross the network, and why.
+ * config-replication-policy.ts, which settings may cross the network, and why.
  *
  * This module exists to make one class of mistake IMPOSSIBLE rather than
  * unlikely: replicating a machine-specific value. A replicated
@@ -10,7 +10,7 @@
  * Three properties hold by construction:
  *
  *  1. The candidate set is DERIVED, never hand-maintained. It comes from the
- *     existing ownership machinery — `listDaemonOwnedConfigPaths()` — so a key
+ *     existing ownership machinery, `listDaemonOwnedConfigPaths()`, so a key
  *     that is not daemon-owned cannot be replicated at all, whatever anyone
  *     writes here. Client and user preferences are therefore out by definition.
  *
@@ -25,13 +25,13 @@
  *
  * Secrets follow the config, and are derived the same way: the only secret that
  * replicates is the one a replicated config path names. Nothing else in the
- * secret store — least of all the group's own key material — has a config path
+ * secret store, least of all the group's own key material, has a config path
  * that derives its name, so nothing else can be selected.
  *
  * Selection is not the same thing as STORAGE, and the two are deliberately not
  * merged. A replicated credential is by construction daemon-owned
  * (`isDaemonOwnedSecretKey`), so the receiving node files it in its daemon
- * secret tier — one home, read back whatever directory the daemon starts in.
+ * secret tier, one home, read back whatever directory the daemon starts in.
  * The reverse does not hold and must not: the daemon tier is not an export
  * list. A daemon-owned credential replicates only if a REPLICATED path names
  * it, which is why `cluster.*` credentials stay on the machine that made them.
@@ -51,7 +51,7 @@ import { daemonSecretKeyFor } from '../config/daemon-secret-keys.js';
 export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // Which chat surfaces exist, how they are addressed, and how replies go out.
   // A node that wins a surface must be configured to serve it or the handover
-  // is theatre — this is the whole reason replication exists.
+  // is theatre, this is the whole reason replication exists.
   'surfaces.',
   // Whether an inbound message becomes a conversation or a workstream. A group
   // that disagreed about this would answer the same message differently
@@ -69,7 +69,7 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   'device.',
   // Spending limits belong to the OPERATOR, not to whichever machine is holding
   // the surface. A node that takes over a handover without them would either
-  // refuse every purchase or, far worse, fall back to defaults — and the whole
+  // refuse every purchase or, far worse, fall back to defaults, and the whole
   // safety story here is that a number he set is the number that binds.
   //
   // What crosses the wire is the budget, the windows, the shipping preference
@@ -96,7 +96,7 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   'email.',
   'calendar.',
   'google.oauth.',
-  // How the owner profile behaves — whether it is loaded, whether facts are
+  // How the owner profile behaves, whether it is loaded, whether facts are
   // recorded autonomously, whether writes and closed-tier reads are announced,
   // whether the open tier reaches model context, whether unset consumer keys
   // fall back to it. These are decisions about how the platform treats HIM, and
@@ -119,7 +119,7 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // wherever he reads it. A group where one node raised his wife's birthday at
   // ten days and another at three, or where one had gone quiet after a "no" the
   // other never saw, would be the same assistant behaving two different ways
-  // depending on which machine answered — and, worse, would nudge him twice.
+  // depending on which machine answered, and, worse, would nudge him twice.
   //
   // `occasions.nudgeChannel` crosses too, and deliberately: a channel target is
   // a decision about where he wants to hear about this, not a property of one
@@ -135,7 +135,7 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // PLATFORM does with the operator's work, and a group where one node ended a
   // session on detach while another kept it running would be the same
   // assistant behaving two different ways depending on which machine he
-  // happened to be talking to — with the difference showing up as work that
+  // happened to be talking to, with the difference showing up as work that
   // silently stopped.
   //
   // `hostedSessions.maxSessions` is the exception and is ruled node-local
@@ -231,7 +231,7 @@ function underAny(path: string, domains: readonly string[]): boolean {
  * way.
  */
 export const REPLICATED_CONFIG_KEYS: readonly string[] = [
-  // `daemon.*` is otherwise node-local — it answers "does THIS machine run a
+  // `daemon.*` is otherwise node-local, it answers "does THIS machine run a
   // daemon". The timezone answers where the operator is, and the group has to
   // agree on it: the payment capability rolls its daily budgets over at
   // midnight in this zone, so two nodes on different zones would disagree about

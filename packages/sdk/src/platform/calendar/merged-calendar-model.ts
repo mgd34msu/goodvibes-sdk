@@ -1,19 +1,19 @@
 /**
- * merged-calendar-model.ts — normalization of provider (Google Calendar API v3,
+ * merged-calendar-model.ts, normalization of provider (Google Calendar API v3,
  * Microsoft Graph) events into the ONE merged event model shared with A9's .ics
  * path: A9's CalendarEvent shape plus a source label and the provider ids.
  *
  * Time-anchoring honesty follows A9's contract (this build ships no tz database):
  *  - An all-day value keeps its 'YYYY-MM-DD' date and is `zone: 'floating'`.
  *  - A timed value carrying an explicit numeric offset or a trailing Z is normalized
- *    to a real UTC instant (`zone: 'utc'`) — a fixed-offset -> UTC shift is pure
+ *    to a real UTC instant (`zone: 'utc'`), a fixed-offset -> UTC shift is pure
  *    arithmetic, NOT a named-zone conversion, so it is lossless and honest.
  *  - A timed value that only names a zone (no offset) is kept as wall time with the
  *    TZID recorded (`zone: 'tzid'`), never converted.
  *
  * Recurrence is delegated to the provider: the API clients request expanded single
  * instances (Google singleEvents=true, Graph calendarView), so each normalized event
- * is one concrete occurrence — no rule is fabricated here.
+ * is one concrete occurrence, no rule is fabricated here.
  */
 
 import type { EventDateTime } from './types.js';
@@ -84,7 +84,7 @@ export function normalizeGoogleEvent(
     ...(organizer.length > 0 ? { organizer } : {}),
     // Only `true` counts. The field is read-only and defaults to false, so a
     // missing organizer block leaves this absent and the event reads as
-    // somebody else's — which is the direction that fails towards recording.
+    // somebody else's, which is the direction that fails towards recording.
     ...(ev.organizer?.self === true ? { organizerIsOwner: true } : {}),
     start,
     ...(end ? { end } : {}),
@@ -212,11 +212,11 @@ function syntheticUid(provider: CalendarProviderId, calendarId: string): string 
 /**
  * Best-effort epoch (ms) for one {@link EventDateTime}, for sorting a mixed list of
  * merged events across zones/kinds. THIS IS THE ONE DOCUMENTED FUNCTION every
- * consumer should sort through — a raw `localeCompare`/string sort on `.value` looks
+ * consumer should sort through, a raw `localeCompare`/string sort on `.value` looks
  * like it works (ISO strings are lexicographically sortable) but silently produces
  * the wrong order the moment a `zone: 'utc'` value (a real instant) is compared
  * against a `zone: 'tzid'` or `zone: 'floating'` value (a wall-clock reading with an
- * unknown or undeclared offset) — e.g. a `tzid` event at `01:00` in
+ * unknown or undeclared offset), e.g. a `tzid` event at `01:00` in
  * `America/New_York` and a `utc` event at `05:00Z` are close to the same real
  * instant (EDT is UTC-4), but a naive string/localeCompare sort of `'01:00:00'` vs
  * `'05:00:00Z'` treats them as 4-5 hours apart on the SAME axis, which they are not.
@@ -228,7 +228,7 @@ function syntheticUid(provider: CalendarProviderId, calendarId: string): string 
  *    Z-suffixed) ISO value. Authoritative.
  *  - `zone: 'tzid'` or `zone: 'floating'` => the wall-clock digits are read AS IF
  *    they were UTC (no offset applied). This is an approximation, not the true
- *    instant — it keeps events within the SAME zone in correct relative order, and
+ *    instant, it keeps events within the SAME zone in correct relative order, and
  *    gives cross-zone comparisons a deterministic (if approximate) answer instead of
  *    an arbitrary one.
  */
@@ -243,7 +243,7 @@ export function eventDateTimeEpochMs(dt: EventDateTime): number {
     if (Number.isFinite(ms)) return ms;
   }
   // tzid / floating (or an unparsable utc value, defensively): treat the wall-clock
-  // digits as if they were UTC — see the documented approximation above.
+  // digits as if they were UTC, see the documented approximation above.
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/.exec(dt.value);
   if (!m) return Number.NaN;
   return Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
@@ -252,7 +252,7 @@ export function eventDateTimeEpochMs(dt: EventDateTime): number {
 /**
  * Chronological comparator for {@link EventDateTime} values (ascending), suitable
  * for `Array.prototype.sort`. See {@link eventDateTimeEpochMs} for the documented
- * cross-zone approximation this is built on — this is the ONE function every
+ * cross-zone approximation this is built on, this is the ONE function every
  * consumer should sort through instead of inventing its own string comparison.
  */
 export function compareEventDateTime(a: EventDateTime, b: EventDateTime): number {

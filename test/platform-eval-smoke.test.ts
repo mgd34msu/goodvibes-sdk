@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/eval
+ * Coverage-gap smoke test, platform/runtime/eval
  * Verifies that the eval runner and scorecard modules load correctly.
  * Closes coverage gap: platform/runtime/eval
  */

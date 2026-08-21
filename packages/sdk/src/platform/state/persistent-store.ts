@@ -4,7 +4,7 @@ import { basename, dirname, join } from 'path';
 import { summarizeError } from '../utils/error-display.js';
 
 /**
- * PersistentStore — generic JSON file persistence with atomic writes.
+ * PersistentStore, generic JSON file persistence with atomic writes.
  *
  * Handles lazy loading, atomic writes via a temporary file, and ensures the
  * directory hierarchy exists. Invalid JSON and write failures are thrown so
@@ -14,8 +14,8 @@ import { summarizeError } from '../utils/error-display.js';
  *
  *  1. THE FILE IS THE OWNER'S ONLY. `writeFile` with no `mode` produced 0644
  *     under a 0755 `~/.goodvibes/daemon`, so every credential-adjacent thing
- *     these stores hold — inbound mail bodies, push key material, session
- *     records — was world-readable on a multi-user machine. Both the temp file
+ *     these stores hold, inbound mail bodies, push key material, session
+ *     records, was world-readable on a multi-user machine. Both the temp file
  *     and the directory are created 0600 / 0700. The mode is set at CREATE
  *     time on the temp file, and `rename` preserves it, so an existing 0644
  *     file becomes 0600 on its next write without a separate chmod pass.
@@ -23,7 +23,7 @@ import { summarizeError } from '../utils/error-display.js';
  *  2. THE BYTES ARE ON THE DISK BEFORE THE RENAME NAMES THEM. `rename` is
  *     atomic with respect to other processes but says nothing about power
  *     loss: on a crash the metadata operation can land while the data blocks
- *     have not, leaving a ZERO-LENGTH file at the store path — which
+ *     have not, leaving a ZERO-LENGTH file at the store path, which
  *     `loadOrDiscard` then has to treat as corrupt, discarding a store that
  *     was written perfectly well. The file is fsync'd before the rename and
  *     the DIRECTORY is fsync'd after it, because the rename itself is
@@ -32,13 +32,13 @@ import { summarizeError } from '../utils/error-display.js';
  *  3. A CRASH MID-WRITE LEAVES NO LITTER. `<file>.tmp.<pid>.<uuid>` is removed
  *     on the failure path, but a process killed between the open and the
  *     rename never runs that path, and nothing else ever looked at those
- *     names — persisted state with no GC, which is the exact rule
+ *     names, persisted state with no GC, which is the exact rule
  *     docs/inbound-email.md §9 exists for. Writes now sweep their own
  *     directory for temp files old enough that nobody could still be writing
  *     them.
  *
  * NOT here: cross-process mutual exclusion. `persist()` is one atomic
- * replacement, so two writers cannot tear a file — but a read-modify-write
+ * replacement, so two writers cannot tear a file, but a read-modify-write
  * spanning `load()` and `persist()` can still lose the other writer's record,
  * and that window belongs to the caller that owns the read. Stores that need
  * it take the advisory lock at `<file>.lock` around the WHOLE cycle; see
@@ -47,7 +47,7 @@ import { summarizeError } from '../utils/error-display.js';
  * `loadOrDiscard()` is the second reading, for state whose OWNER has a rule for
  * a torn record: discard it, record the fact, disclose it. A store that only
  * throws forces every caller of every method that reads it to fail forever over
- * one unreadable byte — including the disclosure verb that exists to explain
+ * one unreadable byte, including the disclosure verb that exists to explain
  * exactly that state, and including sweeps of OTHER files that are perfectly
  * fine. The throwing `load()` stays the default, because "empty" and "corrupt"
  * must not be the same answer by accident; asking for the discard is explicit.
@@ -77,7 +77,7 @@ const DIR_MODE = 0o700;
  * How old a `<file>.tmp.<pid>.<uuid>` has to be before a write reclaims it.
  *
  * A live write holds its temp file for the length of one `writeFile` plus one
- * `fsync` — milliseconds. Ten minutes is four orders of magnitude beyond that,
+ * `fsync`, milliseconds. Ten minutes is four orders of magnitude beyond that,
  * so this can never delete a temp file another process is about to rename, and
  * it is still short enough that a crashed daemon's litter is gone by the next
  * write rather than by the next reinstall.
@@ -98,7 +98,7 @@ const lastTempSweepAt = new Map<string, number>();
  *
  * Counted because reaping without disclosure is the defect this round spent
  * most of its time on. `record()` bounding the record store silently was wrong
- * for exactly one reason — §9.5 says a reap is disclosed — and a temp-file
+ * for exactly one reason, §9.5 says a reap is disclosed, and a temp-file
  * reaper that deletes files with nothing anywhere saying so is that same
  * objection applied to everything except the code that raised it.
  * `InboundMailHousekeeper` puts this in its summary sentence.
@@ -114,7 +114,7 @@ export function persistentStoreOrphansReclaimed(): number {
   return orphanedTempFilesReclaimed;
 }
 
-/** Reset the temp-sweep throttle and tally. Test seam only — a fresh process starts empty. */
+/** Reset the temp-sweep throttle and tally. Test seam only, a fresh process starts empty. */
 export function resetPersistentStoreTempSweepThrottle(): void {
   lastTempSweepAt.clear();
   orphanedTempFilesReclaimed = 0;
@@ -162,7 +162,7 @@ export class PersistentStore<T extends Record<string, unknown>> {
    *
    * Exposed so a store that does read-modify-write can serialize the WHOLE
    * cycle across processes without having to be told its own path a second
-   * time — the inbound-mail stores accept either a path or an injected
+   * time, the inbound-mail stores accept either a path or an injected
    * `PersistentStore`, and a lock derived from a constructor argument they may
    * not have been given is a lock that silently is not taken.
    */
@@ -189,8 +189,8 @@ export class PersistentStore<T extends Record<string, unknown>> {
    *
    * For state whose owner already rules that a torn record is discarded and
    * disclosed (docs/inbound-email.md §9): the same rule applied to the whole
-   * file. The bytes are left on disk untouched — the next `persist()` replaces
-   * them — so this never destroys evidence, it only stops one unreadable byte
+   * file. The bytes are left on disk untouched, the next `persist()` replaces
+   * them, so this never destroys evidence, it only stops one unreadable byte
    * from being a permanent hard failure across every reader of every store.
    *
    * A file that parses to something that is not an object is corrupt too: it
@@ -226,7 +226,7 @@ export class PersistentStore<T extends Record<string, unknown>> {
    * write → fsync the file → rename → fsync the directory. Renaming a file
    * whose bytes are still only in the page cache means a power loss can leave
    * the store path pointing at a zero-length file, and a zero-length file is
-   * indistinguishable from a corrupt one — so an unlucky moment turns a
+   * indistinguishable from a corrupt one, so an unlucky moment turns a
    * perfectly good write into a discarded store.
    */
   async persist(data: T): Promise<void> {

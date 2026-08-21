@@ -96,7 +96,7 @@ export interface RuntimeConfig {
 }
 
 /**
- * The daemon process's own configuration — whether it runs, how it is hosted,
+ * The daemon process's own configuration, whether it runs, how it is hosted,
  * and where on earth it thinks it is.
  *
  * `timezone` is the platform's only notion of the daemon's location. It is
@@ -108,7 +108,7 @@ export interface DaemonProcessConfig {
   enabled: boolean;         // default: true — ADOPT a session daemon of this surface's own (loopback only)
   timezone: string;         // default: '' — IANA name; empty means UTC
   /**
-   * Whether this surface may DIAL the daemon it is connected to — a different
+   * Whether this surface may DIAL the daemon it is connected to, a different
    * decision from adopting one of its own, and its own setting since the two
    * shared `enabled` and turning adoption off silently stopped inbound-message
    * delivery, rewind registration, the approvals stream and daemon-routed turns

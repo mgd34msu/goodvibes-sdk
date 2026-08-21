@@ -62,7 +62,7 @@ export type { VoiceDiagnosticEntry, VoiceDiagnosticRoute, VoiceDiagnosticsWriteO
 export * from './provisioning/index.js';
 export type { VoiceBillableUsage } from './service.js';
 
-// Spoken-turn (live TTS) policy engine — shared behavioral contract; consumers
+// Spoken-turn (live TTS) policy engine, shared behavioral contract; consumers
 // inject an AudioSink for I/O. See ./spoken-turn.
 export { SpokenTurnController, TtsTextChunker, normalizeSpeechText, StreamingCodeFenceFilter, stripMarkdownForSpeech } from './spoken-turn/index.js';
 export type {
@@ -72,12 +72,12 @@ export type {
   AudioSinkPlaybackOptions,
 } from './spoken-turn/index.js';
 
-// Audio capture — one microphone path, two consumers (push-to-talk voice input
+// Audio capture, one microphone path, two consumers (push-to-talk voice input
 // and wake-word detection). Runtime-neutral: the host supplies what opens a
 // device. See ./capture.
 export * from './capture/index.js';
 
-// Wake-word detection — SDK-owned and isomorphic: the engine takes an inference
+// Wake-word detection, SDK-owned and isomorphic: the engine takes an inference
 // session from the host rather than importing a runtime, and its front end is
 // computed in code, so the same detector runs in a daemon child process and in
 // a browser tab. See ./wake.

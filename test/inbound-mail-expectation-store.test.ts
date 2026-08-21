@@ -109,7 +109,7 @@ describe('validatePersistedExpectation refuses anything openExpectation would ha
 });
 
 // ---------------------------------------------------------------------------
-// Original absolute expiry — never a fresh window
+// Original absolute expiry, never a fresh window
 // ---------------------------------------------------------------------------
 describe('expectations reload with their ORIGINAL expiry, never a fresh window', () => {
   test('the remaining window after restoring at T0+5min is 10min, not a fresh 15min', () => {
@@ -128,7 +128,7 @@ describe('expectations reload with their ORIGINAL expiry, never a fresh window',
     const restartTime = at(5 * 60 * 1000);
     const hydrated = restartedBook.hydrateExpectation(opened, restartTime);
     expect(hydrated).not.toBeNull();
-    // The ORIGINAL absolute expiresAt, byte-for-byte — not recomputed from restartTime.
+    // The ORIGINAL absolute expiresAt, byte-for-byte, not recomputed from restartTime.
     expect(hydrated?.expiresAt).toBe(opened.expiresAt);
     expect(hydrated?.openedAt).toBe(opened.openedAt);
 
@@ -155,7 +155,7 @@ describe('already-expired expectations are reaped at load, before they can match
   test('hydrateExpectation refuses an expired record outright', () => {
     const book = new VerificationExpectationBook();
     // Structurally valid (positive window within the ceiling) but its window
-    // has already elapsed by T0 — the expiry check, not content validation,
+    // has already elapsed by T0, the expiry check, not content validation,
     // is what must refuse this.
     const expired = validExpectation({ openedAt: at(-20 * 60 * 1000).toISOString(), expiresAt: at(-5 * 60 * 1000).toISOString() });
     expect(validatePersistedExpectation(expired, T0)).not.toBeNull(); // content is fine
@@ -165,7 +165,7 @@ describe('already-expired expectations are reaped at load, before they can match
 
   test('PersistedExpectationStore.sweep() reaps an expired record with reason "expired" and it is absent from survivors', async () => {
     // A structurally VALID expectation (positive window, well within
-    // MAX_VERIFICATION_WINDOW_MS) whose window has simply elapsed by "now" —
+    // MAX_VERIFICATION_WINDOW_MS) whose window has simply elapsed by "now",
     // distinct from a malformed record, which is refused by content
     // validation before expiry is ever considered.
     seed([validExpectation({ id: 'expired-1', openedAt: at(-20 * 60 * 1000).toISOString(), expiresAt: at(-5 * 60 * 1000).toISOString() })]);

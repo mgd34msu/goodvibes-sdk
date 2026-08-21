@@ -38,7 +38,7 @@ function commitCount(cwd: string): number {
 }
 
 // ---------------------------------------------------------------------------
-// dirty-guard.ts — pure partition logic
+// dirty-guard.ts, pure partition logic
 // ---------------------------------------------------------------------------
 
 describe('dirty-guard — snapshotDirtyTree', () => {
@@ -79,7 +79,7 @@ describe('dirty-guard — snapshotDirtyTree', () => {
 
     const snapshot = snapshotDirtyTree(root);
 
-    // Raw paths are the keys — never the quoted "caf\303\251.txt" form.
+    // Raw paths are the keys, never the quoted "caf\303\251.txt" form.
     expect(snapshot.has('café.txt')).toBe(true);
     expect(snapshot.has('普通话.txt')).toBe(true);
     expect([...snapshot.keys()].some((key) => key.includes('\\') || key.startsWith('"'))).toBe(false);
@@ -169,7 +169,7 @@ describe('dirty-guard — excludeUntouchedLaunchResidue', () => {
 });
 
 // ---------------------------------------------------------------------------
-// phase-runner.ts wiring — runPhase -> commitPhaseWork end to end
+// phase-runner.ts wiring, runPhase -> commitPhaseWork end to end
 // ---------------------------------------------------------------------------
 
 function makeWorkstream(): Workstream {
@@ -210,7 +210,7 @@ describe('phase-runner — dirty-residue guard wiring', () => {
 
     const h = createOrchestrationHarness();
     const worktree = new AgentWorktree(root);
-    // item.touchedPaths already carries 'residue.ts' — simulating WorkItem.touchedPaths'
+    // item.touchedPaths already carries 'residue.ts', simulating WorkItem.touchedPaths'
     // real accumulate-and-never-reset behavior across phases/retries (phase-runner.ts).
     const item = makeItem(['residue.ts']);
 
@@ -239,7 +239,7 @@ describe('phase-runner — dirty-residue guard wiring', () => {
     const committedFiles = runGit(root, ['show', '--stat', '--name-only', 'HEAD']);
     expect(committedFiles).toContain('feature.ts');
     expect(committedFiles).not.toContain('residue.ts');
-    // residue.ts is still sitting dirty on disk — never swept into the commit.
+    // residue.ts is still sitting dirty on disk, never swept into the commit.
     expect(runGit(root, ['status', '--porcelain'])).toContain('residue.ts');
   });
 

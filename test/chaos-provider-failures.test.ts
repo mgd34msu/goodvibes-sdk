@@ -2,7 +2,7 @@
  * Chaos: Provider failure simulation.
  *
  * Simulates provider timeouts, 429 (rate limit), and 5xx (server error)
- * scenarios. These are unit tests — no real network calls are made.
+ * scenarios. These are unit tests, no real network calls are made.
  * Instead we test the health aggregator domain transitions that would
  * be triggered by a provider failure handler, and verify the correct
  * downstream health state.

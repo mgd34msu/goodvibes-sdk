@@ -10,7 +10,7 @@ export function isWrfcWorkflowRequest(text: string): boolean {
 }
 
 /**
- * High-precision detector for an EXPLICIT user instruction not to delegate on this turn — do not
+ * High-precision detector for an EXPLICIT user instruction not to delegate on this turn, do not
  * spawn agents, do not start a WRFC/owner chain, or do the work directly/yourself. When true, the
  * routing directive is suppressed entirely: the harness must never inject a "start a WRFC chain"
  * nudge against a user who explicitly forbade it.
@@ -19,7 +19,7 @@ export function isWrfcWorkflowRequest(text: string): boolean {
  * no / without) with a delegation concept (spawn / agent(s) / delegate / wrfc / chain), or pairs a
  * direct-action verb with "yourself"/"directly". A plain "build X with WRFC" request contains no
  * such negation and is NOT treated as a prohibition. Precision over recall on purpose: a rare false
- * positive only drops an advisory suggestion (the safe direction — never coerce), whereas a false
+ * positive only drops an advisory suggestion (the safe direction, never coerce), whereas a false
  * negative would re-introduce the exact coercion this fixes.
  *
  * The documented pattern set:
@@ -60,7 +60,7 @@ export function buildWrfcWorkflowRoutingPrompt(text: string): string | null {
   // as the how-to for when the model does choose the pipeline.
   return '[WRFC routing] This looks like work the WRFC pipeline handles well. If you choose to use it, '
     + 'start exactly one WRFC owner chain via the agent tool (mode=spawn, template=engineer, reviewMode=wrfc) '
-    + 'rather than spawning reviewer/tester/verifier roots directly. This is a suggestion, not a command — '
+    + 'rather than spawning reviewer/tester/verifier roots directly. This is a suggestion, not a command, '
     + "the user's explicit instructions always win; if they asked you to do the work yourself or not to "
     + 'delegate, do that instead.';
 }

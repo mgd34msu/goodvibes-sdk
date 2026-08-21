@@ -12,7 +12,7 @@
  * approval, the create's rename landed second, and after a restart a purchase
  * somebody had approved read back as still 'pending'. An approval stuck at
  * pending is eventually a denial, so for the payment path this is the decision
- * being silently discarded — which is the one thing that path exists to keep.
+ * being silently discarded, which is the one thing that path exists to keep.
  *
  * Two properties close it, and both are tested here: writes are ORDERED (via
  * StoreWriteQueue), and each write serialises the approvals as they are when
@@ -33,7 +33,7 @@ import type { PermissionPromptRequest } from '../packages/sdk/src/platform/permi
 
 /**
  * `merchant` varies per call because `requestApproval` COALESCES asks that
- * match on session, tool and args — a second identical ask joins the first
+ * match on session, tool and args, a second identical ask joins the first
  * record instead of creating its own. Tests that need two distinct pending
  * approvals have to differ somewhere, or they silently get one.
  */
@@ -57,7 +57,7 @@ interface ApprovalSnapshot extends Record<string, unknown> {
 }
 
 /**
- * The store harness lives in `_helpers/controllable-store.ts` — a real
+ * The store harness lives in `_helpers/controllable-store.ts`, a real
  * `PersistentStore` with a delay knob and a fail-the-Nth-write knob. It was
  * written here for this defect and moved out so the other stores that share it
  * are pinned by the same technique rather than a second one.
@@ -87,8 +87,8 @@ describe('the newest write is the one that survives on disk', () => {
       store.delayNextMs = 250;
       void broker.requestApproval({ request: request('call-order') }).catch(() => undefined);
 
-      // The record is in the map before its write completes — that is the
-      // whole window — so a surface can and does resolve it right here.
+      // The record is in the map before its write completes, that is the
+      // whole window, so a surface can and does resolve it right here.
       await waitFor(() => broker.listApprovals().some((entry) => entry.callId === 'call-order'));
       const created = broker.listApprovals().find((entry) => entry.callId === 'call-order');
       expect(created).toBeDefined();
@@ -172,8 +172,8 @@ describe('the newest write is the one that survives on disk', () => {
       await waitFor(() => broker.listApprovals().some((entry) => entry.callId === 'call-seed'));
 
       // Write 2 is the doomed create's own, and it fails. Write 3 belongs to
-      // the create that came after it, and its snapshot — taken when IT called
-      // persist, with the doomed record already in the map — carries that
+      // the create that came after it, and its snapshot, taken when IT called
+      // persist, with the doomed record already in the map, carries that
       // record to disk on the doomed create's behalf. So a create that was
       // told it failed is on disk anyway, inside somebody else's write.
       store.failWriteNumber = 2;

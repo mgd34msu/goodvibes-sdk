@@ -452,7 +452,7 @@ export async function pruneAndPersistDistributedRuntime(state: DistributedRuntim
  *
  * `PersistentStore.persist` is atomic but unordered, and this store is written
  * from three directions at once: awaited writes at the end of every pairing and
- * work verb, and two UNAWAITED ones — `expireDistributedPairRequests` and
+ * work verb, and two UNAWAITED ones, `expireDistributedPairRequests` and
  * `requeueDistributedExpiredClaims` both fire `persistDistributedRuntimeAsync`,
  * and both are reached from ordinary list/read calls, so a plain `GET` starts a
  * background write. Unordered, that background write's rename could land after
@@ -461,7 +461,7 @@ export async function pruneAndPersistDistributedRuntime(state: DistributedRuntim
  * turned away still able to complete pairing; and a completed unit of work
  * reads back as 'queued', which is that work dispatched to a peer a second time.
  *
- * The snapshot is still built here, synchronously — every caller mutates the
+ * The snapshot is still built here, synchronously, every caller mutates the
  * maps and then persists, so each snapshot is at least as new as the one queued
  * before it.
  */

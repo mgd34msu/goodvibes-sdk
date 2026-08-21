@@ -1,5 +1,5 @@
 /**
- * append-only-registry.ts — the single owner of every append-only store the
+ * append-only-registry.ts, the single owner of every append-only store the
  * platform writes.
  *
  * An append-only file that no one prunes grows without bound (the observed
@@ -7,13 +7,13 @@
  * append-only store the platform writes registers here with an owner and a
  * retention policy, and a start-time janitor (runAppendOnlyRetentionSweep) owns
  * every registered path in one pass. A registry-membership check
- * (assertAppendOnlyStoreRegistered) fails LOUDLY on an unregistered id — the
- * same fail-closed discipline as the feature-gate-id and model-source checks —
+ * (assertAppendOnlyStoreRegistered) fails LOUDLY on an unregistered id, the
+ * same fail-closed discipline as the feature-gate-id and model-source checks,
  * so a new append-only store cannot ship unowned and grow forever in silence.
  *
  * The retention engine reused here is enforceFileRetention /
  * enforceJournalDirectoryRetention (age + total-size caps over append-only
- * files), the honest fit for line-appended logs — distinct from the
+ * files), the honest fit for line-appended logs, distinct from the
  * checkpoint-record RetentionPolicy engine that owns the snapshot subsystems.
  */
 import {
@@ -54,8 +54,8 @@ export interface AppendOnlyRetentionRoots {
    * home-anchored rather than workingDirectory-anchored: a process that dies on
    * an uncaught fault may not have a usable working directory, and a crash is a
    * property of the surface install, not of the project it happened in. (The
-   * recovery-snapshot store went the other way — see `session-recovery-snapshots`
-   * below — because a recovery snapshot IS project state.)
+   * recovery-snapshot store went the other way, see `session-recovery-snapshots`
+   * below, because a recovery snapshot IS project state.)
    */
   readonly homeDirectory?: string | undefined;
   /** Directory holding the shared activity.md log, when the caller configured one. */
@@ -92,12 +92,12 @@ const EMPTY_TARGETS: AppendOnlyStoreTargets = { journalDirs: [], files: [] };
  * Classification (isLegacyAgentJournalFile) is shared with
  * session-migration.ts's move, so the sweep and the move can never
  * disagree about which files are legacy agent journals. Returns an empty
- * list when the directory is absent or unreadable — this is a best-effort
+ * list when the directory is absent or unreadable, this is a best-effort
  * supplementary sweep, never a hard requirement.
  *
  * The classification is name AND first-line content: a user conversation the
  * user saved under a name that happens to collide with a journal filename
- * shape ("release_workmap", "agent-deadbeef" — both legal outputs of
+ * shape ("release_workmap", "agent-deadbeef", both legal outputs of
  * SessionManager.sanitizeName) is a real conversation, not a journal, and is
  * left completely alone. So is anything unreadable or ambiguous.
  */
@@ -121,7 +121,7 @@ function listLegacyAgentJournalFiles(sessionsDir: string): string[] {
 /**
  * Read a saved session's `saveSource` off its meta line (line 0) without
  * reading the whole file. Protective default: `'user'` (exempt from
- * reclaim) for anything that is not unambiguously `saveSource: 'auto'` —
+ * reclaim) for anything that is not unambiguously `saveSource: 'auto'`,
  * an unreadable file, a malformed meta line, or (most importantly) a
  * pre-upgrade file that predates this field entirely. Losing a user's saved
  * session to an over-eager sweep is the failure mode this errs away from;
@@ -151,10 +151,10 @@ function peekSessionSaveSource(filePath: string): 'user' | 'auto' {
 
 /**
  * The saved user-conversation files in `sessionsDir` (top-level `*.jsonl`
- * only — never the sessions/agents/ subdirectory, which the session-journals
+ * only, never the sessions/agents/ subdirectory, which the session-journals
  * store owns) that are eligible for retention: `saveSource: 'auto'` files
  * only. A file the user explicitly saved (`saveSource: 'user'`), or any file
- * with no readable saveSource at all, is never included here — see
+ * with no readable saveSource at all, is never included here, see
  * peekSessionSaveSource.
  */
 function listReclaimableAutoSessionFiles(sessionsDir: string): string[] {
@@ -186,7 +186,7 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
       const sessionsDir = resolveScopedDirectory(roots.workingDirectory, roots.surfaceRoot, 'sessions');
       return {
         journalDirs: [join(sessionsDir, 'agents')],
-        // Legacy sweep is filename-filtered, never the whole sessionsDir —
+        // Legacy sweep is filename-filtered, never the whole sessionsDir,
         // that directory also holds user conversation *.jsonl files and must
         // never be swept wholesale.
         files: listLegacyAgentJournalFiles(sessionsDir),
@@ -219,7 +219,7 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
     description: 'per-session crash-recovery jsonl snapshots under the workingDirectory-scoped recovery/ directory (SessionSurface.recoveryDir); a snapshot that was never restored goes stale and needs retention like any other append-only artifact',
     policy: DEFAULT_AT_REST_POLICY,
     resolve(roots) {
-      // Anchored to workingDirectory, matching SessionSurface.recoveryDir —
+      // Anchored to workingDirectory, matching SessionSurface.recoveryDir,
       // NOT homeDirectory. A crash snapshot lives with the project it
       // happened in (see session-surface.ts's SessionSurface.recoveryDir doc
       // comment); the legacy home-anchored resolution stays reachable only
@@ -235,7 +235,7 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
   {
     id: 'session-conversations',
     owner: 'saved user conversation sessions (sessions/manager.ts SessionManager.save)',
-    description: 'saved conversation *.jsonl files under the scoped sessions/ directory; a file the user explicitly saved (saveSource "user"), or any pre-upgrade file with no saveSource at all, is exempt and never reclaimed — only saveSource "auto" files are subject to the bounded default retention policy',
+    description: 'saved conversation *.jsonl files under the scoped sessions/ directory; a file the user explicitly saved (saveSource "user"), or any pre-upgrade file with no saveSource at all, is exempt and never reclaimed, only saveSource "auto" files are subject to the bounded default retention policy',
     policy: DEFAULT_AT_REST_POLICY,
     resolve(roots) {
       if (!roots.workingDirectory) return EMPTY_TARGETS;
@@ -261,7 +261,7 @@ export const APPEND_ONLY_STORES: readonly AppendOnlyStoreDescriptor[] = [
   {
     id: 'legacy-event-store',
     owner: 'legacy event store (dead: no live writer anywhere in the platform; last write observed 2026-07-02)',
-    description: 'the unscoped .goodvibes/state/events.jsonl file and its event-archives/ directory — dead data with no live writer, NOT the whole state dir (which holds live retries.json, agent-tracking.json, workflows/, and session_*.json KVState files)',
+    description: 'the unscoped .goodvibes/state/events.jsonl file and its event-archives/ directory, dead data with no live writer, NOT the whole state dir (which holds live retries.json, agent-tracking.json, workflows/, and session_*.json KVState files)',
     policy: DEFAULT_AT_REST_POLICY,
     resolve(roots) {
       if (!roots.workingDirectory) return EMPTY_TARGETS;
@@ -283,7 +283,7 @@ export function isAppendOnlyStoreRegistered(id: string): boolean {
 
 /**
  * Fail-closed membership check: throw when `id` is not a registered append-only
- * store. Mirrors assertFeatureGateIdRegistered — an unregistered append-only
+ * store. Mirrors assertFeatureGateIdRegistered, an unregistered append-only
  * path is a defect (it would grow unowned), so it fails loudly.
  */
 export function assertAppendOnlyStoreRegistered(id: string, context: string): void {
@@ -310,7 +310,7 @@ export interface AppendOnlySweepOutcome {
  *
  * Age plus size alone do not bound a store: ten thousand 4 KB journals written
  * this week sit under both the 30-day horizon and the 512 MB budget, and the
- * directory still has ten thousand entries in it — every listing, every sweep,
+ * directory still has ten thousand entries in it, every listing, every sweep,
  * and every consumer that enumerates the store pays for them. 512 is chosen to
  * sit far above any honest working set (a heavy fleet day produces tens of
  * agent journals, not hundreds) while still being a hard ceiling, and it keeps
@@ -338,7 +338,7 @@ function listStoreFilesOnDisk(targets: AppendOnlyStoreTargets): string[] {
         if (name.endsWith('.jsonl')) paths.push(join(dir, name));
       }
     } catch {
-      // Absent/unreadable directory — nothing of this store's is there.
+      // Absent/unreadable directory, nothing of this store's is there.
     }
   }
   paths.push(...targets.files);
@@ -379,7 +379,7 @@ function enforceStoreFileCountCap(targets: AppendOnlyStoreTargets, maxFiles: num
       deleted.push(entry.path);
       reclaimed += entry.size;
     } catch {
-      // ENOENT: another sweep beat us to it — the post-state is what we wanted.
+      // ENOENT: another sweep beat us to it, the post-state is what we wanted.
       // Anything else: leave the file in place; the next sweep retries.
     }
   }
@@ -389,7 +389,7 @@ function enforceStoreFileCountCap(targets: AppendOnlyStoreTargets, maxFiles: num
 /**
  * The start-time janitor: enforce every registered store's retention policy in
  * one pass over the paths its resolver yields for the given roots. A store
- * whose roots are absent is skipped (reported), not an error. Best-effort —
+ * whose roots are absent is skipped (reported), not an error. Best-effort,
  * a failure on one store never aborts the others.
  */
 export function runAppendOnlyRetentionSweep(
@@ -444,7 +444,7 @@ export function runAppendOnlyRetentionSweep(
       reclaimedBytes += countCapped.reclaimedBytes;
       storePruned.push(...countCapped.deletedFiles);
       storeReclaimedBytes += countCapped.reclaimedBytes;
-      // Disclosure: every reclaim names exactly what was pruned, per store —
+      // Disclosure: every reclaim names exactly what was pruned, per store,
       // not just an aggregate count. A reclaimed file is gone; this is the
       // record of what happened and why (store id + owner). A store that
       // reclaimed NOTHING logs nothing, so a periodic re-sweep on a quiet
@@ -482,7 +482,7 @@ export function runAppendOnlyRetentionSweep(
  *
  * Takes the FULL roots object: a caller that omits logDir/telemetryDir/
  * homeDirectory silently skips the activity-log, telemetry-ledger, and
- * recovery-snapshot stores every sweep — registered entries that never run.
+ * recovery-snapshot stores every sweep, registered entries that never run.
  * The composition root passes every root it knows.
  */
 export function runStartupAppendOnlySweep(
@@ -508,8 +508,8 @@ export function runStartupAppendOnlySweep(
  * overshoot. The caps it enforces are a 30-day age horizon, a 512 MB size
  * budget, and a 512-file count bound, and a store can only exceed a cap for as
  * long as it takes the next sweep to arrive. Six hours bounds that overshoot to
- * a quarter of a day of append volume — small against a 512 MB budget even for
- * the fastest writer observed (the 22.8 MB activity.md accumulated over weeks) —
+ * a quarter of a day of append volume, small against a 512 MB budget even for
+ * the fastest writer observed (the 22.8 MB activity.md accumulated over weeks),
  * and it reclaims a file within hours of its 30-day TTL rather than up to a full
  * day later. Anything in minutes would be pure wakeups for a store whose
  * shortest cap is measured in days.
@@ -537,12 +537,12 @@ export interface AppendOnlyRetentionSchedulerOptions {
  * up for weeks never prunes any of the six registered stores again after boot,
  * which is exactly the window in which they grow. This scheduler re-runs the
  * same sweep on an unref'd timer (it can never be the reason a process stays
- * alive), stops cleanly, and is safe to start twice — a second start() is a
+ * alive), stops cleanly, and is safe to start twice, a second start() is a
  * no-op rather than a second timer. Same lifecycle posture as
  * StoreSnapshotScheduler: the host that constructs it stops it on teardown.
  *
  * A sweep that reclaims nothing writes no log line, so a quiet daemon does not
- * accumulate an entry every interval — the disclosure requirement is about
+ * accumulate an entry every interval, the disclosure requirement is about
  * deletions, and there are none to disclose.
  */
 export class AppendOnlyRetentionScheduler {
@@ -577,7 +577,7 @@ export class AppendOnlyRetentionScheduler {
   }
 
   /**
-   * Run one sweep now, then re-arm (when running). Never throws — the
+   * Run one sweep now, then re-arm (when running). Never throws, the
    * underlying entry point already swallows and reports its own failures.
    */
   tick(): AppendOnlySweepOutcome | null {

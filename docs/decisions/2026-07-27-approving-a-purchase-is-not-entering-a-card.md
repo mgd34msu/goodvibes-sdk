@@ -5,14 +5,14 @@ Scope: `daemon/surface-actions.ts`, `daemon/surface-card-gate.ts`, `security/car
 Status: accepted
 
 **Provenance, stated plainly: the card-shape refusal is a coordinator ruling,
-not an owner quote.** The owner's ruling it enforces is his own — card details
+not an owner quote.** The owner's ruling it enforces is his own, card details
 are entered only at a local terminal or the webui, never over a remote messaging
 channel. The refusal below is the daemon-side enforcement of that ruling, and it
 is recorded as a coordinator decision so nobody later cites it back as something
 he said.
 
-The other half — that approvals and vetoes for purchases work over remote
-channels — **is** his explicit ruling, and it stays.
+The other half, that approvals and vetoes for purchases work over remote
+channels, **is** his explicit ruling, and it stays.
 
 ## Why this is its own record
 
@@ -28,7 +28,7 @@ The argument is short enough to keep whole.
 
 | | Approving or vetoing a purchase | Entering the payment instrument |
 |---|---|---|
-| Over a remote channel | **Allowed** — owner's ruling | **Refused** |
+| Over a remote channel | **Allowed**, owner's ruling | **Refused** |
 | What travels | "yes" / "no" about a purchase already described | a PAN, a security code, an expiry |
 | What an interceptor gains | knowledge of one decision he could have inferred from the outcome anyway | the ability to spend, anywhere, until the card is cancelled |
 | Where it ends up | a message history, alongside every other message | a third party's message history, unerasable, replayable |
@@ -40,15 +40,14 @@ capability to spend that outlives every purchase it was used for.
 
 ## What is enforced
 
-1. A message on any remote messaging channel carrying card-shaped content — a
-   PAN-shaped digit run that passes Luhn, a security code, an expiry pattern —
-   is **refused**. Not stored, not logged, not transcribed, not placed in a
+1. A message on any remote messaging channel carrying card-shaped content, a
+   PAN-shaped digit run that passes Luhn, a security code, an expiry pattern, is **refused**. Not stored, not logged, not transcribed, not placed in a
    notice body: nowhere it can be read later.
 2. The refusal reply names only the matched **shapes**, never the digits. A
    refusal that echoes the number back has written the number into the history
    it was refusing to write it into.
 3. **No card-entry prompt is ever offered on a remote channel**, because
-   prompting is itself the harm — it invites the owner to type a card number
+   prompting is itself the harm, it invites the owner to type a card number
    into Telegram, where it lands somewhere nobody can erase.
 4. The check runs on the shared ingress hook
    (`SurfaceActions.authorizeSurfaceIngress`) and runs **first**, before
@@ -78,7 +77,7 @@ body excerpt). This is not an inconsistency:
 
 - A remote channel message is something the owner **typed**. Refusing it teaches
   him not to, and he can resend. There is a person on the other end to tell.
-- Mail is something a **merchant sent** — an order confirmation with the last
+- Mail is something a **merchant sent**, an order confirmation with the last
   four, or worse. Refusing it would discard evidence of a purchase he made, from
   a sender who cannot be asked to resend. Redaction keeps the record and drops
   the digits.
@@ -94,7 +93,7 @@ the prompt is the harm. A confirmation step happens after the number has already
 been typed into the channel.
 
 **Refuse approvals and vetoes over remote channels too, for symmetry.**
-Rejected, and it is not the coordinator's to rule — the owner ruled explicitly
+Rejected, and it is not the coordinator's to rule, the owner ruled explicitly
 that approvals and vetoes work over remote channels. Symmetry is not a reason to
 remove a capability he asked for.
 
@@ -102,6 +101,6 @@ remove a capability he asked for.
 does.** Rejected: redaction would silently accept the message, and the owner
 would never learn that typing a card into Telegram is not a thing that works. He
 would keep doing it, and each attempt would put the digits into the channel's
-history before our redaction ever saw them — the harm has already happened by
+history before our redaction ever saw them, the harm has already happened by
 the time the daemon reads the message, so the response has to be one that
 changes his behavior.

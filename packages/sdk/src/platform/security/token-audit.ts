@@ -1,10 +1,10 @@
 /**
- * ApiTokenAuditor — minimum scope and rotation cadence enforcement.
+ * ApiTokenAuditor, minimum scope and rotation cadence enforcement.
  *
  * Security model (two audit dimensions):
- *   1. Scope audit  — verifies each registered token only holds the scopes
+ *   1. Scope audit , verifies each registered token only holds the scopes
  *                     its declared policy permits (minimum scope principle)
- *   2. Rotation audit — checks token age against the rotation cadence policy
+ *   2. Rotation audit, checks token age against the rotation cadence policy
  *                       and emits warnings at the warning threshold, errors
  *                       when rotation is overdue
  *
@@ -162,7 +162,7 @@ export interface TokenAuditorConfig {
 /**
  * Callback invoked after each token is audited in `auditAll()`.
  * Receives one SecurityEvent per relevant audit outcome.
- * No-op by default — pass via `ApiTokenAuditor` constructor options.
+ * No-op by default, pass via `ApiTokenAuditor` constructor options.
  */
 export type SecurityEventEmitter = (event: SecurityEvent) => void;
 
@@ -230,7 +230,7 @@ export class ApiTokenAuditor {
   registerToken(metadata: ApiTokenMetadata): void {
     if (!this._policies.has(metadata.policyId)) {
       throw new Error(
-        `ApiTokenAuditor: policyId '${metadata.policyId}' not registered — register the policy before the token`,
+        `ApiTokenAuditor: policyId '${metadata.policyId}' not registered, register the policy before the token`,
       );
     }
     this._tokens.set(metadata.id, metadata);

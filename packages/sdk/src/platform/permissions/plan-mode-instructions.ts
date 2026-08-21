@@ -3,8 +3,8 @@
 /**
  * The standing instruction that tells the model it is in plan mode. It is
  * appended to the system prompt while plan mode is active, so it reaches the
- * model on every turn AND — because the system prompt is the instruction chain
- * the compaction pass re-injects (see buildReinjectedInstructions) — survives
+ * model on every turn AND, because the system prompt is the instruction chain
+ * the compaction pass re-injects (see buildReinjectedInstructions), survives
  * compaction without any extra plumbing.
  */
 
@@ -21,7 +21,7 @@ export const PLAN_MODE_INSTRUCTION = [
   'You are in PLAN mode. Read-only tools (reading files, searching, analysis) are',
   'available, but every mutating or command-execution tool is refused by the',
   'permission layer with a structured `plan-mode` denial. Do not attempt file',
-  'writes/edits, shell/exec commands, or agent delegation — they will not run.',
+  'writes/edits, shell/exec commands, or agent delegation, they will not run.',
   '',
   'Instead: investigate as needed with read-only tools, then present a clear,',
   'concrete plan of the changes you intend to make and wait for the user to',

@@ -1,11 +1,11 @@
 /**
- * schema-domain-learning.ts — config for idle-time memory consolidation
+ * schema-domain-learning.ts, config for idle-time memory consolidation
  * (`learning.consolidation.*`, shipped as a behavioral contract in
  * state/memory-consolidation-config.ts).
  *
  * WHY THIS FILE EXISTS. The consolidation keys were read directly off the raw
  * user `learning` block (resolveMemoryConsolidationConfig → getRaw()), but the
- * shared config schema had no `learning` domain at all — so DEFAULT_CONFIG
+ * shared config schema had no `learning` domain at all, so DEFAULT_CONFIG
  * carried no `learning` section and ConfigManager.resolvePath threw
  * "section 'learning' does not exist" for every typed get('learning.…') /
  * set('learning.…'). Registering the domain (same idiom as the worktree fix)
@@ -47,7 +47,7 @@ declare module './schema-types.js' {
  * Defaults MUST equal DEFAULT_MEMORY_CONSOLIDATION_CONFIG in
  * state/memory-consolidation-config.ts (that module is the behavioral contract;
  * this is the config-surface mirror). A test asserts they are identical so the
- * two cannot drift — duplicated here rather than imported to keep the config
+ * two cannot drift, duplicated here rather than imported to keep the config
  * layer free of a dependency on the state layer.
  */
 export const learningConfigDefaults: { learning: LearningConfig } = {
@@ -72,7 +72,7 @@ export const learningConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: true,
     description:
-      'Master switch for the idle-time memory consolidation pass (dedupe merges, confidence decay of never-referenced records, and review proposals). On by default — the daemon runs it at idle and on a slow schedule; every outcome is reversible or proposal-gated, and false turns the pass off.',
+      'Master switch for the idle-time memory consolidation pass (dedupe merges, confidence decay of never-referenced records, and review proposals). On by default, the daemon runs it at idle and on a slow schedule; every outcome is reversible or proposal-gated, and false turns the pass off.',
   },
   {
     key: 'learning.consolidation.intervalMs',

@@ -1,5 +1,5 @@
 /**
- * disclosure.ts — the one-line receipt.
+ * disclosure.ts, the one-line receipt.
  *
  * The owner chose autonomous learning over propose-first, and two conditions
  * travelled with that choice: untrusted sources stay barred (trust.ts), and it
@@ -11,7 +11,7 @@
  *   - It names WHAT was recorded and never quotes the value back. "Saved your
  *     office address" is a receipt; "saved your office address as 200 Office
  *     Way" repeats a closed-tier value into a transcript for no benefit.
- *   - It is a receipt, not a confirmation prompt — he declined those.
+ *   - It is a receipt, not a confirmation prompt, he declined those.
  *
  * The SDK produces the string so the TUI, the agent and the webui all say the
  * same thing; a second copy of this wording in a surface would drift within a
@@ -43,7 +43,7 @@ function namesFor(changes: readonly ProfileChange[]): readonly string[] {
  * The receipt for a write.
  *
  * Returns `''` when nothing changed, so a caller can append it unconditionally
- * without producing "Noted — saved nothing." Mixed kinds collapse into one
+ * without producing "Noted, saved nothing." Mixed kinds collapse into one
  * sentence rather than one line each.
  */
 export function describeProfileWrite(changes: readonly ProfileChange[]): string {
@@ -62,14 +62,14 @@ export function describeProfileWrite(changes: readonly ProfileChange[]): string 
   const preposition = saved.length > 0 && removed.length === 0 && restored.length === 0
     ? 'to your profile'
     : 'in your profile';
-  return `Noted — ${conjoin(clauses)} ${preposition}.`;
+  return `Noted, ${conjoin(clauses)} ${preposition}.`;
 }
 
 /**
  * The receipt for a closed-tier read.
  *
  * Using his address on an order should be visible, so every named-accessor read
- * is disclosed in the same one-line form. Field names only — the point is that
+ * is disclosed in the same one-line form. Field names only, the point is that
  * he can see it was used, not to print it again.
  */
 export function describeProfileRead(fieldIds: readonly string[]): string {

@@ -2,7 +2,7 @@
  * Compile-time pin: `GoodVibesConfig` is COMPLETE from a consumer's vantage
  * point.
  *
- * `GoodVibesConfig` is assembled by declaration merging — each
+ * `GoodVibesConfig` is assembled by declaration merging, each
  * `platform/config/schema-domain-*.ts` contributes its own
  * `declare module … { interface GoodVibesConfig }` block. Inside the SDK's own
  * program every one of those modules is loaded, so the merged type is always
@@ -75,7 +75,7 @@ export const checkinPresent: Presence<'checkin'> = 'present';
  * The proof that `Presence` can still answer NO.
  *
  * Without this, every line above would keep compiling if `ConfigKey` ever
- * widened to `string` — a config type that accepts every key reports full
+ * widened to `string`, a config type that accepts every key reports full
  * coverage forever, which is the same outcome as reporting none.
  */
 export const bogusAbsent: Presence<'thisDomainDoesNotExist'> = 'ABSENT';

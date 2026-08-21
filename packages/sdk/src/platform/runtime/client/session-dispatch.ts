@@ -1,5 +1,5 @@
 /**
- * session-dispatch.ts — how work that arrives for a session THIS surface hosts
+ * session-dispatch.ts, how work that arrives for a session THIS surface hosts
  * reaches the loop, now that the register is not in this process.
  *
  * ── The seam ───────────────────────────────────────────────────────────────
@@ -11,8 +11,8 @@
  *
  * As a client it owns neither. The daemon holds the register; a surface only
  * needs to RECEIVE dispatch for sessions it is running. That is exactly the
- * `SessionContinuationDispatch` seam the client shape takes — one method,
- * `setContinuationRunner` — and this module satisfies it over the wire:
+ * `SessionContinuationDispatch` seam the client shape takes, one method,
+ * `setContinuationRunner`, and this module satisfies it over the wire:
  * `sessions.inputs.list` for continuation-intent inputs on the sessions this
  * surface hosts, the bound runner for each, `sessions.inputs.deliver` to
  * acknowledge.
@@ -20,7 +20,7 @@
  * ── The reply half ─────────────────────────────────────────────────────────
  *
  * The runner returns the id of the agent it started, and that id is not
- * bookkeeping — it is the reply binding. When the daemon spawns a continuation
+ * bookkeeping, it is the reply binding. When the daemon spawns a continuation
  * itself, `SharedSessionBroker.bindAgent` pairs the agent with the input it was
  * started for and announces the pairing, which is how an answer to a message
  * that arrived from Telegram/Slack/ntfy finds its way back to that
@@ -29,11 +29,11 @@
  * and a channel message answered by a surface was answered into the void.
  *
  * So this dispatcher reports both halves of the pairing:
- *  - on dispatch, `deliver` carries `agentId` and marks the input DELIVERED —
+ *  - on dispatch, `deliver` carries `agentId` and marks the input DELIVERED,
  *    "collected, and this agent is answering it". The daemon binds the reply
  *    there.
  *  - when that agent finishes, `deliver` carries the answer and marks the input
- *    COMPLETED — "finished acting on it, here is what it said". The daemon
+ *    COMPLETED, "finished acting on it, here is what it said". The daemon
  *    writes it into the session and pushes it down the reply pipeline, exactly
  *    as its own completion poll does for the agents it spawned itself.
  *
@@ -51,8 +51,8 @@
  *
  * ── Why it polls ───────────────────────────────────────────────────────────
  *
- * The same reason the inbound steer poller does: this is not a hot path — a
- * continuation arrives seconds apart at most — and a poll survives a suspended
+ * The same reason the inbound steer poller does: this is not a hot path, a
+ * continuation arrives seconds apart at most, and a poll survives a suspended
  * laptop and a dropped tunnel without a reconnect state machine. The SSE stream
  * carries the same transitions for anything that genuinely needs per-token
  * latency.
@@ -73,7 +73,7 @@ export interface SurfaceAgentOutcome {
 /**
  * Map a surface's own agent record onto the outcome this dispatcher reports.
  *
- * A missing record is `null` — "this surface no longer knows about that run" —
+ * A missing record is `null`, "this surface no longer knows about that run",
  * and is deliberately distinct from a run still in flight. The answer text is
  * the SHARED rule (agents/completion-answer.ts), the same one the daemon
  * renders for the runs it hosts itself, so an answer does not read differently
@@ -88,7 +88,7 @@ export function readSurfaceAgentOutcome(
 }
 
 /**
- * The narrow inbound wire surface this dispatcher needs — `sessions.inputs.list`
+ * The narrow inbound wire surface this dispatcher needs, `sessions.inputs.list`
  * and `sessions.inputs.deliver`. A product's own operator client satisfies it
  * structurally, so a test injects a stub instead of a port.
  */
@@ -117,7 +117,7 @@ const DEFAULT_INTERVAL_MS = 2_000;
 /**
  * How many dispatched runs this dispatcher will wait on answers for at once,
  * and for how long. Both are bounds on an in-memory map that only ever shrinks
- * when an agent reaches a terminal state — a run that never does (a killed
+ * when an agent reaches a terminal state, a run that never does (a killed
  * process, a register that forgot it) would otherwise be tracked forever.
  * Dropping one is disclosed, never silent, and the input is still acknowledged
  * so the daemon does not keep it queued.
@@ -158,7 +158,7 @@ export interface WireSessionDispatch extends SessionContinuationDispatch {
 /**
  * A dispatch seam backed by the adopted daemon's session inputs.
  *
- * Inert until `activate` — a surface with no daemon adopted holds its runner and
+ * Inert until `activate`, a surface with no daemon adopted holds its runner and
  * dispatches nothing, which is the honest offline posture rather than a missing
  * dependency.
  */
@@ -210,7 +210,7 @@ export function createWireSessionDispatch(options: WireSessionDispatchOptions): 
         });
         continue; // leave it queued; a transient runner failure must not consume the work
       }
-      // No agent id means nothing ran HERE — the runner declined, or the work
+      // No agent id means nothing ran HERE, the runner declined, or the work
       // moved elsewhere (a conversation handed to daemon hosting). The input is
       // still consumed, because leaving it queued would have it dispatched
       // again; there is nothing to bind a reply to, and claiming otherwise

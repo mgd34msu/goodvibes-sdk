@@ -129,7 +129,7 @@ describe('an outward action whose content derives from untrusted input is refuse
     const decision = evaluateOutwardEffect({
       request: { toolName: 'email', action: 'email.send', description: 'sending mail' },
       ledger: ledgerHaving('Thanks very much, let me know if you need anything else. Best regards.'),
-      content: { to: 'a@example.com', subject: 'Hello', body: 'Thanks — let me know. Best regards.' },
+      content: { to: 'a@example.com', subject: 'Hello', body: 'Thanks, let me know. Best regards.' },
     });
     expect(decision.allowed).toBe(true);
   });

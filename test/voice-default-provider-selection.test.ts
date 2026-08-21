@@ -1,7 +1,7 @@
 /**
  * The defect this pins (live on two hosts, 2026-08-06): an UNNAMED STT request
- * resolved to the FIRST registered provider with the capability — OpenAI, by
- * builtin registration order — even when the host carried a fully provisioned
+ * resolved to the FIRST registered provider with the capability, OpenAI, by
+ * builtin registration order, even when the host carried a fully provisioned
  * local whisper and no OpenAI key. The call then failed "OpenAI API key
  * missing" while the engine the user configured was never asked.
  *

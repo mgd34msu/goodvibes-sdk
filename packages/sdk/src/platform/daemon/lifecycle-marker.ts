@@ -7,11 +7,11 @@
  *     reached a fully-started daemon. This is what makes a crash loop after a
  *     bad update visible from inside the next boot.
  *   - fully STARTED (the server is accepting): stamps `state: 'running'` and
- *     resets the counter — a boot that got this far was not a failed start.
+ *     resets the counter, a boot that got this far was not a failed start.
  *   - orderly STOP: stamps `state: 'clean-shutdown'` and resets the counter.
  *
  * A start that finds the previous marker still saying `running` means the last
- * daemon died without shutting down — the caller records one honest crash
+ * daemon died without shutting down, the caller records one honest crash
  * receipt.
  *
  * A streak is scoped to the BUILD that recorded it (`version`). Failed starts
@@ -100,7 +100,7 @@ export interface LifecycleMarker {
   readonly pid?: number | undefined;
   /** Consecutive start attempts that never reached a fully-started daemon. */
   readonly failedStarts: number;
-  /** When the current failed-start streak began — what bounds "rapid". */
+  /** When the current failed-start streak began, what bounds "rapid". */
   readonly streakStartedAt?: number | undefined;
   /** When an automatic rollback last restored the kept previous binary; cleared by the next fully-started boot. */
   readonly autoRollbackAt?: number | undefined;
@@ -113,7 +113,7 @@ export interface LifecycleMarker {
    */
   readonly version?: string | undefined;
   /**
-   * The version an automatic rollback moved AWAY from — the build that crash
+   * The version an automatic rollback moved AWAY from, the build that crash
    * looped. Kept across boots so the self-update loop does not download,
    * verify, swap and restart into the exact release that just failed, over and
    * over, every check interval. Cleared once that version starts successfully.
@@ -202,7 +202,7 @@ export interface StartupMarkerResult {
 export interface StartAttemptResult extends StartupMarkerResult {
   /**
    * How many PREVIOUS consecutive start attempts never reached a
-   * fully-started daemon (this attempt is not counted in the number — it has
+   * fully-started daemon (this attempt is not counted in the number, it has
    * not failed yet). Zero on a healthy host.
    */
   readonly failedStarts: number;
@@ -242,8 +242,8 @@ export function recordDaemonStartAttempt(
 
   const version = readVersion(options.version);
   // A streak accuses the build that recorded it. When the binary on disk has
-  // changed since — an update swapped it, a rollback restored it, the owner
-  // reinstalled — the previous build's failures are not this build's, and
+  // changed since, an update swapped it, a rollback restored it, the owner
+  // reinstalled, the previous build's failures are not this build's, and
   // carrying them over is how a healthy binary gets convicted of a crash loop
   // it had no part in.
   const versionChanged =
@@ -281,10 +281,10 @@ export function recordDaemonStartAttempt(
 
 /**
  * Called once the daemon is fully started (the server is accepting): stamps
- * this run as `running` and RESETS the failed-start streak — a boot that got
+ * this run as `running` and RESETS the failed-start streak, a boot that got
  * this far was not a failed start, and it re-arms the automatic rollback.
  * Returns whether the previous run ended in a crash (marker still `running`).
- * An unreadable/absent marker is honestly NOT a crash — first boots and
+ * An unreadable/absent marker is honestly NOT a crash, first boots and
  * hand-deleted state must not fabricate a crash receipt.
  */
 export function recordDaemonStart(markerPath: string, options: MarkerCallOptions = {}): StartupMarkerResult {
@@ -292,7 +292,7 @@ export function recordDaemonStart(markerPath: string, options: MarkerCallOptions
   const now = options.now ?? Date.now;
   const previous = readMarkerAt(io, markerPath);
   const version = readVersion(options.version) ?? previous?.version;
-  // A rejected version outlives the boot that rejected it — the whole point is
+  // A rejected version outlives the boot that rejected it, the whole point is
   // that the self-update loop, running on the RESTORED build moments from now,
   // must not fetch and install the rejected release all over again. The one
   // thing that clears it is the rejected version itself reaching fully-started:
@@ -332,14 +332,14 @@ export function recordDaemonCleanShutdown(markerPath: string, options: MarkerCal
  * Called immediately after an automatic rollback restored the kept previous
  * binary: clears the streak (the restored version gets a clean slate) and
  * stamps when the rollback fired, so a second automatic rollback is refused
- * until a fully-started boot re-arms it. Without that stamp a rollback — which
- * EXCHANGES the live file with its kept previous — would ping-pong between two
+ * until a fully-started boot re-arms it. Without that stamp a rollback, which
+ * EXCHANGES the live file with its kept previous, would ping-pong between two
  * versions that both fail to start.
  */
 export function recordDaemonAutoRollback(
   markerPath: string,
   options: MarkerCallOptions & {
-    /** The version being rolled AWAY from — the build that crash looped. */
+    /** The version being rolled AWAY from, the build that crash looped. */
     rejectedVersion?: string | undefined;
   } = {},
 ): void {

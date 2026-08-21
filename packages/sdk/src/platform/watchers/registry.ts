@@ -164,8 +164,8 @@ export class WatcherRegistry {
   /**
    * How far back a restart will still try to catch up, in milliseconds.
    *
-   * A non-finite or negative value — which only a hand-edited settings file
-   * produces, since `ConfigManager.set()` holds the key to 0…1440 — reads as the
+   * A non-finite or negative value, which only a hand-edited settings file
+   * produces, since `ConfigManager.set()` holds the key to 0…1440, reads as the
    * shipped default rather than as "never catch up", because an unreadable number
    * should not silently switch a recovery behaviour off.
    */
@@ -354,7 +354,7 @@ export class WatcherRegistry {
    * Deliberately NOT `stopWatcher()` in a loop: that call runs
    * `requireEnabled()`, which throws when the watcher-framework gate is off, and
    * it rewrites each record to `state: 'stopped'`. Neither is wanted at
-   * shutdown — a daemon whose watchers were running must find them running
+   * shutdown, a daemon whose watchers were running must find them running
    * again when it restarts, and a clean shutdown must not depend on a feature
    * gate being on. This releases process resources and nothing else.
    *
@@ -468,7 +468,7 @@ export class WatcherRegistry {
   }
 
   /**
-   * `watchers.recoveryWindowMinutes` — the restart half of the recovery story.
+   * `watchers.recoveryWindowMinutes`, the restart half of the recovery story.
    *
    * A watcher that was running when the process stopped is re-armed above, but
    * re-arming alone means it does nothing until its first interval tick: on a
@@ -641,7 +641,7 @@ export class WatcherRegistry {
   /**
    * Write the snapshot and refresh the runtime store's copy of every record.
    *
-   * Every mutation here persists, and `list()` persists too — which the fleet
+   * Every mutation here persists, and `list()` persists too, which the fleet
    * registry's coalesced tick calls on a timer, from a callback with nothing
    * above it. So this must not be able to throw: a failed snapshot write is
    * logged loudly with the path and errno by the store and then dropped, the

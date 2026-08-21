@@ -1,4 +1,4 @@
-# Realtime and Telemetry
+# Realtime and telemetry
 
 > **Surface scope:** This document covers realtime transport and telemetry for both the **full surface (Bun runtime)** and the **companion surface** (React Native, Expo, browser). Full-surface consumers use `createGoodVibesSdk`; companion consumers use their surface-specific constructors. See [Published Surface Matrix](./surfaces.md) for the full breakdown.
 
@@ -31,8 +31,8 @@ The realtime layer supports:
 
 The realtime transport (`@pellux/goodvibes-sdk/transport-realtime`) exposes two low-level connector factories plus a domain-event layer. Wrap either connector with `createRemoteRuntimeEvents(connector)` for the typed runtime-event feed.
 
-- `createEventSourceConnector(baseUrl, token, fetch, options?)` — SSE connector. Supports `Last-Event-ID` stream resume, reconnect (via the stream reconnect policy), and dynamic auth-token resolution on reconnect.
-- `createWebSocketConnector(baseUrl, token, WebSocket, options?)` — WebSocket connector. The connection-lifecycle hooks below are passed via the `options` object. Adds connection-lifecycle hooks that the SSE connector does **not** fire:
+- `createEventSourceConnector(baseUrl, token, fetch, options?)`: SSE connector. Supports `Last-Event-ID` stream resume, reconnect (via the stream reconnect policy), and dynamic auth-token resolution on reconnect.
+- `createWebSocketConnector(baseUrl, token, WebSocket, options?)`: WebSocket connector. The connection-lifecycle hooks below are passed via the `options` object. Adds connection-lifecycle hooks that the SSE connector does **not** fire:
   - `onConnectionStateChange(state)` where `state` is `'connecting' | 'connected' | 'reconnecting' | 'disconnected' | 'failed'`.
   - `onReconnectAttempt(info)` with `{ attempt, maxAttempts, delayMs, reason }` (the legacy `onReconnect(attempt, delayMs)` is deprecated but still fired).
   - `onBackpressure(info)` when the bounded outbound queue saturates.
@@ -44,7 +44,7 @@ The realtime transport (`@pellux/goodvibes-sdk/transport-realtime`) exposes two 
 
 **Outbound-queue backpressure (WebSocket).** Messages queued while the socket is reconnecting are held in a bounded, drop-oldest queue: up to 1,024 messages / 16 MiB total, with a single message above 1 MiB rejected outright. On overflow `onBackpressure` fires with `{ droppedCount, queueLength, queueBytes, reason }`.
 
-**Insecure-transport guard.** The WebSocket connector refuses to send authentication over a non-loopback `ws://` URL, throwing a `ConfigurationError` — use `wss://` (or `https://`, which is upgraded to `wss://`) for remote hosts.
+**Insecure-transport guard.** The WebSocket connector refuses to send authentication over a non-loopback `ws://` URL, throwing a `ConfigurationError`. Use `wss://` (or `https://`, which is upgraded to `wss://`) for remote hosts.
 
 ## Telemetry APIs
 

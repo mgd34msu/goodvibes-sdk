@@ -152,8 +152,8 @@ export function markSurfaceInputDelivered(
 
 /**
  * Apply a live surface's report about a queued input: it collected the input
- * (`consumed:false`), or finished acting on it (`consumed:true`), and — when it
- * names one — the agent that is answering it.
+ * (`consumed:false`), or finished acting on it (`consumed:true`), and, when it
+ * names one, the agent that is answering it.
  *
  * The agent pairing is the half that routes an answer home. The daemon's own
  * spawn takes `bindAgent`, which claims whatever input is NEXT in the queue for
@@ -161,7 +161,7 @@ export function markSurfaceInputDelivered(
  * this stamps that one, makes the agent the session's active agent, and
  * announces the reply binding. The announcement is the whole point: without it
  * a message that arrived over a channel and was dispatched to a surface was
- * answered into nothing. Idempotent — a repeated report re-announces, and the
+ * answered into nothing. Idempotent, a repeated report re-announces, and the
  * binder is required to be idempotent for exactly that reason.
  */
 export function applySurfaceInputDelivery(

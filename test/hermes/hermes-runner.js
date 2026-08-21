@@ -5,8 +5,8 @@
  * Hermes binary. This file may use modern JS features; Bun transpiles them
  * to Hermes-safe equivalents during bundling.
  *
- * DO NOT import node: builtins here — Hermes has no Node.js standard library.
- * DO NOT use Bun.* APIs — not available inside the Hermes VM.
+ * DO NOT import node: builtins here, Hermes has no Node.js standard library.
+ * DO NOT use Bun.* APIs, not available inside the Hermes VM.
  */
 
 // print() is native in the Hermes CLI but absent in JSI-embedded Hermes

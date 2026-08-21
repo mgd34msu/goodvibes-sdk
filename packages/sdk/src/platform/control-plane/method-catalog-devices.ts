@@ -1,5 +1,5 @@
 /**
- * method-catalog-devices.ts — paired-device verbs.
+ * method-catalog-devices.ts, paired-device verbs.
  *
  * The operator-contract surface for the paired-phone capability feature: which
  * device nodes are paired and what each can serve, ASKING one of them for a
@@ -113,7 +113,7 @@ const DEVICE_ARTIFACT_SCHEMA = objectSchema({
   capturedAt: NUMBER_SCHEMA,
   expiresAt: NUMBER_SCHEMA,
   reason: STRING_SCHEMA,
-  /** Where the bytes sit on the daemon host — usable only by a colocated caller. */
+  /** Where the bytes sit on the daemon host, usable only by a colocated caller. */
   daemonPath: STRING_SCHEMA,
 }, ['artifactId', 'nodeId', 'capabilityId', 'kind', 'mediaType', 'byteLength', 'capturedAt', 'expiresAt', 'reason', 'daemonPath']);
 
@@ -137,7 +137,7 @@ export const builtinGatewayDeviceMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'devices.capability.request',
     title: 'Request a Capability From a Paired Device',
-    description: 'Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.',
+    description: 'Ask one paired device node for one capability, a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz, and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code, it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.',
     category: 'runtime',
     scopes: ['write:remote'],
     http: { method: 'POST', path: '/api/devices/capability/request' },
@@ -167,7 +167,7 @@ export const builtinGatewayDeviceMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'devices.artifacts.list',
     title: 'List Retained Device Captures',
-    description: 'The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.',
+    description: 'The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed, retention is enforced by the store, not by this verb filtering them out of a longer list.',
     category: 'runtime',
     scopes: ['read:remote'],
     http: { method: 'GET', path: '/api/devices/artifacts' },
@@ -181,7 +181,7 @@ export const builtinGatewayDeviceMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'devices.artifacts.read',
     title: 'Read a Retained Device Capture',
-    description: 'Return one retained capture\'s bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.',
+    description: 'Return one retained capture\'s bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone, expired, swept, missing, or corrupted, is an honest 404 naming which of those it was.',
     category: 'runtime',
     scopes: ['read:remote'],
     http: { method: 'GET', path: '/api/devices/artifacts/{artifactId}' },
@@ -194,7 +194,7 @@ export const builtinGatewayDeviceMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'devices.grants.list',
     title: 'List Device Capability Grants',
-    description: 'The durable "always allow" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used — plus the recent ledger of grants given, used, revoked, and expired.',
+    description: 'The durable "always allow" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used, plus the recent ledger of grants given, used, revoked, and expired.',
     category: 'runtime',
     scopes: ['read:remote'],
     http: { method: 'GET', path: '/api/devices/grants' },

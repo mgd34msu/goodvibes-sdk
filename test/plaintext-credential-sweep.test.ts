@@ -1,5 +1,5 @@
 /**
- * A credential must not sit in the clear in a settings file — and getting it
+ * A credential must not sit in the clear in a settings file, and getting it
  * out must never be what breaks it.
  *
  * Three write paths put credentials there: the settings modal for any key its
@@ -202,7 +202,7 @@ describe('the sweep moves a literal out of config, and never breaks it doing so'
  * and they are not all the same version at once. When this sweep rewrote a
  * literal into a `goodvibes://secrets/…` reference on `calendar.google.
  * clientSecretRef`, the daemon of the day could not walk that form and failed
- * while constructing its ConfigManager — reporting the KEY it tripped over
+ * while constructing its ConfigManager, reporting the KEY it tripped over
  * rather than the version gap that caused it. The floor is what lets the older
  * reader say the true thing instead. See config/settings-reader-floor.ts.
  */

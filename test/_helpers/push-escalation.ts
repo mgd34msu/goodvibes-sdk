@@ -2,7 +2,7 @@
  * A cancellable escalation scheduler for tests that build a `PushService`.
  *
  * `PushService` arms a one-shot escalation timer for every block it starts
- * tracking, and it has no teardown of its own — the daemon that owns one lives
+ * tracking, and it has no teardown of its own, the daemon that owns one lives
  * for the life of the process, so nothing ever needed to cancel them. A test
  * that hand-builds a service and drives a handful of notices through it
  * therefore leaves one pending timer per notice, live for the rest of the run.

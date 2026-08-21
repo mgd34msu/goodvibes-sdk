@@ -4,7 +4,7 @@
 // request/response pairs AND live event subscriptions, tunneled opaquely between
 // a surface and the daemon. Because the operator protocol is contract-driven
 // REST-over-JSON, tunneling HTTP is all it takes for the existing typed client
-// to work unchanged over the relay — the client's transport just swaps its
+// to work unchanged over the relay, the client's transport just swaps its
 // `fetch` for one that serializes the Request here, and the daemon replays it
 // against its own route dispatcher.
 //
@@ -19,7 +19,7 @@
 //   - `stream-open`     surface → daemon: open a subscription (like `request`).
 //   - `stream-data`     daemon → surface: one chunk of the event source's bytes.
 //   - `stream-overflow` daemon → surface: the bounded send buffer dropped N
-//                       chunks — an honest notice, never a silent gap.
+//                       chunks, an honest notice, never a silent gap.
 //   - `stream-close`    either direction: clean teardown (surface unsubscribes,
 //                       or the daemon's source ended/errored).
 
@@ -60,7 +60,7 @@ export interface TunnelStreamDataHeader {
   readonly seq: number;
 }
 
-/** The bounded send buffer dropped chunks — an honest overflow notice (daemon → surface). */
+/** The bounded send buffer dropped chunks, an honest overflow notice (daemon → surface). */
 export interface TunnelStreamOverflowHeader {
   readonly id: string;
   readonly kind: 'stream-overflow';

@@ -1,7 +1,7 @@
 /**
  * scheduler-capacity.test.ts
  *
- * Tests for Architectural #3 — GET /api/runtime/scheduler scheduler capacity endpoint.
+ * Tests for Architectural #3, GET /api/runtime/scheduler scheduler capacity endpoint.
  *
  * - Empty state: correct zero-state shape with slotsTotal from config default
  * - With running + queued runs: counters reflect live state

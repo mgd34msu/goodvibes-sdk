@@ -10,7 +10,7 @@
  * No XML library is used. CalDAV servers only ever send a small, predictable
  * subset of XML (no CDATA sections, no processing instructions inside the
  * body, no mixed content beyond text + a handful of known child elements), so
- * a focused regex/state parser over that subset is enough — this mirrors how
+ * a focused regex/state parser over that subset is enough, this mirrors how
  * the rest of the agent parses constrained wire formats (see
  * `src/agent/email/imap-client.ts`).
  *
@@ -73,7 +73,7 @@ function extractAllElements(xml: string, localName: string): ExtractedElement[] 
     const closeMatch = closeRe.exec(rest);
     if (!closeMatch) {
       // Malformed: no matching close tag. Treat the remainder as inner
-      // content and stop scanning — nothing useful lies past broken markup.
+      // content and stop scanning, nothing useful lies past broken markup.
       results.push({ tagName: fullTagName, inner: rest, startIndex, endIndex: xml.length });
       break;
     }
@@ -209,7 +209,7 @@ export interface CalDavEventRecord {
 }
 
 /**
- * Unfolds RFC 5545 folded lines: a CRLF (or bare LF/CR — servers are not all
+ * Unfolds RFC 5545 folded lines: a CRLF (or bare LF/CR, servers are not all
  * strict) followed immediately by a single space or tab is a continuation
  * marker, not a line break. Removing exactly that newline-plus-one-character
  * sequence rejoins the folded line; anything after the fold point on the

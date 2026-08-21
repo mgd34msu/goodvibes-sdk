@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Plugins domain state — tracks all plugins through their lifecycle,
+ * Plugins domain state, tracks all plugins through their lifecycle,
  * configuration, and health status.
  */
 
@@ -49,7 +49,7 @@ export interface RuntimePlugin {
 }
 
 /**
- * PluginDomainState — all plugin lifecycle state.
+ * PluginDomainState, all plugin lifecycle state.
  */
 export interface PluginDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

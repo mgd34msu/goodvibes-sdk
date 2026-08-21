@@ -1,5 +1,5 @@
 /**
- * managed-root.ts — where the managed voice tree lives, resolvable without a
+ * managed-root.ts, where the managed voice tree lives, resolvable without a
  * runtime.
  *
  * WHY THIS IS NOT JUST `join(home, '.goodvibes', 'voice')` AT EACH CALL SITE
@@ -8,7 +8,7 @@
  * (`ShellPathService.resolveUserPath('voice')`). An INSTALLER cannot: it runs
  * before there is any runtime to ask, and it is the thing that decides where the
  * downloaded model lands. Two hand-written derivations that drift by one path
- * segment produce the worst possible outcome — an install that reports success
+ * segment produce the worst possible outcome, an install that reports success
  * and a daemon that reports not-provisioned, with the bytes sitting in a
  * directory nothing reads. So the derivation is one function, and a test asserts
  * it equals what the path service returns.

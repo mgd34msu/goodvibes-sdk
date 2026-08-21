@@ -1,5 +1,5 @@
 /**
- * Command normalization pipeline — barrel export and primary entry point.
+ * Command normalization pipeline, barrel export and primary entry point.
  *
  * Exposes the normalizeCommand() function and all supporting types.
  * Pipeline: tokenize → segment → classify → NormalizedCommand

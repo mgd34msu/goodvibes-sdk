@@ -1,5 +1,5 @@
 /**
- * build-whisper-bundle.ts — reproducibly build the goodvibes whisper.cpp
+ * build-whisper-bundle.ts, reproducibly build the goodvibes whisper.cpp
  * engine bundle whose pin lives in
  * packages/sdk/src/platform/voice/provisioning/manifest.ts (WHISPER_ENGINES).
  *
@@ -72,13 +72,13 @@ for (const tool of ['cmake', 'tar', 'curl', 'gzip']) {
   }
 }
 
-// Not a test (no `afterAll`, not part of the automated suite — this runs
+// Not a test (no `afterAll`, not part of the automated suite, this runs
 // standalone in the voice-runtime build workflow), but its own `mkdtempSync`
 // below leaks the same way a killed test does: a `finally` block does not run
 // on a signal kill (a CI job timeout, someone Ctrl-C'ing a stuck cmake build),
 // so a previous run's directory is orphaned under the real `os.tmpdir()`
 // forever. Sweep stale ones from a prior killed run before creating this
-// run's own — same mechanism as scripts/test.ts (age-gated, prefix-scoped,
+// run's own, same mechanism as scripts/test.ts (age-gated, prefix-scoped,
 // never touches a run still actually in flight). Four hours is generous: a
 // whisper.cpp build from source is normally minutes, but this threshold only
 // needs to exceed the slowest realistic build, not the typical one.
@@ -120,7 +120,7 @@ try {
   // file mtimes + owner/group and gzip stamps its own timestamp, so a rebuild
   // never matches the pinned sha256 and the sideload recovery instruction is
   // un-followable. Normalize entry order, mtimes, and ownership in tar, then
-  // gzip with -n (no name/timestamp) — a clean rebuild of identical bytes now
+  // gzip with -n (no name/timestamp), a clean rebuild of identical bytes now
   // reproduces the exact same archive sha256.
   await run(['tar', '--sort=name', '--mtime=@0', '--owner=0', '--group=0', '--numeric-owner',
     '-cf', tarPath, '-C', join(work, 'stage'), 'whisper']);

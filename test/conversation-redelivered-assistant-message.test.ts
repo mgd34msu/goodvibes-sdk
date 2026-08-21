@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { ConversationManager } from '../packages/sdk/src/platform/core/conversation.ts';
 
 // The defect this pins: the recovery journal recorded the SAME final assistant
-// message for one turn twice — same content, same usage. Cause: a hosted
+// message for one turn twice, same content, same usage. Cause: a hosted
 // conversation opens a fresh event stream per turn and never sends
 // Last-Event-ID, so the gateway's catch-up replay re-sends the previous turn's
 // TURN_COMPLETED into the next turn's renderer, which appends it again.
@@ -38,7 +38,7 @@ describe('assistant message store boundary — re-delivery', () => {
     const manager = new ConversationManager();
     manager.addUserMessage('ping');
     manager.addAssistantMessage('Done.', { usage: USAGE });
-    // The user prompted again — the same words are a real second answer, and
+    // The user prompted again, the same words are a real second answer, and
     // the user message between them is what makes that unambiguous.
     manager.addUserMessage('ping');
     manager.addAssistantMessage('Done.', { usage: USAGE });

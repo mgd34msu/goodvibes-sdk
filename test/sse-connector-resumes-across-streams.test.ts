@@ -4,7 +4,7 @@
  * The SDK-side client the SDK composes for daemon-routed sessions is
  * `createEventSourceConnector`. It already resumed a stream across that
  * stream's OWN reconnects; what it did not do is resume across stream
- * LIFETIMES — close one stream, open the next for the following turn, and the
+ * LIFETIMES, close one stream, open the next for the following turn, and the
  * new stream claimed to have seen nothing, so the gateway replayed it the tail
  * of the previous turn including that turn's TURN_COMPLETED.
  *

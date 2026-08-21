@@ -11,14 +11,14 @@ export type {
 } from './daemon-error-contract.js';
 export { DaemonErrorCategory, MEMORY_RECORD_NOT_FOUND_CODE } from './daemon-error-contract.js';
 // Re-exported unchanged from error-codes.ts (split out to stay under the file's
-// 800-line cap — see that file's header comment).
+// 800-line cap, see that file's header comment).
 export { SDKErrorCodes, isErrorCode, isKnownErrorCode, type SDKErrorCode };
 
 /**
  * `'contract'` is an SDK-internal category used when the daemon returns
  * a response that violates the expected contract schema. It is NOT part of the
  * daemon wire schema (`DaemonErrorCategory`) and MUST NOT be marshalled over
- * the wire — doing so will cause the daemon to schema-reject the error envelope.
+ * the wire, doing so will cause the daemon to schema-reject the error envelope.
  * Treat `'contract'` as a local SDK sentinel only.
  */
 export type ErrorCategory = DaemonErrorCategory | 'contract';
@@ -232,7 +232,7 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
  * Every error carries a structured `category`, `source`, and `code` that allow
  * callers to handle specific failure modes without string-matching messages.
  *
- * The `code` field is typed as `SDKErrorCode | (string & {})` — SDK-produced
+ * The `code` field is typed as `SDKErrorCode | (string & {})`, SDK-produced
  * errors always carry a known {@link SDKErrorCode}, while caller-supplied codes
  * remain valid arbitrary strings.
  *
@@ -261,7 +261,7 @@ function inferCategoryFromCause(cause: unknown, seen = new Set<object>(), depth 
  *   if (err instanceof HttpStatusError && err.category === 'rate_limit') {
  *     // Back off and retry after err.retryAfterMs
  *   } else if (err instanceof ConfigurationError) {
- *     // Invalid SDK setup — not recoverable
+ *     // Invalid SDK setup, not recoverable
  *   } else if (err instanceof GoodVibesSdkError) {
  *     console.error(err.category, err.hint);
  *   }
@@ -278,7 +278,7 @@ export class GoodVibesSdkError extends Error {
    * For example, `new GoodVibesSdkError('…', { status: 409 })` yields
    * `code === 'CONFLICT'` (from `inferCodeFromStatus`) while
    * `category === 'unknown'` (because `inferCategory` intentionally returns
-   * `'unknown'` for 409 — the caller must supply `category` explicitly to get
+   * `'unknown'` for 409, the caller must supply `category` explicitly to get
    * a meaningful category for conflict-style errors).
    */
   public readonly code: SDKErrorCode | (string & {});
@@ -414,13 +414,13 @@ function omitUndefined(record: Record<string, unknown>): Record<string, unknown>
  *   await sdk.auth.setToken('x');
  * } catch (err) {
  *   if (err instanceof ConfigurationError) {
- *     // SDK was constructed with getAuthToken — token mutation not supported
+ *     // SDK was constructed with getAuthToken, token mutation not supported
  *   }
  * }
  */
 export class ConfigurationError extends GoodVibesSdkError {
   /**
-   * Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract, `code` is the source of truth, not the prototype chain.
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_CONFIGURATION_ERROR'`
    * will pass `instanceof ConfigurationError` even if its prototype is only
    * `GoodVibesSdkError`. Callers that need strict prototype checking should use
@@ -463,14 +463,14 @@ export class ConfigurationError extends GoodVibesSdkError {
  *   const result = await sdk.operator.agents.get({ id: agentId });
  * } catch (err) {
  *   if (err instanceof ContractError) {
- *     // Daemon returned an unexpected shape — SDK version mismatch?
+ *     // Daemon returned an unexpected shape, SDK version mismatch?
  *     console.error('Contract violation:', err.message);
  *   }
  * }
  */
 export class ContractError extends GoodVibesSdkError {
   /**
-   * Brand contract — `code` is the source of truth, not the prototype chain.
+   * Brand contract, `code` is the source of truth, not the prototype chain.
    * A `GoodVibesSdkError` constructed directly with `code: 'SDK_CONTRACT_ERROR'`
    * will pass `instanceof ContractError` even if its prototype is only
    * `GoodVibesSdkError`. Callers that need strict prototype checking should use
@@ -564,7 +564,7 @@ export class HttpStatusError extends GoodVibesSdkError {
     }
     if (!GoodVibesSdkError[Symbol.hasInstance](value)) return false;
     const record = value as Record<PropertyKey, unknown>;
-    // Primary: dedicated brand symbol (set in constructor — works in same realm).
+    // Primary: dedicated brand symbol (set in constructor, works in same realm).
     if (record[HTTP_STATUS_ERROR_BRAND] === true) return true;
     // Fallback: code-based brand for cross-realm / serialised-error compat.
     return record.code === 'SDK_HTTP_STATUS_ERROR';

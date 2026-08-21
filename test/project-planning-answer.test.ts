@@ -1,7 +1,7 @@
 /**
  * project-planning-answer.test.ts
  *
- * ProjectPlanningService.answerQuestion() — the real answer path behind
+ * ProjectPlanningService.answerQuestion(), the real answer path behind
  * /plan answer.
  *
  * Under test:

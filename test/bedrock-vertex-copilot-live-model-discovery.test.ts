@@ -1,6 +1,6 @@
 /**
  * Live model discovery for AmazonBedrockProvider, AnthropicVertexProvider,
- * and GitHubCopilotProvider — the same model-list-currency requirement
+ * and GitHubCopilotProvider, the same model-list-currency requirement
  * already proven for Anthropic/OpenAI/Gemini in
  * provider-live-model-discovery.test.ts, extended to the three providers
  * whose static lists previously had no live-refresh path at all.
@@ -13,7 +13,7 @@
  * AmazonBedrockProvider's, just against `AmazonBedrockMantleProvider`.
  *
  * AnthropicVertexProvider's live fetch needs a resolved Google `AuthClient`,
- * which normally comes from ADC/metadata-server discovery — unavailable in
+ * which normally comes from ADC/metadata-server discovery, unavailable in
  * this environment (and, more importantly, unsafe to race against: many
  * other test files transitively import `anthropic-vertex.ts` via
  * `registry.ts` -> `builtin-registry.ts`, so a `google-auth-library` module
@@ -21,7 +21,7 @@
  * import graph happens to load the real module first when tests run
  * combined). Its constructor's second parameter is a first-class injection
  * seam mirroring `AnthropicVertexClientOptions.authClient` (the same
- * override the runtime chat client already accepts) — tests pass a fake
+ * override the runtime chat client already accepts), tests pass a fake
  * `AuthClient` directly, bypassing GoogleAuth discovery entirely, with no
  * module-mock timing dependency. Bedrock's SigV4 signing needs no such seam:
  * `getAuthHeaders` (reused directly from
@@ -72,7 +72,7 @@ async function withMockedFetch<T>(
   fn: () => Promise<T> | T,
 ): Promise<T> {
   const original = globalThis.fetch;
-  // @ts-expect-error — test double, narrower than the full fetch overload set
+  // @ts-expect-error, test double, narrower than the full fetch overload set
   globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => handler(String(url), init);
   try {
     return await fn();

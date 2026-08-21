@@ -3,19 +3,19 @@
  *
  * Contract descriptors for the relay WebAuthn step-up ceremony verbs:
  *
- *   - stepup.credentials.register — store a passkey (credentialId + COSE public
+ *   - stepup.credentials.register, store a passkey (credentialId + COSE public
  *     key + starting signature counter) and establish the deployment policy
  *     (rpId, allowed origins, user-verification requirement). Admin-gated; a
  *     self-hosted deployment registers the credential directly ('none'
  *     attestation), so there is no attestation chain to verify here (documented
  *     in docs/relay-zero-knowledge.md).
- *   - stepup.challenge.mint — issue a short-lived, single-use challenge bound to
+ *   - stepup.challenge.mint, issue a short-lived, single-use challenge bound to
  *     the calling session/rendezvous, which a surface feeds to
  *     `navigator.credentials.get` before making a mutating relay call.
  *
  * The assertion produced by the passkey is carried on the mutating call in the
  * `x-goodvibes-stepup-assertion` header and verified by the daemon's real
- * StepUpAssertionVerifier (relay/step-up-service.ts) — no operator verb reads or
+ * StepUpAssertionVerifier (relay/step-up-service.ts), no operator verb reads or
  * returns assertions.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
@@ -62,7 +62,7 @@ export const builtinGatewayStepUpMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'stepup.credentials.register',
     title: 'Register Step-up Credential',
-    description: 'Store a WebAuthn (passkey) credential for relay step-up — its credentialId, COSE public key, and starting signature counter — and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly (\'none\' attestation).',
+    description: 'Store a WebAuthn (passkey) credential for relay step-up, its credentialId, COSE public key, and starting signature counter, and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly (\'none\' attestation).',
     category: 'relay',
     scopes: ['write:relay'],
     access: 'admin',

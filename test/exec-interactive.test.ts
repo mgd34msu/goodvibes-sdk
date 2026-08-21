@@ -1,5 +1,5 @@
 /**
- * exec-interactive.test.ts — the exec PTY prompt-answer path.
+ * exec-interactive.test.ts, the exec PTY prompt-answer path.
  *
  * All three exec spawn paths used to pipe stdout/stderr with stdin unwired,
  * so a child that stopped on a terminal prompt (ssh host-key confirmation,
@@ -53,7 +53,7 @@ function interaction(over: Partial<ExecInteractionRuntime> = {}): ExecInteractio
   return { availability: LIVE_PTY, quietWindowMs: 250, ...over };
 }
 
-// A child whose prompt is written to and read from /dev/tty — with plain
+// A child whose prompt is written to and read from /dev/tty, with plain
 // pipes there IS no controlling terminal, so only a real PTY can answer it.
 const TTY_PROMPT_SCRIPT =
   'printf "Continue? [y/n]: " > /dev/tty; read ans < /dev/tty; ' +
@@ -295,7 +295,7 @@ describe('runInteractiveCommand (live PTY)', () => {
       startTime: Date.now(),
       sandboxArgv: [],
       interaction: interaction({
-        // The seam never resolves — surface ignored it / human walked away.
+        // The seam never resolves, surface ignored it / human walked away.
         requestPromptAnswer: () => new Promise(() => {}),
       }),
     });
@@ -341,7 +341,7 @@ describe('runInteractiveCommand (live PTY)', () => {
     expect(result.success).toBe(false);
     expect(result.prompt_declined).toBe(true);
     expect(result.pending_prompt).toBe('Continue? [y/n]:');
-    // Stopped promptly — nowhere near the 60s timeout.
+    // Stopped promptly, nowhere near the 60s timeout.
     expect(Date.now() - start).toBeLessThan(20_000);
   }, 30_000);
 
@@ -429,7 +429,7 @@ describe('sandbox boundary under the PTY (live bwrap)', () => {
       });
 
       // Inside the boundary + under the PTY: a workspace write succeeds, a
-      // write outside the workspace fails — the same guarantees the non-PTY
+      // write outside the workspace fails, the same guarantees the non-PTY
       // sandboxed path provides.
       const result = await runInteractiveCommand({
         cmdStr:

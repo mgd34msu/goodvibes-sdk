@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * ForensicsEvent — discriminated union for failure forensics events.
+ * ForensicsEvent, discriminated union for failure forensics events.
  *
  * Emitted by the ForensicsCollector when a failure report is generated
  * on a terminal state, and when a report is exported.

@@ -16,8 +16,8 @@
  * Two properties are held down here, and they are different:
  *
  *  1. No poller survives `stop()`. Measured the instant stop() returns, against
- *     the named set of modules that own repeating work. A poller is permanent —
- *     it never drains — so this is the assertion that actually proves the seam.
+ *     the named set of modules that own repeating work. A poller is permanent,
+ *     it never drains, so this is the assertion that actually proves the seam.
  *  2. Nothing at all survives shortly after. A handle owned by an operation
  *     that was genuinely in flight when stop() was called (the push store's
  *     fire-and-forget boot recovery sweep holds a cross-process lock, whose
@@ -42,7 +42,7 @@ const TOKEN = 'shutdown-teardown-token';
 
 /**
  * Modules that own repeating work started by the runtime graph. A handle
- * attributed to any of these after stop() is a poller that was never disposed —
+ * attributed to any of these after stop() is a poller that was never disposed,
  * the exact defect this file exists to prevent regressing.
  */
 const POLLER_OWNERS = [
@@ -76,7 +76,7 @@ const realClearTimeout = globalThis.clearTimeout;
 
 /**
  * One-shot timeouts are tracked as well as intervals, because a `setTimeout`
- * that reschedules itself is a poller wearing a different hat — three of the
+ * that reschedules itself is a poller wearing a different hat, three of the
  * schedulers above are exactly that. A timeout leaves the live set when it
  * fires, so an ordinary elapsed sleep never counts as still-live.
  */
@@ -117,7 +117,7 @@ function restoreTimerTracking(): void {
   globalThis.clearTimeout = realClearTimeout;
 }
 
-/** The frame that made the timer — the field that names what still needs disposing. */
+/** The frame that made the timer, the field that names what still needs disposing. */
 function siteOf(stack: string): string {
   for (const line of stack.split('\n').slice(2)) {
     const match = /([^\s()]+\.(?:ts|tsx|js|mjs)):\d+:\d+/.exec(line);

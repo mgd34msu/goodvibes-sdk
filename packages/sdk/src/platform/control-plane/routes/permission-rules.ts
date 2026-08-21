@@ -1,5 +1,5 @@
 /**
- * permissions.rules.* gateway handlers — the settings-domain surface over the
+ * permissions.rules.* gateway handlers, the settings-domain surface over the
  * durable user-origin permission rule store. Read/delete only: rules are
  * WRITTEN by remembered approval decisions (PermissionManager), never minted
  * ad hoc through the wire, so the store's provenance stays "a user answered

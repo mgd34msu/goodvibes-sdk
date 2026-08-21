@@ -1,10 +1,10 @@
 /**
- * config-file-watcher.ts — poll-based watch over a set of settings files.
+ * config-file-watcher.ts, poll-based watch over a set of settings files.
  *
  * ConfigManager uses this to apply EXTERNAL edits live: a settings file changed
  * by another process or by hand fires `onChange`, which reloads and diffs. Polls
  * with statSync (not fs.watch) so it is robust to both in-place writes and
- * atomic save-via-rename — the failure mode the custom-provider fs.watch note
+ * atomic save-via-rename, the failure mode the custom-provider fs.watch note
  * calls out. Kept out of manager.ts so that file stays under the line cap.
  *
  * Why this does NOT use fs.watchFile
@@ -14,13 +14,13 @@
  * from that baseline. A write that lands between the watchFile() call and the
  * baseline stat therefore BECOMES the baseline: watchFile sees no subsequent
  * change and never fires, so the edit is silently lost for the lifetime of the
- * watch. That is not a slow-machine flake — the watcher stays silent forever.
+ * watch. That is not a slow-machine flake, the watcher stays silent forever.
  *
  * This module removes the race by construction: it takes each file's baseline
  * SYNCHRONOUSLY, before the watch is armed, and every poll compares against
  * that self-owned baseline instead of a baseline the runtime captured at an
  * unknown later moment. A write landing at any point after the synchronous
- * baseline — including during watcher startup — differs from it and fires.
+ * baseline, including during watcher startup, differs from it and fires.
  */
 import { statSync } from 'node:fs';
 import { logger } from '../utils/logger.js';
@@ -41,7 +41,7 @@ interface FileSnapshot {
 /**
  * Snapshot one path. A missing file is a real state (zeros, exists=false), not
  * an error: creating or deleting a settings file is a change the reader must
- * see so it can fall back to — or move off — defaults.
+ * see so it can fall back to, or move off, defaults.
  */
 function readSnapshot(path: string): FileSnapshot {
   try {
@@ -115,7 +115,7 @@ export interface ReloadDeps {
 
 /**
  * Snapshot every subscribed key, reload from disk, then fire `notify` for each
- * key whose value actually changed — so an in-process set() that already
+ * key whose value actually changed, so an in-process set() that already
  * notified does not double-fire (its value is unchanged on reload), and an
  * external edit reaches subscribers exactly once. A failed reload keeps the
  * in-memory config and notifies nobody.

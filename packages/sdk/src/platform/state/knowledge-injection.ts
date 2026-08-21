@@ -146,7 +146,7 @@ export interface ScoredKnowledgeInjection {
  * similarity when the registry supports it, and returns every candidate with
  * score>0 sorted best-first. `limit` only widens the semantic-search
  * candidate pool (`Math.max(limit*4,12)`, mirroring the historical
- * behavior) — it does NOT slice the returned array. Callers that want the
+ * behavior), it does NOT slice the returned array. Callers that want the
  * spawn-time top-N behavior should slice the result themselves; see
  * `selectKnowledgeForTask` below.
  */
@@ -173,7 +173,7 @@ export function selectKnowledgeForTaskScored(
   }
 
   // A record OUTSIDE its temporal validity window (pending or expired) is never
-  // injected — mirrors the recall contract so both injection paths agree.
+  // injected, mirrors the recall contract so both injection paths agree.
   const injectionNow = Date.now();
   return [...recordsById.values()]
     .filter((record) => isMemoryTemporallyActive(record, injectionNow))
@@ -245,7 +245,7 @@ export function buildKnowledgeInjectionPrompt(injections: readonly KnowledgeInje
   ];
   for (const injection of normalized) {
     lines.push(
-      `- [${injection.id}] (${injection.cls}, ${injection.reviewState}, trust ${injection.trustTier}, confidence ${injection.confidence}, useAs ${injection.useAs}, retention ${injection.retention}, ingest ${injection.ingestMode}) ${injection.summary} — ${injection.reason} | provenance ${summarizeKnowledgeInjectionProvenance(injection.provenance)}`,
+      `- [${injection.id}] (${injection.cls}, ${injection.reviewState}, trust ${injection.trustTier}, confidence ${injection.confidence}, useAs ${injection.useAs}, retention ${injection.retention}, ingest ${injection.ingestMode}) ${injection.summary}, ${injection.reason} | provenance ${summarizeKnowledgeInjectionProvenance(injection.provenance)}`,
     );
   }
   return lines.join('\n');

@@ -133,11 +133,11 @@ function makeRouteContext(chatManager: CompanionChatManager): CompanionChatRoute
 }
 
 // ---------------------------------------------------------------------------
-// F2 — the companion HTTP routes actually flush the
+// F2, the companion HTTP routes actually flush the
 // broker mirror before responding, matching CompanionBrokerSync's documented
 // contract ("the daemon's companion HTTP routes call this before responding
 // so /api/sessions reflects the change synchronously"). Previously nothing
-// called flushBrokerSync() outside of tests — the doc was aspirational, not
+// called flushBrokerSync() outside of tests, the doc was aspirational, not
 // true. These assert the shared broker record is already up to date by the
 // time each route's Response comes back, with NO extra manual flush call.
 // ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ describe('F2 — companion HTTP routes flush the broker mirror before responding
       expect(res?.status).toBe(201);
       const { sessionId } = await res!.json() as { sessionId: string };
 
-      // No await manager.flushBrokerSync() here — the route must have already done it.
+      // No await manager.flushBrokerSync() here, the route must have already done it.
       expect(broker.getSession(sessionId)).not.toBeNull();
       manager.dispose();
     } finally {
@@ -205,7 +205,7 @@ describe('F2 — companion HTTP routes flush the broker mirror before responding
       );
       expect(deleteRes?.status).toBe(200);
 
-      // No await manager.flushBrokerSync() here — the route must have already done it.
+      // No await manager.flushBrokerSync() here, the route must have already done it.
       expect(broker.getSession(created.id)).toBeNull();
       manager.dispose();
     } finally {

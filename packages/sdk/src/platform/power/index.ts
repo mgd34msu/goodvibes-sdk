@@ -1,5 +1,5 @@
 /**
- * power/ — sleep ownership: automatic work inhibition, sleep-edge honesty,
+ * power/, sleep ownership: automatic work inhibition, sleep-edge honesty,
  * and the owner's keep-awake toggle (see manager.ts for the ruling's shape).
  */
 export { PowerManager, LID_SWITCH_HONEST_SPLIT } from './manager.js';
@@ -13,7 +13,7 @@ export type { PowerWorkSignalBus } from './work-signals.js';
 export { createUnavailablePowerSeam } from './types.js';
 export type { PowerPlatformSeam, PowerInhibitHandle, PowerInhibitClass } from './types.js';
 // Forward the owner keep-awake toggle to an adopted external daemon (the
-// daemon-held keep-awake ruling) — the one implementation, unifying the TUI's
+// daemon-held keep-awake ruling), the one implementation, unifying the TUI's
 // and the agent's previously-parallel forward helpers.
 export {
   postPowerKeepAwakeSet,

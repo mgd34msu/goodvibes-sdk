@@ -3,7 +3,7 @@
  *
  * Pure GC-sweep planning for CompanionChatManager. Kept separate from the
  * manager so the deletion-authority split (charter: closed sessions are HISTORY)
- * is expressed as data — one decision per session — and unit-testable without a
+ * is expressed as data, one decision per session, and unit-testable without a
  * live manager or disk.
  *
  * Two distinct authorities, deliberately decoupled:
@@ -11,7 +11,7 @@
  *    a closed session's heavy in-memory handles (the ConversationManager replay
  *    state and message bodies) are dropped so the resident footprint stays
  *    bounded no matter how much history is on disk. The session META stays in
- *    the map and remains listable (includeClosed) — only the bodies leave RAM.
+ *    the map and remains listable (includeClosed), only the bodies leave RAM.
  *  - PERSISTENT deletion: rare and explicit. The on-disk session file is removed
  *    ONLY when the caller opted into a finite retention window (or, in future, an
  *    explicit delete verb). The default is `undefined` = retain indefinitely, so
@@ -35,7 +35,7 @@ export interface CompanionSweepSessionView {
   readonly lastActivityAt: number;
   /** whether the session currently holds message bodies in memory. */
   readonly hasMessagesInMemory: boolean;
-  /** whether the session is empty (no messages) — selects the idle TTL. */
+  /** whether the session is empty (no messages), selects the idle TTL. */
   readonly isEmpty: boolean;
 }
 

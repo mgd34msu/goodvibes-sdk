@@ -1,5 +1,5 @@
 /**
- * Repo code index (Stage A) — adaptCodeIndex fleet adapter + registry
+ * Repo code index (Stage A), adaptCodeIndex fleet adapter + registry
  * integration: a 'code-index' ProcessNode surfaces progress while building
  * and a terminal state ('done'/'idle') when caught up; an absent
  * codeIndexService dep yields zero code-index nodes (degrade-to-today),

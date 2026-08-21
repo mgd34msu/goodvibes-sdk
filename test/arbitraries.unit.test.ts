@@ -1,5 +1,5 @@
 /**
- * arbitraries.unit.test.ts — drift guard for the shared arbitraries module.
+ * arbitraries.unit.test.ts, drift guard for the shared arbitraries module.
  *
  * Verifies that:
  *   1. Every entry in FIXTURE_EVENTS has the required fields defined in
@@ -79,14 +79,14 @@ describe('FIXTURE_EVENTS — known-type coverage drift guard', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. jsonValueArb — basic soundness
+// 3. jsonValueArb, basic soundness
 // ---------------------------------------------------------------------------
 
 describe('jsonValueArb — basic soundness', () => {
   test('generated values are JSON-representable (no undefined, no functions)', () => {
     fc.assert(
       fc.property(jsonValueArb, (value) => {
-        // JSON.stringify must not throw — values like undefined or functions are not JSON-safe
+        // JSON.stringify must not throw, values like undefined or functions are not JSON-safe
         expect(() => JSON.stringify(value)).not.toThrow();
       }),
       { numRuns: 50 },

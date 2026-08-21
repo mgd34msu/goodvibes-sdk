@@ -1,5 +1,5 @@
 /**
- * imap-source.ts — the existing IMAP watcher, presented as an
+ * imap-source.ts, the existing IMAP watcher, presented as an
  * `InboundMailSource` (docs/inbound-email.md §3.4d).
  *
  * This file is an ADAPTER and deliberately nothing else. IDLE, the poll
@@ -8,7 +8,7 @@
  * live in `watcher.ts` and the modules under it, already tested against a
  * scripted IMAP server. Re-expressing any of that here would be a second
  * implementation of the thing that is hard, and the second one is the one that
- * would be wrong — this round has already paid for that lesson twice, with a
+ * would be wrong, this round has already paid for that lesson twice, with a
  * hand-copied connection report and a hand-written cursor double.
  *
  * So everything below delegates. What is genuinely new is only the shape:
@@ -18,7 +18,7 @@
  *     caller's observer, keeps the first transition, and hands it back. Every
  *     later transition still reaches the caller's observer untouched, which is
  *     the contract the watcher already has and the one the supervisor already
- *     consumes — `start()` returning a value does not make it a second channel
+ *     consumes, `start()` returning a value does not make it a second channel
  *     for the same information.
  *
  *   - `run()` is the watcher's own loop, awaited. The watcher's `start()` is
@@ -28,21 +28,21 @@
  *     an insufficient verdict already stops the loop, closes the socket and
  *     waits out `capabilityRecheckMs` inside the watcher. A caller that gets
  *     an `insufficient` verdict from `start()` and never calls `run()` must
- *     still call `stop()` — the interface says so, and it is what releases the
+ *     still call `stop()`, the interface says so, and it is what releases the
  *     re-check wait.
  *
  * Why `latency` is not the constant `{ kind: 'push' }`
  * ───────────────────────────────────────────────────
  * IMAP IDLE is true push, and for the default configuration that is exactly
  * what this reports. But `surfaces.email.inbound.mode` can be set to `poll`,
- * and a server that does not advertise IDLE is served by the poll fallback —
+ * and a server that does not advertise IDLE is served by the poll fallback,
  * in both of those cases the connection is being ASKED on a timer, and the
  * worst case is the whole interval. `latency` exists so a surface can render a
  * number instead of the word "real-time" (see `source.ts`); reporting `push`
  * while polling every two minutes would put the exact sentence that field
  * exists to prevent in front of the owner. So it reports what is IN FORCE, the
- * same rule the Gmail source follows, and reads `pollIntervalMs` — the
- * interval the watcher was configured with — rather than inventing a number.
+ * same rule the Gmail source follows, and reads `pollIntervalMs`, the
+ * interval the watcher was configured with, rather than inventing a number.
  */
 
 import type {
@@ -109,7 +109,7 @@ export class ImapMailSource implements InboundMailSource {
   /**
    * What the owner is told about delay, as it stands right now.
    *
-   * `polling` here means the loop that is actually running — configured
+   * `polling` here means the loop that is actually running, configured
    * polling, or the fallback after a server turned out to have no IDLE. Before
    * the first connection the watcher's mode is `inactive`, so the answer is
    * taken from the configuration instead: `poll` was chosen deliberately and is
@@ -127,7 +127,7 @@ export class ImapMailSource implements InboundMailSource {
   /**
    * Connect and answer with the first verdict the watcher reaches.
    *
-   * The first verdict is not always the final one — a refused credential is
+   * The first verdict is not always the final one, a refused credential is
    * retried exactly once, so its first transition is `reconnecting` and the
    * `insufficient` verdict follows a moment later. That is the watcher's
    * behaviour and it is right; the later verdict reaches the caller through
@@ -161,7 +161,7 @@ export class ImapMailSource implements InboundMailSource {
    *
    * The loop is the watcher's, entered by `start()`; this awaits it and stops
    * it when the signal fires. Calling `run()` without `start()` returns
-   * immediately, because there is no loop to await — that is a caller error
+   * immediately, because there is no loop to await, that is a caller error
    * rather than a state to invent.
    */
   async run(signal: AbortSignal): Promise<void> {
@@ -188,7 +188,7 @@ export class ImapMailSource implements InboundMailSource {
    * `start()` can answer with it.
    *
    * Every method forwards. Nothing is filtered, nothing is re-ordered, and the
-   * caller sees the first transition too — the adapter reads the stream, it
+   * caller sees the first transition too, the adapter reads the stream, it
    * does not consume from it.
    */
   private observer(): InboundMailObserver {

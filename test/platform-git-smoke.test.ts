@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/git
+ * Coverage-gap smoke test, platform/git
  * Verifies that GitService executes observable behavior when called.
  * Closes coverage gap: platform/git
  */

@@ -1,5 +1,5 @@
 /**
- * release-cut — local release preparation ONLY.
+ * release-cut, local release preparation ONLY.
  *
  * Per the CI/CD design's principle 4 (CI owns validation), this tool never
  * re-runs gates. It: guards a clean tree on the release branch, bumps the
@@ -7,6 +7,11 @@
  * sync commands, prepends a CHANGELOG section, commits, and creates an
  * annotated tag. Validation happened on the push CI run; the tag is cut from an
  * already-green tree and verified by-reference downstream.
+ *
+ * Re-running after a crash converges instead of double-applying: a release
+ * commit already at HEAD is recognized by its commit subject, so the retry
+ * finishes the interrupted cut (creates the missing tag) or reports the cut as
+ * already complete, and never bumps a second version on top of the first.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -80,7 +85,90 @@ export interface ReleaseCutOptions {
 export interface ReleaseCutResult {
   readonly version: string;
   readonly tag: string;
+  /** True when the repo holds the release commit AND its tag for `version` once this call returns. */
   readonly committed: boolean;
+  /**
+   * True when this run found the cut for `version` already committed by an
+   * earlier run and converged (completing or accepting it) instead of bumping
+   * to a further version.
+   */
+  readonly resumed: boolean;
+}
+
+/**
+ * The commit subject every cut writes. Also how a re-run recognizes a cut left
+ * behind by a previous run that died before tagging.
+ */
+export function releaseCommitMessage(version: string): string {
+  return `chore: release ${version}`;
+}
+
+function headCommitSubject(exec: Exec, cwd: string): string {
+  const res = exec('git', ['log', '-1', '--pretty=%s'], { cwd });
+  // An empty repo has no HEAD; that is simply "no prior cut".
+  return res.status === 0 ? res.stdout.trim() : '';
+}
+
+function tagExists(exec: Exec, cwd: string, tag: string): boolean {
+  return exec('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`], { cwd }).status === 0;
+}
+
+function tagPointsAtHead(exec: Exec, cwd: string, tag: string): boolean {
+  const res = exec('git', ['tag', '--points-at', 'HEAD'], { cwd });
+  if (res.status !== 0) return false;
+  return res.stdout.split('\n').some((line) => line.trim() === tag);
+}
+
+/**
+ * How a prior, possibly interrupted, cut of `version` shows up at HEAD.
+ *
+ * `none`         , HEAD is ordinary work, cut normally.
+ * `tag-missing`  , the release commit landed but the tag did not (the crash
+ *                  window between `git commit` and `git tag`), finish it.
+ * `complete`     , commit and tag are both in place, nothing left to do.
+ * `tag-conflict` , the release commit is at HEAD but that tag name is taken by
+ *                  a different commit, which a re-run must not paper over.
+ */
+type PriorCut = 'none' | 'tag-missing' | 'complete' | 'tag-conflict';
+
+function detectPriorCut(exec: Exec, cwd: string, version: string): PriorCut {
+  if (headCommitSubject(exec, cwd) !== releaseCommitMessage(version)) return 'none';
+  const tag = `v${version}`;
+  if (tagPointsAtHead(exec, cwd, tag)) return 'complete';
+  return tagExists(exec, cwd, tag) ? 'tag-conflict' : 'tag-missing';
+}
+
+function isStringArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
+/**
+ * Check the config's shape before anything is mutated.
+ *
+ * `parseToolchainConfig` validates only `packageName` and casts the rest, so a
+ * hand-edited toolchain.config.json reached this tool as if it were typed. A
+ * bad `commitPaths` used to surface as a TypeError at `git add`, after the
+ * manifests were bumped, the sync commands ran, and CHANGELOG.md was rewritten,
+ * leaving a dirty tree that the next run then refused as unclean. One named
+ * failure up front is what the caller can act on.
+ */
+function requireReleaseCutConfig(config: ReleaseCutConfig): void {
+  const problems: string[] = [];
+  if (typeof config.branch !== 'string' || config.branch.length === 0) problems.push('branch must be a non-empty string');
+  if (!isStringArray(config.versionFiles)) problems.push('versionFiles must be an array of strings');
+  if (!isStringArray(config.commitPaths)) problems.push('commitPaths must be an array of strings');
+  if (!Array.isArray(config.syncCommands) || !config.syncCommands.every(isStringArray)) {
+    problems.push('syncCommands must be an array of string arrays');
+  }
+  if (config.changelogHeading !== 'bracket' && config.changelogHeading !== 'plain') {
+    problems.push("changelogHeading must be 'bracket' or 'plain'");
+  }
+  if (config.changelogInsertMarker !== 'first-separator' && config.changelogInsertMarker !== 'top') {
+    problems.push("changelogInsertMarker must be 'first-separator' or 'top'");
+  }
+  if (problems.length > 0) {
+    throw new Error(`toolchain.config.releaseCut is malformed:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
+  }
 }
 
 function setManifestVersion(path: string, version: string): void {
@@ -112,17 +200,54 @@ export function runReleaseCut(options: ReleaseCutOptions): ReleaseCutResult {
   const { cwd, config } = options;
   const date = options.date ?? new Date().toISOString().slice(0, 10);
 
+  requireReleaseCutConfig(config);
   requireClean(exec, cwd, config.branch);
 
   const rootManifestPath = resolve(cwd, 'package.json');
   const current = (JSON.parse(readFileSync(rootManifestPath, 'utf8')) as { version: string }).version;
+
+  // Converge on a cut a previous run already committed rather than bumping on
+  // top of it. Without this, a run that died between `git commit` and
+  // `git tag` leaves a clean tree whose package.json is already bumped, and the
+  // retry (the natural recovery action) reads that bumped version as `current`
+  // and cuts a SECOND release, stranding the first commit untagged.
+  const priorCut = detectPriorCut(exec, cwd, current);
+  const currentTag = `v${current}`;
+  if (priorCut === 'tag-conflict') {
+    throw new Error(
+      `HEAD is the release commit for ${current}, but tag ${currentTag} already points at a different commit. `
+      + `Inspect 'git log' and 'git show ${currentTag}' and resolve by hand before cutting again.`,
+    );
+  }
+  if (priorCut === 'complete') {
+    logger.info(`[release-cut] ${currentTag} is already committed and tagged at HEAD; nothing to do.`);
+    return { version: current, tag: currentTag, committed: true, resumed: true };
+  }
+  if (priorCut === 'tag-missing') {
+    if (options.dryRun) {
+      logger.info(`[release-cut] dry-run: HEAD is the release commit for ${current}; would create the missing tag ${currentTag}`);
+      return { version: current, tag: currentTag, committed: false, resumed: true };
+    }
+    logger.info(`[release-cut] resuming an interrupted cut: HEAD is the release commit for ${current}, creating the missing tag ${currentTag}`);
+    const resumeTag = exec('git', ['tag', '-a', currentTag, '-m', `release ${current}`], { cwd });
+    if (resumeTag.status !== 0) throw new Error(`git tag failed: ${resumeTag.stderr}`);
+    logger.info(`[release-cut] tagged ${currentTag}. Push with: git push && git push origin ${currentTag}`);
+    return { version: current, tag: currentTag, committed: true, resumed: true };
+  }
+
   const version = nextVersion(current, options.bump);
   const tag = `v${version}`;
   logger.info(`[release-cut] ${current} -> ${version} (${options.bump})`);
 
+  // Refuse a taken tag name before touching any file, so the failure does not
+  // leave a bumped tree (or a stranded commit) to clean up by hand.
+  if (tagExists(exec, cwd, tag)) {
+    throw new Error(`Tag ${tag} already exists. Delete or rename it before cutting ${version}.`);
+  }
+
   if (options.dryRun) {
     logger.info(`[release-cut] dry-run: would bump, changelog, commit, and tag ${tag}`);
-    return { version, tag, committed: false };
+    return { version, tag, committed: false, resumed: false };
   }
 
   setManifestVersion(rootManifestPath, version);
@@ -144,11 +269,11 @@ export function runReleaseCut(options: ReleaseCutOptions): ReleaseCutResult {
 
   const add = exec('git', ['add', ...config.commitPaths], { cwd });
   if (add.status !== 0) throw new Error(`git add failed: ${add.stderr}`);
-  const commit = exec('git', ['commit', '-m', `chore: release ${version}`], { cwd });
+  const commit = exec('git', ['commit', '-m', releaseCommitMessage(version)], { cwd });
   if (commit.status !== 0) throw new Error(`git commit failed: ${commit.stderr}`);
   const tagRes = exec('git', ['tag', '-a', tag, '-m', `release ${version}`], { cwd });
   if (tagRes.status !== 0) throw new Error(`git tag failed: ${tagRes.stderr}`);
 
   logger.info(`[release-cut] committed and tagged ${tag}. Push with: git push && git push origin ${tag}`);
-  return { version, tag, committed: true };
+  return { version, tag, committed: true, resumed: false };
 }

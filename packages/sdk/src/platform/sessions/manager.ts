@@ -22,22 +22,22 @@ export interface SessionMeta {
   schemaVersion?: number | undefined;
   /**
    * Who caused this save: `'user'` for an explicit save the user asked for
-   * (e.g. a `/save` command — never expired by the session-conversations
+   * (e.g. a `/save` command, never expired by the session-conversations
    * retention store, see runtime/retention/append-only-registry.ts), `'auto'`
    * for an automatic save (e.g. shutdownRuntime's save-on-exit), which the
    * bounded default retention policy may reclaim. Defaults to `'auto'` when
    * omitted at save time. A file with no `saveSource` at all (written before
-   * this field existed) is treated as `'user'` by the retention store — never
+   * this field existed) is treated as `'user'` by the retention store, never
    * assume an old file is safe to expire.
    *
-   * INVARIANT — `'user'` is STICKY. Once a session file is stamped `'user'`,
+   * INVARIANT, `'user'` is STICKY. Once a session file is stamped `'user'`,
    * no `'auto'` (or omitted) save over the same file can downgrade it back to
    * `'auto'`; SessionManager.save re-reads the existing file's stamp and keeps
    * `'user'`. Without this, an automatic periodic save of the same session id
    * (persistConversation, which defaults to `'auto'`) would quietly strip the
    * retention exemption off a conversation the user explicitly asked to keep,
    * and the next sweep would be free to delete it. Only an explicit
-   * `saveSource: 'user'` ever changes the stamp — always upward.
+   * `saveSource: 'user'` ever changes the stamp, always upward.
    */
   saveSource?: 'user' | 'auto' | undefined;
 }
@@ -69,16 +69,16 @@ export interface SessionInfo {
  * Current schema version written to session files.
  * Increment when the file format changes in a backward-incompatible way.
  * Readers accept: version undefined (legacy, treated as 0), version <= CURRENT, and
- * version > CURRENT (future — logged as a warning, accepted with best-effort parsing).
+ * version > CURRENT (future, logged as a warning, accepted with best-effort parsing).
  */
 export const CURRENT_SESSION_SCHEMA_VERSION = 1;
 
 /**
  * Turn a session name (or session id) into the filename stem its durable
  * store file uses: `<sessionsDir>/<stem>.jsonl`. Module-level so a caller that
- * needs a session's store path — e.g. the recovery layer asking "is this
+ * needs a session's store path, e.g. the recovery layer asking "is this
  * snapshot older than its own session's last clean save?" in
- * runtime/session-recovery.ts — derives exactly the same filename this class
+ * runtime/session-recovery.ts, derives exactly the same filename this class
  * writes, without constructing a SessionManager just to reach the rule.
  * {@link SessionManager.sanitizeName} delegates here, so there is one rule,
  * not two that can drift apart.
@@ -152,7 +152,7 @@ export class SessionManager {
    *   1. Write content to a tmp file in the same directory.
    *   2. fsync the tmp file to flush its data to storage.
    *   3. rename the tmp file into place (atomic on POSIX).
-   *   4. fsync the parent directory to flush the directory entry — without
+   *   4. fsync the parent directory to flush the directory entry, without
    *      this step, on power loss after rename the directory entry can
    *      revert and the renamed file disappears.
    * Mirrors the reference implementation in platform/security/user-auth.ts
@@ -302,7 +302,7 @@ export class SessionManager {
       if (record.type === 'meta') {
         const fileVersion = typeof record.schemaVersion === 'number' ? record.schemaVersion : 0;
         if (fileVersion > CURRENT_SESSION_SCHEMA_VERSION) {
-          logger.warn('SessionManager: session file has a newer schemaVersion — loading with best-effort parsing', {
+          logger.warn('SessionManager: session file has a newer schemaVersion, loading with best-effort parsing', {
             name,
             fileVersion,
             currentVersion: CURRENT_SESSION_SCHEMA_VERSION,
@@ -475,7 +475,7 @@ export class SessionManager {
 
   /**
    * Rename a session by rewriting its meta line with a new title.
-   * The file is stored under the sanitized name — rename updates the title
+   * The file is stored under the sanitized name, rename updates the title
    * field inside the file but does NOT rename the file itself.
    * Throws if the session does not exist.
    */

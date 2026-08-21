@@ -1,7 +1,7 @@
 /**
  * The cadence half of the platform's one update mechanism: WHEN a
  * long-running process looks for a newer release. (self-update.ts owns WHAT
- * happens when one is found — download, verify, swap, keep previous.)
+ * happens when one is found, download, verify, swap, keep previous.)
  *
  * One shared loop, three rules, so every long-running surface behaves the
  * same way:
@@ -12,8 +12,8 @@
  *     restarted; a machine that has only just booted still gets a moment to
  *     bring up its network first.
  *   - after that, checks run on the configured cadence (hourly by default).
- *   - a check that found an update but could not apply it yet — the process is
- *     mid-work and a swap only ever happens at an idle moment — re-tries on a
+ *   - a check that found an update but could not apply it yet, the process is
+ *     mid-work and a swap only ever happens at an idle moment, re-tries on a
  *     short retry cadence instead of waiting a full interval.
  *
  * Timers are injectable, so the schedule is provable under test without real

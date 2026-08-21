@@ -1,5 +1,5 @@
 /**
- * Unified message-anchored rewind — one coordinator over the platform's three
+ * Unified message-anchored rewind, one coordinator over the platform's three
  * existing history stores (workspace checkpoints, conversation snapshots, file
  * undo). Restores files, conversation, or both to a session turn anchor; never
  * a fourth history system.

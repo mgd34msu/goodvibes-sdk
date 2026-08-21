@@ -50,7 +50,7 @@ export const WRITE_SCHEMA = {
       type: 'string',
       enum: ['count_only', 'minimal', 'standard', 'verbose'],
       description:
-        'Output detail level. Default: count_only (recommended — you provided the content).',
+        'Output detail level. Default: count_only (recommended, you provided the content).',
       default: 'count_only',
     },
     dry_run: {
@@ -83,7 +83,7 @@ export const WRITE_SCHEMA = {
           description:
             'atomic: if any write fails, undo all previously written files (restores originals). '
             + 'partial: skip failed writes but continue. '
-            + 'none (default): same as partial — no rollback.',
+            + 'none (default): same as partial, no rollback.',
           default: 'none',
         },
       },

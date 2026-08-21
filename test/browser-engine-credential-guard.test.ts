@@ -16,7 +16,7 @@ import type {
 
 /**
  * The browser layer's own backstop against driving a sign-in page, one
- * click/type/press/select call at a time — see `refuseCredentialInteraction`
+ * click/type/press/select call at a time, see `refuseCredentialInteraction`
  * in browser-engine.ts. This is separate from (and a fallback for) the
  * Google-specific `looksLikeGoogleSignIn` check the structured flows in
  * `platform/google/` already run before this code is ever reached: those
@@ -52,7 +52,7 @@ class NoopUntrustedContentPort implements UntrustedContentPort {
   }
 
   recordIngest(): void {
-    // Not exercised here — the outward-effect ledger has its own test file.
+    // Not exercised here, the outward-effect ledger has its own test file.
   }
 
   evaluateOutwardEffect(_input: {

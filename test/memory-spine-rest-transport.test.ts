@@ -5,8 +5,8 @@
  * (createMemorySpineRestTransport). Proves: the wire path/body for each verb,
  * the honest-failure contract (a transport failure REJECTS rather than
  * inventing a placeholder success), and the 404 disambiguation (a genuine
- * record-miss folds to null on nullable verbs; any other 404 — an older
- * daemon that never registered the route — rejects on every verb).
+ * record-miss folds to null on nullable verbs; any other 404, an older
+ * daemon that never registered the route, rejects on every verb).
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { MEMORY_RECORD_NOT_FOUND_CODE } from '@pellux/goodvibes-errors';

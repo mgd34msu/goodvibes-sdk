@@ -5,7 +5,7 @@
  *
  * The engine composes ONE client floor per workspace and shares it across every
  * hosted session in that workspace, because the floor's cost is a provider
- * discovery pass, config file watchers, a plugin manager and a project index —
+ * discovery pass, config file watchers, a plugin manager and a project index,
  * per-machine or per-workspace truths that duplicate badly. These tests pin the
  * three properties that decision rests on: one construction per workspace, a
  * reference count that releases at zero and not before, and a construction that

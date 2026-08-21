@@ -1,4 +1,4 @@
-# Error Architecture
+# Error architecture
 
 > Internal source map. For consumer guidance see [Error Handling](./error-handling.md) and [SDK Error Kinds](./error-kinds.md).
 
@@ -27,7 +27,7 @@ references point at `packages/errors/src`.
 
 ## Important rules
 
-- Retryable status codes are defined once, in `RETRYABLE_STATUS_CODES` (`index.ts:276` — `[408, 429, 500, 502, 503, 504]`); `GoodVibesSdkError` derives `recoverable` from this set when the caller does not pass `recoverable` explicitly (`index.ts:466`).
+- Retryable status codes are defined once, in `RETRYABLE_STATUS_CODES` (`index.ts:276`: `[408, 429, 500, 502, 503, 504]`). `GoodVibesSdkError` derives `recoverable` from this set when the caller does not pass `recoverable` explicitly (`index.ts:466`).
 - Transport failures preserve `url`, `method`, `status`, `retryAfterMs`, and the provider context fields `provider` / `operation` / `phase` / `requestId` / `providerCode` / `providerType` (`index.ts:427-432`). There is no `event` field.
 - Contract violations are `ContractError` (code `SDK_CONTRACT_ERROR`, kind/category `contract`).
 - Configuration failures are `ConfigurationError` (code `SDK_CONFIGURATION_ERROR`, kind/category `config`).
@@ -36,9 +36,9 @@ references point at `packages/errors/src`.
 
 Do not introduce parallel error taxonomies in extension packages.
 
-## Constructing & serializing errors
+## Constructing and serializing errors
 
-- `GoodVibesSdkErrorOptions` (`index.ts:251`) is the construction surface for every error class — all fields are optional, and `code` / `category` / `recoverable` are inferred when omitted (`index.ts:447-479`).
+- `GoodVibesSdkErrorOptions` (`index.ts:251`) is the construction surface for every error class. All fields are optional, and `code`, `category`, and `recoverable` are inferred when omitted (`index.ts:447-479`).
 - `createHttpStatusError(status, url, method, body, fallbackHint?)` (`index.ts:746`) builds an `HttpStatusError` from a response. When `body` satisfies `isStructuredDaemonErrorBody` (`index.ts:725`) the daemon-supplied fields (including an explicit `code`) win; otherwise the `code` is inferred from `status`.
 - `toJSON()` (`index.ts:482`) serializes the structured fields via `omitUndefined`, dropping `undefined` entries; `cause` is preserved through the native `Error` `cause` option (`index.ts:451`).
 - `instanceof` is realm-safe and brand/code-based rather than strictly prototype-bound: `GoodVibesSdkError` stamps a non-enumerable brand and overrides `[Symbol.hasInstance]` (`index.ts:436`), and `ConfigurationError` / `ContractError` / `HttpStatusError` each override `[Symbol.hasInstance]` (`index.ts:563`, `:613`, `:693`) so an error carrying the matching `code` (or the dedicated `HttpStatusError` brand) passes the check even across realms or after a serialize/deserialize round-trip. Callers that need strict prototype identity should compare against `<Class>.prototype` via `Object.getPrototypeOf(err)`.

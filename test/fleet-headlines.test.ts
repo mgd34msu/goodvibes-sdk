@@ -1,5 +1,5 @@
 /**
- * fleet-headlines.test.ts — per-node headlines + the stall tell
+ * fleet-headlines.test.ts, per-node headlines + the stall tell
  * (runtime/fleet/headlines.ts and their registry integration).
  *
  * The owner's contract, enforced BOTH ways by these tests:
@@ -8,7 +8,7 @@
  *
  *   - transition side: a new task/phase regenerates the headline in place
  *   - anti-feed side: continuous per-token/per-turn activity (stream deltas,
- *     tool events, progress lines) leaves the headline byte-identical — a
+ *     tool events, progress lines) leaves the headline byte-identical, a
  *     seeded continuous updater FAILS to move it
  *   - the cap is enforced at the read-model
  *   - the stall tell is a pure timestamp comparison exposed on the snapshot
@@ -114,7 +114,7 @@ describe('headlineSource', () => {
       id: 'w', kind: 'work-item', task: 'build feature',
       currentActivity: { kind: 'phase', text: 'review', at: T0 },
     });
-    expect(headlineSource(item)).toBe('build feature — review');
+    expect(headlineSource(item)).toBe('build feature, review');
   });
 
   test('falls back to label; null when neither task nor label carries text', () => {
@@ -147,8 +147,8 @@ describe('HeadlineTable', () => {
   test('ANTI-FEED: a seeded continuous updater fails to move the headline', () => {
     const table = new HeadlineTable();
     const first = table.derive(node({ id: 'a', task: 'steady task' }), T0)!;
-    // 500 snapshots of churning activity text — tool calls, output lines,
-    // per-turn progress — while the task stays put.
+    // 500 snapshots of churning activity text, tool calls, output lines,
+    // per-turn progress, while the task stays put.
     for (let i = 1; i <= 500; i++) {
       const churned = table.derive(node({
         id: 'a',
@@ -227,12 +227,12 @@ describe('fleet registry — headline + stall on the snapshot', () => {
     const first = registry.getNode('agent-1')!;
     expect(first.headline).toEqual({ text: 'analyze the build failure', updatedAt: T0 + 1_000 });
 
-    // Same task, later snapshot — byte-identical headline (same updatedAt).
+    // Same task, later snapshot, byte-identical headline (same updatedAt).
     currentNow = T0 + 90_000;
     const second = registry.getNode('agent-1')!;
     expect(second.headline).toBe(first.headline!);
 
-    // A new task — the transition the owner blessed — replaces it in place.
+    // A new task, the transition the owner blessed, replaces it in place.
     record.task = 'ship the fix';
     currentNow = T0 + 120_000;
     const third = registry.getNode('agent-1')!;

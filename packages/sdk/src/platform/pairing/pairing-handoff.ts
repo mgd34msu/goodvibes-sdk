@@ -3,9 +3,9 @@
  *
  * One pairing exchange, carrying an OFFER SET so a freshly-paired surface can
  * complete several set-up steps in a single pass, each independently declinable:
- *   - notifications — register this device for browser push (VAPID + subscribe).
- *   - relay         — connect through the rendezvous relay for off-LAN reach.
- *   - passkey       — register a WebAuthn credential for step-up.
+ *   - notifications, register this device for browser push (VAPID + subscribe).
+ *   - relay        , connect through the rendezvous relay for off-LAN reach.
+ *   - passkey      , register a WebAuthn credential for step-up.
  *
  * The QR / deep-link content is EXACTLY the `#pair=<token>` fragment shape the
  * web app already consumes (goodvibes-webui `src/lib/pairing.ts` reads the
@@ -16,7 +16,7 @@
  * deliberate: a `#`-fragment is never sent to a server, so the one-time token
  * never lands in an access log or Referer header.
  *
- * This module is pure over strings — QR *rendering* and the daemon verbs live
+ * This module is pure over strings, QR *rendering* and the daemon verbs live
  * elsewhere; it only builds and parses the link content.
  */
 
@@ -67,7 +67,7 @@ export function buildPairingHandoffLink(input: BuildPairingHandoffLinkInput): st
 }
 
 /**
- * Build just the `#pair=<token>` fragment (no origin) — for a producer (e.g. the
+ * Build just the `#pair=<token>` fragment (no origin), for a producer (e.g. the
  * TUI QR renderer) that prepends its own known web origin.
  */
 export function buildPairingHandoffFragment(input: {
@@ -88,7 +88,7 @@ export interface ParsedPairingHandoff {
 
 /**
  * Parse a pairing deep-link's fragment back into its token + offer set. Accepts
- * a full URL, a bare `#pair=…` fragment, or the fragment body — the same
+ * a full URL, a bare `#pair=…` fragment, or the fragment body, the same
  * tolerance the web app applies. Returns null when no `pair` token is present.
  */
 export function parsePairingHandoffLink(input: string): ParsedPairingHandoff | null {

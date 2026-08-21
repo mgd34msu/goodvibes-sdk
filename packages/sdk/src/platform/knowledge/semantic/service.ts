@@ -38,13 +38,13 @@ export interface KnowledgeSemanticServiceOptions {
   /**
    * Minimum floor (ms) enforced on EVERY background self-improvement schedule.
    * A background run can never be scheduled sooner than this even when a caller
-   * asks for `delayMs=0` — that bare-zero path is what turned an enrichment
+   * asks for `delayMs=0`, that bare-zero path is what turned an enrichment
    * burst into a CPU-bound hot loop. Default 5000.
    */
   readonly backgroundSelfImproveMinDelayMs?: number | undefined;
   /**
    * After a background run finds ZERO candidate gaps, further self-scheduled
-   * runs for that scope are suppressed for this window (ms) — the work backs off
+   * runs for that scope are suppressed for this window (ms), the work backs off
    * to the hourly reindex schedule instead of self-perpetuating. Default
    * 3_600_000 (one hour, matching the reindex cadence).
    */
@@ -57,7 +57,7 @@ export interface KnowledgeSemanticServiceOptions {
   readonly isBackgroundPaused?: (() => boolean) | undefined;
   /**
    * MemoryGovernor admission gate: consulted before a background run fires and
-   * before an explicit reindex — at the critical tier the run is refused with
+   * before an explicit reindex, at the critical tier the run is refused with
    * an honest structured reason instead of allocating toward OOM.
    */
   readonly admitExpensiveWork?: ((label: string) => { allowed: boolean; reason?: string | undefined }) | undefined;
@@ -346,7 +346,7 @@ export class KnowledgeSemanticService {
   /**
    * THE background self-improvement entry point: every trigger (enrichment
    * tails, answer refinement, Home Graph ingest, knowledge-service ingest)
-   * routes through the governed scheduler — see background-scheduler.ts for
+   * routes through the governed scheduler, see background-scheduler.ts for
    * the five guards. Public so out-of-package producers (home-graph) use it.
    */
   queueBackgroundSelfImprove(input: KnowledgeSemanticSelfImproveInput, delayMs = 0): void {
@@ -438,7 +438,7 @@ export class KnowledgeSemanticService {
       return combined;
     }
     // SPACE-SCOPED run (every sync-pump round takes this branch): thread the
-    // pause stop into the runner's per-gap yield points — without this,
+    // pause stop into the runner's per-gap yield points, without this,
     // stopWhenPaused was structurally inert for space-scoped runs and the pump
     // ran its full LLM budget straight through a high-tier governor pause.
     return runKnowledgeSemanticSelfImprovement({

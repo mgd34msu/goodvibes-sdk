@@ -1,5 +1,5 @@
 /**
- * method-catalog-voice-setup.ts — managed local-voice provisioning verbs.
+ * method-catalog-voice-setup.ts, managed local-voice provisioning verbs.
  *
  * `voice.local.status` reads the managed runtime state (not-provisioned /
  * partial / provisioned / unsupported-platform, with a size-labeled offer).
@@ -8,8 +8,8 @@
  * user-set value), so local voice works immediately after.
  *
  * The three `voice.wake.*` verbs are here rather than in their own group because
- * they are the same capability — provisioning a pinned, checksum-verified voice
- * artifact and reporting honestly on it — and they attach through the voice-setup
+ * they are the same capability, provisioning a pinned, checksum-verified voice
+ * artifact and reporting honestly on it, and they attach through the voice-setup
  * service that is already composed. `voice.wake.model` exists because a browser
  * tab cannot fetch the pinned artifacts itself: the release assets answer with no
  * CORS header, so a tab reads the model from the daemon, same-origin, in bounded
@@ -29,7 +29,7 @@ const NULLABLE_STRING = { anyOf: [STRING_SCHEMA, { type: 'null' }] };
 
 /**
  * Live progress of the ACTIVE voice.local.install run, served inside the
- * status read while — and only while — an install is running. The install verb
+ * status read while, and only while, an install is running. The install verb
  * is plain request/response, so surfaces poll status during the provision to
  * render real per-component progress instead of busy→receipt.
  */
@@ -174,7 +174,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.local.status',
     title: 'Get Managed Local-Voice Runtime State',
     description:
-      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress — the live per-component progress (phase, byte sizes where known) of that run — so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.',
+      'Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress, the live per-component progress (phase, byte sizes where known) of that run, so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.',
     category: 'health',
     scopes: ['read:health'],
     http: { method: 'GET', path: '/api/voice/local/status' },
@@ -185,7 +185,7 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.local.install',
     title: 'Install the Managed Local-Voice Runtime',
     description:
-      'One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.',
+      'One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install, never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.',
     category: 'health',
     scopes: ['write:config'],
     http: { method: 'POST', path: '/api/voice/local/install' },
@@ -200,12 +200,12 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
       + 'tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate '
       + 'voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts '
       + '(the classifier\'s, the front end\'s and the gate\'s). Each reports '
-      + 'verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its '
+      + 'verified, corrupt (present but failing its checksum, a truncated or swapped file, distinct from missing) and its '
       + 'byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon '
       + 'retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having '
       + 'run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag '
-      + 'covers the classifier, the front end and both of THEIR NOTICEs — an artifact whose attribution is missing is not one '
-      + 'this daemon may serve — and excludes two things: the tflite twin, which nothing here loads, so a host missing just '
+      + 'covers the classifier, the front end and both of THEIR NOTICEs, an artifact whose attribution is missing is not one '
+      + 'this daemon may serve, and excludes two things: the tflite twin, which nothing here loads, so a host missing just '
       + 'that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults '
       + 'to 0 and the detector runs without it. Also restates that the model\'s published recall figures are measured on '
       + 'synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.',
@@ -221,13 +221,13 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     description:
       'Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the '
       + 'speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into '
-      + 'the goodvibes-managed directory — about 6.1 MB. '
+      + 'the goodvibes-managed directory, about 6.1 MB. '
       + 'Installing goodvibes already does '
       + 'this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that '
       + 'failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that '
       + 'already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. '
-      + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once — or a '
-      + 'boot attempt and a user asking — join one download instead of racing for the same files.',
+      + 'A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once, or a '
+      + 'boot attempt and a user asking, join one download instead of racing for the same files.',
     category: 'health',
     scopes: ['write:config'],
     http: { method: 'POST', path: '/api/voice/wake/provision' },
@@ -238,12 +238,12 @@ export const builtinGatewayVoiceSetupMethodDescriptors: readonly GatewayMethodDe
     id: 'voice.wake.model.get',
     title: 'Read Wake-Word Model Bytes',
     description:
-      'Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose '
+      'Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself, a browser tab, whose '
       + 'cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries '
       + 'the offset, the whole artifact\'s size, and its PINNED sha256, so a client reassembles the file and verifies it against '
       + 'the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. '
-      + 'Both classifier formats are served — "classifier" is the onnx build a browser tab loads, "tflite" the same classifier '
-      + 'for a runtime that cannot — as is the speech gate voice.wake.vadThreshold runs ("vad"), and so is the attribution '
+      + 'Both classifier formats are served, "classifier" is the onnx build a browser tab loads, "tflite" the same classifier '
+      + 'for a runtime that cannot, as is the speech gate voice.wake.vadThreshold runs ("vad"), and so is the attribution '
       + 'NOTICE of each redistributable artifact ("notice" for the classifier, "embedding-notice" for the front end, '
       + '"vad-notice" for the gate), because a client that can fetch the bytes but not the NOTICE '
       + 'cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it '

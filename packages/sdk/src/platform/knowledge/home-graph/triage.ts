@@ -85,7 +85,7 @@ export interface HomeGraphTriageOptions {
   readonly skipIssueIds?: readonly string[] | undefined;
   /** Restrict triage to this subset of issue codes (must still have a rule). */
   readonly issueCodes?: readonly string[] | undefined;
-  /** Extra rules merged over the built-ins (by code) — the extensibility hook. */
+  /** Extra rules merged over the built-ins (by code), the extensibility hook. */
   readonly additionalRules?: readonly HomeGraphTriageRule[] | undefined;
   /** Per-completion model timeout in ms. */
   readonly timeoutMs?: number | undefined;
@@ -104,14 +104,14 @@ export interface HomeGraphTriageDecision {
   readonly applied: boolean;
   /** Facts written to the device node when applied. */
   readonly appliedFacts?: Record<string, unknown> | undefined;
-  /** Provenance tag — always `homegraph-triage`. */
+  /** Provenance tag, always `homegraph-triage`. */
   readonly source: string;
 }
 
 export interface HomeGraphTriageResult {
   readonly ok: true;
   readonly spaceId: string;
-  /** False when no semantic LLM is configured — the loop is a no-op. */
+  /** False when no semantic LLM is configured, the loop is a no-op. */
   readonly configured: boolean;
   readonly processed: number;
   /** Open triageable issues skipped because their cached fingerprint was unchanged. */
@@ -144,7 +144,7 @@ interface TriageRecord {
  * at or above the confidence threshold via {@link reviewHomeGraphFact}, and caches
  * every decision on the issue so an unchanged issue is never re-sent to the model.
  *
- * This never reads or writes any other knowledge space — Home Graph shares this
+ * This never reads or writes any other knowledge space, Home Graph shares this
  * code with the wiki/agent knowledge functions but never their data.
  */
 export async function runHomeGraphIssueTriage(input: HomeGraphSpaceInput & {

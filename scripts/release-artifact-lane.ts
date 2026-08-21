@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 /**
- * release-artifact-lane.ts — the packaged-artifact coherence gate.
+ * release-artifact-lane.ts, the packaged-artifact coherence gate.
  *
  * The manual release-train validation, formalized: pack every workspace package
  * exactly as publish would (`npm pack` over the normalized publish manifests),
  * install the packed tarballs into a scratch consumer project, and run the
  * SHIPPED conformance kit (@pellux/goodvibes-contracts/testing) against a
- * catalog/daemon composed FROM THE PACKED ARTIFACTS — never from the workspace
+ * catalog/daemon composed FROM THE PACKED ARTIFACTS, never from the workspace
  * source. It proves the tarballs are internally coherent before they are
  * published; consumer repos run their own suites against the pins at release
  * time, and this lane is the SDK half of that standing consumer-matrix gate.
@@ -20,7 +20,7 @@
  *     from the packed SDK's GatewayMethodCatalog matches the packed
  *     @pellux/goodvibes-contracts artifact (method ids + REST bindings).
  *   - descriptors-have-handlers: the shipped conformance kit run against a
- *     catalog with the packed terminal-shell ws-only handlers attached — the
+ *     catalog with the packed terminal-shell ws-only handlers attached, the
  *     ws-only verb family goes from handler-less (501) to invokable.
  *   - catalog invoke round-trips: every cataloged method answers a schema-valid
  *     200 through the shipped mock-daemon fixture generator.
@@ -65,7 +65,7 @@ function check(name, fn) {
     console.log('PASS ' + name);
   } catch (err) {
     failures.push(name);
-    console.log('FAIL ' + name + ' — ' + (err && err.message ? err.message : String(err)));
+    console.log('FAIL ' + name + ': ' + (err && err.message ? err.message : String(err)));
   }
 }
 
@@ -112,7 +112,7 @@ check('descriptors-have-handlers', () => {
   attachWsOnlyGatewayVerbHandlers(after, verbGroupDeps);
   const missingAfter = new Set(findMethodsMissingHandlers(after));
   const nowHandled = [...missingBefore].filter((id) => !missingAfter.has(id));
-  // The packed terminal-shell attaches handlers onto the ws-only verb family —
+  // The packed terminal-shell attaches handlers onto the ws-only verb family,
   // the exact 501 regression class the shipped conformance kit exists to catch.
   const representatives = ['fleet.snapshot', 'fleet.list', 'fleet.archived.list', 'sessions.search'];
   for (const id of representatives) {
@@ -120,7 +120,7 @@ check('descriptors-have-handlers', () => {
     assert(nowHandled.includes(id), 'packed terminal-shell did not attach a handler for ' + id);
   }
   assertEveryDescriptorHasHandler(after, { onlyIds: representatives });
-  // And the bare catalog still fails the same scoped gate — the gate has teeth.
+  // And the bare catalog still fails the same scoped gate, the gate has teeth.
   let threw = false;
   try { assertEveryDescriptorHasHandler(before, { onlyIds: representatives }); } catch { threw = true; }
   assert(threw, 'conformance gate did not fail on the handler-less bare catalog');

@@ -1,9 +1,9 @@
 /**
- * transcript-journal-replay.ts — folding a transcript journal back into a live
+ * transcript-journal-replay.ts, folding a transcript journal back into a live
  * conversation at resume.
  *
  * transcript-journal.ts owns the file: append, replay, quarantine, rotate. This
- * owns what a surface does with what came back — apply it to the conversation it
+ * owns what a surface does with what came back, apply it to the conversation it
  * just hydrated, persist the result so the gap is closed for good, and rotate
  * the journal that filled it.
  *
@@ -12,7 +12,7 @@
  * 1. Call replayJournal() with the journal path and the snapshot timestamp.
  * 2. If no records are newer than the snapshot, rotate the (now-stale) journal
  *    silently and return.
- * 3. If records are found, apply the final record's messages — each journal
+ * 3. If records are found, apply the final record's messages, each journal
  *    record carries the full conversation snapshot at that moment, so the record
  *    with the newest timestamp is the authoritative post-crash state (resilient
  *    to seq collisions across re-inits onto a stale journal file).
@@ -53,11 +53,11 @@ export interface ReplayIntoConversationOptions {
   readonly snapshotTimestamp: number;
   /** The live conversation to mutate with replayed messages. */
   readonly conversation: JournalReplayConversation;
-  /** Session ID — used when creating the post-replay journal instance for rotate(). */
+  /** Session ID, used when creating the post-replay journal instance for rotate(). */
   readonly sessionId: string;
   /**
    * Persist the restored conversation so the gap is durably closed.
-   * Called with the final replayed message list. Best-effort — failures
+   * Called with the final replayed message list. Best-effort, failures
    * are swallowed so recovery never hard-fails a resume.
    */
   readonly persistSnapshot: (messages: ConversationMessageSnapshot[]) => void;
@@ -76,7 +76,7 @@ export interface ReplayIntoConversationResult {
  * Replay journal records newer than `snapshotTimestamp` onto `conversation`.
  *
  * Returns a result object so the caller can emit an appropriate notice.
- * Never throws — all errors are swallowed to preserve the "best-effort"
+ * Never throws, all errors are swallowed to preserve the "best-effort"
  * recovery contract.
  */
 export function replayJournalIntoConversation(
@@ -90,7 +90,7 @@ export function replayJournalIntoConversation(
     const journal = openTranscriptJournal(journalPath, sessionId);
 
     if (records.length === 0) {
-      // Nothing to replay — rotate the (now-stale) journal silently.
+      // Nothing to replay, rotate the (now-stale) journal silently.
       journal.rotate();
       return { replayed: 0, hadCorruptTail };
     }
@@ -112,7 +112,7 @@ export function replayJournalIntoConversation(
     // Preserve the session identity (title/titleSource/branches/currentBranch)
     // that the resume seam already hydrated onto the live conversation. Journal
     // records carry only messages, so a bare fromJSON would blank the title and
-    // reset titleSource to the system default — and the next TURN_COMPLETED
+    // reset titleSource to the system default, and the next TURN_COMPLETED
     // snapshot would then persist the empty title, making the loss permanent.
     const preserved = conversation.toJSON();
     conversation.fromJSON({
@@ -128,15 +128,15 @@ export function replayJournalIntoConversation(
     try {
       persistSnapshot(replayedMessages);
     } catch {
-      // Best-effort — never hard-fail recovery due to snapshot write failure.
+      // Best-effort, never hard-fail recovery due to snapshot write failure.
     }
 
-    // Rotate the journal — it is no longer needed as a gap-filler.
+    // Rotate the journal, it is no longer needed as a gap-filler.
     journal.rotate();
 
     return { replayed: records.length, hadCorruptTail };
   } catch {
-    // Absolute last-resort guard — recovery must never crash a resume.
+    // Absolute last-resort guard, recovery must never crash a resume.
     return { replayed: 0, hadCorruptTail: false };
   }
 }

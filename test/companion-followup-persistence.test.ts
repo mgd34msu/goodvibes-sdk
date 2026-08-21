@@ -367,7 +367,7 @@ describe('companion-followup-persistence: kind=message persists before emitting'
     // kind='message' now routes through submitMessage() instead of returning
     // a standalone {messageId, routedTo} response. Verify that the messageId
     // used in persistence (appendCompanionMessage) and in the followup event
-    // are identical — the invariant that matters for the companion app.
+    // are identical, the invariant that matters for the companion app.
     const ctx = makeContext({ sessions, appendCalls, followupEvents, persistedMessages });
     const handlers = createDaemonRuntimeSessionRouteHandlers(ctx);
     const req = makeRequest('POST', `http://localhost/api/sessions/${sessionId}/messages`, {

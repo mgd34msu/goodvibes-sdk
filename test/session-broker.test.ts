@@ -33,7 +33,7 @@ function makeBroker(): SharedSessionBroker {
 }
 
 // ---------------------------------------------------------------------------
-// B6 — Reserved-ID rejection tests
+// B6, Reserved-ID rejection tests
 // ---------------------------------------------------------------------------
 
 describe('SharedSessionBroker — reserved session ID validation', () => {

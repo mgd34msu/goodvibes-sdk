@@ -2,7 +2,7 @@
  * γ2: ProcessManager.spawn timeout + SIGKILL deadline + error surfacing
  *
  * Tests:
- * a) Hanging process: spawn with timeout_ms:100 — verifies killDeadline is set
+ * a) Hanging process: spawn with timeout_ms:100, verifies killDeadline is set
  * b) Normal short-lived process: exits cleanly, no killDeadline
  * c) spawn returns a process_id and pid
  */

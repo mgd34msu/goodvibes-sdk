@@ -58,16 +58,16 @@ that has not yet been declared healthy.
 
 Three things can come back, and they are three different facts:
 
-- **A `NO`/`BAD` that names nothing about itself** — the server refused to hand
+- **A `NO`/`BAD` that names nothing about itself**, the server refused to hand
   over content. A capability failure. A refusal that the server DID
   characterise (`[LIMIT]`, an auth code, a mailbox code) is re-thrown for the
   existing classifier, because calling Gmail's connection limit "this account
   cannot read bodies" would put a false and very specific explanation in front
   of the owner and stop the watcher over a condition that clears in seconds.
 - **An empty section for a message whose own BODYSTRUCTURE declared a text part
-  with octets in it** — the same capability failure, and the one a
+  with octets in it**, the same capability failure, and the one a
   refusal-only check misses entirely. This is the quiet-mailbox impostor.
-- **Bytes** — demonstrated.
+- **Bytes**, demonstrated.
 
 The declared-versus-returned comparison is the whole idea. Without the server's
 own declaration there is no way to tell "this message is empty" from "this
@@ -76,7 +76,7 @@ BODYSTRUCTURE alongside the body rather than the body alone.
 
 ### A runtime invariant on the first real body
 
-The probe cannot run on an empty mailbox — there is nothing to probe. So the
+The probe cannot run on an empty mailbox, there is nothing to probe. So the
 same comparison runs again on the first body actually fetched. Same function,
 `assessFetchedBody`, evaluated at both call sites, so the two places cannot
 disagree about what an empty body means.
@@ -92,7 +92,7 @@ Two reasons were added to `InboundCapabilityReason`.
 `fetch-refused`. That reason means the server said no to handing over message
 data, and its remedy points at IMAP access and folder restrictions. This one
 means the server said yes and handed over nothing, and its remedy points at
-what this account is permitted to READ — the mailbox's access rights, or a
+what this account is permitted to READ, the mailbox's access rights, or a
 provider app-password/restricted-access setting. Same symptom, different fix,
 so a shared reason would send the owner to the wrong screen.
 
@@ -106,8 +106,8 @@ conclusion:
 - `healthy` would claim a capability nobody has demonstrated. That is the same
   shape as the Gmail metadata-scope defect, which also looked like success.
 - `degraded` runs, tells the owner it has not yet been able to prove it can
-  read message content, and lets the first real message settle it — upgrade or
-  condemnation — through the runtime invariant.
+  read message content, and lets the first real message settle it, upgrade or
+  condemnation, through the runtime invariant.
 
 Its `fix` says there is nothing to fix, which is honest: the owner cannot make
 an empty mailbox prove anything.
@@ -140,7 +140,7 @@ and it is why "empty" alone is never the test.
 
 **Call the empty-mailbox case `healthy` and rely on the runtime invariant
 alone.** The invariant would still catch it on the first message, so the
-capability would be correct — but the reported state would have asserted
+capability would be correct, but the reported state would have asserted
 something unproven in the meantime, and health that overstates is health nobody
 can act on. Reporting `degraded` costs an amber light on an empty mailbox and
 buys a status line that is true at every moment.
@@ -153,7 +153,7 @@ the owner gets the wrong one half the time.
 returns the rest, and the interactive mail reader depends on that. Turning it
 into a throw for everyone is a breaking change to a shared method, so it is
 `enforceBodyReadable`, off by default, and the inbound connection port turns it
-on — where an unreadable body is not a cosmetic gap but a verification link
+on, where an unreadable body is not a cosmetic gap but a verification link
 that reads as blank.
 
 ## The watcher gap, and its closure
@@ -177,7 +177,7 @@ this.tracker.record(verdictForOpenConnection({
 
 Worth recording how little the omission cost to write and how much it hid: with
 that one property dropped, every unit test of the probe still passed, the
-capability compiled, and an empty mailbox reported `idle-push` / `healthy` — a
+capability compiled, and an empty mailbox reported `idle-push` / `healthy`, a
 green light for a watcher that had never once demonstrated it could read a
 message. The check was present, green, and inert. It is now pinned by a test
 that asserts the WATCHER's verdict rather than the pure function's, because the
@@ -193,14 +193,14 @@ There were briefly TWO probes here, and an earlier revision of this document
 argued they had to stay two. They are one now. Recording why, so nobody
 re-splits them on the strength of the argument that used to be here.
 
-The two were `probeBodyAccess()` — a single `UID FETCH <uid> BODY.PEEK[TEXT]`
-that read any FETCH response at all as success — and `probeBodyReadable()`, a
+The two were `probeBodyAccess()`, a single `UID FETCH <uid> BODY.PEEK[TEXT]`
+that read any FETCH response at all as success, and `probeBodyReadable()`, a
 sequence-addressed `FETCH n (UID BODYSTRUCTURE)` / `FETCH n BODY.PEEK[]` pair
 that compared returned bytes against declared octets. The observation that kept
 them apart was correct and still is: **neither detection case can be dropped.**
 
 - The **UID-addressed** form is the addressing the real drain uses, so it is
-  what catches a server that refuses UID-addressed fetches — at connect, rather
+  what catches a server that refuses UID-addressed fetches, at connect, rather
   than on the first message that matters.
 - The **declared-versus-returned comparison** is the only thing that catches a
   server which ACCEPTS the fetch and hands over nothing. A refusal-only check
@@ -211,9 +211,9 @@ What was wrong was the conclusion that two detections need two probes. They are
 two properties of one exchange, and one probe can carry both by choosing its
 command forms deliberately:
 
-1. `FETCH <exists> (UID BODYSTRUCTURE)` — sequence-addressed, because it is what
+1. `FETCH <exists> (UID BODYSTRUCTURE)`, sequence-addressed, because it is what
    supplies the declaration the comparison needs, and it yields the UID.
-2. `UID FETCH <uid> BODY.PEEK[]<0.N>` — **UID-addressed**, because that is the
+2. `UID FETCH <uid> BODY.PEEK[]<0.N>`, **UID-addressed**, because that is the
    drain's own form.
 
 The second used to be a sequence fetch. Making it UID-addressed is the whole of
@@ -230,7 +230,7 @@ in silence.
 **One vocabulary.** `ImapBodyProbeVerdict` (`probed`/`ok`) and
 `ImapBodyReadability` (`readable`/`unproven`/`unfetchable`) described the same
 fact in two shapes, and a connection carried both. There is now one
-`ImapBodyProbe` with three outcomes — `readable`, `unproven`, `unreadable` — and
+`ImapBodyProbe` with three outcomes, `readable`, `unproven`, `unreadable`, and
 `unreadable` carries an `evidence` union naming which of the two ways it was
 learned (`withheld`, or `refused` with the server's own wording). One reason
 code reaches the owner, `bodies-unfetchable`, because both evidences mean the
@@ -239,10 +239,9 @@ same thing to him and carry the same remedy.
 One consequence worth naming: a refusal of the probe that no classifier can
 place now reports `bodies-unfetchable` rather than `fetch-refused`. Both are
 `insufficient` and both are terminal, so nothing changes about whether the
-watcher runs — but the remedy the owner reads now points at what the account may
+watcher runs, but the remedy the owner reads now points at what the account may
 READ rather than at folder and IMAP-access restrictions, which is the more
 useful of the two for the case this document exists for. `fetch-refused` remains
 the verdict for a fetch that fails during ordinary draining, which
 `handleDrainFailure` still classifies through `classifyReadFailure` unchanged.
-A refusal the classifier CAN place — `[LIMIT]`, an auth code, a mailbox code —
-is still re-thrown to `classifyOpenFailure` and never becomes a body verdict.
+A refusal the classifier CAN place, `[LIMIT]`, an auth code, a mailbox code, is still re-thrown to `classifyOpenFailure` and never becomes a body verdict.

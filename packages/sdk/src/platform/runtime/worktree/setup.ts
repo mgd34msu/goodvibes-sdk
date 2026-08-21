@@ -1,7 +1,7 @@
 /**
  * setup.ts
  *
- * Worktree cold-start setup — the per-project provisioning that makes an
+ * Worktree cold-start setup, the per-project provisioning that makes an
  * isolated/worktree agent usable instead of broken-by-default. A fresh git
  * worktree is checked out from a committed branch, so it has NONE of the
  * working tree's installed dependencies, generated code, or untracked local
@@ -10,7 +10,7 @@
  * working tree, capturing honest logs and an honest terminal state.
  *
  * Honesty contract: a command that exits non-zero stops the run and yields
- * state `failed` with the failing step's captured output — never a silent
+ * state `failed` with the failing step's captured output, never a silent
  * best-effort. No commands AND no carry-over globs configured yields `skipped`
  * (there was nothing to do), which is distinct from `succeeded` (work ran and
  * passed).
@@ -32,7 +32,7 @@ export interface WorktreeSetupConfig {
 /** The honest terminal state of a setup run. */
 export type WorktreeSetupState = 'skipped' | 'succeeded' | 'failed';
 
-/** One step of a setup run — a single command, or the aggregate carry-over pass. */
+/** One step of a setup run, a single command, or the aggregate carry-over pass. */
 export interface WorktreeSetupStep {
   readonly kind: 'command' | 'carry-over';
   /** The command line, or a human label for the carry-over pass. */
@@ -44,7 +44,7 @@ export interface WorktreeSetupStep {
   readonly output: string;
 }
 
-/** The full result of a setup run — persisted onto the worktree record and returned by the rerun verb. */
+/** The full result of a setup run, persisted onto the worktree record and returned by the rerun verb. */
 export interface WorktreeSetupResult {
   readonly state: WorktreeSetupState;
   readonly startedAt: number;
@@ -63,7 +63,7 @@ export interface WorktreeCommandOutcome {
 /** Runs a single shell command line in `cwd`, returning its exit code and captured combined output. */
 export type WorktreeCommandRunner = (commandLine: string, cwd: string) => Promise<WorktreeCommandOutcome>;
 
-/** Lists UNTRACKED files (relative paths) in the source working tree — the carry-over candidate set. Injectable for tests. */
+/** Lists UNTRACKED files (relative paths) in the source working tree, the carry-over candidate set. Injectable for tests. */
 export type UntrackedFileLister = (sourceRoot: string) => Promise<readonly string[]>;
 
 export interface RunWorktreeSetupOptions {
@@ -229,7 +229,7 @@ const defaultDeriveIo: DeriveSetupIo = {
  * lockfiles) so a worktree install can never rewrite the lockfile.
  */
 const LOCKFILE_ECOSYSTEMS: ReadonlyArray<ReadonlyArray<{ readonly file: string; readonly command: string }>> = [
-  // JavaScript/TypeScript — one package manager per repo.
+  // JavaScript/TypeScript, one package manager per repo.
   [
     { file: 'bun.lock', command: 'bun install' },
     { file: 'bun.lockb', command: 'bun install' },
@@ -237,7 +237,7 @@ const LOCKFILE_ECOSYSTEMS: ReadonlyArray<ReadonlyArray<{ readonly file: string; 
     { file: 'pnpm-lock.yaml', command: 'pnpm install --frozen-lockfile' },
     { file: 'yarn.lock', command: 'yarn install --frozen-lockfile' },
   ],
-  // Python — uv's lock wins over a bare requirements file.
+  // Python, uv's lock wins over a bare requirements file.
   [
     { file: 'uv.lock', command: 'uv sync' },
     { file: 'requirements.txt', command: 'pip install -r requirements.txt' },
@@ -251,7 +251,7 @@ const LOCKFILE_ECOSYSTEMS: ReadonlyArray<ReadonlyArray<{ readonly file: string; 
  * Derive worktree setup from the repo itself: each ecosystem's lockfile yields
  * its install command, and the presence of `.env` / `.env.*` files at the repo
  * root yields the carry-over globs for them. A repo with no lockfile and no
- * env files derives NOTHING — setup stays an honest `skipped`, exactly as if
+ * env files derives NOTHING, setup stays an honest `skipped`, exactly as if
  * no config existed.
  */
 export function deriveWorktreeSetup(sourceRoot: string, io: DeriveSetupIo = defaultDeriveIo): WorktreeSetupConfig {
@@ -270,7 +270,7 @@ export function deriveWorktreeSetup(sourceRoot: string, io: DeriveSetupIo = defa
 
 /**
  * The EFFECTIVE worktree setup: derived from the repo by default, with user
- * config OVERRIDING the derivation per field — a configured `commands` array
+ * config OVERRIDING the derivation per field, a configured `commands` array
  * replaces the derived install commands; a configured `carryOverGlobs` array
  * replaces the derived env globs. User config never merely enables derivation;
  * its presence supersedes it. An isolated agent therefore starts with deps and

@@ -14,7 +14,7 @@ import type { BrowserDriverResolution, BrowserProvisionIo, CommandOutcome } from
  * Everything the provisioning POLICY does is injected through
  * `BrowserProvisionIo`, so the policy is testable with no machine. This file is
  * the factory that fills that record with real process, filesystem and network
- * work — the one place in this module allowed to touch any of them.
+ * work, the one place in this module allowed to touch any of them.
  *
  * The Playwright driver is resolved at RUNTIME through a specifier a bundler
  * cannot see. A `bun build --compile` step inlines every statically-named
@@ -42,7 +42,7 @@ interface DriverModule {
 /** Which surface's storage a driver search or install belongs to. */
 export interface BrowserDriverLocation {
   /**
-   * The product's storage root segment under `~/.goodvibes/` — the formalized
+   * The product's storage root segment under `~/.goodvibes/`, the formalized
    * surface-scoped mechanism, so no product's driver lands in another's
    * directory and this module never has to know any product's name.
    */
@@ -73,7 +73,7 @@ export function driverSearchDirectories(location?: BrowserDriverLocation): reado
     join(executableDirectory, 'node_modules', DRIVER_PACKAGE),
     // Only this last candidate needs to know whose storage it is looking in.
     // The three above are properties of the executable, so a caller that has
-    // no surface still gets the driver staged beside the binary — losing that
+    // no surface still gets the driver staged beside the binary, losing that
     // would make browser control silently absent in exactly the shipped
     // artifact this search exists for.
     ...(home && surfaceRoot ? [join(managedDriverRoot(home, surfaceRoot), 'node_modules', DRIVER_PACKAGE)] : []),
@@ -91,8 +91,8 @@ export function managedDriverRoot(homeDirectory: string, surfaceRoot: string): s
  * install step executes.
  *
  * Requiring cli.js here is load-bearing. The search stops at the first match,
- * so a directory that satisfied a weaker test — a partial extraction, or an
- * older release's incomplete driver — used to shadow a perfectly good driver
+ * so a directory that satisfied a weaker test, a partial extraction, or an
+ * older release's incomplete driver, used to shadow a perfectly good driver
  * further down the list and could not be recovered from: resolveDriver would
  * reject it for the missing cli.js, provisioning would install a working copy
  * into the managed directory, and the search would hand back the broken one
@@ -116,7 +116,7 @@ export function findDriverDirectory(
       const manifestPath = requireFromEngine.resolve(`${DRIVER_PACKAGE}/package.json`);
       return manifestPath.slice(0, manifestPath.length - '/package.json'.length);
     } catch {
-      // Not resolvable as a module — expected inside a compiled binary.
+      // Not resolvable as a module, expected inside a compiled binary.
     }
   }
   const candidates = searchDirectories ?? driverSearchDirectories(location);
@@ -243,7 +243,7 @@ function directoryWritable(path: string): boolean {
  *
  * The timeout signals THIS child and nothing else: no process-group signal, no
  * name matching, no sweep of other processes. A provisioning timeout can never
- * reach a browser — the failure mode that killed a live logged-in browser
+ * reach a browser, the failure mode that killed a live logged-in browser
  * session before this capability existed.
  */
 export function runCommand(
@@ -314,7 +314,7 @@ const DRIVER_DOWNLOAD_TIMEOUT_MS = 180_000;
  * place, with no package manager involved.
  *
  * This is the route that makes provisioning work on a machine that has only the
- * downloaded binary — no bun, no npm, no node_modules anywhere. The tarball is
+ * downloaded binary, no bun, no npm, no node_modules anywhere. The tarball is
  * extracted into a scratch directory beside the target and moved into place
  * only after the files that matter are confirmed present, so a download that
  * dies halfway can never leave a directory that resolves as a driver but fails
@@ -414,7 +414,7 @@ async function installDriverPackage(targetRoot: string): Promise<CommandOutcome>
  * Makes the chosen browser cache the one the driver actually uses.
  *
  * `defaultBrowsersPath` is derived from the home directory the composition root
- * chose, but the driver resolves its own cache independently — and the two do
+ * chose, but the driver resolves its own cache independently, and the two do
  * NOT always agree: with a surface-specific home, or any home that is not the
  * one the driver computes, provisioning downloaded into one directory while
  * `chromium.executablePath()` pointed at another. That reads as "the install

@@ -1,7 +1,7 @@
 /**
  * routes/worktree-setup.ts
  *
- * Handler for `worktrees.setup.run` — the rerun affordance for worktree
+ * Handler for `worktrees.setup.run`, the rerun affordance for worktree
  * cold-start setup. Re-runs the configured setup (commands + untracked-file
  * carry-over) on a live worktree by path, records the honest outcome onto the
  * worktree registry record (so a failed setup stays a visible worktree state),
@@ -15,7 +15,7 @@ import { runWorktreeSetup, type WorktreeSetupConfig } from '../../runtime/worktr
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
-/** The deps the worktree lifecycle verbs need — the registry to act on, the source root to carry from, and the current setup config. */
+/** The deps the worktree lifecycle verbs need, the registry to act on, the source root to carry from, and the current setup config. */
 export interface WorktreeSetupGatewayDeps {
   readonly registry: Pick<WorktreeRegistry, 'recordSetup' | 'discard'>;
   readonly sourceRoot: string;
@@ -41,7 +41,7 @@ export function createWorktreeSetupRunHandler(deps: WorktreeSetupGatewayDeps): G
 }
 
 /**
- * `worktrees.discard` — discard actually discards: the registry's
+ * `worktrees.discard`, discard actually discards: the registry's
  * eviction-preserving removal (dirty state committed onto the KEPT branch,
  * directory removed, record dropped) with the honest receipt as the output.
  */

@@ -1,5 +1,5 @@
 /**
- * schema-types-occasions.ts — the `occasions.*` config domain's types.
+ * schema-types-occasions.ts, the `occasions.*` config domain's types.
  *
  * Split the same way `schema-types-owner-profile.ts` is: the shape, the key
  * union and the key→value map live beside each other here, and `schema-types.ts`
@@ -59,7 +59,7 @@ export type OccasionsConfigKey =
  * Every key is written out, terminating in `never`, rather than collapsing the
  * booleans into a default arm. The completeness gate reads these clauses out of
  * the source to prove no schema key is missing a typed accessor, and a default
- * arm would make most of them invisible to it — a gate that passes because it
+ * arm would make most of them invisible to it, a gate that passes because it
  * stopped looking is worse than no gate.
  */
 export type OccasionsConfigValue<K extends OccasionsConfigKey> =

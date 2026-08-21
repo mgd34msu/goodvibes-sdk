@@ -3,7 +3,7 @@
  *
  * **`recheckNow()` had no external caller.** It exists on
  * `InboundMailboxWatcher`, `ImapMailSource` delegates to it verbatim, and its
- * own comment says "Called when configuration changed" — while nothing in the
+ * own comment says "Called when configuration changed", while nothing in the
  * tree subscribed to any `surfaces.email.*` key at all. Only Telegram had a
  * config watcher. So an owner who corrected a wrong IMAP host waited out
  * `capabilityRecheckMinutes` (an hour by default) to learn whether the
@@ -15,12 +15,12 @@
  * and `gmailPollSecondsIdle` each had a schema row, a validated range, a
  * description the owner reads in the settings UI, and a doc comment on
  * `GmailMailSourceDeps` naming them as the origin of `pollExpectingMs` /
- * `pollIdleMs` — with no code mapping one onto the other. The builder was left
+ * `pollIdleMs`, with no code mapping one onto the other. The builder was left
  * to invent its own numbers, and the only composition that can see the config
  * is not the one that knows how to talk to Google, so they never crossed.
  *
  * WHAT MAKES THESE ABLE TO FAIL. The recheck tests assert the CALL, counted, on
- * a supervisor double that records — not that a subscription was registered,
+ * a supervisor double that records, not that a subscription was registered,
  * which a `subscribe()` that dropped its callback would also satisfy. The
  * interval tests read the values back out of what the builder was actually
  * handed and use numbers that are not the schema defaults, so a factory that
@@ -148,7 +148,7 @@ describe('an inbound-mail setting edit reaches the running source', () => {
     await runtimeWith(config, supervisor).startInboundMail();
 
     // A re-probe cannot change what the running source IS, so wiring these here
-    // would look like they took effect while they did not — the same defect one
+    // would look like they took effect while they did not, the same defect one
     // level up. They need a restart, which is a separate decision.
     for (const key of [
       'surfaces.email.inbound.accounts',
@@ -284,7 +284,7 @@ describe('the Gmail poll intervals come from the owner settings', () => {
     const values = { ...CONFIG, ...overrides };
     // An array, not a nullable let: the assignment happens inside the gmail
     // closure, which flow analysis cannot see, so a nullable let stays narrowed
-    // to `null` and `captured!` resolves to `never` — which is why every field
+    // to `null` and `captured!` resolves to `never`, which is why every field
     // read below reported "does not exist on type never". Typed as the real
     // builder input rather than Record<string, unknown>, so these assertions
     // are checked against the shape the factory actually passes.
@@ -369,7 +369,7 @@ describe('the Gmail poll intervals come from the owner settings', () => {
     values['surfaces.email.inbound.gmailPollSecondsIdle'] = 90;
     await create();
 
-    // Read per create, not captured once at factory construction — the same
+    // Read per create, not captured once at factory construction, the same
     // freshness rule `liveConnectionPort` applies to the IMAP host.
     expect(seen).toEqual([43_000, 90_000]);
   });

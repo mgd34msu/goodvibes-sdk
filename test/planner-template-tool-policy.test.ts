@@ -1,6 +1,6 @@
 /**
  * The 'planner' template is READ-ONLY: it resolves to read/find/analyze/inspect
- * only — no write/edit/exec/delegate/agent — and a write call is refused by the
+ * only, no write/edit/exec/delegate/agent, and a write call is refused by the
  * tool policy the executor enforces. Proven at two layers: the resolved
  * AgentRecord.tools from a real AgentManager.spawn, and a ToolRegistry scoped to
  * the planner tool set refusing 'write'.

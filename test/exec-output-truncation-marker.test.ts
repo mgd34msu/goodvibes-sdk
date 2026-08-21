@@ -4,7 +4,7 @@
  * `minimal` verbosity returned `stdout.split('\n')[0]` with nothing to say the
  * rest existed. A 42-line `pactl list short sources` therefore arrived as a
  * single line that read exactly like a complete device list, and the reader
- * concluded — and repeated to the user — that a device that was plugged in and
+ * concluded, and repeated to the user, that a device that was plugged in and
  * set as the default did not exist. One line of output and one line of truth
  * are indistinguishable unless the shaping says which it is.
  *
@@ -57,7 +57,7 @@ describe('exec — minimal verbosity marks what it dropped', () => {
     // The line that was kept is still there …
     expect(out.stdout).toContain('1');
     // … and the 41 that were not are stated, with the count, in the output
-    // itself — not only in a sibling field a reader can skip.
+    // itself, not only in a sibling field a reader can skip.
     expect(out.stdout).toContain('+41 more stdout lines');
     expect(out.stdout).toContain('raise verbosity');
     expect(out.stdout_dropped_lines).toBe(41);
@@ -104,9 +104,9 @@ describe('shapeStream — the counted marker is truthful', () => {
     const { text, droppedLines } = shapeStream('a\nb\n', 'stdout', 1, false);
 
     expect(droppedLines).toBe(1);
-    // Singular, because exactly one real line is hidden — the trailing newline
+    // Singular, because exactly one real line is hidden, the trailing newline
     // is not a line, and a marker that miscounts is the defect it exists to fix.
-    expect(text).toContain('+1 more stdout line —');
+    expect(text).toContain('+1 more stdout line,');
     expect(text).not.toContain('lines');
   });
 

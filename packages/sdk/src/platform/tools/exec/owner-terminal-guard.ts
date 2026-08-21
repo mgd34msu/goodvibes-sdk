@@ -1,5 +1,5 @@
 /**
- * owner-terminal-guard.ts — the owner's terminal is not a surface this platform
+ * owner-terminal-guard.ts, the owner's terminal is not a surface this platform
  * types into.
  *
  * ── The rule ───────────────────────────────────────────────────────────────
@@ -7,8 +7,8 @@
  * Recorded owner doctrine: never touch tmux sessions the platform did not
  * create. This module is that rule made enforceable at the exec layer, for
  * turns that run without anyone watching: a command that INTERACTS with an
- * existing tmux session, window or pane — send-keys, kill, resize, attach,
- * respawn, rename — is refused, and the refusal names the rule.
+ * existing tmux session, window or pane, send-keys, kill, resize, attach,
+ * respawn, rename, is refused, and the refusal names the rule.
  *
  * Creating and driving the platform's OWN tmux sessions stays allowed, because
  * that is not the owner's terminal: a session this platform made is a session
@@ -29,7 +29,7 @@
  *
  * It is not the frozen catastrophic block, which lives in the classifier, is
  * unconditional, and is untouched by this file. It is not a command-class
- * policy either — class risk stays with the permission settings. It is one
+ * policy either, class risk stays with the permission settings. It is one
  * named rule about one named tool, applied where a composition asks for it, and
  * it can only ever refuse.
  *
@@ -114,7 +114,7 @@ const SESSION_CREATING_SUBCOMMANDS = new Set(['new-session', 'new']);
  * Verbs where `-a` means "everything EXCEPT the target".
  *
  * `tmux kill-session -a -t goodvibes-build` reads as a command about the
- * platform's own session and kills every OTHER session on the server — the
+ * platform's own session and kills every OTHER session on the server, the
  * owner's included. Inverted targeting cannot be checked by looking at the
  * target, so these are refused whenever `-a` is present.
  */
@@ -140,7 +140,7 @@ interface TmuxInvocation {
   readonly targetFlag: readonly string[];
   /**
    * What `-s` named. A real source target in the swap/move/join verbs, but the
-   * NEW session's NAME in `new-session` — which is why the two are kept apart
+   * NEW session's NAME in `new-session`, which is why the two are kept apart
    * rather than pooled: reading `-s` as a target there would refuse an ordinary
    * `tmux new-session -d -s build`, which creates nothing of the owner's.
    */
@@ -211,7 +211,7 @@ function isOwnedTarget(target: string, ownedSessionNames: readonly string[]): bo
 }
 
 const RULE_LINE =
-  'Platform rule: the owner\'s terminal is untouchable — this platform never drives a tmux '
+  'Platform rule: the owner\'s terminal is untouchable, this platform never drives a tmux '
   + 'session, window or pane it did not create.';
 
 function refuse(detail: string): OwnerTerminalDecision {
@@ -256,7 +256,7 @@ function judgeTmuxSegment(
     // land on an existing one: `-t` groups the new session with an existing
     // one, and `-A` attaches to the `-s` name when that name is already taken.
     // A plain `-s` is just what the new session will be called, and is not
-    // checked — refusing `tmux new-session -d -s build` would be refusing a
+    // checked, refusing `tmux new-session -d -s build` would be refusing a
     // command that touches nothing.
     const reachable = [...foreign(targetFlag), ...(attachIfExists ? foreign(sourceFlag) : [])];
     if (reachable.length === 0) return null;
@@ -270,7 +270,7 @@ function judgeTmuxSegment(
   if (named.length === 0) {
     return refuse(
       `\`tmux ${subcommand}\` names no target, so it acts on the tmux server's current `
-      + 'session — the owner\'s.',
+      + 'session, the owner\'s.',
     );
   }
   const notOurs = foreign(named);

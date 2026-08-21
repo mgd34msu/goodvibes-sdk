@@ -1,12 +1,12 @@
 /**
- * commands.ts — the standard Telegram bot commands every client offers.
+ * commands.ts, the standard Telegram bot commands every client offers.
  *
  * Telegram's own UI puts `/start` in front of every new user: tapping "Start"
  * on a bot sends it before any conversation exists. `/help` and `/stop` are the
  * other two BotFather-documented commands clients surface in the command menu.
  *
  * These are ONBOARDING, not work. Routing them through the normal task path
- * spawns an agent whose task is the literal string "/start" — which is what the
+ * spawns an agent whose task is the literal string "/start", which is what the
  * adapter used to do, and it is both useless and surprising. They are answered
  * here instead, after the route binding is established so the reply lands in a
  * chat the daemon can talk back to.
@@ -20,7 +20,7 @@ export type TelegramBotCommand = 'start' | 'help' | 'stop';
 
 export interface ParsedTelegramBotCommand {
   readonly command: TelegramBotCommand;
-  /** Anything after the command — e.g. a `/start <payload>` deep-link value. */
+  /** Anything after the command, e.g. a `/start <payload>` deep-link value. */
   readonly args: string;
 }
 
@@ -53,7 +53,7 @@ export function parseTelegramBotCommand(
 
 /**
  * The reply text for a standard command. Written to answer the question a new
- * user actually has — "I pressed Start, now what?" — rather than confirming
+ * user actually has, "I pressed Start, now what?", rather than confirming
  * receipt and leaving them staring at an idle chat.
  */
 export function telegramBotCommandReply(
@@ -62,21 +62,21 @@ export function telegramBotCommandReply(
 ): string {
   const handle = options.botUsername ? `@${options.botUsername.replace(/^@/, '')}` : '@yourbot';
   const addressing = options.isPrivateChat
-    ? 'In this direct chat, just talk to me. Messages are a conversation, not orders — if something looks like real work, I ask before starting it.'
+    ? 'In this direct chat, just talk to me. Messages are a conversation, not orders, if something looks like real work, I ask before starting it.'
     : `In a group, address me directly: "/goodvibes <message>" or "${handle} <message>". I ignore everything else so I do not interrupt the conversation. If something looks like real work, I ask before starting it.`;
 
   if (command === 'stop') {
     return [
       'Stopping.',
       '',
-      'To stop a task that is already running, send "cancel <id>" — the id comes back when the task starts.',
+      'To stop a task that is already running, send "cancel <id>", the id comes back when the task starts.',
       'To stop me reaching this chat entirely, disable the Telegram surface in your GoodVibes settings (surfaces.telegram.enabled=false); I cannot remove my own access from here.',
     ].join('\n');
   }
 
   const header = command === 'start'
     ? 'GoodVibes is connected. Talk to me here, and I can run work on your machine when you ask me to.'
-    : 'GoodVibes — how to talk to me:';
+    : 'GoodVibes, how to talk to me:';
 
   return [
     header,
@@ -86,9 +86,9 @@ export function telegramBotCommandReply(
     'When I propose work, reply "yes" (or "go ahead") to start it, or say no and I drop it.',
     '',
     'Once work is running:',
-    '  status <id>  — where it has got to',
-    '  cancel <id>  — stop it',
-    '  retry <id>   — run it again after a failure',
+    '  status <id>, where it has got to',
+    '  cancel <id>, stop it',
+    '  retry <id>, run it again after a failure',
     '',
     'Send /help any time to see this again.',
   ].join('\n');

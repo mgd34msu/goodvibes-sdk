@@ -5,12 +5,12 @@
  * over the current provider/model (the same getCurrentModel + provider.chat
  * primitive the knowledge semantic LLM uses), asking for a compact JSON decision
  * {contact, message, reason}. It is a single decide-and-maybe-notify call, not a
- * multi-turn agent — which is what lets the whole check-in loop close
+ * multi-turn agent, which is what lets the whole check-in loop close
  * synchronously and stay testable with a fake judge.
  *
  * HONESTY: if the model returns nothing parseable, the judge decides NOT to
  * contact (contact:false) with an explicit reason rather than inventing a
- * message — a check-in must never fabricate a reason to interrupt the user.
+ * message, a check-in must never fabricate a reason to interrupt the user.
  */
 import type { ProviderRegistry } from '../providers/registry.js';
 import { logger } from '../utils/logger.js';

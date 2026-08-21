@@ -2,7 +2,7 @@
  * Cost-attribution actuals from the emit sites: tool-internal (ToolLLM) and
  * helper-model LLM calls emit LLM_RESPONSE_RECEIVED with their real token
  * usage, the ambient cost-origin scope stamps the tool/hook/MCP cause, and
- * the turn-domain ingest fills the per-dimension buckets with actuals only —
+ * the turn-domain ingest fills the per-dimension buckets with actuals only,
  * no estimates, no allocation heuristics. The per-dimension rows sum exactly
  * to the session total.
  */

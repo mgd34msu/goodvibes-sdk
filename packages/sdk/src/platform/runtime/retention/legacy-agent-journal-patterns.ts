@@ -1,5 +1,5 @@
 /**
- * legacy-agent-journal-patterns.ts — how a pre-repoint agent journal is
+ * legacy-agent-journal-patterns.ts, how a pre-repoint agent journal is
  * recognised on disk, shared by append-only-registry.ts's session-journals
  * sweep and session-migration.ts's one-time move.
  *
@@ -8,14 +8,14 @@
  * the scoped sessions/ directory, alongside user conversation files. Both the
  * retention sweep (which must never delete a user conversation) and the
  * migration (which must never MOVE a user conversation into sessions/agents/)
- * need the identical, precise classification — defined once here so they can
+ * need the identical, precise classification, defined once here so they can
  * never drift apart.
  *
  * Recognition is TWO tests, both of which must pass:
  *
  *  1. Filename shape:
- *     - `<sessionId>_workmap.jsonl` — WrfcWorkmap's legacy path.
- *     - `agent-<8 lowercase hex chars>.jsonl` — AgentSession's legacy path,
+ *     - `<sessionId>_workmap.jsonl`, WrfcWorkmap's legacy path.
+ *     - `agent-<8 lowercase hex chars>.jsonl`, AgentSession's legacy path,
  *       matching the id shape `agent-${randomUUID().slice(0, 8)}` minted in
  *       tools/agent/manager.ts.
  *
@@ -28,18 +28,18 @@
  * conversation as "release_workmap" or "agent-deadbeef" gets a file whose NAME
  * is indistinguishable from a legacy journal's. Their CONTENT is not:
  *
- *   - A saved user conversation opens with SessionManager's meta record —
+ *   - A saved user conversation opens with SessionManager's meta record,
  *     `{"type":"meta","schemaVersion":1,...,"titleSource":...,"saveSource":...}`
- *     — which never carries an `agentId`.
- *   - An agent journal opens with AgentSession's session-start record —
- *     `{"type":"meta","agentId":"agent-xxxxxxxx","model":...,"provider":...}` —
+ *    , which never carries an `agentId`.
+ *   - An agent journal opens with AgentSession's session-start record,
+ *     `{"type":"meta","agentId":"agent-xxxxxxxx","model":...,"provider":...}`,
  *     which never carries schemaVersion / titleSource / saveSource.
- *   - A workmap opens with a WorkmapEntry — `{"ts":...,"wrfcId":...,"event":...}`
- *     — which has no `type` field at all.
+ *   - A workmap opens with a WorkmapEntry, `{"ts":...,"wrfcId":...,"event":...}`
+ *    , which has no `type` field at all.
  *
- * Anything that does not positively match a journal's opening record — a file
+ * Anything that does not positively match a journal's opening record, a file
  * that is empty, truncated, unreadable, non-JSON, or simply shaped like
- * something else — is NOT a legacy agent journal. "When in doubt, leave it"
+ * something else, is NOT a legacy agent journal. "When in doubt, leave it"
  * is the rule, and this module is where that rule is actually enforced rather
  * than merely promised.
  */
@@ -55,7 +55,7 @@ const FIRST_LINE_PEEK_BYTES = 8192;
  * True when `name` (a bare filename, no directory component) has the shape of
  * a legacy flat agent journal or workmap.
  *
- * NAME ONLY — this is a necessary but NOT sufficient condition, because legal
+ * NAME ONLY, this is a necessary but NOT sufficient condition, because legal
  * user session names collide with these shapes (see the module header). Use
  * {@link isLegacyAgentJournalFile} for any decision that deletes or moves a
  * file; this predicate exists for cheap pre-filtering and for tests.
@@ -134,7 +134,7 @@ export function isLegacyAgentJournalFile(filePath: string, name?: string): boole
   if (!isLegacyAgentJournalFilename(fileName)) return false;
 
   const record = parseFirstRecord(filePath);
-  // Unreadable, empty, truncated, or not JSON at all — leave it alone.
+  // Unreadable, empty, truncated, or not JSON at all, leave it alone.
   if (!record) return false;
 
   if (LEGACY_WORKMAP_JOURNAL_PATTERN.test(fileName)) {

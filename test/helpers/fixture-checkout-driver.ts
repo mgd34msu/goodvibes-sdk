@@ -1,5 +1,5 @@
 /**
- * fixture-checkout-driver.ts — playing the part the model plays.
+ * fixture-checkout-driver.ts, playing the part the model plays.
  *
  * ══ What this stands in for ═══════════════════════════════════════════════
  *
@@ -7,7 +7,7 @@
  * what it found as structured values; the daemon parses, decides and types.
  * Here the reading is produced by actually parsing the fixture merchant's real
  * HTML with a real HTML parser, so the strings that reach `extractCheckout` are
- * the strings the merchant really served — including its number formatting,
+ * the strings the merchant really served, including its number formatting,
  * which is the part most likely to break a parser.
  *
  * Nothing in this file is importable by the SDK, and nothing in the SDK knows
@@ -17,8 +17,8 @@
  *
  * ══ Why the page url is not the fixture's url ═════════════════════════════
  *
- * `validateLinkTarget` — the platform's one link check, and the one the fill's
- * merchant binding uses — requires https, refuses a bare IP host, and refuses a
+ * `validateLinkTarget`, the platform's one link check, and the one the fill's
+ * merchant binding uses, requires https, refuses a bare IP host, and refuses a
  * non-standard port. A loopback fixture on `http://127.0.0.1:41293` fails all
  * three, so a driver that reported its own address could only be tested by
  * weakening the check, which would leave the real check untested.
@@ -39,7 +39,7 @@ import type { FixtureMerchant } from './fixture-merchant.js';
  * A browser hands the model DECODED text, so the reading a real run produces
  * never contains `&euro;`. HTMLRewriter yields the raw source text, so without
  * this the fixture would feed the money parser something no production path can
- * produce — and the parser would rightly refuse it, failing the test for a
+ * produce, and the parser would rightly refuse it, failing the test for a
  * reason that does not exist outside the harness.
  */
 function decodeEntities(text: string): string {
@@ -177,7 +177,7 @@ export interface FixtureDriverOptions {
  * `fill` and `fillSecret` accumulate form state exactly as a browser would, and
  * `submitOrder` posts that state to the merchant's real endpoint, which really
  * records it. The containment assertions then read the merchant's record to
- * prove the card reached the merchant — and read everything else to prove it
+ * prove the card reached the merchant, and read everything else to prove it
  * reached nothing else.
  */
 export class FixtureCheckoutDriver implements CheckoutPageDriver {

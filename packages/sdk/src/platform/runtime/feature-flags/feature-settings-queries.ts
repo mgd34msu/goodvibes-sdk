@@ -1,5 +1,5 @@
 /**
- * feature-settings-queries.ts — the questions a surface asks of the
+ * feature-settings-queries.ts, the questions a surface asks of the
  * FEATURE_SETTINGS catalog next door.
  *
  * Every platform capability is configured through a first-class settings key
@@ -78,8 +78,8 @@ export function isFeatureValueEnabled(feature: FeatureSetting, value: unknown): 
   // its settings key says. deriveFeatureState already enforces this for the
   // boolean and enum kinds; stating it once here covers the constant kind too,
   // so no surface can show "on" for something that is doing nothing. The user's
-  // value is untouched — it is kept for the release that wires the capability up
-  // — and `feature.inoperableDetail` is the written reason a surface renders.
+  // value is untouched, it is kept for the release that wires the capability up
+  //, and `feature.inoperableDetail` is the written reason a surface renders.
   if (feature.operable === false) return false;
   if (kind === 'constant') {
     const schema = getConfigSchemaSetting(key);

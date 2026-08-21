@@ -11,39 +11,39 @@
  * `LOGIN` wire format with an `AUTH` token that is not sent.
  *
  * Commands this client actually sends:
- *   - `LOGIN "<user>" "<pass>"` — credentials as RFC 3501 quoted strings. No
+ *   - `LOGIN "<user>" "<pass>"`, credentials as RFC 3501 quoted strings. No
  *     `AUTH` verb: the tag is followed directly by LOGIN.
  *   - `AUTHENTICATE XOAUTH2 <base64>` instead, when `ImapClientOptions.password`
  *     starts with `Bearer `. Acquiring that token is out of scope.
  *   - `CAPABILITY`, lazily and at most once, and only when the server
  *     volunteered no capabilities in its greeting, its login completion or its
- *     EXAMINE response — see `capabilities()`.
+ *     EXAMINE response, see `capabilities()`.
  *   - `EXAMINE <mailbox>` (read-only SELECT; messages are never marked \Seen)
  *   - `UID SEARCH UNSEEN`, `UID SEARCH UNSEEN SINCE <date>`, `UID SEARCH ALL`
  *     and `UID SEARCH SINCE <date>`
  *   - `UID FETCH <set> (UID BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE
- *     MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])` —
+ *     MESSAGE-ID TO DELIVERED-TO X-ORIGINAL-TO AUTHENTICATION-RESULTS)])`,
  *     envelope plus delivery evidence, addressed and reported by UID
- *   - `UID FETCH <uid> BODY.PEEK[TEXT]<0.N>` — bounded plain-text preview
+ *   - `UID FETCH <uid> BODY.PEEK[TEXT]<0.N>`, bounded plain-text preview
  *   - `UID FETCH <uid> BODY.PEEK[HEADER]`, `BODYSTRUCTURE`, and the
  *     text/plain and text/html sections only. Attachments are REPORTED, never
- *     downloaded — see `fetchMessage`.
- *   - `LIST "" "*"` — to find the folder the server flags `\Drafts` (RFC 6154)
+ *     downloaded, see `fetchMessage`.
+ *   - `LIST "" "*"`, to find the folder the server flags `\Drafts` (RFC 6154)
  *     rather than appending to a hardcoded name
- *   - `APPEND <drafts> (\Draft) {n}` — see `appendDraft`
+ *   - `APPEND <drafts> (\Draft) {n}`, see `appendDraft`
  *   - `LOGOUT`
  *
  * Also true of the wire session underneath (`imap-session.ts`):
  *   - `{n}` literal continuations on server responses, counted in BYTES
- *   - a per-operation read deadline on every command, and — through the
- *     connection handed to `imapConnection()` — a cancellable read with no
+ *   - a per-operation read deadline on every command, and, through the
+ *     connection handed to `imapConnection()`, a cancellable read with no
  *     deadline at all, for a caller that must wait in silence
  *
  * Not supported here, deliberately:
  *   - IDLE / NOTIFY push. The wire session does support holding a connection
  *     and dispatching untagged responses, which is what an IDLE loop is built
  *     on; the loop itself is not this file's job.
- *   - STARTTLS upgrade — there is no STARTTLS in this module. Use TLS-direct
+ *   - STARTTLS upgrade, there is no STARTTLS in this module. Use TLS-direct
  *     port 993.
  *   - Attachment CONTENT. Metadata only, from BODYSTRUCTURE.
  *   - COPY, MOVE, EXPUNGE, STORE, and every other flag or deletion command.
@@ -54,7 +54,7 @@
  * Delivered-to vs To:
  * ────────────────────
  * The address a message was actually delivered to is NOT the To: header, and
- * it is NOT IMAP's ENVELOPE To field — RFC 3501 builds ENVELOPE by parsing the
+ * it is NOT IMAP's ENVELOPE To field, RFC 3501 builds ENVELOPE by parsing the
  * message headers, so both are written by the sender and both are forgeable.
  * This client reports, in descending order of trust: the mailbox it read from,
  * then the top-most Delivered-To/X-Original-To stamped by the delivery agent.
@@ -64,8 +64,8 @@
  * ────────────────────────
  * Nothing this client reports is a sequence number. A sequence number is only
  * valid inside the session that produced it and renumbers on every expunge, so
- * one handed back to a caller who reads the message later — which is what
- * `email.inbox.list` then `email.inbox.read` is — names whatever message has
+ * one handed back to a caller who reads the message later, which is what
+ * `email.inbox.list` then `email.inbox.read` is, names whatever message has
  * since taken that position. Every search is `UID SEARCH`, every envelope
  * fetch asks for the `UID` data item and reports what the server returned, and
  * every read is `UID FETCH`. The `uid` field of `ImapEnvelope` is a UID.
@@ -76,7 +76,7 @@
  * of the connection; every other method uses that one. Calling a fetch method
  * before `open()` fails rather than quietly building a second reader with a
  * fresh tag counter and an empty buffer. `open()` reports what the connection
- * turned out to be able to do, and fails with a named reason — see
+ * turned out to be able to do, and fails with a named reason, see
  * `imap-open.ts`.
  *
  * Transport injection
@@ -182,7 +182,7 @@ export const IMAP_DEFAULT_TIMEOUT_MS = 15_000;
  *
  * A bound on the length of a single `UID FETCH` command line, not a page size:
  * asking for more REFUSES, and never returns a shortened list. Paging is the
- * caller's business, and it has to be visible at the call site — the previous
+ * caller's business, and it has to be visible at the call site, the previous
  * shape hid it in a default argument and lost mail through it.
  */
 export const IMAP_MAX_FETCH_UIDS = 500;
@@ -229,14 +229,14 @@ export class ImapClient {
    * marked \Seen.
    *
    * Builds the one session this connection uses. Constructing a session per
-   * command — the shape this replaced — reset the read buffer between commands
+   * command, the shape this replaced, reset the read buffer between commands
    * (discarding bytes the server had already sent) and restarted the tag
    * counter, so every command in a connection's life went out as `A0001`.
    *
    * Returns what the connection turned out to be able to do rather than
    * nothing, and fails with a NAMED reason rather than a generic error. The
-   * three outcomes it distinguishes — credential refused, mailbox unopenable,
-   * socket trouble — are three different problems with three different
+   * three outcomes it distinguishes, credential refused, mailbox unopenable,
+   * socket trouble, are three different problems with three different
    * responses, and only one of them is worth retrying.
    *
    * Nothing can be read until EXAMINE has succeeded: `this.readable` is set
@@ -306,7 +306,7 @@ export class ImapClient {
    * `uidValidity` is here because anything that stores a UID between
    * connections has to store the generation it belongs to: when the server
    * reports a different UIDVALIDITY, every UID recorded under the old one
-   * names nothing. Read once, at open, rather than asked for again later —
+   * names nothing. Read once, at open, rather than asked for again later,
    * a second answer would describe a different moment.
    */
   get mailboxStatus(): ImapMailboxStatus | null {
@@ -318,7 +318,7 @@ export class ImapClient {
    *
    * Most servers advertise in the greeting or in the login completion, and
    * those are read at `open()` for free. When a server advertised nothing, a
-   * `CAPABILITY` command is issued once — lazily, so ordinary mail operations
+   * `CAPABILITY` command is issued once, lazily, so ordinary mail operations
    * do not pay a round trip for an answer only a long-lived watcher needs.
    *
    * A server that refuses to answer leaves the set empty. Empty means UNKNOWN
@@ -385,7 +385,7 @@ export class ImapClient {
    * slice the UID list themselves, where the slice is visible.
    *
    * A hard ceiling remains, because one `UID FETCH` line cannot address an
-   * unbounded set — but it REFUSES rather than trims. Over the ceiling is a
+   * unbounded set, but it REFUSES rather than trims. Over the ceiling is a
    * caller that needs to page, and telling it so is the only answer that
    * cannot lose mail.
    *
@@ -396,12 +396,12 @@ export class ImapClient {
    *
    * A UID the server returned no FETCH response for is omitted: the message
    * was expunged between the search and the fetch, and inventing an envelope
-   * for it — or falling back to its sequence number — would hand the caller an
+   * for it, or falling back to its sequence number, would hand the caller an
    * identifier that names a different message.
    *
    * **Omission alone is not evidence of an expunge.** A caller that advances a
    * cursor needs to know whether the server answered for a UID in terms this
-   * client could not read, and this method cannot say — it returns a list.
+   * client could not read, and this method cannot say, it returns a list.
    * `fetchEnvelopeBatch` is the same fetch with that answer attached, and it is
    * what the watcher uses.
    */
@@ -428,7 +428,7 @@ export class ImapClient {
       throw new Error(
         `fetchEnvelopes was asked for ${uids.length} UIDs, and at most `
         + `${IMAP_MAX_FETCH_UIDS} can be fetched in one command. Ask for them in `
-        + `batches of that size or smaller — this refuses rather than returning `
+        + `batches of that size or smaller, this refuses rather than returning `
         + `a subset, because a caller advancing a cursor over a silently `
         + `shortened result skips the messages it never saw.`,
       );
@@ -445,7 +445,7 @@ export class ImapClient {
    * Ask whether this connection can read message CONTENT, and answer with
    * evidence rather than with the fact that LOGIN and EXAMINE both worked.
    *
-   * IMAP has no scope list to compare against — see `imap-body-probe.ts` — so
+   * IMAP has no scope list to compare against, see `imap-body-probe.ts`, so
    * the equivalent of the Gmail scope gate is reading one existing message and
    * checking what came back against what the server's own BODYSTRUCTURE said
    * was there. Bounded, and `BODY.PEEK`, so it neither pulls a large message
@@ -500,7 +500,7 @@ export class ImapClient {
    *
    * **Read-only.** Every section is fetched with `BODY.PEEK[...]`. Plain
    * `BODY[...]` sets `\Seen`, which would mean reading the owner's mail marked
-   * it read behind their back — for a daemon answering mail unattended, that
+   * it read behind their back, for a daemon answering mail unattended, that
    * is a visible change to their mailbox nobody asked for.
    *
    * **Attachments are described, never downloaded.** The parts list comes from
@@ -508,8 +508,8 @@ export class ImapClient {
    * A message with a 30 MB archive on it costs the same to read as one without.
    *
    * Returns null when the UID is not in the mailbox. A deleted or expunged
-   * message is an ordinary answer to an ordinary question — the caller asked
-   * about something that is gone — and reporting it as a server failure would
+   * message is an ordinary answer to an ordinary question, the caller asked
+   * about something that is gone, and reporting it as a server failure would
    * make callers treat a normal outcome as an outage.
    *
    * **It also returns null when the server answered and this client could not
@@ -526,8 +526,8 @@ export class ImapClient {
   /**
    * Read one whole message by UID, saying which of the three things happened.
    *
-   * Everything `fetchMessage` documents — read-only, UID and never a sequence
-   * number, attachments described and never downloaded — applies here
+   * Everything `fetchMessage` documents, read-only, UID and never a sequence
+   * number, attachments described and never downloaded, applies here
    * unchanged. This is that method with a third answer, not a different fetch.
    *
    * The third answer is `unreadable`, and it is reached two ways:
@@ -568,7 +568,7 @@ export class ImapClient {
    * LF in any of them is refused, never stripped.
    *
    * `uid` is the APPENDUID the server reported (RFC 4315 UIDPLUS) and null
-   * when it advertised none — no id is invented to fill the field.
+   * when it advertised none, no id is invented to fill the field.
    *
    * Requires `open()`. APPEND writes to the Drafts mailbox only; the mailbox
    * this client reads from stays EXAMINEd, and stays read-only.
@@ -590,7 +590,7 @@ export class ImapClient {
    * Send LOGOUT and destroy the socket.
    *
    * A client that never opened has no session to say LOGOUT on, and callers
-   * reach here from their own failure paths — so the socket is closed and the
+   * reach here from their own failure paths, so the socket is closed and the
    * call returns, rather than raising a second failure on top of the first.
    */
   async logout(): Promise<void> {
@@ -621,14 +621,14 @@ export class ImapClient {
    * Fetch and decode one text section, read-only.
    *
    * Best-effort in the same way the inbox listing's body preview already is: a
-   * section that cannot be read — a literal over the session cap, a server
-   * that refuses that part — leaves that one body empty instead of failing a
+   * section that cannot be read, a literal over the session cap, a server
+   * that refuses that part, leaves that one body empty instead of failing a
    * read whose headers and attachment list already succeeded.
    */
 
   /**
    * Where a draft should go: the caller's override, else what the server says,
-   * else the plain `Drafts` name as a last resort — including when LIST itself
+   * else the plain `Drafts` name as a last resort, including when LIST itself
    * fails, since an unanswered question about folders is not a reason to lose
    * the draft.
    */
@@ -685,7 +685,7 @@ export class ImapClient {
    * Sign in, and hand back the response lines.
    *
    * The lines matter: a server that advertises its capabilities in the login
-   * completion — `A0001 OK [CAPABILITY ... IDLE ...] Logged in` — has already
+   * completion, `A0001 OK [CAPABILITY ... IDLE ...] Logged in`, has already
    * answered the question a watcher would otherwise ask again.
    */
   private async authenticate(session: ImapSession): Promise<string[]> {
@@ -695,7 +695,7 @@ export class ImapClient {
       const token = buildXOAuth2Token(username, password.slice(7));
       return session.command(`AUTHENTICATE XOAUTH2 ${token}`);
     }
-    // LOGIN — credentials are quoted per RFC 3501 to prevent injection.
+    // LOGIN, credentials are quoted per RFC 3501 to prevent injection.
     // Credentials are not logged anywhere in this module.
     const quotedUser = imapQuoteCredential(username, 'username');
     const quotedPass = imapQuoteCredential(password, 'password');

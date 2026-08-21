@@ -27,7 +27,7 @@ Two additions complete the Home Assistant track.
 
 ### 1. Triage is a new mode of the existing `homeGraph.refinement.run` verb, not a new verb
 
-`runHomeGraphRefinement` gained two optional inputs — `triage` (`true` or a
+`runHomeGraphRefinement` gained two optional inputs, `triage` (`true` or a
 `HomeGraphTriageOptions` object) and `skipGapRefinement`. When `triage` is set it runs the new
 loop; existing callers (no `triage`) get byte-identical gap-refinement behavior, including the
 unchanged "Semantic refinement is not configured" error path. The HTTP route already spreads
@@ -40,11 +40,11 @@ integration replaces its Python engine by calling
 `runHomeGraphIssueTriage` lists open triageable issues in the resolved HA space, joins each
 with its node + Home Assistant metadata into a compact record (parity with the Python
 `_triage_issue_record`), batches them (default 25), and prompts through
-`KnowledgeSemanticService.llm` — a new narrow getter that exposes the already-configured
+`KnowledgeSemanticService.llm`, a new narrow getter that exposes the already-configured
 semantic LLM the same way `enrichment.ts`/`answer-llm.ts` use it, so triage shares the one
 model route instead of re-plumbing a provider registry. Confident rejects are applied through
 the existing `reviewHomeGraphFact`, which already derives `{batteryPowered:false,...}` /
-`{manualRequired:false}` facts — no duplication of that mapping.
+`{manualRequired:false}` facts, no duplication of that mapping.
 
 ### 3. Confidence threshold reuses the `gap-repair.minConfidence` precedent
 
@@ -59,7 +59,7 @@ threshold is auto-applied; everything else is left open for a human.
 Each decided issue records `metadata.triage = { fingerprint, action, category, confidence,
 reason, applied, source, decidedAt }`. The fingerprint hashes the issue's identity plus its
 node's salient fields. On re-run, an issue whose fingerprint is unchanged (and `force` is not
-set) is skipped — no model spend. Because `upsertIssue` shallow-merges metadata, the quality
+set) is skipped, no model spend. Because `upsertIssue` shallow-merges metadata, the quality
 refresh (`replaceIssues`) preserves the cache, and an applied reject (resolved by
 `reviewFact`) keeps its provenance. This is the "already triaged this open issue" guarantee
 the generation-side fingerprint never provided.
@@ -121,13 +121,13 @@ with a single call:
   "skipIssueIds": [], "reviewer": "homeassistant:auto-triage" }, "skipGapRefinement": true }`.
 - Response `triage`: `{ ok, spaceId, configured, processed, skipped, applied, reviewed,
   decisions[], remaining, minConfidence, reason? }`. `configured:false` +
-  `reason:"triage-llm-not-configured"` means the daemon has no semantic LLM — keep the local
+  `reason:"triage-llm-not-configured"` means the daemon has no semantic LLM, keep the local
   engine as fallback until the daemon capability is default.
 - The following Python can then be deleted: the prompt (`_triage_prompt`), decision parsing
   (`_parse_triage_decisions`), the confidence gate + `facts/review` auto-apply loop, the
   `_semantic_review_value` fact special-casing (the SDK's `deriveIssueFacts` covers it), and the
   entire Store-backed triage fingerprint cache (`_async_load/save_triage_cache`,
-  `_triage_cache_matches`, `_remember_triage_decisions`) — the SDK now owns the decision cache.
+  `_triage_cache_matches`, `_remember_triage_decisions`), the SDK now owns the decision cache.
 - Retain only the Home-Assistant-surface glue: reading HA registries for entity/device/area ids
   and syncing them into `node.metadata.homeAssistant` (the SDK stores, but does not read, HA
   registries).

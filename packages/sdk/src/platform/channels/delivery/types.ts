@@ -11,7 +11,7 @@ import { ROUTE_SURFACE_KINDS, type RouteSurfaceKind } from '../../../events/rout
  *
  * Every bindable transport route, plus `agent`. The two lists are deliberately
  * not the same list: `ROUTE_SURFACE_KINDS` is what can BIND an external route,
- * and the agent binds none — nothing outside dials into an agent conversation.
+ * and the agent binds none, nothing outside dials into an agent conversation.
  * It can still be sent to, through the sender the agent product registers
  * (`strategies-agent.ts`), and it has to be: the owner ruled that a proactive
  * personal nudge goes to Telegram AND the agent, and while `agent` was missing
@@ -84,8 +84,8 @@ export interface ChannelDeliveryRouterConfig {
 /**
  * Parse a `surfaceKind` or `surfaceKind:address` channel string into a target.
  *
- * The one-line form is how a channel is written in configuration — a check-in
- * delivery channel, a CI watch notifier — so this is the seam between "what the
+ * The one-line form is how a channel is written in configuration, a check-in
+ * delivery channel, a CI watch notifier, so this is the seam between "what the
  * operator typed" and the structured target the router takes. It lives beside
  * the type it produces because it was previously written out twice inside one
  * registrar, once as a helper and once inline, which is exactly how the two

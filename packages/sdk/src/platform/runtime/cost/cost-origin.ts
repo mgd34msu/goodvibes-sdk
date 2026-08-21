@@ -1,7 +1,7 @@
 /**
  * cost-origin.ts
  *
- * AsyncLocalStorage-scoped "cost attribution origin" — the tool call, hook, or
+ * AsyncLocalStorage-scoped "cost attribution origin", the tool call, hook, or
  * MCP server on whose behalf the engine is executing right now. It is a sibling
  * of runtime/correlation.ts (session/turn IDs) but carries CAUSE rather than
  * identity: when the engine runs a tool call, fires a hook, or drives an MCP

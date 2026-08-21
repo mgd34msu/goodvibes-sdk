@@ -1,5 +1,5 @@
 /**
- * union-cache.ts — the SDK session read facade (moved from goodvibes-tui).
+ * union-cache.ts, the SDK session read facade (moved from goodvibes-tui).
  *
  * The cache-backed read layer that lets panel/read consumers keep their
  * SYNCHRONOUS listSessions()/getSession() shape while telling the truth about
@@ -10,41 +10,41 @@
  * reading it misses every session hosted on the adopted daemon from other surfaces
  * (companion, webui, other TUIs). The daemon's own reads are ASYNC
  * (HttpTransport.operator.sessions.list returns a Promise) while the local broker's
- * are SYNC — a signature mismatch that blocks a drop-in swap.
+ * are SYNC, a signature mismatch that blocks a drop-in swap.
  *
  * This facade bridges that: in adopted mode it refreshes the wire union on a modest
  * interval (and on demand), caches the last-known rows, and serves them
  * synchronously alongside the local rows. It NEVER lies:
  *
  *  - EMBEDDED mode (this process's own broker IS the daemon's broker): pure
- *    passthrough to the local broker — it already IS the truth, no wire, no
+ *    passthrough to the local broker, it already IS the truth, no wire, no
  *    'offline' segment.
  *  - ADOPTED mode, wire reachable: serve union(local, wire), deduped by id (local
  *    wins for its own session), with lastSyncAt + a `stale` flag.
  *  - ADOPTED mode, wire UNREACHABLE (daemon died mid-session): degrade to 'offline'
- *    — serve ONLY the local rows plus an honest 'cross-surface view offline' note,
+ *   , serve ONLY the local rows plus an honest 'cross-surface view offline' note,
  *    rather than presenting the stale last-known union as if it were live.
  *  - LOCAL/dormant (never adopted, or non-external mode): passthrough local, no
  *    cross-surface claim.
  *
  * The wire refresh runs on its OWN interval timer (injectable) and is never invoked
- * from the render/keystroke hot path — reads are served from the cache
+ * from the render/keystroke hot path, reads are served from the cache
  * synchronously, so the facade adds zero awaits to any interactive path.
  *
  * MOVE NOTE (One-Platform): this generalizes cleanly (SDK-clean deps,
  * already parameterized via injected local + wireReader, generation-guarded probes)
  * and serves the union goal, so it now lives in the SDK alongside the spine client.
  * That "generalizes cleanly" is ARCHITECTURAL until a second real consumer imports
- * it — today only the TUI does.
+ * it, today only the TUI does.
  */
 
 import { logger } from '../../utils/logger.js';
 import type { SharedSessionBroker, SharedSessionRecord } from '../../control-plane/index.js';
 
-/** The synchronous local read source — the in-process SharedSessionBroker. */
+/** The synchronous local read source, the in-process SharedSessionBroker. */
 export type LocalSessionReader = Pick<SharedSessionBroker, 'listSessions' | 'getSession'>;
 
-/** The async wire reader — HttpTransport.operator.sessions.list against an adopted daemon. */
+/** The async wire reader, HttpTransport.operator.sessions.list against an adopted daemon. */
 export interface WireSessionReader {
   list(limit?: number): Promise<readonly SharedSessionRecord[]>;
 }
@@ -53,7 +53,7 @@ export type SessionUnionMode = 'local' | 'embedded' | 'adopted';
 
 /**
  * Honest cross-surface posture for the panels to render. `offlineNote` is non-null
- * ONLY in adopted mode when the wire is unreachable — that is the exact string a
+ * ONLY in adopted mode when the wire is unreachable, that is the exact string a
  * panel should show next to its (local-only) session rows.
  */
 export interface CrossSurfaceView {
@@ -93,13 +93,13 @@ export interface SessionUnionCacheOptions {
    * failed probe (default 4s, under the 5s refresh cadence). A dead daemon usually
    * rejects the fetch promptly (ECONNREFUSED), but a process that dies mid-connection
    * can leave a stale keep-alive socket that the runtime/OS doesn't notice for a long
-   * time (well past any acceptable UI latency) — this timeout caps the wait so the
+   * time (well past any acceptable UI latency), this timeout caps the wait so the
    * probe can never hang past ~1 refresh interval.
    */
   readonly probeTimeoutMs?: number;
   /**
    * Optional live accessor for the TRUE shared identity of "which wire rows
-   * are mine" — typically `() => sessionSpineClient.mirroredSessionIds`
+   * are mine", typically `() => sessionSpineClient.mirroredSessionIds`
    * (see {@link SessionSpineClient.mirroredSessionIds}). When supplied, every
    * wire row whose id appears in this set is dropped from the wire side of
    * the union BEFORE merging with `local`: the module doc's own invariant is
@@ -110,12 +110,12 @@ export interface SessionUnionCacheOptions {
    * Why this matters: the plain merge below dedups by raw `record.id`
    * equality between `wireCache` and `local.listSessions()`. That is only
    * correct if whatever mirrored a local session onto the wire used the EXACT
-   * same id the local reader reports for it — an assumption this facade
+   * same id the local reader reports for it, an assumption this facade
    * cannot verify and a caller can violate (e.g. a local record created
    * without an explicit id, auto-assigned one scheme, mirrored to the wire
    * under a separately-chosen id). When that happens, id-only dedup counts
    * the surface's own session TWICE: once from `wireCache` under the
-   * wire-registered id, once from `local` under its own id — a constant +1
+   * wire-registered id, once from `local` under its own id, a constant +1
    * that can spuriously trip a caller's overflow cap. Filtering wireCache by
    * the CANONICAL registered-id set fixes this for any number of self
    * sessions, with no special-casing, and is a no-op (byte-identical result)
@@ -140,15 +140,15 @@ const OFFLINE_NOTE = 'cross-surface view offline';
 
 /**
  * Derive the footer's spine online/offline segment from the FRESHEST liveness
- * signal. The spine client's own status() is ACTIVITY-gated — it only flips on a
- * register/heartbeat/close wire call — so after the daemon dies mid-idle the footer
+ * signal. The spine client's own status() is ACTIVITY-gated, it only flips on a
+ * register/heartbeat/close wire call, so after the daemon dies mid-idle the footer
  * keeps reading 'online' until the next activity (seconds to minutes). The union
  * cache, by contrast, probes the wire every refreshIntervalMs (5s) in adopted mode,
  * so ITS `online` flag is a genuine liveness heartbeat with a bounded staleness.
  *
  * Rule (one signal, no new timer): once the wire has been confirmed reachable at
  * least once (`lastSyncAt !== null`), the union probe is authoritative for the
- * footer — a failed 5s probe reads 'offline' within one interval of the daemon
+ * footer, a failed 5s probe reads 'offline' within one interval of the daemon
  * dying, and recovers on the next success. Before any confirmation (or when not
  * adopted), fall back to the spine client's own status.
  */
@@ -187,7 +187,7 @@ export class SessionUnionCache implements SessionReadFacade {
   /** Guards against overlapping refresh() calls racing the same wire. */
   private refreshInFlight: Promise<void> | null = null;
   /**
-   * Bumped on every activate()/markEmbedded()/deactivate() — stamps which adoption is
+   * Bumped on every activate()/markEmbedded()/deactivate(), stamps which adoption is
    * CURRENT. A performRefresh() call captures this at start and checks it again once
    * its wire promise settles; if it has moved on, the whole write-back (cache, online,
    * lastSyncAt, onTransition) is dropped, so a probe started under a superseded reader
@@ -198,7 +198,7 @@ export class SessionUnionCache implements SessionReadFacade {
   /**
    * Fired whenever a refresh() flips `online` (either direction). A consumer wires
    * this to requestRender() so a liveness change is never just correct DATA sitting
-   * uncomposited — without it the flip is only PAINTED whenever some unrelated
+   * uncomposited, without it the flip is only PAINTED whenever some unrelated
    * activity happens to trigger the next render, which during an idle stretch can be
    * minutes away.
    */
@@ -225,7 +225,7 @@ export class SessionUnionCache implements SessionReadFacade {
     this.log = options.log ?? logger;
   }
 
-  /** Current facade mode — for diagnostics/tests. */
+  /** Current facade mode, for diagnostics/tests. */
   getMode(): SessionUnionMode {
     return this.mode;
   }
@@ -257,7 +257,7 @@ export class SessionUnionCache implements SessionReadFacade {
   }
 
   /**
-   * Enter EMBEDDED mode — this process's broker IS the daemon's broker, so the local
+   * Enter EMBEDDED mode, this process's broker IS the daemon's broker, so the local
    * reads are already the whole truth. Pure passthrough, no wire.
    */
   markEmbedded(): void {
@@ -317,7 +317,7 @@ export class SessionUnionCache implements SessionReadFacade {
     }
     // This probe's reader may have been superseded by a newer
     // activate()/markEmbedded()/deactivate() while the wire call was pending. If so,
-    // this settlement — success or failure — belongs to a reader nobody is reading
+    // this settlement, success or failure, belongs to a reader nobody is reading
     // through anymore: drop the ENTIRE write-back.
     if (generation !== this.generation) return;
     if (succeeded) {
@@ -335,8 +335,8 @@ export class SessionUnionCache implements SessionReadFacade {
 
   /**
    * Bound how long refresh() will wait on the wire promise. The underlying promise is
-   * NOT cancelled (no AbortSignal reaches this layer today) — it may still settle later
-   * in the background and its result is simply ignored — but refresh() itself never
+   * NOT cancelled (no AbortSignal reaches this layer today), it may still settle later
+   * in the background and its result is simply ignored, but refresh() itself never
    * waits past probeTimeoutMs, which is what keeps the liveness probe honest under a
    * hung connection.
    */
@@ -373,7 +373,7 @@ export class SessionUnionCache implements SessionReadFacade {
     }
     // Adopted + online: serve the deduped union (local wins for its own rows).
     // `mine` is the TRUE shared identity of "wire rows this surface itself
-    // mirrored" (see SessionUnionCacheOptions.selfSessionIds) — every such row
+    // mirrored" (see SessionUnionCacheOptions.selfSessionIds), every such row
     // is dropped from the wire side before merging, so `local` (documented to
     // hold exactly this surface's own sessions) is unconditionally
     // authoritative for them regardless of what id the wire copy carries.
@@ -396,7 +396,7 @@ export class SessionUnionCache implements SessionReadFacade {
     if (localRecord) return localRecord;
     if (this.mode === 'adopted' && this.online) {
       // A wire row this surface itself mirrored is not a genuine cross-surface
-      // hit once `local` failed to resolve it under this exact id — honest
+      // hit once `local` failed to resolve it under this exact id, honest
       // behavior is "not found" (matching listSessions()'s exclusion) rather
       // than surfacing a stale self-mirror the local view no longer vouches for.
       if (this.selfSessionIds?.().has(sessionId)) return null;

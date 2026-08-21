@@ -45,7 +45,7 @@ export interface DecisionLogQuery {
 // ── DecisionLog ───────────────────────────────────────────────────────────────────
 
 /**
- * DecisionLog — Bounded circular buffer for permission decision audit records.
+ * DecisionLog, Bounded circular buffer for permission decision audit records.
  *
  * Thread-safe for single-threaded Bun/Node runtimes (no async gaps in write path).
  * Oldest entries are evicted when the buffer is full; `totalRecorded` and
@@ -70,13 +70,13 @@ export class DecisionLog {
   }
 
   /**
-   * append — Records a permission decision in the audit log.
+   * append, Records a permission decision in the audit log.
    *
    * If the buffer has reached `maxEntries`, the oldest entry is evicted in O(1)
    * time via ring buffer head advancement. Rollover is observable via
    * `totalRecorded` and `summary().evicted`.
    *
-   * @param decision — The completed PermissionDecision to record.
+   * @param decision, The completed PermissionDecision to record.
    */
   append(decision: PermissionDecision): void {
     this.seq += 1;
@@ -87,7 +87,7 @@ export class DecisionLog {
   }
 
   /**
-   * toArray — Returns all current entries in chronological order (oldest first).
+   * toArray, Returns all current entries in chronological order (oldest first).
    */
   private toArray(): DecisionLogEntry[] {
     if (this.count === 0) return [];
@@ -101,9 +101,9 @@ export class DecisionLog {
   }
 
   /**
-   * query — Returns filtered log entries in chronological order.
+   * query, Returns filtered log entries in chronological order.
    *
-   * @param filters — Optional filter criteria.
+   * @param filters, Optional filter criteria.
    */
   query(filters: DecisionLogQuery = {}): DecisionLogEntry[] {
     let results = this.toArray();
@@ -125,7 +125,7 @@ export class DecisionLog {
   }
 
   /**
-   * latest — Returns the most recent decision, or undefined if the log is empty.
+   * latest, Returns the most recent decision, or undefined if the log is empty.
    */
   latest(): DecisionLogEntry | undefined {
     if (this.count === 0) return undefined;
@@ -135,14 +135,14 @@ export class DecisionLog {
   }
 
   /**
-   * size — Returns the current number of entries in the buffer.
+   * size, Returns the current number of entries in the buffer.
    */
   get size(): number {
     return this.count;
   }
 
   /**
-   * totalRecorded — Returns the total number of decisions ever recorded
+   * totalRecorded, Returns the total number of decisions ever recorded
    * (including evicted entries). Monotonically increasing.
    */
   get totalRecorded(): number {
@@ -150,7 +150,7 @@ export class DecisionLog {
   }
 
   /**
-   * clear — Empties the log and resets the sequence counter.
+   * clear, Empties the log and resets the sequence counter.
    * Primarily useful in tests.
    */
   clear(): void {
@@ -161,7 +161,7 @@ export class DecisionLog {
   }
 
   /**
-   * summary — Returns aggregate counts of allow/deny decisions.
+   * summary, Returns aggregate counts of allow/deny decisions.
    */
   summary(): { total: number; allowed: number; denied: number; evicted: number } {
     const entries = this.toArray();

@@ -1,5 +1,5 @@
 /**
- * workspace-registration.ts — first-open workspace REGISTRATION half.
+ * workspace-registration.ts, first-open workspace REGISTRATION half.
  *
  * Companion to the per-workspace trust gate (workspace-trust.ts). Trust is
  * host-local (a decision persisted under <cwd>/.goodvibes/<surfaceRoot>); REGISTRATION is
@@ -7,7 +7,7 @@
  * registry, owned by the SDK.
  *
  * SINGLE SOURCE OF TRUTH. Resolution and mutation both go through the SDK's
- * shared WorkspaceRegistrationStore — the exact class the daemon composes its
+ * shared WorkspaceRegistrationStore, the exact class the daemon composes its
  * `workspaces.*` gateway verbs over (control-plane/routes/register-gateway-verb-
  * groups.ts constructs `new WorkspaceRegistrationStore({ path: resolveUserPath(
  * 'control-plane', 'workspace-registrations.json'), homeDir: dirname(daemonState
@@ -17,7 +17,7 @@
  * not a divergent reimplementation: same SDK store class, same file, same
  * root-guard. In-process (rather than an RPC to a composed daemon) because the
  * first-open prompt renders synchronously at startup and must not depend on a
- * daemon being up — the file is the shared source either way.
+ * daemon being up, the file is the shared source either way.
  *
  * Coverage semantics are the store's (implemented in the SDK, not here): coverage
  * flows DOWN a registered root's subtree, a linked git worktree inherits its main
@@ -60,7 +60,7 @@ export interface WorkspaceRegistrationEvaluation {
   /**
    * Whether to OFFER the register half of the first-open prompt: only when the
    * store says UNKNOWN and the root is registrable. Broad roots are never
-   * offered — the store refuses them, so we do not prompt for what would be
+   * offered, the store refuses them, so we do not prompt for what would be
    * refused. Covered / declined roots never re-ask.
    */
   readonly offerRegister: boolean;
@@ -89,13 +89,13 @@ export class WorkspaceRegistrationManager {
     this.workingDirectory = shellPaths.workingDirectory;
     // Mirror the daemon's composition exactly (register-gateway-verb-groups.ts):
     // the daemon state dir IS resolveUserPath() (~/.goodvibes); its parent is the
-    // home directory — both refused as broad roots by the same guard.
+    // home directory, both refused as broad roots by the same guard.
     this.daemonStateDir = shellPaths.resolveUserPath();
     this.homeDir = dirname(this.daemonStateDir);
     this.store =
       options.store ??
       new WorkspaceRegistrationStore({
-        // Shared tier — see registration/shared-register-path.ts. Writes go
+        // Shared tier, see registration/shared-register-path.ts. Writes go
         // there; reads fall back to the pre-split path until the daemon's boot
         // fold has run, so an updated product never reports an empty register.
         path: sharedWorkspaceRegisterPath(shellPaths),
@@ -106,7 +106,7 @@ export class WorkspaceRegistrationManager {
   }
 
   /**
-   * isBroadRoot — mirrors the SDK store's broad-root refusal SET (filesystem
+   * isBroadRoot, mirrors the SDK store's broad-root refusal SET (filesystem
    * root, home directory, daemon state dir) so the register half is never
    * offered for a root the store would refuse. This is a UI-suppression predicate
    * only; the store's `add` remains the enforcement authority (see register()),
@@ -121,7 +121,7 @@ export class WorkspaceRegistrationManager {
 
   /**
    * Resolve the current working directory against the shared registry and decide
-   * whether the register half of the first-open prompt should appear. Read-only —
+   * whether the register half of the first-open prompt should appear. Read-only,
    * never writes, so it is safe to call from `status`/`doctor`.
    */
   async evaluate(): Promise<WorkspaceRegistrationEvaluation> {
@@ -140,12 +140,12 @@ export class WorkspaceRegistrationManager {
 
   /**
    * Register the current working directory at its resolved project root. The
-   * store refuses broad roots (WorkspaceRegistrationError) — we surface that
+   * store refuses broad roots (WorkspaceRegistrationError), we surface that
    * honestly rather than record a phantom registration.
    *
    * `origin` stamps which surface wrote the record (honest provenance). This
    * NEVER passes `checkpointEligible`: absent means false, so a self-record
-   * can never widen the checkpoint-owning consumer's boundary — only that
+   * can never widen the checkpoint-owning consumer's boundary, only that
    * consumer stamps its own roots eligible on boot.
    */
   async register(label?: string, origin?: string): Promise<

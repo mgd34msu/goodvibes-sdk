@@ -6,7 +6,7 @@
  *
  * Why the gate exists: clustering defaults off, but when the owner opts in,
  * two nodes both holding a connection to one mailbox both fetch and both
- * notify — the same message announced twice, by a capability whose entire
+ * notify, the same message announced twice, by a capability whose entire
  * value is being told exactly once.
  *
  * Why the second half of this file exists: `registerDaemonClusterSurfaces`

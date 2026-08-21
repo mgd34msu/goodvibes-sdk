@@ -1,8 +1,8 @@
 /**
- * CascadeEngine — evaluates declarative cascade rules against live domain health
+ * CascadeEngine, evaluates declarative cascade rules against live domain health
  * and determines which effects need to be applied when a domain state changes.
  *
- * The engine is read-only with respect to health state — it evaluates and returns
+ * The engine is read-only with respect to health state, it evaluates and returns
  * CascadeResult objects; callers are responsible for applying effects.
  */
 
@@ -67,7 +67,7 @@ export class CascadeEngine {
           domainHealth.recoveryAttempts >= domainHealth.maxRecoveryAttempts;
 
         if (!exhausted) {
-          // Recovery still possible — do not cascade yet
+          // Recovery still possible, do not cascade yet
           pendingRecovery.push({
             ruleId: rule.id,
             source: domain,
@@ -80,7 +80,7 @@ export class CascadeEngine {
           continue;
         }
 
-        // Recovery exhausted — cascade now, mark recoveryExhausted: true
+        // Recovery exhausted, cascade now, mark recoveryExhausted: true
         cascades.push({
           ruleId: rule.id,
           source: domain,
@@ -110,7 +110,7 @@ export class CascadeEngine {
   /**
    * Get all rules that would fire for the given domain + status combination.
    * Uses the pre-indexed rule map for O(1) domain lookup.
-   * Pure — no side effects.
+   * Pure, no side effects.
    */
   getRulesForDomain(domain: HealthDomain, status: HealthStatus): CascadeRule[] {
     const domainRules = this.ruleIndex.get(domain) ?? [];

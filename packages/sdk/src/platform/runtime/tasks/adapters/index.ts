@@ -1,5 +1,5 @@
 /**
- * Task adapter barrel — re-exports all subsystem-to-RuntimeTask bridge adapters.
+ * Task adapter barrel, re-exports all subsystem-to-RuntimeTask bridge adapters.
  *
  * Each adapter converts a subsystem-specific task representation into the
  * unified RuntimeTask model and handles lifecycle transitions.

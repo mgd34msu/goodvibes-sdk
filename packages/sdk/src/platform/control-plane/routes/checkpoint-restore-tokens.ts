@@ -8,7 +8,7 @@
  * previewed; the matching `checkpoints.restore` call consumes it exactly once.
  * A token expires ~2 minutes after issue and is destroyed the moment it is
  * consumed, so it can neither be replayed nor outlive the caller's decision.
- * This is deliberately NOT a durable, cross-process two-phase protocol — it is
+ * This is deliberately NOT a durable, cross-process two-phase protocol, it is
  * a lightweight acknowledgment that a preview was seen, held only in the live
  * daemon process that will perform the restore.
  */
@@ -29,7 +29,7 @@ export interface IssuedRestoreToken {
 
 /**
  * A tiny map-backed store of restore-confirmation tokens. Not exported through
- * the SDK public surface — constructed once per daemon at checkpoint-route
+ * the SDK public surface, constructed once per daemon at checkpoint-route
  * registration and shared between the preview and restore handlers.
  */
 export class RestoreTokenStore {

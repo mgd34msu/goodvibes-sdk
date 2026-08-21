@@ -1,5 +1,5 @@
 /**
- * changelog-gate — asserts CHANGELOG.md carries a section for a version.
+ * changelog-gate, asserts CHANGELOG.md carries a section for a version.
  *
  * Supports both heading conventions in the estate: `## [1.2.3]` (SDK/TUI
  * bracketed) and `## 1.2.3` (agent plain). Pure over injected text.

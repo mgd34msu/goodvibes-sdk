@@ -4,7 +4,7 @@
  * Acceptance evidence for the extracted SDK session-spine read facade: drives the SDK SessionUnionCache against a REAL
  * bootDaemon over a real HttpTransport (no mocked wire). Proves the adopted-mode
  * union genuinely includes a session that exists ONLY on the daemon (registered by
- * a different surface), which the local reader alone would miss — and that losing
+ * a different surface), which the local reader alone would miss, and that losing
  * the daemon degrades the served rows to local-only honestly.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -126,16 +126,16 @@ describe('SDK SessionUnionCache against a real bootDaemon (adopted-mode union)',
 
 // ---------------------------------------------------------------------------
 // Regression coverage: SessionUnionCache.listSessions() was counting the
-// adopting surface's OWN session twice — once from the local broker's record,
-// once from its wire-mirrored copy — because the merge deduped on raw
+// adopting surface's OWN session twice, once from the local broker's record,
+// once from its wire-mirrored copy, because the merge deduped on raw
 // `record.id` equality, which silently assumed the local reader's own id and
 // whatever id was actually registered to the wire were the same string. They
 // need not be: SessionSpineClient.register()/reopen() send exactly the
 // `sessionId` a caller passes in, independent of whatever id the caller's own
 // local store separately assigned the same conceptual session. The fix
 // (union-cache.ts) filters the wire side of the merge by
-// `SessionSpineClient.mirroredSessionIds` — the CANONICAL "which wire rows are
-// mine" set — before overlaying `local`, so the local view is authoritative
+// `SessionSpineClient.mirroredSessionIds`, the CANONICAL "which wire rows are
+// mine" set, before overlaying `local`, so the local view is authoritative
 // for the surface's own sessions regardless of what id the wire mirror
 // carries for them.
 // ---------------------------------------------------------------------------
@@ -167,7 +167,7 @@ describe('D-TUI-1: adopting surface self-mirror identity against a real bootDaem
     const N = 4;
     await registerOthers(harness, N);
 
-    // The adopting surface's own local broker — a SEPARATE store from the
+    // The adopting surface's own local broker, a SEPARATE store from the
     // daemon's, exactly as the TUI's in-process SharedSessionBroker is.
     // A broker starts a 60s GC sweep the moment it is used; stop() clears it.
     const localBroker = disposables.add(new SharedSessionBroker({
@@ -193,7 +193,7 @@ describe('D-TUI-1: adopting surface self-mirror identity against a real bootDaem
     };
     const spineClient = new SessionSpineClient({ participant: TUI_SPINE_PARTICIPANT, recordKind: 'tui', log: { debug: () => {}, info: () => {} } });
     spineClient.activate(spineTransport);
-    // Mirrors the SAME id the local broker used — the ordinary, well-behaved
+    // Mirrors the SAME id the local broker used, the ordinary, well-behaved
     // case. Even here, the fix must not regress: N others + 1 self = N+1.
     spineClient.register({ sessionId: selfId, project: harness.workingDir, title: 'Terminal UI session' });
 
@@ -235,7 +235,7 @@ describe('D-TUI-1: adopting surface self-mirror identity against a real bootDaem
       messageSender: { send: () => true },
     } as unknown as ConstructorParameters<typeof SharedSessionBroker>[0]));
 
-    // Deliberately DIFFERENT ids for "the same" conceptual session — the
+    // Deliberately DIFFERENT ids for "the same" conceptual session, the
     // realistic failure mode the raw id-equality dedup could never catch.
     const localId = 'local-own-id-scheme';
     const wireId = 'wire-mirrored-id-scheme';

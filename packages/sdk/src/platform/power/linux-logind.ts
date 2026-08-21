@@ -1,8 +1,8 @@
 /**
- * power/linux-logind.ts — the Linux implementation of the power seam.
+ * power/linux-logind.ts, the Linux implementation of the power seam.
  *
  * Inhibitors are held by spawning `systemd-inhibit` (the stock unprivileged
- * logind D-Bus client — it calls org.freedesktop.login1.Manager.Inhibit and
+ * logind D-Bus client, it calls org.freedesktop.login1.Manager.Inhibit and
  * holds the returned fd for the life of its child). No root, no sudo, ever:
  * an unprivileged user can always hold idle/sleep inhibitors; a lid-switch
  * block may be refused by polkit, which surfaces as an honest per-class
@@ -25,7 +25,7 @@ const START_PROBE_MS = 300;
 /**
  * The owner-pid stamp carried in every inhibit child's --who string. A crashed
  * owner cannot release its children, so each child is marked with the pid that
- * spawned it — the reaper kills a stamped child exactly when that pid is dead.
+ * spawned it, the reaper kills a stamped child exactly when that pid is dead.
  */
 function stampWho(who: string, ownerPid: number): string {
   return `${who} [owner-pid ${ownerPid}]`;
@@ -40,7 +40,7 @@ const OWNER_PID_STAMP = /\[owner-pid (\d+)\]/;
  * such interface or member is ever emitted on the system bus) and whose member
  * name encodes the spawning pid. dbus-monitor accepts multiple match rules and
  * evaluates them as a union, so the real PrepareForSleep rule keeps forwarding
- * while the stamp rule is inert — it exists only so `ps`/the reaper can
+ * while the stamp rule is inert, it exists only so `ps`/the reaper can
  * associate a watcher child with the process that spawned it, exactly like the
  * inhibitor's --who owner-pid stamp. A watcher whose owner pid is dead is a
  * leaked orphan (nothing will ever reap it) and the reaper kills it.
@@ -56,7 +56,7 @@ function pidIsAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (error) {
-    // EPERM means the pid exists but is not ours — alive.
+    // EPERM means the pid exists but is not ours, alive.
     return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
@@ -67,7 +67,7 @@ function pidIsAlive(pid: number): boolean {
  * orphaned monitors exhausts the system D-Bus broker's per-uid connection
  * quota and can lock every process of that uid out of the system bus. The
  * registry + the once-only exit/signal hooks below guarantee every watcher
- * dies with us — the same discipline the inhibitor children get through the
+ * dies with us, the same discipline the inhibitor children get through the
  * PowerManager's process-exit cleanup.
  */
 const liveSleepWatchers = new Set<ChildProcess>();
@@ -139,7 +139,7 @@ function defaultListProcesses(): ReadonlyArray<{ pid: number; args: string }> {
       const args = readFileSync(`/proc/${entry}/cmdline`, 'utf-8').replace(/\0+$/, '').split('\0').join(' ');
       if (args) rows.push({ pid: Number(entry), args });
     } catch {
-      // process exited between readdir and read — skip.
+      // process exited between readdir and read, skip.
     }
   }
   return rows;
@@ -150,7 +150,7 @@ function defaultListProcesses(): ReadonlyArray<{ pid: number; args: string }> {
  * null when the row is not one of ours. Two child shapes carry a stamp: the
  * inhibitor (`systemd-inhibit --who=<who> … [owner-pid N]`) and the sleep-edge
  * watcher (`dbus-monitor … member='GoodvibesSleepWatchOwner<N>'`). Anything
- * else — another tool's inhibitor, an unstamped process — returns null and is
+ * else, another tool's inhibitor, an unstamped process, returns null and is
  * never touched.
  */
 function stampedOwnerPid(args: string, who: string): number | null {
@@ -171,7 +171,7 @@ function stampedOwnerPid(args: string, who: string): number | null {
  * inhibitors (`systemd-inhibit`, which otherwise block host sleep with no
  * owner) and the sleep-edge watchers (`dbus-monitor`, which otherwise pile up
  * against the system bus's per-uid connection quota). Matches only processes
- * carrying this module's own owner-pid stamp — never anything else. Returns the
+ * carrying this module's own owner-pid stamp, never anything else. Returns the
  * number reaped.
  */
 export async function reapOrphanedInhibitors(who: string, deps: OrphanReaperDeps = {}): Promise<number> {
@@ -199,7 +199,7 @@ export async function reapOrphanedInhibitors(who: string, deps: OrphanReaperDeps
  * The exact argv for one inhibitor child. `--no-ask-password` is load-bearing:
  * when polkit requires authentication for an inhibit class (a tmux/SSH session
  * logind does not count as an active seat), systemd-inhibit would otherwise
- * register an interactive auth agent on the CONTROLLING TERMINAL — /dev/tty
+ * register an interactive auth agent on the CONTROLLING TERMINAL, /dev/tty
  * writes that stdio 'ignore' cannot suppress, painted straight over a
  * fullscreen UI. With the flag, denial is an immediate silent non-zero exit,
  * which lands in the deniedClasses path like any other refusal.

@@ -1,5 +1,5 @@
 /**
- * trigger-dsl-rules.test.ts — the declarative trigger DSL and its predicate set.
+ * trigger-dsl-rules.test.ts, the declarative trigger DSL and its predicate set.
  *
  * Two things are under test here. First, that the DSL really is declarative:
  * every shape a caller might use to smuggle executable code into an unattended
@@ -196,7 +196,7 @@ describe('rule: threshold with hysteresis', () => {
     expect(inBand.fire).toBe(false);
     expect(inBand.ruleState.armed).toBe(true);
 
-    // Cross back up without ever leaving the band — must not fire again.
+    // Cross back up without ever leaving the band, must not fire again.
     const flap = decide(rule, observations([[1, 95], [2, 85], [3, 96]]), inBand.ruleState);
     expect(flap.fire).toBe(false);
 

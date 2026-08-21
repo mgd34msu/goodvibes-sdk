@@ -8,7 +8,7 @@
  *   - the trigger: three consecutive rapid boots that never reached a
  *     fully-started daemon;
  *   - the receipt, and the handover onto the restored binary;
- *   - the two honest refusals — nothing to restore, and never twice in a row.
+ *   - the two honest refusals, nothing to restore, and never twice in a row.
  *
  * Filesystem, clock, and process exit are all injected; no real binary is
  * swapped and no real time passes.
@@ -361,7 +361,7 @@ describe('crash-loop rollback at boot', () => {
 /**
  * A streak accuses a BUILD. The failure this pins: a daemon that had been up
  * for ten and a half hours rolled itself back to the kept previous binary, and
- * that older binary could not start at all — the machine had no daemon from
+ * that older binary could not start at all, the machine had no daemon from
  * that night until the next morning. The streak it acted on was not its own.
  */
 describe('the failed-start streak is scoped to the build it accuses', () => {
@@ -414,7 +414,7 @@ describe('the failed-start streak is scoped to the build it accuses', () => {
     const first = rollbackHarness({ artifact: ARTIFACT });
     first.runtime.onStarting();
     first.runtime.onStarted();
-    // No orderly stop — this process died. The marker is left saying `running`.
+    // No orderly stop, this process died. The marker is left saying `running`.
     expect(first.marker()?.state).toBe('running');
     expect(first.receipts()).toHaveLength(0);
 
@@ -438,8 +438,8 @@ describe('the failed-start streak is scoped to the build it accuses', () => {
 });
 
 /**
- * The cycle: install, fail three starts, roll back, and — one check interval
- * later — download and install the identical release again. Two byte-identical
+ * The cycle: install, fail three starts, roll back, and, one check interval
+ * later, download and install the identical release again. Two byte-identical
  * rollback receipts two days apart, and an installed daemon three releases
  * behind, is what that looks like from outside.
  */
@@ -461,7 +461,7 @@ describe('a rollback records the version it rejected', () => {
     // 2.0.0 again.
     recordDaemonStart(MARKER, { io, now, pid: 99, version: '1.9.0' });
     expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBe('2.0.0');
-    // A clean shutdown keeps it too — a restart must not un-reject a bad build.
+    // A clean shutdown keeps it too, a restart must not un-reject a bad build.
     recordDaemonCleanShutdown(MARKER, { io, now, version: '1.9.0' });
     expect(readLifecycleMarker(MARKER, io)?.rejectedVersion).toBe('2.0.0');
   });

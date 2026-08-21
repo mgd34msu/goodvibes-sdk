@@ -44,8 +44,8 @@ function readSmtpSecurity(value: unknown): SmtpSecurityMode {
 /**
  * `email.imapSecurity`, defaulting to TLS.
  *
- * Anything unrecognised — including an absent value, which is what a config that
- * predates the key produces — reads as 'tls'. The safe direction for a value
+ * Anything unrecognised, including an absent value, which is what a config that
+ * predates the key produces, reads as 'tls'. The safe direction for a value
  * nobody can interpret is the encrypted connection, so the only way to get a
  * plaintext IMAP connection is to ask for one.
  */
@@ -101,7 +101,7 @@ export function readEmailConfig(getConfig: (key: string) => unknown): EmailConfi
  * Which secret submission authenticates with: the SMTP-specific one when the
  * operator set it, otherwise the mailbox password. Resolved through one helper
  * so `sendMail` and `testConnection` cannot disagree about which credential a
- * send would actually use — a test that passes with the wrong password is worse
+ * send would actually use, a test that passes with the wrong password is worse
  * than no test.
  */
 export function smtpPasswordRefFor(config: EmailConfig): string {
@@ -119,7 +119,7 @@ export function validateEmailConfig(config: EmailConfig): string[] {
     errors.push('email.passwordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
   }
   // Optional: an empty value means "same password as IMAP", which is the common
-  // case. A non-empty one is held to the same rule as passwordRef — a raw
+  // case. A non-empty one is held to the same rule as passwordRef, a raw
   // password here would be a raw password in a settings file.
   if (config.smtpPasswordRef.length > 0 && !config.smtpPasswordRef.startsWith('goodvibes://secrets/')) {
     errors.push('email.smtpPasswordRef must be a goodvibes secret reference (goodvibes://secrets/...)');
@@ -135,7 +135,7 @@ export function validateEmailConfig(config: EmailConfig): string[] {
 /**
  * Extract the storage key from a goodvibes://secrets/goodvibes/<key> ref.
  * For other secret ref types (env, file, bitwarden, etc.) we cannot resolve
- * them directly — the user should configure via the standard secret manager
+ * them directly, the user should configure via the standard secret manager
  * path. We return the raw ref string for those cases so the SecretsManager
  * can attempt its own resolution chain.
  */
@@ -179,7 +179,7 @@ export class EmailCredentialUnavailableError extends Error {
  * the daemon is the daemon's own. There is deliberately no fallback to a
  * surface-local store. A credential captured by another surface is not visible
  * here, and reaching for it would produce a capability that works on the
- * machine where it happened to be captured and fails on every other one —
+ * machine where it happened to be captured and fails on every other one,
  * which is a far harder failure to diagnose than a missing secret. A secret
  * that is not here is reported as missing, by name, with the step that fixes
  * it.

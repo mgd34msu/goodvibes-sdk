@@ -1,12 +1,12 @@
 /**
- * payments-notice-delivery.test.ts — the notice actually leaves the process.
+ * payments-notice-delivery.test.ts, the notice actually leaves the process.
  *
  * ══ What was broken, and what these prove ═════════════════════════════════
  *
  * `message.ts` rendered a notice and returned a string; `windows.ts` consumed a
  * per-channel delivery report and decided from it; nothing performed the send
  * in between. A purchase would render a notice into nothing and then evaluate
- * the window against a report nobody produced — so an in-budget purchase would
+ * the window against a report nobody produced, so an in-budget purchase would
  * proceed on a "silence" that was really a message never sent.
  *
  * These run the whole path against a FAKE CHANNEL that records what it

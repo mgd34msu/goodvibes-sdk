@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * surface-credential.ts — the credential an inbound adapter checks a caller against.
+ * surface-credential.ts, the credential an inbound adapter checks a caller against.
  *
  * ── What this exists to fix ─────────────────────────────────────────────────
  *
@@ -23,7 +23,7 @@
  *
  * Fifteen read sites across twelve adapters had the same three-line shape, and
  * fifteen copies of a rule is how the thirteenth adapter gets it wrong. More
- * pointedly, the correct fix is NOT "wrap the read in `resolveSecretInput`" —
+ * pointedly, the correct fix is NOT "wrap the read in `resolveSecretInput`",
  * doing exactly that at each site introduces an authentication bypass (below).
  * A shared function is the only place that rule can be stated once and be true
  * for every adapter, including ones not written yet.
@@ -36,7 +36,7 @@
  *
  *     if (configuredToken && !constantTimeEquals(configuredToken, provided)) → 401
  *
- * — "no credential configured, so there is no check to run", which is a
+ *, "no credential configured, so there is no check to run", which is a
  * deliberate and reasonable reading of an unconfigured surface. Collapse a
  * failed resolution into the same empty string and that line reads a BROKEN
  * credential as an ABSENT one: the comparison is skipped and the surface
@@ -66,7 +66,7 @@ export type SurfaceCredential =
   /** No credential is configured anywhere. The surface is unconfigured. */
   | { readonly state: 'absent' }
   /**
-   * A credential IS configured and could not be produced — a reference whose
+   * A credential IS configured and could not be produced, a reference whose
    * secret is missing from the store, in a scope this process cannot read, or
    * malformed. Never authorise on this.
    */
@@ -119,7 +119,7 @@ function secretRefOptions(context: SurfaceCredentialContext): SecretRefResolutio
  *
  * That is deliberate. Falling through would mean an operator whose swept
  * reference broke gets quietly authenticated by a stale environment variable
- * instead — the surface keeps working, against a credential nobody chose, and
+ * instead, the surface keeps working, against a credential nobody chose, and
  * the broken reference is never noticed. A refusal that names the key in the
  * log is worse for one request and better for the operator, which is the same
  * trade `acceptRefShapedLiteral` already makes one layer down.
@@ -140,7 +140,7 @@ export async function resolveSurfaceCredential(
       // only whitespace counts as PRESENT and goes on to resolve (to nothing,
       // hence `unresolvable`). Trimming first would make "   " indistinguishable
       // from "not configured", and on the adapters that skip the comparison when
-      // nothing is configured that reads a broken setting as an open door — the
+      // nothing is configured that reads a broken setting as an open door, the
       // same fail-open this whole module exists to prevent.
       const raw = String(context.configManager.get(source.key) ?? '');
       if (raw.length === 0) continue;
@@ -166,7 +166,7 @@ export async function resolveSurfaceCredential(
  * The response for a credential that is configured and cannot be produced.
  *
  * 503, not 401: nothing is wrong with the caller, and answering 401 sends
- * whoever debugs it hunting for a wrong token — which is precisely the wild
+ * whoever debugs it hunting for a wrong token, which is precisely the wild
  * goose chase this whole defect caused.
  *
  * The body names no config key. The caller is a third party (Telegram, Twilio,
@@ -181,7 +181,7 @@ export function surfaceCredentialUnavailable(
   logger.error('Refusing inbound surface traffic: the configured credential could not be resolved', {
     surface,
     configKey: credential.configKey,
-    action: 'the config value is a secret reference that resolved to nothing — re-save the credential for this surface',
+    action: 'the config value is a secret reference that resolved to nothing, re-save the credential for this surface',
   });
   return Response.json({
     error: 'Surface credential is configured but could not be resolved',

@@ -1,5 +1,5 @@
 /**
- * Execution Plan Manager — tracks live progress for multi-step agent tasks.
+ * Execution Plan Manager, tracks live progress for multi-step agent tasks.
  *
  * Plans are stored as JSON at .goodvibes/plans/<id>.json and rendered as
  * markdown for injection into the model's context. Self-contained, no
@@ -37,7 +37,7 @@ export interface ExecutionPlan {
   awaitingPlan?: boolean; // true when /plan created the shell, waiting for model to fill it
   /** ISO timestamp set when the plan was dismissed/archived (status 'dismissed'). */
   dismissedAt?: string;
-  /** The status the plan held immediately before it was dismissed — preserved so
+  /** The status the plan held immediately before it was dismissed, preserved so
    *  a completed/failed record is not silently rewritten to look like a draft. */
   dismissedFrom?: Exclude<ExecutionPlanStatus, 'dismissed'>;
 }
@@ -47,10 +47,10 @@ export interface ExecutionPlan {
  * refused mid-execution: an in-flight plan must be stopped via the workstream
  * cancel path first, so `dismiss` never silently abandons running agent work.
  *
- *  - `no-active-plan`      — nothing to dismiss; no mutation.
- *  - `requires-cancel`     — the active plan is mid-execution ('active');
+ *  - `no-active-plan`     , nothing to dismiss; no mutation.
+ *  - `requires-cancel`    , the active plan is mid-execution ('active');
  *                            refused. Cancel the workstream first, then dismiss.
- *  - `dismissed`           — a proposal/awaiting-approval or terminal plan was
+ *  - `dismissed`          , a proposal/awaiting-approval or terminal plan was
  *                            archived: retained on disk with status 'dismissed'
  *                            + `dismissedAt`, and the active pointer cleared so a
  *                            later `/plan <goal>` starts fresh.
@@ -214,7 +214,7 @@ export class ExecutionPlanManager {
 
   private setActive(planId: string | null, sessionId?: string | null): void {
     if (planId === null) {
-      // Only rewrite an existing pointer — absence already means "no active plan".
+      // Only rewrite an existing pointer, absence already means "no active plan".
       if (existsSync(this.activeFile)) {
         writeJsonFileAtomic(this.activeFile, { planId: null, sessionId: sessionId ?? null });
       }
@@ -264,7 +264,7 @@ export class ExecutionPlanManager {
     item.status = status;
     if (agentId !== undefined) item.agentId = agentId;
 
-    // A dismissed plan is archived — never resurrect its top-level status from
+    // A dismissed plan is archived, never resurrect its top-level status from
     // an item edit. Persist the item change but leave status 'dismissed'.
     if (plan.status !== 'dismissed') {
       // Derive top-level plan status
@@ -347,7 +347,7 @@ export class ExecutionPlanManager {
    * Format:
    *   # Plan Title
    *   ## Phase 1: Setup [COMPLETE]
-   *   - [x] Description — COMPLETE (agent-id)
+   *   - [x] Description, COMPLETE (agent-id)
    */
   toMarkdown(plan: ExecutionPlan): string {
     const lines: string[] = [`# ${plan.title}`, ''];
@@ -370,7 +370,7 @@ export class ExecutionPlanManager {
       for (const item of items) {
         const cb = STATUS_CHECKBOX[item.status];
         const label = STATUS_LABEL[item.status];
-        let line = `- ${cb} ${item.description} — ${label}`;
+        let line = `- ${cb} ${item.description}, ${label}`;
         if (item.agentId) line += ` (${item.agentId})`;
         if (item.dependencies && item.dependencies.length > 0) {
           const depDescs = item.dependencies
@@ -518,7 +518,7 @@ export class ExecutionPlanManager {
   // Query helpers
   // --------------------------------------------------------------------------
 
-  /** Human-readable summary: "Phase 2: Implementation — 1/3 complete" */
+  /** Human-readable summary: "Phase 2: Implementation, 1/3 complete" */
   getSummary(plan: ExecutionPlan): string {
     const phaseOrder: string[] = [];
     const byPhase = new Map<string, PlanItem[]>();
@@ -562,7 +562,7 @@ export class ExecutionPlanManager {
       id: randomUUID(),
       status: 'pending' as PlanItemStatus,
     }));
-    // Reset dependencies — will be resolved in second pass
+    // Reset dependencies, will be resolved in second pass
     for (const item of newItems) {
       delete item.dependencies;
     }

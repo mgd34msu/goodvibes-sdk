@@ -27,7 +27,7 @@ export const CONTEXT_OVERFLOW_RAW_STOP_REASONS: ReadonlySet<string> = new Set([
 
 /**
  * True when a chat response carries a context-window warning from the model or
- * provider — either the normalized 'context_overflow' stop reason or a raw
+ * provider, either the normalized 'context_overflow' stop reason or a raw
  * provider value naming context exhaustion. Consumers treat this as an
  * immediate compaction trigger: the provider's own report is authoritative and
  * overrides local token estimates.

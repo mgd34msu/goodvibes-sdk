@@ -1,12 +1,12 @@
 /**
- * owner-profile-composition-home.test.ts — a runtime with an injected home
+ * owner-profile-composition-home.test.ts, a runtime with an injected home
  * reads the profile under THAT home.
  *
  * The defect: `composeOwnerProfile` resolved the profile path through
  * `profile.path` → `--daemon-home` → `GOODVIBES_DAEMON_HOME` → the LOGIN user's
  * home, and nothing in that chain could see the home the runtime was actually
- * constructed with. A runtime given a scratch home — a test suite, an isolated
- * daemon, a second instance — therefore opened the profile of whoever was
+ * constructed with. A runtime given a scratch home, a test suite, an isolated
+ * daemon, a second instance, therefore opened the profile of whoever was
  * logged in. That is how the daemon test suite came to read the owner's real
  * birthdays.
  *

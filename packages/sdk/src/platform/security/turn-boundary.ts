@@ -1,9 +1,9 @@
 /**
- * turn-boundary.ts — when the untrusted-content window resets.
+ * turn-boundary.ts, when the untrusted-content window resets.
  *
  * ── The bug this exists to fix ────────────────────────────────────────────
  *
- * `UntrustedContentLedger.startTurn()` had no production caller anywhere —
+ * `UntrustedContentLedger.startTurn()` had no production caller anywhere,
  * not in the SDK, not in any product, only tests. So "this turn" silently
  * meant "everything since the process started", bounded only by the ledger's
  * retention cap, and the corpus grew with uptime.
@@ -17,7 +17,7 @@
  *
  * ── What a turn is bound to, and why ──────────────────────────────────────
  *
- * A turn begins when the owner makes a fresh request — `explicitUserRequest`,
+ * A turn begins when the owner makes a fresh request, `explicitUserRequest`,
  * the one signal that honestly means "a person asked for this, now". Anything
  * the runtime then reads and does belongs to that turn.
  *
@@ -33,7 +33,7 @@ import { getProcessUntrustedContentLedger, type UntrustedContentLedger } from '.
 import type { TurnInputOrigin } from '../../events/turn.js';
 
 /**
- * Reset the untrusted-content window if — and only if — this invocation is a
+ * Reset the untrusted-content window if, and only if, this invocation is a
  * fresh owner request.
  *
  * Returns whether a turn was started, so a caller can log or test it without
@@ -52,7 +52,7 @@ export function startTurnForOwnerRequest(
  * Message sources that mean "the human typed this, here, now".
  *
  * `operator` is the only source in `MessageSource` whose own definition says
- * so — "human typed in the TUI prompt". Everything else in that union is a
+ * so, "human typed in the TUI prompt". Everything else in that union is a
  * companion, a channel, or the runtime talking to itself.
  *
  * Deliberately NOT in this list: `companion-followup`. It reads like the owner
@@ -71,7 +71,7 @@ export const OWNER_DIRECT_INPUT_SOURCES: readonly string[] = ['operator'];
  *  1. **No origin at all.** The surface process took this text off its own
  *     input widget; nothing routed it in. That is the keyboard.
  *  2. **`ownerDirect: true`.** An explicit attestation from a transport that
- *     can honestly make it — it authenticated the owner, or it read a local
+ *     can honestly make it, it authenticated the owner, or it read a local
  *     terminal. It is a claim about the CALLER, made by code, and no message
  *     body can set it, because message bodies do not construct these records.
  *  3. **A source on the list above.**
@@ -94,7 +94,7 @@ export function inputOriginIsOwnerDirect(origin: TurnInputOrigin | undefined): b
  *
  * This is the boundary the module header describes and the one that had no
  * caller: `startTurnForOwnerRequest` existed, the daemon's gateway dispatch
- * used it, and the CONVERSATION — where a person actually speaks to the agent —
+ * used it, and the CONVERSATION, where a person actually speaks to the agent,
  * did not. So in the agent and the TUI the window opened once at process start
  * and never again: one mailbox read on Monday refused every send until the
  * process was restarted, which is why the refusal the owner met said "earlier

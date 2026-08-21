@@ -4,11 +4,11 @@
  * No test file bundles inside the test process.
  *
  * The whole suite runs as ONE `bun test` process across 795 files. A bundler
- * invoked inside it is not a function call that either returns or throws — it
+ * invoked inside it is not a function call that either returns or throws, it
  * is work the test process has to carry, and when it does not settle there is
  * nothing left that can notice. That is not hypothetical: three cases in
  * test/browser-scoped-entrypoints.test.ts called `Bun.build` in-process and
- * awaited it with no ceiling, and CI produced both halves of the failure —
+ * awaited it with no ceiling, and CI produced both halves of the failure,
  * one run charged each of the three the runner's full 60 000 ms per-test
  * budget, and an earlier run of the same commit went completely silent for
  * fifteen minutes until the job timeout killed it, leaving bun processes for
@@ -16,7 +16,7 @@
  *
  * The shape that is allowed instead is the one that file now uses: spawn the
  * bundler as a child process, bound the wait, and kill the child on every path
- * out — including the timeout and a failed assertion. Then a stuck bundle
+ * out, including the timeout and a failed assertion. Then a stuck bundle
  * costs seconds and names itself, and nothing it started can outlive the test.
  *
  * This guard is a source scan because the defect is invisible at runtime on a
@@ -60,7 +60,7 @@ describe('the test process never runs a bundler inside itself', () => {
       offenders.length === 0
         ? ''
         : `these files bundle inside the test process, which can wedge the whole run: ${offenders.join(', ')}. `
-          + 'Spawn the bundler as a child process with a ceiling and kill it in a finally — see '
+          + 'Spawn the bundler as a child process with a ceiling and kill it in a finally, see '
           + 'bundleEntrypoint in test/browser-scoped-entrypoints.test.ts.',
     ).toEqual([]);
   });

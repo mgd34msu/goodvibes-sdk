@@ -1,5 +1,5 @@
 /**
- * browser-secret-fill.ts — typing a value the model must never see.
+ * browser-secret-fill.ts, typing a value the model must never see.
  *
  * Split out of browser-engine.ts rather than living as one more method on it,
  * because this is a genuinely separate concern with its own rules. Every other
@@ -13,7 +13,7 @@
  * it from the daemon's own store) and types it. Keeping the lookup out of here
  * is what lets `platform/browser/` stay free of any payment wiring, and it also
  * means there is exactly one module in the repository that can produce card
- * material — not two.
+ * material, not two.
  *
  * ── The two rules this file exists to enforce ─────────────────────────────
  *
@@ -21,7 +21,7 @@
  *     this runs would contain what was just typed. The refusal is here rather
  *     than in the caller so that no caller can skip it.
  *  2. **The driver's error never escapes.** A browser's fill failure can quote
- *     the string it was asked to type — `could not type "…" into #cc` — and an
+ *     the string it was asked to type, `could not type "…" into #cc`, and an
  *     error message is a read path exactly like a response field. The original
  *     is discarded and replaced with one written here, naming the element.
  */
@@ -88,7 +88,7 @@ async function typeOrRefuse(
  *
  * A screenshot of a filled payment form is a picture of the number. Unlike
  * every other read path it cannot be string-searched, and painting boxes over
- * the fields we recognise leaves whatever a hostile page invented — so this
+ * the fields we recognise leaves whatever a hostile page invented, so this
  * refuses rather than producing a file that looks redacted and is not.
  */
 export function assertCaptureAllowed(

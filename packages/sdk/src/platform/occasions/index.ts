@@ -1,8 +1,8 @@
 /**
- * occasions/ — dated things that need an action, and dated ranges that do not.
+ * occasions/, dated things that need an action, and dated ranges that do not.
  *
- * The daemon holds durable facts about the owner's life — his wife's birthday,
- * an anniversary, a friend's birthday — and raises them ON ITS OWN, before they
+ * The daemon holds durable facts about the owner's life, his wife's birthday,
+ * an anniversary, a friend's birthday, and raises them ON ITS OWN, before they
  * matter, without being asked. It remembers what he answered so it does not keep
  * asking, and not forever, because the occasions recur.
  *
@@ -11,7 +11,7 @@
  * ## What this barrel exports, and what it deliberately does not
  *
  * Exported: the SHAPES a surface renders, and the pure helpers it may need to
- * render them — occasion and plan types, nudge payloads, interview steps, the
+ * render them, occasion and plan types, nudge payloads, interview steps, the
  * line grammar and the date arithmetic.
  *
  * Not exported: `OccasionsService`, `OccasionStateStore`, the sweep and the

@@ -58,7 +58,7 @@ export interface ControlPlaneEventStreamOptions {
   readonly principalId?: string | undefined;
   readonly principalKind?: 'user' | 'bot' | 'service' | 'token' | undefined;
   readonly scopes?: readonly string[] | undefined;
-  /** Admin token — scopes collapse; sees all channels. */
+  /** Admin token, scopes collapse; sees all channels. */
   readonly admin?: boolean | undefined;
   readonly sessionId?: string | undefined;
   /** Deliver only `sessionId`'s frames; see {@link createScopedSessionDelivery}. */
@@ -770,7 +770,7 @@ export class ControlPlaneGateway {
   }
 
   /**
-   * MemoryGovernor trim hook — a REAL reclaim. `floor` halves the retained
+   * MemoryGovernor trim hook, a REAL reclaim. `floor` halves the retained
    * replay history (keeps the newest half of the ring); `flush` clears the
    * replay ring and the surface-message buffer entirely. Replay after a flush
    * degrades honestly: reconnecting clients simply get no replayed backlog.

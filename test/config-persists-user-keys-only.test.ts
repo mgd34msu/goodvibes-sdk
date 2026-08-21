@@ -1,5 +1,5 @@
 /**
- * config-persists-user-keys-only.test.ts — the config file carries only
+ * config-persists-user-keys-only.test.ts, the config file carries only
  * user-set keys, never frozen defaults.
  *
  * Defect class: ConfigManager.save() serialized the whole merged config, so
@@ -33,7 +33,7 @@ describe('config persists only user-set keys', () => {
     manager.set('provider.model', 'openai:gpt-test');
 
     const onDisk = readSettings(configDir);
-    // Only the touched section is present — no frozen defaults for every other
+    // Only the touched section is present, no frozen defaults for every other
     // domain.
     expect(Object.keys(onDisk)).toEqual(['provider']);
     expect(onDisk.provider).toEqual({ model: 'openai:gpt-test' });
@@ -55,7 +55,7 @@ describe('config persists only user-set keys', () => {
     // Process B (loaded before the edit) now sets a THIRD, different key.
     b.set('behavior.notifyOnComplete', false);
 
-    // The hand-edited key must still be on disk — B's per-key write did not
+    // The hand-edited key must still be on disk, B's per-key write did not
     // clobber it by rewriting the whole file from its stale in-memory view.
     const after = readSettings(configDir);
     expect((after.behavior as Record<string, unknown>).autoApprove).toBe(true);

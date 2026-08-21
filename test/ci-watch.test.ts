@@ -97,7 +97,7 @@ describe('CiWatchService', () => {
     expect(briefs[0]!.failingJobs).toEqual(['build']);
     expect(briefs[0]!.logs).toContain('logs for build');
 
-    // The verdict was delivered — the watch's job is done: it RETIRES, which
+    // The verdict was delivered, the watch's job is done: it RETIRES, which
     // is the strongest form of never-notify-twice.
     expect(first.retired).toBe(true);
     expect(await service.listWatches()).toHaveLength(0);
@@ -105,7 +105,7 @@ describe('CiWatchService', () => {
     // The failure verdict + the started fix-session (with its id in the
     // payload so a surface can open/attach the session).
     expect(notes).toHaveLength(2);
-    expect(notes[1]!.title).toBe('CI fix session started — o/r');
+    expect(notes[1]!.title).toBe('CI fix session started, o/r');
     expect(notes[1]!.body).toContain('sessionId: fix-1');
   });
 
@@ -124,13 +124,13 @@ describe('CiWatchService', () => {
 
     const result = await service.checkWatch(watch.id);
     expect(result.fixSessionOffered).toBe(true);
-    // The verb result returned before the human decided — the id arrives via
+    // The verb result returned before the human decided, the id arrives via
     // the notification payload once the offer is accepted.
     expect(result.fixSessionId).toBeUndefined();
 
     resolveOffer!(true);
     await Bun.sleep(5);
-    const started = notes.find((note) => note.title === 'CI fix session started — o/r');
+    const started = notes.find((note) => note.title === 'CI fix session started, o/r');
     expect(started).toBeDefined();
     expect(started!.body).toContain('sessionId: fix-offer-77');
   });

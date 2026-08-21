@@ -1,20 +1,20 @@
 /**
- * store.ts — persistence for the trigger family, with recovery housekeeping.
+ * store.ts, persistence for the trigger family, with recovery housekeeping.
  *
  * Anything persisted across restarts and crashes has to do real housekeeping at
  * recovery, not just load. This store does all five:
  *
- *   1. Reap on recovery — triggers whose owning session is gone are removed,
+ *   1. Reap on recovery, triggers whose owning session is gone are removed,
  *      and a one-shot on-exit trigger that already fired retires itself.
- *   2. Bound everything — count cap AND age TTL on run history, observations
+ *   2. Bound everything, count cap AND age TTL on run history, observations
  *      and the shared event log. An unbounded append-only store is a leak with
  *      a nicer name.
- *   3. Validate by content, never by existence — the snapshot carries a
+ *   3. Validate by content, never by existence, the snapshot carries a
  *      checksum written last; a torn, truncated or zero-filled file fails the
  *      checksum and is quarantined instead of being served as good state.
- *   4. Reap periodically — the supervisor runs the same sweep on a timer,
+ *   4. Reap periodically, the supervisor runs the same sweep on a timer,
  *      because a long-lived daemon that only sweeps at boot never sweeps.
- *   5. Disclose what was reaped — every sweep returns a report and the startup
+ *   5. Disclose what was reaped, every sweep returns a report and the startup
  *      sweep writes `triggers-reaped.json`. Silent deletion is indistinguishable
  *      from data loss.
  *
@@ -109,7 +109,7 @@ export function validateSnapshot(parsed: unknown): TriggerStoreSnapshot | { read
     return { invalid: `unsupported snapshot version ${String(snapshot.version)}` };
   }
   if (typeof snapshot.checksum !== 'string' || snapshot.checksum.length !== 64) {
-    return { invalid: 'snapshot has no checksum — the write did not complete' };
+    return { invalid: 'snapshot has no checksum, the write did not complete' };
   }
   if (!Array.isArray(snapshot.triggers) || !Array.isArray(snapshot.grants) || !Array.isArray(snapshot.eventLog)) {
     return { invalid: 'snapshot collections are missing or not arrays' };
@@ -123,7 +123,7 @@ export function validateSnapshot(parsed: unknown): TriggerStoreSnapshot | { read
     eventLog: snapshot.eventLog,
   };
   if (checksumOf(body) !== snapshot.checksum) {
-    return { invalid: 'snapshot checksum mismatch — the file is torn, truncated or was written by a crashed run' };
+    return { invalid: 'snapshot checksum mismatch, the file is torn, truncated or was written by a crashed run' };
   }
   const malformed = snapshot.triggers.filter((record) => !isWellFormedRecord(record));
   if (malformed.length > 0) {

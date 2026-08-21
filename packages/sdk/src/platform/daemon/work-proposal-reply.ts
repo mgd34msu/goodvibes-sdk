@@ -2,7 +2,7 @@
  * Channel-reply resolution of pending work proposals.
  *
  * When the gate proposes a workstream over a channel, agreement has to be
- * answerable over that same channel — a gate that requires walking to a
+ * answerable over that same channel, a gate that requires walking to a
  * terminal is the same friction with extra steps. This module is the
  * counterpart to approval-reply.ts and hangs off the same shared ingress
  * hook (`authorizeSurfaceIngress`), so every surface adapter gets it without
@@ -40,7 +40,7 @@ export interface WorkProposalReplyDeps {
  * Matching is deliberately narrow: the proposal must be pending, on the same
  * surface, and (when both are known) from the same user. Only the most recent
  * such proposal is considered, so a bare "yes" can never resolve something the
- * owner has forgotten about. An expired proposal is not silently ignored — it
+ * owner has forgotten about. An expired proposal is not silently ignored, it
  * is reported back as expired, which is what "disclosed" means for state the
  * owner can no longer act on.
  */
@@ -68,7 +68,7 @@ export function findProposalForReply(
 /**
  * Consume an inbound message if it answers a pending work proposal.
  *
- * Returns `consumed: true` when the message was an answer — the adapter must
+ * Returns `consumed: true` when the message was an answer, the adapter must
  * then neither create a chat turn nor spawn anything, because this function
  * has already done whatever the answer called for.
  */
@@ -86,7 +86,7 @@ export async function tryResolveWorkProposalReplyFromChannel(
   const pending = store.listPending({ surfaceKind: input.surface });
   const target = findProposalForReply(input, pending);
   if (!target) {
-    // A bare "yes" with nothing pending is ordinary conversation — let it flow
+    // A bare "yes" with nothing pending is ordinary conversation, let it flow
     // through rather than swallowing it.
     return { consumed: false };
   }

@@ -1,4 +1,4 @@
-# Testing and Validation
+# Testing and validation
 
 > Consumer and contributor guidance. For internal testing architecture see [Testing Architecture](./testing.md).
 
@@ -6,7 +6,7 @@ The SDK repo validates more than TypeScript build success. `bun run validate` is
 
 ## Run the repo's declared script, never a guessed runner
 
-**Always invoke a repository's own `package.json` script — `bun run test` — and
+**Always invoke a repository's own `package.json` script, `bun run test`, and
 never a runner you inferred from the file layout.** Getting this wrong produces
 a false regression report against work that is fine, which costs a whole round
 chasing nothing.
@@ -23,7 +23,7 @@ ways, on an identical clean tree:
 The first two are artifacts of the wrong runner, not defects. `vitest` cannot
 resolve `bun:test` imports at all, so every file fails at import. Bare `bun test`
 skips the `--isolate` flag the suite requires and collapses with
-`Cannot call beforeEach() after the test run has completed` — a symptom that
+`Cannot call beforeEach() after the test run has completed`, a symptom that
 looks like a real async bug and is not.
 
 Either number, reported as a regression, would have been a false alarm against
@@ -35,9 +35,9 @@ The same rule covers `typecheck`, `lint` and `build`: a repo that ships a script
 has already made these decisions, and a hand-built command silently opts out of
 them.
 
-## CI Gates
+## CI gates
 
-This is the canonical CI-gate reference for the workspace. Every push and PR to `main` runs seven standalone jobs (see `.github/workflows/ci.yml`). The documentation, contract-artifact, version, changelog, error, todo, examples, API-surface, and bundle-budget checks are **not** separate jobs — they run as ordered **steps inside the single `validate` job** (see `scripts/validate.ts`).
+This is the canonical CI-gate reference for the workspace. Every push and PR to `main` runs seven standalone jobs (see `.github/workflows/ci.yml`). The documentation, contract-artifact, version, changelog, error, todo, examples, API-surface, and bundle-budget checks are **not** separate jobs. They run as ordered **steps inside the single `validate` job** (see `scripts/validate.ts`).
 
 | Job | Command | Purpose |
 |------|---------|---------|
@@ -51,12 +51,12 @@ This is the canonical CI-gate reference for the workspace. Every push and PR to 
 
 The `platform-matrix` job runs as four matrix legs (one job, not four):
 
-- **bun** — `bun run build && bun run test` runs the full Bun test suite.
-- **rn-bundle** — `bun run build && bun run test:rn` verifies companion dist bundles, including `workers.js`, contain no `Bun.*` identifiers and no `node:*` imports.
-- **workers** — `bun run test:workers` runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process) — 9 tests validate Worker-runtime support (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence). The dedicated `./workers` bridge is covered by source-level batch bridge tests and the `rn-bundle` companion scan.
-- **workers-wrangler** — `bun run test:workers:wrangler` runs the `./web` entry under `wrangler dev --local` — exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification; see `test/workers/NOTES.md` for runtime coverage boundaries.
+- **bun.** `bun run build && bun run test` runs the full Bun test suite.
+- **rn-bundle.** `bun run build && bun run test:rn` verifies companion dist bundles, including `workers.js`, contain no `Bun.*` identifiers and no `node:*` imports.
+- **workers.** `bun run test:workers` runs the `./web` entry under Miniflare 4 (workerd V8 isolate, in-process). 9 tests validate Worker-runtime support (no `node:*`, no `Bun.*`, no client `EventSource`/`WebSocket` dependence). The dedicated `./workers` bridge is covered by source-level batch bridge tests and the `rn-bundle` companion scan.
+- **workers-wrangler.** `bun run test:workers:wrangler` runs the `./web` entry under `wrangler dev --local`. Exercises wrangler's esbuild bundling pipeline and wrangler.toml config. NOTE: wrangler dev --local shares the Miniflare 4 runtime, so this is **not** a production-workerd verification. See `test/workers/NOTES.md` for runtime coverage boundaries.
 
-## Portable Validation
+## Portable validation
 
 ```bash
 bun run validate
@@ -78,7 +78,7 @@ validation process is cleaning and rebuilding package output. Use
 `bun run test:workers:wrangler` instead of invoking `bun test ...` directly
 when package `dist` imports are involved.
 
-## Focused Checks
+## Focused checks
 
 For fast iteration, run the individual check that matches your change instead of
 the full `validate` job:
@@ -94,7 +94,7 @@ the full `validate` job:
 | `bun run test-skip:check` | Fails on skipped or `.only` tests (`scripts/no-skipped-tests.ts`) |
 | `bun run security:audit` | Dependency audit at `--audit-level high` (`bun audit`) |
 
-## Contract Refresh
+## Contract refresh
 
 When generated contract artifacts change, refresh the canonical contract package artifacts before validating:
 
@@ -105,7 +105,7 @@ bun run validate
 
 `bun run refresh:contracts` updates generated contract JSON artifacts in `packages/contracts/artifacts`. SDK package preparation copies those artifacts into the published package. source copies were removed; sibling packages are the source of truth.
 
-## Zod Opt-In Validation
+## Zod opt-in validation
 
 The HTTP transport layer supports opt-in Zod v4 response validation at the transport boundary. Pass a `responseSchema` on individual method calls to validate the parsed response body:
 
@@ -117,12 +117,12 @@ const result = await sdk.operator.invoke('namespace.method', input, {
 });
 ```
 
-This is opt-in per call — there is no global schema enforcement. Schema mismatch throws a `ContractError` (a `GoodVibesSdkError` subclass with `kind: 'contract'`).
+This is opt-in per call. There is no global schema enforcement. Schema mismatch throws a `ContractError` (a `GoodVibesSdkError` subclass with `kind: 'contract'`).
 
-## Bundle Budget Enforcement
+## Bundle budget enforcement
 
 `bundle-budgets.json` at the repo root defines per-entry gzip size ceilings using
-`max(ceil(actual * 1.2), actual + 50)` over the last measured gzip size — a 20%
+`max(ceil(actual * 1.2), actual + 50)` over the last measured gzip size: a 20%
 growth multiplier with a `+50 B` floor so tiny facade entries are not failed by a
 handful of bytes. `bun run bundle:check` is both the local budget check and the
 bundle-budget step inside the `validate` job. See
@@ -141,15 +141,15 @@ To update budgets after a legitimate size change:
 3. Keep the file's top-level budget note generic; do not leave stale wave/date
    rationale in the budget baseline.
 
-## Test Coverage Snapshot
+## Test coverage snapshot
 
 [`COVERAGE.md`](../COVERAGE.md) is a generated snapshot of the root-level
 `test/*.test.ts` files, produced by `scripts/print-test-coverage.ts`
 (`bun scripts/print-test-coverage.ts > COVERAGE.md`). It is **not** enforced by
-any CI gate, so it can drift from the actual test set — treat it as a
+any CI gate, so it can drift from the actual test set. Treat it as a
 human-readable index, not an authoritative coverage report.
 
-## License And SBOM Checks
+## License and SBOM checks
 
 License compliance is tracked through the CycloneDX SBOM generated by
 `bun run sbom:check`; the generated `sbom.cdx.json` is intentionally ignored
@@ -158,30 +158,30 @@ build artifact is produced, validates the CycloneDX shape, and rejects blocked
 license families. Use `bun run sbom:generate` only when you need to regenerate
 the raw SBOM without running the validation and license-policy checks.
 
-## Release-Gate Failure Scenarios
+## Release-gate failure scenarios
 
 Maintainer-facing guidance for the most common release-gate failures:
 
-- **Contract drift** — the contract-artifact step (`contracts:check`) fails when the SDK-embedded contract JSON no longer matches `packages/contracts/artifacts`. Run `bun run refresh:contracts`, then re-run `bun run validate`.
-- **Bundle overage** — `bundle:check` fails when a JavaScript export exceeds its gzip ceiling. Investigate the size increase; if it is legitimate, update `bundle-budgets.json` using `max(ceil(actual * 1.2), actual + 50)` and record the new measurement in the entry rationale.
-- **SBOM / license policy** — `sbom-check` fails when `sbom.cdx.json` is empty or schema-invalid, or when a dependency carries a blocked license family. Resolve the offending dependency, or update the license policy if the family is acceptable.
-- **Types resolution (attw)** — `types-resolution-check` fails when the `exports` map does not resolve cleanly for a published subpath. Fix the `exports`/types wiring in `packages/sdk/package.json` and re-run `bunx attw --pack packages/sdk`.
+- **Contract drift.** The contract-artifact step (`contracts:check`) fails when the SDK-embedded contract JSON no longer matches `packages/contracts/artifacts`. Run `bun run refresh:contracts`, then re-run `bun run validate`.
+- **Bundle overage.** `bundle:check` fails when a JavaScript export exceeds its gzip ceiling. Investigate the size increase. If it is legitimate, update `bundle-budgets.json` using `max(ceil(actual * 1.2), actual + 50)` and record the new measurement in the entry rationale.
+- **SBOM and license policy.** `sbom-check` fails when `sbom.cdx.json` is empty or schema-invalid, or when a dependency carries a blocked license family. Resolve the offending dependency, or update the license policy if the family is acceptable.
+- **Types resolution (attw).** `types-resolution-check` fails when the `exports` map does not resolve cleanly for a published subpath. Fix the `exports`/types wiring in `packages/sdk/package.json` and re-run `bunx attw --pack packages/sdk`.
 
-## Workers Runtime Verification
+## Workers runtime verification
 
-The `./browser` companion entry point (`createBrowserGoodVibesSdk`) is Workers-ready (the `./web` entry is an equivalent alias — use `./browser` for new projects). (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots the `./web` entry (the `./web` alias of the Workers-ready `./browser`) under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries). The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`. SDK-owned Cloudflare provisioning is covered without live Cloudflare calls by `test/cloudflare-control-plane.test.ts` using an injected fake Cloudflare API client.
+The `./browser` companion entry point (`createBrowserGoodVibesSdk`) is Workers-ready (the `./web` entry is an equivalent alias, use `./browser` for new projects). (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots the `./web` entry (the `./web` alias of the Workers-ready `./browser`) under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries). The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`. SDK-owned Cloudflare provisioning is covered without live Cloudflare calls by `test/cloudflare-control-plane.test.ts` using an injected fake Cloudflare API client.
 
-## Type-Level Tests
+## Type-level tests
 
-`bun run types:check` compiles type-level usage tests in `tsconfig.type-tests.json`. These catch public API type regressions without running the code — e.g. verifying that factory function return types are assignable to their documented interfaces.
+`bun run types:check` compiles type-level usage tests in `tsconfig.type-tests.json`. These catch public API type regressions without running the code, e.g. verifying that factory function return types are assignable to their documented interfaces.
 
-## Why Each Gate Exists
+## Why each gate exists
 
-- **contract-artifact-check** — the SDK package artifact exports must match `packages/contracts/artifacts`. source copies were removed; implementation code is no longer copied into the SDK package.
-- **error-contract-check** — The public `SDKErrorKind` taxonomy, retryable status list, and consumer-facing error-kind docs must stay aligned. Run it locally with `bun run error:check`. Internal implementation throws are allowed when they are caught and normalized at public transport/daemon boundaries.
-- **rn-bundle** — Static bundle scan. Companion surface (React Native, Expo, browser, web, workers) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
-- **bundle:check** — Prevents accidental bundle size growth; runs as a step in the
+- **contract-artifact-check.** The SDK package artifact exports must match `packages/contracts/artifacts`. Source copies were removed. Implementation code is no longer copied into the SDK package.
+- **error-contract-check.** The public `SDKErrorKind` taxonomy, retryable status list, and consumer-facing error-kind docs must stay aligned. Run it locally with `bun run error:check`. Internal implementation throws are allowed when they are caught and normalized at public transport/daemon boundaries.
+- **rn-bundle.** Static bundle scan. Companion surface (React Native, Expo, browser, web, workers) must be safe for Metro, Vite, webpack, and esbuild. Any `Bun.*` identifier or `node:*` import breaks mobile and browser bundlers. (Runtime verification of `./web` under workerd lives in the separate `workers` and `workers-wrangler` lanes above.)
+- **bundle:check.** Prevents accidental bundle size growth. Runs as a step in the
   `validate` job. Each export has a gzip ceiling computed as
   `max(ceil(actual * 1.2), actual + 50)`; the 20% multiplier plus `+50 B` floor
   prevents transient-spike failures on tiny entries.
-- **types-check** — TypeScript type inference is non-trivial for discriminated union returns. Type tests validate at compile time without runtime overhead.
+- **types-check.** TypeScript type inference is non-trivial for discriminated union returns. Type tests validate at compile time without runtime overhead.

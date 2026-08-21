@@ -136,9 +136,9 @@ const BILLING_MESSAGE_PATTERN = /credit balance|insufficient[_\s-](?:credit|cred
  * Category implied by the transport, refined by what the response SAID.
  *
  * 400 and 429 are deliberately not decided on the status alone. Providers
- * report a spent account under both — Anthropic returns 400 with "credit
+ * report a spent account under both, Anthropic returns 400 with "credit
  * balance is too low", and several return 429 for exhausted credit rather than
- * throughput — so a status-only rule labels a billing failure `bad_request` or
+ * throughput, so a status-only rule labels a billing failure `bad_request` or
  * `rate_limit`. That matters beyond the wording: `rate_limit` reads as
  * retryable, so a caller waits out a condition that never clears.
  *

@@ -1,5 +1,5 @@
 /**
- * Panel jump action generator — creates NotificationAction objects that
+ * Panel jump action generator, creates NotificationAction objects that
  * instruct the UI to focus a specific panel. These actions are attached to
  * conversation-surface notifications so the user can jump directly from a
  * summary to the relevant panel for full detail.

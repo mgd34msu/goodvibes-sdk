@@ -12,11 +12,11 @@ import type { ServiceRegistry } from '../config/service-registry.js';
  * What an adapter learns from an ingress authorization.
  *
  * Every adapter in packages/sdk/src/platform/adapters reads `allowed` and
- * `reason` — 19 sites each — and none reads `policy`, `matchedGroupPolicy`,
+ * `reason`, 19 sites each, and none reads `policy`, `matchedGroupPolicy`,
  * `matchedScope`, `effectiveRequireMention` or `effectiveAllowedCommands`. The
  * seam returned the whole `ChannelPolicyDecision`, so every adapter test double
  * had to produce a full `ChannelPolicyRecord` it would never look at, and the
- * ones that did not were cast through `unknown` instead — which is how a
+ * ones that did not were cast through `unknown` instead, which is how a
  * decision missing its required `policy` field passed for a real one.
  *
  * The production implementation still returns the full decision; it remains
@@ -95,7 +95,7 @@ export interface SurfaceAdapterContext {
   /**
    * Report that an inbound message on this surface could not be processed.
    *
-   * For the DETACHED paths only — Slack's and Discord's slash commands answer
+   * For the DETACHED paths only, Slack's and Discord's slash commands answer
    * the provider immediately and then work in the background, so a failure
    * there is invisible to the shared inbound seam in `ChannelPluginRegistry`
    * that covers every other webhook surface. Optional so an embedder that

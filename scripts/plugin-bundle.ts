@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * plugin-bundle.ts — capability-bundle CLI (init / validate).
+ * plugin-bundle.ts, capability-bundle CLI (init / validate).
  *
  * Backed entirely by the exported library functions in
  * packages/sdk/src/platform/runtime/ecosystem/*, so the CLI is a thin argv
@@ -64,9 +64,9 @@ function runValidate(args: string[]): void {
       const s = summarizeBundleCapabilities(result.manifest);
       console.log(
         `[plugin-bundle] manifest OK: ${result.manifest.id}@${result.manifest.version} ` +
-          `(${result.manifest.kind}) — runtime[${s.runtime.join(', ') || 'none'}], ` +
+          `(${result.manifest.kind}), runtime[${s.runtime.join(', ') || 'none'}], ` +
           `tools:${s.toolCount} hooks:${s.hookCount} config:${s.configDomainCount} ` +
-          `channels:${s.channelCount}${s.highRisk ? ' — HIGH-RISK' : ''}`,
+          `channels:${s.channelCount}${s.highRisk ? ', HIGH-RISK' : ''}`,
       );
     }
   }
@@ -95,5 +95,5 @@ switch (command) {
     runValidate(rest);
     break;
   default:
-    fail(`unknown command '${command ?? ''}' — use 'init' or 'validate'`);
+    fail(`unknown command '${command ?? ''}', use 'init' or 'validate'`);
 }

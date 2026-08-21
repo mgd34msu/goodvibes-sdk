@@ -74,7 +74,7 @@ function makeAutomationHandlers(
 }
 
 // ---------------------------------------------------------------------------
-// describe: automation routes — happy paths
+// describe: automation routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e automation — GET /api/automation/jobs (happy path)', () => {
@@ -144,7 +144,7 @@ describe('router-e2e automation — runs (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: automation routes — failure paths
+// describe: automation routes, failure paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e automation — failure paths', () => {

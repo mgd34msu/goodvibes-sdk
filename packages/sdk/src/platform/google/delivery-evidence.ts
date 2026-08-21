@@ -11,7 +11,7 @@
  * This module makes the unsafe wiring **unrepresentable**. `DeliveredRecipient`
  * carries a private brand, so a plain `string` cannot be passed where one is
  * required, and the only constructors take genuine delivery evidence. There is
- * deliberately no constructor that accepts a `To:`, `Cc:` or `Bcc:` value —
+ * deliberately no constructor that accepts a `To:`, `Cc:` or `Bcc:` value,
  * not a discouraged one, not a documented-unsafe one. None.
  *
  * A note on IMAP, because it is an easy and expensive mistake: IMAP's
@@ -30,11 +30,11 @@ declare const DELIVERY_EVIDENCE_BRAND: unique symbol;
  * Where the evidence came from, ordered by how hard it is for a sender to
  * influence.
  *
- * - `alias-mailbox` — the message was fetched from a mailbox or alias minted
+ * - `alias-mailbox`, the message was fetched from a mailbox or alias minted
  *   for one specific signup. The strongest evidence available: the sender
  *   cannot cause a message to land in a mailbox that exists only for this
  *   expectation. This is the reason per-signup aliasing exists.
- * - `delivered-to-header` / `x-original-to-header` — prepended by the final
+ * - `delivered-to-header` / `x-original-to-header`, prepended by the final
  *   delivery agent. Trustworthy only in the top-most position; see
  *   `deliveredRecipientFromDeliveryHeaders`.
  */
@@ -68,7 +68,7 @@ function brand(address: string, source: DeliveryEvidenceSource): DeliveredRecipi
  * Strongest evidence: the message was fetched from a mailbox or alias that
  * exists only for one signup.
  *
- * The caller must pass the mailbox it actually issued the fetch against — not
+ * The caller must pass the mailbox it actually issued the fetch against, not
  * a value read out of the message.
  */
 export function deliveredRecipientFromAliasMailbox(mailboxAddress: string): DeliveredRecipient | null {
@@ -85,7 +85,7 @@ export function deliveredRecipientFromAliasMailbox(mailboxAddress: string): Deli
  * A sender can embed extra `Delivered-To` lines inside the message they
  * submit; those end up **below** the genuine one. So only index 0 is
  * evidence, and everything after it is ignored outright rather than searched
- * for a match — searching the list would hand the attacker back the forgery
+ * for a match, searching the list would hand the attacker back the forgery
  * they were denied.
  *
  * @param orderedValues delivery-header values, top-most first, exactly as they
@@ -136,7 +136,7 @@ export const NO_ALIAS_MAILBOXES: ReadonlySet<string> = new Set<string>();
  * Build evidence from a fetched message.
  *
  * Takes a structural shape rather than importing the mail client, so the
- * signup layer stays independent of which transport delivered the message —
+ * signup layer stays independent of which transport delivered the message,
  * IMAP today, something else later, same rule either way.
  *
  * `aliasMailboxes` is the set of mailboxes that were minted per-signup. A
@@ -146,7 +146,7 @@ export const NO_ALIAS_MAILBOXES: ReadonlySet<string> = new Set<string>();
  *
  * The argument is required rather than defaulted. A default of "no alias
  * mailboxes" silently downgrades a caller that does supply `message.mailbox`
- * but forgets the set — the mailbox evidence is discarded and the call still
+ * but forgets the set, the mailbox evidence is discarded and the call still
  * returns a plausible answer from the headers alone. Forcing every caller to
  * state its answer makes that omission a compile error instead. A transport
  * with no per-signup mailboxes passes `NO_ALIAS_MAILBOXES`, which reads as the

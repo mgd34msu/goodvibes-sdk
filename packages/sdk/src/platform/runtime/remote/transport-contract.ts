@@ -1,11 +1,11 @@
 /**
- * Remote Substrate — Transport Contract
+ * Remote Substrate, Transport Contract
  *
  * Defines typed message definitions for control/data/ack/failure
  * message classes with retry/backoff policies per class.
  *
  * This module defines the full structural contract for all messages that cross
- * the remote transport boundary. No raw strings — all messages are typed.
+ * the remote transport boundary. No raw strings, all messages are typed.
  */
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
 import { logger } from '../../utils/logger.js';
@@ -107,7 +107,7 @@ export const CURRENT_PROTOCOL_VERSION: Readonly<ProtocolVersion> = Object.freeze
  * Policy:
  * - Peers advertising minor < minSupportedMinor are rejected as unsupported.
  * - Peers advertising minor > maxSupportedMinor are accepted; we downgrade to
- *   the peer's level (peer is newer — they offer a superset of our features).
+ *   the peer's level (peer is newer, they offer a superset of our features).
  * - Peers advertising the same minor connect at full capability.
  */
 export const TRANSPORT_PROTOCOL_SUPPORT_MATRIX: ProtocolSupportMatrix = Object.freeze([
@@ -132,7 +132,7 @@ export const TRANSPORT_PROTOCOL_SUPPORT_MATRIX: ProtocolSupportMatrix = Object.f
 ]);
 
 /**
- * VersionMismatchError — thrown (or returned as failure) when a peer presents
+ * VersionMismatchError, thrown (or returned as failure) when a peer presents
  * an unsupported protocol version and the handshake must be rejected.
  *
  * Carries the structured unsupported details so callers can log,
@@ -166,19 +166,19 @@ export class VersionMismatchError extends GoodVibesSdkError {
  * Negotiate a protocol version between this peer and a remote peer.
  *
  * Rules:
- * 1. Major versions must match exactly — a mismatch is always unsupported.
+ * 1. Major versions must match exactly, a mismatch is always unsupported.
  * 2. Find the protocol support entry for the local version in the matrix.
  * 3. Peer minor below `minSupportedMinor` -> unsupported.
  * 4. Peer minor equal to local minor → full capability, no downgrade.
  * 5. Peer minor above local minor → downgrade to local (we are the older peer).
  * 6. Peer minor in (local, maxSupportedMinor] → downgrade to peer (peer is newer).
  *
- * Unsupported peers cannot proceed — callers must reject the handshake.
+ * Unsupported peers cannot proceed, callers must reject the handshake.
  *
  * @param localVersion - The version this side is running.
  * @param peerVersion - The version the remote peer advertised.
  * @param matrix - The protocol support matrix to look up against.
- * @returns A VersionNegotiationResult — check `proceed` before allowing the session.
+ * @returns A VersionNegotiationResult, check `proceed` before allowing the session.
  */
 export function negotiateProtocolVersion(
   localVersion: Readonly<ProtocolVersion>,
@@ -211,7 +211,7 @@ export function negotiateProtocolVersion(
 
   // If no entry, treat all same-major peers as supported (conservative default)
   if (!entry) {
-    logger.warn('ProtocolSupportMatrix: no entry found for local version — falling back to conservative defaults', {
+    logger.warn('ProtocolSupportMatrix: no entry found for local version, falling back to conservative defaults', {
       localVersion: localVersion.label,
     });
   }
@@ -443,7 +443,7 @@ export function createControlMessage<T extends ControlMessageType>(
   return Object.freeze({
     class: 'control' as const,
     controlType,
-    // Cast to wire-format Record — call sites are fully type-safe via ControlPayloads[T]
+    // Cast to wire-format Record, call sites are fully type-safe via ControlPayloads[T]
     payload: payload as Record<string, unknown>,
     ...buildBase(sessionId, epoch, offset),
   });
@@ -469,7 +469,7 @@ export function createDataMessage<T extends DataMessageType>(
   return Object.freeze({
     class: 'data' as const,
     dataType,
-    // Cast to wire-format Record — call sites are fully type-safe via DataPayloads[T]
+    // Cast to wire-format Record, call sites are fully type-safe via DataPayloads[T]
     payload: payload as Record<string, unknown>,
     ...buildBase(sessionId, epoch, offset),
   });

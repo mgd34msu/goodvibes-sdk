@@ -14,12 +14,12 @@ import type { ToolCall, ToolResult } from '../packages/sdk/src/platform/types/to
  * from whatever `requestPermission` handler it is given. That coverage never
  * caught the real bug because production's `requestPermission` handler is
  * NOT a bare function that returns `{ approved, remember, modifiedArgs }`
- * directly — it is `(request) => approvalBroker.requestApproval({ request,
+ * directly, it is `(request) => approvalBroker.requestApproval({ request,
  * sessionId, localPrompt })` (see the TUI's bootstrap-core.ts). The
  * interactive (TUI-local) path routes the decision through
  * ApprovalBroker.requestApproval()'s `localPrompt(...).then(decision =>
  * this.resolveApproval(...))` bridge before PermissionManager ever sees it,
- * and that bridge silently dropped `decision.modifiedArgs` — so by the time
+ * and that bridge silently dropped `decision.modifiedArgs`, so by the time
  * checkDetailed() ran, modifiedArgs was already gone, regardless of what the
  * UI computed.
  *
@@ -27,7 +27,7 @@ import type { ToolCall, ToolResult } from '../packages/sdk/src/platform/types/to
  * the local prompt and PermissionManager, exactly as it does in the shipped
  * TUI. It proves that when a 2-edit `edit` tool call has one hunk deselected,
  * the args actually handed to tool execution contain exactly the selected
- * hunk — not both.
+ * hunk, not both.
  */
 
 function makePermissionConfigReader(): PermissionConfigReader {

@@ -4,7 +4,7 @@ import type { ToolLLM } from '../../config/tool-llm.js';
 import { summarizeError } from '../../utils/error-display.js';
 
 /**
- * Prompt hook runner — sends event data to an LLM via ToolLLM.
+ * Prompt hook runner, sends event data to an LLM via ToolLLM.
  *
  * The hook definition's `prompt` field is a template string.
  * `$ARGUMENTS` is replaced with the JSON-serialised event before
@@ -59,7 +59,7 @@ export async function run(
       const result = JSON.parse(trimmed) as HookResult;
       return { ...result, ok: result.ok ?? true };
     } catch {
-      // Non-JSON LLM output — fire-and-forget semantics
+      // Non-JSON LLM output, fire-and-forget semantics
       return { ok: true };
     }
   } catch (err) {

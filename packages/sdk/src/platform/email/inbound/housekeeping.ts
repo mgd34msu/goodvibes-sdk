@@ -1,12 +1,12 @@
 /**
- * housekeeping.ts — recovery-time and periodic garbage collection for
+ * housekeeping.ts, recovery-time and periodic garbage collection for
  * everything inbound mail persists: the cursor store, the record store, and
  * the expectation store (docs/inbound-email.md §9). Composes the three the
  * same way `platform/devices/device-housekeeping.ts`'s `DeviceHousekeeper`
  * composes the device grant and capture-artifact stores.
  *
- * Persistence without recovery-time housekeeping does not fail loudly — it
- * silently serves stale or corrupt state forever — so all three are swept on
+ * Persistence without recovery-time housekeeping does not fail loudly, it
+ * silently serves stale or corrupt state forever, so all three are swept on
  * recovery AND on a timer, and every sweep discloses what it removed.
  *
  * Disclosure is written to `inbound-mail-housekeeping.json` beside the three
@@ -35,7 +35,7 @@ export interface InboundMailSweepFailure {
  * Each store's report is NULLABLE, and that is the point rather than a
  * convenience: the three used to be swept in one sequential expression, so a
  * throw from the first meant the second and third never ran and a caller could
- * not tell — a full record store and an expired expectation book both survived
+ * not tell, a full record store and an expired expectation book both survived
  * a "successful" boot because one cursor file had a bad byte in it. A store
  * that could not be swept says so here, in `failures`, and the other two are
  * swept anyway.
@@ -59,8 +59,8 @@ export interface InboundMailHousekeepingReport {
  *
  * A disclosure log exists to answer "what was removed, and why" for something
  * that is now gone. Everything it needs is therefore about the REMOVED. The
- * in-memory `ExpectationSweepReport` also carries `survivors` — the full
- * `VerificationExpectation` objects that did NOT go — because
+ * in-memory `ExpectationSweepReport` also carries `survivors`, the full
+ * `VerificationExpectation` objects that did NOT go, because
  * `InboundExpectationRegistry.hydrate()` feeds them straight into the live
  * book at boot. That is a same-process hand-off between two objects, and it
  * has no business being on disk.
@@ -69,14 +69,14 @@ export interface InboundMailHousekeepingReport {
  * the expectation store: every recipient alias, service domain and purpose,
  * duplicated into a file that expiry reaping never touches. The expectation
  * store reaps an expired grant within its window; the copy of it in the
- * disclosure log survived for the next twenty sweeps regardless — a store
+ * disclosure log survived for the next twenty sweeps regardless, a store
  * nobody declared, holding the exact data the declared one is careful about.
  *
  * So `survivors` is dropped on the way to disk. `retained` already carries the
  * count, and a count is what a disclosure needs about the things that stayed:
  * naming them is not disclosure, it is retention.
  *
- * `removed` is kept, because the removed ARE the disclosure — but bounded. A
+ * `removed` is kept, because the removed ARE the disclosure, but bounded. A
  * sweep of a full record store can remove thousands of rows, and twenty of
  * those reports is a log far larger than the stores it describes. Past
  * `MAX_DISCLOSED_REMOVALS` the entries are dropped and `removedTotal` says how
@@ -104,7 +104,7 @@ interface HousekeepingLog extends Record<string, unknown> {
   readonly reports: readonly DisclosedHousekeepingReport[];
 }
 
-/** Keep the disclosure log itself bounded — it is persisted state too. */
+/** Keep the disclosure log itself bounded, it is persisted state too. */
 const MAX_DISCLOSURE_REPORTS = 20;
 
 /**
@@ -112,7 +112,7 @@ const MAX_DISCLOSURE_REPORTS = 20;
  *
  * BOTH BOUNDS, because the count cap alone is an age cap only by accident. A
  * daemon sweeping every six hours fills twenty entries in five days, so the
- * count looks like it reaps by age — but the reaping is done by ARRIVALS, and a
+ * count looks like it reaps by age, but the reaping is done by ARRIVALS, and a
  * store nothing writes to has none. A mailbox that goes quiet, a surface
  * switched off, a daemon that stops running: in every one of those the twentieth
  * entry is the last one written and it stays forever, which is the same
@@ -131,7 +131,7 @@ const MAX_DISCLOSED_REMOVALS = 100;
 /** Bound on any single free-text field in the log: a sweep failure's `detail`, a removal's `note`. */
 const MAX_DISCLOSED_TEXT_CHARS = 512;
 
-/** Bound on the one-line summary. Assembled from bounded parts, bounded anyway — the log is persisted state. */
+/** Bound on the one-line summary. Assembled from bounded parts, bounded anyway, the log is persisted state. */
 const MAX_DISCLOSED_SUMMARY_CHARS = 2_000;
 
 function clampText(value: string, max: number): string {
@@ -175,13 +175,13 @@ function discloseReport(report: InboundMailHousekeepingReport): DisclosedHouseke
  * Validate a report read back from the log BY CONTENT.
  *
  * `listDisclosures()` used to hand back `log.reports` on the strength of it
- * being an array — the only structure here read without validation, in a file
+ * being an array, the only structure here read without validation, in a file
  * whose own header states the rule (§9: reap, bound, validate by content,
  * sweep, disclose). A hand-edited or half-written entry then flowed straight
  * into whatever rendered it.
  *
  * Only the fields a reader is entitled to rely on are checked, and anything
- * failing is dropped rather than repaired — the same rule the three stores
+ * failing is dropped rather than repaired, the same rule the three stores
  * apply to their own records.
  */
 export function validateDisclosedHousekeepingReport(value: unknown): DisclosedHousekeepingReport | null {
@@ -237,7 +237,7 @@ export interface InboundMailHousekeeperOptions {
   readonly now?: (() => number) | undefined;
 }
 
-/** `3 malformed, 1 file-unreadable` — removals grouped by their own reason word. */
+/** `3 malformed, 1 file-unreadable`, removals grouped by their own reason word. */
 function byReason(removed: readonly { readonly reason: string }[]): string {
   const counts = new Map<string, number>();
   for (const removal of removed) counts.set(removal.reason, (counts.get(removal.reason) ?? 0) + 1);
@@ -294,7 +294,7 @@ function summarize(
   // Deleting files with nothing anywhere saying so is the exact objection this
   // round raised against silent write-time bounding. `PersistentStore` reclaims
   // temp files left by a process killed mid-write, and this is where that gets
-  // said out loud. Process-wide and cumulative, so it is worded as such — it
+  // said out loud. Process-wide and cumulative, so it is worded as such, it
   // includes stores this housekeeper does not own.
   const orphans = persistentStoreOrphansReclaimed();
   const reclaimed = orphans === 0
@@ -321,8 +321,8 @@ export class InboundMailHousekeeper {
   /**
    * Orders the disclosure log's read-modify-write. See `sweep`.
    *
-   * The log is not a snapshot of anything in memory — each write is the file's
-   * own previous contents plus one entry — so the unit that has to be
+   * The log is not a snapshot of anything in memory, each write is the file's
+   * own previous contents plus one entry, so the unit that has to be
    * serialised is the READ AND THE WRITE TOGETHER, not the write alone.
    */
   private readonly writes = new StoreWriteQueue();
@@ -366,7 +366,7 @@ export class InboundMailHousekeeper {
    *
    * Each store is swept INDEPENDENTLY. They were swept in one sequential
    * expression, which made the first store's failure the second and third
-   * store's failure too — one unreadable cursor file left records past their
+   * store's failure too, one unreadable cursor file left records past their
    * retention and expired expectations sitting on disk, with no report, no
    * disclosure, and nothing anywhere saying why. Three separate attempts, three
    * separate answers, and the pass itself always produces a report.
@@ -393,8 +393,8 @@ export class InboundMailHousekeeper {
     // where ordering the write alone would not have been enough. Every other
     // store in the daemon writes a snapshot of state it already holds in
     // memory; this log writes the FILE'S OWN previous contents plus one entry.
-    // Two sweeps overlapping — the recovery sweep runs on `supervisor.start()`,
-    // which a config change re-runs, while the 6-hourly timer is mid-pass —
+    // Two sweeps overlapping, the recovery sweep runs on `supervisor.start()`,
+    // which a config change re-runs, while the 6-hourly timer is mid-pass,
     // therefore both read the same `existing`, both append their own entry, and
     // whichever writes second silently drops the other's. What is lost is the
     // record of a reap: files were removed and the log that exists so a deletion
@@ -428,7 +428,7 @@ export class InboundMailHousekeeper {
         //
         // `existing` came back from `listDisclosures()`, which drops entries past
         // `disclosureRetentionMs`. So the age bound is not merely a read-time
-        // filter — every sweep physically rewrites the file without them, which
+        // filter, every sweep physically rewrites the file without them, which
         // is the same "the bound applies on the write" rule the record store now
         // follows and for the same reason.
         reports: [...existing, discloseReport(report)].slice(-MAX_DISCLOSURE_REPORTS),

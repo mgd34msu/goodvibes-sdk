@@ -1,11 +1,11 @@
 /**
- * agent-graph-composition.ts — the graph that runs agents.
+ * agent-graph-composition.ts, the graph that runs agents.
  *
  * Six collaborators that are only meaningful as a set, so they are built as
  * one: a message bus, the archetype loader, the orchestrator that executes a
  * run, the manager that owns the records, the context-accounting holder, and
  * the WRFC controller. Every one of them holds a reference to at least one
- * other, and two of the links are circular — the orchestrator writes
+ * other, and two of the links are circular, the orchestrator writes
  * conversation snapshots back through the manager, and the manager drives the
  * WRFC controller which was built from the manager. Assembled anywhere but in
  * one place, a half-wired graph looks correct and silently drops either the

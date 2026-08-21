@@ -1,9 +1,9 @@
 /**
- * subpath-declared.test.ts — a capability nobody can import does not ship.
+ * subpath-declared.test.ts, a capability nobody can import does not ship.
  *
  * The gap: `check-subpath-api-surface` enumerates its entry points FROM the
  * exports map, so it is a drift detector over what is already declared. A
- * top-level capability with no exports entry has no entry point to enumerate —
+ * top-level capability with no exports entry has no entry point to enumerate,
  * it is absent from the snapshot, absent from the diff, and absent from every
  * green run, while `import '@pellux/goodvibes-sdk/platform/<thing>'` fails
  * resolution for every consumer of the published package.
@@ -44,7 +44,7 @@ describe('every shipped capability is importable from the published package', ()
   test('this capability is declared, and points at a real dist entry', () => {
     const entry = exportsMap()['./platform/payments'] as { types?: string; import?: string } | undefined;
     expect(entry).toBeDefined();
-    // Not just present — pointing somewhere that exists. A subpath declared
+    // Not just present, pointing somewhere that exists. A subpath declared
     // against a path the build does not produce fails at install time rather
     // than here, which is the worst place to find out.
     expect(entry?.import).toBe('./dist/platform/payments/index.js');
@@ -76,7 +76,7 @@ describe('every shipped capability is importable from the published package', ()
   test('the known-undeclared list is honest about what it covers', () => {
     // The list exists so the gate can ship without blocking lanes that did not
     // introduce the defect. It must stay a list of REAL top-level capability
-    // directories — an entry naming something that does not exist would be a
+    // directories, an entry naming something that does not exist would be a
     // silent widening of the exemption.
     const source = readFileSync(join(REPO_ROOT, 'scripts', 'check-subpath-declared.ts'), 'utf8');
     const block = /const KNOWN_UNDECLARED: readonly string\[\] = \[([\s\S]*?)\];/.exec(source)?.[1] ?? '';
@@ -102,7 +102,7 @@ describe('the surface a consumer needs to construct the capability', () => {
   test('the daemon-side service is exported, not merely present in source', async () => {
     // Reachable from source and absent from the published surface is exactly
     // the shape of gap the subpath check cannot see, because the SUBPATH was
-    // declared correctly — only the symbol was missing.
+    // declared correctly, only the symbol was missing.
     const surface = await import('../packages/sdk/src/platform/payments/index.js');
     expect(typeof surface.PaymentsGatewayServiceImpl).toBe('function');
     // And the pieces a daemon has to build to use it.

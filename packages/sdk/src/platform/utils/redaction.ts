@@ -22,7 +22,7 @@ const CREDENTIAL_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
  * Identity: the owner's account name, as it appears inside a home path.
  *
  * This is ANONYMISATION, not secret-hiding, and it only earns its keep on text
- * that is about to leave the machine — a session export he hands to someone, a
+ * that is about to leave the machine, a session export he hands to someone, a
  * telemetry payload. Applied to a file that lives on his own disk it destroys
  * information he needs (which directory the work happened in) in order to hide
  * his username from himself, and the substitution cannot be undone.
@@ -72,7 +72,7 @@ const PROFILE_KEY_PATTERN = /(^|[_-])(shipping[_-]?address|billing[_-]?address|h
  * `shipping tier: standard` are closed-tier fields whose values are ordinary
  * English, and turning them into patterns would blank the word "standard" out
  * of every unrelated log line and stack trace this module touches. Redacting
- * too much is not the safe direction — it destroys the diagnostic the export
+ * too much is not the safe direction, it destroys the diagnostic the export
  * exists to carry, and it does it silently.
  */
 const MIN_PROFILE_VALUE_LENGTH = 8;
@@ -81,8 +81,8 @@ const MIN_PROFILE_VALUE_LENGTH = 8;
  * Values distinctive enough to match on: long enough, and carrying a digit, an
  * `@`, or internal whitespace.
  *
- * That test admits every value that is genuinely identifying — an address, an
- * email, a phone number, a full name, a `22:00-07:00` range — and rejects the
+ * That test admits every value that is genuinely identifying, an address, an
+ * email, a phone number, a full name, a `22:00-07:00` range, and rejects the
  * single common words (`telegram`, `standard`, `imperial`) that would otherwise
  * become a pattern matching half the corpus.
  */
@@ -104,7 +104,7 @@ function escapeRegExp(value: string): string {
  * distinctiveness floor genuinely conflict, and the conflict was reproduced: a
  * `People` line reading `- Bob Lee` is seven characters, fell under the floor,
  * and left a session export in the clear. The floor's reasoning is still right
- * for ordinary values — `currency: USD` must not blank the word USD everywhere —
+ * for ordinary values, `currency: USD` must not blank the word USD everywhere,
  * so the resolution is to key third-party data on its SECTION rather than on
  * the shape of its value.
  */
@@ -131,7 +131,7 @@ let profilePatterns: readonly RegExp[] = [];
  * profile's closed-tier values.
  *
  * A registered reader rather than an import: `redaction.ts` must stay usable
- * where no profile exists — a browser bundle, a surface with no daemon, a test
+ * where no profile exists, a browser bundle, a surface with no daemon, a test
  * that never built a store. With nothing registered this module behaves exactly
  * as it did before the profile existed.
  */
@@ -145,7 +145,7 @@ export function registerProfileRedactionValues(reader: ProfileRedactionValueRead
  * Compiled patterns for the current profile values.
  *
  * Recompiled only when the set of values actually changes, because this runs on
- * every at-rest write and every exported message, not once per process — the
+ * every at-rest write and every exported message, not once per process, the
  * profile is reloaded whenever the owner edits the file, so a
  * compile-once-at-startup cache would go stale the first time he did.
  */
@@ -214,7 +214,7 @@ function applyPatterns(
 /**
  * Credentials AND home-path anonymisation.
  *
- * For text that is LEAVING the machine — session exports, telemetry. Both
+ * For text that is LEAVING the machine, session exports, telemetry. Both
  * halves are wanted there: the reader is not the owner, so his username is
  * not theirs to have.
  */
@@ -225,7 +225,7 @@ export function redactSensitiveData(text: string): string {
 /**
  * Credentials only, leaving paths intact.
  *
- * For text that STAYS on the owner's machine — the at-rest journal, whose file
+ * For text that STAYS on the owner's machine, the at-rest journal, whose file
  * lives inside the very directory the identity patterns would rewrite. There
  * is no one to anonymise him from in his own files, and `/home/[REDACTED]/…`
  * makes a journal entry unusable for the debugging it exists for.

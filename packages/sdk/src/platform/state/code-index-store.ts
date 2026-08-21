@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * CodeIndexStore — an incremental, tree-sitter-chunked, embedding-backed index
+ * CodeIndexStore, an incremental, tree-sitter-chunked, embedding-backed index
  * of a repo's source tree (Stage A; see CHANGELOG 0.38.0).
  *
  * Deliberately MIRRORS MemoryStore + SqliteVecMemoryIndex (state/memory-store.ts,
@@ -17,21 +17,21 @@
  *     itself lives in code-index-chunking.ts)
  *   - the file-walk helpers already shipped for the `find` tool
  *     (tools/find/shared.ts: buildGitignoreMatcher, findNestedGitignoreFiles,
- *     collectGlobFiles, isBinary, readTextFile) — no new ignore-file parsing
+ *     collectGlobFiles, isBinary, readTextFile), no new ignore-file parsing
  *     or directory-walk logic. Ignore rules: the ROOT .gitignore plus nested
  *     .gitignore files (each applied relative to its own directory). Nested
  *     coverage is bounded by findNestedGitignoreFiles' own cap (currently the
- *     first 5 nested files found, in walk order) — a repo with more nested
+ *     first 5 nested files found, in walk order), a repo with more nested
  *     .gitignore files than that has the excess UNAPPLIED, same as the find
  *     tool itself.
  *
  * Storage: a single bun:sqlite database (schema + all table ops live in
- * code-index-db.ts) — `code_chunks` (chunk metadata), `code_vectors` (vec0
+ * code-index-db.ts), `code_chunks` (chunk metadata), `code_vectors` (vec0
  * virtual table), and `code_index_meta` (build provenance: the embedding
  * provider id the index was last fully built with). When the current default
  * embedding provider differs from the stored one, search() refuses to run the
- * vector path — a query embedded in provider-Y space compared against
- * provider-X vectors is meaningless — and degrades to an honestly-labeled
+ * vector path, a query embedded in provider-Y space compared against
+ * provider-X vectors is meaningless, and degrades to an honestly-labeled
  * lexical match over chunk symbol/path metadata until a rebuild re-embeds
  * (buildFull() detects the mismatch and forces a full re-embed).
  *
@@ -43,14 +43,14 @@
  *
  * Lifecycle honesty: `reroot()`/`close()` bump an epoch counter; an in-flight
  * build re-checks the epoch after every await and aborts cleanly when stale
- * (per-file writes are atomic — all of a file's chunks are embedded before any
- * row is written — so an aborted build never writes wrong-rooted chunks into
+ * (per-file writes are atomic, all of a file's chunks are embedded before any
+ * row is written, so an aborted build never writes wrong-rooted chunks into
  * the new database). Aborted builds return stats carrying
  * `abortReason: 'build aborted by reroot'` and never become `lastBuild`.
  *
  * The index never blocks a turn: buildFull() awaits `embedAsync` on a bounded
  * per-file queue with periodic event-loop yields, and every read (`search`,
- * `stats`) returns whatever is currently indexed — it never waits on an
+ * `stats`) returns whatever is currently indexed, it never waits on an
  * in-flight build.
  */
 
@@ -106,7 +106,7 @@ import { summarizeError } from '../utils/error-display.js';
 
 // bun:sqlite is a Bun-only builtin; a static import makes this module unloadable
 // under Node (breaks the release install-smoke check). Lazily require the ctor so
-// the `bun:` specifier stays off the static graph — only pulled on the Bun-only
+// the `bun:` specifier stays off the static graph, only pulled on the Bun-only
 // path that opens a database.
 let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
 function bunSqliteDatabase(): typeof import('bun:sqlite').Database {
@@ -255,7 +255,7 @@ export class CodeIndexStore {
    * Re-root the store to a new working directory + db path (workspace swap).
    * Bumps the build epoch (aborting any in-flight build at its next await),
    * closes existing handles, reopens at the new path, and clears in-memory
-   * build state. Does NOT re-trigger a build — the caller decides when to
+   * build state. Does NOT re-trigger a build, the caller decides when to
    * call scheduleBuild()/buildFull() again, exactly as it decided to open the
    * store originally.
    */
@@ -301,7 +301,7 @@ export class CodeIndexStore {
 
   /**
    * Human-readable provider-space mismatch, or null when the stored vectors
-   * were built with the current default provider (or provenance is unknown —
+   * were built with the current default provider (or provenance is unknown,
    * an index that predates provenance tracking keeps its legacy behavior
    * until the next build stamps it).
    */
@@ -310,7 +310,7 @@ export class CodeIndexStore {
     const stored = getCodeIndexMeta(this.db, EMBEDDING_PROVIDER_META_KEY);
     const current = this.embeddingRegistry.getDefaultProviderId();
     if (stored === null || stored === current) return null;
-    return `embeddings built with ${stored}, current provider ${current} — rebuild to re-embed`;
+    return `embeddings built with ${stored}, current provider ${current}, rebuild to re-embed`;
   }
 
   stats(): CodeIndexStats {
@@ -344,7 +344,7 @@ export class CodeIndexStore {
     const limit = Math.max(1, Math.min(50, opts.limit ?? 10));
 
     // Provider-space honesty: a query embedded under the CURRENT provider is
-    // meaningless against vectors stored under a DIFFERENT one — skip the
+    // meaningless against vectors stored under a DIFFERENT one, skip the
     // vector path entirely and degrade to lexical metadata matching.
     if (this.getProviderMismatch() !== null) {
       return this.searchLexical(trimmed, limit);
@@ -385,7 +385,7 @@ export class CodeIndexStore {
   /**
    * Lexical fallback used when the vector path is disabled by a provider
    * mismatch: token match over chunk symbol/path metadata (chunk text is not
-   * stored, so this is name/path matching only — labeled 'lexical', never
+   * stored, so this is name/path matching only, labeled 'lexical', never
    * 'semantic'). Similarity is the matched-token fraction.
    */
   private searchLexical(query: string, limit: number): CodeContextResult[] {
@@ -418,7 +418,7 @@ export class CodeIndexStore {
 
   // ── Build / reindex ──────────────────────────────────────────────────────
 
-  /** Fire-and-forget kickoff; concurrent/repeated calls while a build is running are no-ops. Never awaited by the caller — never blocks a turn. */
+  /** Fire-and-forget kickoff; concurrent/repeated calls while a build is running are no-ops. Never awaited by the caller, never blocks a turn. */
   scheduleBuild(): void {
     if (this.building) return;
     void this.buildFull().catch((err) => {
@@ -452,7 +452,7 @@ export class CodeIndexStore {
 
   /**
    * Reindex a single file on demand. Intended to be called from the file
-   * read/write tool paths and from an explicit reindex command — wiring
+   * read/write tool paths and from an explicit reindex command, wiring
    * those call sites is out of scope for this module (see module doc).
    * A no-op (chunks removed) if the path is gitignored or no longer exists.
    */
@@ -502,7 +502,7 @@ export class CodeIndexStore {
 
     // Provider-space honesty: if the stored vectors were embedded under a
     // different provider than the current default, the unchanged-file
-    // shortcut would silently keep stale-space vectors — force a full
+    // shortcut would silently keep stale-space vectors, force a full
     // re-embed so a completed build always leaves a single-provider index.
     const currentProviderId = this.embeddingRegistry.getDefaultProviderId();
     const storedProviderId = this.db ? getCodeIndexMeta(this.db, EMBEDDING_PROVIDER_META_KEY) : null;
@@ -600,7 +600,7 @@ export class CodeIndexStore {
       }
     }
 
-    // Stamp provenance only on a COMPLETED build — every chunk that survives
+    // Stamp provenance only on a COMPLETED build, every chunk that survives
     // to this point is either freshly embedded under currentProviderId or was
     // verified same-provider by the forceReembed logic above.
     setCodeIndexMeta(this.db, EMBEDDING_PROVIDER_META_KEY, currentProviderId);
@@ -646,12 +646,12 @@ export class CodeIndexStore {
 
   /**
    * Index one file's content. Short-circuits on an unchanged file_hash (no
-   * re-chunk, no re-embed) — the "content_hash stable across re-index of
-   * unchanged file" contract — unless forceReembed is set (provider mismatch).
+   * re-chunk, no re-embed), the "content_hash stable across re-index of
+   * unchanged file" contract, unless forceReembed is set (provider mismatch).
    *
    * Epoch honesty: all of a file's chunks are embedded (every await) BEFORE
    * any row is deleted or written, and the epoch is re-checked after each
-   * await — so a reroot() mid-file aborts with the database untouched for
+   * await, so a reroot() mid-file aborts with the database untouched for
    * that file (returns null; the caller abandons the build).
    */
   private async indexFileContent(
@@ -692,7 +692,7 @@ export class CodeIndexStore {
       embeddings.push(embedding);
     }
 
-    // All awaits are done — the delete+write below is synchronous, so the
+    // All awaits are done, the delete+write below is synchronous, so the
     // whole file lands atomically with respect to reroot()/close().
     if (!this.db) return null;
     deleteChunksForPath(this.db, relPath);

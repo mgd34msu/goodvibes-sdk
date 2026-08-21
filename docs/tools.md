@@ -1,4 +1,4 @@
-# Tool System
+# Tool system
 
 The tool system is the daemon-side execution layer used by sessions, agents,
 WRFC chains, and remote surfaces. Tools are registered through
@@ -9,7 +9,7 @@ Accessible via `@pellux/goodvibes-sdk/platform/tools` (daemon embedders). Consum
 
 For how tool-call arguments are parsed, validated, and dropped when malformed, see [Tool Safety](./tool-safety.md).
 
-## Built-In Tools
+## Built-in tools
 
 | Tool | Purpose | Main modes or operations |
 |---|---|---|
@@ -39,7 +39,7 @@ For how tool-call arguments are parsed, validated, and dropped when malformed, s
 | `channel` | Use channel-owned runtime tools | surface-specific tool bridge |
 | `web_search` | Run provider-backed web search | query, safe-search, evidence fetching |
 
-## Registration Requirements
+## Registration requirements
 
 `registerAllTools()` requires host-owned collaborators instead of implicitly
 constructing global state. Required collaborators include file undo, mode
@@ -51,7 +51,7 @@ Optional collaborators enable web search, MCP, WRFC, remote runners, channel
 tools, overflow handling, change tracking, service-backed credential
 resolution, and secret-aware integration status.
 
-## Runtime And Settings Awareness
+## Runtime and settings awareness
 
 The SDK registers `goodvibes_context` and `goodvibes_settings` for all full
 tool runtimes, including TUI turns, companion remote chat, Home Assistant
@@ -83,13 +83,13 @@ about local settings, configured integrations, host capabilities, tools,
 providers, or surfaces. The same instruction tells the model not to spawn
 agents or WRFC chains for ordinary questions or direct environment inspection.
 
-## Contract Verification
+## Contract verification
 
 The `tools.contractVerification` setting is enabled by default, so built-in
 and registered tools are verified at registration time. Hosts can disable the
 flag explicitly, but the safer default is verification on.
 
-See [Tool Safety — Tool Contract Verification](./tool-safety.md#tool-contract-verification)
+See [Tool safety: tool contract verification](./tool-safety.md#tool-contract-verification)
 for what the verifier checks (schema shape, permission class, timeout/cancellation
 support, output policy, and idempotency metadata) and how error- versus
 warning-level violations are handled.
@@ -146,41 +146,41 @@ The permissions policy engine (`permissions.engine`), the shadow simulation
 (`policy.registryEnabled`) add stricter policy evaluation when enabled.
 Related tool settings:
 
-- `permissions.divergenceDashboard` (default on) — aggregates
+- `permissions.divergenceDashboard` (default on): aggregates
   permission-simulation divergence by tool/prefix/mode and gates enforce-mode
   transitions on the divergence rate.
-- `runtime.toolBudget.enforced` (default off) — enforces per-phase wall-clock,
+- `runtime.toolBudget.enforced` (default off): enforces per-phase wall-clock,
   token, and cost budgets across tool execution pipelines, terminating on a
   hard breach.
-- `tools.overflowSpillBackend` — selects the overflow spill backend
+- `tools.overflowSpillBackend`: selects the overflow spill backend
   (`file`, `ledger`, or `diagnostics`); `file` is the stock behavior.
 
 See [Feature settings](./feature-settings.md) for the full capability catalog.
 
-## Fetch Safety
+## Fetch safety
 
 The fetch tool sanitizes by default (`fetch.sanitizeMode`, default
 `safe-text`). It classifies initial and redirected hosts, blocks
 private/link-local/metadata targets absolutely, gates localhost dev servers
 behind a one-tap per-project approval (`fetch.allowLocalhost`), applies
 safe-text handling for unknown hosts, and enforces streaming response-size
-caps. `fetch.sanitizeMode: none` skips content sanitization only — host
+caps. `fetch.sanitizeMode: none` skips content sanitization only. Host
 blocking is unaffected.
 
-## Shell Safety
+## Shell safety
 
 The exec tool runs through `ProcessManager` and uses shell AST normalization
 by default (`permissions.commandParser`, default `ast`). AST normalization
 evaluates compound commands segment-by-segment and gives structured denial
 reasons for unsafe command forms.
 
-## File Safety
+## File safety
 
 Read/write/edit tools share `FileStateCache`, `ProjectIndex`, and
 `FileUndoManager` instances within a session. Write and edit operations support
 transaction modes so hosts can roll back failed multi-file changes.
 
-## Agent And WRFC Integration
+## Agent and WRFC integration
 
 The `agent` tool can spawn individual agents, spawn batches of independent
 root work, group agents into cohorts, send messages, wait for completion,

@@ -1,20 +1,20 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Fleet archive — moves FINISHED process subtrees out of the live fleet view
+ * Fleet archive, moves FINISHED process subtrees out of the live fleet view
  * into a session-scoped archive, without touching the source managers.
  *
  * The registry derives nodes live from its sources (AgentManager, WRFC
- * controller, …), which keep finished records for the life of the session —
+ * controller, …), which keep finished records for the life of the session,
  * so terminal agents/swarms otherwise accumulate in the fleet view forever.
  * `withFleetArchive` wraps a ProcessRegistry: `query()`/`subscribe()` hide
  * archived subtrees, `listArchived()` exposes them for a dedicated archive
- * view (nodes stay fully inspectable — transcripts, usage, cost all still
+ * view (nodes stay fully inspectable, transcripts, usage, cost all still
  * resolve through the same sources). Archiving is per-runtime (session)
  * state, mirroring the sources' own lifetime.
  *
  * Only subtrees that are ENTIRELY terminal (done / failed / killed /
- * interrupted) can be archived — a finished member of a still-running swarm
+ * interrupted) can be archived, a finished member of a still-running swarm
  * stays visible with its parent.
  */
 import type { FleetSnapshot, ProcessNode, ProcessRegistry, ProcessState } from './types.js';
@@ -91,7 +91,7 @@ export function withFleetArchive(registry: ProcessRegistry): ArchivableProcessRe
       return {
         archived: false,
         count: 0,
-        reason: `${live.length} node(s) in the subtree are still active (${live[0]!.state}) — only finished subtrees can be archived`,
+        reason: `${live.length} node(s) in the subtree are still active (${live[0]!.state}), only finished subtrees can be archived`,
       };
     }
     for (const id of subtreeIds) archivedIds.add(id);

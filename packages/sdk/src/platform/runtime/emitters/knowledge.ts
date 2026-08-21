@@ -1,5 +1,5 @@
 /**
- * Knowledge emitters — typed wrappers for KnowledgeEvent domain.
+ * Knowledge emitters, typed wrappers for KnowledgeEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

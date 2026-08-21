@@ -5,7 +5,7 @@
  *
  *   1. Same-origin bundle serving (PRIMARY). When `controlPlane.webui.serve` is
  *      on, the daemon serves a configured build directory at `/` so the bundle
- *      and the API share an origin — the browser's same-origin policy is then a
+ *      and the API share an origin, the browser's same-origin policy is then a
  *      non-issue. This is wire-compatible with `tailscale serve`, which fronts
  *      the single daemon origin over HTTPS: bundle + API arrive same-origin.
  *      The bundle is public (served without a token); the app itself
@@ -37,7 +37,7 @@ export interface WebuiServingPosture {
    * Absolute or working-dir-relative directory whose contents are served.
    *
    * `controlPlane.webui.bundleDir` when that key names one, and
-   * `web.staticAssetsDir` otherwise — see {@link resolveWebuiServingPosture} for
+   * `web.staticAssetsDir` otherwise, see {@link resolveWebuiServingPosture} for
    * why the precedence runs that way. Empty string only when both are empty.
    */
   readonly bundleDir: string;
@@ -53,7 +53,7 @@ export interface WebuiServingPosture {
   readonly openaiPathPrefix: string;
   /**
    * Top-level path roots the daemon's own routes own. A GET at one of these is
-   * never answered from the bundle directory — see {@link reservedApiPathRoots}.
+   * never answered from the bundle directory, see {@link reservedApiPathRoots}.
    */
   readonly reservedApiPaths: readonly string[];
 }
@@ -148,7 +148,7 @@ function readTrimmedString(configManager: ConfigManager, key: string): string {
  *
  * The order is deliberately NOT the other way round: `web.staticAssetsDir` has a
  * non-empty shipped default, so letting it win would make bundleDir unreachable
- * for anyone who never touched either key — trading one dead key for another.
+ * for anyone who never touched either key, trading one dead key for another.
  * `controlPlane.webui.serve` remains the only switch; neither directory key
  * turns serving on by itself.
  */
@@ -197,7 +197,7 @@ function isOriginAllowed(origin: string, allowlist: readonly string[]): boolean 
  */
 export function handleCorsPreflight(req: Request, posture: WebuiServingPosture): Response {
   const origin = req.headers.get('origin');
-  // A preflight with no Origin is not a browser CORS preflight — answer 204 with
+  // A preflight with no Origin is not a browser CORS preflight, answer 204 with
   // no allow-origin (nothing to grant); never emit a wildcard.
   if (origin === null) {
     return new Response(null, { status: 204, headers: { Vary: 'Origin' } });
@@ -231,7 +231,7 @@ export function handleCorsPreflight(req: Request, posture: WebuiServingPosture):
  * Decorate an actual (non-preflight) response with CORS headers when the request
  * carries an allowlisted Origin. `Vary: Origin` is always added while CORS is
  * enabled so caches never serve an allow-origin to the wrong origin. A
- * non-allowlisted origin gets Vary but NO Access-Control-Allow-Origin — the
+ * non-allowlisted origin gets Vary but NO Access-Control-Allow-Origin, the
  * browser then blocks the read honestly.
  */
 export function applyCorsHeaders(req: Request, response: Response, posture: WebuiServingPosture): Response {
@@ -293,7 +293,7 @@ function isReservedApiPath(pathname: string, posture: WebuiServingPosture): bool
 }
 
 /** True when the request looks like an SPA navigation (HTML document) rather than
- *  a fetch for a concrete asset — used to decide whether the index.html fallback
+ *  a fetch for a concrete asset, used to decide whether the index.html fallback
  *  applies. A missing concrete asset must 404, not return the HTML shell. */
 function isNavigationRequest(req: Request, pathname: string): boolean {
   if (extensionOf(pathname) === '') return true;
@@ -326,7 +326,7 @@ async function fileResponse(
 /**
  * Serve a file from the configured bundle directory, with SPA fallback to
  * index.html for navigation routes. Returns null when serving is disabled, the
- * request is not a GET/HEAD, or the path is a reserved API route — in every
+ * request is not a GET/HEAD, or the path is a reserved API route, in every
  * "null" case the caller continues with normal daemon routing, so behavior is
  * unchanged when the capability is off. Path traversal outside the bundle
  * directory is refused with 403.
@@ -356,7 +356,7 @@ export async function serveWebuiBundle(req: Request, posture: WebuiServingPostur
   const file = Bun.file(resolved);
   if (await file.exists()) {
     const isShell = resolved === resolve(root, 'index.html');
-    // Derive the content type from the resolved file path, not the request path —
+    // Derive the content type from the resolved file path, not the request path,
     // a `GET /` serves index.html and must answer text/html, not octet-stream.
     return fileResponse(req, file, resolved, isShell);
   }

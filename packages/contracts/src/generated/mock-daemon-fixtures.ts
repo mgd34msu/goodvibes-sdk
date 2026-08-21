@@ -1,7 +1,7 @@
 import type { MockDaemonFixtureMap } from '../testing/mock-daemon.js';
 
 /**
- * GENERATED — do not edit. Regenerate with `bun run refresh:contracts`.
+ * GENERATED, do not edit. Regenerate with `bun run refresh:contracts`.
  *
  * A schema-valid sample response per cataloged operator method, generated
  * from the contract's own output schemas (see testing/mock-daemon.ts). The

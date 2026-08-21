@@ -6,7 +6,7 @@
  * name matches the package's final path segment. Without this dispatcher the
  * package exposed only the eleven `goodvibes-*` tool bins, and bunx silently
  * fell back to the FIRST bin in the map (sdk-pin-gate) with the intended tool
- * name as a stray argument — crashing in workspaces without a toolchain
+ * name as a stray argument, crashing in workspaces without a toolchain
  * config, and worse, "passing" while running the wrong tool in workspaces
  * with one. Every tool stays directly invocable by its own bin name; this
  * entry only adds the package-name route.

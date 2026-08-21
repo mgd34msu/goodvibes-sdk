@@ -1,10 +1,10 @@
 /**
- * graphql.ts — the knowledge GraphQL service.
+ * graphql.ts, the knowledge GraphQL service.
  *
  * `graphql` is an optionalDependency and is reached only through
  * `graphqlModule()` / `primeGraphqlModule()` in ./graphql-schema.js. The two
- * class-static initialisers here — `buildSchema(KNOWLEDGE_GRAPHQL_SDL)` and
- * `printSchema(...)` — ran at MODULE INIT, which made an install without the
+ * class-static initialisers here, `buildSchema(KNOWLEDGE_GRAPHQL_SDL)` and
+ * `printSchema(...)`, ran at MODULE INIT, which made an install without the
  * package a daemon that could not start rather than a GraphQL surface that
  * reports itself unavailable. They are lazily-computed accessors now, built on
  * first use and then cached, so the schema is still parsed and printed exactly
@@ -80,7 +80,7 @@ export class KnowledgeGraphqlService {
   /**
    * The parsed schema, built on first use. This was a class-static
    * initialiser, which ran `buildSchema` at module init and so required
-   * `graphql` — an optionalDependency — for the module to load at all.
+   * `graphql`, an optionalDependency, for the module to load at all.
    */
   private static get schema(): GraphQLSchema {
     if (!KnowledgeGraphqlService.cachedSchema) {
@@ -100,7 +100,7 @@ export class KnowledgeGraphqlService {
   constructor(private readonly service: KnowledgeService) {
     // Resolve `graphql` now, through the dynamic import a bundler follows, so
     // a compiled binary has the bundled module in hand before any route reads
-    // `schemaText` — which the daemon-sdk route contract requires to be a
+    // `schemaText`, which the daemon-sdk route contract requires to be a
     // synchronous string. Never rejects; an absent package is remembered and
     // reported by the accessors that need it.
     void primeGraphqlModule();

@@ -1,10 +1,10 @@
 /**
- * cluster-config-replication.test.ts — the settings that cross the network, and
+ * cluster-config-replication.test.ts, the settings that cross the network, and
  * the ones that must never.
  *
  * The first describe block is the important one. A replicated port would give
  * every machine in the group the same port and the second one to start would
- * fail to bind — so the policy is asserted exhaustively rather than by example,
+ * fail to bind, so the policy is asserted exhaustively rather than by example,
  * and a daemon-owned domain nobody has ruled on fails the test rather than
  * quietly defaulting either way.
  */
@@ -78,7 +78,7 @@ describe('what may cross the network', () => {
   test('every daemon-owned path is ruled on, one way or the other', () => {
     // The point of this test: a NEW daemon-owned domain must not slip in
     // unclassified. `classifyDaemonConfigPath` fails closed, so an unruled
-    // domain lands as node-local with the "no ruling" reason — which this test
+    // domain lands as node-local with the "no ruling" reason, which this test
     // reports by name so it is fixed deliberately rather than discovered later.
     const unruled = listDaemonConfigClassifications()
       .filter((entry) => entry.reason.startsWith('no ruling'))
@@ -131,7 +131,7 @@ describe('what may cross the network', () => {
       // kind: `daemon.*` is node-local because it answers "does this machine run
       // a daemon", while the timezone answers where the operator is and the
       // group must agree on it. Accepting only the domain form here would force
-      // that key to be replicated by widening `daemon.` — which would drag
+      // that key to be replicated by widening `daemon.`, which would drag
       // `daemon.enabled` across the network with it.
       const ruledByDomain = REPLICATED_CONFIG_DOMAINS.some((domain) => path.startsWith(domain));
       const ruledByKey = REPLICATED_CONFIG_KEYS.includes(path);
@@ -144,7 +144,7 @@ describe('what may cross the network', () => {
     for (const path of listReplicatedConfigPaths()) {
       expect(isReplicatedSecretKey(replicatedSecretKeyFor(path))).toBe(true);
     }
-    // The group's own key material IS daemon-owned and IS derived — asserting
+    // The group's own key material IS daemon-owned and IS derived, asserting
     // the bare literal here would pass for the wrong reason, because nothing
     // derives that string. What keeps it off the wire is the node-local ruling
     // on `cluster.`, not an absence of derivation.
@@ -364,7 +364,7 @@ describe('replicating across a live group', () => {
 /**
  * The credential a machine needs after it takes a surface over.
  *
- * The blocks above prove CLASSIFICATION — which paths may cross. These prove
+ * The blocks above prove CLASSIFICATION, which paths may cross. These prove
  * the rest of the sentence: that a daemon-owned credential actually arrives on
  * the other machine, that it lands in that machine's DAEMON tier (one home,
  * read back whatever directory the daemon starts in) rather than in whatever
@@ -419,7 +419,7 @@ describe('a daemon-owned credential after a handover', () => {
     for (const path of listReplicatedConfigPaths()) {
       expect(isDaemonOwnedSecretKey(replicatedSecretKeyFor(path)), `${path} has no daemon home`).toBe(true);
     }
-    // And NOT the converse — the daemon tier is a storage location, not an
+    // And NOT the converse, the daemon tier is a storage location, not an
     // export list. A node-local daemon credential is daemon-owned and stays put.
     expect(isDaemonOwnedSecretKey(replicatedSecretKeyFor(NODE_LOCAL_PATH))).toBe(true);
     expect(isReplicatedSecretKey(replicatedSecretKeyFor(NODE_LOCAL_PATH))).toBe(false);
@@ -451,7 +451,7 @@ describe('a daemon-owned credential after a handover', () => {
     expect(await standbySecrets.manager.get(secretKey)).toBe(GROUP_CREDENTIAL);
     expect(await storedScope(standbySecrets.manager, secretKey)).toBe('daemon');
     // On disk, in the receiving machine's own daemon home, encrypted under that
-    // machine's own keyfile — not stored as the sender's ciphertext.
+    // machine's own keyfile, not stored as the sender's ciphertext.
     const standbyStore = join(standbySecrets.home, '.goodvibes', 'daemon', 'secrets.enc');
     expect(existsSync(standbyStore)).toBe(true);
     expect(readFileSync(standbyStore, 'utf-8')).not.toContain(GROUP_CREDENTIAL);
@@ -463,7 +463,7 @@ describe('a daemon-owned credential after a handover', () => {
     // The concrete case this whole mechanism exists for. Before the daemon
     // tier, a Google credential lived in whichever client silo the operator
     // pasted it into, so the node that won a handover came up unable to read
-    // or send mail — and nothing said why. This asserts the actual path the
+    // or send mail, and nothing said why. This asserts the actual path the
     // agent stores, not a stand-in.
     const GOOGLE_PATH = 'google.oauth.refreshToken';
     const GOOGLE_CREDENTIAL = 'refresh-token-standing-in-for-a-real-one';
@@ -506,7 +506,7 @@ describe('a daemon-owned credential after a handover', () => {
     // an oversight:
     //
     //  1. It belongs in the daemon tier. Before the name was derived, it was
-    //     written at project scope — into whichever directory the daemon
+    //     written at project scope, into whichever directory the daemon
     //     happened to start in, outside the tier holding every other cluster
     //     secret.
     //
@@ -537,7 +537,7 @@ describe('a daemon-owned credential after a handover', () => {
     expect(await storedScope(masterSecrets.manager, GROUP_MATERIAL_SECRET_KEY)).toBe('daemon');
 
     // The node that joined has its OWN material, obtained through the join
-    // handshake — not a copy of the master's replicated to it.
+    // handshake, not a copy of the master's replicated to it.
     expect(await storedScope(standbySecrets.manager, GROUP_MATERIAL_SECRET_KEY)).toBe('daemon');
     expect(await standbySecrets.manager.get(GROUP_MATERIAL_SECRET_KEY)).not.toBe(stored);
 

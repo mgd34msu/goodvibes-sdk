@@ -1,5 +1,5 @@
 /**
- * Channel health — one rule for turning what a surface can be SEEN to be doing
+ * Channel health, one rule for turning what a surface can be SEEN to be doing
  * into the state it reports.
  *
  * The rule lives here, alone, because the previous arrangement had each
@@ -7,7 +7,7 @@
  * same wrong way: a resolved credential (or, for several surfaces, merely a
  * delivery switch left on) was reported as `healthy`. A Telegram bot whose
  * poll loop had stopped therefore reported healthy for as long as its token
- * stayed in config, which is the shape of failure that costs the most — the
+ * stayed in config, which is the shape of failure that costs the most, the
  * owner's message goes nowhere and every surface says it is fine.
  *
  * Two properties this file exists to hold:
@@ -28,7 +28,7 @@ export interface ChannelHealthInput {
    * At least one declared credential RESOLVES to a value in the store this
    * process reads. Defaults to `configured` when a caller cannot tell them
    * apart, which preserves the old (weaker) reading rather than inventing a
-   * failure — but every built-in surface supplies the real answer.
+   * failure, but every built-in surface supplies the real answer.
    */
   readonly credentialResolves?: boolean | undefined;
   /** What this node can see of the live path. */
@@ -41,7 +41,7 @@ export interface ChannelHealthInput {
  * Ordered deliberately:
  *
  * 1. An operator who switched a surface off is not owed a fault.
- * 2. A surface with nothing declared cannot be dead — it was never alive.
+ * 2. A surface with nothing declared cannot be dead, it was never alive.
  * 3. An OBSERVED working path beats every inference below it. Direct evidence
  *    that messages are flowing outranks a guess drawn from credential shape.
  * 4. A declared credential that resolves to nothing is a definite, named
@@ -94,7 +94,7 @@ export function observedRuntime(
  *
  * `unresolved` counts: the operator switched the surface on and put a
  * credential reference in its config, so he believes it works, and it cannot
- * send a byte. `unconfigured` does not — nobody believes an unconfigured
+ * send a byte. `unconfigured` does not, nobody believes an unconfigured
  * surface is working. `unknown` does not either: it is not evidence of failure,
  * and treating it as one would make every webhook-delivered surface cry wolf on
  * every sweep.

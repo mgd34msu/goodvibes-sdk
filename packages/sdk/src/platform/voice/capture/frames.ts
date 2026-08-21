@@ -1,15 +1,15 @@
 /**
- * frames.ts — the arithmetic between a device and a consumer.
+ * frames.ts, the arithmetic between a device and a consumer.
  *
  * Everything here is pure and shared, because every one of these conversions is
  * a place where a mistake is SILENT rather than loud:
  *
  *  - a recorder hands over byte chunks whose length has nothing to do with a
  *    frame size (a pipe read is whatever the kernel had), so frames must be
- *    re-cut rather than assumed — {@link AudioFrameSlicer};
+ *    re-cut rather than assumed, {@link AudioFrameSlicer};
  *  - the classifier was trained on int16 magnitudes, so audio scaled to -1..1
  *    scores near zero forever and looks exactly like a microphone that is not
- *    picking anything up — {@link pcm16ToFloatSamples};
+ *    picking anything up, {@link pcm16ToFloatSamples};
  *  - speech-to-text needs a container, and a WAV header with the wrong byte
  *    order or a stale length field transcribes as silence rather than failing.
  */
@@ -69,7 +69,7 @@ export function frameRms(samples: Float32Array): number {
  *
  * A recorder's stdout arrives in whatever sizes the pipe produced, and a browser
  * worklet delivers 128-sample render quanta. Neither is the 1280 samples the
- * wake engine requires per call, and handing it a short frame does not fail — it
+ * wake engine requires per call, and handing it a short frame does not fail, it
  * shifts the whole front end off the framing the classifier was trained at. So
  * the remainder is CARRIED, never dropped and never padded.
  */

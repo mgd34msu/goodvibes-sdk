@@ -1,8 +1,8 @@
 /**
- * memory-temporal.ts — temporal validity windows for memory records.
+ * memory-temporal.ts, temporal validity windows for memory records.
  *
  * A record may carry a validity window [validFrom, validUntil). Outside it the
- * record is not injected — but it is NOT deleted, and read/list/projection
+ * record is not injected, but it is NOT deleted, and read/list/projection
  * surfaces label it (pending / expired) rather than silently dropping it. The
  * window is consulted at injection time (memory-recall-contract.ts,
  * knowledge-injection.ts).
@@ -42,7 +42,7 @@ export function memoryRecordTemporalStatus(
 export function assertNoArrayIterationArgs(fnName: string, extraArgs: readonly unknown[]): void {
   if (extraArgs.length > 0) {
     throw new TypeError(
-      `${fnName}() received an unexpected extra argument — it was almost certainly passed directly ` +
+      `${fnName}() received an unexpected extra argument, it was almost certainly passed directly ` +
         `to Array.prototype.filter/map, which calls it as (element, index, array) and binds the array ` +
         `index to \`now\`, silently defeating the temporal validity check. Wrap it instead: ` +
         `records.filter((r) => ${fnName}(r)).`,

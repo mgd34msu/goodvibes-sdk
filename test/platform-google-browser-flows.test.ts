@@ -114,7 +114,7 @@ const NORMAL_CALENDAR_URL = 'https://calendar.google.com/calendar/u/0/r/settings
 const SIGN_IN_URL = 'https://accounts.google.com/signin/v2/identifier';
 
 // ---------------------------------------------------------------------------
-// Element matcher — findElement / requireElement / describeElements
+// Element matcher, findElement / requireElement / describeElements
 // ---------------------------------------------------------------------------
 
 describe('findElement', () => {
@@ -793,23 +793,23 @@ describe('GoogleElementLookup shape', () => {
   });
 });
 // ---------------------------------------------------------------------------
-// Layer 2 — the adapter, against a fake BrowserEngine
+// Layer 2, the adapter, against a fake BrowserEngine
 // ---------------------------------------------------------------------------
 
 /**
  * What Layer 2 used to be, and why it is not that any more.
  *
  * It launched a real Chromium against local HTML to prove the adapter's
- * snapshot-to-element mapping worked against a live DOM — and it was wrapped in
+ * snapshot-to-element mapping worked against a live DOM, and it was wrapped in
  * a browser-availability gate, so on any machine without a provisioned
  * browser it silently ran nothing. A test that reports success by not
  * executing is worse than no test: it occupies the space where the coverage
  * would go. The SDK's no-skipped-tests gate is what surfaced it.
  *
  * The engine's own behaviour against a real browser is covered by the browser
- * module's suite. What is unique to THIS adapter is the mapping — snapshot rows
+ * module's suite. What is unique to THIS adapter is the mapping, snapshot rows
  * to `GoogleBrowserElement`, the labelled untrusted-content envelope to text,
- * and the implicit session/page adoption — and all three are deterministic, so
+ * and the implicit session/page adoption, and all three are deterministic, so
  * they are proven here against a fake engine on every machine instead of on
  * some machines.
  */
@@ -875,7 +875,7 @@ describe('createGoogleBrowserPort maps the engine onto the six-method port', () 
 
     expect(elements).toHaveLength(3);
     expect(elements[0]).toEqual({ ref: 'e1', role: 'button', name: 'Create', tag: 'button', value: undefined });
-    // `value` survives when present — the calendar flow reads the iCal address
+    // `value` survives when present, the calendar flow reads the iCal address
     // out of exactly that field.
     expect(elements[1]?.value).toBe('prefilled');
     expect(elements[1]?.tag).toBe('input');

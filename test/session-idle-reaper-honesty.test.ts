@@ -13,7 +13,7 @@ import type {
   RegisterSharedSessionInput,
 } from '../packages/sdk/src/platform/control-plane/session-types.ts';
 
-// D2 — IDLE-EMPTY REAPER must not close LIVE surface sessions, and a
+// D2, IDLE-EMPTY REAPER must not close LIVE surface sessions, and a
 // system-reaped session must reopen honestly on the next heartbeat while a
 // user/surface close stays closed.
 
@@ -78,7 +78,7 @@ function sweepSharedSessionsAt(
 describe('idle-empty reaper — live surface exemption', () => {
   test('a message-less session with a FRESH participant survives the sweep', () => {
     // lastActivityAt is stale, but the surface heartbeat (participant.lastSeenAt=NOW)
-    // means a surface is holding the session open — it must NOT be reaped.
+    // means a surface is holding the session open, it must NOT be reaped.
     const { changed, result } = sweepOf(record({ participants: [participant({ lastSeenAt: NOW })] }));
     expect(result.status).toBe('active');
     expect(changed).toBe(false);

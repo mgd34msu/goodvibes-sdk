@@ -142,7 +142,7 @@ export function paginateItems<T>(
     }
     const afterIndex = items.findIndex((item) => getId(item) === decoded.id);
     if (afterIndex === -1) {
-      // Cursor id not found — item was deleted mid-walk.
+      // Cursor id not found, item was deleted mid-walk.
       // Use createdAt from the cursor to locate the insertion point.
       // For ascending sequences: first item with createdAt > cursor's createdAt.
       // For descending sequences: first item with createdAt < cursor's createdAt.

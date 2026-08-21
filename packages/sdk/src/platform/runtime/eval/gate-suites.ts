@@ -1,10 +1,10 @@
 /**
- * Evaluation Harness — the STANDING-GATE suite set.
+ * Evaluation Harness, the STANDING-GATE suite set.
  *
  * BUILTIN_SUITES (suites.ts) deliberately include branch-exercising scenarios
  * that fail their floors on purpose (e.g. safety:recovery-failure-score reports
  * a failed recovery to prove the gate flags it). Those belong to the harness's
- * own unit tests, NOT to a CI gate — a gate whose fixtures fail by design can
+ * own unit tests, NOT to a CI gate, a gate whose fixtures fail by design can
  * never be honestly green.
  *
  * GATE_SUITES is the separate, all-floors-passing set the standing gate
@@ -38,7 +38,7 @@ function healthyPerfReport(t0: number, heapMiB: number): EvalRawResult['perfRepo
   return monitor.evaluate({
     surfacePerf,
     extraMetrics: {
-      // synthetic placeholder metrics — fixtures under budget, not live measurements.
+      // synthetic placeholder metrics, fixtures under budget, not live measurements.
       'event.queue.depth': 5,
       'tool.executor.overhead.p95': 2,
       'compaction.latency.p95': 80,
@@ -100,7 +100,7 @@ const gateScenarios: EvalScenario[] = [
         durationMs: Date.now() - t0,
         perfReport: healthyPerfReport(t0, 45),
         safetyViolations: 0,
-        // synthetic placeholder token/cost fixture — under the $0.001 target.
+        // synthetic placeholder token/cost fixture, under the $0.001 target.
         tokens: { input: 400, output: 80 },
         costUsd: 0.0004,
       };

@@ -12,7 +12,7 @@
  * clean and every consumer 400s at runtime. That has now been found three
  * separate times in this control plane, each time by a human reading one file.
  *
- * HOW IT CHECKS IT — and why this shape rather than a static rule. Enforcement
+ * HOW IT CHECKS IT, and why this shape rather than a static rule. Enforcement
  * here is arbitrary TypeScript inside closures produced by factory functions
  * and composed through injected service objects. A static analyzer would have
  * to model data flow across module boundaries and would either cry wolf or,
@@ -24,7 +24,7 @@
  * descriptor declares required (typed sample values), invokes the real
  * registered handler over stub services, and looks at what comes back. A
  * handler that then refuses, naming a field outside the declared set, is the
- * defect — reported with the field name.
+ * defect, reported with the field name.
  *
  * WHAT IT DOES NOT CLAIM. The probe explores one point in the input space, so
  * a requirement that only appears once some OTHER field holds a particular
@@ -34,7 +34,7 @@
  * checking a different property than it claims is worse than no gate.
  *
  * The field name never comes from parsing an error message. It comes from
- * `GatewayVerbError.field`, which the handlers set explicitly — see that
+ * `GatewayVerbError.field`, which the handlers set explicitly, see that
  * class's doc comment for why prose parsing was rejected.
  */
 import { GatewayMethodCatalog } from '../../packages/sdk/src/platform/control-plane/method-catalog.js';
@@ -95,7 +95,7 @@ import { registerWorktreeSetupGatewayMethods } from '../../packages/sdk/src/plat
  * Every property read yields another stub and every call returns an empty
  * object, so a handler reaches its own input validation without any real
  * backend. Once validation passes, the handler is free to fail inside the stub
- * (an empty object where it wanted an array) — that failure is not a
+ * (an empty object where it wanted an array), that failure is not a
  * GatewayVerbError and the probe reads it for exactly what it is: the input was
  * accepted.
  *
@@ -121,7 +121,7 @@ function stubDeps(): never {
  *
  * `expectedRouteRegistrars` (below) is asserted against the routes directory,
  * so a new verb family cannot be added without either appearing here or making
- * the conformance test red — which is the point: an unprobed family is an
+ * the conformance test red, which is the point: an unprobed family is an
  * unchecked family.
  */
 const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodCatalog) => void]> = [
@@ -286,7 +286,7 @@ export type VerbVerdict =
   | 'undeclared-requirement'
   /** Handler rejected a declared-required field on VALUE grounds; probe stops there. */
   | 'value-rejected'
-  /** Input-shaped refusal that names no field — the probe cannot attribute it. */
+  /** Input-shaped refusal that names no field, the probe cannot attribute it. */
   | 'unattributed-refusal';
 
 export interface VerbConformance {

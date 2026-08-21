@@ -2,7 +2,7 @@
 
 /**
  * Shared effort level descriptions used across model picker, overlay renderer,
- * and command handler. Single source of truth — import from here.
+ * and command handler. Single source of truth, import from here.
  *
  * One line per level on the severity ladder in `reasoning-effort.ts`. A model
  * offers some subset of these, so a surface looks up only the levels its

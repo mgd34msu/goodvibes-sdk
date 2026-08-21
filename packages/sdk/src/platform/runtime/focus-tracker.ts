@@ -1,5 +1,5 @@
 /**
- * focus-tracker.ts — tracks whether the terminal window a surface draws into
+ * focus-tracker.ts, tracks whether the terminal window a surface draws into
  * currently has OS-level input focus.
  *
  * The signal arrives over the terminal focus-reporting protocol (DECSET
@@ -10,7 +10,7 @@
  *
  * Honest degradation: a terminal that does not implement focus reporting (or a
  * multiplexer that swallows the sequences) never sends focus tokens. In that
- * case `isFocused()` stays `null` forever — "unknown", never a guessed
+ * case `isFocused()` stays `null` forever, "unknown", never a guessed
  * `true`/`false`. Callers that gate a user-facing behavior on focus (see
  * alert-gating.ts) must treat `null` the same as "not focused" per the
  * fallback rule: alerts fire when the terminal is definitely unfocused OR when
@@ -32,7 +32,7 @@ export class FocusTracker {
   /**
    * The alert-gating rule shared by every unfocused-alert notifier: fire
    * when the terminal is known to be unfocused, or when focus was never
-   * observed (honest fallback — never silently suppress on an unknown
+   * observed (honest fallback, never silently suppress on an unknown
    * terminal). Only `isFocused() === true` (a real, observed focus-in with
    * no observed focus-out since) suppresses an alert.
    */

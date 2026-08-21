@@ -2,8 +2,8 @@
  * Browser automation as a platform capability.
  *
  * Provisioning, sessions, snapshots and every page operation, with no product
- * surface in sight. Everything that reaches outside this module — a process, a
- * file, the Playwright driver, the untrusted-content ledger — arrives through
+ * surface in sight. Everything that reaches outside this module, a process, a
+ * file, the Playwright driver, the untrusted-content ledger, arrives through
  * an injected record, so the same engine serves the agent, the daemon, and any
  * other surface without carrying one product's wiring.
  *

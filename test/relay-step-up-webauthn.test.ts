@@ -8,7 +8,7 @@
  * StepUpService then verifies it through the same path the relay gate uses.
  *
  * Covers: the happy path (a fresh, valid assertion passes), and every refusal
- * the ceremony must enforce — an unminted/tampered challenge, an expired
+ * the ceremony must enforce, an unminted/tampered challenge, an expired
  * challenge, a replayed (consumed) challenge, a wrong origin, and a signature
  * counter that goes backwards (a cloned-authenticator signal).
  */

@@ -1,5 +1,5 @@
 /**
- * text-layout.ts — column-arithmetic helpers for laying text out in a
+ * text-layout.ts, column-arithmetic helpers for laying text out in a
  * fixed-width terminal.
  *
  * Both helpers measure in DISPLAY cells, not code units: the SDK's
@@ -19,7 +19,7 @@ import { getDisplayWidth, truncateDisplay, wrapText } from '@pellux/goodvibes-sd
  * truncation width negative and drop content silently.
  *
  * @param maxLines - When set, keep at most this many lines (no ellipsis is
- *   appended — the caller decides how to signal the elision).
+ *   appended, the caller decides how to signal the elision).
  */
 export function wrapWithHangingIndent(
   text: string,
@@ -44,7 +44,7 @@ export function wrapWithHangingIndent(
  * The label column is clamped to at least 10 columns (below that a label is
  * unreadable) and at most `totalWidth - 2` (the gutter must survive), which
  * means the detail column can legitimately collapse to 0 on a very narrow
- * terminal — callers should treat a 0 detail width as "omit the detail".
+ * terminal, callers should treat a 0 detail width as "omit the detail".
  */
 export function fitLabelDetailColumns(
   label: string,

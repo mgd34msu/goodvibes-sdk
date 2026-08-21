@@ -1,20 +1,20 @@
 /**
- * keep-awake-remote.ts — forward the owner keep-awake toggle to an adopted
+ * keep-awake-remote.ts, forward the owner keep-awake toggle to an adopted
  * EXTERNAL daemon over the `power.keepAwake.set` gateway verb.
  *
  * In the external/adopted-daemon topology a surface's in-process `PowerManager`
  * is NOT the daemon's: it holds a LOCAL OS-level inhibitor that releases the
  * moment that process exits. The owner ruling is that keep-awake is
- * daemon-held — it must survive a surface closing. The config file does not
+ * daemon-held, it must survive a surface closing. The config file does not
  * carry it across surfaces (`power.keepAwake` is a plain surface-local config
  * key, not one of the shared-config-tier keys), so the toggle is forwarded to
- * the daemon over the wire instead — best-effort, gated on reachability.
+ * the daemon over the wire instead, best-effort, gated on reachability.
  *
  * Written in raw-REST style deliberately, matching every other version-tolerant
  * wire mirror in this platform (session/memory spine REST transports,
  * `session-registration`-style helpers): request/response only, a Bearer
  * token, an AbortController timeout, and the same
- * ok/auth_required/route_unavailable/host_unavailable/error classification —
+ * ok/auth_required/route_unavailable/host_unavailable/error classification,
  * NOT the typed operator SDK client, since `power.keepAwake.set` is a ws-only
  * gateway verb (`attachWsOnlyGatewayVerbHandlers`), not part of the operator
  * contract.
@@ -26,10 +26,10 @@
  * The agent's is the superset adopted here: it classifies wire failures into a
  * discriminated result instead of swallowing every error silently, and it
  * takes its reachability probe and connection resolver as injected
- * dependencies rather than reaching into a surface-local RPC resolver — which
+ * dependencies rather than reaching into a surface-local RPC resolver, which
  * is what makes it portable into the SDK at all. The TUI's version additionally
- * wires a `ConfigManager` subscription (so all three toggle origins — the
- * `/power` command, Alt+A, and the settings modal — forward through one seam)
+ * wires a `ConfigManager` subscription (so all three toggle origins, the
+ * `/power` command, Alt+A, and the settings modal, forward through one seam)
  * and a `power.status.get` poll for the status chip; both of those are
  * surface-specific composition and stay local to each consumer, not part of
  * this hoist.
@@ -99,7 +99,7 @@ function classifyHttpFailure(status: number, body: unknown): PowerKeepAwakeRemot
 
 /**
  * Forward the owner keep-awake toggle to the adopted daemon's gateway. Never
- * throws — every failure mode (no token on disk, network down, an
+ * throws, every failure mode (no token on disk, network down, an
  * incompatible/pre-power-verb daemon, a real server error) returns a
  * discriminated failure the caller logs and degrades from; the caller decides
  * whether to also apply locally.
@@ -141,7 +141,7 @@ export async function postPowerKeepAwakeSet(
 }
 
 export interface ForwardKeepAwakeDeps {
-  /** The existing daemon-adoption signal — reuse a session-spine client's probeReachability() in production. */
+  /** The existing daemon-adoption signal, reuse a session-spine client's probeReachability() in production. */
   readonly probeReachability: () => Promise<'unknown' | 'online' | 'offline'>;
   readonly resolveConnection: () => PowerKeepAwakeRemoteConnection;
   readonly post?: typeof postPowerKeepAwakeSet;
@@ -153,11 +153,11 @@ export type ForwardKeepAwakeOutcome =
 
 /**
  * Forward power.keepAwake to the adopted daemon ONLY when a daemon is
- * actually reachable right now — an unreachable/unknown daemon means there is
+ * actually reachable right now, an unreachable/unknown daemon means there is
  * nothing durable to hold the toggle for this process anyway, so this is a
  * clean no-op (`attempted: false`) rather than a wasted network call. Never
  * throws: a reachability probe rejection is treated the same as "not
- * reachable" (best-effort — a live keep-awake apply must never take down the
+ * reachable" (best-effort, a live keep-awake apply must never take down the
  * settings-modal apply path it is called from).
  */
 export async function forwardKeepAwakeToAdoptedDaemon(

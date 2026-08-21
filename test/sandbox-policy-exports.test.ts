@@ -2,7 +2,7 @@
  * sandbox-policy-exports.test.ts
  *
  * Proves the sandbox policy surface is reachable from its public package
- * subpaths — the gap deliverable this closes: `decideSandboxedExec`,
+ * subpaths, the gap deliverable this closes: `decideSandboxedExec`,
  * `detectSandboxAvailability`, and `probeSandboxHost` existed but no public
  * subpath exported them, so a consumer could not wire an approval flow to the
  * sandbox policy. These imports resolve through the package `exports` map

@@ -36,7 +36,7 @@ describe('RuntimeEventBus async dispatch via queueMicrotask', () => {
 
     bus.emit('session', makeEnvelope());
 
-    // Synchronously after emit — handler has not fired yet (queued as microtask)
+    // Synchronously after emit, handler has not fired yet (queued as microtask)
     expect(fired).toBe(false);
   });
 

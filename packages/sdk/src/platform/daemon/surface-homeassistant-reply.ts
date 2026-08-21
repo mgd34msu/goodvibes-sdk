@@ -1,11 +1,11 @@
 /**
- * surface-homeassistant-reply.ts — the Home Assistant half of the daemon's
+ * surface-homeassistant-reply.ts, the Home Assistant half of the daemon's
  * surface actions: run a chat turn for an inbound HA message and publish the
  * assistant's reply back as a Home Assistant event.
  *
  * Split out of `surface-actions.ts`, which had reached the 800-line source cap
  * exactly. This is the largest coherent piece of that file that is about ONE
- * surface rather than about surface actions in general — everything left behind
+ * surface rather than about surface actions in general, everything left behind
  * (the ingress hook, control commands, interactive actions, the ntfy pending-
  * reply machinery) is either shared across surfaces or genuinely ntfy-specific
  * state held on the helper instance. Moving it took the file from 799 lines to

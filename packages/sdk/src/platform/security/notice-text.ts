@@ -1,5 +1,5 @@
 /**
- * notice-text.ts — making attacker-chosen text inert before it reaches a
+ * notice-text.ts, making attacker-chosen text inert before it reaches a
  * notification the owner reads and acts on.
  *
  * ── The defect class this exists for ──────────────────────────────────────
@@ -10,7 +10,7 @@
  * local part in front of the `@`, which under catch-all or plus-addressing is
  * whatever the sender chose to type. So
  * `[Approved](https://evil.example)@ourdomain.com` rendered as a clickable link,
- * and `@everyone@ourdomain.com` formed a real mention — on the one field the
+ * and `@everyone@ourdomain.com` formed a real mention, on the one field the
  * notice existed to make trustworthy.
  *
  * The reasoning that produced it is the part worth remembering: **a field is not
@@ -48,8 +48,8 @@
  *
  * `platform/email/inbound-notice.ts` (branch `inbound-email-config`, commit
  * `140cbcb4`) currently carries its own copy of this logic, written first. This
- * module is deliberately behaviourally identical — same trigger sets, same
- * mention-breaking, same ordering — so the two can be collapsed onto this one
+ * module is deliberately behaviourally identical, same trigger sets, same
+ * mention-breaking, same ordering, so the two can be collapsed onto this one
  * when that branch merges. Two copies of a security escaper is the drift class
  * that lets one of them quietly fall behind.
  */
@@ -60,22 +60,22 @@ const CONTROL_OR_LINE_BREAK = new RegExp('[\\u0000-\\u001F\\u007F\\u2028\\u2029]
 /**
  * Markup metacharacters across every surface a notice can reach.
  *
- *  - backtick / asterisk / underscore / tilde / pipe — code, bold, italic,
+ *  - backtick / asterisk / underscore / tilde / pipe, code, bold, italic,
  *    strikethrough and spoiler markers in Telegram MarkdownV2, Discord markdown
  *    and Slack mrkdwn.
- *  - angle brackets / square brackets / parentheses — link and mention syntax
+ *  - angle brackets / square brackets / parentheses, link and mention syntax
  *    (`<http://x|text>` in Slack, `[text](url)` in Telegram and Discord).
  *    Parentheses are listed explicitly even though removing `[` already breaks
  *    the `[text](url)` pair: leaving that as the only thing stopping `(url)`
  *    from surviving is an implicit dependency between two character sets that a
  *    later edit to either could break silently.
- *  - ampersand — HTML entity forms on surfaces that render them.
+ *  - ampersand, HTML entity forms on surfaces that render them.
  */
 const MARKUP_TRIGGER_CHARS = /[`*_~|<>[\]&()]/g;
 
 /**
  * The same set MINUS underscore, for fields where underscore is common and
- * legibility matters — an email local part, an owner's own product description.
+ * legibility matters, an email local part, an owner's own product description.
  *
  * Underscore is the weakest trigger in the set: unpaired it renders literally,
  * and paired it is at worst cosmetic italics. It can never build a link or a
@@ -91,7 +91,7 @@ const REPEATED_SPACE = / {2,}/g;
  * Discord and Slack turn a literal contiguous `@word` into a real mention when
  * the text is un-escaped. A zero-width space after every `@` that precedes a
  * word character breaks the contiguous match while staying invisible to a human
- * reader — `user@example.com` still reads as `user@example.com`.
+ * reader, `user@example.com` still reads as `user@example.com`.
  */
 export function breakMentionForms(text: string): string {
   return text.replace(/@(?=\w)/g, '@​');
@@ -115,7 +115,7 @@ function sanitize(raw: string, maxLength: number, triggers: RegExp): string {
  * shipping-option label, promotional text, a currency string, an email subject.
  *
  * Assume attacker-chosen unless the string demonstrably originated with the
- * owner. Provenance being partly verified is not an exemption — see the header.
+ * owner. Provenance being partly verified is not an exemption, see the header.
  */
 export function sanitizeNoticeField(raw: string, maxLength = 120): string {
   return sanitize(raw, maxLength, MARKUP_TRIGGER_CHARS);

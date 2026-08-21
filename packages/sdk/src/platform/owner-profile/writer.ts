@@ -1,12 +1,12 @@
 /**
- * writer.ts — surgical line edits, never a re-serialisation.
+ * writer.ts, surgical line edits, never a re-serialisation.
  *
  * This is the file that makes "his edits are authoritative" true rather than
  * aspirational. Every operation here computes a small set of index-addressed
  * edits against the RAW LINE ARRAY and leaves every other line byte-identical.
  * Nothing is ever regenerated from the projection, so the writer cannot
  * normalise his prose, re-order his sections, re-wrap his lines, convert a
- * bullet to a field, or reformat a table it did not understand — not because it
+ * bullet to a field, or reformat a table it did not understand, not because it
  * chooses not to, but because it never holds a rendering of the whole document.
  *
  * The projection is read-only input: it says WHERE things are. Edits are
@@ -103,7 +103,7 @@ function isBlank(line: string | undefined): boolean {
  * The strip is belt and braces against stacking: a caller handing back a value
  * it read off a line would otherwise produce a line with two provenance tails,
  * and the older one would sit inside the newer one's quote. Exactly one suffix
- * is removed — if he hand-typed something that looks like an old suffix, that is
+ * is removed, if he hand-typed something that looks like an old suffix, that is
  * his text and it stays.
  */
 function sanitizeForLine(value: string): string {
@@ -117,7 +117,7 @@ function renderLine(prefix: string, value: string, provenance: ProfileProvenance
 /**
  * Make a verbatim quote safe to sit inside a provenance suffix.
  *
- * `said` is the field an injected instruction shapes most easily — it is
+ * `said` is the field an injected instruction shapes most easily, it is
  * whatever the caller claims the owner uttered. A quote that itself ends in a
  * well-formed suffix wins on read, because `splitProvenanceSuffix` matches from
  * the RIGHT: the forged tail is further right than the one just appended. The
@@ -267,7 +267,7 @@ function insertWasComment(
   const line = withEol(comment, eol);
 
   // `Math.max()` of nothing is -Infinity, which splices to index 0 and puts the
-  // history comment above the document's title — outside any section, where it
+  // history comment above the document's title, outside any section, where it
   // is never re-tracked as history on reload. `provenance` then reports no
   // predecessor, `undo` says there is nothing to go back to, and `forget` leaves
   // the superseded value on disk permanently. A section with no fields and no
@@ -300,7 +300,7 @@ export interface SetFieldInput {
  * Write a mechanical field.
  *
  * Existing field: its line is rewritten IN PLACE, keeping the label exactly as he
- * capitalised it, and the previous line — provenance suffix and all — moves into
+ * capitalised it, and the previous line, provenance suffix and all, moves into
  * a history comment. Missing field: one line is inserted into the field block.
  * Missing section: the canonical heading is appended at the end of the document,
  * because guessing which of his own headings he meant is worse than adding one.
@@ -314,7 +314,7 @@ export function setField(projection: ProfileProjection, input: SetFieldInput): P
   const existing = projection.fields.get(def.id);
   // Resolve to the section that ACTUALLY HOLDS the field when there is one.
   // `findProfileSection` returns the first heading matching the canonical name,
-  // and a document with the heading twice can put the field under the second —
+  // and a document with the heading twice can put the field under the second,
   // in which case the first is empty, its anchors are empty, and the history
   // comment lands nowhere useful.
   const section = existing === undefined
@@ -435,7 +435,7 @@ export interface ForgetInput {
 /**
  * Delete a line, and for a field every `<!-- was: … -->` comment it left behind.
  *
- * No tombstone, no `deleted: true`, no retention window — a delete that leaves
+ * No tombstone, no `deleted: true`, no retention window, a delete that leaves
  * the record on disk is the dishonesty `docs/decisions/2026-07-06-delete-means-
  * delete.md` removed. Forgetting something that was not there says so; it does
  * not report success.
@@ -444,15 +444,15 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   if (input.fieldId === undefined) {
     const at = input.lineIndex;
     // `NaN` fails BOTH bounds comparisons, so a range check alone waves it
-    // through and `splice(NaN, 1)` removes index 0 — his title. A fraction
+    // through and `splice(NaN, 1)` removes index 0, his title. A fraction
     // splices at its floor, so `4.9` deletes line 4. Integrality is the check
     // that actually holds.
     if (at === undefined || !Number.isInteger(at) || at < 0 || at >= projection.rawLines.length) {
       return refuse(projection, 'There is no such line in your profile.');
     }
     const text = stripEol(projection.rawLines[at] ?? '', projection.eol);
-    // Removing a heading orphans every field under it — they silently join the
-    // section above — while the receipt claims a note was removed.
+    // Removing a heading orphans every field under it, they silently join the
+    // section above, while the receipt claims a note was removed.
     if (/^##\s+/.test(text)) {
       return refuse(projection, 'That line is a section heading, not a note. Remove the lines under it instead.');
     }
@@ -482,7 +482,7 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   // Every line carrying this field, not just the active one:
   //  - a DUPLICATE further down is prose to the parser but still the value in
   //    the file, so removing only the active line reports success while the
-  //    value survives — a false receipt on a delete;
+  //    value survives, a false receipt on a delete;
   //  - a line under a heading he RENAMED is not in the model at all, so the
   //    old code said "nothing to forget" about a value `read()` still served.
   const strays = [
@@ -602,7 +602,7 @@ const NODE_PERSIST_IO: ProfilePersistIo = {
  *
  * Same shape as `PersistentStore.persist()` with a text join instead of
  * `JSON.stringify`. On POSIX the rename is atomic, so an interrupted write
- * leaves either the old complete file or the new one — never half a profile.
+ * leaves either the old complete file or the new one, never half a profile.
  * The daemon is the single writer, which is what makes this sufficient with no
  * lock.
  */
@@ -695,7 +695,7 @@ export { parseFieldLine };
  * else is. The marker is syntax, not content: he says "forget that I'm allergic
  * to shellfish", and the `- ` in front of it is a Markdown artefact he never
  * uttered. Requiring it back would be asking a model to guess at our storage
- * format, and it would fail closed in the least useful direction — a delete
+ * format, and it would fail closed in the least useful direction, a delete
  * that silently matches nothing.
  *
  * Normalising cannot widen a match onto the WRONG line, because ambiguity is
@@ -703,7 +703,7 @@ export { parseFieldLine };
  * same section they now both match, and that is two matches, which is a
  * refusal. A near-miss delete on the file that holds his address is worse than
  * a refusal, so an unmatched text removes nothing and says the line is not
- * there any more — which is true, and the useful thing to tell him: his file
+ * there any more, which is true, and the useful thing to tell him: his file
  * changed under the answer he was working from.
  *
  * Two byte-identical lines in one section refuse rather than guess. Removing
@@ -719,7 +719,7 @@ export function forgetProseByText(
   if (wanted.length === 0) {
     return {
       ok: false,
-      reason: 'Name the line by its text — there was nothing to match on.',
+      reason: 'Name the line by its text, there was nothing to match on.',
       lines: projection.rawLines,
       changes: [],
     };
@@ -747,7 +747,7 @@ export function forgetProseByText(
       ok: false,
       reason:
         `${matches.length} lines in ${target.heading} read exactly that, so it is not clear which one you `
-        + 'mean. Nothing was removed — edit the file directly, or tell them apart and ask again.',
+        + 'mean. Nothing was removed, edit the file directly, or tell them apart and ask again.',
       lines: projection.rawLines,
       changes: [],
     };
@@ -759,7 +759,7 @@ export function forgetProseByText(
  * A prose line's content, with its list marker and surrounding space removed.
  *
  * Matches `-`, `*`, `+` and ordered `1.` / `1)` forms, and only when whitespace
- * follows — so a line that genuinely begins `-5 degrees` keeps its minus sign
+ * follows, so a line that genuinely begins `-5 degrees` keeps its minus sign
  * rather than becoming `5 degrees`.
  */
 function withoutListMarker(value: string): string {

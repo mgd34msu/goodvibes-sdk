@@ -6,7 +6,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 
 const disposables = trackDisposables();
 
-// D3 — STEER ROUTING TO SURFACE-BACKED SESSIONS. A steer/follow-up to a
+// D3, STEER ROUTING TO SURFACE-BACKED SESSIONS. A steer/follow-up to a
 // surface-managed session with a live registered surface participant queues for
 // the surface (no daemon executor spawn); the surface collects and marks
 // delivery through the existing input lifecycle. A surfaceless session keeps the
@@ -157,7 +157,7 @@ describe('steer routing — surfaceless session keeps the executor path', () => 
 
 // Acceptance re-replay: steering a CLOSED session must reject
 // with SESSION_CLOSED/409 and cause NO side effects (closed sessions are
-// history — no message recorded, no input queued, no activeAgentId touched).
+// history, no message recorded, no input queued, no activeAgentId touched).
 // Open sessions (both the surface-collection path and the spawn fallback)
 // keep working, and a legitimately reopened session accepts steers again.
 describe('steer routing — closed session is rejected before any mutation', () => {

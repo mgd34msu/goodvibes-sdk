@@ -12,7 +12,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 
 /**
  * The graph below is INJECTED into DaemonServer, and the facade deliberately
- * disposes only a graph it composed itself — an injected one may outlive the
+ * disposes only a graph it composed itself, an injected one may outlive the
  * daemon, so it is the caller's to stop. Here the caller is this test.
  */
 const disposables = trackDisposables();
@@ -72,11 +72,11 @@ describe('daemon Agent knowledge route wiring', () => {
     // falling back to regular Knowledge/Wiki.
     delete (runtimeServices as { -readonly [K in keyof typeof runtimeServices]?: typeof runtimeServices[K] }).agentKnowledgeService;
 
-    // KNOWN SURVIVORS — the CompanionChatManager GC sweep and the batch
+    // KNOWN SURVIVORS, the CompanionChatManager GC sweep and the batch
     // manager tick this daemon builds. `DaemonServer.stop()` opens with
     // `if (this.server === null) return`, so a daemon that was constructed and
-    // enabled but never bound a socket — which is exactly what this route test
-    // needs — has no reachable teardown at all. Closing them needs a
+    // enabled but never bound a socket, which is exactly what this route test
+    // needs, has no reachable teardown at all. Closing them needs a
     // construction-time teardown path on DaemonServer, in product code.
     const daemon = new DaemonServer({ runtimeServices });
     daemon.enable({ daemon: true }, 'test-token');

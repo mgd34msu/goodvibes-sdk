@@ -3,7 +3,7 @@
  *
  * A CiStatusSource backed by the `gh` CLI. It reads PER-JOB check results from
  * the GitHub Checks API (repos/{repo}/commits/{ref}/check-runs), which is the
- * per-job conclusion surface the doctrine requires — never a single rollup.
+ * per-job conclusion surface the doctrine requires, never a single rollup.
  *
  * SHELL SAFETY: every `gh` invocation runs through execFile (no shell) with a
  * hard timeout, so a hung or slow gh call cannot wedge the caller.
@@ -108,7 +108,7 @@ export function createGhCliCiSource(options: GhCliCiSourceOptions = {}): CiStatu
       // (repos/{repo}/actions/jobs/{id}/logs) serves the raw text. Each log is
       // tailed (failures live at the end) and the job count is capped so the
       // brief stays a brief. Any per-job fetch failure degrades to an honest
-      // pointer line for that job — never a fabricated log, never fatal.
+      // pointer line for that job, never a fabricated log, never fatal.
       const target = prNumber !== undefined ? `PR #${prNumber}` : (ref ?? 'the ref');
       logger.info('ci-watch: composing failure brief', { repo, target, jobCount: jobNames.length });
       const header = [
@@ -135,7 +135,7 @@ export function createGhCliCiSource(options: GhCliCiSourceOptions = {}): CiStatu
           }
         }
         if (failingRuns.length > MAX_LOG_JOBS) {
-          sections.push(`(+${failingRuns.length - MAX_LOG_JOBS} more failing jobs — logs omitted to keep the brief bounded)`);
+          sections.push(`(+${failingRuns.length - MAX_LOG_JOBS} more failing jobs, logs omitted to keep the brief bounded)`);
         }
         if (sections.length > 0) return [...header, '', ...sections].join('\n');
       } catch (error) {

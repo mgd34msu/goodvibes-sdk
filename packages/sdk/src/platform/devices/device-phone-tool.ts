@@ -1,9 +1,9 @@
 /**
- * device-phone-tool.ts — the native `phone` tool.
+ * device-phone-tool.ts, the native `phone` tool.
  *
  * Uses a paired phone's camera, screen, location, clipboard, and device commands
- * as agent capabilities. A first-class tool on the agent contract — not an MCP
- * server — per the standing design constraint.
+ * as agent capabilities. A first-class tool on the agent contract, not an MCP
+ * server, per the standing design constraint.
  *
  * It lives here rather than in one product because it is the only path that
  * reaches `DeviceCapabilityService.request`, and therefore the only place the
@@ -361,7 +361,7 @@ async function handleAction(service: DevicePostureRuntime, args: PhoneToolArgs):
       grants: removed.map((entry) => ({ grantId: entry.grantId, nodeId: entry.nodeId, capabilityId: entry.capabilityId })),
       note: removed.length === 0
         ? 'Nothing matched; no grant was revoked.'
-        : 'Revoked grants are deleted, not flagged — the next request for these capabilities asks again.',
+        : 'Revoked grants are deleted, not flagged, the next request for these capabilities asks again.',
     };
   }
 
@@ -436,13 +436,13 @@ async function handleAction(service: DevicePostureRuntime, args: PhoneToolArgs):
 
   if (action === 'clipboard_write') {
     const text = readString(args.text);
-    if (!text) return fail('Pass text:"…" — the text to place on the phone\'s clipboard.');
+    if (!text) return fail('Pass text:"…", the text to place on the phone\'s clipboard.');
     return runCapability(service, args, 'device.clipboard.write', { text });
   }
 
   if (action === 'notify') {
     const title = readString(args.title);
-    if (!title) return fail('Pass title:"…" — the notification title.');
+    if (!title) return fail('Pass title:"…", the notification title.');
     return runCapability(service, args, 'device.command.notify', {
       title,
       ...(readString(args.body) ? { body: readString(args.body) } : {}),
@@ -451,7 +451,7 @@ async function handleAction(service: DevicePostureRuntime, args: PhoneToolArgs):
 
   if (action === 'open_url') {
     const url = readString(args.url);
-    if (!/^https?:\/\//i.test(url)) return fail('Pass url:"https://…" — only http and https links are opened on the phone.');
+    if (!/^https?:\/\//i.test(url)) return fail('Pass url:"https://…", only http and https links are opened on the phone.');
     return runCapability(service, args, 'device.command.open_url', { url });
   }
 

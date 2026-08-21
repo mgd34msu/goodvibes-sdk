@@ -127,7 +127,7 @@ describe('build-binaries optional-dependency screen', () => {
     const compile = calls[1]!;
     expect(compile).toContain('--external');
     expect(compile).toContain('jsdom');
-    // The native addon external is still there — this adds to it, never replaces it.
+    // The native addon external is still there, this adds to it, never replaces it.
     expect(compile).toContain('sqlite-vec-linux-x64');
     // An optional package that IS installed stays bundled, so a normal build is unchanged.
     expect(compile).not.toContain('openai');
@@ -251,7 +251,7 @@ describe('the screened compile survives a genuinely absent optional package', ()
   };
 
   afterAll(() => {
-    // Only the directories this run created, by recorded path — never a prefix
+    // Only the directories this run created, by recorded path, never a prefix
     // sweep of tmpdir(), which would delete a concurrent run's scratch.
     for (const dir of madeDirs.splice(0)) {
       try { rmSync(dir, { recursive: true, force: true }); } catch { /* hygiene must not fail the suite */ }

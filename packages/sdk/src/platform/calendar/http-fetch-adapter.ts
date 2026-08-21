@@ -1,5 +1,5 @@
 /**
- * http-fetch-adapter.ts — a pure adapter turning a standard WHATWG `fetch` into the
+ * http-fetch-adapter.ts, a pure adapter turning a standard WHATWG `fetch` into the
  * connector's injected HttpFetch boundary. This module references only the global
  * fetch/Response (no node:*), so it stays within the calendar module's purity
  * contract; the actual `fetch` used is supplied by the caller (the agent passes the

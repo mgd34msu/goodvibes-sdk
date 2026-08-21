@@ -9,7 +9,7 @@
  * `dispose()` cleared the timer map but set no flag, so a teardown that landed
  * inside that window did its work and then watched the in-flight initializer arm
  * three fresh timers behind it. Waiting for the graph to go quiet first hid the
- * defect entirely — which is exactly why this test disposes IMMEDIATELY, the way
+ * defect entirely, which is exactly why this test disposes IMMEDIATELY, the way
  * a short-lived process that composes a graph, answers one question and exits
  * actually behaves.
  */
@@ -27,7 +27,7 @@ const realClearTimeout = globalThis.clearTimeout;
 /**
  * Only timers created BY the scheduler are counted, matched on the creation
  * stack. The suite runs every file in one process, so a global pending-timer
- * count also sees unrelated in-flight work left by earlier files — which made
+ * count also sees unrelated in-flight work left by earlier files, which made
  * this test pass alone and fail in-suite, measuring the suite rather than the
  * subject.
  */

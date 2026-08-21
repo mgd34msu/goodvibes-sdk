@@ -143,7 +143,7 @@ const MAX_HISTORY_PER_TASK = 5;
 /** Debounce window for history persist calls (ms). Coalesces rapid consecutive runs. */
 const SAVE_DEBOUNCE_MS = 1_000;
 
-/** Maximum setTimeout delay — Node.js overflows at ~24.8 days; cap at 24 h. */
+/** Maximum setTimeout delay, Node.js overflows at ~24.8 days; cap at 24 h. */
 const MAX_TIMEOUT_MS = 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -363,7 +363,7 @@ function computeNextRun(expr: string, from: Date, timezone?: string): Date {
     const { month, dom, dow, hour, minute } = getCalendarParts(cur.getTime(), timezone);
 
     if (!fieldMatches(fields.month, month)) {
-      // Advance to start of next month — always advance by wall-clock ms to
+      // Advance to start of next month, always advance by wall-clock ms to
       // respect DST; add 32 days and floor to day 1 of the resulting month.
       cur = new Date(cur.getTime() + 32 * 24 * 60 * 60 * 1000);
       cur = new Date(cur.getFullYear(), cur.getMonth(), 1, 0, 0, 0, 0);
@@ -464,7 +464,7 @@ function countMissedRuns(
 // ---------------------------------------------------------------------------
 
 /**
- * TaskScheduler — cron-like task scheduler that runs inside the daemon.
+ * TaskScheduler, cron-like task scheduler that runs inside the daemon.
  *
  * Tasks persist to disk through the configured scheduler store path and survive restarts.
  * Task execution requires an explicit spawnTask callback so runs stay owned by the caller.
@@ -473,7 +473,7 @@ export class TaskScheduler {
   private tasks: Map<string, ScheduledTask> = new Map();
   private timers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   /**
-   * Per-task run history indexed by taskId — O(1) push + trim per task run.
+   * Per-task run history indexed by taskId, O(1) push + trim per task run.
    * The flat `history` array is derived from this on persist.
    */
   private historyByTask: Map<string, TaskRunRecord[]> = new Map();
@@ -739,7 +739,7 @@ export class TaskScheduler {
   private pushHistory(record: TaskRunRecord): void {
     const bucket = this.historyByTask.get(record.taskId) ?? [];
     bucket.push(record);
-    // Trim to MAX_HISTORY_PER_TASK in-place — oldest entries are at the front.
+    // Trim to MAX_HISTORY_PER_TASK in-place, oldest entries are at the front.
     if (bucket.length > MAX_HISTORY_PER_TASK) {
       bucket.splice(0, bucket.length - MAX_HISTORY_PER_TASK);
     }

@@ -1,9 +1,9 @@
 /**
- * group-store.ts — where the group's secrets and its roster actually live.
+ * group-store.ts, where the group's secrets and its roster actually live.
  *
  * Two stores, deliberately different, because they hold different things:
  *
- *   KEY MATERIAL — the join key, the group keys, this node's private keys —
+ *   KEY MATERIAL, the join key, the group keys, this node's private keys,
  *   goes in the ENCRYPTED secrets store and nowhere else. Not in config, not in
  *   a log line, not in /status, not in a datagram. The only way any of it
  *   reaches a human is `cluster key`, which prints the join key and nothing
@@ -14,7 +14,7 @@
  *   It goes in a plain file under the cluster state directory, where an
  *   operator can read it if they want to.
  *
- * Both are bounded, content-validated on load, and swept — a store that only
+ * Both are bounded, content-validated on load, and swept, a store that only
  * ever grows is a slow leak, and one that trusts whatever it finds on disk
  * turns a half-written file into a crash loop.
  */
@@ -51,7 +51,7 @@ export const GROUP_REPLICA_FILENAME = 'group-config.json';
  * secret in the daemon tier exactly when its name is one the daemon's
  * derivation produces; a hand-written `'cluster.groupMaterial'` matches
  * nothing it produces, so the group's key material was landing at PROJECT
- * scope — in whichever directory the daemon happened to start in, outside the
+ * scope, in whichever directory the daemon happened to start in, outside the
  * tier holding every other cluster secret.
  *
  * Deriving it means the name the daemon recognises and the name actually
@@ -65,7 +65,7 @@ export const GROUP_MATERIAL_SECRET_KEY = daemonSecretKeyFor('cluster.groupMateri
  * 16 generations at the default 24-hour rotation is a fortnight of history, and
  * 30 days caps it for a node that rotates faster. Neither bound costs anything
  * a returning machine needs: a member that has been off for a year rejoins by
- * proving its long-lived IDENTITY key, which never rotates and never expires —
+ * proving its long-lived IDENTITY key, which never rotates and never expires,
  * old group keys are a convenience path, not the mechanism. See
  * group-membership.ts.
  */
@@ -83,7 +83,7 @@ export interface GroupKeyRecord {
    * Only one member mints a given rotation, but a network that partitions
    * mid-rotation can produce two candidates for the same generation. When that
    * happens every node picks the one from the lexicographically SMALLER node
-   * id — a rule with no dependence on arrival order or clock, so both sides of
+   * id, a rule with no dependence on arrival order or clock, so both sides of
    * a healed partition land on the same key without negotiating.
    */
   readonly mintedBy: string;
@@ -120,7 +120,7 @@ export interface GroupKeyMaterial {
    *
    * Set on a scheduled rotation, so members that have not yet cut over keep
    * being heard. Set to 0 on a rotation caused by a REMOVAL, so the machine
-   * that was just ejected stops being heard immediately — which is the entire
+   * that was just ejected stops being heard immediately, which is the entire
    * point of rotating on removal.
    */
   readonly previousAcceptedUntil: number;
@@ -129,8 +129,8 @@ export interface GroupKeyMaterial {
    * The GROUP's signing key pair, and which generation of it this is.
    *
    * Every member holds the private half, so any member can answer a returning
-   * machine as the group rather than as itself. It rotates only on REMOVAL —
-   * not on a scheduled rotation — because its whole job is to be verifiable by
+   * machine as the group rather than as itself. It rotates only on REMOVAL,
+   * not on a scheduled rotation, because its whole job is to be verifiable by
    * a machine holding a public key from months ago, and rotating it daily would
    * make that impossible for no gain.
    */
@@ -245,7 +245,7 @@ export interface KeyHistorySweepResult {
  * Bound the key history.
  *
  * The current generation and the one before it are ALWAYS kept regardless of
- * age — dropping either would break the acceptance window and cause exactly the
+ * age, dropping either would break the acceptance window and cause exactly the
  * spurious elections the window exists to prevent.
  */
 export function sweepKeyHistory(
@@ -433,7 +433,7 @@ export function joiningGroupKeyMaterial(input: {
   };
 }
 
-/** Why a rotation happened — and therefore whether the old key stays acceptable. */
+/** Why a rotation happened, and therefore whether the old key stays acceptable. */
 export type RotationCause = 'scheduled' | 'revocation';
 
 /**
@@ -475,7 +475,7 @@ export function rotateGroupKeyMaterial(
 }
 
 /**
- * Adopt keys handed over by another member — on join, on a re-key, or on the
+ * Adopt keys handed over by another member, on join, on a re-key, or on the
  * rotation announcement that follows a scheduled rotation.
  *
  * Two candidates for the SAME generation are resolved by
@@ -550,7 +550,7 @@ export function loadGroupState(
  * Read the replicated settings document.
  *
  * Content-validated through the caller's policy filter, so a file edited by
- * hand — or written by an older build with a wider policy — cannot smuggle a
+ * hand, or written by an older build with a wider policy, cannot smuggle a
  * node-local key into this machine's config on the next start.
  */
 export function loadReplicaDocument<T>(

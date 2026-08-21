@@ -6,7 +6,7 @@ import { ProcessManager } from '../shared/process-manager.js';
 /**
  * Creates a phased version of the exec tool.
  *
- * The exec tool is categorised as `execute` — it runs arbitrary shell commands
+ * The exec tool is categorised as `execute`, it runs arbitrary shell commands
  * and therefore requires full permission checks in the prehook phase.
  * It is cancellable: the underlying process manager supports SIGTERM/SIGKILL,
  * so the phased executor can abort long-running commands via AbortSignal.

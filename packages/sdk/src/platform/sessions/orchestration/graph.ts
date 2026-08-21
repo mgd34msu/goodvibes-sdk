@@ -1,5 +1,5 @@
 /**
- * Multi-session Orchestration — Session Task Graph
+ * Multi-session Orchestration, Session Task Graph
  *
  * Implements the in-memory cross-session task graph with:
  * - Global task reference registration and status propagation
@@ -29,9 +29,9 @@ const TERMINAL_STATES: ReadonlySet<string> = new Set(['completed', 'failed', 'ca
 // ── SessionTaskGraph ──────────────────────────────────────────────────────────
 
 /**
- * SessionTaskGraph — the central in-memory cross-session task graph.
+ * SessionTaskGraph, the central in-memory cross-session task graph.
  *
- * All mutations are synchronous and produce no external side effects —
+ * All mutations are synchronous and produce no external side effects,
  * callers are responsible for persisting snapshots via SessionTaskGraphRegistry.
  *
  * Invariants:
@@ -62,7 +62,7 @@ export class SessionTaskGraph {
    * Register a new cross-session task ref or update an existing one.
    *
    * If a ref with the same key already exists, only mutable fields
-   * (status, updatedAt, label) are patched — immutable identity fields
+   * (status, updatedAt, label) are patched, immutable identity fields
    * (sessionId, taskId, createdAt) are preserved.
    *
    * @param ref - The ref to register or update.
@@ -175,12 +175,11 @@ export class SessionTaskGraph {
       return { ok: false, error: 'Self-dependency is not allowed' };
     }
 
-    // Cycle detection — would adding fromKey→toKey create a cycle?
+    // Cycle detection, would adding fromKey→toKey create a cycle?
     if (this._pathExists(toKey, fromKey)) {
       return { ok: false, error: `Adding this dependency would create a cycle` };
     }
 
-    // Check for duplicate
     const existing = this._deps.get(fromKey);
     if (existing?.has(toKey)) {
       return { ok: true }; // idempotent
@@ -325,7 +324,7 @@ export class SessionTaskGraph {
    * Apply a scoped cancellation request to the graph.
    *
    * Updates the status of all targeted refs to 'cancelled'. This method
-   * only mutates the in-memory graph — the caller is responsible for
+   * only mutates the in-memory graph, the caller is responsible for
    * propagating the cancellation to the actual task managers.
    *
    * @param request - The cancellation request.

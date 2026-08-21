@@ -55,7 +55,7 @@ describe('peer sdk', () => {
 
   test('supports simple pairing requests', async () => {
     // Real shape of the `pair.request` contract response: `{ request, challenge }`,
-    // not a bare `{ requestId }` — see packages/contracts/src/generated/peer-contract.ts.
+    // not a bare `{ requestId }`, see packages/contracts/src/generated/peer-contract.ts.
     const mockResponse = {
       request: {
         id: 'req-1',

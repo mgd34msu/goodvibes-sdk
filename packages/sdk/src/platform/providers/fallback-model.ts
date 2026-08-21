@@ -1,5 +1,5 @@
 /**
- * fallback-model.ts — the pre-catalog fallback registration for the
+ * fallback-model.ts, the pre-catalog fallback registration for the
  * configured model: before the model catalog cache has loaded, the
  * configured `provider:model` is registered with family-aware context-window
  * and reasoning-effort inference, so the context meter and the compaction
@@ -9,12 +9,12 @@
  *
  * Both the TUI (`runtime/provider-fallback.ts`) and the agent
  * (`runtime/services.ts`) carried an identical `ensureConfiguredModelIsRoutable`
- * and a near-identical `buildFallbackModelDefinition` — this module unifies
+ * and a near-identical `buildFallbackModelDefinition`, this module unifies
  * them. The TUI's `buildFallbackModelDefinition` is the superset adopted
  * here: it calls this package's own {@link inferFallbackContextWindow} and
  * {@link resolveReasoningEffortSpec} for family-aware inference, where the
  * agent's copy hardcoded a flat 128k/32k window split and a fixed
- * `['instant', 'low', 'medium', 'high']` reasoning-effort level set — which
+ * `['instant', 'low', 'medium', 'high']` reasoning-effort level set, which
  * silently mis-stated the window for any model outside the two curated
  * families and offered 'instant' to models that reject it while hiding
  * 'xhigh'/'max'/'none' from models that accept them. `codeEditing` is `true`

@@ -26,7 +26,7 @@ import { randomUUID } from 'node:crypto';
 import { KVState } from '../packages/sdk/src/platform/state/kv-state.ts';
 import { logger } from '../packages/sdk/src/platform/utils/logger.ts';
 
-/** Mirrors SESSION_MAX_AGE_MS in kv-state.ts — the contract these tests hold it to. */
+/** Mirrors SESSION_MAX_AGE_MS in kv-state.ts, the contract these tests hold it to. */
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 /** Mirrors SESSION_KEEP_COUNT in kv-state.ts. */
 const KEEP_COUNT = 50;
@@ -39,7 +39,7 @@ function tempDir(label: string): string {
   return dir;
 }
 
-/** Eight lowercase hex characters — the only session-id shape this store recognises. */
+/** Eight lowercase hex characters, the only session-id shape this store recognises. */
 function hexId(seed: number): string {
   return seed.toString(16).padStart(8, '0');
 }
@@ -103,7 +103,7 @@ afterEach(async () => {
 describe('KVState session-file retention — the reap that now actually runs', () => {
   test('files past the age bound are reclaimed at recovery, and the current session survives its own', async () => {
     const stateDir = tempDir('age');
-    // The current session was last written a MONTH ago — a long-dormant session
+    // The current session was last written a MONTH ago, a long-dormant session
     // being resumed is exactly the case a naive age sweep would destroy.
     writeSessionFile(stateDir, 'aaaaaaaa', 30 * DAY_MS, { id: 'aaaaaaaa', started_at: 'then', keep: 'me' });
     writeSessionFile(stateDir, 'bbbbbbbb', MAX_AGE_MS + DAY_MS);
@@ -193,7 +193,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
       overCap: 0,
       bytesReclaimed: expectedBytes,
     });
-    // Counts, a directory and a byte total — never a file's contents.
+    // Counts, a directory and a byte total, never a file's contents.
     expect(JSON.stringify(disclosures[0]?.data)).not.toContain('filler');
   });
 
@@ -221,7 +221,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
     });
     const afterFirst = sessionFilesIn(stateDir);
 
-    // A second instance over the same directory — the shape a second process
+    // A second instance over the same directory, the shape a second process
     // recovering concurrently takes.
     const second = await captureInfo(async () => {
       await kvState({ stateDir, sessionId: 'aaaa0002' }).load();
@@ -265,7 +265,7 @@ describe('KVState session-file retention — the reap that now actually runs', (
     writeSessionFile(legacyStateDir, '00000002', MAX_AGE_MS + DAY_MS);
     // Recent files belonging to some OTHER product sharing this unscoped
     // directory: far more than the count bound, none of them stale. All must
-    // survive — a count bound here could delete a session another surface
+    // survive, a count bound here could delete a session another surface
     // resumes tomorrow.
     for (let i = 0; i < KEEP_COUNT + 20; i += 1) {
       writeSessionFile(legacyStateDir, hexId(0x100 + i), i * 60_000);
@@ -337,7 +337,7 @@ describe('KVState session-file reads — validated by content, not existence', (
   test('a LEGACY file holding a non-object is treated as absent, and the session starts clean', async () => {
     // The legacy fallback may only ever recover data, never turn junk in the old
     // unscoped directory into a failure for a session that would have started
-    // clean — the same rule the corrupt-legacy case already follows.
+    // clean, the same rule the corrupt-legacy case already follows.
     const stateDir = tempDir('legacy-non-object-scoped');
     const legacyStateDir = tempDir('legacy-non-object');
     writeFileSync(join(legacyStateDir, 'session_1234abcd.json'), '[1,2,3]', 'utf-8');

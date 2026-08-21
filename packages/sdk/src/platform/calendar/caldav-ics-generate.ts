@@ -1,11 +1,11 @@
 /**
- * caldav-ics-generate.ts — RFC 5545 (iCalendar) writing for the CalDAV backend.
+ * caldav-ics-generate.ts, RFC 5545 (iCalendar) writing for the CalDAV backend.
  *
  * The other half of `caldav-ics.ts`: what a PUT of a new event serialises with,
  * and what `calendar.ics.export` renders a whole collection with.
  *
  * Pure, including the stamp. `dtStamp` is a required input rather than a
- * defaulted `new Date()` so that no clock is read here — the caller passes the
+ * defaulted `new Date()` so that no clock is read here, the caller passes the
  * instant from its own injected clock, which is also what makes a generated
  * .ics byte-for-byte reproducible under test.
  */

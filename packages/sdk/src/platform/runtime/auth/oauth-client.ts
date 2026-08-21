@@ -1,5 +1,5 @@
 /**
- * OAuthClient — OAuth flows for **daemon authentication**.
+ * OAuthClient, OAuth flows for **daemon authentication**.
  *
  * Wraps the pure PKCE/OAuth 2.0 functions in `oauth-core.ts` behind a class
  * boundary so callers can inject config once and call methods, rather than
@@ -10,7 +10,7 @@
  * etc.), see {@link SubscriptionManager} in
  * `../config/subscriptions.ts`.
  *
- * @see SubscriptionManager — OAuth flows for provider subscriptions.
+ * @see SubscriptionManager, OAuth flows for provider subscriptions.
  */
 
 import type { OAuthProviderConfig } from '../../config/subscriptions.js';

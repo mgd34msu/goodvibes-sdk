@@ -1,5 +1,5 @@
 /**
- * control-plane-base-url.ts — derive where the daemon listens, rather than
+ * control-plane-base-url.ts, derive where the daemon listens, rather than
  * storing it.
  *
  * `controlPlane.baseUrl` has no writers. Four call sites set `hostMode` / `host`
@@ -9,8 +9,8 @@
  * once and passed through verbatim afterwards). A stored mirror of derivable
  * state is a second source of truth, and the second one is always the stale one.
  *
- * So this module derives the URL from the binding that actually decides it —
- * `hostMode` + `host` + `port` + `tls.mode` — and offers a comparison helper so
+ * So this module derives the URL from the binding that actually decides it,
+ * `hostMode` + `host` + `port` + `tls.mode`, and offers a comparison helper so
  * a host can say loudly at boot when a stored URL disagrees with the real bind.
  *
  * A genuinely external address (a tunnel, a reverse proxy) is NOT derivable and
@@ -86,7 +86,7 @@ export function controlPlaneScheme(binding: ControlPlaneBinding): 'http' | 'http
 
 /**
  * Derive the control-plane base URL for an audience. For 'external', an
- * explicitly declared `publicBaseUrl` wins — it is the one case the bind cannot
+ * explicitly declared `publicBaseUrl` wins, it is the one case the bind cannot
  * describe. Everything else is computed, so it cannot go stale.
  */
 export function deriveControlPlaneBaseUrl(
@@ -106,8 +106,8 @@ export function deriveControlPlaneBaseUrl(
  * bound. Returns a message when they disagree, so a host can log it loudly at
  * boot: the daemon logs its real bind today and never compares it to anything.
  *
- * Two separate resolvers decide these values — the bind path resolves
- * hostMode/host/port, and the client-facing URL is derived here — so a
+ * Two separate resolvers decide these values, the bind path resolves
+ * hostMode/host/port, and the client-facing URL is derived here, so a
  * disagreement means the daemon is handing out an address it does not answer
  * on, which is the "two different click hosts from one daemon" symptom.
  *
@@ -122,7 +122,7 @@ export function describeDerivedBindMismatch(
   const expectedHost = loopbackHostFor(binding);
   if (actual.host === expectedHost && actual.port === binding.port) return null;
   // A wildcard bind is reported by the bind path as 0.0.0.0 while the derived
-  // dial target is loopback — that substitution is deliberate, not drift.
+  // dial target is loopback, that substitution is deliberate, not drift.
   if (isWildcardHost(actual.host) && expectedHost === '127.0.0.1' && actual.port === binding.port) return null;
   const derived = deriveControlPlaneBaseUrl(binding, 'loopback');
   return `control-plane clients are handed ${derived}, but the daemon actually bound `
@@ -132,7 +132,7 @@ export function describeDerivedBindMismatch(
 
 /**
  * Compare a STORED base URL against the derived one. Returns a message when
- * they disagree, so a host can log it loudly at boot — the daemon logs its real
+ * they disagree, so a host can log it loudly at boot, the daemon logs its real
  * bind today and never compares it to the value clients are handed.
  */
 export function describeBaseUrlDrift(
@@ -145,6 +145,6 @@ export function describeBaseUrlDrift(
   if (trimmed.replace(/\/+$/, '') === derived) return null;
   return `controlPlane.baseUrl is stored as ${trimmed} but the daemon actually binds `
     + `${binding.hostMode}/${binding.host}:${binding.port} with tls ${binding.tlsMode}, which is ${derived}. `
-    + 'The stored value is a stale mirror of derivable state — clients handed it will dial the wrong place. '
+    + 'The stored value is a stale mirror of derivable state, clients handed it will dial the wrong place. '
     + 'Declare a genuinely external address in controlPlane.publicBaseUrl instead.';
 }

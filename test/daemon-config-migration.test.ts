@@ -6,8 +6,8 @@
  * and discloses exactly what moved and what it discarded.
  *
  * The last block runs against a copy of the shape a real machine had when this
- * change was written — a `tui` store with a live Telegram configuration and an
- * `agent` store with a DIFFERENT bot-token reference and an empty chat id — so
+ * change was written, a `tui` store with a live Telegram configuration and an
+ * `agent` store with a DIFFERENT bot-token reference and an empty chat id, so
  * the conflict rule is exercised on real data, not only synthetic fixtures.
  */
 
@@ -64,7 +64,7 @@ describe('daemon-owned config migration', () => {
     expect(store['surfaces']).toEqual({ telegram: { enabled: true, botUsername: 'goodvibes_agent_bot' } });
     expect(store['watchers']).toEqual({ enabled: true });
 
-    // MOVED, not copied — the surface file no longer carries them.
+    // MOVED, not copied, the surface file no longer carries them.
     const tui = readJson(join(h, '.goodvibes', 'tui', 'settings.json'));
     expect(tui['surfaces']).toBeUndefined();
     expect(tui['watchers']).toBeUndefined();
@@ -394,7 +394,7 @@ describe('migration against the live machine layout that motivated this change',
       'surfaces.telegram.defaultChatId',
       'watchers.enabled',
     ]);
-    // The discarded token reference is legible in the record — a user has to be
+    // The discarded token reference is legible in the record, a user has to be
     // able to see that the agent was pointing at a different secret name.
     const token = marker.discarded.find(
       (entry) => entry.from === agentPath && entry.key === 'surfaces.telegram.botToken',

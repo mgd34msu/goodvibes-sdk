@@ -4,7 +4,7 @@
  * The tailscale auto-wire affordance: read-only detection (never a
  * state-changing command), the one-action serve verb (honest receipt either
  * way, web.publicBaseUrl updated from the same resolution on success), and the
- * quiet no-nag posture where tailscale is absent. All over a fake runner —
+ * quiet no-nag posture where tailscale is absent. All over a fake runner,
  * no real tailscale is ever touched.
  */
 import { describe, expect, test } from 'bun:test';

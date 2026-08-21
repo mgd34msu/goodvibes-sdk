@@ -6,7 +6,7 @@
  * 127.0.0.1. No real mail server, no real account, no module mocking.
  *
  * The property under test: the recipient a message was DELIVERED to comes from
- * the mailbox we read and from the top-most delivery-agent trace header —
+ * the mailbox we read and from the top-most delivery-agent trace header,
  * never from the sender-authored To: header.
  */
 
@@ -39,8 +39,8 @@ import {
  * Module-level rather than a parameter threaded through fourteen call sites:
  * every test here funnels through `fetchOneEnvelope`, so one variable and a
  * `beforeEach` covers all of them across all three shapes. This file used to
- * send bare response lines exclusively — the one framing no RFC 3501 server
- * produces — so every assertion in it was about a shape that never arrives.
+ * send bare response lines exclusively, the one framing no RFC 3501 server
+ * produces, so every assertion in it was about a shape that never arrives.
  */
 let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
 
@@ -71,7 +71,7 @@ function startFakeImapServer(headerLines: readonly string[]): Promise<FakeServer
             // Sequence number 2, UID 4: the client asked by UID and must report
             // the UID it asked for, never the sequence number in the response
             // prefix.
-            // Sequence number 2, UID 4 — and framed the way the shape under
+            // Sequence number 2, UID 4, and framed the way the shape under
             // test asks for, rather than as bare lines.
             writeFetchSectionResponse(sock, {
               seq: 2,

@@ -81,7 +81,7 @@ export type ToolExecutionDeps = {
   /**
    * Stage B: called once per executed tool with (toolName, resolved args, success) so a
    * code-index reindex scheduler can debounce an incremental reindex of touched files. Invoked
-   * for BOTH success and failure (the scheduler no-ops on failure); never awaited — it must not
+   * for BOTH success and failure (the scheduler no-ops on failure); never awaited, it must not
    * block the tool-result path.
    */
   onToolExecuted?: ((toolName: string, args: Record<string, unknown>, success: boolean) => void) | undefined;
@@ -89,7 +89,7 @@ export type ToolExecutionDeps = {
    * Per-call cancellation seam: `open(callId)` yields the AbortSignal passed to
    * the tool body (registering the call as cancellable), `close(callId)`
    * retires it once the call settles. A cancel of ONE call aborts only that
-   * call's signal — other calls in the batch and the turn itself continue.
+   * call's signal, other calls in the batch and the turn itself continue.
    * Optional/undefined preserves the previous uncancellable behavior.
    */
   toolCallSignals?: {
@@ -106,7 +106,7 @@ export const TOOL_CALL_CANCELLED_MESSAGE = 'cancelled by user';
  * signal was aborted into the structured cancelled shape: the model sees
  * "cancelled by user" with `cancelled: true`, keeping any partial output the
  * tool produced before it stopped. The tiny race where a tool completes
- * successfully in the same instant the user cancels still reports cancelled —
+ * successfully in the same instant the user cancels still reports cancelled,
  * the user's decision is the truth the model should adapt to.
  */
 function toCancelledResult(callId: string, settled: ToolResult | null): ToolResult {

@@ -112,7 +112,7 @@ describe('resolveWorkspaceRegistration — pure semantics', () => {
 
   test('WORKTREE LINK: a sibling worktree OUTSIDE the registered subtree inherits via the main-repo link', () => {
     // The registered root is the main project; the worktree lives under /tmp,
-    // entirely outside the project subtree — path ancestry alone would miss it.
+    // entirely outside the project subtree, path ancestry alone would miss it.
     const res = resolveWorkspaceRegistration({
       path: '/tmp/orchestration/wt/item-3',
       git: { mainWorktreeRoot: '/home/dev/proj' },
@@ -216,7 +216,7 @@ describe('WorkspaceRegistrationStore — persistence + broad-root guard', () => 
     expect(stamped.record.origin).toBe('agent-boot');
     expect(stamped.record.checkpointEligible).toBe(true);
 
-    // A plain self-recording carries no provenance and is NOT eligible —
+    // A plain self-recording carries no provenance and is NOT eligible,
     // one surface's recording must never widen another consumer's checkpoint scope.
     const plain = await s.add('/home/dev/other');
     expect(plain.record.origin).toBeUndefined();

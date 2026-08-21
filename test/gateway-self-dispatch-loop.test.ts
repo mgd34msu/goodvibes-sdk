@@ -4,8 +4,8 @@
  * The gate for the defect that shipped in 1.18.0.
  *
  * `invokeGatewayMethodCall` has two arms: run the attached handler in process,
- * or — when there is no handler but the descriptor advertises an `http` binding
- * — synthesize a request to that path and feed it back into the real router.
+ * or, when there is no handler but the descriptor advertises an `http` binding
+ *, synthesize a request to that path and feed it back into the real router.
  * The second arm exists for verbs whose implementation is a genuine HTTP route
  * living elsewhere in the chain.
  *
@@ -18,9 +18,9 @@
  *
  * Measured on a 1.18.0 daemon composed without mail deps: ONE
  * `GET /api/email/inbox` produced 256 nested dispatches and then answered
- * `503 ws-call-overloaded — Daemon is at its concurrent WS-call cap (256)`.
+ * `503 ws-call-overloaded, Daemon is at its concurrent WS-call cap (256)`.
  * Both halves of that were wrong. The capability was not wired, which is fixed
- * and terminal, not a transient capacity problem that might clear on retry —
+ * and terminal, not a transient capacity problem that might clear on retry,
  * anyone reading it would have gone looking at load, and load was never
  * involved. And a single request consumed the daemon's entire concurrent
  * WS-call budget, so a handful of them would starve every other caller.
@@ -39,7 +39,7 @@ import { SDKErrorCodes } from '../packages/errors/src/index.ts';
 /**
  * A helper whose router would faithfully reproduce the loop: anything it is
  * handed comes straight back through `invokeGatewayMethodCall` for the methodId
- * that owns the path. If the guard ever regresses, this recurses — so the
+ * that owns the path. If the guard ever regresses, this recurses, so the
  * dispatch counter below is the assertion, not decoration.
  */
 function loopingHelper(catalog: GatewayMethodCatalog): {
@@ -116,7 +116,7 @@ describe('an advertised binding that routes back to its own methodId cannot loop
         authToken: 'test-token',
         methodId,
         // Admin AND the verb's own scopes, so the access gate does not answer
-        // first and hide the arm this test exists to exercise — without the
+        // first and hide the arm this test exists to exercise, without the
         // scopes most of these stop at a 403 and the sweep proves nothing.
         // Verbs that still refuse earlier for their own reasons (a required
         // confirm, a missing body) satisfy the two invariants below anyway,
@@ -149,7 +149,7 @@ describe('an advertised binding that routes back to its own methodId cannot loop
         authToken: 'test-token',
         methodId,
         // The verb's own scopes, so the access gate passes and the dispatch arm
-        // is what answers — the whole point of these three.
+        // is what answers, the whole point of these three.
         context: {
           admin: true,
           principalKind: 'user',

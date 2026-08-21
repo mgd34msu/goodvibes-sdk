@@ -110,7 +110,7 @@ describe('I1: session-scoped event isolation', () => {
 
     const clientIdA = `companion-chat:${sessionA.id}`;
     manager.registerSubscriber(sessionA.id, clientIdA);
-    // Session B has NO registered subscriber — simulates "nobody is listening"
+    // Session B has NO registered subscriber, simulates "nobody is listening"
 
     await manager.postMessage(sessionA.id, 'Only A talks');
     await settleEvents();
@@ -206,7 +206,7 @@ describe('I2: no leak into global control-plane feed', () => {
     await settleEvents();
 
     // When no subscriber is registered, subscriberClientId is null.
-    // The manager should publish with undefined filter — those events are
+    // The manager should publish with undefined filter, those events are
     // effectively dropped by the gateway since no client matches.
     // Crucially: they must NOT be published with a non-companion clientId.
     for (const e of publisher.events) {

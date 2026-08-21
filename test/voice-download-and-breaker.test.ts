@@ -1,14 +1,14 @@
 /**
  * voice-download-and-breaker.test.ts
  *
- * Item 5: local voice model downloads are atomic + verified — a truncated .onnx
+ * Item 5: local voice model downloads are atomic + verified, a truncated .onnx
  * (Content-Length short, too small, HTML error page, or bad magic) is rejected
  * and never left at the final path.
  *
  * Item 6: when the local TTS engine hard-fails (the piper SIGABRT / onnxruntime
  * "Unsupported model IR version" abort on this host), the provider trips a
- * circuit breaker — one honest engine-unavailable state, no per-chunk crash
- * storm — and a transient timeout does NOT trip it.
+ * circuit breaker, one honest engine-unavailable state, no per-chunk crash
+ * storm, and a transient timeout does NOT trip it.
  */
 import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -190,7 +190,7 @@ describe('local TTS hard-failure circuit breaker (item 6)', () => {
     });
     await expect(provider.synthesize!(req)).rejects.toThrow(/unavailable on this host/i);
     expect(calls).toBe(1);
-    // Point at a new (good) model — the breaker for the old config is cleared.
+    // Point at a new (good) model, the breaker for the old config is cleared.
     modelPath = '/models/good.onnx';
     await provider.synthesize!(req);
     expect(calls).toBe(2);

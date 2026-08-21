@@ -1,5 +1,5 @@
 /**
- * sdk-pin-gate — verifies a consumer repo pins the SDK correctly.
+ * sdk-pin-gate, verifies a consumer repo pins the SDK correctly.
  *
  * Absorbs three parallel copies: tui/scripts/publish-check.ts (pin in
  * `dependencies`), agent/scripts/sdk-release-gates.ts (pin in
@@ -82,7 +82,7 @@ function allowedExportSpecifiers(fs: FsReader, sdkPackage: string): Set<string> 
 
 /**
  * Run every sdk-pin gate and return one result per gate. Pure over the injected
- * FsReader — no process exit, no console. The bin maps results to exit codes.
+ * FsReader, no process exit, no console. The bin maps results to exit codes.
  */
 export function runSdkPinGate(fs: FsReader, partial: Partial<SdkPinConfig> | undefined): GateResult[] {
   const config = resolveSdkPinConfig(partial);
@@ -93,7 +93,7 @@ export function runSdkPinGate(fs: FsReader, partial: Partial<SdkPinConfig> | und
     id: 'local-sdk-overlay-absent',
     ok: !overlayPresent,
     detail: overlayPresent
-      ? `dev-link overlay marker present at ${config.overlayMarker} — restore the published SDK before cutting`
+      ? `dev-link overlay marker present at ${config.overlayMarker}, restore the published SDK before cutting`
       : 'no dev-link overlay marker',
   });
 
@@ -127,7 +127,7 @@ export function runSdkPinGate(fs: FsReader, partial: Partial<SdkPinConfig> | und
       ok: lockResolves,
       detail: lockResolves
         ? `${config.lockfile} resolves ${config.sdkPackage}@${pin}`
-        : `${config.lockfile} does not resolve ${config.sdkPackage}@${pin} — lockfile lagged the pin bump`,
+        : `${config.lockfile} does not resolve ${config.sdkPackage}@${pin}, lockfile lagged the pin bump`,
     });
   }
 
@@ -147,7 +147,7 @@ export function runSdkPinGate(fs: FsReader, partial: Partial<SdkPinConfig> | und
       results.push({
         id: 'exports-map-only-imports',
         ok: true,
-        detail: 'installed SDK package.json absent — exports-map check skipped',
+        detail: 'installed SDK package.json absent, exports-map check skipped',
       });
     } else {
       const offenders = specifiers.filter((s) => s.startsWith(config.sdkPackage) && !allow.has(s));

@@ -1,7 +1,7 @@
 /**
  * embed-session-quickstart.ts
  *
- * SDK Embedding API 1.0 — embed a GoodVibes session in another application:
+ * SDK Embedding API 1.0, embed a GoodVibes session in another application:
  * create a session against a workspace, inject a permission callback, subscribe
  * to typed events, send input, and shut down. Compile-checked by
  * `examples/typecheck`; not executed here (it would boot a real daemon).

@@ -112,7 +112,7 @@ export function injectTraceparent(headers: Record<string, string>): void {
 }
 
 /**
- * Async variant — probes OTel via dynamic import on first call, then caches.
+ * Async variant, probes OTel via dynamic import on first call, then caches.
  * Use for SSE/WS connection setup where async is acceptable.
  *
  * @param headers - Mutable header record to augment in-place.

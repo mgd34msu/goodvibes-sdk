@@ -192,7 +192,7 @@ export function createDaemonChannelRouteHandlers(
           )
         : null;
       // The catalog declares `actionId` required, and the invoke gate refuses a
-      // call without it — but this REST path used to substitute the literal
+      // call without it, but this REST path used to substitute the literal
       // 'unknown' and go on to evaluate authorization against it. So the two
       // routes to the same verb disagreed: one refused, one authorized a
       // made-up action id. Refusing here makes the served behaviour match the
@@ -330,7 +330,7 @@ export function createDaemonChannelRouteHandlers(
     // `health` is the unified answer to "is anything that receives messages
     // working": every channel tagged `kind: 'channel'`, plus inbound mail
     // under its own `kind`. Email is deliberately NOT forced into
-    // `ChannelStatusSnapshot` — its states describe what a watcher is doing
+    // `ChannelStatusSnapshot`, its states describe what a watcher is doing
     // rather than whether a credential is present, and flattening the two
     // would either lie or dilute the channel model. A discriminated union is
     // what the `kind` field was declared for.

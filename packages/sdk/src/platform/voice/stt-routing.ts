@@ -1,11 +1,11 @@
 /**
- * stt-routing.ts — which runtime turns captured audio into words.
+ * stt-routing.ts, which runtime turns captured audio into words.
  *
  * DAEMON-FIRST, AND THE USER DOES NOT CARE WHICH PROCESS OWNS WHISPER.
  *
  * The agent used to transcribe through its OWN in-process voice service and
  * nothing else. On a machine whose config reads were broken, that service's
- * local provider threw 'local STT is not configured' — while the daemon's
+ * local provider threw 'local STT is not configured', while the daemon's
  * `voice.stt` was live and working, in the same session, on the same host, with
  * the same managed whisper install behind it. Two processes on one machine
  * disagreed about whether speech-to-text existed, and the user was told it did
@@ -15,7 +15,7 @@
  * connection to a host, the audio goes to the HOST, which is the runtime that
  * owns the managed install and is reachable from every surface. The in-process
  * provider is the fallback, used when there is no connected host or the host
- * could not answer — and when it is used, the reason the first choice was not
+ * could not answer, and when it is used, the reason the first choice was not
  * is stated rather than hidden.
  *
  * Every attempt is recorded as a diagnostic (see diagnostics.ts): the provider,
@@ -46,7 +46,7 @@ export interface SttRouteCandidate {
 export interface SttRoutingDeps {
   /**
    * Ship the audio to the connected host's `voice.stt`. Absent when this
-   * process holds no host connection — which is the honest reason to use the
+   * process holds no host connection, which is the honest reason to use the
    * in-process provider, rather than a preference.
    */
   readonly connectedHost?: SttRouteCandidate | null | undefined;

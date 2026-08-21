@@ -12,7 +12,7 @@
  *     own doc warns that "omission alone is not evidence of an expunge"; its
  *     one production caller ignored the warning.
  *   - `readMessage` returned `null`, which its caller renders as "no message
- *     with UID n is in the mailbox — it may have been moved or deleted since it
+ *     with UID n is in the mailbox, it may have been moved or deleted since it
  *     was listed". For an unreadable answer that is a false statement about the
  *     owner's mailbox.
  *
@@ -46,7 +46,7 @@ interface FakeOptions {
    * has nothing in it this client can read a header out of.
    */
   readonly headerless: readonly number[];
-  /** UIDs the server answers nothing at all for — a genuine expunge. */
+  /** UIDs the server answers nothing at all for, a genuine expunge. */
   readonly absent?: readonly number[];
   /**
    * UIDs answered with a ZERO-LENGTH literal: `BODY[HEADER.FIELDS (...)] {0}`.
@@ -221,7 +221,7 @@ describe('listInbox says when a page is short because an answer could not be rea
     fake = await startFakeImap({ present: [101, 102, 103], headerless: [102] });
     const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
 
-    // The page is genuinely short — that part was never in dispute.
+    // The page is genuinely short, that part was never in dispute.
     expect(result.messages.map((message) => message.uid)).toEqual([103, 101]);
     expect(result.total).toBe(3);
 
@@ -245,7 +245,7 @@ describe('listInbox says when a page is short because an answer could not be rea
 
   test('a message the server never answered for is NOT reported as unreadable', async () => {
     // An expunge between the search and the fetch is ordinary and must not be
-    // dressed up as a failure — the distinction cuts both ways.
+    // dressed up as a failure, the distinction cuts both ways.
     fake = await startFakeImap({ present: [101, 102, 103], headerless: [], absent: [102] });
     const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
 
@@ -310,7 +310,7 @@ describe('a `{0}` header section is an empty answer, not a missing message', () 
     // fields sends exactly this.
     //
     // The defect it guards: the reader used to fall through to the literal
-    // branch, which leaves `literalBytesRemaining` at zero — so the owner line,
+    // branch, which leaves `literalBytesRemaining` at zero, so the owner line,
     // the `* n FETCH (` line itself, was never routed and the whole response
     // was dropped. A dropped response is indistinguishable from an expunge, so
     // this message vanished from the page and, in the watcher, the cursor
@@ -318,7 +318,7 @@ describe('a `{0}` header section is an empty answer, not a missing message', () 
     fake = await startFakeImap({ present: [101, 102, 103], headerless: [], zeroLiteral: [102] });
     const result = await buildService(fake.port).listInbox({ unreadOnly: false, limit: 10 });
 
-    // 102 is present — with nothing in it, which is the truth about it.
+    // 102 is present, with nothing in it, which is the truth about it.
     expect(result.messages.map((message) => message.uid)).toEqual([103, 102, 101]);
     expect(result.messages.find((message) => message.uid === 102)?.subject).toBe('');
     expect(result.total).toBe(3);
@@ -374,7 +374,7 @@ describe('email.inbox.list carries the fact over the wire, not just in-process',
 
   test('an unreadable single message is NOT reported to the caller as a 404', async () => {
     // `readMessage` answering null here made the handler raise NOT_FOUND with
-    // "it may have been moved or deleted since it was listed" — a false
+    // "it may have been moved or deleted since it was listed", a false
     // statement about a message that is sitting in the mailbox.
     fake = await startFakeImap({ present: [101, 102], headerless: [102] });
     const gateway = createServiceBackedGateway(buildService(fake.port));

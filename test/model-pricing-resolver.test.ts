@@ -1,5 +1,5 @@
 /**
- * Model pricing resolution — the one resolver per (provider, model) pair.
+ * Model pricing resolution, the one resolver per (provider, model) pair.
  *
  * Covers the acceptance bar for tracked-current-and-used pricing:
  *   - a gateway model's session cost equals hand-multiplied usage x price
@@ -51,7 +51,7 @@ function makeRegistry(
     } as unknown as ConstructorParameters<typeof ProviderRegistry>[0]['subscriptionManager'],
     // No `as unknown as` here any more. The cast was hiding that this double
     // does not implement setModelFactsSource, which the registry CALLS on every
-    // catalog update — the omission only surfaced as a runtime TypeError once a
+    // catalog update, the omission only surfaced as a runtime TypeError once a
     // test reached that path. Typed against the real port so the next missing
     // method is a compile error instead.
     capabilityRegistry: {
@@ -167,7 +167,7 @@ describe('resolveModelPricing', () => {
       if (atGroq.status !== 'priced' || atTogether.status !== 'priced') return;
       expect(atGroq.rates.inputPerMTok).toBe(0.59);
       expect(atTogether.rates.inputPerMTok).toBe(0.88);
-      // Without a provider, conflicting entries are honestly unknown — never
+      // Without a provider, conflicting entries are honestly unknown, never
       // a silent pick of the wrong provider's rate.
       expect(registry.resolveModelPricing('llama-3.3-70b').status).toBe('unknown');
     } finally {
@@ -205,7 +205,7 @@ describe('resolveModelPricing', () => {
       const row = byModel.rows.find((r) => r.key === 'mystery-model');
       expect(row?.costUsd).toBeNull();
       expect(row?.costState).toBe('unpriced');
-      // The unpriced tokens are still counted — "N tokens unpriced", never $0.
+      // The unpriced tokens are still counted, "N tokens unpriced", never $0.
       expect(row?.tokens.inputTokens).toBe(500);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -250,7 +250,7 @@ describe('resolveModelPricing', () => {
         cacheReadTokens: 1_000_000,
       }, 'selfhost');
       expect(cents).toBeCloseTo((0.1 + 0.2 + 0.01) * 100, 10);
-      // A model the registration did NOT price stays unpriced — omitting
+      // A model the registration did NOT price stays unpriced, omitting
       // pricing never means free.
       writeFileSync(join(providersDir, 'selfhost2.json'), JSON.stringify({
         name: 'selfhost2',
@@ -274,7 +274,7 @@ describe('resolveModelPricing', () => {
   test("a manual price OVERRIDING a catalog price takes effect immediately with source 'user'", () => {
     const root = scratchDir();
     try {
-      // Mutable config record — the resolver reads it live on every call,
+      // Mutable config record, the resolver reads it live on every call,
       // exactly like ConfigManager after a set() (no restart, no re-register).
       const config: Record<string, unknown> = {};
       const registry = registryWithCatalog(root, [
@@ -297,7 +297,7 @@ describe('resolveModelPricing', () => {
       expect(after.rates.inputPerMTok).toBe(1.5);
       expect(after.rates.outputPerMTok).toBe(6);
       expect(after.rates.cacheWritePerMTok).toBe(1.875);
-      // Manual prices carry no asOf — they are the owner's standing rate.
+      // Manual prices carry no asOf, they are the owner's standing rate.
       expect(after.asOf).toBeUndefined();
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -330,7 +330,7 @@ describe('resolveModelPricing', () => {
       if (viaKey.status !== 'priced') return;
       expect(viaKey.rates.inputPerMTok).toBe(0.59);
       // 'deepseek/deepseek-r1:free' has a colon but its prefix is not a
-      // provider — it must resolve as a bare model id (a genuine free entry
+      // provider, it must resolve as a bare model id (a genuine free entry
       // with explicit zero rates, not a coerced one).
       const free = registry.resolveModelPricing('deepseek/deepseek-r1:free');
       expect(free.status).toBe('priced');
@@ -361,7 +361,7 @@ describe('catalog pricing honesty', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Dollar budgets on priced actuals — any model, not only frontier ones
+// Dollar budgets on priced actuals, any model, not only frontier ones
 // ---------------------------------------------------------------------------
 
 describe('dollar budget on non-frontier actuals', () => {
@@ -380,7 +380,7 @@ describe('dollar budget on non-frontier actuals', () => {
       const registry = registryWithCatalog(root, [
         makeCatalogModel('llama-3.3-70b', 'groq', { input: 0.59, output: 0.79 }),
       ]);
-      // Price the actuals through the resolver — the same computation
+      // Price the actuals through the resolver, the same computation
       // services.ts priceUsage now performs.
       const priced = computeUsageCostUsd(
         registry.resolveModelPricing('groq:llama-3.3-70b'),
@@ -420,7 +420,7 @@ describe('dollar budget on non-frontier actuals', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Emit-site cost stamping — the seam that makes pricing "actually used"
+// Emit-site cost stamping, the seam that makes pricing "actually used"
 // ---------------------------------------------------------------------------
 
 describe('emit-site cost stamping', () => {

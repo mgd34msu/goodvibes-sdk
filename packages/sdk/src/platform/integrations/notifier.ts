@@ -14,7 +14,7 @@ import type { FeatureFlagManager } from '../runtime/feature-flags/index.js';
 // ---------------------------------------------------------------------------
 
 /**
- * Notifier — unified notification dispatcher.
+ * Notifier, unified notification dispatcher.
  *
  * Reads configuration from environment variables:
  *   SLACK_WEBHOOK_URL, SLACK_BOT_TOKEN

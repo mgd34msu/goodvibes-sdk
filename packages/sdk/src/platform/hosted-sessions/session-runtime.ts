@@ -1,12 +1,12 @@
 /**
- * session-runtime.ts — the per-session half of a hosted session: the loop.
+ * session-runtime.ts, the per-session half of a hosted session: the loop.
  *
  * The workspace floor (workspace-floor.ts) supplies everything a turn needs
- * that is shared — the model stack, the agent graph, hooks, plugins, the file
+ * that is shared, the model stack, the agent graph, hooks, plugins, the file
  * cache and project index, the permission manager with the product's trust
  * gate on its ask seam. This file builds what a turn needs that is NOT shared:
  *
- *  - a `ConversationManager` — this session's history, restorable from disk;
+ *  - a `ConversationManager`, this session's history, restorable from disk;
  *  - a `ToolRegistry` populated by the SAME `registerAllTools` a terminal
  *    calls, rooted at THIS session's workspace, with this session's id
  *    resolving for the task tool;
@@ -20,7 +20,7 @@
  * approval broker, so a hosted run's ask becomes an approval record any
  * attached surface can answer). Building a second manager here would give
  * hosted runs a different gate from the one the product's own composition
- * documents — which is the exact defect the trust-gated seam was added to fix.
+ * documents, which is the exact defect the trust-gated seam was added to fix.
  *
  * The approval-DERIVED handlers (sandbox escalation, exec terminal prompts, the
  * localhost-fetch one-tap) are rebuilt from that same `requestApproval` seam,
@@ -32,7 +32,7 @@
  * A hosted turn's exec tool is composed by the same `registerAllTools` a
  * terminal calls, from the same `sandbox.*` config and the same `exec-sandbox`
  * gate, so the boundary a hosted command runs inside is the boundary a local
- * command runs inside — network, PID and filesystem namespacing, the
+ * command runs inside, network, PID and filesystem namespacing, the
  * `sandbox.egressAllowlist` escape hatch, and the self-labelling note on the
  * result. That much is sameness.
  *
@@ -41,12 +41,12 @@
  * reading the answer. A hosted CONVERSATIONAL turn has nobody in that chair, so
  * it refuses instead ({@link HostedSessionExecPosture} `conversational`): a
  * turn that cannot be contained does not run uncontained. That is the defect
- * this closes — a hosted conversational turn reached the whole host, forked a
+ * this closes, a hosted conversational turn reached the whole host, forked a
  * second agent onto a live home, and typed into the owner's terminal, and every
  * one of those was a command the composition never said it minded.
  *
  * `workstream` is the other posture, and it is granted PER SPAWN by the product
- * composing that spawn — a real work chain the owner authorized, which may
+ * composing that spawn, a real work chain the owner authorized, which may
  * legitimately need the machine itself. It is never reachable from a
  * conversational turn, from the wire, or from a tool argument, because nothing
  * on those paths can set it.
@@ -78,15 +78,15 @@ import {
  * Where a hosted session's client-owned settings live, when the session belongs
  * to a surface other than the host.
  *
- * Returns null when the session IS the host's own — the host's ConfigManager is
- * then already the right answer — and null when the host has no home directory
+ * Returns null when the session IS the host's own, the host's ConfigManager is
+ * then already the right answer, and null when the host has no home directory
  * to resolve a sibling surface against, which is the honest outcome rather than
  * inventing a path. A hosted session on a host with no home keeps the host's
  * store, exactly as it did before, instead of writing somewhere nobody reads.
  *
  * Deliberately a PATH and not a ConfigManager: constructing a manager for
  * another surface runs that surface's load migrations and shared-config
- * bootstrap. That is a non-owner rewriting a store it does not own — the very
+ * bootstrap. That is a non-owner rewriting a store it does not own, the very
  * class of defect this is here to close, and it would be self-defeating to
  * reintroduce it while fixing it.
  */
@@ -121,7 +121,7 @@ export interface HostedSessionRuntimeOptions {
    */
   readonly model?: ModelDefinition | undefined;
   /**
-   * The surface this session was created FOR — `agent`, `tui`, `webui`.
+   * The surface this session was created FOR, `agent`, `tui`, `webui`.
    *
    * A hosted session is composed inside the host, and it used to take the host's
    * identity with it. That is wrong in a way that is invisible until it costs a
@@ -209,9 +209,9 @@ export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions)
     resolveSessionId: () => sessionId,
     sandboxSessionRegistry: services.sandboxSessionRegistry,
     workingDirectory: options.workspaceRoot,
-    // The session's OWN surface, not the host's. Everything keyed on this —
+    // The session's OWN surface, not the host's. Everything keyed on this,
     // per-surface tool state under `.goodvibes/<surface>/`, and the store that
-    // answers client-owned settings — follows the surface the session belongs to.
+    // answers client-owned settings, follows the surface the session belongs to.
     surfaceRoot: originSurface,
     // This process IS the daemon, so daemon-owned keys are already local. What
     // must NOT be local is a client-owned key belonging to another surface, and
@@ -231,7 +231,7 @@ export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions)
     overflowHandler: services.overflowHandler,
     contextAccountingHolder,
     // A file the read tool would gate must not leak its content through a
-    // search — the same filter a terminal composition installs.
+    // search, the same filter a terminal composition installs.
     readAccessFilter: (path: string) => services.permissionManager.previewReadAccess(path) === 'allow',
     sandboxEscalationHandler: approvalHandlers.sandboxEscalationHandler,
     execPromptAnswerHandler: approvalHandlers.execPromptAnswerHandler,
@@ -290,7 +290,7 @@ export function createHostedSessionRuntime(options: HostedSessionRuntimeOptions)
       try {
         // `ownerDirect` is deliberately unset. It attests that the transport
         // authenticated the OWNER himself, and a verb call carrying an operator
-        // token cannot honestly claim that — leaving it unset keeps the
+        // token cannot honestly claim that, leaving it unset keeps the
         // untrusted-content window open, which is the safe direction.
         await orchestrator.handleUserInput(text, undefined, {
           origin: { source: 'hosted-session', surface: 'service' },

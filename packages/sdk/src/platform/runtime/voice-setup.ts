@@ -1,8 +1,8 @@
 /**
- * voice-setup.ts — the daemon's managed local-voice setup service, composed
+ * voice-setup.ts, the daemon's managed local-voice setup service, composed
  * once per runtime (extracted from runtime/services.ts).
  *
- * `install()` is SINGLE-FLIGHT: concurrent installs are never meaningful — a
+ * `install()` is SINGLE-FLIGHT: concurrent installs are never meaningful, a
  * second (and every further) concurrent caller joins the in-progress install's
  * promise instead of starting parallel multi-hundred-MB downloads.
  *
@@ -10,7 +10,7 @@
  * request/response, so during a ~209MB provision a surface would otherwise only
  * render busy→receipt. While an install runs, the provisioner's onProgress
  * stream is folded into a poll-able snapshot and status() returns it as
- * `installInProgress` (absent otherwise) — surfaces poll status during install;
+ * `installInProgress` (absent otherwise), surfaces poll status during install;
  * no streaming infrastructure involved.
  */
 import {
@@ -43,7 +43,7 @@ import type { WakeInstallProvisionOutcome } from '../voice/wake/install-provisio
 export interface VoiceInstallReceipt {
   /**
    * True only when the runtime was installed AND proved working by a live
-   * round trip. Bytes on disk are not the claim anyone cares about — see
+   * round trip. Bytes on disk are not the claim anyone cares about, see
    * voice/provisioning/round-trip-proof.ts.
    */
   readonly provisioned: boolean;
@@ -101,7 +101,7 @@ export interface VoiceSetupService {
   wakeProvision(): ReturnType<WakeSetupService['provision']>;
   /**
    * Install/boot provisioning: fetch whatever is missing, never throw, report one
-   * line. Not admission-gated, unlike {@link wakeProvision} — a host that refused
+   * line. Not admission-gated, unlike {@link wakeProvision}, a host that refused
    * this under memory pressure would ship an install with no model and no retry
    * until someone noticed, and the 6 MB it buffers is not what puts a daemon under
    * pressure. It joins the same single flight, so it cannot double the work either.
@@ -215,7 +215,7 @@ export function createVoiceSetupService(deps: VoiceSetupServiceDeps): VoiceSetup
     },
     async install(): Promise<VoiceInstallReceipt> {
       // Critical-tier admission: a provision run allocates archive + model
-      // buffers — refuse honestly instead of piling onto memory pressure.
+      // buffers, refuse honestly instead of piling onto memory pressure.
       const admission = deps.admitExpensiveWork('voice runtime install');
       if (!admission.allowed) {
         throw new Error(admission.reason ?? 'voice runtime install refused: daemon is under critical memory pressure.');

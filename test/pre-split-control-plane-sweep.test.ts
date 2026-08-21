@@ -5,7 +5,7 @@
  *
  * The live shape it was written from: an owner machine with a session store at
  * `~/.goodvibes/tui/control-plane/sessions.json` that the broker serves, and a
- * second one at `~/.goodvibes/control-plane/sessions.json` — bigger, holding
+ * second one at `~/.goodvibes/control-plane/sessions.json`, bigger, holding
  * sessions the live one did not, last written the second the daemon started,
  * and read by nothing. Beside it in the same directory sat two files that were
  * NOT stale: occasions-state.json (written the day before) and
@@ -53,9 +53,9 @@ function makeBroker(storePath: string): SharedSessionBroker {
 
 interface Home {
   readonly root: string;
-  /** `<home>/.goodvibes/control-plane` — the unscoped, pre-split store. */
+  /** `<home>/.goodvibes/control-plane`, the unscoped, pre-split store. */
   readonly legacyDirectory: string;
-  /** `<home>/.goodvibes/tui/control-plane` — where the daemon's own state belongs. */
+  /** `<home>/.goodvibes/tui/control-plane`, where the daemon's own state belongs. */
   readonly scopedDirectory: string;
   readonly goodvibesRoot: string;
 }
@@ -114,7 +114,7 @@ describe('pre-split control-plane sweep', () => {
     expect(report.quarantineDirectory).not.toBeNull();
     expect(existsSync(join(report.quarantineDirectory as string, 'sessions.json'))).toBe(true);
 
-    // Nothing else was in the legacy directory, so the directory itself is gone —
+    // Nothing else was in the legacy directory, so the directory itself is gone,
     // no empty decoy left for the next person to find.
     expect(report.legacyDirectoryRemoved).toBe(true);
     expect(existsSync(home.legacyDirectory)).toBe(false);
@@ -134,7 +134,7 @@ describe('pre-split control-plane sweep', () => {
     await stale.createSession({ id: 'only-in-stale', kind: 'tui', project: '/w' });
 
     // The two files that were live-in-use on the owner's machine: no counterpart
-    // in the scoped directory, so each is the ONLY copy of real state — written
+    // in the scoped directory, so each is the ONLY copy of real state, written
     // there by a composition site that forgot the surface segment.
     const occasions = '{"occasions":[{"id":"birthday-1"}]}';
     const principals = '{"principals":[]}';
@@ -158,7 +158,7 @@ describe('pre-split control-plane sweep', () => {
     expect(readFileSync(join(home.scopedDirectory, 'principals.json'), 'utf8')).toBe(principals);
     expect(existsSync(join(home.legacyDirectory, 'occasions-state.json'))).toBe(false);
 
-    // Nothing is left, so the pre-split directory is gone — one store, no decoy.
+    // Nothing is left, so the pre-split directory is gone, one store, no decoy.
     expect(report.legacyDirectoryRemoved).toBe(true);
     expect(existsSync(home.legacyDirectory)).toBe(false);
 
@@ -188,7 +188,7 @@ describe('pre-split control-plane sweep', () => {
 
     expect(report.status).toBe('swept');
     expect(report.foldedWorkspaceRows).toBe(1);
-    // Folded into the SHARED tier — not the scoped directory, where the stores
+    // Folded into the SHARED tier, not the scoped directory, where the stores
     // around it went, because three products read this one.
     expect(readFileSync(sharedRegister, 'utf8')).toContain('/home/somebody/project');
     expect(existsSync(join(home.scopedDirectory, 'workspace-registrations.json'))).toBe(false);
@@ -573,7 +573,7 @@ describe('boot fold targets the store the broker actually serves', () => {
       recordReceipt: (text) => receipts.push(text),
     });
 
-    // The other stores still migrate — that is real work and unrelated to the
+    // The other stores still migrate, that is real work and unrelated to the
     // broker. The SESSION store alone is left exactly where it is, and said so,
     // because nothing here can name where those sessions belong.
     expect(report?.skippedFiles).toEqual(['sessions.json']);

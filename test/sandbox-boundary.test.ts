@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/sandbox
+ * Coverage-gap smoke test, platform/runtime/sandbox
  * Verifies sandbox boundary functions return correct observable shapes
  * when called with realistic inputs.
  * Closes coverage gap: sandbox boundary / platform/runtime/sandbox

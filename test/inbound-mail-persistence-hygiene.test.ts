@@ -1,5 +1,5 @@
 /**
- * inbound-mail-persistence-hygiene.test.ts — the four persistence-hygiene
+ * inbound-mail-persistence-hygiene.test.ts, the four persistence-hygiene
  * findings recorded as M8 in
  * docs/reviews/2026-07-27-inbound-email-medium-findings.md.
  *
@@ -68,7 +68,7 @@ function input(overrides: Partial<InboundMailRecordInput> = {}): InboundMailReco
   } as InboundMailRecordInput;
 }
 
-/** The records array AS THE FILE HOLDS IT — never through the store. */
+/** The records array AS THE FILE HOLDS IT, never through the store. */
 function recordsOnDisk(path = storePath): unknown[] {
   const parsed = JSON.parse(readFileSync(path, 'utf-8')) as { records: unknown[] };
   return parsed.records;
@@ -98,7 +98,7 @@ describe('record() applies both policy bounds to what it writes', () => {
     // The measured defect: this was 10 while `list()` answered 2.
     expect(recordsOnDisk().length).toBe(2);
     // And the two kept are the NEWEST, by the same oldest-first-goes rule the
-    // sweep applies — not an arbitrary two.
+    // sweep applies, not an arbitrary two.
     const subjects = recordsOnDisk().map((r) => (r as { subject: string }).subject).sort();
     expect(subjects).toEqual(['msg 8', 'msg 9']);
   });
@@ -243,12 +243,12 @@ describe('the housekeeping disclosure log discloses removals, not survivors', ()
     });
     const report = await housekeeper.sweep('manual');
 
-    // The in-memory report still carries survivors — the boot hydrator needs
+    // The in-memory report still carries survivors, the boot hydrator needs
     // them, and that hand-off is same-process.
     expect(report.expectations?.survivors.length).toBe(1);
 
     // The FILE carries none of it. Asserted on the raw text, because the point
-    // is that these strings are not on disk at all — not that some accessor
+    // is that these strings are not on disk at all, not that some accessor
     // declines to return them.
     const raw = readFileSync(disclosurePath, 'utf-8');
     expect(raw).not.toContain('alias-survivor@inbox.test');
@@ -332,7 +332,7 @@ describe('the housekeeping disclosure log discloses removals, not survivors', ()
    * The count cap alone reaps by ARRIVALS, and a quiet store has none.
    *
    * Twenty entries look like an age bound on a daemon sweeping every six hours
-   * — five days' worth — but that is arithmetic about a busy daemon, not a
+   *, five days' worth, but that is arithmetic about a busy daemon, not a
    * bound. A mailbox that goes quiet, a surface switched off, a daemon that
    * stops: in each the twentieth entry is the last one written and it stays
    * forever. Proved with a file whose entries are old rather than numerous.
@@ -359,7 +359,7 @@ describe('the housekeeping disclosure log discloses removals, not survivors', ()
     expect((await housekeeper.listDisclosures()).map((r) => r.summary)).toEqual(['recent']);
 
     // And the next sweep REMOVES it from the file rather than leaving a read to
-    // keep filtering it — the same "bounds apply on the write" rule as part 1.
+    // keep filtering it, the same "bounds apply on the write" rule as part 1.
     await housekeeper.sweep('manual');
     const raw = readFileSync(disclosurePath, 'utf-8');
     expect(raw).not.toContain('from another season');
@@ -502,7 +502,7 @@ describe('PersistentStore writes owner-only, durably, and leaves no litter', () 
   /**
    * STRUCTURAL, AND SAID SO.
    *
-   * The fsync ordering — write, sync the file, rename, sync the directory —
+   * The fsync ordering, write, sync the file, rename, sync the directory,
    * has no observable behavioural consequence that a test on a working machine
    * can distinguish from its absence: what it buys is what survives a power
    * cut, and a power cut is not something this suite can stage. Simulating one
@@ -539,7 +539,7 @@ describe('PersistentStore writes owner-only, durably, and leaves no litter', () 
 
 describe('two independent writers over one record file lose nothing', () => {
   test('two store instances interleaving writes keep every record', async () => {
-    // Two instances share no `writeChain` — which is exactly what two daemon
+    // Two instances share no `writeChain`, which is exactly what two daemon
     // processes are, and what left three of six records on disk before the
     // cross-process lock. In one process the lock's own FIFO queue is what
     // orders them; the subprocess test below is the cross-process claim.
@@ -668,7 +668,7 @@ describe('no field on a persisted record is unbounded', () => {
     const stored = recordsOnDisk()[0] as { account: string; mailbox: string };
     expect(stored.account.length).toBe(256);
     expect(stored.mailbox.length).toBe(512);
-    // And it must still be a record the loader accepts — a bound that produces
+    // And it must still be a record the loader accepts, a bound that produces
     // a row discarded on the next load has moved the loss, not closed it.
     expect(validateInboundMailRecord(recordsOnDisk()[0])).not.toBeNull();
   });
@@ -697,7 +697,7 @@ describe('the expectation file is bounded in SIZE, not only in count', () => {
     const store = new PersistedExpectationStore(path, { now: () => new Date(NOW) });
     const huge = 'q'.repeat(1_000_000);
 
-    // Forty records — past the count cap — each built from megabyte fields.
+    // Forty records, past the count cap, each built from megabyte fields.
     await store.replaceAll(Array.from({ length: 40 }, (_unused, index) => expectation({
       id: `exp-${String(index)}`,
       purpose: huge,
@@ -705,7 +705,7 @@ describe('the expectation file is bounded in SIZE, not only in count', () => {
       serviceDomain: `${huge}.example.com`,
     })));
 
-    // Every one of them fails a FIELD bound, so none is persisted at all —
+    // Every one of them fails a FIELD bound, so none is persisted at all,
     // which is the correct answer, and it is the field bounds giving it, not
     // the count bound.
     const persisted = JSON.parse(readFileSync(path, 'utf-8')) as { expectations: unknown[] };

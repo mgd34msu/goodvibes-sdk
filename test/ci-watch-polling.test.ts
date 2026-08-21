@@ -1,5 +1,5 @@
 /**
- * ci-watch-polling.test.ts — "fix this" on a red CI run, end to end with a
+ * ci-watch-polling.test.ts, "fix this" on a red CI run, end to end with a
  * mocked status source:
  *
  *   red → offer (through the approval machinery) → accept → fix-session
@@ -76,7 +76,7 @@ describe('red → offer → accept → seeded fix session', () => {
     expect(offers[0]!).toMatchObject({ repo: 'o/r', prNumber: 7, failingJobs: ['build', 'test'] });
     expect(briefs).toHaveLength(0); // not started until accepted
 
-    // Accept — the SAME brief (failing jobs + logs) seeds the session.
+    // Accept, the SAME brief (failing jobs + logs) seeds the session.
     answer.resolve(true);
     await flush();
     expect(briefs).toHaveLength(1);
@@ -220,7 +220,7 @@ describe('daemon polling over the watcher registry', () => {
 
     const first = registered[0]!.run() as Promise<string>; // blocks on the gate
     const second = await registered[0]!.run(); // overlapping tick
-    expect(second).toBe('previous pass still running — skipped (overlap guard)');
+    expect(second).toBe('previous pass still running, skipped (overlap guard)');
 
     gate.resolve([job('build', null)]);
     expect(await first).toBe('checked 1/1 watch(es)');

@@ -1,9 +1,9 @@
 /**
- * cli-endpoints.test.ts — resolveRuntimeEndpointBinding, formatRuntimeEndpointBinding,
+ * cli-endpoints.test.ts, resolveRuntimeEndpointBinding, formatRuntimeEndpointBinding,
  * and hostModeForHostname.
  *
  * The one thing that must never happen: a hostMode the daemon's own bind
- * resolver cannot handle (its switch has no default case — it throws before
+ * resolver cannot handle (its switch has no default case, it throws before
  * binding) getting displayed as though it resolved to a real bind. That is
  * exactly what `recognized: false` and formatRuntimeEndpointBinding's warning
  * text exist to prevent.

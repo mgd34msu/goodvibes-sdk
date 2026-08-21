@@ -6,7 +6,7 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
     'Record what the owner tells you about himself: trips and other dated plans, birthdays and '
     + 'anniversaries, declared profile fields, and free-text facts. Also reads back what is stored, '
     + 'and records that he has an upcoming occasion in hand so he stops being reminded about it. '
-    + 'Use it in the same turn he says the thing — recording is part of answering, not an offer to make.',
+    + 'Use it in the same turn he says the thing, recording is part of answering, not an offer to make.',
   parameters: {
     type: 'object',
     properties: {
@@ -72,7 +72,7 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
         enum: ['gift-giving', 'remember-only', 'neither'],
         description:
           '(record_date) Whether this is something to sort a gift for, something to simply remember, '
-          + 'or neither. Never guess it — no rule tells a birthday from a death anniversary. Ask him '
+          + 'or neither. Never guess it, no rule tells a birthday from a death anniversary. Ask him '
           + 'if he did not say.',
       },
       person: {
@@ -82,7 +82,7 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       self: {
         type: 'boolean',
         description:
-          '(record_date) True when the date is about the OWNER himself — his own birthday, his own '
+          '(record_date) True when the date is about the OWNER himself, his own birthday, his own '
           + 'anniversary of something. He knows his own dates, so one he only has to remember is kept '
           + 'and answerable but never pushed at him. Set it when he says "my birthday" rather than '
           + 'putting his name in `person`.',
@@ -90,7 +90,7 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       occasionId: {
         type: 'string',
         description:
-          '(acknowledge_occasion) Which occasion, by the id `list` gives back. Its title normalised — '
+          '(acknowledge_occasion) Which occasion, by the id `list` gives back. Its title normalised, '
           + 'lower case, single spaces.',
       },
       occurrence: {

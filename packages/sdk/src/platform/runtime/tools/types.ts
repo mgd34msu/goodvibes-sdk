@@ -2,7 +2,7 @@ import type { ToolResult } from '../../types/tools.js';
 import type { FeatureFlagManager } from '../feature-flags/index.js';
 
 /**
- * BudgetExceedReason — typed discriminant for budget breach events.
+ * BudgetExceedReason, typed discriminant for budget breach events.
  *
  * Emitted as part of PhaseResult.budgetExceedReason when a budget phase
  * terminates the pipeline due to a hard budget violation.
@@ -13,7 +13,7 @@ export type BudgetExceedReason =
   | 'BUDGET_EXCEEDED_COST';
 
 /**
- * ToolExecutionPhase — all states in the tool execution machine.
+ * ToolExecutionPhase, all states in the tool execution machine.
  *
  * Transitions:
  *   received → validated → prehooked → permissioned → executing → mapped → posthooked
@@ -35,7 +35,7 @@ export type ToolExecutionPhase =
   | 'budget-exit';
 
 /**
- * PhaseResult — outcome of a single pipeline phase.
+ * PhaseResult, outcome of a single pipeline phase.
  */
 export interface PhaseResult {
   /** The phase that produced this result. */
@@ -78,7 +78,7 @@ export interface PhaseResult {
 }
 
 /**
- * ToolExecutionRecord — full trace of a tool call through the pipeline.
+ * ToolExecutionRecord, full trace of a tool call through the pipeline.
  * Persists in the executor until explicitly cleared.
  */
 export interface ToolExecutionRecord {
@@ -111,7 +111,7 @@ export interface ToolExecutionRecord {
 }
 
 /**
- * ExecutorConfig — controls which pipeline features are active.
+ * ExecutorConfig, controls which pipeline features are active.
  */
 export interface ExecutorConfig {
   /**

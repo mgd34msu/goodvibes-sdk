@@ -5,7 +5,7 @@
 // entry), never the browser index.
 //
 // Deliberately NO certificate machinery lives here: the daemon never mints
-// certificates (no self-provisioned CA, ever — owner ruling). The recommended
+// certificates (no self-provisioned CA, ever, owner ruling). The recommended
 // https path is tailscale serve, which terminates TLS with tailscale's own
 // certificates (see platform/remote-access/tailscale.ts).
 

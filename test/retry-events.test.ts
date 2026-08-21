@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Retry/backoff/reconnect events — verifies that TRANSPORT_RETRY_SCHEDULED
+ * Retry/backoff/reconnect events, verifies that TRANSPORT_RETRY_SCHEDULED
  * and TRANSPORT_RETRY_EXECUTED event types exist in the TransportEvent union and
  * that the corresponding emitter functions are exported.
  */
@@ -21,7 +21,7 @@ describe('retry events', () => {
       reason: 'connection refused',
     });
     // RuntimeEventBus.emit() defers each listener to its own queueMicrotask
-    // (contract pinned by runtime-event-bus-dispatch-contract.test.ts) — flush
+    // (contract pinned by runtime-event-bus-dispatch-contract.test.ts), flush
     // the microtask queue before asserting the listener has run.
     await Promise.resolve();
     expect(events.length).toBe(1);
@@ -30,7 +30,7 @@ describe('retry events', () => {
     expect(envelope.payload.backoffMs).toBe(1000);
   });
 
-  // production wiring — createHttpJsonTransport fires callbacks in the retry loop.
+  // production wiring, createHttpJsonTransport fires callbacks in the retry loop.
   test('createHttpJsonTransport onRetryScheduled fires when retry loop triggers', async () => {
     const { createHttpJsonTransport } = await import('../packages/transport-http/src/http-core.js');
     const scheduledEvents: { attempt: number; maxAttempts: number; backoffMs: number; reason: string }[] = [];

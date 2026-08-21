@@ -1,5 +1,5 @@
 /**
- * State inspector types — data structures for the StateInspectorProvider.
+ * State inspector types, data structures for the StateInspectorProvider.
  *
  * These are purely data-oriented. No UI rendering logic lives here.
  * All values are JSON-safe unless explicitly noted.
@@ -20,7 +20,7 @@ export interface DomainSnapshot {
   readonly revision: number;
   /** Epoch ms timestamp of last mutation. */
   readonly lastUpdatedAt: number;
-  /** The serialized domain state — JSON-safe. */
+  /** The serialized domain state, JSON-safe. */
   readonly state: Record<string, unknown>;
 }
 
@@ -74,7 +74,7 @@ export interface SubscriptionInfo {
   readonly label: string;
   /** Epoch ms when this subscription was registered. */
   readonly registeredAt: number;
-  /** Domain filter for this subscription — undefined means all domains. */
+  /** Domain filter for this subscription, undefined means all domains. */
   readonly domainFilter?: readonly string[] | undefined;
   /** Number of notifications delivered to this subscriber. */
   readonly notificationCount: number;

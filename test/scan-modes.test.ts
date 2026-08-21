@@ -1,5 +1,5 @@
 /**
- * QA-07: scan-modes coverage — security and dead_code modes
+ * QA-07: scan-modes coverage, security and dead_code modes
  *
  * Tests:
  * 1. security mode detects a known-vulnerable secret pattern (positive)
@@ -148,7 +148,7 @@ describe('runDeadCode — dead_code mode', () => {
     const deadExports = result.dead_exports as Array<{ name: string; file: string; line: number }>;
     expect(deadExports).toBeInstanceOf(Array);
     const deadNames = deadExports.map((e) => e.name);
-    // computeSum is referenced in consumer.ts — must NOT appear as dead
+    // computeSum is referenced in consumer.ts, must NOT appear as dead
     expect(deadNames).not.toContain('computeSum');
   });
 });

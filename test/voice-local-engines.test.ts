@@ -1,12 +1,12 @@
 /**
- * voice-local-engines.test.ts — local STT/TTS engines behind the existing
+ * voice-local-engines.test.ts, local STT/TTS engines behind the existing
  * voice seams, and voice cost honesty.
  *
  * - A machine without engines shows honest not-configured, never an error;
  *   nothing auto-downloads.
  * - With engines configured (scripted fixture binaries here; the live host
  *   engines when installed), a spoken conversation completes with NO cloud
- *   voice dependency — through the real VoiceService + SpokenTurnController +
+ *   voice dependency, through the real VoiceService + SpokenTurnController +
  *   AudioSink seams the voice-* families mark.
  * - Metered (ElevenLabs-class) voice spend flows through cost attribution
  *   with real dollars + provenance once the one-key manual price is set;
@@ -53,7 +53,7 @@ describe('honest not-configured, and the managed runtime is what fills it in', (
     // The copy used to say "nothing auto-downloads", written when setting local
     // voice up by hand was the only path. The managed installer IS the
     // downloader, so the status names it rather than describing a product that
-    // no longer exists — and it never tells the user to go and fetch a model.
+    // no longer exists, and it never tells the user to go and fetch a model.
     expect(status.detail).toContain('managed voice runtime provisions');
     expect(status.detail).not.toContain('auto-downloads');
     expect(status.metadata.billing).toBe('none');
@@ -136,7 +136,7 @@ describe('a spoken conversation with no cloud voice dependency (scripted engines
     expect(played.join('')).toContain('RIFF-FIXTURE-WAV:');
     expect(played.join('')).toContain('local voice engines');
 
-    // 3. Local is billing 'none': NOTHING was recorded — honest absence.
+    // 3. Local is billing 'none': NOTHING was recorded, honest absence.
     expect(usages).toEqual([]);
   }, 15_000);
 });
@@ -150,7 +150,7 @@ describe('live host engines (when installed)', () => {
     const whisperModel = join(home, '.local/opt/whisper.cpp/ggml-tiny.en.bin');
     if (![piperBin, piperModel, whisperBin, whisperModel].every((path) => existsSync(path))) {
       // Honest skip: the blessed engines are not installed on this machine.
-      console.warn('[voice test] live engines not installed at ~/.local/opt — live round-trip skipped honestly');
+      console.warn('[voice test] live engines not installed at ~/.local/opt, live round-trip skipped honestly');
       return;
     }
     const provider = createLocalVoiceProvider({
@@ -217,7 +217,7 @@ describe('voice cost honesty — metered vs local', () => {
     await service.synthesize('elevenlabs', { text, metadata: {} });
 
     const byProvider = attribution.attribution('24h', 'provider');
-    // Real dollars: 2,000 chars at $150/1M chars = $0.30 — with provenance.
+    // Real dollars: 2,000 chars at $150/1M chars = $0.30, with provenance.
     expect(byProvider.totalCostUsd).toBeCloseTo(0.3, 6);
     expect(byProvider.costState).toBe('priced');
     expect(byProvider.pricedRecordCount).toBe(1);

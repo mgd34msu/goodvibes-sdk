@@ -1,5 +1,5 @@
 /**
- * Automation domain state — jobs, runs, and source registry.
+ * Automation domain state, jobs, runs, and source registry.
  */
 
 import type { AutomationJob } from '../../../automation/jobs.js';

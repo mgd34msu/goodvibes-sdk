@@ -43,7 +43,7 @@ interface MutableTaskRecord {
 }
 
 /**
- * TasksPanel — diagnostic data provider for runtime task telemetry.
+ * TasksPanel, diagnostic data provider for runtime task telemetry.
  *
  * Active tasks are tracked in a live map; terminal tasks are moved
  * to the history buffer for filtering and display.

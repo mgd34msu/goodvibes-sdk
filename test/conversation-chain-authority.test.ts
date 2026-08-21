@@ -7,13 +7,13 @@
  *
  * 1. The conversation gate correctly decided "this is conversation" and spawned
  *    with `dangerously_disable_wrfc: true` + `replyStyle: 'conversational'`. The
- *    root-spawn normalization then read the CONTINUATION PROMPT — which embeds
- *    the chat transcript — found an earlier assistant sentence ("I'll review the
+ *    root-spawn normalization then read the CONTINUATION PROMPT, which embeds
+ *    the chat transcript, found an earlier assistant sentence ("I'll review the
  *    route, timing, stops"), and forced the chain back on. It then fed itself:
  *    the chain's own reply mentioned "review", so every later turn matched too.
- * 2. What the person received was the chain's bookkeeping — "WRFC chain
+ * 2. What the person received was the chain's bookkeeping, "WRFC chain
  *    wrfc-490aee53 passed (review 10/10); commit skipped: not a git repository"
- *    — instead of an answer.
+ *   , instead of an answer.
  * 3. Every assistant message appeared TWICE in the continuation prompt, because
  *    two different reporters each wrote the same agent's completion into the
  *    shared session.
@@ -247,7 +247,7 @@ describe('a finished chain reports its work, not its bookkeeping', () => {
     expect(reply).not.toContain('commit skipped');
     expect(reply).not.toContain('review 10/10');
 
-    // The status line is not lost — it is on the operator-audience progress
+    // The status line is not lost, it is on the operator-audience progress
     // field, which the channel delivery path never forwards to a person.
     expect(owner.progress).toContain(`WRFC chain ${chain.id} passed`);
     expect(owner.progressAudience).toBe('operator');

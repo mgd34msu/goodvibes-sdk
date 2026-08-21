@@ -4,7 +4,7 @@
  *
  * Every test here corresponds to something that was broken while 8356 tests
  * passed, and it passed because the fake mailbox wrote header blocks as plain
- * response lines — a shape no RFC 3501 server emits. Against a server that
+ * response lines, a shape no RFC 3501 server emits. Against a server that
  * sends a `{N}` literal, the client built envelopes with every field empty; and
  * against a server that puts the automatic `UID` item after the body section,
  * it produced no envelopes at all and the drain loop read that as "these
@@ -126,8 +126,8 @@ describe('a server that sends BODY[HEADER.FIELDS] as a {N} literal', () => {
 
   test('the same is true when the UID data item comes last', async () => {
     // `UID FETCH` makes the server add the UID item wherever it likes. When it
-    // goes after the literal it is not on the `* n FETCH` line at all — it is
-    // on the line that closes the response — and the old reader, which only
+    // goes after the literal it is not on the `* n FETCH` line at all, it is
+    // on the line that closes the response, and the old reader, which only
     // searched the text before the first `BODY` token of the start line, found
     // no UIDs, produced no envelopes, and reported success.
     const { client } = await connect({
@@ -157,8 +157,8 @@ describe('a server that sends BODY[HEADER.FIELDS] as a {N} literal', () => {
   test('a non-ASCII subject survives the byte-counted literal intact', async () => {
     // `{n}` is a BYTE count (RFC 3501 §4.3) and the socket is read as utf8, so
     // a reader that took n CHARACTERS would stop short of the payload's end,
-    // swallow the bytes that follow it — the closing `)` and the tagged
-    // completion — and hang until the command timed out. `takeUtf8Bytes` exists
+    // swallow the bytes that follow it, the closing `)` and the tagged
+    // completion, and hang until the command timed out. `takeUtf8Bytes` exists
     // for exactly this and had no coverage on the watcher's path.
     const subject = 'Überweisung — 契約書 — naïve café ☕';
     const { client } = await connect({ initial: [fake(101, subject)] });
@@ -261,7 +261,7 @@ describe('parseFetchResponses', () => {
   test('a partial-section suffix is part of the marker, not of the key', () => {
     // Two lines, because that is what a folded literal is: the payload owns the
     // remainder of its line down to the last byte, and the `)` that closes the
-    // response is on the next one. A payload is opaque bytes — a body that ends
+    // response is on the next one. A payload is opaque bytes, a body that ends
     // in `)` is an ordinary body, and trimming one off the end would corrupt it.
     const responses = parseFetchResponses([
       '* 1 FETCH (UID 5 BODY[TEXT]<0> hello there)',
@@ -361,7 +361,7 @@ describe('the drain loop tells an expunge from an unreadable answer', () => {
   test('an unreadable response does NOT advance the cursor and IS reported', async () => {
     // The defect in one line: the loop could not tell "the server says UID 101
     // is gone" from "we failed to parse the answer for UID 101", and resolved
-    // it by advancing — permanently skipping a message still in the mailbox.
+    // it by advancing, permanently skipping a message still in the mailbox.
     const { report, cursors, sink, observer } = await drain({
       found: [101],
       batch: {

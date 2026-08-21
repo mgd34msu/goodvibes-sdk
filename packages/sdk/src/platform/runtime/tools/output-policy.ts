@@ -5,7 +5,7 @@ import type { SpillBackendType } from '../../tools/shared/overflow.js';
 // ─── Tool Class ─────────────────────────────────────────────────────────────
 
 /**
- * ToolClass — semantic classification of a tool's output characteristics.
+ * ToolClass, semantic classification of a tool's output characteristics.
  *
  * Mirrors `PhasedTool.category` but adds `analyze` for analytical/inspection
  * tools that produce structured summaries rather than raw data.
@@ -15,7 +15,7 @@ export type ToolClass = 'read' | 'write' | 'execute' | 'network' | 'analyze';
 // ─── Policy Types ────────────────────────────────────────────────────────────
 
 /**
- * ToolOutputPolicy — limits and behaviour rules applied to every tool result
+ * ToolOutputPolicy, limits and behaviour rules applied to every tool result
  * of a given class before it reaches the LLM context window.
  */
 export interface ToolOutputPolicy {
@@ -27,7 +27,7 @@ export interface ToolOutputPolicy {
 
   /**
    * Soft token ceiling (estimated as chars / 4).
-   * Enforcement is informational — `maxBytes` is the hard limit.
+   * Enforcement is informational, `maxBytes` is the hard limit.
    */
   maxTokens: number;
 
@@ -40,19 +40,19 @@ export interface ToolOutputPolicy {
   /**
    * Where to cut when output exceeds `maxBytes`.
    *
-   * - `tail`    — keep the beginning, drop the end (default for most classes)
-   * - `head`    — keep the end, drop the beginning (useful for execute stdout)
-   * - `middle`  — keep both ends, drop the middle
-   * - `summary` — replace with a compact size/type summary
+   * - `tail`   , keep the beginning, drop the end (default for most classes)
+   * - `head`   , keep the end, drop the beginning (useful for execute stdout)
+   * - `middle` , keep both ends, drop the middle
+   * - `summary`, replace with a compact size/type summary
    */
   truncationMode: 'tail' | 'head' | 'middle' | 'summary';
 
   /**
    * Where to put content that exceeds the byte limit.
    *
-   * - `inline`    — truncate in-place, append an ellipsis note
-   * - `file`      — spill to `.goodvibes/.overflow/`, embed a path reference
-   * - `reference` — replace content with a compact reference marker only
+   * - `inline`   , truncate in-place, append an ellipsis note
+   * - `file`     , spill to `.goodvibes/.overflow/`, embed a path reference
+   * - `reference`, replace content with a compact reference marker only
    */
   spillMode: 'inline' | 'file' | 'reference';
 
@@ -65,7 +65,7 @@ export interface ToolOutputPolicy {
 }
 
 /**
- * OutputPolicyResult — audit record produced by `applyOutputPolicy`.
+ * OutputPolicyResult, audit record produced by `applyOutputPolicy`.
  * Attached to the transformed `ToolResult` as `_policyAudit`.
  */
 export interface OutputPolicyResult {
@@ -73,10 +73,10 @@ export interface OutputPolicyResult {
   policyId: string;
   /**
    * What the policy enforcement actually did:
-   * - `none`       — output was within limits; no transformation applied
-   * - `truncated`  — output was cut to fit within `maxBytes`
-   * - `spilled`    — overflow was written to disk; a reference was embedded
-   * - `referenced` — output replaced by a compact reference marker
+   * - `none`      , output was within limits; no transformation applied
+   * - `truncated` , output was cut to fit within `maxBytes`
+   * - `spilled`   , overflow was written to disk; a reference was embedded
+   * - `referenced`, output replaced by a compact reference marker
    */
   actionTaken: 'none' | 'truncated' | 'spilled' | 'referenced';
   /** Original output byte length before policy enforcement. */
@@ -91,14 +91,14 @@ export interface OutputPolicyResult {
 }
 
 /**
- * ToolResultWithAudit — a `ToolResult` with an optional policy audit record
+ * ToolResultWithAudit, a `ToolResult` with an optional policy audit record
  * injected by `applyOutputPolicy`.
  *
  * The base `ToolResult` interface is left unmodified; this extension is the
  * only carrier of audit data so the core type surface stays stable.
  */
 export interface ToolResultWithAudit extends ToolResult {
-  /** Policy audit record — present on every result that passed through output-policy. */
+  /** Policy audit record, present on every result that passed through output-policy. */
   _policyAudit?: OutputPolicyResult | undefined;
 }
 
@@ -108,14 +108,14 @@ export interface ToolResultWithAudit extends ToolResult {
 const BYTES_PER_TOKEN = 4;
 
 /**
- * DEFAULT_POLICIES — one policy per tool class.
+ * DEFAULT_POLICIES, one policy per tool class.
  *
  * Byte limits are calibrated to stay well under typical LLM context windows:
- * - read    : 200 KB — file reads can be large; spill remainder to disk
- * - write   : 32 KB  — confirmations should be concise; inline truncation
- * - execute : 128 KB — command output can be chatty; keep tail (most recent)
- * - network : 256 KB — remote responses can be large; spill to disk
- * - analyze : 64 KB  — structured summaries; inline truncation
+ * - read    : 200 KB, file reads can be large; spill remainder to disk
+ * - write   : 32 KB , confirmations should be concise; inline truncation
+ * - execute : 128 KB, command output can be chatty; keep tail (most recent)
+ * - network : 256 KB, remote responses can be large; spill to disk
+ * - analyze : 64 KB , structured summaries; inline truncation
  */
 export const DEFAULT_POLICIES: Readonly<Record<ToolClass, ToolOutputPolicy>> = {
   read: {
@@ -164,7 +164,7 @@ export const DEFAULT_POLICIES: Readonly<Record<ToolClass, ToolOutputPolicy>> = {
 
 /**
  * Returns the output policy for the given tool class.
- * Always returns a defined policy — falls back to the `read` policy if
+ * Always returns a defined policy, falls back to the `read` policy if
  * an unrecognised class is supplied (should never happen in strict TypeScript
  * but guards against runtime extension points).
  *
@@ -193,7 +193,7 @@ function truncate(content: string, maxBytes: number, mode: ToolOutputPolicy['tru
 
   switch (mode) {
     case 'head': {
-      // Keep the tail (most recent output) — slice at string level to avoid
+      // Keep the tail (most recent output), slice at string level to avoid
       // splitting multi-byte UTF-8 code points that byte-slicing would corrupt.
       const dropChars = Math.floor(content.length * (1 - maxBytes / byteLen));
       const tail = content.slice(dropChars);
@@ -213,7 +213,7 @@ function truncate(content: string, maxBytes: number, mode: ToolOutputPolicy['tru
       return summarizeOutput(content, maxBytes, byteLen);
     case 'tail':
     default: {
-      // Keep the head — slice at string level to avoid corrupting multi-byte chars.
+      // Keep the head, slice at string level to avoid corrupting multi-byte chars.
       const keepRatio = maxBytes / byteLen;
       const keepChars = Math.floor(content.length * keepRatio);
       const head = content.slice(0, keepChars);
@@ -315,7 +315,7 @@ export function applyOutputPolicy(
 
   const auditResult = result as ToolResultWithAudit;
 
-  // Within limits — no transformation needed
+  // Within limits, no transformation needed
   if (originalSize <= policy.maxBytes) {
     if (policy.auditMetadata) {
       auditResult._policyAudit = audit;
@@ -323,7 +323,7 @@ export function applyOutputPolicy(
     return { result: auditResult, audit };
   }
 
-  // Over limit — enforce according to spillMode
+  // Over limit, enforce according to spillMode
   switch (policy.spillMode) {
     case 'file': {
       const overflowResult = overflowHandler.handle(output, {
@@ -346,7 +346,7 @@ export function applyOutputPolicy(
 
     case 'reference': {
       const sizeKb = (originalSize / 1024).toFixed(1);
-      result.output = `[output omitted: ${sizeKb} KB — ${policy.toolClass} tool output exceeded policy limit of ${policy.maxBytes} bytes]`;
+      result.output = `[output omitted: ${sizeKb} KB, ${policy.toolClass} tool output exceeded policy limit of ${policy.maxBytes} bytes]`;
       audit.actionTaken = 'referenced';
       audit.resultSize = encoder.encode(result.output as string).length;
       break;

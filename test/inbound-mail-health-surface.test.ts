@@ -1,10 +1,10 @@
 /**
- * M6 — inbound mail reaches the health surface the owner actually reads.
+ * M6, inbound mail reaches the health surface the owner actually reads.
  *
  * `inboundMailStatus()` and `inboundMailHealth()` had exactly one reference
  * each repo-wide: their own definition. `InboundMailHealthEntry` declares
  * `kind: 'email-inbound'`, documented as distinguishing this entry "from a
- * channel's in a mixed list" — and there was no mixed list. A watched mailbox
+ * channel's in a mixed list", and there was no mixed list. A watched mailbox
  * reported its state to nothing.
  *
  * The types stay separate: email inbound is not a `ChannelStatusSnapshot`,

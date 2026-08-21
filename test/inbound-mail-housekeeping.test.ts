@@ -64,7 +64,7 @@ describe('the housekeeper composes all three stores into one itemised report', (
     const report = await housekeeper.runRecoverySweep();
 
     expect(report.trigger).toBe('recovery');
-    // Each section is `… | null` — null means that store was not swept at all,
+    // Each section is `… | null`, null means that store was not swept at all,
     // which for this case would be a different (and worse) outcome than an
     // empty removal list. Asserted rather than narrowed past with `!`.
     expect(report.cursors, 'the cursor store was not swept').not.toBeNull();
@@ -196,7 +196,7 @@ describe('the periodic sweep runs on a timer without a restart', () => {
    * `start(0)` used to be asserted with `expect(() => start(0)).not.toThrow()`,
    * which passes WITH the busy loop installed: delete the `intervalMs <= 0`
    * guard and `setInterval(fn, 0)` still does not throw, while running a sweep
-   * roughly every millisecond. Not throwing was never the claim — not sweeping
+   * roughly every millisecond. Not throwing was never the claim, not sweeping
    * was.
    *
    * So the assertion is on the sweeps themselves, over a window long enough

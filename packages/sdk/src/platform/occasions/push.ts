@@ -1,5 +1,5 @@
 /**
- * push.ts — getting one nudge out of the daemon, and remembering that it landed.
+ * push.ts, getting one nudge out of the daemon, and remembering that it landed.
  *
  * Split out of service.ts, which owns the SEQUENCE of a sweep rather than the
  * mechanics of a send. Both functions here are about the same honesty problem:
@@ -22,7 +22,7 @@ export interface OccasionNudgeDeliverer {
  *
  * Per destination rather than one verdict for the batch, because with two
  * channels configured "delivered: false" would say nothing about WHICH one went
- * quiet — and a channel he believes is reaching him and is not is the failure
+ * quiet, and a channel he believes is reaching him and is not is the failure
  * this whole feature exists to avoid.
  */
 export interface NudgeDelivery {
@@ -38,7 +38,7 @@ export interface NudgeDelivery {
  * Push one nudge to every configured destination, independently.
  *
  * A destination that throws is RECORDED and the next one is still tried. The
- * alternative — letting the first failure escape — means an expired Telegram
+ * alternative, letting the first failure escape, means an expired Telegram
  * token stops the agent hearing about his wife's birthday, and the two have
  * nothing to do with each other. Nothing is swallowed: each failure comes back
  * in the outcome, the router has already logged it against its surface and

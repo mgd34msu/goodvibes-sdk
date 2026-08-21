@@ -57,7 +57,7 @@ async function buildFixture(): Promise<Fixture> {
   const companionDir = join(root, 'home', '.goodvibes', 'companion-chat', 'sessions');
   const homeStorePath = join(root, 'home', '.goodvibes', 'control-plane', 'sessions.json');
 
-  // 1) Companion dir — active + closed (the 299-style, closed-inclusive class).
+  // 1) Companion dir, active + closed (the 299-style, closed-inclusive class).
   const persistence = new CompanionChatPersistence(companionDir);
   await persistence.save(companionSession('comp-active', 'active'));
   await persistence.save(companionSession('comp-closed', 'closed'));
@@ -96,7 +96,7 @@ describe('migration importer — folds all three legacy stores into one home sto
       await home.start();
       const byId = new Map(home.listSessions(500).map((s) => [s.id, s]));
 
-      // Every source id present — closed ones too.
+      // Every source id present, closed ones too.
       for (const id of ['comp-active', 'comp-closed', 'tui-a', 'tui-closed', 'agent-a']) {
         expect(byId.has(id)).toBe(true);
       }
@@ -128,7 +128,7 @@ describe('migration importer — folds all three legacy stores into one home sto
     const fx = await buildFixture();
     try {
       // Mirror the daemon facade boot sequence (facade.ts): this.sessionBroker is
-      // constructed at init — before any legacy data is folded — then the importer runs,
+      // constructed at init, before any legacy data is folded, then the importer runs,
       // then broker.start(). The broker loads its store in start() (not the constructor),
       // so a broker built before the fold must still serve the folded sessions. This pins
       // the importer→broker seam in the real construction order (the isolation test above
@@ -184,7 +184,7 @@ describe('migration importer — folds all three legacy stores into one home sto
 });
 
 // ---------------------------------------------------------------------------
-// MAJOR 1 — the persisted-message cap is PER SESSION, not global. The old cap
+// MAJOR 1, the persisted-message cap is PER SESSION, not global. The old cap
 // flattened every session's messages then sliced the combined stream, silently
 // dropping the OLDEST sessions' whole transcripts while messageCount stayed
 // inflated. This is the 299×10 scenario: 2 990 messages must all survive.
@@ -226,7 +226,7 @@ describe('MAJOR 1 — per-session message cap: no silent transcript loss on migr
       const sessions = home.listSessions(500);
       expect(sessions).toHaveLength(N);
 
-      // Every session keeps all 10 of ITS messages — under the OLD global 2 000
+      // Every session keeps all 10 of ITS messages, under the OLD global 2 000
       // cap the oldest ~99 sessions would have lost their whole transcripts.
       let totalRetained = 0;
       for (const s of sessions) {

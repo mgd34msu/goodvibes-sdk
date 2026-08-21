@@ -35,7 +35,7 @@ export const builtinGatewayCostMethodDescriptors: readonly GatewayMethodDescript
   methodDescriptor({
     id: 'quota.fanout.get',
     title: 'Assess Fan-out Against Quota Window',
-    description: 'Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on — an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed — never a fabricated certainty.',
+    description: 'Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on, an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed, never a fabricated certainty.',
     category: 'quota',
     scopes: ['read:telemetry'],
     transport: ['ws'],
@@ -45,7 +45,7 @@ export const builtinGatewayCostMethodDescriptors: readonly GatewayMethodDescript
   methodDescriptor({
     id: 'quota.snapshot.get',
     title: 'Get Observed Quota Snapshot',
-    description: 'Return the most recent observed quota window for a provider — remaining, limit, reset, and any active cooldown — parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.',
+    description: 'Return the most recent observed quota window for a provider, remaining, limit, reset, and any active cooldown, parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.',
     category: 'quota',
     scopes: ['read:telemetry'],
     transport: ['ws'],

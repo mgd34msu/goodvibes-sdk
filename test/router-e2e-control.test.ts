@@ -10,7 +10,7 @@
  *   GET /api/control-plane/clients
  *
  * Uses the operator routes dispatch function directly, injecting a minimal
- * DaemonApiRouteHandlers stub — no full DaemonHttpRouter construction needed.
+ * DaemonApiRouteHandlers stub, no full DaemonHttpRouter construction needed.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -21,7 +21,7 @@ import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js
 import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
-// describe: control routes — happy paths
+// describe: control routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e control — GET /status (happy path)', () => {
@@ -161,7 +161,7 @@ describe('router-e2e control — GET /status (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: control routes — failure / unmatched paths
+// describe: control routes, failure / unmatched paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e control — failure paths', () => {

@@ -1,8 +1,8 @@
-# React Native Integration
+# React Native integration
 
 This is the **companion surface** for React Native (Hermes). See [Published Surface Matrix](./surfaces.md).
 
-React Native apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
+React Native apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP). Those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
 Use `@pellux/goodvibes-sdk/react-native` for Android and iOS apps.
 
@@ -25,7 +25,7 @@ See [Getting started](./getting-started.md#install) for the canonical install co
 
 ## Realtime
 
-The React Native realtime surface is WebSocket-only. `sdk.realtime` exposes `runtime()` and `viaWebSocket()` — there is no `viaSse()`. SSE is unavailable on this surface, so the inherited `realtime.sseReconnect` option is a no-op here; only `webSocketReconnect` applies.
+The React Native realtime surface is WebSocket-only. `sdk.realtime` exposes `runtime()` and `viaWebSocket()`. There is no `viaSse()`. SSE is unavailable on this surface, so the inherited `realtime.sseReconnect` option is a no-op here. Only `webSocketReconnect` applies.
 
 ```ts
 const events = sdk.realtime.viaWebSocket();
@@ -36,9 +36,9 @@ const unsubscribe = events.agents.on('AGENT_COMPLETED', (event) => {
 
 The factory applies React-Native-tuned defaults that you can override through `GoodVibesSdkOptions`:
 
-- `realtime.webSocketReconnect` — `{ enabled: true, baseDelayMs: 500, maxDelayMs: 5000 }`
-- `retry` (HTTP) — `{ maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2000 }`
-- `realtime.onError` — called when the realtime transport hits an unrecoverable error
+- `realtime.webSocketReconnect`: `{ enabled: true, baseDelayMs: 500, maxDelayMs: 5000 }`
+- `retry` (HTTP): `{ maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2000 }`
+- `realtime.onError`: called when the realtime transport hits an unrecoverable error
 
 To scope a feed to a single session, wrap it with `forSession` (re-exported from `@pellux/goodvibes-sdk/react-native`):
 
@@ -51,7 +51,7 @@ sessionEvents.agents.on('AGENT_COMPLETED', (event) => console.log(event));
 
 ## Token storage
 
-Pass a `tokenStore` to persist and rotate the bearer token. `tokenStore` is the highest-precedence auth option — it overrides both `getAuthToken` and the static `authToken`. Use `createIOSKeychainTokenStore` (iOS Keychain) or `createAndroidKeystoreTokenStore` (Android Keystore), both exported from `@pellux/goodvibes-sdk/react-native`, rather than rolling a custom `GoodVibesTokenStore`:
+Pass a `tokenStore` to persist and rotate the bearer token. `tokenStore` is the highest-precedence auth option. It overrides both `getAuthToken` and the static `authToken`. Use `createIOSKeychainTokenStore` (iOS Keychain) or `createAndroidKeystoreTokenStore` (Android Keystore), both exported from `@pellux/goodvibes-sdk/react-native`, rather than rolling a custom `GoodVibesTokenStore`:
 
 ```ts
 import {
@@ -121,7 +121,7 @@ See [react-native-quickstart.ts](../examples/react-native-quickstart.ts) for a r
 - `fetch` can come from the React Native runtime or be injected explicitly.
 - `WebSocket` can come from the runtime or be passed through `WebSocketImpl`.
 - The React Native entrypoint is WebSocket-only; SSE (`viaSse`) is not exposed and `sseReconnect` is a no-op.
-- Provide a token store or `getAuthToken` when token state can rotate during the app session — see [Token storage](#token-storage).
+- Provide a token store or `getAuthToken` when token state can rotate during the app session: see [Token storage](#token-storage).
 - Reconnect after foreground/resume and network transitions.
 - Use HTTP for snapshots/mutations and WebSocket for live updates.
 - For Expo-managed apps, use [expo-integration.md](./expo-integration.md).

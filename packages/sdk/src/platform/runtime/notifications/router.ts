@@ -1,15 +1,15 @@
 /**
- * NotificationRouter — routes incoming notifications to the appropriate
+ * NotificationRouter, routes incoming notifications to the appropriate
  * surface (conversation, status_bar, panel_only) based on level, per-domain
  * verbosity, quiet-while-typing state, mode-context, burst detection, and
  * batch policy.
  *
  * Policy stack (applied in order):
- * 1. Default policy        — level + domain verbosity → base target
- * 2. Quiet-typing policy   — suppresses non-critical above panel_only while typing
- * 3. Mode-context policy   — HITL-mode-aware suppression (quiet/balanced/operator)
- * 4. Burst policy          — collapses rapid domain:level event floods
- * 5. Batch policy          — collapses repeated events within rolling time window
+ * 1. Default policy       , level + domain verbosity → base target
+ * 2. Quiet-typing policy  , suppresses non-critical above panel_only while typing
+ * 3. Mode-context policy  , HITL-mode-aware suppression (quiet/balanced/operator)
+ * 4. Burst policy         , collapses rapid domain:level event floods
+ * 5. Batch policy         , collapses repeated events within rolling time window
  *
  * The notifications.adaptiveSuppression setting gates policies 3 and 4.
  * When the flag is disabled, only the original policies 1, 2, and 5 are applied.
@@ -36,9 +36,9 @@ const DEFAULT_VERBOSITY: DomainVerbosity = 'normal';
 /**
  * NotificationRouter applies a layered policy stack to each notification:
  *
- * 1. **Default policy** — maps level + domain verbosity to a base target.
- * 2. **Quiet-typing policy** — suppresses non-critical above panel_only while typing.
- * 3. **Batch policy** — collapses repeated domain:level pairs within a time window.
+ * 1. **Default policy**, maps level + domain verbosity to a base target.
+ * 2. **Quiet-typing policy**, suppresses non-critical above panel_only while typing.
+ * 3. **Batch policy**, collapses repeated domain:level pairs within a time window.
  *
  * @example
  * ```ts
@@ -143,7 +143,7 @@ export class NotificationRouter {
         };
       }
 
-      // 4. Apply burst detection policy (exempt critical, milestone, and alert — they always surface).
+      // 4. Apply burst detection policy (exempt critical, milestone, and alert, they always surface).
       if (notification.level !== 'critical'
           && notification.tag !== 'milestone'
           && notification.tag !== 'alert') {
@@ -159,7 +159,7 @@ export class NotificationRouter {
       }
     }
 
-    // 5. Apply batch deduplication policy (exempt critical — they always surface).
+    // 5. Apply batch deduplication policy (exempt critical, they always surface).
     if (notification.level !== 'critical') {
       const batchKey = this.batchPolicy.evaluate(notification);
 

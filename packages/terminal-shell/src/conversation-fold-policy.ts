@@ -1,5 +1,5 @@
 /**
- * conversation-fold-policy.ts — the ONE statement of what a folded transcript
+ * conversation-fold-policy.ts, the ONE statement of what a folded transcript
  * block is, shared by every terminal product.
  *
  * A folded block is exactly ONE row: the block's own header line, with the
@@ -8,9 +8,9 @@
  * hidden-count marker, and no blank rows between consecutive folded tool rows.
  *
  * The TUI and the Agent each carry a thin adapter that threads their local
- * render-node types into these predicates. The decisions themselves — the
+ * render-node types into these predicates. The decisions themselves, the
  * short-content threshold, the fold default, the separator rule, the preview
- * rule — live here and ONLY here. The owner ordered this consolidation after
+ * rule, live here and ONLY here. The owner ordered this consolidation after
  * the two renderers drifted apart four separate times; a product that wants a
  * different answer changes this module, where the other product's parity tests
  * will see it, not its own copy, where they will not.
@@ -22,7 +22,7 @@
 /**
  * Longest tool-result content that renders expanded on its own merits. A
  * result at or under this size is cheaper to just show than to fold behind a
- * toggle — unless a one-line summary exists, which is the better row, with the
+ * toggle, unless a one-line summary exists, which is the better row, with the
  * raw payload behind the toggle.
  */
 export const FOLDED_SHORT_CONTENT_CHARS = 200;
@@ -59,8 +59,8 @@ export function foldedToolResult(input: {
  * Branch rows sit tight under their parent, so the blank lands only after the
  * last row of a top-level unit. On top of that, a folded row followed by more
  * tool machinery gets NO blank at all: N consecutive folded results stack as N
- * adjacent single rows. A folded row followed by anything else — prose, a
- * system notice — keeps its blank, so the run still separates from what reads
+ * adjacent single rows. A folded row followed by anything else, prose, a
+ * system notice, keeps its blank, so the run still separates from what reads
  * around it.
  */
 export function trailingBlankAfterRow(input: {
@@ -83,7 +83,7 @@ export function trailingBlankAfterRow(input: {
  * Whitespace (newlines included) flattens to single spaces so the preview is
  * one visual run; below FOLD_PREVIEW_MIN_COLS the preview is dropped rather
  * than truncated into noise. TRUNCATION to the column budget stays with the
- * caller, whose display-width rules (wide glyphs, ANSI) are product-local —
+ * caller, whose display-width rules (wide glyphs, ANSI) are product-local,
  * but a caller must truncate, never wrap: wrapping would grow the row back
  * into the multi-line shape this policy exists to end.
  */

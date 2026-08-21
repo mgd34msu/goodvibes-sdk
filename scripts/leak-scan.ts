@@ -12,7 +12,7 @@
  * Takes the shared workspace lock, exactly like `scripts/test.ts`, so a scan
  * never runs concurrently with a build or another suite in a sibling worktree.
  *
- * Also invokes `bun test` directly, exactly like `scripts/test.ts` does — so it
+ * Also invokes `bun test` directly, exactly like `scripts/test.ts` does, so it
  * redirects TMPDIR/TMP/TEMP to its own per-run directory under the real
  * `os.tmpdir()` the same way, via the same shared helpers (scripts/test-run-tmp.ts,
  * scripts/stale-tmp-sweep.ts). Without this, the suite's hundreds of
@@ -67,8 +67,8 @@ const reportPath = process.env.GOODVIBES_LEAK_REPORT ?? resolve(SDK_ROOT, '.tmp/
 
 await withWorkspaceLock('leak-scan', async () => {
   sweepStaleTmpDirs(TEST_TMP_ROOT, RUN_TMP_PREFIX, STALE_RUN_MS);
-  // Removal is inside withRunTmpDir's `finally`, so every exit path — including
-  // a failing suite — takes this run's temp tree with it, exactly like
+  // Removal is inside withRunTmpDir's `finally`, so every exit path, including
+  // a failing suite, takes this run's temp tree with it, exactly like
   // scripts/test.ts. Both entry points share that one lifecycle rather than
   // each keeping a copy, so test/test-tmp-containment.test.ts drives the real
   // one.
@@ -82,7 +82,7 @@ await withWorkspaceLock('leak-scan', async () => {
       env: {
         ...process.env,
         ...testTmpEnv(runTmpDir),
-        // Sibling of the spread, not part of it — see RUNNER_ENV_FLAG in
+        // Sibling of the spread, not part of it, see RUNNER_ENV_FLAG in
         // scripts/test-run-tmp.ts. This entry point contains temp the same
         // way scripts/test.ts does, so the guard test asserts it here too.
         [RUNNER_ENV_FLAG]: '1',
@@ -94,7 +94,7 @@ await withWorkspaceLock('leak-scan', async () => {
     if (stopped !== null) {
       console.log(`(the ${stopped} ceiling ended this run: ${stopReason ?? 'no reason recorded'})`);
     } else if (exitCode !== 0) {
-      console.log(`(suite exited ${exitCode ?? 'null'} — leak data above is still valid)`);
+      console.log(`(suite exited ${exitCode ?? 'null'}, leak data above is still valid)`);
     }
   }, RUN_TMP_DIR_NAME);
 });

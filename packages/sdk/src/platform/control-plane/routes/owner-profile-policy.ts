@@ -1,9 +1,9 @@
 /**
- * routes/owner-profile-policy.ts — the owner's `profile.*` switches, enforced.
+ * routes/owner-profile-policy.ts, the owner's `profile.*` switches, enforced.
  *
  * `schema-domain-owner-profile.ts` declares eight settings and tells the owner
- * in each description what turning it off will do. Three of them —
- * `autonomousWrites`, `discloseWrites`, `discloseClosedTierReads` — had nothing
+ * in each description what turning it off will do. Three of them,
+ * `autonomousWrites`, `discloseWrites`, `discloseClosedTierReads`, had nothing
  * reading them, so the runtime kept recording and kept announcing after he
  * turned them off. A setting whose description promises a behaviour change and
  * delivers none is worse than no setting: he believes he has stopped autonomous
@@ -12,8 +12,8 @@
  * ## Why a wrapper rather than checks inside the store
  *
  * `OwnerProfileStore` is mechanism: it parses, edits lines, and runs the §7
- * trust gate, which is about who may write at all. These three are POLICY —
- * what the owner has asked the platform to do on his behalf — and policy is
+ * trust gate, which is about who may write at all. These three are POLICY,
+ * what the owner has asked the platform to do on his behalf, and policy is
  * resolved from live config, which the store deliberately has no access to.
  * The wrapper implements the same `OwnerProfileGatewayService` the handlers
  * consume, so it sits on the one path a surface can reach and cannot be
@@ -47,15 +47,15 @@ export function isSettingsEdit(said: string): boolean {
 
 /** The three owner-facing switches, read live. */
 export interface OwnerProfilePolicy {
-  /** `profile.autonomousWrites` — may the runtime record what it learns? */
+  /** `profile.autonomousWrites`, may the runtime record what it learns? */
   readonly autonomousWrites: () => boolean;
-  /** `profile.discloseWrites` — does an autonomous write announce itself? */
+  /** `profile.discloseWrites`, does an autonomous write announce itself? */
   readonly discloseWrites: () => boolean;
-  /** `profile.discloseClosedTierReads` — is a named closed-tier read announced? */
+  /** `profile.discloseClosedTierReads`, is a named closed-tier read announced? */
   readonly discloseClosedTierReads: () => boolean;
 }
 
-/** Everything permitted and everything announced — the schema defaults. */
+/** Everything permitted and everything announced, the schema defaults. */
 export const PERMISSIVE_OWNER_PROFILE_POLICY: OwnerProfilePolicy = {
   autonomousWrites: () => true,
   discloseWrites: () => true,
@@ -64,7 +64,7 @@ export const PERMISSIVE_OWNER_PROFILE_POLICY: OwnerProfilePolicy = {
 
 const AUTONOMOUS_WRITES_OFF =
   'Refused: you have turned off letting me record facts I learn on my own (profile.autonomousWrites). '
-  + 'Your profile is still readable, and you can still edit it yourself — by hand or from settings.';
+  + 'Your profile is still readable, and you can still edit it yourself, by hand or from settings.';
 
 function refused(reason: string): ProfileWriteResult {
   return { ok: false, reason, changes: [], disclosure: '' };
@@ -85,8 +85,8 @@ function applyDisclosurePolicy(result: ProfileWriteResult, disclose: boolean): P
  *    switched off autonomous LEARNING would turn a preference about what the
  *    machine writes into a lock on his own file.
  *  - `discloseWrites` governs the receipt for a fact the runtime recorded on its
- *    own. §8.3 makes the confirmation of a deletion a separate promise —
- *    "forget that" answers with what went — so it is not silenced here.
+ *    own. §8.3 makes the confirmation of a deletion a separate promise,
+ *    "forget that" answers with what went, so it is not silenced here.
  */
 export function applyOwnerProfilePolicy(
   service: OwnerProfileGatewayService,
@@ -130,7 +130,7 @@ export function applyOwnerProfilePolicy(
  * section enters the system.
  *
  * This is the same `evaluateProfileWrite` the store runs, with the same ledger
- * and the same two passes — not a second, weaker copy of the rule.
+ * and the same two passes, not a second, weaker copy of the rule.
  */
 function refuseTaintedSection(input: AppendProfileProseInput): ProfileWriteResult | null {
   const decision = evaluateProfileWrite({

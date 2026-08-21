@@ -15,7 +15,7 @@
  *     which is the single most useful fact in the whole flow: it becomes the
  *     `login_hint` on the consent URL so the person lands on the right account
  *     picker entry, and it is what makes an `invalid_grant` diagnosable rather
- *     than a shrug (see grant-diagnosis.ts — the personal-vs-agent-account
+ *     than a shrug (see grant-diagnosis.ts, the personal-vs-agent-account
  *     trap is the most common cause and it is invisible without this).
  *  2. Finds the project without asking. `gcloud config get-value project`.
  *  3. Enables the Gmail and Calendar APIs with no clicking at all.
@@ -129,7 +129,7 @@ export async function describeGcloudPosture(
  */
 export function gcloudCannotDo(): readonly string[] {
   return [
-    'gcloud cannot mint a Gmail or Calendar token by itself — those scopes sit outside Google Cloud, so consent has to be granted against this product\'s own OAuth client. That is the link you click.',
+    'gcloud cannot mint a Gmail or Calendar token by itself, those scopes sit outside Google Cloud, so consent has to be granted against this product\'s own OAuth client. That is the link you click.',
     'gcloud cannot create the OAuth client either; Google offers no API or CLI for a Desktop app client, only the Cloud console.',
   ];
 }

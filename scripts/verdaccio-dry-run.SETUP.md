@@ -8,7 +8,7 @@ still be set to test a different local Verdaccio binary intentionally.
 
 ## CI Job YAML snippet
 
-The Verdaccio dry-run is **not** wired into CI — it is a manual script, run
+The Verdaccio dry-run is **not** wired into CI, it is a manual script, run
 locally via `bun run release:verify:verdaccio` (`bun scripts/verdaccio-dry-run.ts`).
 The job YAML below is an optional, illustrative snippet: add it to
 `.github/workflows/ci.yml` (or a dedicated `verdaccio.yml` workflow), scheduled
@@ -52,7 +52,7 @@ after the `build` job succeeds, only if you want it to run in CI.
   specifier resolution against a freshly installed `node_modules/`).
 - Adjust `needs:` to match the actual build job name in your workflow.
 - The script self-cleans all tmp dirs and the Verdaccio process on both success
-  and failure — no manual teardown step needed.
+  and failure, no manual teardown step needed.
 - The repo overrides Verdaccio's older `@cypress/request -> uuid@8` dry-run
   path to the checked-in `vendor/uuid-cjs` adapter. Keep the root `package.json`
   override in place until Verdaccio drops that transitive dependency.

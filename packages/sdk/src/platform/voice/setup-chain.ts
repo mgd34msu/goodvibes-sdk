@@ -1,8 +1,8 @@
 /**
- * setup-chain.ts — VOICE as an instance of the platform's setup contract.
+ * setup-chain.ts, VOICE as an instance of the platform's setup contract.
  *
  * The rules this follows are not voice's: they live in
- * runtime/setup-contract.ts, which states them for any service — DO the literal
+ * runtime/setup-contract.ts, which states them for any service, DO the literal
  * ask and everything the environment already answers, PROPOSE each inferred
  * extension as one short approval question, ASK only at genuine forks, pick a
  * solution shape rather than reasoning case by case, and never hand the user a
@@ -29,7 +29,7 @@ import {
 /** What the user asked for, as far as the entry point could tell. */
 export type VoiceSetupIntent = 'wake' | 'stt' | 'tts' | 'voice';
 
-/** One step in a resolved setup chain — the platform's general step shape. */
+/** One step in a resolved setup chain, the platform's general step shape. */
 export type VoiceSetupStep = SetupStep;
 
 /** One side of a genuine fork. */
@@ -37,7 +37,7 @@ export type VoiceSetupOption = SetupOption;
 
 /** Everything known about the host when the request arrived. */
 export interface VoiceSetupContext {
-  /** The surface the request came from — the one that must end up listening. */
+  /** The surface the request came from, the one that must end up listening. */
   readonly surface: WakeSurface;
   /** `voice.wake.enabled`. */
   readonly wakeEnabled: boolean;
@@ -86,7 +86,7 @@ export function planVoiceSetupChain(intent: VoiceSetupIntent, context: VoiceSetu
 
   if (wantsWake) {
     // The literal ask: the surface that asked is the surface that listens. The
-    // two-flag pair moves together — a master switch on a surface that is
+    // two-flag pair moves together, a master switch on a surface that is
     // opted out is a setting that configures nothing.
     steps.push({
       kind: 'do',
@@ -108,7 +108,7 @@ export function planVoiceSetupChain(intent: VoiceSetupIntent, context: VoiceSetu
       kind: 'do',
       subject: 'input-device',
       message: context.inputDevice.trim().length === 0
-        ? 'Listening on your system default input, so it follows whatever the operating system is using — including a headset that comes and goes.'
+        ? 'Listening on your system default input, so it follows whatever the operating system is using, including a headset that comes and goes.'
         : `Listening on the input device you have pinned (${context.inputDevice}). If that device is away, wake stops hearing you until it is back.`,
     });
   }
@@ -120,7 +120,7 @@ export function planVoiceSetupChain(intent: VoiceSetupIntent, context: VoiceSetu
       steps.push({
         kind: 'propose',
         subject: 'stt',
-        message: 'A wake word is only useful if what you say next becomes text, and speech-to-text is not set up on this machine yet — '
+        message: 'A wake word is only useful if what you say next becomes text, and speech-to-text is not set up on this machine yet, '
           + 'shall I provision the local speech-to-text runtime now so the whole thing works end to end?',
       });
     } else {
@@ -177,7 +177,7 @@ export function planVoiceSetupChain(intent: VoiceSetupIntent, context: VoiceSetu
  *
  * The shapes that matter: a slash command presented as the user's next action,
  * and the imperative verbs that introduce one. Used by the test that keeps
- * setup replies free of them — the platform does the thing, then says what it
+ * setup replies free of them, the platform does the thing, then says what it
  * did.
  */
 export function voiceSetupStepMentionsUserCommand(text: string): boolean {

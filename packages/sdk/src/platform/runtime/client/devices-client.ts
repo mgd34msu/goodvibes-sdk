@@ -1,26 +1,26 @@
 /**
- * devices-client.ts — the paired-phone surface, as a client.
+ * devices-client.ts, the paired-phone surface, as a client.
  *
  * ── What moved and what did not ────────────────────────────────────────────
  *
- * The device-posture RUNTIME — the grants ledger, the capture store, the
+ * The device-posture RUNTIME, the grants ledger, the capture store, the
  * housekeeping sweeps, the capability service every `device.*` setting governs
- * — was composed in this process and is now the daemon's. It has to be: a phone
+ *, was composed in this process and is now the daemon's. It has to be: a phone
  * pairs with the daemon, the grant it is given must outlive whichever surface
  * happened to approve it, and the sweep that reaps a grant whose phone is
  * gone must run whether or not anyone is at a keyboard.
  *
  * What stays here is the `phone` TOOL. A tool is called by the conversation
  * loop, the loop runs in this process, so the tool is registered in this
- * process's registry — and every capability it exercises goes to the daemon over
+ * process's registry, and every capability it exercises goes to the daemon over
  * the `devices.*` verbs rather than to an in-process service. The tool follows
  * the loop; the runtime follows the daemon.
  *
  * ── The verbs ─────────────────────────────────────────────────────────────
  *
  * `devices.nodes.list`, `devices.grants.list`, `devices.grants.revoke`,
- * `devices.housekeeping.run`, and — the ones that make the tool actually able
- * to DO something — `devices.capability.request`, `devices.artifacts.list` and
+ * `devices.housekeeping.run`, and, the ones that make the tool actually able
+ * to DO something, `devices.capability.request`, `devices.artifacts.list` and
  * `devices.artifacts.read`.
  *
  * Reads degrade to an empty list with the honest reason attached; a revoke, a
@@ -33,7 +33,7 @@
  * It is not a decision made here. The daemon's runtime owns the confirmation
  * prompt, the durable-grant lookup, the `device.*` config gates, the input
  * check, the retention window and the disclosure. This module shapes the call
- * and returns the outcome verbatim — including a refusal, which comes back as
+ * and returns the outcome verbatim, including a refusal, which comes back as
  * `ok: false` with the runtime's own code and detail rather than as a thrown
  * error, because a person declining their camera is an answer.
  */
@@ -43,7 +43,7 @@ import type { DaemonVerbCaller } from './daemon-verbs.js';
 /**
  * One paired device as the daemon describes it.
  *
- * `supported` is the field the verb actually returns — the capabilities this
+ * `supported` is the field the verb actually returns, the capabilities this
  * node offers AND this host understands. Named as the wire names it rather than
  * renamed to something tidier: a rename here is a place the two can disagree,
  * and the disagreement would show up as "no paired phone offers this" for a
@@ -101,7 +101,7 @@ export interface DevicesClient {
   listNodes(): Promise<readonly DeviceNodeSummary[]>;
   /** Live capability grants. Empty (with a logged reason) when the daemon cannot answer. */
   listGrants(): Promise<readonly DeviceGrantSummary[]>;
-  /** Revoke a grant. Rejects when no daemon is reachable — never reports a revoke that did not happen. */
+  /** Revoke a grant. Rejects when no daemon is reachable, never reports a revoke that did not happen. */
   revokeGrant(grantId: string): Promise<void>;
   /** Run the grant/capture reap now. Rejects when no daemon is reachable. */
   runHousekeeping(): Promise<Record<string, unknown>>;
@@ -207,7 +207,7 @@ export function createDevicesClient(verbs: DaemonVerbCaller): DevicesClient {
     readArtifact: async (artifactId) => {
       requireDaemon(`read capture ${artifactId}`);
       // A swept, expired or digest-mismatched capture comes back 404 with the
-      // daemon's own sentence. That IS the failure — there are no bytes — so it
+      // daemon's own sentence. That IS the failure, there are no bytes, so it
       // propagates rather than becoming an empty success.
       return await verbs.invoke<{ artifact: DeviceArtifactSummary; dataBase64: string }>(
         'devices.artifacts.read',

@@ -72,8 +72,8 @@ interface BuiltinPluginRegistrationContext {
   readonly providerRuntimeStatus: (surface: ProviderRuntimeSurface) => ProviderRuntimeStatus | null;
   /**
    * What this node can see of the surface's live path. Supplied by the runtime
-   * rather than read here, because the two things that can answer it — the
-   * Telegram supervisor and the provider connection manager — are the runtime's
+   * rather than read here, because the two things that can answer it, the
+   * Telegram supervisor and the provider connection manager, are the runtime's
    * to hold.
    */
   readonly observeRuntime: (surface: ChannelSurface) => ChannelRuntimeObservation;

@@ -8,7 +8,7 @@
  * Answering "no" to the first silently answered "no" to the second. On a
  * machine configured that way with a LIVE connected host, the session-inputs
  * poll, the conversation-rewind host registration, the approvals update stream
- * and the hosted-conversation handoff all refused — while the session spine,
+ * and the hosted-conversation handoff all refused, while the session spine,
  * the memory spine and the operator tools dialed the same host without trouble,
  * because none of them read the flag.
  *

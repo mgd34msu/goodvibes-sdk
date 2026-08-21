@@ -2,7 +2,7 @@
  * checkin/state-reader.ts
  *
  * Binds a CheckinStateReader to the live runtime through narrow, structural
- * views of sessions and automation runs — narrow enough that a SharedSessionRecord
+ * views of sessions and automation runs, narrow enough that a SharedSessionRecord
  * and an AutomationRun satisfy them directly, and that a test can hand-roll them
  * without the real services.
  */

@@ -1,5 +1,5 @@
 /**
- * Adapter behavioral coverage — Webhook adapter.
+ * Adapter behavioral coverage, Webhook adapter.
  */
 import { describe, expect, test } from 'bun:test';
 import { handleGenericWebhookSurface } from '../packages/sdk/src/platform/adapters/webhook/index.js';

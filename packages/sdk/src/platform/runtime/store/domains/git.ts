@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Git domain state — tracks the current repository status, staged/unstaged
+ * Git domain state, tracks the current repository status, staged/unstaged
  * changes, active branch, and recent commits.
  */
 
@@ -59,7 +59,7 @@ export interface GitBranchInfo {
 }
 
 /**
- * GitDomainState — git repository status and change tracking.
+ * GitDomainState, git repository status and change tracking.
  */
 export interface GitDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 /**
- * cluster-group-wire.test.ts — the envelope, and the no-group state.
+ * cluster-group-wire.test.ts, the envelope, and the no-group state.
  *
  * The envelope is the one shape every node on the network speaks, so its field
  * set is asserted literally: a field quietly added or renamed is a datagram
@@ -67,7 +67,7 @@ describe('the envelope', () => {
       tampered[field] = typeof tampered[field] === 'number' ? (tampered[field] as number) + 1 : 'CHANGED';
       const result = decodeEnvelope(JSON.stringify(tampered), ring);
       expect(result.envelope).toBeNull();
-      // keyGen changes which key is expected, so it fails at a different gate —
+      // keyGen changes which key is expected, so it fails at a different gate,
       // both are refusals, which is the property under test.
       const { rejected } = result;
       expect(rejected).not.toBeNull();
@@ -119,7 +119,7 @@ describe('the envelope', () => {
   });
 
   test('a surface id from the election layer passes through unhashed', () => {
-    // The per-surface election derives its own ids in surface-id.ts — bare hex,
+    // The per-surface election derives its own ids in surface-id.ts, bare hex,
     // no prefix. Re-hashing one here would produce a value the far side cannot
     // route and would break the election's own signature, which covers
     // surfaceId. This pass-through is what makes the two layers agree.

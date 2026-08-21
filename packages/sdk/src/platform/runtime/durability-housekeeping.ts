@@ -1,5 +1,5 @@
 /**
- * durability-housekeeping.ts — the reclaim half of every crash-durability
+ * durability-housekeeping.ts, the reclaim half of every crash-durability
  * artefact a surface product writes to disk.
  *
  * The standing rule this module implements: if something is persisted across
@@ -14,9 +14,9 @@
  *   - transcript journals   `<home>/.goodvibes/<root>/transcript-<id>.journal`
  *                           deleted on snapshot or replay, so a session that
  *                           crashes and is never resumed leaks its journal.
- *   - quarantine files      `<path>.unrecognized` — written so a human can
+ *   - quarantine files      `<path>.unrecognized`, written so a human can
  *                           inspect a corrupt file, never removed afterwards.
- *   - anchor sidecars       `<sessionsDir>/<id>.anchors.json` — outlives the
+ *   - anchor sidecars       `<sessionsDir>/<id>.anchors.json`, outlives the
  *                           session JSONL that owns it.
  *
  * Every reap here is bounded by BOTH an age window and a count cap, decides
@@ -39,7 +39,7 @@ import { checkSessionLiveness, reapStaleLivenessMarkers } from './session-livene
 import type { SessionSurface } from './session-surface.js';
 
 /**
- * How often the sweep repeats after startup: 6 hours. Hours, not minutes — the
+ * How often the sweep repeats after startup: 6 hours. Hours, not minutes, the
  * residue this reclaims accumulates per crashed session, not continuously, and
  * a directory scan is not something a foreground surface should be doing often.
  */
@@ -50,7 +50,7 @@ export interface DurabilityHousekeepingInput {
   readonly surface: SessionSurface;
   /**
    * The session this process is using right now, read at sweep time rather
-   * than captured once — a resume or fork can repoint it between sweeps.
+   * than captured once, a resume or fork can repoint it between sweeps.
    * Returning null means "not known yet", which is safe: the age and liveness
    * rules independently protect an actively written artefact.
    */
@@ -64,7 +64,7 @@ export interface DurabilityHousekeepingOutcome {
   readonly transcriptJournals: number;
   readonly quarantineFiles: number;
   readonly anchorSidecars: number;
-  /** Sum of the four counts above — zero means nothing was reclaimed. */
+  /** Sum of the four counts above, zero means nothing was reclaimed. */
   readonly total: number;
 }
 
@@ -115,7 +115,7 @@ export function runDurabilityHousekeeping(input: DurabilityHousekeepingInput): D
  * timer; calling it more than once is harmless.
  *
  * The timer is `unref()`d, so an undisposed sweeper can never hold the process
- * open — same convention the store-snapshot scheduler and the config-file
+ * open, same convention the store-snapshot scheduler and the config-file
  * watchers in durability-services.ts use.
  */
 export function startDurabilityHousekeeping(
@@ -137,7 +137,7 @@ export function startDurabilityHousekeeping(
 }
 
 /**
- * Disclose what was reclaimed — silent deletion is indistinguishable from data
+ * Disclose what was reclaimed, silent deletion is indistinguishable from data
  * loss. Paths and counts only; nothing about a reclaimed file's contents.
  *
  * A sweep that reclaimed nothing logs nothing: the overwhelmingly common boot

@@ -101,7 +101,7 @@ async function establishPipe(
  *
  * The default ceiling is generous on purpose: it is a hang detector, not a
  * performance assertion. The callers below drive thousands of real ECDH
- * handshakes, so on a loaded host they are simply slower — and a deadline tight
+ * handshakes, so on a loaded host they are simply slower, and a deadline tight
  * enough to catch that reports a cap failure for something that is not one.
  */
 async function waitUntil(predicate: () => boolean, timeoutMs = 30_000): Promise<void> {
@@ -140,7 +140,7 @@ describe('relay registration retained-context caps', () => {
     expect(stats.droppedPipes).toBe(totalPipes - maxPipes);
 
     // Heap-delta ceiling: 3000 pipes' worth of channel contexts must NOT be
-    // retained. Tolerant bound (deterministic across runs) — the leak retained
+    // retained. Tolerant bound (deterministic across runs), the leak retained
     // ~206k contexts, so anything near the cap is orders of magnitude under this.
     const g = (globalThis as { Bun?: { gc?: (force: boolean) => void } }).Bun;
     if (g?.gc) {
@@ -153,7 +153,7 @@ describe('relay registration retained-context caps', () => {
     // comfortably inside bun's default 5s budget on an idle host but not on a
     // busy one. It is also one of the slowest cases in the suite because it
     // allocates those pipes inside a process that has already run hundreds of
-    // test files — 7.3s idle, and it blew even a 60s ceiling in a loaded
+    // test files, 7.3s idle, and it blew even a 60s ceiling in a loaded
     // full-suite run, which is why this one is set so far above its own
     // runtime. A hang detector, not a delay: the test returns the moment the
     // work is done and every assertion above is unchanged.
@@ -184,7 +184,7 @@ describe('relay registration retained-context caps', () => {
     });
     reg.start();
 
-    // Establish one channel per request (fresh counters — no ordering coupling).
+    // Establish one channel per request (fresh counters, no ordering coupling).
     const total = 20;
     const channels: { pipeId: Uint8Array<ArrayBuffer>; channel: RelaySecureChannel }[] = [];
     for (let i = 0; i < total; i++) channels.push(await establishPipe(socket, staticPubRaw, ridBytes));
@@ -214,7 +214,7 @@ describe('relay registration retained-context caps', () => {
     expect(reg.stats().inFlightRequests).toBe(0);
     reg.stop();
     // Twenty real handshakes rather than three thousand, so this one has far
-    // more headroom — but it is the same CPU-bound shape and gets the same
+    // more headroom, but it is the same CPU-bound shape and gets the same
     // hang-detector budget rather than the 5s default.
   }, 120_000);
 });

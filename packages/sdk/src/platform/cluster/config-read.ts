@@ -1,11 +1,11 @@
 /**
- * config-read.ts — read `cluster.*` out of a ConfigManager, from inside the SDK.
+ * config-read.ts, read `cluster.*` out of a ConfigManager, from inside the SDK.
  *
  * Why this exists rather than every caller doing `getCategory('cluster')`:
  * the config schema is assembled from domain modules that each declare their
  * slice of `GoodVibesConfig` with `declare module`. Those augmentations are in
  * scope while the SDK itself compiles, but they do NOT survive into the
- * published type surface — a consumer importing `ConfigManager` from
+ * published type surface, a consumer importing `ConfigManager` from
  * `@pellux/goodvibes-sdk/platform/config` finds that `getCategory('cluster')`
  * does not typecheck, and neither does `getCategory('fleet')` or
  * `getCategory('conversationGate')`. That is a pre-existing gap in how the
@@ -13,7 +13,7 @@
  *
  * Rather than have every consumer cast around it, the read happens HERE, where
  * the augmentation is genuinely in scope, and callers receive resolved
- * `ClusterSettings` — a plain, fully-typed value with no augmentation
+ * `ClusterSettings`, a plain, fully-typed value with no augmentation
  * dependency at all.
  */
 import type { ConfigManager } from '../config/manager.js';

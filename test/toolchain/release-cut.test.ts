@@ -68,6 +68,21 @@ describe('release-cut against a temp git fixture', () => {
     }
   });
 
+  test('names the bad config field before touching the tree', () => {
+    const dir = makeRepo();
+    try {
+      // What a hand-edited toolchain.config.json can hand this tool: the cast in
+      // parseToolchainConfig lets a missing array through as if it were typed.
+      const broken = { ...config, commitPaths: undefined } as unknown as ReleaseCutConfig;
+
+      expect(() => runReleaseCut({ cwd: dir, bump: 'patch', config: broken })).toThrow(/commitPaths must be an array of strings/);
+      expect(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }).trim()).toBe('');
+      expect(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version).toBe('1.0.0');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test('refuses a dirty tree', () => {
     const dir = makeRepo();
     try {
@@ -87,5 +102,103 @@ describe('release-cut against a temp git fixture', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  /**
+   * A cut that dies between `git commit` and `git tag` leaves a CLEAN tree on
+   * the release branch whose package.json is already bumped. Re-running the
+   * tool is the natural recovery action, and it used to read that bumped
+   * version as `current` and cut a SECOND release on top of it, stranding the
+   * first commit in history with no tag.
+   */
+  describe('crash-retry between commit and tag', () => {
+    function cutInterrupted(dir: string): string {
+      // Everything runReleaseCut does up to and including the commit.
+      const git = (...args: string[]): void => { execFileSync('git', args, { cwd: dir, stdio: 'ignore' }); };
+      writeFileSync(join(dir, 'package.json'), `${JSON.stringify({ name: 'x', version: '1.1.0' }, null, 2)}\n`);
+      writeFileSync(join(dir, 'CHANGELOG.md'), '# Changelog\n\n## [1.1.0] - 2026-07-16\n- new feature\n\n## [1.0.0] - 2026-07-01\n- initial\n');
+      git('add', 'package.json', 'CHANGELOG.md');
+      git('commit', '-m', 'chore: release 1.1.0');
+      return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim();
+    }
+
+    test('a re-run finishes the interrupted cut instead of bumping again', () => {
+      const dir = makeRepo();
+      try {
+        const head = cutInterrupted(dir);
+
+        const result = runReleaseCut({ cwd: dir, bump: 'patch', config, date: '2026-07-17' });
+
+        expect(result.version).toBe('1.1.0');
+        expect(result.tag).toBe('v1.1.0');
+        expect(result.resumed).toBe(true);
+        expect(result.committed).toBe(true);
+        // No second bump, no second changelog section, no second commit.
+        expect(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version).toBe('1.1.0');
+        expect(readFileSync(join(dir, 'CHANGELOG.md'), 'utf8')).not.toContain('1.1.1');
+        expect(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim()).toBe(head);
+        // The tag the crash never got to write now exists, on the release commit.
+        expect(execFileSync('git', ['rev-list', '-n', '1', 'v1.1.0'], { cwd: dir, encoding: 'utf8' }).trim()).toBe(head);
+        expect(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }).trim()).toBe('');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    test('a third run over a completed cut is a no-op', () => {
+      const dir = makeRepo();
+      try {
+        const head = cutInterrupted(dir);
+        runReleaseCut({ cwd: dir, bump: 'patch', config });
+
+        const again = runReleaseCut({ cwd: dir, bump: 'patch', config });
+
+        expect(again).toEqual({ version: '1.1.0', tag: 'v1.1.0', committed: true, resumed: true });
+        expect(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: dir, encoding: 'utf8' }).trim()).toBe(head);
+        expect(execFileSync('git', ['tag', '-l'], { cwd: dir, encoding: 'utf8' }).trim()).toBe('v1.1.0');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    test('dry-run reports the resume without creating the tag', () => {
+      const dir = makeRepo();
+      try {
+        cutInterrupted(dir);
+
+        const result = runReleaseCut({ cwd: dir, bump: 'patch', config, dryRun: true });
+
+        expect(result).toEqual({ version: '1.1.0', tag: 'v1.1.0', committed: false, resumed: true });
+        expect(execFileSync('git', ['tag', '-l'], { cwd: dir, encoding: 'utf8' }).trim()).toBe('');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    test('refuses when the release tag name is taken by a different commit', () => {
+      const dir = makeRepo();
+      try {
+        execFileSync('git', ['tag', '-a', 'v1.1.0', '-m', 'stale'], { cwd: dir, stdio: 'ignore' });
+        cutInterrupted(dir);
+
+        expect(() => runReleaseCut({ cwd: dir, bump: 'patch', config })).toThrow(/already points at a different commit/);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    test('refuses before touching any file when the next tag already exists', () => {
+      const dir = makeRepo();
+      try {
+        execFileSync('git', ['tag', '-a', 'v1.0.1', '-m', 'stale'], { cwd: dir, stdio: 'ignore' });
+
+        expect(() => runReleaseCut({ cwd: dir, bump: 'patch', config })).toThrow(/Tag v1\.0\.1 already exists/);
+        // The refusal happens before the bump, so the tree is still clean.
+        expect(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }).trim()).toBe('');
+        expect(JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')).version).toBe('1.0.0');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
   });
 });

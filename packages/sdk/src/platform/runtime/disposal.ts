@@ -52,8 +52,8 @@ export function createDisposalScope(scopeName: string): DisposalScope {
     registry: {
       add(label, dispose) {
         // Registering against an already-disposed scope would silently create a
-        // resource nothing will ever stop — the exact failure this module
-        // exists to prevent — so stop it immediately instead.
+        // resource nothing will ever stop, the exact failure this module
+        // exists to prevent, so stop it immediately instead.
         if (disposed) {
           dispose();
           return;
@@ -85,7 +85,7 @@ export function createDisposalScope(scopeName: string): DisposalScope {
  * Every poller owner a composed runtime graph holds.
  *
  * Deliberately all-required and structurally typed. A poller added to the graph
- * later has to be named here to compile, which is what keeps this list honest —
+ * later has to be named here to compile, which is what keeps this list honest,
  * the previous arrangement (each owner disposed at its own call site, or not)
  * is how seven of these came to be started and never stopped. Structural types
  * rather than the concrete classes so the consumer forks, which compose the
@@ -103,7 +103,7 @@ export interface RuntimePollerOwners {
   readonly knowledgeService: { dispose(): void };
   readonly agentKnowledgeService: { dispose(): void };
   /**
-   * Cancels the Home Graph post-sync self-improvement pump — a rescheduling
+   * Cancels the Home Graph post-sync self-improvement pump, a rescheduling
    * loop with a 5s start delay and a 5-15s sleep between as many as ten rounds.
    * It had a dispose() from the day it was written and simply was not named
    * here, which is the whole reason this list is all-required.
@@ -160,7 +160,7 @@ export function registerRuntimePollers(registry: DisposalRegistry, owners: Runti
   // Registered LAST so it runs FIRST (the scope unwinds in reverse). A running
   // agent keeps making tool calls into the fleet registry, orchestration engine
   // and process registry, so it has to be told to stop BEFORE those are taken
-  // out from under it — otherwise the window between is spent driving half-torn-
+  // out from under it, otherwise the window between is spent driving half-torn-
   // down subsystems.
   registry.add('hosted agent runs', () => {
     const cancelled = owners.cancelHostedAgentRuns();

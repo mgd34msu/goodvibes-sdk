@@ -2,7 +2,7 @@
  * Machine-readable association between each capability in the internal
  * registry and the CONFIG_SCHEMA keys (and their top-level categories) that
  * tune it. feature-settings.ts joins this map with the enablement bindings to
- * build FEATURE_SETTINGS — the per-feature metadata surfaces render as ONE
+ * build FEATURE_SETTINGS, the per-feature metadata surfaces render as ONE
  * unit (enablement + tuning keys together).
  *
  * Every entry's `configKeys` is typed `ConfigKey[]`, so a key that is not a real

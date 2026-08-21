@@ -1,5 +1,5 @@
 /**
- * store.ts — the profile in memory, and the only path to a write.
+ * store.ts, the profile in memory, and the only path to a write.
  *
  * ## Speed
  *
@@ -13,7 +13,7 @@
  *
  * `writer.ts` knows how to edit lines and nothing about trust. Every mutation
  * offered to the rest of the platform goes through this class, which runs the
- * §7 gate first — `evaluateProfileWrite` for `set`/`append`,
+ * §7 gate first, `evaluateProfileWrite` for `set`/`append`,
  * `evaluateProfileRemoval` for `forget`/`undo`. A gate that can be walked around
  * is not a gate, so the module barrel deliberately does not re-export the raw
  * writer functions.
@@ -23,7 +23,7 @@
  * The model is swapped atomically: the new projection is built completely and
  * only then assigned, so a reader sees the old one or the new one and never a
  * half-built one. A reload that FAILS discards the previous projection and
- * reports unavailable — continuing to serve stale values from a file that can no
+ * reports unavailable, continuing to serve stale values from a file that can no
  * longer be read is exactly the silent-success failure this design exists to
  * avoid.
  */
@@ -125,14 +125,14 @@ export class OwnerProfileStore {
    * Read, project, swap.
    *
    * `profile.enabled = false` means the file is not opened at all and every verb
-   * answers "profile is disabled" — a stated state, not an empty profile.
+   * answers "profile is disabled", a stated state, not an empty profile.
    */
   async load(): Promise<ProfileLoadState> {
     return this.adoptRead(await readProfile(this.filePath), this.enabled);
   }
 
   /**
-   * The same load, synchronously — for the ONE caller that cannot await.
+   * The same load, synchronously, for the ONE caller that cannot await.
    *
    * A daemon composition root is synchronous. Loading asynchronously there left
    * a window in which every verb answered "your profile has not been loaded
@@ -222,11 +222,11 @@ export class OwnerProfileStore {
   /**
    * Pick up a hand edit without a restart.
    *
-   * The watch is on the CONTAINING DIRECTORY, filtered by filename — not on the
+   * The watch is on the CONTAINING DIRECTORY, filtered by filename, not on the
    * file. The atomic write in `persistProfileText` replaces the file's inode, and
    * an `fs.watch` handle bound to a file is bound to that inode: after the first
    * write it would be watching an unlinked inode and would never fire again. The
-   * symptom is the kind that survives review — hand edits work perfectly until
+   * symptom is the kind that survives review, hand edits work perfectly until
    * the first autonomous write, then are ignored forever with no way to tell why.
    *
    * Where `fs.watch` throws (some filesystems, some containers) a throttled
@@ -315,7 +315,7 @@ export class OwnerProfileStore {
   }
 
   // -------------------------------------------------------------------------
-  // Reads — pure in-memory, no syscalls
+  // Reads, pure in-memory, no syscalls
   // -------------------------------------------------------------------------
 
   /** One mechanical field, or `undefined` when unset, unavailable or disabled. */
@@ -324,7 +324,7 @@ export class OwnerProfileStore {
   }
 
   /**
-   * One section by heading — OPEN TIER ONLY.
+   * One section by heading, OPEN TIER ONLY.
    *
    * A closed-tier section returns `undefined`, `People` included. This is the
    * STRUCTURE behind {@link person}'s guarantee rather than a comment asserting
@@ -354,7 +354,7 @@ export class OwnerProfileStore {
    *
    * `person()` goes through this rather than through the public `section()`, so
    * the tier filter is not something a caller can sidestep by reaching for
-   * whichever method happens to skip it — and so tightening the public method
+   * whichever method happens to skip it, and so tightening the public method
    * cannot silently break the private one.
    */
   private sectionByHeading(name: string): ProfileSection | undefined {
@@ -371,7 +371,7 @@ export class OwnerProfileStore {
    * person in this turn's instruction, and the structural guarantee behind that
    * rule is that the only lookup available takes a name.
    *
-   * An empty or whitespace-only name returns nothing rather than everything —
+   * An empty or whitespace-only name returns nothing rather than everything,
    * "he named nobody" must not degrade into "give me all of them", which is the
    * shape this kind of guard usually fails in.
    *
@@ -401,7 +401,7 @@ export class OwnerProfileStore {
    *
    * ## Why this is a named method rather than `section('Important dates')`
    *
-   * `section()` refuses the closed tier, and this section is closed — it holds
+   * `section()` refuses the closed tier, and this section is closed, it holds
    * family birth dates, which are the single most obvious thing that must never
    * be bulk-injected into a prompt or a message channel. The daemon still has to
    * read the whole section, because the approach sweep's entire job is "which of
@@ -411,7 +411,7 @@ export class OwnerProfileStore {
    * rather than a widened `section()`. Two properties make that safe rather than
    * merely stated:
    *
-   *  - The only consumer is the sweep, and the sweep's OUTPUT — the nudge —
+   *  - The only consumer is the sweep, and the sweep's OUTPUT, the nudge,
    *    carries the occasion and the person and never the date. The date reaches
    *    a message channel through no path at all.
    *  - There is no generic "give me a closed section" call. Widening this to one
@@ -445,20 +445,20 @@ export class OwnerProfileStore {
   }
 
   /**
-   * The whole document, by section — the ONLY method that returns the full
+   * The whole document, by section, the ONLY method that returns the full
    * `People` section.
    *
    * The asymmetry with {@link section} is deliberate, not an inconsistency.
    * `read()` answers "what do you know about me?": it is him asking about
    * himself, and an answer that silently omitted the section holding facts
-   * about the people around him would be a dishonest disclosure — the one place
+   * about the people around him would be a dishonest disclosure, the one place
    * where withholding is the wrong behaviour. `section()` serves a consumer
    * assembling something, where bulk access to that same content is exactly the
    * hole §10 closes.
    *
    * The rule that keeps both true: `read()` is reachable only from the
    * `profile.read` control-plane verb, and never from a composition path. Any
-   * other caller reaching for it is the enumerate-all hole by another route —
+   * other caller reaching for it is the enumerate-all hole by another route,
    * check that before wiring it into anything new.
    */
   read(): ProfileDocumentView {
@@ -503,7 +503,7 @@ export class OwnerProfileStore {
   }
 
   // -------------------------------------------------------------------------
-  // Writes — gated, then surgical, then atomic
+  // Writes, gated, then surgical, then atomic
   // -------------------------------------------------------------------------
 
   /** Write or supersede a mechanical field. */
@@ -622,8 +622,8 @@ export class OwnerProfileStore {
    *
    * §3 says the daemon is the single writer, and that is what makes a
    * rename-based atomic write sufficient with no lock. It is not true. The
-   * OWNER is a second writer by design — §4.5 exists precisely so he can open
-   * the file and change it — and a write computed from a projection loaded
+   * OWNER is a second writer by design, §4.5 exists precisely so he can open
+   * the file and change it, and a write computed from a projection loaded
    * minutes ago joins the whole document, so every line he changed in between is
    * overwritten by a stale copy. It is silent: he gets a success receipt and his
    * edits are simply gone, which is the worst failure this design can have in a
@@ -631,7 +631,7 @@ export class OwnerProfileStore {
    *
    * ## The rule
    *
-   * Detect, reload, REPLAY — do not clobber, and do not merely refuse. The
+   * Detect, reload, REPLAY, do not clobber, and do not merely refuse. The
    * file's stat is compared against what this store last saw; if it moved, the
    * document is re-read, re-projected, and the operation is re-run against the
    * fresh projection so his edit and this write both survive. The stat is
@@ -661,7 +661,7 @@ export class OwnerProfileStore {
       const onDisk = statOf(this.filePath);
       if (this.matchesLastSeen(onDisk)) break;
 
-      // Someone else — him — wrote to this file since the projection was built.
+      // Someone else, him, wrote to this file since the projection was built.
       const reloaded = await this.load();
       if (reloaded.kind !== 'loaded' || this.projection === null) {
         return refusal(
@@ -676,7 +676,7 @@ export class OwnerProfileStore {
         // that position. Refusing is the only honest answer.
         return refusal(
           'Your profile changed while this was being written, and the line to remove was identified by '
-          + 'position, so it may no longer be the same line. Nothing was removed — look at the profile and ask again.',
+          + 'position, so it may no longer be the same line. Nothing was removed, look at the profile and ask again.',
         );
       }
       edit = operate(this.projection);

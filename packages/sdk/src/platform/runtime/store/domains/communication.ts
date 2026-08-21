@@ -1,5 +1,5 @@
 /**
- * Communication domain state — structured agent-to-agent and operator-to-agent messaging.
+ * Communication domain state, structured agent-to-agent and operator-to-agent messaging.
  */
 
 import type { CommunicationKind, CommunicationScope } from '../../../../events/communication.js';

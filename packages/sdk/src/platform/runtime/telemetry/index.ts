@@ -1,5 +1,5 @@
 /**
- * Runtime telemetry module — OTel-compatible tracing and metrics.
+ * Runtime telemetry module, OTel-compatible tracing and metrics.
  *
  * Provides a lightweight telemetry provider factory that wires together
  * a RuntimeTracer and RuntimeMeter with configurable exporters.
@@ -161,7 +161,7 @@ export interface TelemetryProviderOptions {
  * caller named none.
  *
  * The mode's description says spans go "to the configured collector", and there
- * is no goodvibes config key naming one — so this reads the OpenTelemetry
+ * is no goodvibes config key naming one, so this reads the OpenTelemetry
  * standard environment variables every collector deployment already sets, rather
  * than inventing a second place to say the same thing. The traces-specific
  * variable wins over the general one, which is the order the OTel specification
@@ -184,7 +184,7 @@ function otlpFromEnvironment(): OtlpConfig | undefined {
 }
 
 /**
- * Create a telemetry provider — a paired RuntimeTracer and RuntimeMeter.
+ * Create a telemetry provider, a paired RuntimeTracer and RuntimeMeter.
  *
  * When no config is supplied, a no-op provider is returned:
  * - Tracer is disabled (all spans are no-ops).
@@ -204,7 +204,7 @@ export function createTelemetryProvider(config?: TelemetryConfig, options: Telem
   const otlp = remoteExportEnabled ? options.otlp ?? otlpFromEnvironment() : undefined;
   if (remoteExportEnabled && otlp === undefined) {
     logger.warn(
-      '[telemetry] telemetry.otelMode is remote-export with no OTLP endpoint — spans are recorded in-process only. '
+      '[telemetry] telemetry.otelMode is remote-export with no OTLP endpoint, spans are recorded in-process only. '
       + 'Set OTEL_EXPORTER_OTLP_TRACES_ENDPOINT (or OTEL_EXPORTER_OTLP_ENDPOINT) to export them.',
     );
   }

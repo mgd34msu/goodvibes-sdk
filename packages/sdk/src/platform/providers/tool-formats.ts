@@ -83,7 +83,7 @@ export function toOpenAIMessages(
   for (const msg of messages) {
     if (msg.role === 'user') {
       if (Array.isArray(msg.content)) {
-        // ContentPart[] — convert to OpenAI multimodal parts
+        // ContentPart[], convert to OpenAI multimodal parts
         const parts: OpenAIContentPart[] = msg.content.map((part: ContentPart) => {
           if (part.type === 'text') return { type: 'text', text: part.text };
           return { type: 'image_url', image_url: { url: `data:${part.mediaType};base64,${part.data}` } };
@@ -181,7 +181,7 @@ export function toAnthropicMessages(messages: ProviderMessage[]): AnthropicMessa
     if (msg.role === 'user') {
       flushToolResults();
       if (Array.isArray(msg.content)) {
-        // ContentPart[] — convert to Anthropic content blocks
+        // ContentPart[], convert to Anthropic content blocks
         const blocks: AnthropicContentBlock[] = msg.content.map((part: ContentPart) => {
           if (part.type === 'text') return { type: 'text' as const, text: part.text };
           return {
@@ -311,7 +311,7 @@ export function toGeminiContents(
     if (msg.role === 'user') {
       flushFunctionResponses();
       if (Array.isArray(msg.content)) {
-        // ContentPart[] — convert to Gemini parts
+        // ContentPart[], convert to Gemini parts
         const parts: GeminiPart[] = msg.content.map((part: ContentPart) => {
           if (part.type === 'text') return { text: part.text };
           return { inlineData: { mimeType: part.mediaType, data: part.data } };
@@ -375,7 +375,7 @@ export function extractTextToolCalls(content: string): {
   // Match both delimiter variants using optional underscores.
   // The `.*?` lazy match with /s is safe here: backtracking is bounded by
   // the end delimiter, which appears within kilobytes of the argument-begin
-  // delimiter — the span of a single tool call's JSON args.
+  // delimiter, the span of a single tool call's JSON args.
   // kimi is the known model that emits these delimiter formats.
   const pattern =
     /<\|tool_?call_?begin\|>functions\.([^:]+):\d+<\|tool_?call_?argument_?begin\|>(.*?)<\|tool_?call_?end\|>/gs;
@@ -429,7 +429,7 @@ export function extractTextToolCalls(content: string): {
 
 /**
  * Strip the `anthropic:` or `anthropic/` prefix from an Anthropic model identifier.
- * Single canonical location — imported by anthropic.ts and anthropic-sdk-provider.ts.
+ * Single canonical location, imported by anthropic.ts and anthropic-sdk-provider.ts.
  */
 export function normalizeAnthropicModel(model: string): string {
   if (model.startsWith('anthropic:')) return model.slice('anthropic:'.length);

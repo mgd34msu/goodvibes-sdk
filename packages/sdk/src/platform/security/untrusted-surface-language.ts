@@ -1,12 +1,12 @@
 /**
- * untrusted-surface-language.ts — saying what a thing is, in the noun it has.
+ * untrusted-surface-language.ts, saying what a thing is, in the noun it has.
  *
  * ── Why this is not cosmetic ──────────────────────────────────────────────
  *
  * The refusal the owner met said his Gmail was controlled by "anyone able to
  * write to those pages". A mailbox is not a page and nobody writes to it; they
  * send to it. Reading that sentence, the honest conclusion is that the boundary
- * does not know what it just looked at — and a boundary that visibly does not
+ * does not know what it just looked at, and a boundary that visibly does not
  * understand its own evidence is one the reader stops believing, which is the
  * failure the taint module's header warns about in as many words.
  *
@@ -19,9 +19,9 @@
  *
  * Two things, per surface:
  *
- *  - what the thing IS, with its origin — "the web page at https://x.example",
+ *  - what the thing IS, with its origin, "the web page at https://x.example",
  *    "a message in your mailbox from email:x.example (claimed)";
- *  - who can put text in it — publishers of a site, anyone who knows an
+ *  - who can put text in it, publishers of a site, anyone who knows an
  *    address, anyone in a channel, whoever produced a document.
  *
  * The second is the load-bearing half. It is the reason the content carries no
@@ -68,7 +68,7 @@ export function describeUntrustedSource(exposure: UntrustedExposure): string {
   }
 }
 
-/** Who is able to put text into that surface — the reason it carries no authority. */
+/** Who is able to put text into that surface, the reason it carries no authority. */
 export function describeWhoControls(surface: UntrustedSurface): string {
   switch (surface) {
     case 'web-page':
@@ -103,7 +103,7 @@ export function describeExposures(exposures: readonly UntrustedExposure[]): stri
   const clauses: string[] = [];
   for (const [surface, origins] of bySurface) {
     const listed = origins.map((origin) => describeUntrustedSource({ surface, origin }));
-    clauses.push(`${joinList(listed)} — written by ${describeWhoControls(surface)}`);
+    clauses.push(`${joinList(listed)}, written by ${describeWhoControls(surface)}`);
   }
   return joinList(clauses);
 }

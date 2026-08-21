@@ -1,5 +1,5 @@
 /**
- * Conversation-first CONTINUATION gate — the follow-up half of the spawn gate.
+ * Conversation-first CONTINUATION gate, the follow-up half of the spawn gate.
  *
  * `surface-conversation-gate.ts` guards the first spawn of an inbound channel
  * message. It is not the only way an agent starts: a shared session also has a
@@ -17,7 +17,7 @@
  * THE RULE, in order:
  *
  * 1. An explicit authorization marker on the input opens a chain. The marker is
- *    written by whatever already confirmed the work — an agreed work proposal,
+ *    written by whatever already confirmed the work, an agreed work proposal,
  *    a schedule, a trigger, an on-exit chain.
  * 2. A follow-up typed on a LOCAL surface (the terminal UI the operator is
  *    sitting in front of) opens a chain. That is the surface's whole point, and
@@ -99,7 +99,7 @@ export function decideContinuationEscalation(
     ? readConversationGateConfig(options.configReader)
     : CONVERSATION_GATE_DEFAULTS;
   // `isGatedSurface` is the same predicate the ingress gate uses, so the two
-  // halves cannot disagree about what counts as a local surface — including
+  // halves cannot disagree about what counts as a local surface, including
   // its deliberate choice to gate an UNKNOWN surface rather than wave it
   // through.
   return isGatedSurface(config, input?.surfaceKind)

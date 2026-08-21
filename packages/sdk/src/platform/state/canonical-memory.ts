@@ -1,5 +1,5 @@
 /**
- * canonical-memory.ts — the ONE cross-surface memory identity (see CHANGELOG 1.0.0).
+ * canonical-memory.ts, the ONE cross-surface memory identity (see CHANGELOG 1.0.0).
  *
  * BACKGROUND. The MemoryStore engine (memory-store.ts) is a good
  * single engine, but it is instantiated as disjoint SQLite files per surface:
@@ -13,7 +13,7 @@
  * backed by sql.js: every open loads the whole database into memory and every
  * save() rewrites the entire file via writeFileSync. There is no row locking and
  * no WAL, so two live processes writing the SAME file would clobber each other on
- * save — a whole-file lost-update that would DELETE memory, the exact honesty
+ * save, a whole-file lost-update that would DELETE memory, the exact honesty
  * violation this module must not introduce. Therefore:
  *
  *   TARGET  (end-state): the daemon owns the single canonical store and surfaces
@@ -26,11 +26,11 @@
  *           surface names the same store identity, plus a no-loss FOLD/RECONCILE
  *           primitive built on the existing exportBundle/importBundle seam
  *           (memory-sync.ts prior art). Access is sequential/owned, never a naive
- *           concurrent shared-file write — folding is an id-keyed union that never
+ *           concurrent shared-file write, folding is an id-keyed union that never
  *           overwrites or drops an existing record, so it is safe to run at boot
  *           and idempotent on re-run.
  *
- * This module never deletes a source store — like the legacy session fold
+ * This module never deletes a source store, like the legacy session fold
  * (session-store-importer.ts), deletion is the GC's job, not migration's. Every
  * fold returns a report so a caller can surface exactly what moved and what was
  * left in place; nothing is ever silently dropped.
@@ -65,7 +65,7 @@ export interface MemoryFoldSourceReport {
   readonly importedRecords: number;
   /**
    * Records already present in the canonical store (same id) and therefore left
-   * untouched. NOT dropped — the existing canonical record is authoritative and
+   * untouched. NOT dropped, the existing canonical record is authoritative and
    * the source copy is a duplicate. Non-zero here on a re-run proves idempotence.
    */
   readonly skippedRecords: number;
@@ -95,7 +95,7 @@ export interface FoldMemoryStoresOptions {
  * Fold every legacy/per-surface store into the canonical store via the bundle
  * seam. Id-keyed union: an id already in the canonical store is left as-is
  * (counted as skipped), a new id is imported. Never overwrites, never deletes a
- * source, never aborts on one bad source. Idempotent — re-running folds nothing
+ * source, never aborts on one bad source. Idempotent, re-running folds nothing
  * new (all ids already present). Returns a full report.
  *
  * This is the migration path (fold the old per-surface stores in at boot) AND
@@ -190,7 +190,7 @@ export async function foldMemoryStores(
 /** Render a human-readable summary of a fold report (for surfacing at boot). */
 export function formatMemoryFoldReport(report: MemoryFoldReport): string {
   const lines: string[] = [
-    'Memory unification — fold into canonical store',
+    'Memory unification, fold into canonical store',
     `  canonical ${report.canonicalPath}`,
     `  imported ${report.totalImported}  already-present ${report.totalSkipped}  links ${report.totalLinks}`,
   ];
@@ -198,7 +198,7 @@ export function formatMemoryFoldReport(report: MemoryFoldReport): string {
     if (!source.existed) {
       lines.push(`  - ${source.label}: no store on disk (nothing to fold)`);
     } else if (source.error) {
-      lines.push(`  - ${source.label}: SKIPPED — ${source.error}`);
+      lines.push(`  - ${source.label}: SKIPPED, ${source.error}`);
     } else {
       lines.push(`  - ${source.label}: +${source.importedRecords} imported, ${source.skippedRecords} already present, +${source.importedLinks} links`);
     }

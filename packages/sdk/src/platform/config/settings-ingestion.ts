@@ -1,10 +1,10 @@
 /**
- * settings-ingestion.ts — what a reader does with a setting it cannot ingest.
+ * settings-ingestion.ts, what a reader does with a setting it cannot ingest.
  *
  * ── The rule this file exists to state ────────────────────────────────────
  *
  * A daemon that cannot ingest a setting must say so. Not "log it somewhere",
- * not "fall back quietly" — say the FILE, the KEY, and the REASON, on stderr
+ * not "fall back quietly", say the FILE, the KEY, and the REASON, on stderr
  * (where a service journal captures it) and in the activity log (where whoever
  * finds the host later looks), and only then decide whether to carry on.
  *
@@ -23,8 +23,8 @@
  * ── Skip or refuse: the rule, per key class ───────────────────────────────
  *
  * The platform's own doctrine for persisted state is validate-by-content and
- * disclose. So the default is to QUARANTINE the single unreadable key — drop
- * it, fall back to the tier below it, say loudly what was dropped and why — and
+ * disclose. So the default is to QUARANTINE the single unreadable key, drop
+ * it, fall back to the tier below it, say loudly what was dropped and why, and
  * keep serving everything else. A daemon that will not start helps nobody; a
  * daemon running one setting short, loudly, is recoverable.
  *
@@ -32,7 +32,7 @@
  * worse than not running: a key whose fallback default permits more than the
  * value that was stored. If an operator wrote a permission gate and we cannot
  * read it, resolving to the shipped default can open something they closed. For
- * those keys — {@link SAFETY_GATE_CONFIG_PREFIXES} — the reader refuses, loudly
+ * those keys, {@link SAFETY_GATE_CONFIG_PREFIXES}, the reader refuses, loudly
  * and with the same three facts.
  *
  * A whole file that does not parse is also a refusal, for the same reason: an
@@ -81,7 +81,7 @@ export interface SettingsIngestionNotice {
 export class SettingsIngestionRefusal extends Error {
   readonly notice: SettingsIngestionNotice;
   constructor(notice: SettingsIngestionNotice) {
-    super(`${notice.file}: ${notice.key} — ${notice.reason}. ${notice.remedy}`);
+    super(`${notice.file}: ${notice.key}, ${notice.reason}. ${notice.remedy}`);
     this.name = 'SettingsIngestionRefusal';
     this.notice = notice;
   }
@@ -89,7 +89,7 @@ export class SettingsIngestionRefusal extends Error {
 
 /**
  * The key classes where a fallback to the shipped default can permit more than
- * the operator's stored value did — so an unreadable value is refused rather
+ * the operator's stored value did, so an unreadable value is refused rather
  * than skipped.
  *
  * A declared list rather than a name pattern, for the reason
@@ -108,7 +108,7 @@ export const SAFETY_GATE_CONFIG_PREFIXES: readonly string[] = [
   // one that actually enforces a policy bundle.
   'permissions.engine',
   // The policy domain in full. Every key in it exists to make a restriction
-  // take effect — the registry switch, the signed-bundle requirement, and the
+  // take effect, the registry switch, the signed-bundle requirement, and the
   // source and path the bundle loads from. Every shipped default leaves the
   // restriction OFF, so a fallback silently stops enforcing whatever the
   // operator turned on.
@@ -156,7 +156,7 @@ function describeShape(value: unknown): string {
 
 /**
  * How to name the offending value. A credential-bearing key is described by
- * SHAPE only — a wrong-shaped password is still a password someone pasted.
+ * SHAPE only, a wrong-shaped password is still a password someone pasted.
  */
 function describeOffendingValue(key: string, value: unknown): string {
   if (isSecretBearingConfigKey(key)) return describeShape(value);
@@ -236,7 +236,7 @@ let knownNameCache: ReadonlyMap<string, ReadonlySet<string>> | null = null;
  * The known setting this unknown name looks like a newer FORM of, or null.
  *
  * The observed case is `clientSecretRef` written where a reader knows
- * `clientSecret` — a migration adding a suffix to a key an older reader already
+ * `clientSecret`, a migration adding a suffix to a key an older reader already
  * has. Prefix in either direction catches that, and catches nothing else: a
  * genuinely unrelated key in the same section shares no prefix with anything
  * and stays unremarked, because an app-layer section is allowed to carry keys
@@ -272,7 +272,7 @@ function notice(
     key,
     reason,
     remedy: refused
-      ? `${fix}; this key decides what may run, so falling back to the shipped default could permit more than you stored — nothing starts until it is readable`
+      ? `${fix}; this key decides what may run, so falling back to the shipped default could permit more than you stored, nothing starts until it is readable`
       : `${fix}; until then ${key} resolves to its default`,
     action: refused ? 'refused' : 'skipped',
   };
@@ -331,7 +331,7 @@ function screenSchemaValues(
  * Credential keys holding something SHAPED like a `goodvibes://secrets/…`
  * reference that does not parse as one.
  *
- * The value is never named — see secret-ref-refusal.ts, where refusing to hand
+ * The value is never named, see secret-ref-refusal.ts, where refusing to hand
  * a mistyped reference to a transport as the credential was the whole point.
  * The shape is enough to fix a typo.
  */
@@ -348,7 +348,7 @@ function screenSecretReferences(
       file,
       key,
       `holds a secret reference that cannot be resolved: ${describeMalformedSecretRef(hit.value)}`,
-      'fix the reference — nothing was sent and the credential was not used',
+      'fix the reference, nothing was sent and the credential was not used',
       // A credential is never in the refusing class: one connector down is a
       // degraded surface, not an open door, and it must not crash-loop.
       false,
@@ -361,7 +361,7 @@ function screenSecretReferences(
  * Keys this reader does not know that look like a newer form of one it does.
  *
  * These are NOT removed. An unknown key is data the reader cannot classify, and
- * the file may be shared with a component that understands it perfectly well —
+ * the file may be shared with a component that understands it perfectly well,
  * deleting it would destroy a newer component's setting. It is announced,
  * because "ignored in silence" is how a migrated setting became a daemon that
  * looked configured and behaved as if it were not.
@@ -375,7 +375,7 @@ function screenUnknownForms(
   const walk = (node: Record<string, unknown>, prefix: string): void => {
     for (const [name, value] of Object.entries(node)) {
       const path = prefix ? `${prefix}.${name}` : name;
-      // The unknown key may itself hold an object — the observed shape was
+      // The unknown key may itself hold an object, the observed shape was
       // `clientSecretRef` growing into a `{ ref, … }` record under a newer
       // component. Checking the path BEFORE descending is what catches that;
       // descending first only ever finds the leaves inside it.
@@ -407,7 +407,7 @@ export interface SettingsIngestionResult {
 
 /**
  * Screen one parsed settings file: remove what cannot be ingested and report
- * every removal. Does not throw — {@link ingestSettingsFile} decides that.
+ * every removal. Does not throw, {@link ingestSettingsFile} decides that.
  */
 export function screenSettingsForIngestion(
   raw: Record<string, unknown>,
@@ -430,7 +430,7 @@ export function screenSettingsForIngestion(
  * because a host's fatal handler is free to write nowhere and a host is free to
  * replace `process.stderr` (goodvibes-tui does, to keep a rendered screen
  * clean). Disclosing the refusal HERE, at the point of refusal and straight to
- * the descriptor, means every host speaks — including one whose own fatal tail
+ * the descriptor, means every host speaks, including one whose own fatal tail
  * is silent. See daemon/fatal-boot-report.ts.
  *
  * The activity log follows, and is best-effort: on a refusal the process is
@@ -442,7 +442,7 @@ export function announceIngestionNotice(
   write: (line: string) => void = writeFatalLine,
 ): void {
   const verb = entry.action === 'refused' ? 'REFUSED' : 'skipped';
-  const line = `goodvibes settings: ${verb} ${entry.key} in ${entry.file} — ${entry.reason}. ${entry.remedy}`;
+  const line = `goodvibes settings: ${verb} ${entry.key} in ${entry.file}, ${entry.reason}. ${entry.remedy}`;
   try {
     write(`${line}\n`);
   } catch {
@@ -456,7 +456,7 @@ export function announceIngestionNotice(
 /** A one-line, owner-facing summary of one notice, for a startup receipt. */
 export function describeIngestionNotice(entry: SettingsIngestionNotice): string {
   const verb = entry.action === 'refused' ? 'refused to start over' : 'ignored';
-  return `Settings: ${verb} ${entry.key} in ${entry.file} — ${entry.reason}. ${entry.remedy}`;
+  return `Settings: ${verb} ${entry.key} in ${entry.file}, ${entry.reason}. ${entry.remedy}`;
 }
 
 /** Options for {@link ingestSettingsFile}; all seams are injectable for tests. */
@@ -473,7 +473,7 @@ export interface IngestSettingsOptions {
    *
    * They have to run first or the screen lies. `sandbox.judgmentAutoApprove` is
    * a retired key the platform's own migration folds into `sandbox.judgment` on
-   * every load — screening before that runs reports it as an unknown form of a
+   * every load, screening before that runs reports it as an unknown form of a
    * key the reader knows, which is true of the raw file and false of the config
    * the reader actually builds. A key the platform is about to rewrite itself is
    * not a key the platform does not understand.
@@ -486,7 +486,7 @@ export interface IngestSettingsOptions {
  *
  * Order is the design. The reader-floor check runs FIRST, so a file written by
  * a newer component reports the version mismatch rather than whichever key
- * happened to be shaped in a way this build could not parse — the symptom is
+ * happened to be shaped in a way this build could not parse, the symptom is
  * never the story. Then the per-key screen; every notice is announced; and a
  * refusal throws only after it has been said in both places.
  */

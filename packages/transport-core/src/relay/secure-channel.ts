@@ -9,7 +9,7 @@
 //   [ counter : 8 bytes big-endian ][ AES-256-GCM ciphertext+tag ]
 // The nonce is derived, never transmitted as free bytes: a 4-byte direction
 // prefix plus the 8-byte counter. Counters strictly increase per direction, so
-// a replayed or reordered frame is rejected — GCM never reuses a (key, nonce)
+// a replayed or reordered frame is rejected, GCM never reuses a (key, nonce)
 // pair, which is the one catastrophic failure mode for GCM.
 
 import { aeadOpen, aeadSeal, RELAY_NONCE_BYTES } from './crypto.js';

@@ -5,7 +5,7 @@
  * `PersistedExpectationStore` gives it durability. The watcher delivers mail
  * and the matcher answers questions about it. And until this file, `grep` for
  * `openExpectation` across `packages/sdk/src` returned doc comments and the
- * declaration — no production call site — while `new VerificationExpectationBook`
+ * declaration, no production call site, while `new VerificationExpectationBook`
  * appeared nowhere outside tests.
  *
  * So the chain was inert end to end: a signup began, nothing recorded that it
@@ -18,7 +18,7 @@
  * A workstream calls `open()` BEFORE it submits the signup form. Nothing
  * watches a page and decides an expectation should exist, and that is a
  * boundary rather than a preference: an expectation created by inference is
- * created **by content** — by the page being filled in, or by a heuristic
+ * created **by content**, by the page being filled in, or by a heuristic
  * reading of it. That inverts the authority model the whole design rests on.
  * Expectations are created by the already-authorized workstream, in advance,
  * or "mail can satisfy an expectation but can never create work" is
@@ -34,7 +34,7 @@
  * a second expectation for one address, and refuses outright if email ever
  * gained command authority. `hydrateExpectation` re-validates a persisted
  * record and returns null for anything expired or over cap. This composes
- * those; it does not restate them, and it must not — a second copy of a
+ * those; it does not restate them, and it must not, a second copy of a
  * clamp is a second clamp that can drift from the first.
  *
  * An expiry is an outcome, not silence
@@ -45,7 +45,7 @@
  * capability failure: tell him rather than go quiet.
  *
  * And a report nothing asks for is that silence with more code in it.
- * `sweep()` had exactly one caller repo-wide — its own test — while `onExpired`
+ * `sweep()` had exactly one caller repo-wide, its own test, while `onExpired`
  * WAS wired, in `facade-inbound-mail.ts`. So the handler that announces an
  * expiry existed and could never fire, and a signup whose verification never
  * arrived was reported to nobody: the record sat in the book until something
@@ -53,7 +53,7 @@
  * reporting real. It is armed from the composition root beside the
  * housekeeper's own timer and NOT from the supervisor's start, because an
  * expectation can be opened through `email.expectation.open` while no source is
- * running at all — which is precisely the case where nothing else would ever
+ * running at all, which is precisely the case where nothing else would ever
  * reap it.
  *
  * "Nothing came" and "we could no longer look" are different facts
@@ -69,15 +69,15 @@
  *  - `capabilityChanged()` fails expectations that were already open when the
  *    mailbox became unreadable, with `reason: 'capability-lost'`. Letting them
  *    lapse into `window-elapsed` would tell the owner "nothing came" when the
- *    truth is "we stopped being able to look" — the same sentence for two
+ *    truth is "we stopped being able to look", the same sentence for two
  *    conditions with opposite fixes.
  *
  * And the distinction that keeps that mechanism from becoming a defect of its
  * own: **a watcher in reconnect backoff is "not yet", not "cannot".** A
- * `degraded` verdict — reconnecting, polling because the server offers no
- * push, a server refusing connections under load — fails NOTHING, because
+ * `degraded` verdict, reconnecting, polling because the server offers no
+ * push, a server refusing connections under load, fails NOTHING, because
  * recovery fetches everything above the cursor and the mail is still coming.
- * Only `insufficient` — a refused credential, a mailbox that will not open —
+ * Only `insufficient`, a refused credential, a mailbox that will not open,
  * means the window cannot be honoured. An unknown verdict (`null`, before the
  * watcher has probed anything) fails nothing either: absence of an answer is
  * not an answer of absence.
@@ -115,7 +115,7 @@ import type { InboundCapabilityReason, InboundCapabilityVerdict } from './ports.
  * how LATE the owner hears about an expiry: `sweep()` is the only path that
  * turns an elapsed window into an `onExpired` report, and no read produces one,
  * so nothing else ever will. What a slow cadence costs is the announcement and
- * not the accuracy — `list()` and `hasOpen()` answer correctly the whole time,
+ * not the accuracy, `list()` and `hasOpen()` answer correctly the whole time,
  * because an elapsed expectation is filtered out of a read rather than waiting
  * for a sweep to remove it.
  */
@@ -133,7 +133,7 @@ export function expectationSweepIntervalMs(defaultWindowMs: number): number {
  * This preserves what the previous `Pick<VerificationExpectationBook,
  * 'matchCandidate'>` was there for, and that rule is worth keeping written
  * down: the first draft declared `matchCandidate(email, now?: Date)` by hand
- * and got it wrong — the book's `now` is required — so the narrowed view
+ * and got it wrong, the book's `now` is required, so the narrowed view
  * described a method the book does not have, and every caller through it would
  * have been type-checked against fiction. `Parameters<>` and `ReturnType<>`
  * cannot drift from what they project any more than a `Pick` could.
@@ -144,20 +144,20 @@ type BookMatchCandidate = VerificationExpectationBook['matchCandidate'];
  * The match-only view of the book that inbound code is given.
  *
  * `openExpectation` and `hydrateExpectation` are absent from the type, so a
- * call to either does not compile — and, since the registry now hands over a
+ * call to either does not compile, and, since the registry now hands over a
  * purpose-built object rather than the book itself, they are absent at runtime
  * too. That is the same reasoning that removes `trySpawnAgent` from the
  * inbound context, applied to the other capability an arriving message must
  * never reach: an earlier draft handed the inbound path the whole book, which
- * would have made inbound code structurally able to register an expectation —
+ * would have made inbound code structurally able to register an expectation,
  * the exact thing §2 forbids.
  *
  * WHY IT IS NO LONGER THE BOOK ITSELF. `matchCandidate` mutates: a `matched`
  * answer spends the grant, an `expired` one deletes it on the way out, and the
  * no-match path sweeps every elapsed expectation. `expectation-store.ts`'s own
  * header names "open, close, **consuming match**" as the three book mutations
- * that must be mirrored to disk, and the consuming match — the only one the
- * inbound path actually causes — was the one nothing wrote through. Handing
+ * that must be mirrored to disk, and the consuming match, the only one the
+ * inbound path actually causes, was the one nothing wrote through. Handing
  * over the raw book is what made that unfixable: there was no seam between the
  * mutation and the caller to put the write in.
  */
@@ -166,7 +166,7 @@ export interface ExpectationMatcher {
    * Ask whether a message satisfies something already open, and mirror to disk
    * whatever asking changed, before the answer comes back.
    *
-   * Called with `{ consume: false }` by the intake — see `consumeMatch`.
+   * Called with `{ consume: false }` by the intake, see `consumeMatch`.
    */
   matchCandidate(...args: Parameters<BookMatchCandidate>): Promise<ReturnType<BookMatchCandidate>>;
   /**
@@ -177,7 +177,7 @@ export interface ExpectationMatcher {
    * that is not a `matched` result is a no-op.
    *
    * Separate from `matchCandidate` so the intake can decide the outcome,
-   * announce it and record it BEFORE the grant is spent — a pass that throws
+   * announce it and record it BEFORE the grant is spent, a pass that throws
    * part-way then leaves the book exactly as it found it, and the redelivery
    * correlates again instead of reporting the owner's own verification mail as
    * unsolicited. `intake.ts` states why that ordering is the fix rather than a
@@ -189,9 +189,9 @@ export interface ExpectationMatcher {
 /**
  * Why an expectation ended without a matching message.
  *
- *  - `window-elapsed` — the fifteen minutes ran out. The mailbox was being
+ *  - `window-elapsed`, the fifteen minutes ran out. The mailbox was being
  *    read the whole time and nothing arrived.
- *  - `capability-lost` — the mailbox stopped being readable while the window
+ *  - `capability-lost`, the mailbox stopped being readable while the window
  *    was open, so the daemon cannot say whether anything arrived.
  *
  * Two reasons rather than one because they have opposite fixes: the first is
@@ -225,7 +225,7 @@ export interface ExpectationExpiryReport {
 /**
  * What the registry asks before it promises to watch a mailbox.
  *
- * `null` means nothing has probed yet — which is NOT the same as "the mailbox
+ * `null` means nothing has probed yet, which is NOT the same as "the mailbox
  * is fine" and NOT the same as "the mailbox is broken". It is treated as
  * permission to proceed, because refusing on a question nobody has asked yet
  * would make every expectation opened before the watcher's first connection
@@ -264,8 +264,8 @@ export interface InboundExpectationRegistryOptions {
   /**
    * The authority probe. Defaults to the REAL one.
    *
-   * §2.2: the book's own defensive check — refuse to open an expectation if
-   * email ever gained command authority — has never run in production,
+   * §2.2: the book's own defensive check, refuse to open an expectation if
+   * email ever gained command authority, has never run in production,
    * because the book has never been constructed in production. Defaulting to
    * the real predicate is what takes it off the shelf.
    */
@@ -279,7 +279,7 @@ export interface InboundExpectationRegistryOptions {
   readonly now?: (() => Date) | undefined;
   /** Default window when a caller names none. Clamped by the book. */
   readonly defaultWindowMs?: number | undefined;
-  /** Where an ended expectation is reported — elapsed or capability-lost. */
+  /** Where an ended expectation is reported, elapsed or capability-lost. */
   readonly onExpired?: ((report: ExpectationExpiryReport) => void) | undefined;
 }
 
@@ -301,7 +301,7 @@ export class InboundExpectationRegistry {
    *
    * §12 gate #25 is "the expectation book is instantiated in production with a
    * REAL authority probe". Nothing observable distinguished the genuine
-   * predicate from a permissive stub, because both answer `false` for email —
+   * predicate from a permissive stub, because both answer `false` for email,
    * the difference only shows on a surface that DOES hold command authority.
    * This getter is what lets a test ask.
    */
@@ -322,7 +322,7 @@ export class InboundExpectationRegistry {
         const match = this.book.matchCandidate(...args);
         // Written through UNCONDITIONALLY rather than only for the kinds
         // believed to mutate. Predicting which ones do would couple this line
-        // to the order of the book's internal early returns — and a wrong
+        // to the order of the book's internal early returns, and a wrong
         // prediction is precisely the silent miss this fix exists to close.
         // A question that changed nothing costs one mirror write of unchanged
         // content; the intake already writes a record per message.
@@ -342,7 +342,7 @@ export class InboundExpectationRegistry {
    *
    * A purpose-built object rather than the book, so `openExpectation` and
    * `hydrateExpectation` are unreachable at runtime as well as unnameable in
-   * the type — and so every book mutation the inbound path can cause has a
+   * the type, and so every book mutation the inbound path can cause has a
    * seam to be mirrored to disk from. See `ExpectationMatcher`.
    *
    * One object, built once, so its identity is stable across reads.
@@ -372,7 +372,7 @@ export class InboundExpectationRegistry {
    *
    * The daemon checks for updates hourly and restarts itself at idle, so a
    * signup begun at 14:58 with a restart at 15:00 would otherwise lose its
-   * expectation and the verification mail would arrive inert — the exact
+   * expectation and the verification mail would arrive inert, the exact
    * failure this capability exists to eliminate, caused by our own update
    * mechanism.
    *
@@ -398,14 +398,14 @@ export class InboundExpectationRegistry {
   /**
    * Register an expectation before the signup form is submitted.
    *
-   * Every bound — the window ceiling, the open-expectation cap, the refusal
-   * when email holds command authority — is the book's, deliberately not
+   * Every bound, the window ceiling, the open-expectation cap, the refusal
+   * when email holds command authority, is the book's, deliberately not
    * re-checked here.
    *
    * The ONE check this file adds is the capability one (§12 gate #31), and it
    * belongs here rather than in the book: the book knows about authority and
    * windows, and knows nothing about whether a mailbox opens. Refusing now is
-   * the whole point — a workstream that learns at open time can pick another
+   * the whole point, a workstream that learns at open time can pick another
    * route, and a workstream that learns from a fifteen-minute silence has
    * already lost the fifteen minutes and cannot tell the silence apart from
    * "the service never sent it".
@@ -418,8 +418,8 @@ export class InboundExpectationRegistry {
     readonly kind?: 'signup' | 'login' | undefined;
   }): Promise<VerificationExpectation> {
     const verdict = this.capability?.() ?? null;
-    // `insufficient` ONLY. A degraded watcher — reconnecting, polling because
-    // the server offers no push — still delivers, just later, and refusing a
+    // `insufficient` ONLY. A degraded watcher, reconnecting, polling because
+    // the server offers no push, still delivers, just later, and refusing a
     // signup over a reconnect that resolves in three seconds would be this
     // check causing the outage it exists to report.
     if (verdict !== null && verdict.state === 'insufficient') {
@@ -449,19 +449,19 @@ export class InboundExpectationRegistry {
   /**
    * Whether anything is being waited on right now.
    *
-   * For the callers that want a boolean and nothing else — the Gmail source's
+   * For the callers that want a boolean and nothing else, the Gmail source's
    * poll-cadence predicate is the one this exists for. It asks before every
    * sleep, which at the shipped `gmailPollSecondsExpecting` is every five
    * seconds for as long as a signup is mid-flight.
    *
    * That predicate used to be `expectations.list().length > 0`, and the length
    * was the harmless half. `list()` reached `VerificationExpectationBook.list`,
-   * which called `sweepExpired` and discarded what it removed — so the fast
+   * which called `sweepExpired` and discarded what it removed, so the fast
    * probe REAPED the expectation that had just run out and threw the record of
    * it away, and `sweep()` (every thirty seconds at the shipped window, and the
    * only path that maps an expiry through `describeExpiry`, persists it and
    * fires `onExpired`) arrived to find nothing left to report. A verification
-   * that never came ended in silence — the single outcome `onExpired` and
+   * that never came ended in silence, the single outcome `onExpired` and
    * `startSweeping` exist to make impossible.
    *
    * So this asks the book a question and changes nothing: `book.hasOpen`
@@ -517,7 +517,7 @@ export class InboundExpectationRegistry {
    * Not optional wiring, and not a convenience. `sweep()` is the only thing
    * that turns an elapsed window into an `onExpired` report, and with no caller
    * the whole "an expiry is an outcome, not silence" property above was
-   * unreachable — the one component built to stop a signup dying quietly was
+   * unreachable, the one component built to stop a signup dying quietly was
    * itself dying quietly. Idempotent: a second call replaces the first timer
    * rather than adding one, so a re-arm cannot leave two sweeps running.
    *
@@ -527,7 +527,7 @@ export class InboundExpectationRegistry {
    * book SYNCHRONOUSLY (`book.sweepExpired`) and only then awaits the disk
    * write, so a tick landing during a slow write finds an empty list, reports
    * nothing, and writes nothing. A guard against that would be defensive code
-   * whose absence nothing can detect — which is the same unfalsifiable shape as
+   * whose absence nothing can detect, which is the same unfalsifiable shape as
    * the dead paths this round exists to remove. If `sweep()` ever awaits before
    * it takes the records, this needs revisiting and this paragraph is the
    * reason why.
@@ -566,16 +566,16 @@ export class InboundExpectationRegistry {
    *
    * Three answers, and the middle one is the one that must not be got wrong:
    *
-   *  - `insufficient` — the mailbox cannot be read. Every open expectation is
+   *  - `insufficient`, the mailbox cannot be read. Every open expectation is
    *    closed with `capability-lost`, because the promise behind it was "we
    *    are watching", and we are not.
-   *  - `degraded` — reconnecting, backing off, polling instead of pushing.
+   *  - `degraded`, reconnecting, backing off, polling instead of pushing.
    *    **Nothing is failed.** "Not yet" is not "cannot": the reconnect fetches
    *    everything above the cursor, so a message that arrives during a backoff
    *    is delivered when the socket comes back and still satisfies its
    *    expectation. Failing here would close a live expectation seconds before
    *    the mail it was waiting for landed.
-   *  - `healthy` — nothing to do.
+   *  - `healthy`, nothing to do.
    *
    * Idempotent: called on every transition, including repeats of the same
    * verdict, and a second `insufficient` with nothing open reports nothing.
@@ -658,7 +658,7 @@ function describeCapabilityLoss(
       `The mailbox stopped being readable while waiting for verification mail for `
       + `${expectation.purpose} at ${expectation.recipientAddress} from `
       + `${expectation.serviceDomain} (${verdict.reason}). ${verdict.detail} ${verdict.fix} `
-      + 'This is NOT "nothing arrived" — the message may well have been delivered and '
+      + 'This is NOT "nothing arrived", the message may well have been delivered and '
       + 'gone unseen. The expectation is closed; re-open it once the mailbox reads '
       + 'again, or complete the verification another way.',
   };

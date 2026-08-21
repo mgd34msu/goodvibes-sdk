@@ -12,8 +12,8 @@
  * Two of these deserve their reasoning stated rather than assumed.
  *
  * **The cursor is a port, not a file.** Persistence for the cursor lands in a
- * separate round; the watcher's correctness rule — *the cursor advances only
- * after a message is fully processed* — belongs here, where the processing
+ * separate round; the watcher's correctness rule, *the cursor advances only
+ * after a message is fully processed*, belongs here, where the processing
  * happens, and is expressible against an interface. So this module declares
  * `MailboxCursorPort` and the watcher calls `advance()` exactly once per
  * message and exactly after `deliver()` resolved. Where the record is written
@@ -23,15 +23,15 @@
  * `SurfaceAdapterContext`, a session broker, an agent manager or a reply
  * queue, and this file is where that absence is enforceable: it is the whole
  * of the watcher's argument surface. An arriving message can cause exactly the
- * effects the ports below describe — a store write, a delivered notice, a
- * status change — and no others, because there is nothing else to call.
+ * effects the ports below describe, a store write, a delivered notice, a
+ * status change, and no others, because there is nothing else to call.
  */
 import type { ImapBodyProbe } from '../imap-body-probe.js';
 
 import { IMAP_MAX_FETCH_UIDS } from '../imap-client.js';
 import type {
   // `EmailCapabilityFailureNotice` left with `InboundMailTerminalFailure`,
-  // which was its only reader here — see `capability-types.ts`.
+  // which was its only reader here, see `capability-types.ts`.
   ImapClient,
   ImapConnectionReport,
   ImapEnvelope,
@@ -49,7 +49,7 @@ import type { MailboxCursor } from './types.js';
  * The passage of time, as the watcher is allowed to observe it.
  *
  * `sleep` RESOLVES on abort rather than rejecting. A cancelled wait is not a
- * failure — it is the shutdown path and the wake-early path — and making it
+ * failure, it is the shutdown path and the wake-early path, and making it
  * throw would put a `try` around every timer in the loop and turn a normal
  * event into an error to be classified. Callers re-check `signal.aborted`
  * after every sleep; that check is the contract.
@@ -104,7 +104,7 @@ export const systemWatcherClock: WatcherClock = {
  * Which mailbox a cursor is for. An account id, never an address.
  *
  * Local because it is a two-field key with no upstream owner, and it is the
- * ONLY cursor shape still declared here — see the note on `MailboxCursorPort`.
+ * ONLY cursor shape still declared here, see the note on `MailboxCursorPort`.
  */
 export interface MailboxCursorKey {
   readonly account: string;
@@ -117,12 +117,12 @@ export interface MailboxCursorKey {
  *
  * **Shaped so `MailboxCursorStore` satisfies it directly**, with no adapter in
  * between, and pinned below so it stays that way. That is not a stylistic
- * preference — it is the mirror rule applied to a seam that had already
+ * preference, it is the mirror rule applied to a seam that had already
  * drifted without anybody noticing.
  *
  * This port and the store were written in separate lanes, and until this
  * wiring they each declared their own `MailboxCursor`. The two declarations
- * were structurally identical, so everything compiled and no test failed —
+ * were structurally identical, so everything compiled and no test failed,
  * and underneath, the two had already disagreed on behaviour: the store
  * advances with `Math.max(existing.lastSeenUid, input.lastSeenUid)`, so it
  * never moves a cursor backwards, while the local copy of that update rule in
@@ -149,7 +149,7 @@ export interface MailboxCursorPort {
   /**
    * Record that everything up to and including `lastSeenUid` is fully
    * processed. Called ONCE PER MESSAGE and only after that message's
-   * `deliver()` resolved — a crash between fetch and completion therefore
+   * `deliver()` resolved, a crash between fetch and completion therefore
    * re-delivers, and re-delivery is caught by dedup.
    *
    * Returns the stored cursor so the caller uses the store's arithmetic
@@ -175,7 +175,7 @@ export type MailboxCursorStoreMatchesPort = MailboxCursorStore extends MailboxCu
 
 /**
  * The pin. If the store changes a signature, this stops compiling in the
- * ordinary build — rather than the watcher silently taking an adapter's word
+ * ordinary build, rather than the watcher silently taking an adapter's word
  * for where the cursor is.
  */
 export type MailboxCursorPortIsPinnedToStore = AssertTrue<MailboxCursorStoreMatchesPort>;
@@ -192,8 +192,8 @@ export type MailboxCursorPortIsPinnedToStore = AssertTrue<MailboxCursorStoreMatc
  * write a flag and cannot select a different mailbox, because none of those
  * appear here.
  *
- * This is a NARROWING rather than a mirror — there is no upstream type with
- * this shape to import — so it is pinned instead: `MailboxReaderMatchesClient`
+ * This is a NARROWING rather than a mirror, there is no upstream type with
+ * this shape to import, so it is pinned instead: `MailboxReaderMatchesClient`
  * below fails to compile if `ImapClient` stops satisfying it, and
  * `test/types/inbound-reader-matches-client.ts` checks that through the
  * package's public entry the way a consumer would. A narrowing nothing links
@@ -207,8 +207,8 @@ export interface MailboxReader {
    *
    * There is no `limit`, and its absence is the point: the client used to keep
    * only the last N and now refuses a batch above `IMAP_MAX_FETCH_UIDS`
-   * instead. Refusing is right — a caller advancing a cursor over a silently
-   * shortened result skips the messages it never saw — and it makes batching
+   * instead. Refusing is right, a caller advancing a cursor over a silently
+   * shortened result skips the messages it never saw, and it makes batching
    * the CALLER's job, which is why `deltaBatchSize` exists and is clamped.
    */
   fetchEnvelopes(uids: readonly number[]): Promise<ImapEnvelope[]>;
@@ -231,7 +231,7 @@ export interface MailboxReader {
  *
  * Deliberately not `never` for the failure case: `never` is assignable to
  * everything, so an assertion written against it would keep compiling while
- * saying nothing — which is the same class of mistake as the mirrored
+ * saying nothing, which is the same class of mistake as the mirrored
  * tri-state this whole pin exists because of.
  */
 export type MailboxReaderMatchesClient = ImapClient extends MailboxReader
@@ -245,7 +245,7 @@ type AssertTrue<T extends true> = T;
  * The pin itself.
  *
  * `MailboxReader` is a NARROWING of `ImapClient` rather than a mirror of some
- * upstream type — there is nothing with that shape to import instead — which
+ * upstream type, there is nothing with that shape to import instead, which
  * makes it the one port here that can still drift. If `fetchEnvelopes` gains a
  * parameter or narrows its return, this line stops compiling, and it stops
  * compiling in the ordinary build rather than in a check somebody has to
@@ -253,7 +253,7 @@ type AssertTrue<T extends true> = T;
  *
  * It lives in the source, not in `test/types/`, for a concrete reason: that
  * program typechecks the BUILT surface through package-name imports, and
- * `platform/email/inbound` is not a subpath export — a long-lived listener
+ * `platform/email/inbound` is not a subpath export, a long-lived listener
  * that holds a socket is not part of the mail service's public surface.
  * Reaching it from there would mean either a relative import that drags
  * unbuilt source into a program with no node types, or making the path public
@@ -261,9 +261,9 @@ type AssertTrue<T extends true> = T;
  *
  * The cost of not having this: the runtime symptom of that drift is a watcher
  * that fetches nothing and reports itself healthy. One commit ago the same
- * class of gap — a hand-written copy of `ImapConnectionReport` whose
+ * class of gap, a hand-written copy of `ImapConnectionReport` whose
  * `supportsIdle: boolean | null` field silently became `undefined` after an
- * upstream rename — made the watcher poll a push-capable server, and the
+ * upstream rename, made the watcher poll a push-capable server, and the
  * tests failed on the symptom rather than the cause.
  */
 export type MailboxReaderIsPinnedToClient = AssertTrue<MailboxReaderMatchesClient>;
@@ -286,8 +286,8 @@ export interface MailboxConnection {
    *
    * Present because "signed in and the folder opened" answers neither
    * question, and an IMAP server has no scope list to consult instead. A
-   * connection that cannot read bodies at all never reaches here — the port
-   * raises `ImapBodyCapabilityError` before returning one — so the two
+   * connection that cannot read bodies at all never reaches here, the port
+   * raises `ImapBodyCapabilityError` before returning one, so the two
    * outcomes that survive to this field are `readable` and `unproven`, and the
    * second is the empty mailbox that had nothing to read from.
    */
@@ -297,14 +297,14 @@ export interface MailboxConnection {
 }
 
 /**
- * What `open()` reports — the upstream type itself, not a copy of its shape.
+ * What `open()` reports, the upstream type itself, not a copy of its shape.
  *
  * This was a hand-written mirror, and the mirror is what broke. It carried
  * `supportsIdle: boolean | null` alongside an upstream field that had become a
  * two-case object; after the rename the local field simply read `undefined`,
  * `undefined` is falsy, and the watcher silently polled a server that supports
  * push. Nothing linked the two declarations, so nothing could report the drift
- * — the tests failed twenty minutes later on a symptom, not the cause.
+ *, the tests failed twenty minutes later on a symptom, not the cause.
  *
  * The general rule this taught, which applies to every structural protection
  * in this design: a type that makes a wrong state unrepresentable protects
@@ -319,7 +319,7 @@ export type MailboxOpenReport = ImapConnectionReport;
 export type MailboxWireReadOptions = ImapReadOptions;
 
 /**
- * The wire operations IDLE is built from — again the upstream type, aliased.
+ * The wire operations IDLE is built from, again the upstream type, aliased.
  *
  * The one option worth knowing about at this layer: `sendCommand` takes
  * `retainUntagged: false`, and the IDLE call site passes it. An IDLE is
@@ -344,7 +344,7 @@ export interface MailboxConnectionPort {
  * Everything the pipeline downstream of a source reads lives here, and nothing
  * here is IMAP-shaped. Expectation matching, taint labelling, dedup, notice
  * rendering and disclosure are written against this base and never switch on
- * `source` at all — that is the whole point of the seam
+ * `source` at all, that is the whole point of the seam
  * (docs/inbound-email.md §3.4d, and
  * docs/decisions/2026-07-27-inbound-message-is-a-discriminated-union.md).
  */
@@ -361,8 +361,8 @@ export interface InboundMessageCommon {
    * SENDER-WRITTEN, so it is display only. It is never an ordering key and
    * never a windowing key: anything that sorts or windows on this is sorting
    * on a value whoever sent the message chose. The cursor is the ordering
-   * authority on both sources — `UIDVALIDITY` + UID on IMAP, `historyId` on
-   * Gmail — and the name here is the warning.
+   * authority on both sources, `UIDVALIDITY` + UID on IMAP, `historyId` on
+   * Gmail, and the name here is the warning.
    */
   readonly claimedDate: string;
   readonly messageId: string;
@@ -399,7 +399,7 @@ export interface ImapInboundMessage extends InboundMessageCommon {
    * IMAP specifics (`authenticationResults`, the full `deliveryEvidence` list)
    * narrows to this variant first.
    *
-   * The body is NOT fetched by the watcher — the envelope pass is cheap
+   * The body is NOT fetched by the watcher, the envelope pass is cheap
    * precisely because it is headers only.
    */
   readonly envelope: ImapEnvelope;
@@ -414,13 +414,13 @@ export interface GmailInboundMessage extends InboundMessageCommon {
   readonly resourceId: string;
   /**
    * The delta's high-water mark, a decimal uint64 STRING. Never parsed to a
-   * number — see the header of `source-cursor.ts` for the precision loss that
+   * number, see the header of `source-cursor.ts` for the precision loss that
    * causes.
    */
   readonly historyId: string;
   /**
    * The message body. Gmail's history delta carries it; IMAP's envelope pass
-   * does not, and that asymmetry is deliberate rather than an oversight — a
+   * does not, and that asymmetry is deliberate rather than an oversight, a
    * batch of headers is cheap and a batch of bodies is not, so the IMAP body
    * fetch stays the pipeline's step and is a no-op on this variant.
    *
@@ -432,8 +432,8 @@ export interface GmailInboundMessage extends InboundMessageCommon {
    * Whether `body` is the message's actual body or a stand-in for one that was
    * never fetched.
    *
-   * `'metadata-only'` means the grant was `gmail.metadata` — headers
-   * authorized, bodies excluded — and `onInsufficientCapability` is
+   * `'metadata-only'` means the grant was `gmail.metadata`, headers
+   * authorized, bodies excluded, and `onInsufficientCapability` is
    * `notice-only`, so the message came through `messages.get?format=metadata`.
    *
    * **A `'metadata-only'` message may never satisfy a verification
@@ -443,7 +443,7 @@ export interface GmailInboundMessage extends InboundMessageCommon {
    *
    * Required, not optional. `bunx tsc -b` does not typecheck `test/`, so an
    * optional field left unset would read `undefined`, be falsy, and be treated
-   * as a full body — the one direction this must never fail in. `intake.ts`
+   * as a full body, the one direction this must never fail in. `intake.ts`
    * re-checks at run time for the sites the compiler is not looking at.
    */
   readonly bodyAvailability: 'full' | 'metadata-only';
@@ -462,7 +462,7 @@ export interface GmailInboundMessage extends InboundMessageCommon {
  * A union rather than a widened record with `uid?` / `historyId?`: a record
  * that is always half-filled makes "half-filled" and "torn" indistinguishable,
  * and every consumer then invents its own idea of what the missing case means.
- * The union makes the exhaustive switch the compiler's job — the same rule, and
+ * The union makes the exhaustive switch the compiler's job, the same rule, and
  * the same discriminant, as `InboundSourceCursor` in `source-cursor.ts`.
  */
 export type InboundMailboxMessage = ImapInboundMessage | GmailInboundMessage;
@@ -470,8 +470,8 @@ export type InboundMailboxMessage = ImapInboundMessage | GmailInboundMessage;
 /**
  * Where a found message goes.
  *
- * Resolving means the message is HANDLED — matched or found inert, recorded,
- * and its notice dispatched or deliberately suppressed — and the cursor may
+ * Resolving means the message is HANDLED, matched or found inert, recorded,
+ * and its notice dispatched or deliberately suppressed, and the cursor may
  * therefore advance past it. Rejecting means it is not handled, the cursor
  * stays where it was, and the message is fetched again on the next pass. That
  * is the whole of the "no message is lost" property: the sink decides when a
@@ -486,14 +486,14 @@ export interface InboundMailSink {
 // ---------------------------------------------------------------------------
 
 /**
- * The capability vocabulary — the watcher's three states, the reasons behind
+ * The capability vocabulary, the watcher's three states, the reasons behind
  * them, a verdict, a transition, and a terminal failure.
  *
  * Moved to `capability-types.ts` and re-exported here unchanged, so every
  * existing `from './ports.js'` import keeps working. It left because this file
  * holds the whole inbound seam and had eleven lines under the 800-line cap,
- * and because three modules — `capability.ts`, `capability-policy.ts` and
- * `terminal-notice.ts` — depend on that vocabulary and on nothing else in here.
+ * and because three modules, `capability.ts`, `capability-policy.ts` and
+ * `terminal-notice.ts`, depend on that vocabulary and on nothing else in here.
  */
 export type {
   InboundCapabilityReason,
@@ -525,7 +525,7 @@ export interface InboundMailNote {
      * Distinct from `delivery-failed` (we read the message and something
      * downstream refused it) and from an expunge (the server said the message
      * is not there). The cursor does not move for this one, so the message is
-     * fetched again — and it is reported rather than merely retried, because a
+     * fetched again, and it is reported rather than merely retried, because a
      * response we can never read would otherwise be an invisible standstill.
      */
     | 'fetch-unreadable'
@@ -535,7 +535,7 @@ export interface InboundMailNote {
     | 'delivery-failed'
     /**
      * The message was recorded and could not be announced, for a reason no
-     * retry can clear. The pass COMPLETED — the cursor moves past the message —
+     * retry can clear. The pass COMPLETED, the cursor moves past the message,
      * so nothing else in this stream marks it. Where the condition is surfaced
      * to a person is `notice-health.ts`, which drives the status verb, the
      * health entry and the log; this note is the per-message event underneath
@@ -560,7 +560,7 @@ export interface InboundMailNote {
  * Where the watcher's observable behaviour goes.
  *
  * Every method optional so the integration round implements only what it
- * routes. Nothing here can start work — these are report sinks, and a report
+ * routes. Nothing here can start work, these are report sinks, and a report
  * sink that could spawn would be the capability §2.1 removes by type.
  */
 export interface InboundMailObserver {
@@ -605,7 +605,7 @@ export interface InboundWatcherSettings {
    * The ceiling used after the server refused on its own account.
    *
    * Longer than the ordinary one because none of those conditions is cleared
-   * by asking again sooner — a connection limit is held partly by our own
+   * by asking again sooner, a connection limit is held partly by our own
    * connections, and a server fault is somebody else's to fix.
    */
   readonly serverUnavailableBackoffMs: number;
@@ -655,7 +655,7 @@ export function resolveWatcherSettings(
     pollIntervalMs: Math.max(1_000, merged.pollIntervalMs),
     // Clamped, not trusted: `fetchEnvelopes` REFUSES a batch above this rather
     // than trimming it, so a batch size configured above the ceiling would not
-    // fetch fewer messages — it would fetch none, and the delta would stall
+    // fetch fewer messages, it would fetch none, and the delta would stall
     // behind an error on every pass.
     deltaBatchSize: Math.min(
       IMAP_MAX_FETCH_UIDS,

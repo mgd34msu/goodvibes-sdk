@@ -1,11 +1,11 @@
 /**
- * SurfaceEvent — discriminated union covering configured client surfaces and their health.
+ * SurfaceEvent, discriminated union covering configured client surfaces and their health.
  */
 
 import { ROUTE_SURFACE_KINDS, type RouteSurfaceKind } from './routes.js';
 
 /**
- * Transport surface kinds — the subset of surfaces that can bind an external
+ * Transport surface kinds, the subset of surfaces that can bind an external
  * route (Slack, Discord, ntfy, …). Route-binding schemas validate against this
  * strict list; product surfaces (below) are intentionally excluded so they can
  * never accidentally become bindable routes.
@@ -14,7 +14,7 @@ export const TRANSPORT_SURFACE_KINDS = ROUTE_SURFACE_KINDS;
 export type TransportSurfaceKind = RouteSurfaceKind;
 
 /**
- * Product surface kinds — first-party surfaces that participate in sessions as
+ * Product surface kinds, first-party surfaces that participate in sessions as
  * identity participants but never bind an external route. `web` already exists
  * as a transport surface; `webui` is the distinct rich web client surface.
  */
@@ -34,14 +34,14 @@ export type SurfaceKind = (typeof SURFACE_KINDS)[number];
 
 /**
  * The transport surfaces that are genuinely third-party messaging/notification
- * channels — a private chat app, a webhook, a bridge — as opposed to the two
+ * channels, a private chat app, a webhook, a bridge, as opposed to the two
  * first-party operator transports ('tui', 'web') or the internal
  * service-to-service surface ('service'). Filtered from `ROUTE_SURFACE_KINDS`
  * (never hand-duplicated) so a new channel adapter's surface kind is picked up
  * automatically.
  *
  * This is what session classification uses to tell "a channel adapter
- * originated this session" from "the operator's own TUI/web surface did" — see
+ * originated this session" from "the operator's own TUI/web surface did", see
  * `SharedSessionKind`'s 'channel' variant in control-plane/session-types.ts.
  */
 const FIRST_PARTY_TRANSPORT_KINDS = new Set<RouteSurfaceKind>(['tui', 'web', 'service']);

@@ -1,5 +1,5 @@
 /**
- * provider-optimizer-wiring.ts — bind the provider optimizer to its gate and
+ * provider-optimizer-wiring.ts, bind the provider optimizer to its gate and
  * seed its persisted routing mode at startup. Split out of services.ts so the
  * composition monolith stays under its line ceiling.
  */
@@ -41,7 +41,7 @@ export function applyProviderOptimizerConfigMode(
     if (sep > 0 && sep < pinned.length - 1) {
       providerOptimizer.pin(pinned.slice(0, sep), pinned.slice(sep + 1));
     } else {
-      // Pinned mode requested without a valid provider-qualified model — stay manual.
+      // Pinned mode requested without a valid provider-qualified model, stay manual.
       providerOptimizer.setMode('manual');
     }
   } else {

@@ -1,13 +1,13 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * elastic-pool.ts — the elastic-fleet muscles of the ONE workstream engine
+ * elastic-pool.ts, the elastic-fleet muscles of the ONE workstream engine
  * : a ready task with no available agent SPAWNS one (the phase-runner's
  * fresh per-task agent), up to `fleet.maxSize`; at-cap is a VISIBLE state
  * ("N ready, M running, at cap"), never a silent stall; a spawn refusal
  * leaves the task visibly ready with its reason; and when the ready set is
  * empty with no imminent edge release, the finishing agent RETIRES instead of
- * idling warm — fleet size tracks the graph's width over time.
+ * idling warm, fleet size tracks the graph's width over time.
  *
  * Also owns the bounded per-task retry decision (auto-retry a failed task up
  * to the bound, then hard-fail → the orphan pass surfaces dependents).
@@ -50,7 +50,7 @@ export interface PoolGateDecision {
 }
 
 /**
- * Gate ONE claim against the fleet ceiling. Allowing the claim IS the spawn —
+ * Gate ONE claim against the fleet ceiling. Allowing the claim IS the spawn,
  * the phase-runner spawns a fresh per-task agent for it. Refusals leave the
  * item in its ready state with the honest reason; the at-cap event fires once
  * per transition (the caller tracks the edge).

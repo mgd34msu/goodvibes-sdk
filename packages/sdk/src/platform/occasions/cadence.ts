@@ -1,5 +1,5 @@
 /**
- * cadence.ts — when an unresolved thing speaks.
+ * cadence.ts, when an unresolved thing speaks.
  *
  * The governing principle is that nothing unresolved is ever DROPPED. It is
  * worth stating what that does and does not mean, because the difference cost
@@ -17,7 +17,7 @@
  * So a nudge speaks at TWO NAMED MOMENTS and no others: the day it enters its
  * lead window, and the day itself. Each is recorded as served the moment it is
  * used, and a served boundary is never served twice. The ceiling is therefore a
- * property of the record rather than a rule someone has to remember to apply —
+ * property of the record rather than a rule someone has to remember to apply,
  * there is no counter to overflow, no timestamp to compare, and no arrangement
  * of restarts, clock changes or sweep intervals that produces a third push.
  *
@@ -54,7 +54,7 @@ export function nudgeItemId(occasionId: string, occurrence: IsoDate): string {
  * A conflict's id carries no occurrence.
  *
  * Two declared dates disagreeing is not a fact about this year's birthday, it is
- * a fact about the record — and it stays open until he fixes the file, across
+ * a fact about the record, and it stays open until he fixes the file, across
  * however many occurrences pass in the meantime.
  */
 export function conflictItemId(occasionId: string): string {
@@ -75,7 +75,7 @@ export function interviewItemId(occasionId: string, occurrence: IsoDate): string
  * existed to protect, and there is nothing useful about being told on the day
  * when the useful day was before the flight.
  *
- * The `lead` boundary is not adjustable — it is the top of the window, and
+ * The `lead` boundary is not adjustable, it is the top of the window, and
  * there is nothing earlier to move it to.
  */
 export function dayOfBoundaryDate(
@@ -92,7 +92,7 @@ export function dayOfBoundaryDate(
  *
  * Two moments, so two answers. On or after the day-of date it is `day-of`;
  * anywhere else inside the window it is `lead`. The caller has already
- * established that the window is open — this does not decide whether to speak,
+ * established that the window is open, this does not decide whether to speak,
  * only which of the two moments a decision to speak would be spending.
  */
 export function boundaryOn(today: IsoDate, dayOfDate: IsoDate): RaiseBoundary {
@@ -113,7 +113,7 @@ export function isSpent(item: OpenItem): boolean {
  * When a "later" comes back.
  *
  * "Not yet" three weeks out is not a decline, and returning it the next morning
- * would make "later" mean nothing. It comes back roughly halfway to the date —
+ * would make "later" mean nothing. It comes back roughly halfway to the date,
  * far enough that it reads as having been listened to, near enough that there is
  * still time to order something. Never sooner than tomorrow, never past the day
  * itself.
@@ -131,12 +131,12 @@ export function laterReturnDate(today: IsoDate, occurrence: IsoDate): IsoDate {
  *
  * He was mid-thread, so this is a live conversation he walked away from rather
  * than a question he has not engaged with. One day is the shortest gap that is
- * not badgering, and it was my call — the plan says "nudge again later and
+ * not badgering, and it was my call, the plan says "nudge again later and
  * resume" without naming an interval.
  *
  * The clamp lives HERE rather than at the call site. The sweep used to add a day
  * and clamp inline, which made this function a second, unused definition of the
- * same rule sitting next to the real one — the drift class every other comment
+ * same rule sitting next to the real one, the drift class every other comment
  * in this module argues against, and the kind that survives review because both
  * copies are correct on the day they are written.
  */
@@ -154,7 +154,7 @@ export function interviewResumeDate(today: IsoDate, occurrence?: IsoDate): IsoDa
  * he is abroad has already missed the window it existed to protect. So a nudge
  * due inside an away window moves to the day before he leaves.
  *
- * When he has ALREADY left — the window started before today — there is nothing
+ * When he has ALREADY left, the window started before today, there is nothing
  * earlier to move to, and the nudge stands. Holding it until he is back would be
  * the system quietly deciding his wife's birthday can wait.
  */
@@ -212,7 +212,7 @@ export function raisedAgain(item: OpenItem, now: number, dueOn: IsoDate): OpenIt
 }
 
 /**
- * The same nudge, having now spoken at one boundary — and spent it.
+ * The same nudge, having now spoken at one boundary, and spent it.
  *
  * The boundary is added to the served list in the SAME write that increments
  * the count, so there is no window in which a raise happened but was not
@@ -240,7 +240,7 @@ export function raisedAtBoundary(
  * Rebuild the raise ledger of an item written before boundaries existed.
  *
  * A machine that has been running the old repeating cadence holds nudge items
- * with a raise count and no served boundaries — the owner's own birthday, at
+ * with a raise count and no served boundaries, the owner's own birthday, at
  * the time this was written, sat at five raises and climbing. Those items are
  * not deleted and not resolved: nothing about them was resolved, and dropping
  * them would trade one broken promise for another. They are marked as having

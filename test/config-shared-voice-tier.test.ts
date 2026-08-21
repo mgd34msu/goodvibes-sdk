@@ -1,5 +1,5 @@
 /**
- * config-shared-voice-tier.test.ts — Fix 1 (Stage-5 cohesion #1).
+ * config-shared-voice-tier.test.ts, Fix 1 (Stage-5 cohesion #1).
  *
  * The voice (tts.*) settings resolve from and write to a surface-root-INDEPENDENT
  * shared tier (~/.goodvibes/shared/settings.json), so two surfaces with different

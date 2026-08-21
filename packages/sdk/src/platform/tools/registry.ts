@@ -94,7 +94,7 @@ export class ToolRegistry {
    * Execute a named tool with the given arguments. Wraps errors in ToolResult.
    *
    * `opts.signal` is an additive pass-through to
-   * `tool.execute` — only tools that opt in (exec, fetch) read it. Callers
+   * `tool.execute`, only tools that opt in (exec, fetch) read it. Callers
    * that don't have a cancellation signal (the common case) omit `opts`.
    */
   async execute(
@@ -122,7 +122,7 @@ export class ToolRegistry {
       const effectiveArgs = repairResult.repaired ? repairResult.fixed : args;
 
       const result = await tool.execute(effectiveArgs, opts);
-      // Tool.execute returns ToolResult without callId — inject it here
+      // Tool.execute returns ToolResult without callId, inject it here
       const toolResult = { ...result, callId };
 
       if (repairResult.warnings && repairResult.warnings.length > 0) {

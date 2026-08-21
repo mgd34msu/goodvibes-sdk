@@ -17,7 +17,7 @@ export const HOME_ASSISTANT_DEFAULT_EVENT_TYPE = 'goodvibes_message';
 /**
  * The home-state honesty contract, stated at the model surface. An answer about
  * home state cites the source entity and the time its state was observed, or it
- * refuses plainly when the entity/state is absent — never a confident unsourced
+ * refuses plainly when the entity/state is absent, never a confident unsourced
  * claim. This string is attached to the state-read tool descriptions and to every
  * state-read result so the model always sees the contract next to the data.
  */
@@ -25,7 +25,7 @@ export const HOME_STATE_PROVENANCE_CONTRACT =
   'Home-state honesty contract: when you answer a question about home state, cite the source '
   + 'entity_id and the time its state was observed (last_changed/last_updated, observed at observedAt). '
   + 'If an entity or its state is absent from the result, say so plainly (for example "I don\'t have '
-  + 'state for that entity") — never present an unsourced or guessed home-state value as fact.';
+  + 'state for that entity"), never present an unsourced or guessed home-state value as fact.';
 
 /** Provenance fields that travel with every home-state answer. */
 export interface HomeStateProvenance {
@@ -292,7 +292,7 @@ export async function runHomeAssistantOperatorAction(
 }
 
 export function buildHomeAssistantManifest(deps: Pick<BuiltinChannelRuntimeDeps, 'configManager'>): HomeAssistantSurfaceManifest {
-  // A wildcard bind address is not a destination — resolveReachableBaseUrl
+  // A wildcard bind address is not a destination, resolveReachableBaseUrl
   // substitutes this host's LAN address, or yields nothing so the manifest
   // advertises no URL rather than an unreachable one.
   const baseUrl = resolveReachableBaseUrl(deps.configManager, 'off-host') ?? '';

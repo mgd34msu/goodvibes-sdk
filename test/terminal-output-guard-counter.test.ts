@@ -41,7 +41,7 @@ describe('terminal-output guard cumulative counter (onCapture)', () => {
       (fakeStdout.write as (s: string) => boolean)('second, same instant\n');
       // Only the first capture is inside a fresh rate-limit window; both calls
       // happen well within 5s of each other in a synchronous test, so the
-      // second capture is suppressed from onCapture — but it is still
+      // second capture is suppressed from onCapture, but it is still
       // suppressed from the real stream either way.
       expect(captures).toEqual([1]);
     } finally {

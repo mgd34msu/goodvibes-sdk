@@ -8,7 +8,7 @@ import { chainNodeId, subtaskNodeId } from './agent.js';
 // 'interrupted' is included: it is only ever produced on an AGENT node
 // (deriveAgentState), never on a chain/subtask's own `state`, but a chain
 // member agent that was individually interrupted (not via chain cascade,
-// which always hard-kills — see registry.ts cancelAgents) must still count
+// which always hard-kills, see registry.ts cancelAgents) must still count
 // as terminal here, or it would be misread as "live" below.
 const TERMINAL_STATES: ReadonlySet<ProcessState> = new Set(['done', 'failed', 'killed', 'interrupted']);
 
@@ -18,7 +18,7 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
       return { state: 'done' };
     case 'failed':
       // An operator-cancelled chain is terminal-'failed' internally but must read
-      // as cancelled, not a failure — map it to 'killed' (⊘) so the chain row and
+      // as cancelled, not a failure, map it to 'killed' (⊘) so the chain row and
       // the cohort tally match the cancelled owner/leaf agents instead of showing
       // '✗ failed' for an intended stop.
       return chain.failureKind === 'cancelled' ? { state: 'killed' } : { state: 'failed' };
@@ -31,7 +31,7 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
   }
   // Active phase (engineering/integrating/reviewing/fixing/gating/committing).
   // Retrying is DERIVED: a transport retry has been recorded and no member
-  // agent is currently live — i.e. the respawn window. Once the replacement
+  // agent is currently live, i.e. the respawn window. Once the replacement
   // agent runs, the chain shows its active phase again.
   const retryCount = chain.transportRetryCount ?? 0;
   const anyMemberLive = memberNodes.some((node) => !TERMINAL_STATES.has(node.state));
@@ -40,17 +40,17 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
   }
   // CONTROLLER-DRIVEN PHASES: 'gating' (running gate checks) and 'committing'
   // (git commit/merge) are performed by WrfcController itself, never by a
-  // member agent — every phase-worker member has already finished its own
+  // member agent, every phase-worker member has already finished its own
   // work by the time the chain advances to either state. "Zero live members"
   // is therefore the NORMAL condition here, not a symptom of a cascade kill,
   // so these two states are excluded from the CHAIN TERMINAL TRUTH check
-  // below (enumerated from the WrfcState union in wrfc-types.ts — do not
+  // below (enumerated from the WrfcState union in wrfc-types.ts, do not
   // widen this to other active states, where a live member IS expected and
   // its absence legitimately signals a kill).
   const controllerDrivenWithNoLiveMembersByDesign = chain.state === 'gating' || chain.state === 'committing';
   // CHAIN TERMINAL TRUTH: WrfcController has no cancel/abort of its own, so a
   // cascade kill (registry.ts kill('chain:<id>')) only cancels the member
-  // agents — chain.state never leaves whatever active phase it was in when
+  // agents, chain.state never leaves whatever active phase it was in when
   // killed. Once every known member has reached a terminal state and it's
   // NOT the transport-retry respawn window handled above, NOR one of the
   // controller-driven phases handled above, the chain was terminated out
@@ -65,12 +65,12 @@ function chainState(chain: WrfcChain, memberNodes: readonly ProcessNode[]): { st
 
 /**
  * Synthetic completedAt for a chain whose terminal state was DERIVED (see
- * chainState above) rather than reported by WrfcController — cascade kill
+ * chainState above) rather than reported by WrfcController, cascade kill
  * never sets `chain.completedAt`. Freezing to the latest member completedAt
  * (rather than `now`) is what stops elapsedMs from climbing after a kill;
  * every member here is terminal (chainState's caller only reaches this when
  * `state === 'killed'`), and every terminal agent node has a completedAt
- * (set atomically with its terminal status — see agent.ts / manager.ts
+ * (set atomically with its terminal status, see agent.ts / manager.ts
  * cancel()), so the max is always defined when memberNodes is non-empty.
  */
 function syntheticChainCompletedAt(memberNodes: readonly ProcessNode[]): number | undefined {
@@ -140,7 +140,7 @@ function sumUsage(nodes: readonly ProcessNode[]): ProcessUsage | undefined {
  * all contributors priced → 'priced'; none priced → null/'unpriced';
  * mixed → sum of the priced subset, flagged 'estimated'.
  *
- * The owner agent is EXCLUDED from aggregation: it runs no LLM turns itself —
+ * The owner agent is EXCLUDED from aggregation: it runs no LLM turns itself,
  * its AgentRecord.usage is populated FROM the phase children at completion
  * time, so including it would double-count.
  */
@@ -159,7 +159,7 @@ function aggregateCost(members: readonly ProcessNode[]): { costUsd: number | nul
 
 /**
  * An honest model descriptor for a chain node, derived from its member agents
- * (which carry the real model that ran each phase — the owner itself often has no
+ * (which carry the real model that ran each phase, the owner itself often has no
  * resolved model). One distinct model → that model; several → "N models"; none →
  * undefined. Fixes the "model unknown" chain-detail readout.
  */
@@ -175,8 +175,8 @@ function chainModelDescriptor(members: readonly ProcessNode[]): string | undefin
 
 /**
  * Reprice a WRFC owner agent node for honest DISPLAY. The owner runs no LLM turn
- * itself; at completion its usage is backfilled from aggregateChainUsage — a
- * mixed-model rollup of its children — so pricing it with a single owner model is
+ * itself; at completion its usage is backfilled from aggregateChainUsage, a
+ * mixed-model rollup of its children, so pricing it with a single owner model is
  * wrong and leaving it "unpriced" while its children priced fine is misleading.
  * Instead adopt the chain node's per-child-summed cost (and its model descriptor).
  *
@@ -192,7 +192,7 @@ export function repriceWrfcOwnerNode(ownerNode: ProcessNode, chainNode: ProcessN
     ...ownerNode,
     costUsd: chainNode.costUsd,
     costState: chainNode.costState,
-    // Adopted cost keeps its provenance — the dollars and their source travel together.
+    // Adopted cost keeps its provenance, the dollars and their source travel together.
     ...(chainNode.costSource !== undefined ? { costSource: chainNode.costSource } : {}),
     ...(chainNode.pricingAsOf !== undefined ? { pricingAsOf: chainNode.pricingAsOf } : {}),
     model: ownerNode.model ?? chainNode.model,
@@ -202,7 +202,7 @@ export function repriceWrfcOwnerNode(ownerNode: ProcessNode, chainNode: ProcessN
 /**
  * The subtask's currently-active member agent, i.e. whichever role is
  * driving its current phase. Undefined when the subtask has no phase
- * currently in flight (pending/passed/failed) — matches subtaskState()'s
+ * currently in flight (pending/passed/failed), matches subtaskState()'s
  * own phase mapping above.
  */
 export function activeSubtaskMemberAgentId(subtask: WrfcSubtask): string | undefined {
@@ -229,7 +229,7 @@ function capText(text: string): string {
 /**
  * The latest review as served on the wire: verdict (the CONTROLLER's
  * gate-inclusive verdict when recorded; the reviewer's own claim only as a
- * legacy fallback), score, cycle count, and the acceptance checklist — so a
+ * legacy fallback), score, cycle count, and the acceptance checklist, so a
  * consumer renders what was ACTUALLY verified. Returns undefined when no
  * review has completed (the wire field stays absent, never an empty shell).
  */
@@ -294,7 +294,7 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
   // 'passed'/'failed' clean-terminal cases). `state === 'killed'` is only
   // ever reached via chainState's DERIVED branch (WrfcController never
   // literally sets chain.state to 'killed'), so falling back to the
-  // synthetic max(member.completedAt) there — instead of `now` — is what
+  // synthetic max(member.completedAt) there, instead of `now`, is what
   // freezes elapsedMs once the chain is recognized as killed.
   const completedAt = chain.completedAt ?? (state === 'killed' ? syntheticChainCompletedAt(memberNodes) : undefined);
   return {
@@ -316,7 +316,7 @@ export function adaptChain(chain: WrfcChain, memberNodes: readonly ProcessNode[]
     // Silent source: anchored to createdAt (no phase-transition timestamp).
     currentActivity: phase ? { kind: 'phase', text: phase, at: chain.createdAt } : undefined,
     // A wrfc-chain is an FSM coordinating member agents; it has no
-    // conversation loop of its own, so it is NEVER steerable — steer the
+    // conversation loop of its own, so it is NEVER steerable, steer the
     // member subtask instead (adaptSubtask, above).
     capabilities: { interruptible: false, killable, pausable: false, resumable: false, steerable: false },
     ...(deriveReviewSummary(chain) ? { review: deriveReviewSummary(chain) } : {}),

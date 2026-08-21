@@ -9,7 +9,7 @@
  *   - a stated value results in a WRITE that lands in the store the consuming
  *     runtime reads, and the report names that store (`persistedTo`);
  *   - a READ of that same key comes back from the runtime that owns it, labelled
- *     with where it came from — and when the owner runtime cannot be reached,
+ *     with where it came from, and when the owner runtime cannot be reached,
  *     that is said out loud rather than answered with a local default.
  */
 
@@ -73,7 +73,7 @@ describe('a stated configuration value results in a write plus a read-back repor
     expect(output['current']).toBe('goodvibes_agent_bot');
     expect(output['owner']).toBe('daemon');
     // The whole point: the path named back to the user is the daemon's store,
-    // which is what Telegram actually reads — not the agent's surface silo.
+    // which is what Telegram actually reads, not the agent's surface silo.
     expect(output['persistedTo']).toBe(daemonSettings(h));
     expect(output['verifiedInOwningStore']).toBe(true);
     expect(String(output['ownership'])).toContain('daemon-owned');
@@ -154,7 +154,7 @@ describe('a running daemon owns its keys in both directions', () => {
 
     expect(result.success).toBe(true);
     // `posted` is reassigned inside the `fetchImpl` closure above, which TS's
-    // control-flow analysis can't see across the `await` — its narrowed type
+    // control-flow analysis can't see across the `await`, its narrowed type
     // here is stuck at the initializer (`null`). Assert non-null, then read it
     // through its declared type rather than the falsely-narrowed one.
     expect(posted).not.toBeNull();

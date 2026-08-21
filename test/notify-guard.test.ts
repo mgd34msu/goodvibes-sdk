@@ -4,7 +4,7 @@
  *
  * notifyCompletion() writes an in-process terminal bell byte AND shells out to
  * notify-send/osascript. Under an automated test run the real desktop shell-out
- * must never fire — otherwise every `bun test` invocation spams whoever's
+ * must never fire, otherwise every `bun test` invocation spams whoever's
  * desktop the tests happen to execute on. The terminal bell, by contrast, is a
  * single \x07 byte written to this process's own stdout with no external side
  * effect, and is asserted product behaviour by host surfaces (e.g. the TUI), so
@@ -15,7 +15,7 @@
  *   regardless of NODE_ENV, while the terminal bell still writes.
  * - The `{ force: true }` opt-in bypasses suppression and reaches the shell-out
  *   layer (for tests that exercise it directly).
- * - Normal runtime (NODE_ENV unset/production, no override) is unaffected —
+ * - Normal runtime (NODE_ENV unset/production, no override) is unaffected,
  *   the real code path still fires.
  */
 

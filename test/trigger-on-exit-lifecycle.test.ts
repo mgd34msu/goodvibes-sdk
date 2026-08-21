@@ -1,5 +1,5 @@
 /**
- * trigger-on-exit-lifecycle.test.ts — the one-shot on-exit process trigger, end
+ * trigger-on-exit-lifecycle.test.ts, the one-shot on-exit process trigger, end
  * to end through the TriggerManager, plus the ProcessManager live-output fix
  * the on-exit payload depends on.
  *
@@ -47,7 +47,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-/** A scripted process host — no real subprocess anywhere in these tests. */
+/** A scripted process host, no real subprocess anywhere in these tests. */
 class FakeProcessHost implements TriggerProcessHost {
   readonly launched: Array<{ command: string; args: readonly string[]; stdin: string; maxDurationMs: number }> = [];
   readonly cancelled: string[] = [];
@@ -143,7 +143,7 @@ describe('on-exit trigger fires exactly once', () => {
     await manager.pollProcesses();
     expect(executor.turns).toHaveLength(1);
 
-    // Poll three more times — the record is already claimed.
+    // Poll three more times, the record is already claimed.
     await manager.pollProcesses();
     await manager.pollProcesses();
     await manager.pollProcesses();
@@ -335,7 +335,7 @@ describe('daemon restart', () => {
     expect(secondExecutor.turns[0]?.prompt).toContain('UNKNOWN');
     expect(secondManager.get('nightly-build')?.state).toBe('fired');
 
-    // A third boot must not fire it again — the fired one-shot is retired.
+    // A third boot must not fire it again, the fired one-shot is retired.
     const thirdExecutor = new RecordingExecutor();
     const thirdManager = managerWith(new FakeProcessHost(), thirdExecutor, storePath, 'boot-3', clock);
     thirdManager.load();
@@ -535,7 +535,7 @@ describe('ProcessManager live output', () => {
   test('a timed-out process whose child still holds the output pipe is still reported finished', async () => {
     const manager = new ProcessManager();
     // `; :` denies the shell its exec optimization, so the shell really forks
-    // and the timeout kill reaches only the shell — the `sleep` survives it
+    // and the timeout kill reaches only the shell, the `sleep` survives it
     // holding the same stdout pipe. Whether a bare `sleep 30` takes this path
     // depends on which /bin/sh is installed, so it is forced here rather than
     // left to the platform: completion must key off the process exiting, not

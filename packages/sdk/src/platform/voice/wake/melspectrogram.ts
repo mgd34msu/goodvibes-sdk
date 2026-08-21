@@ -1,13 +1,13 @@
 /**
- * melspectrogram.ts — the wake-word front end's first stage, computed in code.
+ * melspectrogram.ts, the wake-word front end's first stage, computed in code.
  *
  * The pipeline behind the pinned classifier is
  *
  *     audio -> melspectrogram -> speech-embedding backbone -> classifier
  *
  * and openWakeWord distributes the melspectrogram stage as a downloadable model
- * file. It does not need to be one: the stage is a fixed DSP graph — a short-time
- * Fourier transform, a mel filterbank, and a decibel conversion — with **no
+ * file. It does not need to be one: the stage is a fixed DSP graph, a short-time
+ * Fourier transform, a mel filterbank, and a decibel conversion, with **no
  * learned parameters at all**. Computing it here removes a runtime download, a
  * checksum to manage, and an inference session from the hot loop.
  *
@@ -36,12 +36,12 @@
  *                   Max abs deviation 5.6e-8 over all 257x512 taps.
  *   - hop           160 samples, from the Conv `strides` attribute.
  *   - padding       none. The Conv carries `pads=[0,0]`, so this is
- *                   `center=False` framing — NOT librosa's centred default.
+ *                   `center=False` framing, NOT librosa's centred default.
  *   - filterbank    32 mel bands, Slaney mel scale, Slaney area normalisation,
  *                   fmin 60 Hz, fmax 3800 Hz. Max abs deviation from the pinned
  *                   `1.melW` matrix 8.1e-10 against a peak weight of 1.4e-2.
  *   - decibels      power (not magnitude) spectrogram, amin 1e-10, ref 1.0,
- *                   top_db 80 — and the top_db floor uses the maximum over the
+ *                   top_db 80, and the top_db floor uses the maximum over the
  *                   WHOLE call's output, reproduced in {@link melFrames}.
  *
  * Those deviations are the parity evidence for the DSP constants themselves;
@@ -92,7 +92,7 @@ export function melFrameCount(sampleCount: number): number {
  * Periodic Hann window of {@link WAKE_MEL_WIN_LENGTH} taps, zero-padded and
  * centred inside an {@link WAKE_MEL_N_FFT}-point frame.
  *
- * Periodic (divisor `L`), not symmetric (divisor `L-1`) — the two differ by
+ * Periodic (divisor `L`), not symmetric (divisor `L-1`), the two differ by
  * 6.0e-3 here, which is 7 million times the residual against the pinned
  * weights, so the distinction is not cosmetic.
  */
@@ -261,7 +261,7 @@ function fft(re: Float64Array, im: Float64Array): void {
  * Compute the log-mel spectrogram of `samples`, returning `frames * 32` values
  * row-major (frame-major).
  *
- * `samples` are raw int16 magnitudes as floats — the same scaling openWakeWord
+ * `samples` are raw int16 magnitudes as floats, the same scaling openWakeWord
  * feeds its front end, i.e. NOT normalised to [-1, 1]. Feeding normalised audio
  * shifts every value by a constant 90.3 dB and the classifier's scores become
  * meaningless, so the scale is part of the contract, not a detail.

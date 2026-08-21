@@ -46,7 +46,7 @@ Each call produces a structured Markdown entry (the outer four-backtick fence es
 ```
 ````
 
-### Write Behavior
+### Write behavior
 
 Log entries are buffered in memory and written asynchronously to avoid blocking the event loop:
 
@@ -58,9 +58,9 @@ Logger filesystem errors are reported to `stderr` but do not propagate to the ca
 
 ---
 
-## Runtime Events
+## Runtime events
 
-### Event Architecture
+### Event architecture
 
 All runtime state changes are communicated through typed events wrapped in an `EventEnvelope`. The envelope carries trace context, enabling end-to-end correlation across turns, tasks, and agents:
 
@@ -78,7 +78,7 @@ interface EventEnvelope<TType, TPayload> {
 }
 ```
 
-Create an envelope. `createEventEnvelope` requires `sessionId` and `source` in the context; `traceId` is taken from the context when supplied (it is not generated automatically) — pass a shared `traceId` to correlate fan-out envelopes under one trace:
+Create an envelope. `createEventEnvelope` requires `sessionId` and `source` in the context; `traceId` is taken from the context when supplied (it is not generated automatically). Pass a shared `traceId` to correlate fan-out envelopes under one trace:
 
 ```ts
 import { createEventEnvelope } from '@pellux/goodvibes-sdk/transport-core';
@@ -90,7 +90,7 @@ const envelope = createEventEnvelope(
 );
 ```
 
-### Event Domains
+### Event domains
 
 Events are partitioned into named domains. Subscribe only to the domains relevant to your use case to reduce transport overhead.
 
@@ -155,7 +155,7 @@ const stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) =>
 });
 ```
 
-### Envelope-Level Subscription
+### Envelope-level subscription
 
 Use `onEnvelope` instead of `on` to access the full trace context:
 
@@ -165,7 +165,7 @@ feed.turn.onEnvelope('TURN_COMPLETED', (envelope) => {
 });
 ```
 
-### Payload Summaries
+### Payload summaries
 
 Two high-cardinality payload fields are emitted as **structured summaries** rather than raw content to keep the event stream safe for external subscribers, on-disk traces, and OTel export.
 
@@ -182,7 +182,7 @@ export interface ToolResultSummary {
 }
 ```
 
-Do not rely on `payload.result` being the raw tool return value — downstream consumers that need the full result should read it from the tool-call ledger, not the event stream.
+Do not rely on `payload.result` being the raw tool return value. Downstream consumers that need the full result should read it from the tool-call ledger, not the event stream.
 
 **`contentSummary` on `LLM_RESPONSE_RECEIVED`**. The provider response is surfaced as a redacted summary by default:
 
@@ -191,19 +191,19 @@ promptSummary: { length: number; sha256: string; first100chars: string } | strin
 contentSummary: { length: number; sha256: string; first100chars: string } | string;
 ```
 
-Raw prompts and responses are only emitted when `telemetry.includeRawPrompts` is explicitly enabled. In all other configurations the summary object is emitted — subscribers branch on `typeof` to handle both shapes.
+Raw prompts and responses are only emitted when `telemetry.includeRawPrompts` is explicitly enabled. In all other configurations the summary object is emitted. Subscribers branch on `typeof` to handle both shapes.
 
-### Dispatch Ordering
+### Dispatch ordering
 
 `RuntimeEventBus.emit` dispatches listener callbacks **asynchronously via `queueMicrotask`**. Emitters return synchronously before any listener runs, so listeners cannot reorder or re-enter the emitter on the current stack frame.
 
 Guarantees:
-- Emit order matches dispatch order — microtasks are FIFO within the current task.
+- Emit order matches dispatch order: microtasks are FIFO within the current task.
 - An error thrown by one listener does not prevent subsequent listeners from running.
 - Listeners registered during an in-flight dispatch do not receive that dispatch; they are picked up on the next emit.
 - Tests that assert on side effects from a listener must `await` a microtask flush (e.g. `await Promise.resolve()`) before asserting.
 
-The `_emitOps` internal fast-path dispatches synchronously — it is reserved for `ops.*` bus-self-reporting events and must not be used by application code.
+The `_emitOps` internal fast-path dispatches synchronously. It is reserved for `ops.*` bus-self-reporting events and must not be used by application code.
 
 ### RuntimeEventFeed API
 
@@ -226,7 +226,7 @@ interface RuntimeEventFeeds<TDomain, TEvent> {
 
 ## Telemetry
 
-### Session Telemetry State
+### Session telemetry state
 
 The `telemetry` store domain accumulates session-level metrics, correlation IDs, and a recent-event ring buffer. Access it via the selector:
 
@@ -256,14 +256,14 @@ console.log(telemetry.sessionMetrics);
 
 Two correlation IDs are tracked:
 
-- `sessionCorrelationId` — set at session start, never changes. Use it to correlate all events from a session.
-- `currentTurnCorrelationId` — changes each turn. Use it to correlate events within a single turn.
+- `sessionCorrelationId`: set at session start, never changes. Use it to correlate all events from a session.
+- `currentTurnCorrelationId`: changes each turn. Use it to correlate events within a single turn.
 
 ```ts
 const { sessionCorrelationId, currentTurnCorrelationId } = telemetry;
 ```
 
-### OTel Integration
+### OTel integration
 
 When OpenTelemetry is active, `traceContext` is populated with OTel-compatible IDs:
 
@@ -276,7 +276,7 @@ if (traceContext?.exportActive) {
 }
 ```
 
-### Telemetry Event Buffer
+### Telemetry event buffer
 
 The `recentEvents` ring buffer holds the last 500 `TelemetryEventRecord` entries by default. Each record carries:
 
@@ -290,30 +290,30 @@ interface TelemetryEventRecord {
 }
 ```
 
-### Tool Call Telemetry
+### Tool call telemetry
 
 Tool calls are tracked individually through the `tools` event domain. Subscribe to `tools` events to build per-tool latency histograms or error-rate dashboards.
 
-### Token Usage Tracking
+### Token usage tracking
 
 Input and output token counts accumulate in `sessionMetrics.inputTokens` and `sessionMetrics.outputTokens`. `cacheReadTokens` tracks cache hits to quantify cost savings from prompt caching.
 
 ---
 
-## Health Monitoring
+## Health monitoring
 
 ### ComponentHealthMonitor
 
-See [Performance and Tuning — Resource Monitoring](./performance.md#resource-monitoring) for full usage. Summary:
+See [Performance and tuning: resource monitoring](./performance.md#resource-monitoring) for full usage. Summary:
 
 - Register components with `monitor.register(id, category)`
-- Gate renders with `monitor.canRender(id)` — returns false when throttled or degraded
+- Gate renders with `monitor.canRender(id)`: returns false when throttled or degraded
 - Report render cost with `monitor.recordRender(id, durationMs)`
 - Read health state with `monitor.getHealth(id)` or `monitor.getAllHealth()`
 
 Health states: `healthy` → `warning` (throttled) → `overloaded` (degraded).
 
-### System Health Selectors
+### System health selectors
 
 ```ts
 import {
@@ -367,7 +367,7 @@ panel.dispose();
 
 Domain rows are sorted: failed first, then degraded, then healthy, then unknown.
 
-### SLO Collector
+### SLO collector
 
 `SloCollector` measures four end-to-end SLO metrics from the runtime event stream:
 
@@ -395,18 +395,18 @@ collector.dispose();
 ```
 
 SLO status classification for dashboard rows:
-- `ok` — p95 within target
-- `warn` — p95 > target / 1.2 (within 20% of target)
-- `violated` — p95 > target
-- `no_data` — no samples collected yet
+- `ok`: p95 within target
+- `warn`: p95 > target / 1.2 (within 20% of target)
+- `violated`: p95 > target
+- `no_data`: no samples collected yet
 
 ---
 
-## Failure Forensics
+## Failure forensics
 
 The forensics subsystem automatically generates structured failure reports whenever a turn or task reaches a terminal failure state. Reports capture the full causal chain without requiring manual log correlation.
 
-### Failure Classification
+### Failure classification
 
 The `ForensicsClassifier` maps event context to a `FailureClass` using priority-ordered heuristics:
 
@@ -422,7 +422,7 @@ The `ForensicsClassifier` maps event context to a `FailureClass` using priority-
 | `llm_error` | API errors, rate limits, network failures, 5xx responses |
 | `unknown` | No pattern matched |
 
-### FailureReport Structure
+### FailureReport structure
 
 ```ts
 interface FailureReport {
@@ -468,7 +468,7 @@ const unsub = registry.subscribe(() => {
 });
 ```
 
-### Exporting Reports
+### Exporting reports
 
 Export a single report as JSON:
 
@@ -490,7 +490,7 @@ const bundle: ForensicsBundle = registry.buildBundle(id, {
 const bundleJson = registry.exportBundleAsJson(id);
 ```
 
-### Causal Chain Analysis
+### Causal chain analysis
 
 Each `CausalChainEntry` in `report.causalChain` traces one step from root cause to terminal state:
 
@@ -507,7 +507,7 @@ for (const link of report.causalChain) {
 }
 ```
 
-### Jump Links
+### Jump links
 
 Reports include navigable `jumpLinks` that host surfaces render as actionable targets:
 
@@ -546,7 +546,7 @@ panel.dispose();
 
 ## Diagnostics
 
-### Available Panels
+### Available panels
 
 The diagnostics subsystem provides data providers for the following built-in panels:
 
@@ -567,7 +567,7 @@ The diagnostics subsystem provides data providers for the following built-in pan
 
 All panel providers follow the same pattern: construct with data sources, call `getSnapshot()` / `getAll()` for the current view, subscribe for change notifications, and call `dispose()` to release.
 
-### Provider Health Panel
+### Provider health panel
 
 Provider health is tracked in the `providerHealth` store domain. Read it via selector:
 
@@ -579,7 +579,7 @@ const ph = selectProviderHealth(state);
 // ph.providers: per-provider health records
 ```
 
-### Accessing Diagnostics
+### Accessing diagnostics
 
 ```ts
 import { createDiagnosticsProvider } from '@pellux/goodvibes-sdk/platform/runtime/observability';
@@ -593,7 +593,7 @@ const forensics = diag.forensics.getAll();
 
 ---
 
-## SDKObserver — Pluggable Telemetry Hooks
+## SDKObserver: pluggable telemetry hooks
 
 The `SDKObserver` interface lets you attach custom telemetry through the public SDK surface. All methods are optional; the SDK works identically whether an observer is provided or not.
 
@@ -642,9 +642,9 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-The observer is propagated internally to the operator transport, peer transport, auth client, and realtime connectors — all from the single `observer` field on `GoodVibesSdkOptions`. You do not need to wire it separately to each subsystem.
+The observer is propagated internally to the operator transport, peer transport, auth client, and realtime connectors, all from the single `observer` field on `GoodVibesSdkOptions`. You do not need to wire it separately to each subsystem.
 
-### Observer Error Isolation
+### Observer error isolation
 
 Every observer call site is wrapped in:
 
@@ -677,7 +677,7 @@ Output example:
 
 ### OpenTelemetry adapter
 
-`createOpenTelemetryObserver` accepts a pre-configured OTel `Tracer` and `Meter`. There is no hard dependency on `@opentelemetry/*` — the adapter accepts structurally matching interfaces so consumers bring their own.
+`createOpenTelemetryObserver` accepts a pre-configured OTel `Tracer` and `Meter`. There is no hard dependency on `@opentelemetry/*`. The adapter accepts structurally matching interfaces so consumers bring their own.
 
 ```ts
 import { trace, metrics } from '@opentelemetry/api';
@@ -710,18 +710,18 @@ The following table shows which `SDKObserver` callbacks each transport seam call
 
 | Seam | Status |
 |---|---|
-| `createGoodVibesAuthClient` — `onAuthTransition` on login | Wired |
-| `createGoodVibesAuthClient` — `onAuthTransition` on logout (clearToken) | Wired |
-| `AutoRefreshCoordinator` — `onAuthTransition` reason `refresh` / `expire` | Wired |
-| `OperatorSdk` / `PeerSdk` HTTP transport — `onTransportActivity` (send + recv) | Wired |
-| SSE transport — `onTransportActivity` (send on connect, recv on event) | Wired |
-| WebSocket transport — `onTransportActivity` (send on connect, recv on message) | Wired |
-| SSE / WebSocket transport — `onEvent` (incoming remote runtime events) | Wired |
-| HTTP transport error sites — `onError` | Wired |
-| SSE / WebSocket transport error sites — `onError` | Wired |
-| `RuntimeEventBus.emit` (platform-internal bus) — `onEvent` | Not wired — internal bus is not observable via SDKObserver |
+| `createGoodVibesAuthClient`: `onAuthTransition` on login | Wired |
+| `createGoodVibesAuthClient`: `onAuthTransition` on logout (clearToken) | Wired |
+| `AutoRefreshCoordinator`: `onAuthTransition` reason `refresh` or `expire` | Wired |
+| `OperatorSdk` or `PeerSdk` HTTP transport: `onTransportActivity` (send + recv) | Wired |
+| SSE transport: `onTransportActivity` (send on connect, recv on event) | Wired |
+| WebSocket transport: `onTransportActivity` (send on connect, recv on message) | Wired |
+| SSE or WebSocket transport: `onEvent` (incoming remote runtime events) | Wired |
+| HTTP transport error sites: `onError` | Wired |
+| SSE or WebSocket transport error sites: `onError` | Wired |
+| `RuntimeEventBus.emit` (platform-internal bus): `onEvent` | Not wired, internal bus is not observable via SDKObserver |
 
-### W3C Traceparent Propagation
+### W3C traceparent propagation
 
 The transport layer can inject W3C Trace Context headers (`traceparent`, `tracestate`) into outgoing HTTP and realtime requests when an active OpenTelemetry span is available.
 
@@ -742,11 +742,11 @@ injectTraceparent(headers);
 await injectTraceparentAsync(headers);
 ```
 
-Both functions are no-ops when `@opentelemetry/api` is not installed or no active span exists. There is no hard dependency on `@opentelemetry/*` — detection happens at runtime via dynamic import (async) or `require` (sync). Bundlers see no statically-analysable `import('@opentelemetry/api')`.
+Both functions are no-ops when `@opentelemetry/api` is not installed or no active span exists. There is no hard dependency on `@opentelemetry/*`. Detection happens at runtime via dynamic import (async) or `require` (sync). Bundlers see no statically-analysable `import('@opentelemetry/api')`.
 
 ---
 
-## WRFC Workflow Events
+## WRFC workflow events
 
 WRFC (Work-Review-Fix-Commit) chains emit structured events on the `workflows` domain. Constraint-related events are documented here.
 
@@ -762,7 +762,7 @@ feed.workflows.on('WORKFLOW_CONSTRAINTS_ENUMERATED', (event) => {
 });
 ```
 
-An empty `constraints` array signals the zero-constraint (unconstrained) path — no constraint enforcement follows for this chain.
+An empty `constraints` array signals the zero-constraint (unconstrained) path, no constraint enforcement follows for this chain.
 
 ### `WORKFLOW_REVIEW_COMPLETED` constraint fields
 
@@ -798,7 +798,7 @@ For full details on the constraint propagation lifecycle, see [WRFC Constraint P
 
 ---
 
-## Next Reads
+## Next reads
 
 - [Performance and Tuning](./performance.md)
 - [Realtime and telemetry](./realtime-and-telemetry.md)

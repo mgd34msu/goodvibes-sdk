@@ -21,10 +21,10 @@ const NETWORK_EXECUTE_TIMEOUT_MS = 30_000;
 /**
  * Create a phased fetch tool.
  *
- * Category      : `network` — routes to the network concurrency pool.
- * Cancellable   : `true` — HTTP requests can be interrupted mid-flight by
+ * Category      : `network`, routes to the network concurrency pool.
+ * Cancellable   : `true`, HTTP requests can be interrupted mid-flight by
  *   closing the underlying socket; the executor passes an AbortSignal.
- * phaseTimeouts : `{ executing: 30000 }` — overrides the default timeout for
+ * phaseTimeouts : `{ executing: 30000 }`, overrides the default timeout for
  *   the executing phase to allow for slow network responses.
  *
  * @returns A PhasedTool that delegates execution to an owned fetch tool instance.

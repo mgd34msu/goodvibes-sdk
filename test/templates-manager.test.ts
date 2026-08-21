@@ -168,14 +168,14 @@ describe('TemplateManager', () => {
     });
 
     test('template chaining respects max depth of 3', () => {
-      // depth 0 calls depth 1 calls depth 2 calls depth 3 — depth 4 would be skipped
+      // depth 0 calls depth 1 calls depth 2 calls depth 3, depth 4 would be skipped
       manager.save('d1', 'D1:{{template:d2}}');
       manager.save('d2', 'D2:{{template:d3}}');
       manager.save('d3', 'D3:{{template:d4}}');
       manager.save('d4', 'D4-LEAF');
       const result = manager.expand('Root:{{template:d1}}', {});
       // At depth 3 (expanding d3), it calls expand at depth=3 which is the limit
-      // d3 contains {{template:d4}} — _depth=3, so max depth check triggers
+      // d3 contains {{template:d4}}, _depth=3, so max depth check triggers
       expect(result).toContain('Root:D1:D2:D3:');
     });
   });

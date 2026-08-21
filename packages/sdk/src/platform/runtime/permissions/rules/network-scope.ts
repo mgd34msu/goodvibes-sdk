@@ -35,7 +35,7 @@ export interface NetworkScopeRuleResult {
 }
 
 /**
- * toolMatchesNetworkPattern — Returns true if `toolName` matches the rule's toolPattern.
+ * toolMatchesNetworkPattern, Returns true if `toolName` matches the rule's toolPattern.
  */
 function toolMatchesNetworkPattern(
   toolName: string,
@@ -48,7 +48,7 @@ function toolMatchesNetworkPattern(
 }
 
 /**
- * extractHostAndPort — Extracts the hostname and port from args.
+ * extractHostAndPort, Extracts the hostname and port from args.
  *
  * Checks `url`, `host`, `hostname`, `endpoint` fields.
  * Parses full URLs to extract hostname + port.
@@ -68,7 +68,7 @@ function extractHostAndPort(
         const port = parsed.port ? parseInt(parsed.port, 10) : null;
         return { host: parsed.hostname, port };
       } catch {
-        // Not a valid URL — validate it looks like a hostname before using it
+        // Not a valid URL, validate it looks like a hostname before using it
         // Reject strings with spaces or exceeding max hostname length (RFC 1035: 253 chars)
         if (raw.includes(' ') || raw.length > 253 || raw.length === 0) {
           return null;
@@ -84,20 +84,20 @@ function extractHostAndPort(
 }
 
 /**
- * hostGlobToRegex — Converts a host glob pattern to a RegExp.
+ * hostGlobToRegex, Converts a host glob pattern to a RegExp.
  *
  * Supports:
- *   - `*`  — matches any sequence of non-dot characters (one segment)
- *   - `**` — matches any sequence including dots (crosses subdomain boundaries)
+ *   - `*` , matches any sequence of non-dot characters (one segment)
+ *   - `**`, matches any sequence including dots (crosses subdomain boundaries)
  */
 function hostGlobToRegex(pattern: string): RegExp {
   // `*` matches one non-dot segment; `**` crosses dots. Single forward pass
-  // (see globBodyToRegexSource) — no lastIndex-prone `/g` sentinel round-trip.
+  // (see globBodyToRegexSource), no lastIndex-prone `/g` sentinel round-trip.
   return new RegExp(`^${globBodyToRegexSource(pattern, '[^.]*', '.*')}$`, 'i');
 }
 
 /**
- * hostMatchesPattern — Returns true if `host` matches the glob `pattern`.
+ * hostMatchesPattern, Returns true if `host` matches the glob `pattern`.
  */
 function hostMatchesPattern(host: string, pattern: string): boolean {
   if (pattern === '*') return true;
@@ -105,7 +105,7 @@ function hostMatchesPattern(host: string, pattern: string): boolean {
 }
 
 /**
- * evaluateNetworkScopeRule — Evaluates a single NetworkScopeRule against a tool call.
+ * evaluateNetworkScopeRule, Evaluates a single NetworkScopeRule against a tool call.
  *
  * Returns `matched: true` when:
  *   1. The tool name matches the rule's `toolPattern`, AND
@@ -151,7 +151,6 @@ export function evaluateNetworkScopeRule(
 
   const { host, port } = hostInfo;
 
-  // Check port constraint
   if (rule.ports !== undefined && rule.ports.length > 0 && port !== null) {
     const portAllowed = rule.ports.includes(0) || rule.ports.includes(port);
     if (!portAllowed) {

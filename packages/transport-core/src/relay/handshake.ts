@@ -3,13 +3,13 @@
 // The end-to-end (E2E) authenticated key exchange that runs INSIDE a relay pipe
 // before any application byte flows. It follows the Noise "NK" shape: the
 // initiator (client/surface) already knows the responder's (daemon's) static
-// public key — it was pinned from the pairing payload — and stays anonymous
+// public key, it was pinned from the pairing payload, and stays anonymous
 // itself. This gives three properties that make the relay zero-knowledge:
 //
 //   * Daemon authentication: the derived keys mix a static-ephemeral DH
 //     (dh_se) against the daemon's static key. Only the real daemon holds that
 //     private key, so a malicious or curious relay that tried to sit in the
-//     middle cannot derive the session keys — its forged confirmation fails and
+//     middle cannot derive the session keys, its forged confirmation fails and
 //     the client tears the pipe down.
 //   * Forward secrecy: an ephemeral-ephemeral DH (dh_ee) means recording the
 //     ciphertext and later stealing the daemon's static key still does not

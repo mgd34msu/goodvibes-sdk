@@ -1,18 +1,18 @@
 /**
- * graphql-schema.ts — the knowledge GraphQL schema text, its JSON scalar, and
+ * graphql-schema.ts, the knowledge GraphQL schema text, its JSON scalar, and
  * the small coercion helpers the resolvers use.
  *
  * `graphql` is declared under `optionalDependencies` in
  * packages/sdk/package.json, and this file imported `GraphQLError`,
  * `GraphQLScalarType` and `Kind` as VALUES at module init, while
  * knowledge/graphql.ts ran `buildSchema` and `printSchema` in CLASS-STATIC
- * initialisers — which also run at module init. The daemon reaches both
+ * initialisers, which also run at module init. The daemon reaches both
  * through the knowledge service, so an install without `graphql` did not lose
  * the GraphQL surface, it lost the daemon before it could report anything
  * (see utils/optional-dependency.ts for the measured failure).
  *
  * Everything here is now reached through `graphqlModule()`, and the whole
- * module is resolved by `primeGraphqlModule()` — a dynamic import written out
+ * module is resolved by `primeGraphqlModule()`, a dynamic import written out
  * literally so a bundler still sees `graphql` and bundles it when it IS
  * installed. `KnowledgeGraphqlService` primes it at construction, so in a
  * compiled binary the bundled module is in hand long before an HTTP route
@@ -57,7 +57,7 @@ export async function primeGraphqlModule(): Promise<KnowledgeGraphqlAvailability
  * The resolved `graphql` module, for the synchronous helpers in this file and
  * the synchronous `schemaText` the daemon-sdk route contract requires.
  *
- * Prefers whatever `primeGraphqlModule()` already resolved — which is the
+ * Prefers whatever `primeGraphqlModule()` already resolved, which is the
  * bundled copy inside a compiled binary. Falls back to `createRequire` for a
  * caller that got here before the prime finished, the same technique
  * state/sqlite-vec-loader.ts uses for its synchronous constructors. When
@@ -65,8 +65,8 @@ export async function primeGraphqlModule(): Promise<KnowledgeGraphqlAvailability
  * feature reports itself missing by name rather than failing obscurely.
  *
  * A `createRequire` failure is NOT remembered. Inside a compiled binary the
- * package is bundled and `createRequire` cannot see it at all — only the
- * dynamic import can — so caching that failure would declare `graphql`
+ * package is bundled and `createRequire` cannot see it at all, only the
+ * dynamic import can, so caching that failure would declare `graphql`
  * permanently missing in exactly the installation where it is present. Only
  * `primeGraphqlModule()`, which uses the import a bundler follows, gets to
  * decide that the package is absent.

@@ -9,7 +9,7 @@
  * - Reason codes are correct for each suppression path
  * - Conversation stays high-signal in quiet/balanced modes under burst load
  *
- * All tests use pure in-memory routing — no I/O, no real event bus.
+ * All tests use pure in-memory routing, no I/O, no real event bus.
  */
 import { describe, test, expect, beforeEach } from 'bun:test';
 import { NotificationRouter } from './_helpers/runtime-seam.ts';
@@ -117,7 +117,7 @@ describe('BurstPolicy', () => {
     for (let i = 0; i < 4; i++) {
       policy.evaluate(makeNotification({ domain: 'tools', level: 'info', timestamp: NOW + i }));
     }
-    // agents:debug — fresh group, first event should not be burst
+    // agents:debug, fresh group, first event should not be burst
     const result = policy.evaluate(
       makeNotification({ domain: 'agents', level: 'debug', timestamp: NOW })
     );
@@ -234,7 +234,7 @@ describe('NotificationRouter — adaptive suppression', () => {
   describe('feature flag gate (adaptiveSuppression = false)', () => {
     test('burst events are NOT collapsed when adaptive suppression is off', () => {
       router = legacyRouter(60_000); // huge batch window so batch-policy also silent
-      // Fire 20 events — without adaptive suppression, only BatchPolicy applies
+      // Fire 20 events, without adaptive suppression, only BatchPolicy applies
       const decisions = fireBurst(router, 'tools', 'info', 5, undefined, BASE_TS);
       // First event is never batched; subsequent ones enter batch window
       expect(decisions[0]!.reasonCode).toBe('allowed');
@@ -354,7 +354,7 @@ describe('NotificationRouter — adaptive suppression', () => {
     test('quiet mode never suppresses critical notifications', () => {
       router = adaptiveRouter();
       router.setDefaultDomainVerbosity('minimal');
-      // Fire many critical events — none should be suppressed
+      // Fire many critical events, none should be suppressed
       const decisions = fireBurst(router, 'tools', 'critical', 20, undefined, BASE_TS);
       for (const decision of decisions) {
         expect(decision.target).toBe('conversation');
@@ -436,7 +436,7 @@ describe('NotificationRouter — adaptive suppression', () => {
     });
 
     test('mode_context_minimal: mode suppression includes suppressed string (warning in minimal verbosity)', () => {
-      // Use warning — in minimal verbosity it maps to status_bar via default policy,
+      // Use warning, in minimal verbosity it maps to status_bar via default policy,
       // then mode-context suppresses it to panel_only with mode_context_minimal.
       router = adaptiveRouter();
       router.setDefaultDomainVerbosity('minimal');

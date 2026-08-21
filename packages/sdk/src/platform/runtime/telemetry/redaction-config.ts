@@ -27,7 +27,7 @@
  * `setTelemetryIncludeRawPrompts(configManager.get('telemetry.includeRawPrompts'))`.
  * Opt-in (true) emits a startup WARN so operators can see the configuration.
  *
- * Known gap: `listEvents({view: 'raw'})` does not yet consult the flag — raw
+ * Known gap: `listEvents({view: 'raw'})` does not yet consult the flag, raw
  * view access is gated by scope only. The flag is available for future
  * hardening (e.g. refuse raw view regardless of scope when the flag is off).
  */
@@ -45,7 +45,7 @@ export function setTelemetryIncludeRawPrompts(value: boolean): void {
   _includeRawPrompts = value;
   if (value) {
     logger.warn(
-      'telemetry.includeRawPrompts is ENABLED — raw prompt/response content will appear in telemetry events. '
+      'telemetry.includeRawPrompts is ENABLED, raw prompt/response content will appear in telemetry events. '
       + 'This setting is for debugging only. Disable in production to avoid PII/secret exfiltration.'
     );
   }

@@ -1,10 +1,10 @@
 /**
- * election.ts — the leader-election state machine for ONE surface.
+ * election.ts, the leader-election state machine for ONE surface.
  *
  * There is one instance of this per inbound surface the node can actually
  * serve: one for each Telegram bot, one per ntfy topic, one per inbox account.
  * They share a transport and a holdings ledger (both owned by the node manager
- * in election-node.ts) and nothing else — separate roles, separate timers,
+ * in election-node.ts) and nothing else, separate roles, separate timers,
  * separate transition queues. That separation is the point: a node configured
  * for Telegram and ntfy and a node configured for ntfy alone contest ntfy and
  * leave each other's other surfaces entirely alone, and losing the ntfy holder
@@ -20,7 +20,7 @@
  * for a given surface running at any moment, and a handoff never starts the
  * successor before the predecessor has finished stopping.
  *
- * Every role transition runs through a single serialized queue — per surface,
+ * Every role transition runs through a single serialized queue, per surface,
  * so a wedged ntfy stop cannot block a Telegram transition. Consumer start and
  * stop are awaited, and datagrams keep arriving while they run, so without
  * serialization a HEARTBEAT landing mid-`start()` could interleave a second
@@ -65,7 +65,7 @@ export interface SurfaceElectionHost {
   /** Broadcast a datagram stamped with this surface's digest. */
   send(type: ClusterMessageType, surfaceId: string): Promise<void>;
   /**
-   * Can this node serve the surface RIGHT NOW — gate registered, credential
+   * Can this node serve the surface RIGHT NOW, gate registered, credential
    * present, surface enabled locally? Re-asked at every promotion rather than
    * captured once, because a credential can be removed while the node runs.
    */
@@ -119,7 +119,7 @@ export class SurfaceElection {
    * Consecutive refusals by the provider for THIS surface, and what was waited
    * for the last one. A refusal means another process holds the credential,
    * which retrying cannot fix, so the interval grows rather than staying flat
-   * — see consumer-conflict-backoff.ts.
+   *, see consumer-conflict-backoff.ts.
    */
   private consumerConflictBackoff = INITIAL_CONSUMER_CONFLICT_STATE;
   /** When the consumer last actually started, for judging "did it serve?". */
@@ -159,8 +159,8 @@ export class SurfaceElection {
    *
    * A holder stops its consumer and broadcasts RESIGN on the way out, which is
    * what turns a restart from a 90-second outage into a sub-second one. The
-   * watchdog exists for the case this path never runs — a crash, a kill -9, a
-   * lost power cable — not for the ordinary case.
+   * watchdog exists for the case this path never runs, a crash, a kill -9, a
+   * lost power cable, not for the ordinary case.
    */
   async stop(reason = 'shutdown'): Promise<void> {
     if (this.role === 'stopped') return;
@@ -206,7 +206,7 @@ export class SurfaceElection {
   // ── external signals ──────────────────────────────────────────────────────
 
   /**
-   * A provider told us somebody else is already consuming THIS surface —
+   * A provider told us somebody else is already consuming THIS surface,
    * Telegram answers a concurrent getUpdates with 409.
    *
    * Never fight over it. The other consumer is real whether or not it speaks
@@ -232,7 +232,7 @@ export class SurfaceElection {
         ...(this.consumerConflictBackoff.streak > 1
           ? {
               action: 'this surface has been refused repeatedly; stop the other process using this '
-                + 'credential, or remove the credential from this machine — retrying cannot resolve it',
+                + 'credential, or remove the credential from this machine, retrying cannot resolve it',
             }
           : {}),
       });
@@ -314,16 +314,16 @@ export class SurfaceElection {
    * Take the surface and start consuming it.
    *
    * `handoff` decides where consumption resumes from, and the distinction is
-   * not cosmetic — it is the difference between losing messages and answering
+   * not cosmetic, it is the difference between losing messages and answering
    * them twice:
    *
-   *   'ordered'  — the predecessor stopped consuming and THEN said so, so it
+   *   'ordered' , the predecessor stopped consuming and THEN said so, so it
    *                read right up to its last moment. There is no gap. Resuming
    *                from its last heartbeat would replay everything it already
    *                handled between that heartbeat and its stop, and the user
    *                would get a second answer to a message that was answered.
    *
-   *   'gap'      — the predecessor vanished (crash, kill -9, a handoff it never
+   *   'gap'     , the predecessor vanished (crash, kill -9, a handoff it never
    *                completed). The last moment it is KNOWN to have been alive
    *                is its last heartbeat for THIS surface, so consumption
    *                resumes there. A provider without a per-subscriber cursor
@@ -410,7 +410,7 @@ export class SurfaceElection {
     this.holderNodeId = nextHolderNodeId;
     // This node WAS the reader right up to this moment, so this moment is the
     // surface's last known-alive time. Leaving a stale reading here would have
-    // the watchdog declare the surface abandoned the instant we stood down —
+    // the watchdog declare the surface abandoned the instant we stood down,
     // and the node that just gave it up would immediately contest it again,
     // against the successor it handed it to.
     this.lastHolderHeartbeatAt = this.host.clock.now();
@@ -530,11 +530,11 @@ export class SurfaceElection {
    * Two nodes can hold one surface after a partition heals. Both sides run the
    * same ordering over the same two candidates, so they agree on the winner
    * without negotiating; the loser performs the ordered stop-then-RESIGN and
-   * the winner — which never stopped — simply carries on.
+   * the winner, which never stopped, simply carries on.
    *
    * Decided on the STABLE order, which excludes holdings. Holdings are
    * observed from traffic, and two nodes that were partitioned have by
-   * definition been observing different traffic — ranking a reconciliation on
+   * definition been observing different traffic, ranking a reconciliation on
    * a number they disagree about could leave both sides believing they won.
    * Version and the per-surface hash come out of the datagram itself and can
    * never disagree.
@@ -632,7 +632,7 @@ export class SurfaceElection {
    *
    * Without it a standby is invisible: it sends nothing after losing, so the
    * holder's ledger forgets it, and an overloaded holder concludes there is
-   * nobody to rebalance to. A PROBE is the right shape for the beat — the
+   * nobody to rebalance to. A PROBE is the right shape for the beat, the
    * holder answers it with a HEARTBEAT, so the beat also re-confirms the
    * holder is alive.
    */
@@ -669,7 +669,7 @@ export class SurfaceElection {
    * SURFACE_YIELD_GAP surfaces ahead of a node that can serve this one. See
    * shouldYieldSurface for why the threshold is two and not one. The release
    * itself is the ordinary ordered stop-then-RESIGN, so consumption of the
-   * surface stops before anything anywhere starts it again — a rebalance never
+   * surface stops before anything anywhere starts it again, a rebalance never
    * opens a window where two nodes read the same topic.
    */
   private async considerYield(): Promise<void> {
@@ -678,9 +678,9 @@ export class SurfaceElection {
     let best: { nodeId: string; holdings: number } | null = null;
     // A node this cluster would already declare DEAD as a holder must not be
     // handed a surface as a candidate. The two liveness questions used to
-    // disagree — a holder is gone after masterTimeoutMs, a yield target was
+    // disagree, a holder is gone after masterTimeoutMs, a yield target was
     // believed alive for twice candidacyAnnounceMs, and candidacyAnnounceMs IS
-    // masterTimeoutMs — so a crashed node stayed an eligible recipient for
+    // masterTimeoutMs, so a crashed node stayed an eligible recipient for
     // twice as long as it stayed an eligible holder. Measured on a two-node LAN
     // at a 4s timeout: failover finished 4.6s after the kill, a rescued surface
     // was yielded back to the corpse 0.8s later, and it went unconsumed for a
@@ -694,7 +694,7 @@ export class SurfaceElection {
       if (!best || holdings < best.holdings) best = { nodeId, holdings };
     }
     if (!best || !shouldYieldSurface(selfHoldings, best.holdings)) return;
-    // Decide, then reserve, with no await in between — see tryReserveYield.
+    // Decide, then reserve, with no await in between, see tryReserveYield.
     if (!this.host.tryReserveYield(mono)) return;
     this.host.logger.info('cluster: yielding a surface to spread inbound work across the network', {
       surface: this.options.label,
@@ -722,7 +722,7 @@ export class SurfaceElection {
 
   /**
    * A woken node knows nothing about who holds this surface now, and its own
-   * consumer was frozen mid-flight. Stop first, THEN re-probe — resuming a long
+   * consumer was frozen mid-flight. Stop first, THEN re-probe, resuming a long
    * poll that a successor has already taken over is precisely the double
    * consumption this module prevents.
    */

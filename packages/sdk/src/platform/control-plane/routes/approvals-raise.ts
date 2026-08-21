@@ -1,13 +1,13 @@
 /**
- * approvals.raise — a surface RAISING an ask into the daemon's broker.
+ * approvals.raise, a surface RAISING an ask into the daemon's broker.
  *
  * ── The gap this closes ────────────────────────────────────────────────────
  *
  * `approvals.list/claim/approve/deny/cancel` have existed for a long time, so
  * every surface could SEE and DECIDE an ask. None of them could create one: the
  * only way into the broker was `ApprovalBroker.requestApproval`, an in-process
- * method call. A surface that is not in the daemon's process — a client whose
- * runtime lives on another machine, or simply another process on this one —
+ * method call. A surface that is not in the daemon's process, a client whose
+ * runtime lives on another machine, or simply another process on this one,
  * therefore had no way to route a permission ask through the daemon at all. It
  * kept its own broker, prompted at its own terminal, and the asks it raised
  * were invisible to every other surface and to the daemon's own attention
@@ -19,7 +19,7 @@
  * hold the call open until someone answers, for two reasons: an HTTP request
  * parked across a person's attention span is a request that dies to any idle
  * timeout between here and there (and over the relay there are several), and
- * the decision has a better channel already — `control.approval_update` on the
+ * the decision has a better channel already, `control.approval_update` on the
  * SSE stream carries every transition of this record the moment the broker
  * records it. So the shape is: raise, then watch the id you were handed.
  *
@@ -33,7 +33,7 @@
  *
  * The daemon does. A raised ask becomes a record in the daemon's store, several
  * surfaces may claim and answer it, and what a surface renders afterwards is
- * what the record says — not what it locally believes it asked for. That is the
+ * what the record says, not what it locally believes it asked for. That is the
  * same parity contract the web UI already documents for the decide verbs, and
  * raising through this verb is what extends it to the ask itself.
  */
@@ -46,7 +46,7 @@ import type { RaisedApproval } from '../approval-broker-raise.js';
 import { GatewayVerbError } from './gateway-verb-error.js';
 import { readInvocationParams } from './invocation-params.js';
 
-/** The broker surface this verb needs — nothing but raising and reading back. */
+/** The broker surface this verb needs, nothing but raising and reading back. */
 export interface ApprovalRaiseService {
   raiseApproval(input: RequestSharedApprovalInput): Promise<RaisedApproval>;
   getApproval(approvalId: string): SharedApprovalRecord | null;
@@ -106,7 +106,7 @@ function clampedMs(value: unknown, field: string, max: number): number | undefin
  * A raised ask is rendered by every surface and stored durably, so a malformed
  * one is refused at the door rather than persisted and drawn as a blank prompt.
  * The required set is exactly what the broker's own store validator demands of
- * a restored record — an ask that could not be reloaded must not be creatable.
+ * a restored record, an ask that could not be reloaded must not be creatable.
  */
 export function readApprovalRaiseRequest(raw: unknown): PermissionPromptRequest {
   if (!isRecord(raw)) throw invalid('Invalid request: expected the permission ask object', 'request');
@@ -197,8 +197,8 @@ export function createApprovalRaiseHandler(broker: ApprovalRaiseService): Gatewa
       metadata: buildRaiseMetadata(invocation, params['metadata']),
     });
 
-    // An unawaited decision promise is normal here — the decision arrives on
-    // the event stream — but an unhandled rejection would take the process
+    // An unawaited decision promise is normal here, the decision arrives on
+    // the event stream, but an unhandled rejection would take the process
     // down, and the broker rejects nothing today only by construction.
     raised.decision.catch(() => undefined);
 

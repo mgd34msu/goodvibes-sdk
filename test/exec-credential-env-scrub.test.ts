@@ -108,7 +108,7 @@ describe('exec tool — env scrub end to end', () => {
     const result = await tool.execute({ working_dir: root, commands: [{ cmd: 'echo hi' }] });
     const output = JSON.parse(result.output ?? '{}') as { stdout?: string; withheld_env?: string[] };
     expect(output.stdout).toContain('hi');
-    // The list (if any) carries variable NAMES only — no '=' value payloads.
+    // The list (if any) carries variable NAMES only, no '=' value payloads.
     for (const name of output.withheld_env ?? []) expect(name).not.toContain('=');
   });
 

@@ -85,7 +85,7 @@ export class VoiceService {
     }
     const result = await provider.synthesizeStream(request);
     // Streaming TTS bills on the submitted characters (the provider's own
-    // billing unit) — recorded at accept time, not per chunk.
+    // billing unit), recorded at accept time, not per chunk.
     this.recordUsage(provider, { modelId: request.modelId, kind: 'tts', billableUnits: request.text.length, unit: 'characters' });
     return result;
   }

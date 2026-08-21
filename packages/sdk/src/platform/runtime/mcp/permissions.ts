@@ -222,11 +222,11 @@ function sortFindings(a: McpAttackPathFinding, b: McpAttackPathFinding): number 
  * Manages per-server permission state.
  *
  * Lifecycle:
- *   1. `registerServer(name)` — called when a server transitions to configured/connecting.
- *   2. `setTrustLevel(name, level)` — adjust trust at runtime.
- *   3. `allowTool(name, tool)` / `denyTool(name, tool)` — explicit overrides.
- *   4. `isToolAllowed(name, tool)` — checked before every tool invocation.
- *   5. `removeServer(name)` — called on permanent disconnection.
+ *   1. `registerServer(name)`, called when a server transitions to configured/connecting.
+ *   2. `setTrustLevel(name, level)`, adjust trust at runtime.
+ *   3. `allowTool(name, tool)` / `denyTool(name, tool)`, explicit overrides.
+ *   4. `isToolAllowed(name, tool)`, checked before every tool invocation.
+ *   5. `removeServer(name)`, called on permanent disconnection.
  */
 export class McpPermissionManager {
   private readonly permissions = new Map<string, McpServerPermissions>();
@@ -453,7 +453,7 @@ export class McpPermissionManager {
       };
     }
 
-    // standard or trusted — allow
+    // standard or trusted, allow
     return { allowed: true, reason: `trust level '${record.trustLevel}'`, verdict: 'allow', profileMode: record.profile.mode };
   }
 

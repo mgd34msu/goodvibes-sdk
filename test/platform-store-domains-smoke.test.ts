@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/runtime/store/domains
+ * Coverage-gap smoke test, platform/runtime/store/domains
  * Verifies that each store domain's createInitial*State() factory function
  * returns an object with the expected base shape and key-field values.
  * Closes coverage gap: platform/runtime/store/domains per-domain

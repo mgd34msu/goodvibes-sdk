@@ -20,7 +20,7 @@ export interface RepairResult {
  * If no repairs are needed (or repair is impossible), returns the original unchanged
  * with repaired=false.
  *
- * Design: never throws — always returns a result. Premium models that send
+ * Design: never throws, always returns a result. Premium models that send
  * correct calls pass through unchanged (zero overhead).
  */
 export function repairToolCall(
@@ -49,7 +49,7 @@ export function repairToolCall(
     // --- Rule 3 & 4 & 5: Per-property coercions ---
     for (const [key, propSchema] of Object.entries(properties)) {
       if (!(key in fixed)) {
-        // Property missing — handle in Rule 2 below
+        // Property missing, handle in Rule 2 below
         continue;
       }
 
@@ -98,7 +98,7 @@ export function repairToolCall(
       }
     }
 
-    // --- Rule 2: Missing required string params — attempt to fill from present params ---
+    // --- Rule 2: Missing required string params, attempt to fill from present params ---
     for (const requiredKey of required) {
       if (requiredKey in fixed) {
         continue; // already present
@@ -205,6 +205,6 @@ function _findStringCandidate(
     return { sourceKey: preferred[0], value: preferred[1] };
   }
 
-  // No name match found — do not guess; let the call fail normally
+  // No name match found, do not guess; let the call fail normally
   return null;
 }

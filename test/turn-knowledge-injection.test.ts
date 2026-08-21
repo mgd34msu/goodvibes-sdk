@@ -1,5 +1,5 @@
 /**
- * Passive knowledge injection — turn-knowledge-injection.ts unit suite.
+ * Passive knowledge injection, turn-knowledge-injection.ts unit suite.
  *
  * buildPerTurnKnowledgeInjection is a pure function of its inputs (no agent loop, no
  * feature flag, no AgentRecord) so every honesty/budget/floor behavior is exercised
@@ -80,7 +80,7 @@ describe('deriveTurnKnowledgeQuery', () => {
 describe('buildPerTurnKnowledgeInjection — query derivation pulls records the frozen task alone would miss', () => {
   test('a steer word retrieves a record with no overlap with the frozen task', () => {
     // confidence 55 + reviewState 'fresh' (+20) = 75, BELOW the default relevance floor
-    // (95) on its own — it takes the "rate limiting" token match (+20 per matching
+    // (95) on its own, it takes the "rate limiting" token match (+20 per matching
     // token) from the steer to cross the floor, so this genuinely exercises query
     // derivation rather than a high-trust record clearing the floor on confidence alone.
     const records = [
@@ -178,7 +178,7 @@ describe('buildPerTurnKnowledgeInjection — token budget (greedy trim)', () => 
     expect(full.record.injectedIds).toEqual(['mem_1', 'mem_2', 'mem_3']);
     expect(full.record.droppedForBudget).toEqual([]);
 
-    // Budget one token short of what fits all three — mem_3 (the lowest-scored
+    // Budget one token short of what fits all three, mem_3 (the lowest-scored
     // surviving entry) is exactly what should get dropped.
     const tight = buildPerTurnKnowledgeInjection({
       memoryRegistry: fakeRegistry(records),

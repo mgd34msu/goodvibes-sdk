@@ -5,7 +5,7 @@
  * construction, per-command plan resolution (including the honest-unavailable
  * path), and the sandbox-aware permission policy that relaxes an "ask" to an
  * "allow" only for boundary-safe commands. Also pins that the frozen
- * catastrophic block is unaffected by the sandbox — it stays an unconditional
+ * catastrophic block is unaffected by the sandbox, it stays an unconditional
  * exec-time denial.
  */
 import { describe, expect, test } from 'bun:test';

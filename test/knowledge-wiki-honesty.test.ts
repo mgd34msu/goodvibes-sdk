@@ -18,7 +18,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 import type { MemoryRegistry } from '../packages/sdk/src/platform/state/memory-registry.js';
 import type { MemoryStore } from '../packages/sdk/src/platform/state/memory-store.js';
 
-/** None of these tests exercise the memory subsystem — KnowledgeService just needs the dependency present. */
+/** None of these tests exercise the memory subsystem, KnowledgeService just needs the dependency present. */
 function fakeMemoryRegistry(): Pick<MemoryRegistry, 'add' | 'getAll' | 'getStore'> {
   return {
     add: async () => {
@@ -313,7 +313,7 @@ describe('knowledge wiki honesty — packet truncation disclosure (Defect 9)', (
       });
     }
     // A generous token budget so the ITEM CAP (not the budget) is what drops
-    // candidates — droppedForBudget must be 0 and budgetExhausted false.
+    // candidates, droppedForBudget must be 0 and budgetExhausted false.
     const truncated = await service.buildPacket('widget', [], 2, { budgetLimit: 100_000 });
     expect(truncated.truncated).toBe(true);
     expect(truncated.droppedCount).toBeGreaterThan(0);

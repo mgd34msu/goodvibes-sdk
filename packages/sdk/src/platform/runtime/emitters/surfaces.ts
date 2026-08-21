@@ -1,5 +1,5 @@
 /**
- * Surface emitters — typed wrappers for SurfaceEvent domain.
+ * Surface emitters, typed wrappers for SurfaceEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

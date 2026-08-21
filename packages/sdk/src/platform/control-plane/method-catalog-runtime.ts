@@ -94,7 +94,7 @@ const RUNTIME_METRICS_SNAPSHOT_SCHEMA = objectSchema({
   }, ['byModel', 'byClass']),
 }, ['counters', 'gauges', 'histograms', 'toolFormat']);
 
-/** The shared memory search-filter fields (no `recall` — that is search-only). Reused by list / search-semantic / export. */
+/** The shared memory search-filter fields (no `recall`, that is search-only). Reused by list / search-semantic / export. */
 const MEMORY_SEARCH_FILTER_FIELDS = {
   scope: MEMORY_SCOPE_SCHEMA,
   cls: MEMORY_CLASS_SCHEMA,
@@ -135,7 +135,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'mcp.servers.reveal',
     title: 'MCP Servers Reveal',
-    description: 'Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.',
+    description: 'Return effective MCP config with environment VALUES included, not just envKeys. Admin only, the redacted mcp.config.get view is what every other caller should use.',
     category: 'mcp',
     scopes: ['read:mcp'],
     access: 'admin',
@@ -435,7 +435,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   }),
   // Discard actually discards: the eviction-preserving removal (dirty state
   // committed onto the branch first, directory removed, BRANCH KEPT) with an
-  // honest receipt — never just a state-field write. Handler: routes/worktree-setup.ts.
+  // honest receipt, never just a state-field write. Handler: routes/worktree-setup.ts.
   methodDescriptor({
     id: 'worktrees.discard',
     title: 'Discard a Worktree',
@@ -502,7 +502,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.consolidation.receipts',
     title: 'Memory Consolidation Receipts',
-    description: 'Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.',
+    description: 'Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates), the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.',
     category: 'memory',
     scopes: ['read:memory'],
     http: { method: 'GET', path: '/api/memory/consolidation/receipts' },
@@ -622,7 +622,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.records.delete',
     title: 'Delete Memory Record',
-    description: 'Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.',
+    description: 'Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed, an honest boolean, never a 200 that pretends a phantom row was removed.',
     category: 'memory',
     scopes: ['write:memory'],
     http: { method: 'DELETE', path: '/api/memory/records/{id}' },
@@ -642,7 +642,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.projections.list',
     title: 'List Memory Projections',
-    description: 'Return the live projection of standing (project/team-scope) memory records — one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:"expired" rather than silently dropped.',
+    description: 'Return the live projection of standing (project/team-scope) memory records, one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:"expired" rather than silently dropped.',
     category: 'memory',
     scopes: ['read:memory'],
     http: { method: 'GET', path: '/api/memory/projections' },
@@ -652,7 +652,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.projections.get',
     title: 'Get Memory Projection',
-    description: 'Return one standing record\'s projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id — a session-scope or unknown id is an honest miss, never an empty projection.',
+    description: 'Return one standing record\'s projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id, a session-scope or unknown id is an honest miss, never an empty projection.',
     category: 'memory',
     scopes: ['read:memory'],
     http: { method: 'GET', path: '/api/memory/projections/{id}' },
@@ -692,7 +692,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.records.update',
     title: 'Update Memory Record',
-    description: 'Edit a record\'s content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.',
+    description: 'Edit a record\'s content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself, e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.',
     category: 'memory',
     scopes: ['write:memory'],
     http: { method: 'POST', path: '/api/memory/records/{id}/update' },
@@ -710,7 +710,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.records.links.list',
     title: 'List Memory Record Links',
-    description: 'Return every link where the record is the source or the target. Returns 404 when no record with that id exists — an honest not-found, distinct from a record that exists but has no links (an empty array).',
+    description: 'Return every link where the record is the source or the target. Returns 404 when no record with that id exists, an honest not-found, distinct from a record that exists but has no links (an empty array).',
     category: 'memory',
     scopes: ['read:memory'],
     http: { method: 'GET', path: '/api/memory/records/{id}/links' },
@@ -720,7 +720,7 @@ export const builtinGatewayRuntimeMethodDescriptors: readonly GatewayMethodDescr
   methodDescriptor({
     id: 'memory.records.links.add',
     title: 'Link Memory Records',
-    description: 'Create a directed relation (e.g. "supersedes", "caused") from the path record to a target record. Returns 404 when either endpoint does not exist — never a 200 that pretends a link was made between records that do not both exist.',
+    description: 'Create a directed relation (e.g. "supersedes", "caused") from the path record to a target record. Returns 404 when either endpoint does not exist, never a 200 that pretends a link was made between records that do not both exist.',
     category: 'memory',
     scopes: ['write:memory'],
     http: { method: 'POST', path: '/api/memory/records/{id}/links' },

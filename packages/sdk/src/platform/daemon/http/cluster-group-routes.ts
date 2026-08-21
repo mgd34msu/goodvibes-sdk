@@ -1,5 +1,5 @@
 /**
- * cluster-group-routes.ts — the daemon verbs for LAN group membership.
+ * cluster-group-routes.ts, the daemon verbs for LAN group membership.
  *
  * These ARE the feature's interface. The `cluster` CLI subcommands, the TUI's
  * `/cluster` command and any web UI all call these and render what comes back;
@@ -8,7 +8,7 @@
  * machine.
  *
  * Every verb returns the operation layer's structured result verbatim. Nothing
- * here formats text, and nothing here decides what an operator should see —
+ * here formats text, and nothing here decides what an operator should see,
  * `--json` and the human rendering are two views of the same bytes rather than
  * two code paths that drift.
  */
@@ -41,7 +41,7 @@ export interface ClusterGroupVerbs {
 /** The router services this dispatcher needs. */
 export interface ClusterGroupRouteContext {
   readonly verbs: ClusterGroupVerbs;
-  /** Non-null means refuse — the daemon's own admin check, unchanged. */
+  /** Non-null means refuse, the daemon's own admin check, unchanged. */
   requireAdmin(request: Request): Response | null;
   parseJsonBody(request: Request): Promise<Record<string, unknown> | Response>;
 }
@@ -52,7 +52,7 @@ export interface ClusterGroupRouteContext {
  * A factory rather than an inline closure in the router, so that wiring a new
  * route family costs the router one line. `getVerbs` is read on every request
  * because the LAN group runtime is composed by the HOST, after the router
- * exists — and when it returns null, `/api/cluster/*` is simply unrouted, which
+ * exists, and when it returns null, `/api/cluster/*` is simply unrouted, which
  * is the honest answer for an embedder that composed no group runtime.
  */
 export function clusterGroupRouteExtension(

@@ -7,7 +7,7 @@
  * The fake server counts literals in BYTES, exactly as a real one does. That
  * is what makes the APPEND assertions meaningful: if the client declared
  * `{N}` from a character count, the server would read N bytes, stop short of
- * the message, and the remainder would arrive as commands — which is asserted
+ * the message, and the remainder would arrive as commands, which is asserted
  * against directly rather than inferred.
  */
 
@@ -247,7 +247,7 @@ describe('ImapClient.fetchMessage', () => {
     ]);
 
     // The whole-message read carries the SAME provenance labelling the inbox
-    // listing does — mailbox, delivery evidence, and the To: header still
+    // listing does, mailbox, delivery evidence, and the To: header still
     // named as an unverified claim.
     expect(detail.uid).toBe(42);
     expect(detail.mailbox).toBe('INBOX');
@@ -387,7 +387,7 @@ describe('ImapClient.appendDraft', () => {
     fake = await startFakeImap(draftServer({ list: GMAIL_LIST, appendUid: 4242 }));
 
     const subject = 'Réunion café ☕';
-    const body = 'Bonjour — ça va?\n日本語のテキスト\n';
+    const body = 'Bonjour, ça va?\n日本語のテキスト\n';
     const client = await openClient(fake.port);
     await client.appendDraft({
       to: 'bob@example.test',
@@ -502,7 +502,7 @@ describe('ImapClient.appendDraft', () => {
 
     expect(result.mailbox).toBe('Entwürfe');
     expect(fake.state.commands.some((line) => line.includes('LIST'))).toBe(false);
-    // Non-ASCII mailbox names go on the wire as RFC 3501 modified UTF-7 —
+    // Non-ASCII mailbox names go on the wire as RFC 3501 modified UTF-7,
     // without that, a Drafts folder in any language but English is unusable.
     const append = fake.state.commands.find((line) => line.includes('APPEND')) ?? '';
     expect(append).toContain('"Entw&APw-rfe"');
@@ -910,8 +910,8 @@ describe('probeMailboxBody', () => {
     // one probe rather than the two it replaced.
     //
     // The first is sequence-addressed, because it is what supplies the declared
-    // octet count the comparison needs. The second is UID-addressed — `UID
-    // FETCH 137`, not `FETCH 3` — because that is the form the real drain uses,
+    // octet count the comparison needs. The second is UID-addressed, `UID
+    // FETCH 137`, not `FETCH 3`, because that is the form the real drain uses,
     // so a server that refuses UID-addressed fetches is caught here at connect
     // rather than on the first message that matters. Rewriting the second as a
     // sequence fetch would still satisfy every other assertion in this file and

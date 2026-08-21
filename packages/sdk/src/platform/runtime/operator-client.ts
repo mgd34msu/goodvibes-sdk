@@ -45,7 +45,7 @@ export interface OperatorSessionsClient {
    * (detach != close != kill). Idempotent; see sessions.detach. */
   detach(sessionId: string, surfaceId: string): Promise<SharedSessionRecord | null>;
   /** Permanently remove a session (delete != close). Requires the
-   * session already closed — see sessions.delete. */
+   * session already closed, see sessions.delete. */
   delete(sessionId: string): Promise<'deleted' | 'not-found' | 'active'>;
   bindAgent(sessionId: string, agentId: string): Promise<SharedSessionRecord | null>;
   submitMessage(input: SubmitSharedSessionMessageInput): Promise<SharedSessionSubmission>;
@@ -63,7 +63,7 @@ export interface OperatorSessionsClient {
 /**
  * What a live surface reports when it hands a collected input back.
  *
- * `agentId` names the agent answering THIS input — the pairing only the
+ * `agentId` names the agent answering THIS input, the pairing only the
  * surface running the loop knows, and the thing that binds a channel reply.
  * `answer`/`status` carry that agent's finished output once the surface's turn
  * ends, so the daemon can write it into the session and deliver it.
@@ -95,7 +95,7 @@ export interface OperatorApprovalsClient {
       readonly actor: string;
       readonly actorSurface?: string | undefined;
       readonly note?: string | undefined;
-      /** Optional per-hunk selection (edit-tool approvals) — the broker filters
+      /** Optional per-hunk selection (edit-tool approvals), the broker filters
        * the approval's own edit list to these indices server-side. */
       readonly selectedHunks?: readonly number[] | undefined;
     },

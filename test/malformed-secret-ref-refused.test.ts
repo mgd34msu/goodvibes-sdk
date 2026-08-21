@@ -2,7 +2,7 @@
  * A malformed secret reference is a refusal, not a credential.
  *
  * `resolveSecretInput` parsed a `goodvibes://…` string and, when the parse
- * failed, fell through to "then it must be a literal secret" — a rule that
+ * failed, fell through to "then it must be a literal secret", a rule that
  * succeeds by convention. So a typo in a config reference became the auth
  * token: the reference TEXT went on the wire to a third party and into their
  * logs, and what came back was a 401, which sends whoever debugs it hunting for
@@ -31,7 +31,7 @@ const MALFORMED = [
 /**
  * `op://anything` is accepted by the parser as a 1Password ref without checking
  * its vault/item/field structure, so it is not "malformed" by this module's
- * reckoning. It still never becomes the credential — resolution returns null —
+ * reckoning. It still never becomes the credential, resolution returns null,
  * which is the property that matters here. Asserted separately rather than
  * folded in, because calling it malformed would misdescribe the parser.
  */
@@ -110,7 +110,7 @@ describe('what counts as reference-shaped', () => {
 describe('the reference this platform WRITES is one it can read back', () => {
   test('the sweep emits a reference that parses', () => {
     // It did not. `goodvibes://secrets/<KEY>` puts the key where the parser
-    // expects a provider name, so it resolved to no provider — and combined
+    // expects a provider name, so it resolved to no provider, and combined
     // with the old passthrough, the sweep would have replaced a working
     // password with a reference that resolved to its own text.
     const emitted = secretReferenceFor('GOODVIBES_SURFACES_EMAIL_PASSWORD');

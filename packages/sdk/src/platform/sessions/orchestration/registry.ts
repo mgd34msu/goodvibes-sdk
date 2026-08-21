@@ -1,5 +1,5 @@
 /**
- * Multi-session Orchestration — Cross-Session Task Registry
+ * Multi-session Orchestration, Cross-Session Task Registry
  *
  * Wraps SessionTaskGraph with persistence to a host-owned task graph path
  * and reconnect/resume hydration.
@@ -11,15 +11,15 @@
  * Housekeeping contract (the persisted graph is a recoverable store, so it
  * carries the full set of store obligations; the pure half lives in
  * registry-housekeeping.ts):
- *  - REAP ON RECOVERY — hydration drops refs whose owning session no longer
+ *  - REAP ON RECOVERY, hydration drops refs whose owning session no longer
  *    exists (via the injected `sessionExists` predicate), drops edges left
  *    dangling by that removal, and retires handoffs that have already fired.
- *  - BOUND — every collection has BOTH a count cap and an age TTL.
- *  - VALIDATE BY CONTENT — the file is parsed and shape-checked record by
+ *  - BOUND, every collection has BOTH a count cap and an age TTL.
+ *  - VALIDATE BY CONTENT, the file is parsed and shape-checked record by
  *    record; a torn/zero-byte/truncated file is rejected, never served.
- *  - SWEEP PERIODICALLY — the same reap runs on an interval, not only at
+ *  - SWEEP PERIODICALLY, the same reap runs on an interval, not only at
  *    startup, because a daemon-hosted registry can stay up for weeks.
- *  - DISCLOSE — every reap that removed anything logs its counts.
+ *  - DISCLOSE, every reap that removed anything logs its counts.
  */
 
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from 'fs';
@@ -55,7 +55,7 @@ export type { CrossSessionGraphReapSummary } from './registry-housekeeping.js';
 /** Construction-time seams for {@link CrossSessionTaskRegistry}. */
 export interface CrossSessionTaskRegistryOptions {
   /**
-   * "Does this session still exist?" — INJECTED so the registry can reap
+   * "Does this session still exist?", INJECTED so the registry can reap
    * records whose owning session is gone without growing a hard dependency on
    * the session store (and so tests can drive it directly).
    *
@@ -71,7 +71,7 @@ export interface CrossSessionTaskRegistryOptions {
 }
 
 /**
- * CrossSessionTaskRegistry — persistent wrapper around `SessionTaskGraph`.
+ * CrossSessionTaskRegistry, persistent wrapper around `SessionTaskGraph`.
  *
  * Responsibilities:
  * - Load the graph from disk on construction (reconnect/resume hydration),
@@ -126,7 +126,7 @@ export class CrossSessionTaskRegistry {
   // ── Task ref operations ───────────────────────────────────────────────────────
 
   /**
-   * Link a task into the global graph — registers the task as a
+   * Link a task into the global graph, registers the task as a
    * cross-session ref and optionally adds a dependency edge.
    *
    * @param ref - The task ref to link.
@@ -307,7 +307,7 @@ export class CrossSessionTaskRegistry {
    * owning session is gone, refs past their TTL, dangling edges, fired or
    * aged-out handoffs, and anything over the count caps.
    *
-   * Safe to call at any time and idempotent — a second call immediately after
+   * Safe to call at any time and idempotent, a second call immediately after
    * a first reclaims nothing. Concurrent processes are safe because the reap
    * is computed over this process's in-memory graph and persisted through the
    * ordinary flush path; the loser of a concurrent flush simply reaps again.
@@ -374,7 +374,7 @@ export class CrossSessionTaskRegistry {
   /**
    * Load the persisted graph from disk and hydrate the in-memory graph.
    *
-   * The file is validated by CONTENT — a zero-byte, truncated or otherwise
+   * The file is validated by CONTENT, a zero-byte, truncated or otherwise
    * torn file is rejected and preserved aside rather than partially trusted.
    * Surviving records are then reaped before hydration, so recovery never
    * re-imports records whose owning session is gone.
@@ -396,7 +396,7 @@ export class CrossSessionTaskRegistry {
 
     const verdict = parseGraphFile(text);
     if (verdict.kind === 'future') {
-      logger.warn('CrossSessionTaskRegistry: task graph written by a newer runtime — not loaded, preserved aside', {
+      logger.warn('CrossSessionTaskRegistry: task graph written by a newer runtime, not loaded, preserved aside', {
         path: this._graphPath,
         fileVersion: verdict.version,
         supportedVersion: GRAPH_SCHEMA_VERSION,
@@ -405,7 +405,7 @@ export class CrossSessionTaskRegistry {
       return;
     }
     if (verdict.kind === 'corrupt') {
-      logger.warn('CrossSessionTaskRegistry: task graph failed content validation — not loaded, preserved aside', {
+      logger.warn('CrossSessionTaskRegistry: task graph failed content validation, not loaded, preserved aside', {
         path: this._graphPath,
         detail: verdict.detail,
         bytes: Buffer.byteLength(text, 'utf-8'),
@@ -439,7 +439,7 @@ export class CrossSessionTaskRegistry {
     }
   }
 
-  /** Surface what a reap reclaimed. Counts only — graph contents are never logged. */
+  /** Surface what a reap reclaimed. Counts only, graph contents are never logged. */
   private _disclose(phase: 'hydration' | 'sweep', summary: CrossSessionGraphReapSummary): void {
     logger.info('CrossSessionTaskRegistry: reclaimed stale task graph records', {
       phase,
@@ -549,7 +549,7 @@ export class CrossSessionTaskRegistry {
     this._flushTimer.unref?.();
   }
 
-  /** Perform a synchronous write — used by shutdown/dispose and flush(). */
+  /** Perform a synchronous write, used by shutdown/dispose and flush(). */
   private _flushSync(): void {
     try {
       if (!this._dirEnsured) {

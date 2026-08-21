@@ -5,8 +5,8 @@
  * The watcher deliberately redelivers. Its cursor advances only after a
  * message is fully processed, so a crash, a failed notice or a killed process
  * between fetch and completion leaves the cursor below the message and the
- * next pass fetches it again. That is the right trade — a duplicate suppressed
- * beats a message nobody hears about — but it is only the right trade if
+ * next pass fetches it again. That is the right trade, a duplicate suppressed
+ * beats a message nobody hears about, but it is only the right trade if
  * something actually suppresses the duplicate. Without this file, the
  * redelivery the design causes on purpose becomes a second notification on the
  * owner's phone, and a reconnect loop becomes a storm of them.
@@ -14,7 +14,7 @@
  * Identity is per-source and server-assigned
  * ──────────────────────────────────────────
  * Never the `Message-ID` header. That is written by the sender, so two
- * different messages can carry the same one — which would let a sender
+ * different messages can carry the same one, which would let a sender
  * suppress a later message by colliding with an earlier one, turning the
  * dedup cache into a way to silence mail.
  *
@@ -28,7 +28,7 @@
  * Claim, then release on failure
  * ──────────────────────────────
  * The claim happens BEFORE the work, because two concurrent deliveries of one
- * message — an IDLE wake and a fallback poll overlapping — must not both run
+ * message, an IDLE wake and a fallback poll overlapping, must not both run
  * the pipeline. But a claim that outlives a failed attempt suppresses the
  * retry, and the retry is the recovery. So a failure releases the claim and
  * rethrows: the cursor stays put, the message comes again, and that pass does
@@ -56,14 +56,14 @@ export const DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS = 60 * 60_000;
  * was never true. `InboundMessageDedup` is a `Map` on an object the supervisor
  * builds inside `runStart()`. It does not survive a process restart, it does
  * not survive the in-process restart a config change or a cluster handoff
- * causes, and no value of the TTL changes either of those — the cache is gone,
+ * causes, and no value of the TTL changes either of those, the cache is gone,
  * not expired. The claim that an hour "covers the auto-update restart" was
  * structurally false at every setting, and a comment that justifies code rather
  * than describing it is the most dangerous shape a comment takes (§13.8).
  *
  * What it DOES cover is the window this cache can actually see: two passes
- * inside one process discovering the same message — an IDLE wake and a fallback
- * poll overlapping — and a retry after a failed pass in the same process. Both
+ * inside one process discovering the same message, an IDLE wake and a fallback
+ * poll overlapping, and a retry after a failed pass in the same process. Both
  * are seconds apart, so the TTL is generous rather than load-bearing.
  *
  * What covers the restart is the record store, not this. `intake.ts` asks
@@ -96,7 +96,7 @@ export type InboundMailSourceId =
  * The stable identity string for a message.
  *
  * Returns '' when the source did not give a usable id, which
- * `InboundMessageDedup.claim` treats as "cannot dedupe, process it" — a
+ * `InboundMessageDedup.claim` treats as "cannot dedupe, process it", a
  * message with no identity is delivered rather than collapsed onto a shared
  * empty key with every other id-less message.
  */
@@ -158,7 +158,7 @@ export interface DedupingInboundMailSinkDeps {
 /**
  * The sink the watcher is given: suppress repeats, pass on everything else.
  *
- * Deliberately does not know what "handling" means — matching an expectation,
+ * Deliberately does not know what "handling" means, matching an expectation,
  * writing a record, rendering a notice. It owns exactly one decision, "have I
  * seen this message before", and the thing it wraps owns the rest.
  */
@@ -172,7 +172,7 @@ export class DedupingInboundMailSink implements InboundMailSink {
   async deliver(message: InboundMailboxMessage): Promise<void> {
     // Derived from the message's own discriminant, never assumed. Hardcoding
     // 'imap' here compiled fine while the message type was a single shape, and
-    // it would have keyed every Gmail message as `imap:undefined:undefined` —
+    // it would have keyed every Gmail message as `imap:undefined:undefined`,
     // which `inboundMailSourceIdentity` returns '' for, which `claim` treats as
     // "cannot dedupe, process it". Silent total loss of dedup on the Gmail
     // path, which is the owner's path. The union is what caught it.

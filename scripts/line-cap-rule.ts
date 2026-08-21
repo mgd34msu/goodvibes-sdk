@@ -3,7 +3,7 @@
 // Pure ratchet logic for the 800-line source-file cap. Kept separate from
 // check-line-cap.ts (the filesystem-walking CLI)
 // so the ratchet semantics can be exercised directly from tests with plain
-// in-memory fixtures — no disk I/O required.
+// in-memory fixtures, no disk I/O required.
 //
 // Ratchet semantics:
 //   - A file with NO grandfather entry is held to the hard cap: fails if it
@@ -11,7 +11,7 @@
 //   - A file WITH a grandfather entry may sit above MAX_SOURCE_LINES, but
 //     never above its own recorded `ceiling`. Growing past the ceiling fails.
 //   - A file WITH a grandfather entry whose current line count has dropped
-//     below MAX_SOURCE_LINES no longer needs grandfathering — the entry is
+//     below MAX_SOURCE_LINES no longer needs grandfathering, the entry is
 //     stale and the check fails until it is removed. This stops the ratchet
 //     list from silently outliving the violations it was recorded for.
 //   - A grandfather entry whose file was not seen at all in the scanned set
@@ -57,7 +57,7 @@ export function checkLineCap(
     if (lineCount > entry.ceiling) {
       violations.push(
         `${relPath}: grew past its grandfathered ceiling of ${entry.ceiling} lines ` +
-          `(now ${lineCount}); grandfather entries are shrink-only — split the file back ` +
+          `(now ${lineCount}); grandfather entries are shrink-only, split the file back ` +
           `under ${entry.ceiling} lines, or lower the ceiling only if the growth was ` +
           `deliberate and re-justified`,
       );

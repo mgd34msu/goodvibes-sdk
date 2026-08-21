@@ -1,5 +1,5 @@
 /**
- * orchestrator-turn-flags.ts — the per-turn feature reads, in one place.
+ * orchestrator-turn-flags.ts, the per-turn feature reads, in one place.
  *
  * These three questions are asked once per turn and answered purely from the
  * flag manager plus one setting. They carried no orchestrator state beyond
@@ -50,8 +50,8 @@ export function isReconciliationEnabled(sources: TurnFlagSources): boolean {
 
 /**
  * Per-turn passive knowledge injection. Shares the SAME
- * `agent-passive-knowledge-injection` flag as the agent path — one operator
- * feature, one toggle — and follows the same default-ON convention as
+ * `agent-passive-knowledge-injection` flag as the agent path, one operator
+ * feature, one toggle, and follows the same default-ON convention as
  * reconciliation.
  */
 export function isPassiveKnowledgeInjectionEnabled(sources: TurnFlagSources): boolean {

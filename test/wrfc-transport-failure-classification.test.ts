@@ -11,10 +11,10 @@
  *
  * These tests lock in:
  *  1. createNetworkTransportError's own classification (transport-http) for a
- *     synthetic UND_ERR_SOCKET error — the signal orchestrator-runner.ts is now
+ *     synthetic UND_ERR_SOCKET error, the signal orchestrator-runner.ts is now
  *     told to trust.
  *  2. isNetworkTransportError() trusts that structured classification directly
- *     (RED against the old message-substring-only isNetworkError — this exact
+ *     (RED against the old message-substring-only isNetworkError, this exact
  *     case did not match any entry in the old allowlist).
  *  3. isNetworkTransportError() still returns false for a non-network error that
  *     merely carries similar-looking-but-unrelated fields (no over-retry regression).
@@ -51,7 +51,7 @@ describe('isNetworkTransportError — trusts structured classification over mess
   it('returns true for "unexpected socket connection closure" wording once it carries the structured HttpStatusError shape', () => {
     // This is the exact reported wording. The OLD isNetworkError() in
     // orchestrator-runner.ts (message-substring-only) did NOT match this text
-    // against any entry in its allowlist ('socket hang up', 'econnreset', etc.) —
+    // against any entry in its allowlist ('socket hang up', 'econnreset', etc.),
     // this is the RED case for that older implementation.
     const raw = Object.assign(new Error('unexpected socket connection closure'), { code: 'UND_ERR_SOCKET' });
     const err = createNetworkTransportError(raw, 'https://example.test/v1/chat', 'POST');

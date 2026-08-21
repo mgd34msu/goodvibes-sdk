@@ -1,12 +1,12 @@
 /**
- * home-single-writer.ts — one live process per surface home, checked at boot.
+ * home-single-writer.ts, one live process per surface home, checked at boot.
  *
  * ── The failure this closes ────────────────────────────────────────────────
  *
  * A turn forked a SECOND full agent onto the home a live agent was already
  * running out of (`python -c 'pty.fork()'` then `execvp goodvibes-agent`). Two
  * processes then owned one `.goodvibes/agent/` tree: two writers over the same
- * session files, the same state store, the same transcript — which is how a
+ * session files, the same state store, the same transcript, which is how a
  * temp-file race killed a process, and how a ghost session was left marked
  * "active" by a writer that no longer existed.
  *
@@ -19,11 +19,11 @@
  * This is the PROCESS-level guard: at boot, a surface claims its home, and a
  * second live process claiming the same home is REFUSED with a message naming
  * the pid that holds it. It is not a mutex around a write and it does not wait
- * — waiting is the wrong answer to "another copy of me is already running", and
+ *, waiting is the wrong answer to "another copy of me is already running", and
  * a boot that hangs is worse than a boot that says why it stopped.
  *
- * The STORE-level half — serializing two writers of one JSON file so neither
- * tears the other's write — is a different layer with a different answer
+ * The STORE-level half, serializing two writers of one JSON file so neither
+ * tears the other's write, is a different layer with a different answer
  * (`acquireCrossProcessLock`, and the atomic-store work alongside it). Both are
  * wanted; neither substitutes for the other. A single-writer boot guard cannot
  * help a daemon and a CLI legitimately sharing a file, and a write lock cannot
@@ -36,7 +36,7 @@
  * LIVE when its pid is still alive AND that pid still looks like the same
  * program (its argv, read from `/proc/<pid>/cmdline` on Linux, still matches
  * the recorded identity). The second half is what keeps a recycled pid from
- * producing a refusal that names a process which has nothing to do with us —
+ * producing a refusal that names a process which has nothing to do with us,
  * a false refusal at boot is a product that will not start, so the check errs
  * toward letting the boot proceed.
  *
@@ -56,7 +56,7 @@ export interface HomeOwnerClaim {
   /** Epoch millis the claim was written. */
   readonly claimedAt: number;
   /**
-   * A short, stable description of the program holding the home — the argv of
+   * A short, stable description of the program holding the home, the argv of
    * the process that claimed it. Compared against the CURRENT argv of that pid
    * so a recycled pid does not masquerade as a live holder.
    */
@@ -89,7 +89,7 @@ export type HomeClaimDecision =
   | { readonly outcome: 'refuse'; readonly holderPid: number; readonly message: string };
 
 /**
- * How a refusal reads. Names the pid, the home, and what to do — a message
+ * How a refusal reads. Names the pid, the home, and what to do, a message
  * that only says "already running" leaves the person with no next step.
  */
 export function homeClaimRefusalMessage(input: {
@@ -113,7 +113,7 @@ export function homeClaimRefusalMessage(input: {
  *
  * The bias is deliberate and one-directional: every uncertainty resolves to
  * `claim`. An unreadable claim, a dead pid, a pid whose identity no longer
- * matches — all of those mean nothing is holding the home, because refusing a
+ * matches, all of those mean nothing is holding the home, because refusing a
  * boot on a stale record is a product that will not start for a reason that is
  * not true.
  */
@@ -158,7 +158,7 @@ export function currentProcessIdentity(argv: readonly string[] = process.argv): 
  *
  * Linux reads `/proc/<pid>/cmdline` (NUL-separated argv). Everywhere else there
  * is no portable way to read another process's argv without spawning, and this
- * runs at boot — so the answer is null, which resolves to `claim`. On those
+ * runs at boot, so the answer is null, which resolves to `claim`. On those
  * hosts the guard degrades to "pid liveness is not proof", which is honest: it
  * refuses nothing rather than refusing on a guess.
  */
@@ -167,7 +167,7 @@ export function readProcessIdentity(pid: number): string | null {
   try {
     process.kill(pid, 0);
   } catch (error) {
-    // EPERM means it exists but is not ours to signal — still alive.
+    // EPERM means it exists but is not ours to signal, still alive.
     if ((error as NodeJS.ErrnoException).code !== 'EPERM') return null;
   }
   if (process.platform !== 'linux') return null;
@@ -224,7 +224,7 @@ export interface SurfaceHomeClaim {
 /**
  * How many live holders this process has per claim path.
  *
- * One process may legitimately compose several graphs over one home — the
+ * One process may legitimately compose several graphs over one home, the
  * daemon builds a workspace floor per hosted workspace, all under its own home
  * and its own pid. Those are `already-held`, and the first of them to be
  * disposed must not delete a claim the others are still standing on. Counted,
@@ -305,7 +305,7 @@ export function claimSurfaceHome(options: ClaimSurfaceHomeOptions): SurfaceHomeC
     // An unwritable home is a problem this guard must not turn into a refusal:
     // the product's own storage layer will report it far better than a boot
     // guard can, and refusing here would block a boot over a guard's own file.
-    logger.warn('home-single-writer: could not record the home claim — continuing without it', {
+    logger.warn('home-single-writer: could not record the home claim, continuing without it', {
       path,
       error: summarizeError(error),
     });

@@ -1,6 +1,6 @@
 # Changelog
 
-This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish — the changelog gate refuses a release the file does not describe.
+This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish, the changelog gate refuses a release the file does not describe.
 
 ## [2.0.17] - 2026-08-15
 
@@ -9,7 +9,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **Signing in to a provider subscription now works platform-wide, not just on
   the surface where the browser opened.** Subscription sessions (the
   ChatGPT/Codex OAuth tokens behind `openai-subscriber`) were stored per
-  surface, while every conversational turn runs in the daemon — so a login
+  surface, while every conversational turn runs in the daemon, so a login
   completed in the terminal wrote a file the daemon never reads, and the
   daemon kept refreshing whatever stale session it had. Measured live: a
   fresh sign-in, followed by every turn failing "OAuth token exchange failed
@@ -17,8 +17,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   nothing is indistinguishable from the login being lost. Subscriptions now
   live in the shared tier (`~/.goodvibes/shared/subscriptions.json`): a login
   from any surface is immediately visible to the daemon and every other
-  surface. Existing per-surface records fold in automatically on first read —
-  newest record per provider wins, legacy files are never modified, and the
+  surface. Existing per-surface records fold in automatically on first read, newest record per provider wins, legacy files are never modified, and the
   fold happens once. `sharedSubscriptionsPath()` is exported for products
   that construct their own subscription manager.
 
@@ -29,8 +28,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **One tool schema no longer breaks every turn through strict
   OpenAI-compatible gateways.** The edit tool's `occurrence` parameter
   declared its string-or-integer union with the JSON-Schema keyword `oneOf`.
-  Some OpenAI-compatible request validators — abacus RouteLLM among them, as
-  of a recent server-side tightening — forbid `oneOf` inside tool parameter
+  Some OpenAI-compatible request validators, abacus RouteLLM among them, as
+  of a recent server-side tightening, forbid `oneOf` inside tool parameter
   schemas and reject the ENTIRE chat request with "Extra inputs are not
   permitted", so every conversational turn through such a provider failed no
   matter what was asked. The union is now `anyOf`, which validates
@@ -45,8 +44,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **The keep-awake inhibitor can no longer paint an authentication prompt over
   a running terminal UI.** When the platform holds a sleep inhibitor during
   real work (`power.inhibitWhileWorking`), a host whose polkit rules require
-  authentication for that inhibit class — typical for tmux or SSH sessions
-  that logind does not count as an active seat — got systemd's interactive
+  authentication for that inhibit class, typical for tmux or SSH sessions
+  that logind does not count as an active seat, got systemd's interactive
   auth agent registered on the controlling terminal: "authentication is
   required to inhibit system sleep", written straight over the fullscreen UI
   on every submitted turn. The inhibitor is now requested with
@@ -64,15 +63,15 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **Post-wake capture ends when the speaker stops, on real microphones.** Two
   things defeated the room-measured silence floor in live use. A headset's
   automatic gain control ramps its gain back up after speech stops, so the
-  noise floor RISES above the level measured before the wake word — no frame
+  noise floor RISES above the level measured before the wake word, no frame
   ever reads as silent again. And a close microphone hears breath: each short
   burst reset the consecutive-silence clock to zero. The floor now follows the
-  room during capture — a rolling minimum over the last 1.5 seconds tracks the
+  room during capture, a rolling minimum over the last 1.5 seconds tracks the
   quiet dips between words, and the effective floor rises with it, guarded so
   it can never climb into actual speech (capped at a third of the tracked
   speech level). And a loud burst shorter than `voice.wake.speechRetriggerMs`
   (new setting, default 150 ms; 0 restores the strict old rule) counts as part
-  of the silence instead of restarting the clock — breath and mouse clicks no
+  of the silence instead of restarting the clock, breath and mouse clicks no
   longer hold the microphone open. An explicit `voice.wake.silenceFloorRms`
   still freezes the floor completely: a pinned value is pinned.
 - **Every completed wake capture now leaves a receipt** in the voice
@@ -86,7 +85,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   strips formatting before synthesis: heading marks, bold/italic/strikethrough
   markers, link and image syntax (the text survives, the URL does not), list
   bullets, blockquote marks, table plumbing (cells read as a list), horizontal
-  rules, and raw HTML tags. Fenced code blocks are not read at all — the voice
+  rules, and raw HTML tags. Fenced code blocks are not read at all, the voice
   says "Code block omitted." once, even when the fence opens and closes across
   separate streaming deltas. Identifiers like snake_case and math like 2*3
   survive untouched.
@@ -102,19 +101,19 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   module-scope reads (`export const X = bootstrap.X`) in their own barrels.
   Bun's single-file compiler emits module bodies in an order that varies
   build-to-build, and an eager read can land before the module that defines the
-  binding — the compiled binary then dies at load with a ReferenceError on SOME
+  binding, the compiled binary then dies at load with a ReferenceError on SOME
   builds of identical source (observed live: the same agent commit failed CI's
   binary smoke, passed it on rerun, and failed the darwin-arm64 release leg).
   With registered subpaths, a product barrel can use grouped live re-exports
-  (`export { X } from '<subpath>'`) — resolved by the module system, not read
-  at module scope — exactly how `platform/runtime/operations` already fixed
+  (`export { X } from '<subpath>'`), resolved by the module system, not read
+  at module scope, exactly how `platform/runtime/operations` already fixed
   this same class once. All four barrels were already public API through the
   runtime namespace; this changes how they can be reached, not what they
   expose.
 - **The toolchain `post-build-smoke` now scans the artifact for that pattern.**
   After the banner check, the smoke reads the compiled artifact and fails if
   the embedded bundle contains any top-level `var X = exports_Y.Z` eager
-  namespace read — even when this particular build booted, because the next
+  namespace read, even when this particular build booted, because the next
   rebuild of the same source can reorder and die. A booted binary is safe
   forever (order is baked at build time); the sentinel exists so the lottery
   itself cannot ship.
@@ -126,14 +125,14 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **Post-wake capture now ends when you stop talking, in a room that is not
   silent.** The level at which a frame counted as silence was a fixed constant
   (180 on the int16 magnitude scale, about -45 dBFS). In any room whose steady
-  background sits above it — a fan, a compressor, traffic through a window — no
+  background sits above it, a fan, a compressor, traffic through a window, no
   frame was ever silent, so `voice.wake.silenceStopMs` never accumulated and
   EVERY capture ran the full `voice.wake.captureMaxSeconds` however long ago the
   speaker had finished. The floor is now measured per utterance from the audio
   captured just before the wake fired, and placed 12 dB above the room's own
   noise. That window is mostly the wake phrase itself, so the measurement reads
-  the quiet frames inside it — inter-word gaps and stop closures, where only the
-  room is left — rather than its average level, which would measure the speaker
+  the quiet frames inside it, inter-word gaps and stop closures, where only the
+  room is left, rather than its average level, which would measure the speaker
   and put the floor over their head. The measurement is clamped into [180,
   1440]: it can never fall below the old constant, so a genuinely quiet room
   behaves exactly as before and no sentence starts getting clipped, and it can
@@ -144,7 +143,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 - **`voice.wake.silenceFloorRms`** pins the silence floor instead of measuring
   it. 0, the default, measures. A number is used exactly as given, including
-  below the built-in 180 — raise it if capture keeps running after you stop,
+  below the built-in 180, raise it if capture keeps running after you stop,
   lower it if capture cuts off while you are still speaking. It reaches both
   capture paths, post-wake and push-to-talk.
 - **`voice.wake.captureMaxSeconds: 0` removes the ceiling.** Speech-to-text
@@ -152,7 +151,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   than a technical bound, and a long dictated thought is a real thing to want.
   The default stays at 10: the ceiling is the backstop for the OTHER stop
   condition failing, and silence-stop is only dependable now that the floor is
-  measured — which is why these two ship together. With the ceiling off, silence
+  measured, which is why these two ship together. With the ceiling off, silence
   (post-wake) or the key release (push-to-talk) is the only thing that closes
   the microphone.
 
@@ -160,7 +159,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   boundary.** A network-isolated run already said host `localhost` services were
   unreachable and that the daemon on 127.0.0.1 would refuse connections from
   inside. Being told only what does not work left the next move unstated, and a
-  turn that wanted daemon or settings state kept reaching for it anyway — a
+  turn that wanted daemon or settings state kept reaching for it anyway, a
   second `curl`, then `systemctl`, then a port check. The note now names the
   built-in tools that answer those questions from outside the boundary:
   `goodvibes_context` (`summary` for runtime and daemon state, `config_get` for
@@ -172,14 +171,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 - **An unnamed voice request now goes to the provider the user actually
   configured.** When a transcription or synthesis request named no provider,
-  the registry returned the FIRST registered provider with the capability —
-  a cloud provider, by builtin registration order — even when that provider
+  the registry returned the FIRST registered provider with the capability, a cloud provider, by builtin registration order, even when that provider
   had no key and the host carried a fully provisioned local engine. On a
   machine set up for local voice, every wake-word transcription died with
   "OpenAI API key missing" while the user's working whisper was never asked,
   and no settings key could override the pick. Unnamed requests now prefer
   providers that report themselves configured, with a configured local
-  engine first (free, offline, no key — provisioned precisely so unnamed
+  engine first (free, offline, no key, provisioned precisely so unnamed
   requests use it), then any other configured provider in registration
   order. When nothing is configured the old first-registered pick remains,
   so the resulting error still names one concrete provider. A named
@@ -193,7 +191,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **A new turn is no longer finished by the previous turn's ending.** A client
   opened a fresh event stream per turn and presented no `Last-Event-ID`, so the
   gateway's catch-up replay handed the new stream the tail of the previous turn
-  — that turn's `TURN_COMPLETED` included. The frame appended the previous
+ , that turn's `TURN_COMPLETED` included. The frame appended the previous
   turn's final assistant message a second time (the store-boundary dedupe
   already covered that symptom and stays; an honest crash-replay produces it
   too) and, worse, marked the new turn's renderer finished, so every real frame
@@ -202,7 +200,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   surfaces the position it reached (`onEventId`, and `lastEventId` on the
   handle it returns), the runtime-event connector remembers that position per
   URL across stream LIFETIMES rather than only across one stream's own
-  reconnects, and the gateway — which did honour the header — no longer falls
+  reconnects, and the gateway, which did honour the header, no longer falls
   back to the full catch-up window when it cannot resolve the position it was
   handed. Event ids are random per record, so an id that has aged out of the
   ring cannot be compared against one that has not; a client stating a position
@@ -215,11 +213,11 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   other turn is ignored, and a terminal frame for a turn the consumer never saw
   run is refused outright rather than allowed to bind. A client attaching
   mid-turn still renders the turn in flight, and frames carrying no `turnId` are
-  never withheld. On by default in the SDK's own SSE clients — a consumer that
+  never withheld. On by default in the SDK's own SSE clients, a consumer that
   passes nothing is protected; `turnScope: { turnId }` pins a connection to a
   turn it submitted, `turnScope: 'off'` opts out.
 - **One hosted turn no longer starves every session's heartbeat.**
-  `HostedSessionSpineIntake.tick()` awaited delivery — the whole turn — inside
+  `HostedSessionSpineIntake.tick()` awaited delivery, the whole turn, inside
   its own re-entrancy guard, so while any ONE hosted session was answering, no
   other session was heartbeated on the shared spine. A hosted session whose
   spine participant goes stale stops receiving its own steers and starts getting
@@ -235,8 +233,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   caller that needs the outcome rather than the scheduling.
 - **A turn nobody is watching no longer falls back to the host.** The exec
   sandbox always answered "is there a boundary for this command", and when the
-  answer was no — the gate off, `sandbox.enabled` off, or the host unable to
-  provide one — the command ran directly on the host with an honest note. For a
+  answer was no, the gate off, `sandbox.enabled` off, or the host unable to
+  provide one, the command ran directly on the host with an honest note. For a
   terminal that is right; for a daemon-hosted conversational turn it was how one
   reached the whole process table, the owner's `/proc`, and his terminal. A
   composition now states a CONTAINMENT POSTURE: `host-allowed` is the unchanged
@@ -244,21 +242,21 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   was absent. `background: true` is refused under `required` too, since a
   detached command cannot be contained at all. Hosted sessions are `required`
   by default, and a `workstream` spawn is granted the host per spawn by the
-  product composing it — never by the model, the wire, or a tool argument.
+  product composing it, never by the model, the wire, or a tool argument.
 - **The frozen catastrophic block now runs on the detached path too.** A
   `background: true` command returned before `runCommand`, so everything checked
-  there was not checked for it — including the unconditional block the exec docs
+  there was not checked for it, including the unconditional block the exec docs
   describe as always in force. Measured on a real host under the daemon's own
   service environment: an identical witness command reported 5 processes and a
   masked `$HOME` in the foreground and 581 with `$HOME` readable in the
   background. The boundary itself never failed; this path never entered it. The
   guard call moved to the one point every path goes through. The boundary
-  exemption for detached commands is legitimate and stays — a bwrap boundary is
-  `--die-with-parent` — but it is no longer silent, and the LIST is untouched:
+  exemption for detached commands is legitimate and stays, a bwrap boundary is
+  `--die-with-parent`, but it is no longer silent, and the LIST is untouched:
   this changes where the existing block runs, never what is on it.
 - **The owner's terminal is untouchable.** A new exec guard refuses a command
   that drives an existing tmux session, window or pane this platform did not
-  create — send-keys, kill, resize, attach, respawn, rename — with a refusal
+  create, send-keys, kill, resize, attach, respawn, rename, with a refusal
   naming the rule. Ownership is by name (`goodvibes-…`, plus names a
   composition registers), because a pane id proves nothing about who made it.
   Creating and driving the platform's own sessions stays allowed, and so does
@@ -275,7 +273,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 ### Added
 
-- `CONVERSATIONAL_DIAGNOSIS_SECTION` — the DO half of the conversational
+- `CONVERSATIONAL_DIAGNOSIS_SECTION`, the DO half of the conversational
   contract, issued to conversational spawns and to a hosted session's base
   prompt: report the state and propose the fix rather than performing it
   uninvited, never restart the owner's applications or type into his terminal,
@@ -288,7 +286,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **Two writers of one store no longer destroy each other's work, and a store
   that cannot be written no longer kills the process.** Every atomic write now
   uses a temp file named per write instead of per process, and the sweep of
-  leftovers only reclaims files old enough to be crash debris — a temp file
+  leftovers only reclaims files old enough to be crash debris, a temp file
   still being written by another process, or by this one on another thread, is
   left alone. Periodic snapshots that rebuild themselves (the watcher store
   first among them) write through a variant that logs the path and errno and
@@ -301,7 +299,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   successful write is immediately readable.
 - **Wake-word transcription is daemon-first.** A surface ships captured audio
   to the connected daemon's speech-to-text and falls back to its own process
-  with a stated reason — which process owns the engine stops mattering.
+  with a stated reason, which process owns the engine stops mattering.
   Failures leave evidence (provider, config source, exception) in diagnostics
   instead of vanishing with the notification.
 - **Reminders respect being heard.** An occasion nudge raises once at the
@@ -316,7 +314,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   at every verbosity for both streams; the sandbox states its own isolation
   in results; and the permission guard's classifier no longer denies ordinary
   diagnostics (null-delimited reads, file-reading substitutions) while
-  backtick command-name assembly — previously invisible to the parser — is
+  backtick command-name assembly, previously invisible to the parser, is
   now caught structurally. The frozen catastrophic list is untouched.
 - The tool-activity label holds still: it names the tool instead of streaming
   its argument characters.
@@ -326,19 +324,18 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **Provisioning proves itself.** The managed voice installer repoints paths
   that belong to superseded manual installs (naming each replaced path in the
   receipt), only when a managed root is known and only across a path
-  boundary, and ends with a spoken-and-transcribed round trip — "provisioned"
+  boundary, and ends with a spoken-and-transcribed round trip, "provisioned"
   is only ever reported after the proof passes.
 - **Setup completes the inferred intent.** A general setup contract ships:
   complete the ask, propose inferred extensions with a one-line approval,
-  ask short questions at genuine forks, and never hand the user a command —
-  with the four solution shapes (guided walkthrough, managed browser
+  ask short questions at genuine forks, and never hand the user a command, with the four solution shapes (guided walkthrough, managed browser
   automation, official CLI, question-driven up to an outcome interview)
   stated generally. Wake-word setup implies speech-to-text as its first
   instance; the Google walkthrough ends with paste-the-values-here and a
   same-reply consent link via the new non-blocking consent session.
 - Clipboard image paste is platform machinery (Wayland and X11), with an
   honest named-package message when no reader exists.
-- `occasions.finalStretchDays` is retired — under the two-touch cadence it
+- `occasions.finalStretchDays` is retired, under the two-touch cadence it
   governed nothing. Files carrying it migrate with a receipt (owner-only on
   disk, in-memory for readers) and load clean.
 
@@ -349,7 +346,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **The daemon's answers match its own contract, and a test now proves it.**
   `profile.get` leaked two internal properties past a strict schema, so every
   strict client's profile reads failed ("Ensure the daemon is running the
-  matching GoodVibes contract version") — the daemon could not tell its owner
+  matching GoodVibes contract version"), the daemon could not tell its owner
   his own address. The response is now an explicit wire projection, `section`
   is a declared contract property, and `profile.provenance` correctly declares
   its null for hand-edited fields. A conformance test runs the real route
@@ -369,7 +366,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   only into the platform's own profile directory (traversal-hardened), one
   session is reused instead of relaunch-looping, retries are capped, unknown
   tool errors name the tools that exist, and the engine refuses to type into
-  sign-in pages — it hands the URL back instead.
+  sign-in pages, it hands the URL back instead.
 
 ### Changed
 
@@ -379,7 +376,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   read, send, calendar) in a single consent; a signed-in gcloud CLI is a real
   source; the guided path never mentions credential files (their download flow
   is not documented by Google) and costs exactly one copy-paste for a stated
-  reason. No filesystem scanning — a credential file is used only when you
+  reason. No filesystem scanning, a credential file is used only when you
   point at it. A dead grant is diagnosed once in plain words (including the
   wrong-account case) instead of retried; removing a stored credential takes
   your explicit yes; a finished run proves itself with a live mail and
@@ -390,7 +387,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `daemon.connectedHost.enabled` (default on) governs dialing, with a
   receipted migration for existing files.
 - The settings catalog carries the connector keys the daemon really reads
-  (calendar, google, email — 22 described settings), and operator catalog
+  (calendar, google, email, 22 described settings), and operator catalog
   search understands plain words like "google" instead of answering nothing
   out of 434 methods.
 
@@ -400,13 +397,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 - **A conversational turn is told to understand what it captures, not just
   file it.** The capture contract now instructs the turn to read what a shared
-  thing implies and fold that into the same answer — an itinerary also means
+  thing implies and fold that into the same answer, an itinerary also means
   an away-span said back in plain words, travelers who are people in his life,
-  and durable facts about the destination — and then to USE what it stored:
+  and durable facts about the destination, and then to USE what it stored:
   name collisions with existing plans and offer the obviously useful next
   things once (a reminder before departure, weather at the destination).
   Capturing and inferring are part of answering; anything beyond the
-  conversation — booking, monitoring, a standing job — is still proposed and
+  conversation, booking, monitoring, a standing job, is still proposed and
   waits for a yes.
 
 ## [2.0.6] - 2026-08-02
@@ -419,7 +416,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   yields to a caller that suppressed the chain, so a chat message whose
   transcript happens to contain "review the route" gets an answer, not an
   owner/engineer/reviewer chain. A declared reviewer/tester template is still
-  normalized — naming the role is a statement, matching prose is a guess.
+  normalized, naming the role is a statement, matching prose is a guess.
 - **The reply a person sees is the answer.** A chained agent's recorded
   output now carries what it actually found or did; the chain status line
   ("passed (review 10/10); commit skipped …") stays with the operator
@@ -429,7 +426,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   twice; the session broker now stores one completion per agent.
 - **The daemon settings file is rewritten only by the daemon.** Clients
   applying the payments-budget rename migrate their in-memory view and leave
-  the file bytes untouched — no write, no receipt. The daemon folds the
+  the file bytes untouched, no write, no receipt. The daemon folds the
   rename, the receipt, and a reader floor into one atomic write, so an older
   reader refuses loudly, naming both versions, instead of silently skipping
   the owner's spending limits.
@@ -442,8 +439,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 ### Added
 
 - **Personal information shared in conversation gets captured.** A
-  conversational channel turn — which previously spawned with zero tools —
-  now carries read/find/fetch plus the new `profile` capture tool, bound to
+  conversational channel turn, which previously spawned with zero tools, now carries read/find/fetch plus the new `profile` capture tool, bound to
   per-run owner authority that never travels in tool arguments. A pasted trip
   itinerary lands in the owner profile's Plans section with its dates,
   flights, travelers and confirmation number, and the reply states concretely
@@ -455,8 +451,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 ### Changed
 
 - **Money settings hold the amount you would say out loud.** The payment
-  budget keys drop their unit suffix — `payments.budget.perPurchaseCeiling`,
-  `dailyItem`, `dailyOverage`, `overageToleranceDailyAllowance` — and hold
+  budget keys drop their unit suffix, `payments.budget.perPurchaseCeiling`,
+  `dailyItem`, `dailyOverage`, `overageToleranceDailyAllowance`, and hold
   plain amounts in the configured currency: `100` is a hundred dollars,
   `19.99` is nineteen ninety-nine, written exactly as you gave them, decimals
   allowed and never forced. `$100`, `100.00` and `100` all mean the same
@@ -476,7 +472,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   unreadable store rather than moving your secrets aside; the daemon settings
   tier still refuses to boot on an unparseable file, because defaults may be
   more permissive than what the file held).
-- The owner-profile composition honors an injected home directory — an
+- The owner-profile composition honors an injected home directory, an
   embedder's runtime can no longer fall through to the login home's profile.
 
 ## [2.0.4] - 2026-08-02
@@ -484,17 +480,17 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 ### Fixed
 
 - **A corrupt watcher snapshot can no longer take the daemon down.** Snapshot
-  saves are atomic — written to a sibling temp file, flushed to disk, renamed
-  over the target — so a power loss or hard freeze mid-write leaves the old
+  saves are atomic, written to a sibling temp file, flushed to disk, renamed
+  over the target, so a power loss or hard freeze mid-write leaves the old
   snapshot intact instead of a torn file. And a snapshot that is corrupt
   anyway (the live incident: a host freeze left valid JSON followed by NUL
-  bytes, and the daemon crash-looped parsing it — once at boot, once on a
+  bytes, and the daemon crash-looped parsing it, once at boot, once on a
   periodic tick 47 seconds in) is quarantined beside the store with a receipt
   naming what happened, bounded so a flapping writer cannot fill the disk,
   and watcher state rebuilds from live registrations. Both halves apply to
   every consumer of the store: daemon, terminal app, agent.
 - The "not a profile field" refusal names the valid field ids. It used to
-  cite a documentation section — useless to the model that just guessed a
+  cite a documentation section, useless to the model that just guessed a
   wrong id mid-conversation, which is exactly who receives it. All refusal
   sites (set, forget, undo, and the HTTP route) now enumerate the real
   catalog from one shared formatter.
@@ -509,13 +505,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   transport now classifies them with loopback and the other private-network
   origins. The live failure this ends: a daemon deliberately bound to
   `0.0.0.0` for LAN access left every client that imported that host unable to
-  call it — profile reads included — over plain http.
+  call it, profile reads included, over plain http.
 
 ### Added
 
 - `@pellux/goodvibes-terminal-shell` exports the shared conversation fold
   policy: `foldedToolResult`, `trailingBlankAfterRow`, `foldPreviewText`, and
-  their thresholds. A folded transcript block is exactly one row — the header
+  their thresholds. A folded transcript block is exactly one row, the header
   with its `▸ N lines` badge and the content's head riding the same line; no
   frame rows, no interior padding, no separate hidden-count marker, and no
   blank rows between consecutive folded tool rows. Both terminal products
@@ -526,9 +522,9 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 ### Fixed
 
 - Client bundles can no longer reach in-process daemon composition code. The
-  shared runtime bootstrap still carried two pre-split remnants — default
+  shared runtime bootstrap still carried two pre-split remnants, default
   service factories that dynamically imported `platform/daemon`'s server and
-  HTTP listener — kept for an `embedDaemonInProcess` option nothing has passed
+  HTTP listener, kept for an `embedDaemonInProcess` option nothing has passed
   since the daemon became its own product. Bundled into a client, those
   dynamic imports fractured the bundler's module-initialization graph: the
   turn engine could call functions from modules whose constants were never
@@ -555,7 +551,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   preference (auto | dark | light) existed only as a terminal-app-private
   descriptor, so every other component reading a settings file that carried it
   reported an unknown key on boot. It is a schema key now, beside
-  `display.theme` (the color palette — the two are independent and their
+  `display.theme` (the color palette, the two are independent and their
   descriptions say so), with the same values and default it always had; stored
   values keep working unchanged.
 - The hosted-session steer test waits for the acknowledgements it asserts
@@ -582,7 +578,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   holder, managed voice setup, the session-storage handle, the code index, the
   legacy memory fold, the surface feature-flag gates and the feature-settings
   queries, and workspace registration and trust. The four that differed did so
-  in exactly one way — the storage scope they wrote under — so
+  in exactly one way, the storage scope they wrote under, so
   `createSessionStorageServices`, `createCodeIndexServices`, `codeIndexDbPath`,
   `createStoreRerooter`, `WorkspaceTrustManager`, `detectPriorWorkspaceState` and
   `readPersistedWorkspaceTrust` take a `surfaceRoot` and the difference is gone.
@@ -616,7 +612,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   a product owns. `WorkPlanStore` takes the surface root it writes under and the
   source it records. `resolveDaemonCompanionToken` takes the peer name it mints
   under, and `workspaceOperatorTokenCandidates` takes the surface root it looks
-  under. `turn-anchors` is two layers — an in-memory registry that touches no
+  under. `turn-anchors` is two layers, an in-memory registry that touches no
   disk, and an opt-in per-call sidecar for hosts that want anchors to survive a
   resume. `resolvePairingWebOrigin` reads the stored `web.*` keys and resolves
   the port through `resolveWebPort`, the same resolver that binds the listener,
@@ -633,7 +629,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
   One workspace floor is shared by every session in that workspace, not one per
   session. The floor's cost is a provider model-discovery pass, config file
-  watchers, a plugin manager, an MCP registry and a project index — per-machine
+  watchers, a plugin manager, an MCP registry and a project index, per-machine
   or per-workspace truths that duplicate badly, and two sessions editing one tree
   with two file caches would disagree about the file they both just wrote. What
   differs per session is the conversation, the queued mid-turn messages, the
@@ -642,10 +638,10 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   released when their last session goes.
 
   Five verbs, lifecycle only: `sessions.hosted.create/attach/detach/kill/list`
-  (ws-only invoke, like `approvals.raise` — no REST binding).
-  Driving a hosted turn uses the verbs that already exist — `sessions.steer`,
+  (ws-only invoke, like `approvals.raise`, no REST binding).
+  Driving a hosted turn uses the verbs that already exist, `sessions.steer`,
   `sessions.followUp`, `sessions.toolCalls.cancel`,
-  `sessions.queuedMessages.*` — which now resolve a hosted session's id the same
+  `sessions.queuedMessages.*`, which now resolve a hosted session's id the same
   way they resolve the daemon's local runtime (`SessionLiveTurnControlsHolder`
   gained per-session bindings). Streamed tokens and tool events need no new
   channel either: the hosted loop is the ordinary orchestrator, so it emits them
@@ -656,7 +652,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   A steer reaches a hosted turn through the machinery that already routes one:
   the broker queues an input for a session's live SURFACE participant, and for
   a hosted session the engine IS that surface, so it collects the queued input
-  and hands it to the loop (`HostedSessionSpineIntake`) — the same contract
+  and hands it to the loop (`HostedSessionSpineIntake`), the same contract
   `createWireSessionDispatch` implements for a client across the wire. The
   participant heartbeat rides the same tick, because a stale one would make the
   broker spawn a background agent instead: the conversation would keep
@@ -668,8 +664,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   agents and invisible to a hosted session on the same box.
 
   **Detach is a setting, and its default preserves what people expect.**
-  `hostedSessions.detachPolicy` defaults to `kill` — closing a client has always
-  ended its work — and `survive` is the opt-in that makes a session outlive both
+  `hostedSessions.detachPolicy` defaults to `kill`, closing a client has always
+  ended its work, and `survive` is the opt-in that makes a session outlive both
   the client and a daemon restart. A session may override the setting when it is
   created, and every record reports the policy that would apply on the next
   detach, so a client can show what leaving will do before it leaves. Also
@@ -682,7 +678,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   terminated records swept on a retention window, and a load report the daemon
   states at boot. A restart restores a survive-policy session idle with a system
   line saying its turn did not finish, and terminates anything else with a named
-  reason — `daemon-shutdown`, `detached`, `killed`, `restart-unresumable`. A
+  reason, `daemon-shutdown`, `detached`, `killed`, `restart-unresumable`. A
   hosted session never simply disappears.
 
   Hosting is OFF until a product states how a workspace floor is built
@@ -698,7 +694,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   terminal that could answer it. `watchApprovalUpdates` subscribes to that
   channel narrowed to the `permissions` domain, and
   `createClientApprovalRaiser` takes a `subscribeApprovalUpdates` seam and
-  prefers it — with one read immediately after subscribing, because a decision
+  prefers it, with one read immediately after subscribing, because a decision
   can land between the raise and the subscription and a push channel cannot
   deliver what happened before it opened. Polling remains a real fallback for a
   client with no stream seam wired or whose stream the daemon refused.
@@ -713,15 +709,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   shape for a surface that runs its own loop and reaches a daemon for
   everything else, plus the two seam TYPES that shape depends on
   (`ApprovalRaiser`, `SessionContinuationDispatch`). What it did not hold was a
-  single implementation of either, so both surface products wrote their own —
-  and an audit of the split found the bill: two parallel implementations of one
+  single implementation of either, so both surface products wrote their own, and an audit of the split found the bill: two parallel implementations of one
   bounded daemon-start policy, three divergent shapes of one conversation-rewind
   port contract, a device-posture runtime bound in-process in one product while
   the daemon owned the grants ledger, and a permission ask that was visible only
   to the surface that raised it.
 
-  Twelve modules now live here, each policy over one injected I/O shape —
-  `DaemonVerbCaller`, two methods: `createClientApprovalRaiser` (raise on the
+  Twelve modules now live here, each policy over one injected I/O shape, `DaemonVerbCaller`, two methods: `createClientApprovalRaiser` (raise on the
   daemon, prompt locally, first real answer wins, write the local decision
   back), `createDaemonConfigClient` and `createDaemonCredentialsClient`
   (daemon-owned writes refuse rather than landing in a file nothing reads; the
@@ -748,8 +742,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   the process running the loop, and the port the daemon wired resolved a
   session's conversation out of an in-process map nothing outside the daemon
   could populate. So `rewind.plan` with scope `conversation` reported
-  `available: true, messagesToDrop: 0` for every session hosted by a client —
-  indistinguishable, to every reader, from a conversation already at the anchor.
+  `available: true, messagesToDrop: 0` for every session hosted by a client, indistinguishable, to every reader, from a conversation already at the anchor.
   A confident wrong answer, which is the worst shape one can take.
 
   Five verbs, all ws-only, in a new route module
@@ -766,8 +759,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
   There is no cross-surface path, deliberately: only the process holding the
   messages can count or drop them, so anyone else's answer would be a guess.
-  The shape mirrors the approval broker, the platform's existing reverse call —
-  a request, a resolver beside it, a bounded deadline, and every outcome
+  The shape mirrors the approval broker, the platform's existing reverse call, a request, a resolver beside it, a bounded deadline, and every outcome
   RESOLVING rather than rejecting so no caller is left holding a promise. It
   differs in delivery, because an approval waits on a person and a rewind ask is
   answered by a program in milliseconds while `rewind.plan` is waiting on it, so
@@ -775,7 +767,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
   Nothing is persisted. A registration is a claim about a live process, worthless
   once either end may be gone, so it carries a lease the host renews by polling
-  and an unrenewed one is dropped on the next access — bounded by time rather
+  and an unrenewed one is dropped on the next access, bounded by time rather
   than by a sweep, with ceilings on hosts and on unanswered questions per host.
 
   `RewindConversationPreview` and `RewindConversationOutcome` gained an optional
@@ -787,7 +779,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   has offered: a process holding the messages is a better authority on them than
   a store that merely might have them. A timed-out `rewind` reports that it
   could not be confirmed whether the surface truncated, and never that nothing
-  was dropped — the one claim nobody in the daemon is in a position to make.
+  was dropped, the one claim nobody in the daemon is in a position to make.
 
 - **A route to a paired phone for a surface that does not host the device
   runtime.** The `devices.*` family could list paired nodes, list the durable
@@ -802,7 +794,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   required reason, and an optional shorter deadline, and returns the runtime's
   own outcome. It re-decides nothing: the durable-grant lookup, the confirmation
   prompt, the configuration gate, the capture retention and the disclosure all
-  stay inside the runtime, which is the point — a second copy of the grant rule
+  stay inside the runtime, which is the point, a second copy of the grant rule
   living at a route is a second copy that can disagree with the first. A refusal
   comes back as `ok: false` with the runtime's reason and a machine-readable
   code rather than an HTTP error, because a person declining to hand over their
@@ -817,7 +809,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
   Two supporting changes in `platform/devices`. `DeviceCapabilityService.request`
   now accepts an optional `timeoutMs` that can only SHORTEN the configured
-  device deadline (`resolveDeviceRequestTimeoutMs`, exported) — a surface that
+  device deadline (`resolveDeviceRequestTimeoutMs`, exported), a surface that
   stops waiting after ten seconds should not leave a phone working for sixty,
   and a caller that could extend it would be setting the posture from the wire.
   The prompt keeps the configured deadline either way, because the person
@@ -830,7 +822,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
 - **A composition shape for a product that runs its own conversation loop and
   nothing else.** `RuntimeServices` is the daemon-grade graph: a hundred-odd
-  required fields, several of them concretely-typed daemon furniture — the
+  required fields, several of them concretely-typed daemon furniture, the
   persisting `SharedSessionBroker`, the `GatewayMethodCatalog` that SERVES
   verbs, the watcher registry, channel delivery, automation, pairing tokens. A
   terminal or a chat surface could not type-check against it without
@@ -855,31 +847,31 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   Two fields keep their `RuntimeServices` names but are typed as interfaces
   rather than concrete classes, which is what lets a surface stop owning the
   objects behind them. `sessionBroker` is now the inbound-dispatch seam
-  (`SessionContinuationDispatch` — bind a continuation runner, nothing else): a
+  (`SessionContinuationDispatch`, bind a continuation runner, nothing else): a
   surface still runs the loop, so it must be able to receive work for a session
   it hosts without owning a persisting register to do it, and `SharedSessionBroker`
   satisfies the seam unchanged, as does a wire-backed poller over
   `sessions.inputs.*`. `userPermissionRuleStore` is now `UserPermissionRuleAccess`
-  (read the remembered rules, add one) — the Pick `PermissionManager` already
+  (read the remembered rules, add one), the Pick `PermissionManager` already
   took, given a name, so a surface can remember its own approvals while the
   canonical store and its `permissions.rules.*` verbs stay with the daemon.
 
   Purely additive: `RuntimeServices` is unchanged, both consumer compile-pins
   against it still hold, and the daemon-grade graph still satisfies the shared
-  part of the client shape field for field — `ClientRuntimeServicesFromHost`,
+  part of the client shape field for field, `ClientRuntimeServicesFromHost`,
   pinned at compile time in `test/types/client-runtime-shape.ts`, so a helper
   typed against the narrow view accepts either composition.
 
 - **One implementation of each piece both compositions build.** The pure-client
   factory is not a fork of `createRuntimeServices`: the parts they share moved
-  into free functions that both now call — `resolveRuntimeFeatureFlags`
+  into free functions that both now call, `resolveRuntimeFeatureFlags`
   (`runtime/feature-flag-composition.ts`, which owns the subtle "who owns the
   manager" rule: a caller's manager is used as-is, never re-loaded or
   double-bridged), `createProviderStack` (`runtime/provider-stack.ts`: the
   stores, the registry, the ONE live credential chain, the tool LLM and the
   optimizer bound to its flag and config mode), `createAgentGraph`
   (`runtime/agent-graph.ts`: the four objects plus the two post-construction
-  links — conversation sink and cancellation source — that a hand-written second
+  links, conversation sink and cancellation source, that a hand-written second
   copy drops silently), and the permission set in
   `runtime/permissions/permission-composition.ts` (`createUserPermissionRuleStore`
   with its fail-safe init, `createPolicyRuntimeState`,
@@ -888,7 +880,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   ask seam as a tool permission). `services.ts` calls all of them instead of
   spelling them out, and shrank by 61 lines doing it.
 
-- **`credentials.set` / `credentials.delete` — writing a credential through the
+- **`credentials.set` / `credentials.delete`, writing a credential through the
   daemon.** `credentials.get` has been able to report which credentials are
   configured since config sharing shipped; nothing could ever SET one. Every
   product wrote secrets through an in-process `SecretsManager` against its own
@@ -900,13 +892,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 
   A write takes the same four steps as the plaintext credential sweep, for the
   same reason: derive the secret-store name from the config path
-  (`daemonSecretKeyFor` — one derivation, platform-wide), store the value at the
+  (`daemonSecretKeyFor`, one derivation, platform-wide), store the value at the
   scope the ownership rules resolve (a daemon-needed credential lands in the
   daemon tier whichever surface sent it), read it BACK and compare, and only
   then replace the config value with its `goodvibes://secrets/goodvibes/<KEY>`
   reference. A read-back mismatch fails the call and leaves the setting exactly
   as it was, because a config key pointing at a reference that resolves to
-  nothing reads as a configured-but-broken credential — worse than one that was
+  nothing reads as a configured-but-broken credential, worse than one that was
   never written. The response carries key names, the resolved scope and the
   reference now in config, and never the value or a value-derived fingerprint.
   A key whose value is not credential material is refused rather than turned
@@ -916,14 +908,14 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `admin` + `write:config` + `dangerous`, matching `config.set`: a credential
   write is a config write whose value happens to be secret, and it must not be
   reachable by a token granted only session access. Step-up rides the platform's
-  existing rule rather than a new per-verb flag — these are mutating calls, so a
+  existing rule rather than a new per-verb flag, these are mutating calls, so a
   call arriving over the relay with `relay.requireStepUpForMutations` on is
   refused without a fresh WebAuthn assertion by the same dispatch gate that
   already covers `config.set`. Handlers in
   `control-plane/routes/credentials-write.ts`; ws-only invoke verbs, so no
   advertised REST path is left unserved.
 
-- **`approvals.raise` — a surface creating an ask in the shared broker.**
+- **`approvals.raise`, a surface creating an ask in the shared broker.**
   `approvals.list/claim/approve/deny/cancel` could only ever act on asks the
   daemon's own in-process callers had raised, so a surface outside that process
   kept its own broker, prompted at its own terminal, and its asks were invisible
@@ -934,20 +926,20 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   request parked across a person's attention span dies to any idle timeout
   between here and there, and the decision has a better channel. An identical
   in-flight ask (same session, tool and args) coalesces onto the existing record
-  — one prompt, one decision, `coalesced: true`. Optional `timeoutMs` expires
+ , one prompt, one decision, `coalesced: true`. Optional `timeoutMs` expires
   the ask (clamped to 12h); optional `waitMs` waits inline for callers that want
   one round trip (clamped to 60s) and reports `decided: false` with the record
   still pending when it runs out, never a decision nobody made. The daemon
   remains the single source of the applied result: a surface renders what the
   record says, not what it locally believes it asked for.
 
-- **`control.approval_update` in the event catalog — the push that replaces
+- **`control.approval_update` in the event catalog, the push that replaces
   polling.** The `approval-update` wire event has always been broadcast and
   domain-tagged `permissions`; it was never described in the catalog, so a
   client had to know it existed to subscribe to it. It is now a first-class
   event descriptor carrying the whole approval record, which is what makes
   `approvals.raise` usable: raise returns the record, and every transition of it
-  — starting with the pending one, which IS the prompt — arrives on the existing
+ , starting with the pending one, which IS the prompt, arrives on the existing
   `control.events.stream`.
 
 - **A `config` runtime-event domain, emitting key-level change notices.**
@@ -956,7 +948,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   attached to a remote daemon therefore never fired: the value it was watching
   could change on the daemon and the client would keep running on whatever it
   read at startup. `CONFIG_KEY_CHANGED` carries the dotted key, its ownership
-  scope (daemon/client/user) and the new value — except for a secret-bearing
+  scope (daemon/client/user) and the new value, except for a secret-bearing
   key, which travels by NAME ONLY, with `secret: true` and no `value` property
   at all (absent rather than nulled, so a subscriber cannot mistake a withheld
   credential for a cleared one). Wired at the composition root from
@@ -965,12 +957,12 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   diff: that reload walks the keys something subscribed to, so a key nobody
   watched was never compared.
 
-- **`evaluateDaemonCompatibility` — the client's half of the build-floor
+- **`evaluateDaemonCompatibility`, the client's half of the build-floor
   handshake.** The daemon has published `X-Goodvibes-Client-Floor` on `/status`
   for a while. This is the reverse: a client declares the oldest daemon build it
   can work against and checks it against the version `/status` already returns,
   getting back a verdict whose refusal names both versions and the one action
-  that fixes it — the same wording pattern the settings reader-floor refusal
+  that fixes it, the same wording pattern the settings reader-floor refusal
   uses, because the verb that happened to 404 is the symptom and the version is
   the cause. A daemon whose version cannot be read is `unknown`, not `ok`. The
   floor is the consumer's, not the SDK's; consumers adopt it and state what they
@@ -1001,14 +993,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   **`TurnInjectionRecord`** (`@pellux/goodvibes-sdk/platform/agents`). Both were
   reachable as shapes and not as names: the usage totals were an inferred object
   literal on `Orchestrator.usage`, and the injection record was only the element
-  type of `AgentRecord.turnInjections`. A caller that has to declare the type —
-  folding usage across conversations, rendering one injection row — wrote the
+  type of `AgentRecord.turnInjections`. A caller that has to declare the type, folding usage across conversations, rendering one injection row, wrote the
   fields out again or derived them positionally from an array.
 
 - **`resolveWebPort`** (`@pellux/goodvibes-sdk/platform/daemon`), beside the
   daemon host/port resolvers the barrel already publishes. Two products
   re-implemented the web endpoint's port coercion inline for their endpoint
-  displays, because only the daemon-port half was reachable — so one binding was
+  displays, because only the daemon-port half was reachable, so one binding was
   validated by this package and its neighbour by a transcription of what this
   package used to do before `resolveWebBinding` existed.
 
@@ -1018,7 +1009,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `hasOverriddenGoodVibesHome`. What `GOODVIBES_HOME` and
   `GOODVIBES_DAEMON_HOME` mean is a platform contract, not a per-product one:
   the terminal app and the daemon each carried a byte-identical copy, which is
-  two places for one meaning to drift in — and the incident that produced the
+  two places for one meaning to drift in, and the incident that produced the
   module was exactly one entry point disagreeing with another about which tree
   it was running out of.
 
@@ -1040,7 +1031,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `confirmRecoveryRestore`.** Reading the recovery snapshot, checking what came
   back is actually a conversation, putting it on an injected conversation
   (`RestorableConversation`), folding in the journal tail, and reporting the
-  restored count — beside the journal-replay seam it builds on. Three products
+  restored count, beside the journal-replay seam it builds on. Three products
   run conversation loops now, and ask-then-retire and never-auto-load are
   behavioral contract rather than terminal idiom, so both are structural here:
   the entry point will not run without a confirmation token that only a user's
@@ -1062,7 +1053,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **`DOMAINS`, `DOMAIN_READ_MATRIX`, `getAllowedReadsFor` and `DomainName`
   (`platform/runtime/store`).** The cross-domain read authorization the store's
   domain slices are governed by was written down, correctly parameterized, and
-  exported from nothing — reachable only by a file inside the same directory. A
+  exported from nothing, reachable only by a file inside the same directory. A
   rule no consumer can import is a rule each surface re-types by hand, which is
   the opposite of a single source of truth. It now leaves the barrel with the
   domain state factories it governs.
@@ -1073,7 +1064,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   those verbs got a store and handlers here, and this one kept `invokable:
   false` because its answer needs provider credentials and the synced mirror
   behind them, which live in a host and not in this SDK. Serving it meant
-  building the aggregator, not adding a route, and a host has now built one — so
+  building the aggregator, not adding a route, and a host has now built one, so
   the flag is off, `GET /api/channels/inbox` is in `GATEWAY_REST_ROUTES` beside
   its `channels.routing.*` / `channels.drafts.*` siblings, and the plain-REST
   call and the methodId invoke reach the same handler.
@@ -1081,13 +1072,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   Removing the flag did not move the lie: a build that composes no inbox
   attaches no handler and answers 501 `NOT_INVOKABLE` naming the missing
   composition step, which is the truthful answer for a process holding no
-  mailbox — the same self-dispatch guard `runtime.metrics.get` rides.
+  mailbox, the same self-dispatch guard `runtime.metrics.get` rides.
 
   The descriptor's shape says what a mirror-backed answer has to say. Alongside
   `items` / `total` / `truncated` (unchanged, so an already-shipped reader keeps
   working) the output carries `hasMore` and an opaque `nextCursor` for paging,
   `cursor` kept as the freshness watermark you feed back as `since`, `partial`,
-  and `providers` — one entry per provider the host knows about, on every call,
+  and `providers`, one entry per provider the host knows about, on every call,
   including the ones that returned nothing. Its `state` distinguishes `ready`,
   `empty`, `unconfigured`, `error` and `pending`, because zero Slack items can
   mean "nothing arrived", "no token was ever set" or "Slack refused the last
@@ -1096,7 +1087,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   unconfigured provider never sets it, since nothing is missing from a provider
   nobody wired up. Input gains `cursor` beside `provider` / `limit` / `since`.
   `CHANNEL_INBOX_ITEM_SCHEMA` also names the triage overlay
-  (`triageScore` / `triageLabel` / `triageTags`) it was already carrying — an
+  (`triageScore` / `triageLabel` / `triageTags`) it was already carrying, an
   item field a client receives and the schema does not name is the contract
   lying by omission.
 
@@ -1120,7 +1111,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `continuation-runner`); then `answer` + `status` with the consumed
   acknowledgement, which writes the answer into the shared session and pushes it
   down the reply pipeline. The finish half needs the surface's own read of its
-  agent register — the new `readAgentOutcome` option, with
+  agent register, the new `readAgentOutcome` option, with
   `readSurfaceAgentOutcome` as the mapping from an agent record. A host that
   supplies no reader keeps one acknowledgement and still names the agent, so the
   reply binds either way.
@@ -1137,7 +1128,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `bundledClientId` or `placeholderClientId`, and the
   `GOOGLE_PLACEHOLDER_CLIENT_ID` / `MICROSOFT_PLACEHOLDER_CLIENT_ID` exports are
   gone. A profile now carries `clientIdConfigKey` and `clientSecretRefConfigKey`
-  — the names of the config keys the OPERATOR's own registered app is read from
+ , the names of the config keys the OPERATOR's own registered app is read from
   (`calendar.google.clientId`, `calendar.microsoft.clientId`, and the
   `...clientSecretRef` keys beside them). `ResolvedClientConfig` replaces
   `usingBundledDefault` / `isPlaceholder` with `isConfigured` plus those two key
@@ -1146,7 +1137,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   **Who is affected:** anyone reading `isPlaceholder` / `usingBundledDefault`, or
   importing the two placeholder constants, from
   `@pellux/goodvibes-sdk/platform/calendar`. **What changes for an operator:**
-  nothing that was working stops working — the previous default was a
+  nothing that was working stops working, the previous default was a
   placeholder string that could never authenticate. Connecting a calendar
   requires registering your own OAuth app with the provider and setting its
   client id; until then the flow refuses with `client-not-configured`, before any
@@ -1156,12 +1147,12 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `docs/calendar-oauth-setup.md` for the provider-console walkthrough.
   `calendar.microsoft.clientId` joins the daemon-owned config paths, closing a
   split where Microsoft's client SECRET was daemon-owned while its client id was
-  not — the daemon held half a credential and reported no account connected.
+  not, the daemon held half a credential and reported no account connected.
 
 - **BREAKING: the `daemon.embedInProcess` setting is removed (`platform/config`,
   `platform/runtime`).** The key offered a choice no surface could act on: every
   product starts host services adopt-only, and the adoption policy answers
-  adopt-only before it reads any embed preference — so a settings file with
+  adopt-only before it reads any embed preference, so a settings file with
   `embedInProcess: true` behaved exactly like one without it, while the
   schema-driven settings UI presented it as a live toggle carrying a "NOT
   RECOMMENDED" warning for a branch that could not run.
@@ -1182,15 +1173,15 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   embedder that relied on the setting passes the option instead.
 
   `daemon.enabled` is unaffected and keeps a live meaning, now stated precisely
-  in its schema description: whether THIS surface uses a daemon at all — adoption
-  plus every daemon-backed feature gate — as distinct from how one is hosted. It
+  in its schema description: whether THIS surface uses a daemon at all, adoption
+  plus every daemon-backed feature gate, as distinct from how one is hosted. It
   does not control the daemon process, which runs regardless.
 
 - **BREAKING: the daemon's identity home follows a redirected tree root
   (`platform/workspace`, `platform/owner-profile`, `platform/daemon`).**
   `resolveDaemonHomeDir` derived its default from `homedir()` directly, ignoring
   `GOODVIBES_HOME`. Since `GOODVIBES_HOME` relocates the tree root for
-  everything else — settings, workspace state, every secret tier — a daemon
+  everything else, settings, workspace state, every secret tier, a daemon
   started under a redirected root kept its identity files (auth users, operator
   tokens, daemon settings) in the REAL `~/.goodvibes/daemon`. An isolation
   boundary a process can walk out of is not a boundary. The resolver now derives
@@ -1199,8 +1190,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   `<tree root>/.goodvibes/daemon`. `resolveOwnerProfilePath` and
   `resolveDaemonCliPaths` had the same gap and are fixed with it.
 
-  **Who is affected:** only a process running under a `GOODVIBES_HOME` redirect —
-  test harnesses, sandboxes, and service units that set it. Such a daemon now
+  **Who is affected:** only a process running under a `GOODVIBES_HOME` redirect, test harnesses, sandboxes, and service units that set it. Such a daemon now
   reads and writes its identity under the redirect instead of under the real
   home; if it had identity state at the real path, point `GOODVIBES_DAEMON_HOME`
   at that path to keep using it. **A default install sees no change at all**:
@@ -1225,8 +1215,8 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **The provider-health latency field says what it holds: a MAXIMUM, not a
   percentile (`platform/runtime/ui`).** `ProviderHealthEntry.p95LatencyMs` is
   now `maxLatencyMs` and `ProviderLatencyStats.p95Ms` is now `maxMs`. Both were
-  populated from `record.stats.maxLatencyMs` — the largest observation, which
-  the domain state has always documented as such — so every surface rendering a
+  populated from `record.stats.maxLatencyMs`, the largest observation, which
+  the domain state has always documented as such, so every surface rendering a
   "p95" latency was showing the worst call it had ever seen under a label that
   claimed 95 percent of calls were at least that fast. The genuine computed
   percentiles elsewhere (diagnostics panels, the state inspector, the hotspot
@@ -1243,7 +1233,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   key (`platform/runtime/ui/provider-health`, `platform/runtime/ui/model-picker`).**
   Node 0 read `modelState.registryKey` while nodes 1..N recomposed
   `${providerId}:${modelId}`, so one model was described by two different keys
-  depending on whether it happened to be active or a fallback — and for any id
+  depending on whether it happened to be active or a fallback, and for any id
   that already carries a namespace (an OpenRouter `vendor/model`, a Bedrock-style
   id) the recomposed form matches nothing in the registry. `FallbackChainEntry`
   now carries `registryKey`, and both the visualizer and the model picker's
@@ -1265,13 +1255,13 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
   so the running daemon's next hourly check resolves a tag from the new
   repository, downloads the same-named asset, and swaps itself in place. A user
   who explicitly wrote `update.releasesUrl` into their settings keeps their
-  value — an override is an answer, and this default never re-derives over one.
+  value, an override is an answer, and this default never re-derives over one.
 - **A daemon update no longer replaces the terminal app binary beside it.**
   `resolveDaemonInstalledFiles` listed `goodvibes` in the same directory as
   cargo, which was right while one release carried both binaries. A
   daemon-repository release publishes no `goodvibes-<os>-<arch>` asset at all,
   so keeping it listed would have the daemon looking for a file that does not
-  exist — and, if one ever appeared under that name, overwriting a product that
+  exist, and, if one ever appeared under that name, overwriting a product that
   updates itself from a different repository on a different version line. The
   daemon binary and the sqlite-vec addon beside it are still owned and still
   refreshed in one verified pass. The crash-loop rollback reads the same list,
@@ -1287,7 +1277,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **The CI-watch verb group's construction** moved out of
   `routes/register-gateway-verb-groups.ts` into
   `routes/ci-watch-composition.ts` as a free function over the same deps object
-  — the split that file's line budget required, with no behaviour change.
+ , the split that file's line budget required, with no behaviour change.
 - **`platform/daemon`: `reportFatalBootFailure`, `writeFatalLine`,
   `writeExitingStdoutLine` are now exported.** Both the TUI and the agent
   carried an identical local mirror of this module because the 1.21.0
@@ -1305,7 +1295,7 @@ This file tracks breaking changes, additions, fixes, and migration steps for eac
 - **`platform/power`: `postPowerKeepAwakeSet`, `forwardKeepAwakeToAdoptedDaemon`.** The keep-awake-forward-to-adopted-daemon helper, unifying the TUI's and the agent's parallel implementations onto the agent's richer failure-classified version (the TUI's config-subscription and status-poll wiring stay consumer-local).
 - **`platform/providers`: `buildFallbackModelDefinition`, `ensureConfiguredModelIsRoutable`.** The pre-catalog fallback-model registration, unified onto the TUI's version (family-aware context-window and reasoning-effort inference) rather than the agent's flat 128k/32k + fixed-level-set copy.
 - **`platform/providers`: `createLaunchTolerantProviderRegistry`.** A `ProviderRegistry` construction that never throws over a missing provider API key at boot, hoisted unchanged from the agent (previously agent-only; the standalone daemon has the identical must-boot property).
-- **`platform/runtime/session-spine`: `createSessionSpineRestTransport`, `postSessionSpineRegister`, `postSessionSpineClose`, `createSessionSpineRestProbe`, `createSessionSpineReceiptConsumer`, `extractSessionSpineReceipts`.** The version-tolerant raw-REST `SpineTransport`, unified onto the agent's superset (folds failures into `ok`/`offline`/`rejected` — a durable auth/route rejection no longer retries forever — plus a reachability probe and a daemon-receipt consumer).
+- **`platform/runtime/session-spine`: `createSessionSpineRestTransport`, `postSessionSpineRegister`, `postSessionSpineClose`, `createSessionSpineRestProbe`, `createSessionSpineReceiptConsumer`, `extractSessionSpineReceipts`.** The version-tolerant raw-REST `SpineTransport`, unified onto the agent's superset (folds failures into `ok`/`offline`/`rejected`, a durable auth/route rejection no longer retries forever, plus a reachability probe and a daemon-receipt consumer).
 - **`platform/runtime/memory-spine`: `createMemorySpineRestTransport`.** The full fifteen-verb REST `MemoryTransport`, unified onto the TUI's superset (implements `reviewQueue`/`vectorStats`/`doctor`, which the agent's copy left unwired, and reuses this platform's own `transport-http` helpers).
 
 ## [1.21.0] - 2026-07-30
@@ -1323,7 +1313,7 @@ daemon no longer dies at startup over an absent optional package.
 
 - **`zustand` moved from `optionalDependencies` to `dependencies`.** It backs
   `runtime/store/index.ts`, and a daemon without a runtime store is not a
-  daemon — so declaring it optional was untrue, and the fix belongs in the
+  daemon, so declaring it optional was untrue, and the fix belongs in the
   manifest rather than in the import. Unlike every other package in this
   release's optional-dependency work, its import is left exactly as it was:
   making a synchronous store lazy would break every synchronous consumer to
@@ -1358,7 +1348,7 @@ daemon no longer dies at startup over an absent optional package.
     would trade a loud failure at build time for a binary that dies in the
     field, which is the exact trade this line of work exists to undo;
   - a package declared optional by one manifest and required by another is
-    treated as required — the stricter declaration wins;
+    treated as required, the stricter declaration wins;
   - an optional package that IS installed is left alone and still gets bundled,
     so an ordinary build is unchanged, and a caller that supplies no manifests
     gets the argv it always got.
@@ -1366,12 +1356,12 @@ daemon no longer dies at startup over an absent optional package.
   `test/toolchain/build-binaries.test.ts` pins both the produced argv and the
   behaviour end to end: it screens a package name that resolves nowhere,
   compiles a fixture with the real `bun build --compile`, and runs the artifact
-  — the binary exists, boots, and reports the package unavailable, against a
+ , the binary exists, boots, and reports the package unavailable, against a
   control whose static import of the same name does not compile at all.
 
 - **`test/daemon-isolation-guards.test.ts` no longer leaves scratch directories
   behind.** It created a throwaway home per harness and per compiled case and
-  removed only the two holding the compiled binaries — **10 directories leaked
+  removed only the two holding the compiled binaries, **10 directories leaked
   per run**, measured, and the development host had accumulated roughly three
   thousand of them. Every directory now comes from one `scratchDir()` helper
   that records what it made, and a file-level cleanup removes exactly those.
@@ -1390,7 +1380,7 @@ daemon no longer dies at startup over an absent optional package.
   - `bun build packages/sdk/src/platform/daemon/cli.ts --compile` failed with
     `error: Could not resolve: "jsdom"`. There was no daemon binary at all.
   - The same graph run from source died at **module init** with
-    `Cannot find package 'jsdom'` — before `main()`, before the activity logger
+    `Cannot find package 'jsdom'`, before `main()`, before the activity logger
     had a destination, and before `daemon/fatal-boot-report.ts` existed to
     report anything. One step earlier in boot than the mute-daemon failure
     above, and just as silent.
@@ -1411,13 +1401,13 @@ daemon no longer dies at startup over an absent optional package.
   its result), `node-edge-tts` including its `dist/drm.js` subpath (the
   Microsoft voice provider), and `sqlite-vec` (resolved through `createRequire`
   rather than `await`, because the loader is called from synchronous store
-  constructors — the same technique, for the same reason, as the `bun:sqlite`
+  constructors, the same technique, for the same reason, as the `bun:sqlite`
   resolution in `knowledge/browser-history/readers.ts`).
 
   Seven more optional packages needed the module restructured rather than the
   import moved, because each was reached by building a client in a
   **constructor**, extending an **imported base class**, running a **class
-  static**, or **re-exporting** a value — all of which run at module init:
+  static**, or **re-exporting** a value, all of which run at module init:
 
   - `openai` (`providers/openai.ts`, `providers/openai-compat.ts`,
     `providers/lm-studio-helpers.ts`). The client is a memoised promise built on
@@ -1429,7 +1419,7 @@ daemon no longer dies at startup over an absent optional package.
     `providers/amazon-bedrock-mantle.ts`), including its `core/auth.js` subpath
     for the SigV4 signer the control-plane model listing reuses.
     `AnthropicSdkProviderOptions.createClient` may now return a promise, which
-    the one caller — already inside an async retry body — awaits.
+    the one caller, already inside an async retry body, awaits.
   - `@anthropic-ai/sdk` and `google-auth-library`
     (`providers/anthropic-vertex.ts`). `AnthropicVertexClient extends
     BaseAnthropic`, and a class cannot extend a dynamically imported base: the
@@ -1438,13 +1428,12 @@ daemon no longer dies at startup over an absent optional package.
     declaration runs after the import resolves and every `new` still gets one
     class object.
   - `@agentclientprotocol/sdk` (`acp/host.ts`, `acp/agent.ts`,
-    `acp/connection.ts`, `acp/protocol.ts`). A re-export cannot be lazy —
-    `export { x } from 'pkg'` links the specifier exactly like an import — so
+    `acp/connection.ts`, `acp/protocol.ts`). A re-export cannot be lazy, `export { x } from 'pkg'` links the specifier exactly like an import, so
     `acp/protocol.ts` no longer re-exports `ndJsonStream`,
     `AgentSideConnection` and `PROTOCOL_VERSION`; the three consumers and the
     ACP test fixture take them off `loadAcpSdk()` instead. Its type re-exports
     are untouched, because `export type` is erased. `serveAcpAgent` is async as
-    a result — it cannot build a connection before the package resolves.
+    a result, it cannot build a connection before the package resolves.
   - `simple-git` (`git/service.ts`, `agents/worktree.ts`,
     `workspace/checkpoint/side-git.ts`). The two constructor cases hold a
     memoised promise their already-async methods await, so each client is still
@@ -1455,7 +1444,7 @@ daemon no longer dies at startup over an absent optional package.
     lazily-computed accessors now, cached after the first use. The
     `KnowledgeGraphqlService` constructor primes the package through the
     dynamic import a bundler follows, so a compiled binary has it in hand
-    before any route reads `schemaText` — which the daemon-sdk route contract
+    before any route reads `schemaText`, which the daemon-sdk route contract
     requires to stay a synchronous string.
 
   When any of these packages is absent the feature throws an error whose
@@ -1465,7 +1454,7 @@ daemon no longer dies at startup over an absent optional package.
 
   Two optional packages are deliberately NOT converted. `zustand` backs
   `runtime/store/index.ts`, which is synchronous and which a daemon cannot run
-  without — the mismatch there is in the declaration, not the import.
+  without, the mismatch there is in the declaration, not the import.
   `web-tree-sitter` and the five `tree-sitter-*` grammars are
   `with { type: 'file' }` asset imports that exist precisely so
   `bun build --compile` embeds the WASM into the binary; a dynamic import would
@@ -1477,8 +1466,8 @@ daemon no longer dies at startup over an absent optional package.
   `bun build --compile --external <pkg>` and runs them from a directory where
   the packages do not resolve. `--external` rather than hiding a package, so the
   test never mutates this repository's node_modules underneath the suite running
-  beside it. The static controls — one importing `jsdom`, one importing
-  `graphql` and building a schema at module scope — exit 1 with **zero bytes on
+  beside it. The static controls, one importing `jsdom`, one importing
+  `graphql` and building a schema at module scope, exit 1 with **zero bytes on
   stdout**; they never reach their first statement. The lazy shapes exit 0, name
   every package they are missing, and still return an extraction.
 
@@ -1505,7 +1494,7 @@ daemon no longer dies at startup over an absent optional package.
 
   The cause was not output buffering and not a bypassed handler. The daemon
   entrypoint that ships reports a fatal boot failure to the activity **logger**
-  and then exits — and at that point in boot the logger has no destination, so
+  and then exits, and at that point in boot the logger has no destination, so
   the line goes nowhere and no file descriptor is ever touched. A `logger.error`
   is not a disclosure.
 
@@ -1515,42 +1504,41 @@ daemon no longer dies at startup over an absent optional package.
   the fatal handler, the settings refusals, the crash-loop rollback notice, and
   the `--install-service` output. The descriptor is used rather than
   `process.stderr.write` because the latter is a replaceable property on a
-  mutable global — goodvibes-tui really does replace it, to keep a rendered
-  screen clean — and because a stream write issued immediately before
+  mutable global, goodvibes-tui really does replace it, to keep a rendered
+  screen clean, and because a stream write issued immediately before
   `process.exit()` can still be in flight when the process stops existing.
 
   A settings refusal is now disclosed by the SDK **at the point of refusal**,
   so a host whose own fatal tail is silent still speaks. Proven against a
   compiled binary, not source: `test/daemon-isolation-guards.test.ts` builds the
   daemon fatal-boot path with `bun build --compile` and asserts bytes on stderr
-  for an unparseable file, a safety-gate refusal, and a reader-floor refusal —
-  alongside a control that pins the shape that shipped at zero bytes.
+  for an unparseable file, a safety-gate refusal, and a reader-floor refusal, alongside a control that pins the shape that shipped at zero bytes.
 
 - **`--daemon-home` governed only half of what it names.** The flag (and
   `GOODVIBES_DAEMON_HOME`) names the daemon's own state directory, and four
-  modules already resolved it that way — but `daemon/cli.ts` threaded it into
+  modules already resolved it that way, but `daemon/cli.ts` threaded it into
   the identity files only, while the `ConfigManager` derived its daemon config
   tier from `homedir()` regardless and the credential store was never told at
   all. A daemon pointed at another state directory therefore read the real
   home's daemon settings and the real home's daemon-scoped secrets, which is the
   second half of the isolation incident `runtime/secrets-composition.ts`
   records. The resolution moved to `platform/daemon/cli-paths.ts` (extracted so
-  it can be tested at all — `cli.ts` ends in a top-level `void main()`, so
+  it can be tested at all, `cli.ts` ends in a top-level `void main()`, so
   importing it to check its path math would start a daemon), and the resolved
   home now reaches the daemon config tier and `SecretsManager`.
 
   Separately, `runtime/bootstrap-services.ts` passed the **user home** as
   `--daemon-home` when spawning a detached daemon, where every reader expects
-  the state directory — so a spawned or serviced daemon filed `operator-tokens.json`
+  the state directory, so a spawned or serviced daemon filed `operator-tokens.json`
   and `daemon-settings.json` one level above where all of them look. On a normal
   machine the config half still landed correctly, because the user home is the
   default parent, which is exactly why this went unnoticed. It now passes the
   state directory, and the `GOODVIBES_DAEMON_HOME` it sets on the child matches.
 
 - **A setting the daemon cannot ingest is now said out loud, and does not take
-  the daemon with it.** A daemon read `calendar.google.clientSecretRef` — the
+  the daemon with it.** A daemon read `calendar.google.clientSecretRef`, the
   `goodvibes://secrets/…` reference a newer component's credential sweep had
-  written into the shared daemon settings file — and exited 1 with nothing on
+  written into the shared daemon settings file, and exited 1 with nothing on
   stderr, nothing in the journal, nothing anywhere. It crash-looped 77 times
   overnight and the owner found out by everything being dead.
 
@@ -1559,22 +1547,22 @@ daemon no longer dies at startup over an absent optional package.
   settings file it reads (global surface, project surface, shared tier, daemon
   tier):
 
-  - **Every failure names the FILE, the KEY and the REASON**, on stderr — where a
-    service journal captures it — and in the activity log, before anything
+  - **Every failure names the FILE, the KEY and the REASON**, on stderr, where a
+    service journal captures it, and in the activity log, before anything
     decides whether to carry on.
   - **The default is to quarantine the single unreadable key and keep serving.**
     It is dropped, the tier below it answers, and the notice says so. A daemon
     running one setting short, loudly, is recoverable; a daemon that will not
     start is not.
   - **A key whose fallback could permit MORE than the operator stored refuses
-    instead** — the per-tool approval gates, `permissions.mode`,
+    instead**, the per-tool approval gates, `permissions.mode`,
     `permissions.engine`, and the whole `policy.` domain, declared in
     `SAFETY_GATE_CONFIG_PREFIXES` with the evidence for each. Deliberately not
     `danger.*`, `behavior.autoApprove`, `controlPlane.allowRemote/trustProxy` or
     `sandbox.enabled`: those ship as the restrictive value, so falling back to
     them can only ever close something.
   - **A whole file that will not parse is also a refusal**, because the reader
-    cannot tell whether the unreadable bytes held a gate — but it now names the
+    cannot tell whether the unreadable bytes held a gate, but it now names the
     file and the parse error rather than dying with a bare exit code.
 
   Four failure modes that were previously **silent** are now announced:
@@ -1592,8 +1580,8 @@ daemon no longer dies at startup over an absent optional package.
   they are not all the same version at once. The credential sweep and the
   daemon-owned config migration now leave a `$goodvibes.minReaderVersion` marker
   beside what they rewrote (`platform/config/settings-reader-floor.ts`). A reader
-  below the floor says exactly that — *"settings were migrated by a newer
-  component; this daemon (X) is older than the floor (Y) — update it"* — checked
+  below the floor says exactly that, *"settings were migrated by a newer
+  component; this daemon (X) is older than the floor (Y), update it"*, checked
   before any key is ingested, so the version gap is reported rather than whichever
   key happened to be shaped in a way the reader could not parse. The marker never
   reaches the resolved config, a floor is never lowered, and a floor that cannot be
@@ -1611,7 +1599,7 @@ its description says, in every consumer.
 
 ### Added
 
-- **`voice.wake.vadThreshold` screens frames now, with our own model — the second
+- **`voice.wake.vadThreshold` screens frames now, with our own model, the second
   row that named a stage nothing ran.** It refused at any value above 0 because no
   voice-activity model was pinned. There is one now, and it is ours, trained by
   us: a **speech/non-speech head over the SAME 96-dimension embedding the wake
@@ -1622,8 +1610,8 @@ its description says, in every consumer.
 
   - **A withheld frame reaches no classifier.** Below the threshold the frame is
     kept out of the 2.4 MB classifier entirely, and it breaks any run of
-    above-threshold frames in progress — patience counts CONSECUTIVE scored
-    frames — while leaving the cooldown alone, so withholding cannot let one
+    above-threshold frames in progress, patience counts CONSECUTIVE scored
+    frames, while leaving the cooldown alone, so withholding cannot let one
     utterance fire twice.
   - **Measured on 106,390 held-out frames** (44,286 speech) from recordings
     disjoint from training by file and by speaker: at the recommended 0.30 it
@@ -1632,8 +1620,7 @@ its description says, in every consumer.
     a chosen value does instead of guessing. On the two individual held-out
     recordings replayed by the test suite, 0 % of the noise recording's frames
     pass and 95.8 % of the speech recording's do.
-  - **Trained on the same commercially-clean corpora class as the wake model** —
-    LibriSpeech train-clean-100 and MUSAN speech against MUSAN noise and music,
+  - **Trained on the same commercially-clean corpora class as the wake model**, LibriSpeech train-clean-100 and MUSAN speech against MUSAN noise and music,
     with per-file gain randomisation and half the speech mixed with noise at
     0–18 dB SNR, because a head trained on loud clean speech would learn "loud"
     and gate the case the detector most has to survive. Attribution travels in
@@ -1641,7 +1628,7 @@ its description says, in every consumer.
     asset.
   - **The twins decide identically**: 1.8e-07 (onnx vs Keras) and 5.4e-07 (tflite
     vs Keras) over 2,000 frames, zero gating decisions changed at 0.2, 0.3 or 0.5.
-  - **`voice.wake.vadThreshold` still ships at 0**, the gate off — the
+  - **`voice.wake.vadThreshold` still ships at 0**, the gate off, the
     configuration that has been exercised, and a gate can only ever cost a
     detection. 0.30 is the measured operating point to set when turning it on.
   - **Provisioned with the wake models, reported separately.**
@@ -1655,19 +1642,17 @@ its description says, in every consumer.
     (`component: "vad"`), which cannot fetch the release asset itself.
   - **A gate that fails passes frames through and says so** (`WakeFrameResult.vad`
     carries `failed`), because gating on failure silently turns the wake word off
-    — indistinguishable to a user from a microphone that stopped working. A
+   , indistinguishable to a user from a microphone that stopped working. A
     surface that has not loaded the gate still refuses any threshold above 0
     rather than leaving frames unscreened while the row claims otherwise.
 
-- **`voice.wake.noiseSuppression: "speex"` filters audio now, on every surface —
-  the value that refused everywhere is a filter that runs.** The row shipped with
+- **`voice.wake.noiseSuppression: "speex"` filters audio now, on every surface, the value that refused everywhere is a filter that runs.** The row shipped with
   two values and one of them named a stage nothing applied, so selecting it
   stopped the detector with a written reason rather than pretending. The filter is
   now **SpeexDSP 1.2.1's preprocessor, compiled to WebAssembly and carried in the
   package**: 53,678 bytes, sha256
   `4829d9fa97e648ab9c45e9a685adba7bd762a4f948ec499c59b073bd03cce2bb`, imports
-  nothing at all. Nothing to install, nothing to provision, no per-host library —
-  which is what makes the setting honest, because there is no state in which the
+  nothing at all. Nothing to install, nothing to provision, no per-host library, which is what makes the setting honest, because there is no state in which the
   filter is configured but not running.
 
   - **One application point, so no consumer can be missed.**
@@ -1675,17 +1660,17 @@ its description says, in every consumer.
     consumers wrap the opener they are handed: the classifier scores filtered
     frames, the utterance recorded after a wake is filtered, the pre-roll from
     before the wake fired is filtered, and push-to-talk voice input is filtered.
-    A host passes the same plain opener it always did — no surface wiring
+    A host passes the same plain opener it always did, no surface wiring
     changed. Wrapping is idempotent (the wrapper asks the opener underneath it
     for `none`), so a host that also wraps its own opener filters once.
   - **Measured on signal, not smoke-tested.** Against a 1 kHz tone gated on and
     off under white noise: **noise floor down 13.20 dB, SNR up 12.83 dB, tone
-    correlation 0.9990** — the floor falls by about the 15 dB the filter is asked
+    correlation 0.9990**, the floor falls by about the 15 dB the filter is asked
     for while the tone survives. Asserted numerically in
     `test/voice-noise-suppression.test.ts`, which also asserts that `none` is a
     true passthrough: the same frame objects, so the byte path with suppression
     off is exactly the path that shipped.
-  - **Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms) — 0.13 % of one core,
+  - **Cost: 0.100 ms per 80 ms frame** (p95 0.112 ms), 0.13 % of one core,
     beside the detector's own 3.46 ms. Frames are filtered in 20 ms blocks
     through one continuous state, because the suppressor estimates its noise
     floor over a window twice the block length and an 80 ms block would track a
@@ -1708,13 +1693,13 @@ its description says, in every consumer.
   - **A surface that genuinely cannot run it still says so.** The blocker did not
     go away, it narrowed: a runtime with no `WebAssembly`, or a surface that
     declares it does not apply the stage, refuses with that reason instead of
-    capturing unfiltered audio. So does a filter that fails mid-stream — the
+    capturing unfiltered audio. So does a filter that fails mid-stream, the
     stream stops rather than passing half-filtered frames on.
 
 - **The wake-word model ships with the installation, so a fresh machine can
   actually use the wake word.** Everything needed to detect the phrase was
-  already here and provisioning was reachable only by asking for it — typing
-  `/voice wake setup` or calling `voice.wake.provision` — which made the ordinary
+  already here and provisioning was reachable only by asking for it, typing
+  `/voice wake setup` or calling `voice.wake.provision`, which made the ordinary
   outcome of installing goodvibes a feature that could not start, waiting on a
   download most people would never go and find.
 
@@ -1724,7 +1709,7 @@ its description says, in every consumer.
     that `recovery.ts` had been exporting with no caller). `ensureProvisioned()`
     on the wake setup service routes a boot attempt through the SAME single
     flight as a user-triggered provision, so the two join one download.
-  - **A failed download never fails an installation.** No path throws — not an
+  - **A failed download never fails an installation.** No path throws, not an
     absent network, not DNS, not a proxy serving HTML, not an unwritable home
     directory, not a provisioner that itself threw. A failure degrades to exactly
     the previous behaviour: status reports `not-provisioned` **by content**, and
@@ -1732,7 +1717,7 @@ its description says, in every consumer.
     names what happened and how to retry, and the next boot tries again.
   - **It reaps before it retries.** Each attempt sweeps first, so an attempt
     killed mid-download leaves no partial and no torn file to be re-inspected
-    forever — which is what makes the boot retry converge.
+    forever, which is what makes the boot retry converge.
   - **Turning the feature on still downloads nothing.** `voice.wake.enabled`
     moving to `true` reads the artifacts and refuses honestly when they are
     missing, naming the recovery command. Installing and booting are the
@@ -1741,8 +1726,8 @@ its description says, in every consumer.
     so in the same one line, so opting out never looks like a silent failure.
 
 - **Every attribution NOTICE travels with the artifact it attributes.** Three
-  redistributable artifacts come out of this tree — our classifier, Google's
-  Apache-2.0 `speech_embedding` build, and the speech gate above — and only the
+  redistributable artifacts come out of this tree, our classifier, Google's
+  Apache-2.0 `speech_embedding` build, and the speech gate above, and only the
   classifier's NOTICE was ever fetched. The front end's was pinned in the
   manifest, never downloaded, never served, and not counted in the reported
   download size, while the daemon handed the embedding's bytes to browsers over
@@ -1754,8 +1739,8 @@ its description says, in every consumer.
   `component=vad` and `component=vad-notice`), and all three are reported
   (`WakeProvisionStatus.embeddingNotice` / `vadNotice`,
   `WakeProvisionResult.embeddingNoticePath`). The classifier's and the front end's
-  count toward `ready` — an artifact whose attribution is not on disk is not one
-  this tree may hand to anything — and the gate's is held to the same rule inside
+  count toward `ready`, an artifact whose attribution is not on disk is not one
+  this tree may hand to anything, and the gate's is held to the same rule inside
   `vadReady`, which is where the gate itself is reported. `downloadBytes` now
   comes from the manifest's own `wakeWordProvisionBytes` +
   `wakeWordFrontEndProvisionBytes` + `wakeVadProvisionBytes` rather than a
@@ -1763,7 +1748,7 @@ its description says, in every consumer.
 
 - **Both pinned formats of the classifier are provisioned and served.** The
   `.tflite` twin was pinned, counted in every reported download size, and never
-  fetched — so `voice.wake.status` quoted a 6.1 MB download for a 3.7 MB one, and
+  fetched, so `voice.wake.status` quoted a 6.1 MB download for a 3.7 MB one, and
   `voice.wake.model.get` could not serve a format it did not have. It is fetched
   now (last, after everything the detector needs and after the speech gate, so a
   partial network still leaves a working detector) and is a `component=tflite`
@@ -1772,12 +1757,12 @@ its description says, in every consumer.
   / `mobileFormatReady`, because a host that missed only the twin is a host that
   detects.
 
-- **Audio capture, as a capability the whole voice stack shares — so the wake
+- **Audio capture, as a capability the whole voice stack shares, so the wake
   word actually listens and the terminal can finally talk to speech-to-text.**
   The detector shipped complete and unused: twenty-five `voice.wake.*` rows, a
   pinned classifier, a front end computed in code, and nothing anywhere that
   opened a microphone. Capture now exists in
-  `platform/voice/capture`, and it is deliberately NOT a wake-word detail — two
+  `platform/voice/capture`, and it is deliberately NOT a wake-word detail, two
   consumers share one device path.
 
   - **A wake starts a capture session, it does not end one.** On a confirmed
@@ -1790,13 +1775,13 @@ its description says, in every consumer.
   - **Push-to-talk voice input is the other consumer**, and it is what the
     terminal never had: whisper was provisioned there and transcribed on
     request, while nothing on that surface had ever captured a sample.
-    `PushToTalkSession` is the shared state machine — asking for the device is
+    `PushToTalkSession` is the shared state machine, asking for the device is
     its own visible phase, and the device is released on every path out,
     including the failing ones.
   - **The recorder argv was checked against the real tools.** Most
     consequentially, `pw-record` is given `--container raw`: without it the
     stream carries a container header before the samples, byte-misaligning
-    everything downstream — which does not fail, it just never detects. `sox`
+    everything downstream, which does not fail, it just never detects. `sox`
     cannot select a device from its arguments at all, so the resolved command
     reports that instead of quietly ignoring `voice.wake.inputDevice`, and a
     recorder named explicitly and not installed is reported rather than silently
@@ -1809,7 +1794,7 @@ its description says, in every consumer.
     padding it.
   - **`resolveWakeRuntimeSettings` is the one place every row becomes
     behaviour**, and the keys it reads are asserted against the schema in both
-    directions — a row nothing reads is a row that configures nothing, which is
+    directions, a row nothing reads is a row that configures nothing, which is
     precisely the state this change found. Rows that cannot take effect are
     reported as blockers (the detector does not start) or limitations (it runs,
     with that row not in force), each with a written reason.
@@ -1817,16 +1802,16 @@ its description says, in every consumer.
     `voice.wake.status` (content-verified state of the pinned artifacts),
     `voice.wake.provision` (explicit, single-flight, ~3.7 MB) and
     `voice.wake.model`. The last exists because a browser tab cannot fetch the
-    pinned assets itself — they answer with no CORS header — so it reads them
+    pinned assets itself, they answer with no CORS header, so it reads them
     from the daemon in bounded chunks, each restating the pinned sha256, and
     verifies the file it reassembled before creating a session.
 
 
-- **Occasions and plans — the daemon raises important dates on its own, before
+- **Occasions and plans, the daemon raises important dates on its own, before
   they matter.** A new `## Important dates` section and a new `## Plans` section
   in the owner profile hold his own declarations, as prose lines he can hand-edit
   and that nothing rewrites. The daemon reads them, works out which are entering
-  their lead window, batches them into one message, and delivers it — with the
+  their lead window, batches them into one message, and delivers it, with the
   answer remembered so it does not keep asking, and remembered only until the
   date passes, because birthdays are annual. See `docs/occasions.md`.
 
@@ -1836,7 +1821,7 @@ its description says, in every consumer.
     birthday from a death anniversary, and a cheerful "you'll probably want to
     sort something" against the wrong one would be genuinely bad.
   - **A nudge names the occasion and the person and never the date.** Not the
-    date string and not a day count either — "in ten days" is the date with
+    date string and not a day count either, "in ten days" is the date with
     arithmetic applied. Proximity is a word chosen from a count that never
     leaves the composer, so a reminder delivered to Telegram cannot put a family
     member's birth date into a message channel.
@@ -1908,14 +1893,14 @@ its description says, in every consumer.
   `createDevicePostureRuntime` (transport, approval bridge and config reader are
   the only seams a host supplies), and `createDevicePhoneTool` /
   `registerDevicePhoneTool`. Written in one consumer, those eleven keys were dark
-  in every other host — including the terminal app's daemon.
+  in every other host, including the terminal app's daemon.
 
   - **Every policy is now read live rather than frozen at construction.**
     `DeviceCapabilityService`, `DeviceGrantStore` and `DeviceCaptureArtifactStore`
     accept a resolver as well as a fixed partial, and `DeviceHousekeeper.start`
     accepts a cadence resolver and re-arms its timer after a sweep when the
     cadence changed. A `device.*` change governs the next request, the next
-    grant, and the next sweep without a restart — the liveness
+    grant, and the next sweep without a restart, the liveness
     `device.nodes.maxPaired` already had at the pairing path.
   - **A broken value reads as the stock posture, never a wider one.** A number
     that is not finite or not positive, or an enum value outside its list, falls
@@ -1931,13 +1916,13 @@ its description says, in every consumer.
   rather than that the feature does nothing: the terminal and the agent capture
   through a recorder subprocess (the terminal on by default), a browser tab
   captures through `getUserMedia` and is opted in per origin, and the rows that
-  remain limited name their own limit — `voice.wake.vadThreshold` above 0
+  remain limited name their own limit, `voice.wake.vadThreshold` above 0
   refuses to start because no VAD model is pinned to screen frames with, and a
   browser tab has no filesystem for `voice.wake.retainAudio` or a local
   `voice.wake.activationSoundPath`.
 - **The wake engine takes its warning sink from the host**, alongside the
   inference session it already took. It imported the platform logger, which
-  writes files and therefore imports `node:fs` — enough to make the engine
+  writes files and therefore imports `node:fs`, enough to make the engine
   unbundleable for the browser tab it claims to run in, which nothing had
   exercised. A new `platform/voice/wake/runtime` subpath exports the
   runtime-neutral half of the module (front end, engine, rules, settings,
@@ -1950,7 +1935,7 @@ its description says, in every consumer.
   The owner's ruling was that a nudge pushes to Telegram **and** the agent, but
   the agent was missing from the delivery surface vocabulary, so the router had
   no strategy that could claim the target and every push addressed to it was
-  refused as an unsupported surface — silently, from the operator's point of
+  refused as an unsupported surface, silently, from the operator's point of
   view, because the setting accepted the value happily. The agent is now a real
   push destination (see above), `occasions.nudgeChannel` accepts one channel or
   a list of them, and every value it accepts reaches somewhere or reports why it
@@ -1959,52 +1944,51 @@ its description says, in every consumer.
 - **The recovery sweeper no longer deletes an artifact the provisioner just
   verified.** Its pinned-filename sets listed the classifier's `.onnx` and NOTICE
   and the front end's `.onnx`, but not the `.tflite` and not the front end's
-  NOTICE — so once either was provisioned every hourly sweep would have reaped it
+  NOTICE, so once either was provisioned every hourly sweep would have reaped it
   as an unpinned version, forever. Both directories now carry an explicit
   name-by-name set covering everything the provisioner writes, and a torn copy of
   either is reaped for failing verification (so the next provision refetches it)
   rather than for being an unpinned version.
 
-- **A route binding is now a hint, validated every time it is used — a channel
+- **A route binding is now a hint, validated every time it is used, a channel
   can no longer be stranded by a stale one.** A persisted binding whose session
   is closed, missing, corrupt, or not serviceable from this node is healed at
   the resolve seam per its own `sessionPolicy` (a `create-or-bind` binding rolls
   over to a fresh session) instead of throwing `Session is closed` at the
-  ingress forever. This is surface-agnostic — it applies to every channel-bound
+  ingress forever. This is surface-agnostic, it applies to every channel-bound
   adapter, not just the one it was observed on (Telegram messages were being
   dropped permanently against a session closed days earlier). When a rollover
   happens, the broker says so on the channel in one line, so a fresh
   conversation reads as a comprehensible reset rather than silent amnesia.
-  Direct HTTP callers that name a `sessionId` themselves still get their 409 —
-  healing applies only where no client exists to react.
+  Direct HTTP callers that name a `sessionId` themselves still get their 409, healing applies only where no client exists to react.
 - **A failed inbound owner message is an incident, not a log line.** The first
   failure to process an inbound message marks the channel degraded in channel
   health with the real reason and notifies the owner through a channel that
-  still works — rate-limited, so the first failure pings, repeats within the
+  still works, rate-limited, so the first failure pings, repeats within the
   window do not, and recovery notes itself once. Skipping past a poison update
   stays (a wedged cursor is worse) but is now loud, never a debug-log whisper.
 - **Eight settings that described behaviour their value could never reach are now
   wired.** Each had a schema row, a validated default and a user-facing
-  description, and a read chain that ended nowhere — so the key configured
+  description, and a read chain that ended nowhere, so the key configured
   nothing and the coverage read as complete because the schema half was thorough.
   Every one is now read on a live path, at both of its positions.
 
   - **`runtime.eventBus.maxListeners`** reached no bus. `RuntimeEventBus` took the
     cap only as a constructor option and all three SDK construction sites passed
     none, so the cap was always 100 no matter what the key said. The hosts that
-    own the config now point the module default at it at startup — the same shape
-    `configureActivityLogger` already uses — which covers buses built by
+    own the config now point the module default at it at startup, the same shape
+    `configureActivityLogger` already uses, which covers buses built by
     components that hold no ConfigManager, and an explicit constructor option
     still wins.
   - **`telemetry.decisionOtlpEnabled` / `decisionOtlpEndpoint` /
     `decisionOtlpSignal`** described an export the SDK could not perform: the
-    exporter was complete — attribute mapping, spans, logs, the POST, the
-    off-by-default guards — and called from nowhere. The permission layer now
+    exporter was complete, attribute mapping, spans, logs, the POST, the
+    off-by-default guards, and called from nowhere. The permission layer now
     hands each decision it records to it, fire-and-forget, so an unreachable
     collector cannot stall a tool call. Still off by default, still export-only.
   - **`telemetry.otelMode`** made no difference at any of its three values. Its
     two feature gates were read only inside `createTelemetryProvider`, which had
-    no callers, and the live meter was built without reference to either — so
+    no callers, and the live meter was built without reference to either, so
     'off', 'in-process' and 'remote-export' all produced no spans. The composed
     runtime now builds its telemetry through the provider and installs the
     tracer, so 'in-process' records provider-call spans and 'remote-export'
@@ -2017,7 +2001,7 @@ its description says, in every consumer.
     comes from.
   - **`cache.enabled`** did not stop prompt caching. The Anthropic provider built
     its cache context unconditionally, so 'false' still placed breakpoints and
-    still paid cache writes. False now places none — off means off, not a shorter
+    still paid cache writes. False now places none, off means off, not a shorter
     TTL. **`cache.stableTtl`** fed a `configuredTtl` field no caller populated, so
     its '5m' position produced the same 1h breakpoints as its '1h' one; the value
     now reaches the stable-content breakpoint. Both read per request, like their
@@ -2032,7 +2016,7 @@ its description says, in every consumer.
     only `controlPlane.webui.bundleDir` was read. The precedence is now explicit
     in both descriptions: the specific `controlPlane.webui.bundleDir` wins when it
     names a directory, and `web.staticAssetsDir` supplies the directory when it is
-    empty — so a host that puts its bundle where the build does needs only
+    empty, so a host that puts its bundle where the build does needs only
     `controlPlane.webui.serve`. Neither directory key turns serving on by itself.
   - **`surfaces.email.imap.secure`** was never read: the surface config reader
     translated its SMTP twin and skipped it, and every IMAP connection went
@@ -2045,7 +2029,7 @@ its description says, in every consumer.
   The key's recorded default was `false` and the `unified-runtime-task` flag's
   `defaultState` was `disabled`, but every consumer composition root built its
   task manager without a feature-flag manager at all, and the gate underneath
-  is permissive with none wired — so the setting never actually governed
+  is permissive with none wired, so the setting never actually governed
   anything, and task tracking (including the `/tasks` command and operator
   interventions) has always run regardless of this key. The default now
   records the truth (`true`/`enabled`) instead of a value the software never
@@ -2067,7 +2051,7 @@ settings UI should update: their surfaces are refusing inbound traffic.
   reference in the config. Delivery paths resolve that reference; the inbound
   webhook adapters did not. Each compared its config value byte-for-byte
   against the secret the caller presented, so it was comparing the reference
-  TEXT against the real secret — a mismatch on every request. Nothing reached a
+  TEXT against the real secret, a mismatch on every request. Nothing reached a
   session: messages sent to the daemon were rejected, and the only symptom was
   an unexplained 401.
 
@@ -2086,16 +2070,16 @@ settings UI should update: their surfaces are refusing inbound traffic.
   shared helper before comparing: webhook, telegram, ntfy, google-chat,
   whatsapp (verify token and signing secret), msteams, matrix, mattermost,
   bluebubbles, imessage, signal, and telephony (webhook secret, token and
-  Twilio auth token). A credential set as a literal — an operator who was never
-  swept, or one configuring by environment variable — keeps working unchanged.
+  Twilio auth token). A credential set as a literal, an operator who was never
+  swept, or one configuring by environment variable, keeps working unchanged.
 
 - **A credential that cannot be resolved now refuses the request instead of
   waving it through.** Seven of these adapters skip the comparison entirely
   when no credential is configured, which is the correct reading of an
   unconfigured surface. Resolving the reference in place would have made a
   BROKEN credential indistinguishable from an ABSENT one, and those seven
-  surfaces — telegram, google-chat, matrix, mattermost, bluebubbles, imessage
-  and signal — would have accepted any caller, including one presenting no
+  surfaces, telegram, google-chat, matrix, mattermost, bluebubbles, imessage
+  and signal, would have accepted any caller, including one presenting no
   secret at all. The shared helper reports "resolved", "absent" and
   "unresolvable" as three different answers, and a surface whose credential is
   configured but unresolvable now answers 503 and logs which config key is at
@@ -2133,7 +2117,7 @@ with memory, and after a restart the state has silently gone backwards.
   create's rename landed second and restored the snapshot it took before the
   approval was answered. After a restart the record read back as `pending`, and
   because silence on a payment approval means denied, an approved purchase was
-  eventually a denied one — the decision lost, in the path whose whole job is to
+  eventually a denied one, the decision lost, in the path whose whole job is to
   keep it.
 
   Writes now go through a per-broker queue (`StoreWriteQueue`): one at a time,
@@ -2157,38 +2141,38 @@ with memory, and after a restart the state has silently gone backwards.
   same per-call queue, and each is pinned by a test that fails with the real
   symptom when its queue is removed:
 
-  - `UserPermissionRuleStore` — a revoked "always allow" rule came back and
+  - `UserPermissionRuleStore`, a revoked "always allow" rule came back and
     silently auto-approved the next matching ask. Durable user rules are
     consulted before anything prompts, so the revocation had no effect at all
     after a restart.
-  - `DaemonBatchManager` — a cancelled batch job read back as `queued` and the
+  - `DaemonBatchManager`, a cancelled batch job read back as `queued` and the
     next tick submitted it to the paid provider.
-  - `SharedSessionBroker` — the 60-second GC sweep persists without waiting, so
+  - `SharedSessionBroker`, the 60-second GC sweep persists without waiting, so
     it could land over a `cancelInput`; the input read back as `queued`, and
     boot reconciliation spawns an agent for queued work.
-  - `ChannelPolicyManager` — the audit flush is scheduled on every inbound
+  - `ChannelPolicyManager`, the audit flush is scheduled on every inbound
     message and was ordered only against itself, so a "disable this surface"
     ruling or an owner-allowlist seed could be overwritten by it.
   - The four automation stores (`jobs`, `runs`, `routes`, `sources`), shared by
-    `AutomationManager` and `AutomationService` — the manager is designed for
+    `AutomationManager` and `AutomationService`, the manager is designed for
     four concurrent runs plus a 2-second reconcile timer, and a completed run
     that read back as `running` was re-executed after a restart.
-  - `TaskScheduler` — `add`/`remove`/`setEnabled` each fire a save nobody waits
+  - `TaskScheduler`, `add`/`remove`/`setEnabled` each fire a save nobody waits
     for; a deleted cron task came back and spawned an agent on the next start.
-  - `CiWatchService` — a poll's write is requested before its network round trip
+  - `CiWatchService`, a poll's write is requested before its network round trip
     returns, so a deleted watch could be restored and keep notifying.
-  - `PrincipalRegistry` and `ChannelProfileRegistry` — a deleted identity
+  - `PrincipalRegistry` and `ChannelProfileRegistry`, a deleted identity
     mapping or channel binding could be restored by a create/set that started
     before it.
-  - The distributed-runtime store — writes are fired unawaited from ordinary
+  - The distributed-runtime store, writes are fired unawaited from ordinary
     list calls; a rejected pair request read back as `pending`, which is a peer
     the operator turned away still able to complete pairing.
-  - `CheckinReceiptStore` — an append-only log where the earlier write's
+  - `CheckinReceiptStore`, an append-only log where the earlier write's
     snapshot does not contain the later receipt, so a check-in that contacted
     the owner could leave nothing on disk saying it ran.
-  - `KVState` — `dispose()` racing a debounce that had already fired; a cleared
+  - `KVState`, `dispose()` racing a debounce that had already fired; a cleared
     key came back when the session was resumed.
-  - `InboundMailHousekeeper`'s disclosure log — the one case where ordering the
+  - `InboundMailHousekeeper`'s disclosure log, the one case where ordering the
     write alone would not have been enough, because each write is the file's own
     previous contents plus one entry. Its READ is inside the serialised unit too,
     so two overlapping sweeps cannot drop one sweep's record of what it reaped.
@@ -2196,7 +2180,7 @@ with memory, and after a restart the state has silently gone backwards.
 
 - **A lost workspace registration.** `WorkspaceRegistrationStore.add` / `remove`
   / `decline` were read-modify-writes with no exclusion of any kind, and this is
-  the one daemon store a second PROCESS writes — `goodvibes register` in a
+  the one daemon store a second PROCESS writes, `goodvibes register` in a
   project directory writes the same user-scoped file the running daemon writes.
   Two registrations that interleaved lost one of the two roots outright: no
   coverage for that project, and nothing anywhere saying so. Each mutation now
@@ -2206,8 +2190,8 @@ with memory, and after a restart the state has silently gone backwards.
 
 ## [1.19.0] - 2026-07-28
 
-Three capabilities the platform did not have — spending money, knowing who its
-owner is, and reading mail as it arrives — plus the two boundaries they made
+Three capabilities the platform did not have, spending money, knowing who its
+owner is, and reading mail as it arrives, plus the two boundaries they made
 non-optional: every verb's input and output now carries its real type, and
 externally-authored text is marked as such wherever it enters.
 
@@ -2216,12 +2200,12 @@ endpoints (6) are unchanged.
 
 ### Added
 
-- **Payments — `payments.*` (7 verbs), new subpath `./platform/payments`.**
+- **Payments, `payments.*` (7 verbs), new subpath `./platform/payments`.**
   `payments.checkout.begin`, `payments.checkout.fillCard`,
   `payments.cards.create` / `.list` / `.delete`, `payments.purchases.list`,
   `payments.budget.status`. The SDK owns budget arithmetic, the decision order,
   both approval-window state machines, the shipping ladder, message rendering,
-  the audit ledger and the taint gate — all pure and injectable under
+  the audit ledger and the taint gate, all pure and injectable under
   `platform/payments/*`. The daemon serves the verbs; surfaces are wiring and UI
   only, with no decision logic. Card material and settings live in the
   daemon-owned config and secret tiers. Design of record: `docs/payments.md`,
@@ -2232,35 +2216,35 @@ endpoints (6) are unchanged.
   the untrusted-content work below is a precondition of this feature rather than
   a companion to it.
 
-- **Owner profile — `profile.*` (9 verbs), new subpath
+- **Owner profile, `profile.*` (9 verbs), new subpath
   `./platform/owner-profile`.** `profile.get`, `.set`, `.append`, `.read`,
   `.person`, `.provenance`, `.forget`, `.undo`, `.status`. One Markdown file at
   daemon scope, read once into memory at boot and read back out at the cost of a
   property access. `profile.read` carries its own scope so enumeration is gated
   separately from keyed reads, and the closed-tier prose sections are reachable
-  only through `person(name)` — `section()` refuses them. Every write takes an
+  only through `person(name)`, `section()` refuses them. Every write takes an
   authority argument; it is never defaulted. Design and the four owner rulings
   it is built from: `docs/owner-profile.md`.
 
-- **Real-time inbound email — `email.*` (4 verbs).** `email.inbound.status`,
+- **Real-time inbound email, `email.*` (4 verbs).** `email.inbound.status`,
   `email.expectation.open` / `.list` / `.cancel`. The daemon could send mail and
   could read mail when asked; nothing ever asked on its own, so there was no
-  delivery path to fix — there was no delivery path. `platform/email/inbound/*`
+  delivery path to fix, there was no delivery path. `platform/email/inbound/*`
   adds an IMAP IDLE watcher with a poll-loop fallback and backoff, a Gmail
   history-delta source preferred when Google is adopted, per-source cursor,
   record and expectation stores, a probed body-access capability check, health
   reporting on the daemon's own health surface, and an owner-notice path.
   Design of record: `docs/inbound-email.md`; read §5 first.
 
-- **`mcp.servers.reveal`** — reads back a configured MCP server entry.
+- **`mcp.servers.reveal`**, reads back a configured MCP server entry.
 
-- **New public subpath `./platform/runtime/path-shadow`** — resolves which
+- **New public subpath `./platform/runtime/path-shadow`**, resolves which
   binary on `PATH` actually answers for a command name, and reports the losers.
   Written after a stale `~/.bun/bin/goodvibes-agent` link shadowed a current
   install and the symptom looked like a version that would not update.
 
 - **Typed IO for every catalogued verb.** `OperatorMethodInputMap` and
-  `OperatorMethodOutputMap` go from 368 entries to **464** — every verb in the
+  `OperatorMethodOutputMap` go from 368 entries to **464**, every verb in the
   catalogue, generated rather than hand-maintained, with the coverage ratchet
   dropped to zero. The OpenAPI contract now renders 365 paths across 464
   methods with **0 marked `untyped-client-io`**.
@@ -2269,7 +2253,7 @@ endpoints (6) are unchanged.
   `platform/calendar/untrusted-events.ts` marks invitation-authored summary,
   description, location and attendee text; `platform/tools/fetch/untrusted-ingest.ts`
   closes the `fetch` tool, which recorded nothing at all while the browser
-  engine and both mail surfaces recorded their reads — a page loaded through
+  engine and both mail surfaces recorded their reads, a page loaded through
   `browser.*` could not steer a send and the same page loaded through `fetch`
   could. `platform/security/untrusted-surface-language.ts` gives the refusal
   wording one owner. Card-shaped content is refused on remote channels and
@@ -2283,7 +2267,7 @@ endpoints (6) are unchanged.
 ### Changed
 
 - **`OperatorMethodInput` and `OperatorMethodOutput` are now indexed accesses,
-  not distributive conditionals — and the permissive fallback is gone.**
+  not distributive conditionals, and the permissive fallback is gone.**
   Every id has a rendered entry, so the lookup no longer needs a conditional
   branch. It could not keep one: relating a client object literal to an
   interface generic over the 464-id union instantiated the conditional once per
@@ -2297,7 +2281,7 @@ endpoints (6) are unchanged.
   their real shapes and their real `required` arrays. Measured against the webui
   as the worst case: of the 33 distinct method ids it invokes, **22 now enforce
   at least one required field**, and a bridge type that still declares them
-  optional is a compile error at the re-pin. That is the wanted outcome — the
+  optional is a compile error at the re-pin. That is the wanted outcome, the
   server was already refusing those calls and the consumer could not see it. The
   full table is in `docs/decisions/2026-07-28-webui-repin-required-fields.md`.
 
@@ -2310,11 +2294,11 @@ endpoints (6) are unchanged.
   worked.** `ChannelStatusSnapshot.state` was computed from credential presence
   alone, so a Telegram bot whose ingress had stopped kept reporting healthy for
   as long as its token stayed configured: a message was sent, no reply came, and
-  every surface agreed everything was fine. Four surfaces were worse — Slack,
+  every surface agreed everything was fine. Four surfaces were worse, Slack,
   Discord, ntfy and the generic webhook reported healthy whenever their delivery
   switch was on, without checking for a credential at all. Meanwhile
-  `BuiltinChannelRuntime.telegramIngressStatus()` — the function that knew the
-  answer, including the named reason ingress was inactive — had no caller.
+  `BuiltinChannelRuntime.telegramIngressStatus()`, the function that knew the
+  answer, including the named reason ingress was inactive, had no caller.
 
   The reported state now answers whether the channel can send and receive right
   now. `ChannelHealthState` distinguishes `healthy`, `degraded`, `dead`,
@@ -2323,12 +2307,11 @@ endpoints (6) are unchanged.
   rule resolves it (`resolveChannelHealthState`), so a surface cannot report
   health without an observation behind it.
 
-  Telegram is read from the ingress supervisor (webhook mode counts as armed —
-  it runs no poll loop by design, and reading `running` alone would have called
+  Telegram is read from the ingress supervisor (webhook mode counts as armed, it runs no poll loop by design, and reading `running` alone would have called
   a correctly registered webhook dead). Slack, Discord and ntfy are read from
   the provider connection manager. Every other built-in surface receives through
   a webhook this daemon merely registers and therefore cannot tell a working
-  provider from a silent one — those report `unknown` and say in plain words
+  provider from a silent one, those report `unknown` and say in plain words
   that configuration is all they know. No invented greens.
 
 - **A credential that is declared but resolves to nothing is now its own
@@ -2337,7 +2320,7 @@ endpoints (6) are unchanged.
   `daemon/settings.json` pointed at
   `goodvibes://secrets/goodvibes/TELEGRAM_BOT_TOKEN`. Every daemon send failed
   with "Missing Telegram bot token" while the agent's own path sent fine through
-  its own store — and both reported the same health, because a reference is a
+  its own store, and both reported the same health, because a reference is a
   non-empty string and that was all "configured" ever meant.
 
   `describeBuiltinSecret` now resolves what it describes, so
@@ -2346,14 +2329,14 @@ endpoints (6) are unchanged.
   state `unresolved` sits between `unconfigured` (nobody believes it works) and
   `dead` (it resolved and the runtime is down), and the reported reason names
   the field rather than the symptom. The doctor gains a matching
-  `credentials-resolve` check. It costs a store read — no network, no trial
+  `credentials-resolve` check. It costs a store read, no network, no trial
   send. An observed working path still outranks it, so a surface reading its
   credential through a path this describer does not model is never called broken
   while it is demonstrably carrying traffic.
 
 - **A dead channel now reaches the owner instead of sitting in a field.**
   `ChannelHealthWatcher` sweeps the registry, and the daemon announces a channel
-  that stops working over a channel that still does — never over the failed one.
+  that stops working over a channel that still does, never over the failed one.
   Recoveries are announced to whoever was told about the failure, a channel that
   stays dead is repeated on a long interval rather than mentioned once, and
   `unknown` is not treated as failure so webhook-delivered surfaces do not cry
@@ -2363,7 +2346,7 @@ endpoints (6) are unchanged.
 
 - **Credentials already stranded in a surface silo are lifted to the daemon
   tier on start.** Routing new writes correctly fixes nothing for someone who
-  already ran setup — the owner ran `/google adopt` in the agent, it reported
+  already ran setup, the owner ran `/google adopt` in the agent, it reported
   success, and the credential landed where that build put it. The daemon
   previously enumerated only its own surface root, so a credential left in
   `~/.goodvibes/agent/` was invisible to the one thing that could lift it.
@@ -2395,7 +2378,7 @@ endpoints (6) are unchanged.
 - **`./platform/payments` and `./platform/owner-profile` are published for the
   first time.** Consumers carrying a local overlay or `file:` tarball for either
   can restore their npm pin. The duplicated `WEBUI_CARD_ENTRY_CONDITIONS` copy
-  in the webui can be deleted and imported from the SDK — see
+  in the webui can be deleted and imported from the SDK, see
   `docs/decisions/2026-07-28-payments-release-gates.md`.
 
 - **Daemon-needed credentials move to daemon scope on first start of 1.19.0.**
@@ -2410,29 +2393,29 @@ endpoints (6) are unchanged.
 
 - **A mail route on a daemon without mail deps dispatched into itself 256 times
   and then blamed load.** 1.18.0 made `email.*` served and invokable, and its
-  REST paths reachable — but only on a composition that hands the mail verbs
+  REST paths reachable, but only on a composition that hands the mail verbs
   their dependencies. On one that does not (a bare `bootDaemon`, an embed, a
   test harness), the handler is absent, and that turned out to be a cycle rather
   than an answer.
 
   `invokeGatewayMethodCall` has two arms: run the attached handler in process,
-  or — no handler, but the descriptor advertises an `http` binding — synthesize
+  or, no handler, but the descriptor advertises an `http` binding, synthesize
   a request to that path and feed it back into the real router. The second arm
   exists for verbs whose implementation is a genuine HTTP route elsewhere in the
   chain. It stopped being safe when the gateway REST table gained rows for the
   handler-backed families, because those rows map the advertised path straight
   back to the SAME methodId. The synthesized request re-entered the same arm and
   synthesized again. Before those rows existed the synthesized request 404'd and
-  the loop ended in one hop — the "plain 404" the route-reconcile module
+  the loop ended in one hop, the "plain 404" the route-reconcile module
   documents. Adding them closed the cycle.
 
   Measured on a 1.18.0 daemon: one `GET /api/email/inbox` produced **256 nested
   dispatches**, then answered
-  `503 ws-call-overloaded — Daemon is at its concurrent WS-call cap (256)`.
+  `503 ws-call-overloaded, Daemon is at its concurrent WS-call cap (256)`.
 
   Both halves of that were wrong. The capability was not wired, which is a fixed
   and terminal condition, not a transient capacity problem that might clear on
-  retry — anyone reading that message would have gone looking at load, and load
+  retry, anyone reading that message would have gone looking at load, and load
   was never involved. And a single request consumed the daemon's entire
   concurrent WS-call budget, so a handful of them would have starved every other
   caller on the daemon.
@@ -2443,7 +2426,7 @@ endpoints (6) are unchanged.
     dispatched at all. There is no other implementation to reach, so "no
     handler" is terminal, and the caller is told exactly that: **501** with
     `code: NOT_INVOKABLE` and a message naming the capability and saying it is
-    not wired up in this composition — a supported configuration, described as
+    not wired up in this composition, a supported configuration, described as
     one rather than as a fault.
   - A synthesized request now carries its dispatch depth, and one that re-enters
     the dispatcher is refused as a **loop** (500, `INTERNAL_ERROR`) rather than
@@ -2454,15 +2437,15 @@ endpoints (6) are unchanged.
   Verified against a real daemon the same way the defect was found, counting
   dispatches: `/api/email/inbox`, `/api/email/inbox/{uid}` and
   `/api/email/drafts` go from **256 dispatches and a 503** to **0 dispatches and
-  a 501**, while `calendar.events.list` — whose handlers do attach from
-  `homeDirectory` alone — still returns its real `CALENDAR_NOT_CONFIGURED`, and
+  a 501**, while `calendar.events.list`, whose handlers do attach from
+  `homeDirectory` alone, still returns its real `CALENDAR_NOT_CONFIGURED`, and
   `/status` is untouched.
 
 - **The gate that should have caught it.** `test/gateway-self-dispatch-loop.test.ts`
   reads the self-routed method ids out of the real REST table rather than a
   hand-kept list, so a family added later is covered without anyone remembering
-  to add it. For each one it asserts the two invariants that matter — never a
-  `ws-call-overloaded` answer, and never a re-entry into the router — plus the
+  to add it. For each one it asserts the two invariants that matter, never a
+  `ws-call-overloaded` answer, and never a re-entry into the router, plus the
   honest 501 for the verbs that reach the dispatch arm unobstructed. Checked by
   reverting the guard: 41 of its 68 assertions fail without the fix and all 68
   pass with it, so it is a gate rather than decoration.
@@ -2479,8 +2462,8 @@ endpoints (6) are unchanged.
 Mail, calendar and a browser stop being things a surface implements and become
 things the platform serves. Everything below follows from that one move: the
 Google connector, the IMAP/SMTP email service and the Playwright browser engine
-were implemented inside products, so a daemon — the one runtime with no surface
-attached — could not read a mailbox, answer a calendar request or open a page.
+were implemented inside products, so a daemon, the one runtime with no surface
+attached, could not read a mailbox, answer a calendar request or open a page.
 Scheduled work, triggers and inbound channel messages had no way to do any of
 it. All three are now SDK code, served over the operator contract, with the
 products consuming them instead of carrying their own copy.
@@ -2490,12 +2473,12 @@ release necessary rather than optional, and it is the larger part of the work.
 
 ### Added
 
-- **`./platform/google`** — the Gmail and Google Calendar connector, hoisted out
+- **`./platform/google`**, the Gmail and Google Calendar connector, hoisted out
   of the agent. `./platform/google/node` holds every node built-in it needs, so
   the connector proper stays runtime-neutral: sockets, files, processes and
   listeners are injected.
 
-- **`./platform/email`** — the IMAP4rev1 client, the SMTP submission client, the
+- **`./platform/email`**, the IMAP4rev1 client, the SMTP submission client, the
   service that resolves config and secrets and drives them, the writing-style
   draft composer and the Personal Ops lane descriptors. `./platform/email/node`
   carries the node-only half for the same reason.
@@ -2503,24 +2486,24 @@ release necessary rather than optional, and it is the larger part of the work.
   New capability inside the client, not just relocation: `fetchMessage(uid)`
   reads a whole message over UID FETCH (a sequence number from an earlier
   listing may now be a different message), reads headers and BODYSTRUCTURE and
-  then only the `text/plain` and `text/html` sections — attachments are reported
+  then only the `text/plain` and `text/html` sections, attachments are reported
   from the structure and their bytes are never downloaded, so a 30 MB archive
   costs a filename and a size. Every fetch is `BODY.PEEK`, asserted on the wire
   bytes a fake server receives, because a plain `BODY[` marks the owner's mail
   read behind their back. `appendDraft` uploads as a literal counted in BYTES,
   discovers the Drafts folder by `\Drafts` special-use (RFC 6154) then by name
-  then by fallback — Gmail's is `[Gmail]/Drafts` and a hardcoded name creates a
-  stray folder there — and refuses CR/LF in every caller-supplied header field
+  then by fallback, Gmail's is `[Gmail]/Drafts` and a hardcoded name creates a
+  stray folder there, and refuses CR/LF in every caller-supplied header field
   rather than sanitizing it. `APPENDUID` is reported when the server advertises
   UIDPLUS and `null` when it does not; no id is invented.
 
-- **`./platform/browser`** — the Playwright browser engine, hoisted out of the
+- **`./platform/browser`**, the Playwright browser engine, hoisted out of the
   agent, with the session-ownership vocabulary it enforces: `launch` starts a
   browser this daemon owns and may close, `attach` connects to one it did not
   start and may never close, `release` lets go of an attached browser while
   leaving it running.
 
-- **`./platform/security`** — the untrusted-content contract: the standing rule
+- **`./platform/security`**, the untrusted-content contract: the standing rule
   text, the per-process ingest ledger, the outward-effect decision and the port
   factory a browser engine is handed. This was the agent's module, which was
   correct while the agent was the only runtime that could both read a page and
@@ -2530,14 +2513,14 @@ release necessary rather than optional, and it is the larger part of the work.
   `email.inbox.list`, `email.inbox.read`, `email.draft.create`, `email.send`
   and the `calendar.*` family reconcile live: handlers behind an
   `EmailGatewayService`/`CalendarGatewayService`, rows in the gateway REST
-  table, flags cleared. The advertised paths are unchanged — the catalog was
+  table, flags cleared. The advertised paths are unchanged, the catalog was
   always honest about where these live; what was missing was an implementation
   the daemon could reach.
 
 - **CalDAV as a second calendar backend** alongside Google: discovery, event
   list/get/create, `.ics` import and export, reading `surfaces.calendar.*`
   through injected config and secret ports and speaking to an injected HTTP
-  port. Which backend answers is decided in the composition — a configured
+  port. Which backend answers is decided in the composition, a configured
   CalDAV server, else a connected Google account.
 
 - **24 `browser.*` verbs, with routes and handlers**, so a caller with no
@@ -2555,19 +2538,19 @@ release necessary rather than optional, and it is the larger part of the work.
   `surfaces.calendar.*` schema keys.** The paths were already daemon-owned,
   which fixed WHERE a value is stored; it did not make them settable, because
   the settings modal renders from `CONFIG_SCHEMA` and none of these were in it.
-  So the handlers' own errors — "Set `surfaces.calendar.caldavUrl` and
-  `surfaces.calendar.caldavUser`" — named keys no operator could reach through
+  So the handlers' own errors, "Set `surfaces.calendar.caldavUrl` and
+  `surfaces.calendar.caldavUser`", named keys no operator could reach through
   the UI that told them to set them. Both spellings of the IMAP settings are
   declared, because both are read: the inbox provider reads the flat
   `imapHost`/`imapPort`/`imapUser`/`imapPassword` and the triage tagger reads
   the nested `imap.*`.
 
-- **`describeSenderClaimNeutrally`** — a shared sender-claim describer for a
+- **`describeSenderClaimNeutrally`**, a shared sender-claim describer for a
   product with no wording of its own. The SENTENCE a person reads belongs to the
   product, so `EmailServiceDeps.describeSenderClaim` stays a required port; the
   DECISION it reports does not. A `From:` header is a claim, sender
   authentication raises display confidence and nothing else, and
-  `commandAuthority` is the literal `'none'` — the type makes any other
+  `commandAuthority` is the literal `'none'`, the type makes any other
   authority value a compile error.
 
 ### Changed — the email trust model
@@ -2579,7 +2562,7 @@ release necessary rather than optional, and it is the larger part of the work.
   human watching, and an unattended daemon is exactly where an injection pays
   off.
 
-  What makes the strictness affordable is asking a narrower question — not "has
+  What makes the strictness affordable is asking a narrower question, not "has
   this process read anything untrusted", which is permanently true in a daemon
   and therefore decides nothing, but "does THIS action's content derive from
   what was read". A scheduled report built from a database proceeds. A send
@@ -2596,7 +2579,7 @@ release necessary rather than optional, and it is the larger part of the work.
   and `EmailServiceDeps.recordUntrustedIngest` now carry content,
   `createUntrustedContentPort` forwards it, `BrowserEngine` records page text
   from `readText`/`snapshot`/`extract`, and `EmailService` records subject and
-  body — proven end to end: two ingests, two taint sources, a send repeating the
+  body, proven end to end: two ingests, two taint sources, a send repeating the
   injection refused.
 
   **Recipient redirection is caught by exact containment**, not by length:
@@ -2607,7 +2590,7 @@ release necessary rather than optional, and it is the larger part of the work.
   `From:` header.
 
   **A turn now begins on `explicitUserRequest`.** `startTurn()` had no
-  production caller, so "this turn" meant "since process start" — harmless
+  production caller, so "this turn" meant "since process start", harmless
   driving a disclosure, wrong driving a refusal, since a daemon up for a week
   carried a week of strangers' text as evidence against every send. Automated
   work deliberately does not reset it, so content cannot arrange for the record
@@ -2635,7 +2618,7 @@ release necessary rather than optional, and it is the larger part of the work.
   multi-label suffixes, leaving 5,332 under which two different registrants
   compared equal. It is 5,501 entries now and the check is green. It is bundled
   and never fetched at runtime; a weekly workflow outside `ci.yml` fails on
-  drift, and its text says what a red run means — a narrowing of coverage, not
+  drift, and its text says what a red run means, a narrowing of coverage, not
   an outage, because the single-label fallback keeps unknown suffixes resolving
   correctly.
 
@@ -2643,13 +2626,13 @@ release necessary rather than optional, and it is the larger part of the work.
   expectation is opened only for a signup it is completing or a login it is
   performing, so unsolicited verification-shaped mail with no open expectation
   can never cause an action. The login case correlates far more weakly than the
-  signup case — the address is one the owner already gave out — so it is
+  signup case, the address is one the owner already gave out, so it is
   compensated: the link must be on the EXACT domain rather than a tolerated
   subdomain. Ambiguity stops everything: two messages matching one expectation
   act on neither and surface both, because a phisher racing a genuine login is
   precisely what produces two, and choosing is a coin flip.
 
-- **Trust tiers are declared per surface**, with no middle tier — a middle tier
+- **Trust tiers are declared per surface**, with no middle tier, a middle tier
   is where "this one is probably fine" lives, and the attack is content that
   looks fine. Sender authentication informs the sentence a human reads and never
   the tier: a phisher who owns their domain and configures DNS correctly passes
@@ -2657,12 +2640,12 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **A send to the owner himself is exempt from the taint refusal** (owner
   ruling: he is the trust root, not a third party, and telling him what arrived
-  is the point of an assistant reading his mail — "what came in overnight"
+  is the point of an assistant reading his mail, "what came in overnight"
   necessarily reuses the words of what came in). The exemption is drawn as
   narrowly as it can be, and every narrowing is tested as an attack that must
   fail: his configured addresses only, never a domain (that would exempt every
   colleague, and a forward to a colleague is third-party disclosure), never a
-  pattern (no plus-address folding), and never partial — a send to the owner AND
+  pattern (no plus-address folding), and never partial, a send to the owner AND
   anyone else is refused, because naming him first and slipping a second
   recipient in beside him is exactly how this would be used. Identity comes from
   configuration alone (`email.fromAddress`, `email.username`,
@@ -2675,7 +2658,7 @@ release necessary rather than optional, and it is the larger part of the work.
 ### Changed
 
 - `browser.tabs.new` is now **`browser.tabs.create`**, on `POST /api/browser/tabs`
-  beside the GET that lists them — opening a tab IS creating one, so it took the
+  beside the GET that lists them, opening a tab IS creating one, so it took the
   core verb rather than an exemption. The other seventeen flagged browser verb
   tails get a documented exempt category instead: these are the operations a page
   and a browser process actually have, and renaming them to CRUD words would
@@ -2687,8 +2670,8 @@ release necessary rather than optional, and it is the larger part of the work.
   guessed.** Inbound Telegram went permanently dead on a live machine: polling
   stopped at 12:24 and stayed stopped until a human restarted the daemon, with
   every message in between unread. Telegram uses 409 for two unrelated
-  situations — a registered webhook, and another process long-polling the same
-  token — and they were told apart by matching the description against
+  situations, a registered webhook, and another process long-polling the same
+  token, and they were told apart by matching the description against
   "terminated by other getUpdates", with `isWebhookConflict` defined as "409 and
   not concurrent". Webhook was therefore the DEFAULT for every 409 whose
   description was missing, reworded, or replaced by an intermediary's error
@@ -2700,7 +2683,7 @@ release necessary rather than optional, and it is the larger part of the work.
   branch is provable without a socket. Neither cause is fatal: a proven stuck
   webhook escalates to an error naming the fix and keeps retrying, and a
   competing consumer is reported so a cluster coordinator can stand the node
-  down, then retried anyway — with `cluster.enabled` off there is no election to
+  down, then retried anyway, with `cluster.enabled` off there is no election to
   stand down to, which is exactly how the failure became permanent. Retries are
   jittered so two consumers cannot settle into lockstep terminating each other's
   long poll, and a surface that is up but not consuming reports itself blocked
@@ -2710,7 +2693,7 @@ release necessary rather than optional, and it is the larger part of the work.
   from a scratchpad with `--daemon-home` found the machine's service unit not
   running, wrote its own scratchpad `ExecStart` into the systemd unit and
   exited; systemd then supervised the throwaway, which read the real home's
-  config and the real home's credentials and long-polled the real bot — the
+  config and the real home's credentials and long-polled the real bot, the
   collision that produced the 409 above. A daemon whose home was overridden now
   never adopts the machine service unit, and the check runs BEFORE
   `service.enabled` deliberately: that key is client-owned and resolves against
@@ -2732,7 +2715,7 @@ release necessary rather than optional, and it is the larger part of the work.
   prefix, but nothing enumerated `surfaces.email.password` or
   `surfaces.calendar.caldavPassword`, so the password went to whichever client
   store the operator happened to be sitting in. The whole mail and CalDAV
-  connection is now declared, not only the passwords — a password with no host
+  connection is now declared, not only the passwords, a password with no host
   and no user is not a usable credential either. An explicit scope also beat
   daemon ownership, and `/secrets set` passes one on every call, so the ordinary
   path a person takes to store a credential defeated the routing outright.
@@ -2746,7 +2729,7 @@ release necessary rather than optional, and it is the larger part of the work.
 - **A daemon-owned app-layer key bricked `ConfigManager` construction.**
   `email.*`, `calendar.*` and `google.*` are app-layer sections a product
   materializes at runtime, and the daemon-tier overlay runs inside the
-  `ConfigManager` CONSTRUCTOR — before any product has called its `ensure*`
+  `ConfigManager` CONSTRUCTOR, before any product has called its `ensure*`
   seeding. So a daemon settings file containing `email.imapHost`, a path the
   platform itself declares daemon-owned, made `resolvePath` throw "section
   'email' does not exist" and every `ConfigManager` built against that directory
@@ -2769,7 +2752,7 @@ release necessary rather than optional, and it is the larger part of the work.
   8-bit characters, making every non-English folder name unusable (now encoded
   as RFC 3501 modified UTF-7).
 
-- `email.draft.create`'s output no longer requires `uid` — it is the `APPENDUID`,
+- `email.draft.create`'s output no longer requires `uid`, it is the `APPENDUID`,
   which only a server advertising UIDPLUS returns, and inventing one for every
   other server produces a number a later fetch cannot resolve. It reports the
   Drafts mailbox it actually landed in instead.
@@ -2779,7 +2762,7 @@ release necessary rather than optional, and it is the larger part of the work.
   unfinished setup and answer 400, a refused password answers 401.
 
 - Layer 2 of the Google browser-flow test no longer launches a real Chromium
-  behind an availability gate — it ran nothing on machines without a provisioned
+  behind an availability gate, it ran nothing on machines without a provisioned
   browser. It drives the adapter against a fake engine now and runs everywhere.
 
 ## [1.17.2] - 2026-07-27
@@ -2788,7 +2771,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **1.17.1 asked consumers for something it did not hand out.**
   `RuntimePollerOwners.cancelHostedAgentRuns` shipped as a REQUIRED member, and
-  the shared implementation it names — `cancelAllAgentRuns` — was reachable from
+  the shared implementation it names, `cancelAllAgentRuns`, was reachable from
   no published subpath at all. Every fork that composes its own runtime graph
   (goodvibes-tui, goodvibes-agent) therefore had a contract it could satisfy
   only by re-writing the cancel loop by hand. It is now exported from
@@ -2798,7 +2781,7 @@ release necessary rather than optional, and it is the larger part of the work.
   Worth stating because it bears on the gate added in 1.17.1: the subpath
   surface check did NOT catch this, and could not. It records what a subpath
   exports, so it sees a required member being added and it sees an export being
-  removed — but "a required member that nothing published can satisfy" is a
+  removed, but "a required member that nothing published can satisfy" is a
   different shape, and it took a consumer failing to compile to find it. There
   is now a test that builds the owners object the way a fork builds it, from the
   published barrel, so the contract cannot again demand what the package does
@@ -2810,8 +2793,8 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **A daemon that never bound a socket still left work running.**
   `DaemonServer.stop()` released only what `start()` had wired, so a daemon
-  constructed and stopped without ever accepting a connection — a failed bind, a
-  short-lived embed, a test — kept 78 constructor-owned pollers ticking.
+  constructed and stopped without ever accepting a connection, a failed bind, a
+  short-lived embed, a test, kept 78 constructor-owned pollers ticking.
   Construction-owned work is now released whether or not a socket was bound.
 
 - **`PushService` had no `dispose()`.** Its escalation scheduler outlived the
@@ -2826,8 +2809,8 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **`RuntimePollerOwners` is all-required for a reason.** `homeGraphService` had
   a `dispose()` from the day it was written and simply was not named in the
-  list, so its post-sync self-improvement pump — a rescheduling loop with as
-  many as ten rounds — kept running after disposal.
+  list, so its post-sync self-improvement pump, a rescheduling loop with as
+  many as ten rounds, kept running after disposal.
 
 ### Changed
 
@@ -2835,18 +2818,18 @@ release necessary rather than optional, and it is the larger part of the work.
   reports how many. This is a deliberate behaviour change, not a leak fix: by
   `dispose()` time the fleet registry, orchestration engine, process registry
   and event bus are already gone, so an agent still described as "running" is
-  orphaned rather than preserved — its provider call stays in flight and it
+  orphaned rather than preserved, its provider call stays in flight and it
   sleeps out its retry backoff with nothing left to report to.
 
 - **`RetryConfig` gained an optional `signal`**, threaded through ten provider
-  call sites. Additive and optional — no consumer has to change — but it does
+  call sites. Additive and optional, no consumer has to change, but it does
   touch a public type in a patch release, which is worth saying plainly.
 
   Equally worth saying: mutation testing showed this threading is NOT
   load-bearing for the test that motivated it. An aborted request fails
   non-retryably before it ever reaches the backoff, so the test passes with the
-  signal removed. It is kept on its own merit — a caller that cancels should not
-  wait out a sleep it no longer needs — and not as a fix for that failure.
+  signal removed. It is kept on its own merit, a caller that cancels should not
+  wait out a sleep it no longer needs, and not as a fix for that failure.
 
 ### Internal
 
@@ -2856,7 +2839,7 @@ release necessary rather than optional, and it is the larger part of the work.
   `PushService`, `RetryConfig`, `HttpListener`, `AgentOrchestrator` and
   `cancelAllAgentRuns` appear in NEITHER rollup. Consumer forks implement some
   of those contracts, so adding a required member to one is a breaking change
-  that no gate in this repository caught — which is exactly what happened when
+  that no gate in this repository caught, which is exactly what happened when
   `cancelHostedAgentRuns` went in, surfacing only because somebody checked by
   hand.
 
@@ -2877,7 +2860,7 @@ release necessary rather than optional, and it is the larger part of the work.
   polled the shared inbox and one message was answered twice. Nodes now elect
   exactly one consumer, PER SURFACE: a laptop can hold the work Slack account
   while a desktop holds the mailbox, and losing a machine moves only the
-  surfaces it was reading. Off by default (`cluster.enabled`) — sharing inbound
+  surfaces it was reading. Off by default (`cluster.enabled`), sharing inbound
   work is something you switch on.
 
   A surface's identity never reaches the network in the clear. It travels as a
@@ -2925,7 +2908,7 @@ release necessary rather than optional, and it is the larger part of the work.
 - **A path the daemon owns is now stored somewhere.** `isDaemonOwnedConfigKey`
   consulted the schema keys and the daemon-owned prefixes but not
   `DAEMON_OWNED_NON_SCHEMA_CONFIG_PATHS`. That list previously held only paths
-  that also matched a daemon prefix, so the gap was invisible — until this
+  that also matched a daemon prefix, so the gap was invisible, until this
   round added five credential paths with no such prefix. A key nobody claims is
   not stored twice, it is stored NOWHERE: setting `email.passwordRef` was
   accepted, returned a `goodvibes://` reference, wrote the secret, and
@@ -2933,7 +2916,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **A stale-lock takeover could hand out two holders.**
   `acquireCrossProcessLock` judged a lock stale, then built a staging file,
-  wrote a payload, and renamed it over the lock path — without re-checking that
+  wrote a payload, and renamed it over the lock path, without re-checking that
   the lock was still the file it had judged. The takeover ticket serializes
   takeovers against each other but not against the plain-create path, so a
   stale holder could release, another waiter's `open(…,'wx')` could land a
@@ -2942,7 +2925,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **A machine refused re-entry to its group was told nobody answered.** A
   refused `REJOIN` got no reply at all, so the machine waited out its full
-  admission timeout and reported that the group was unreachable — when the
+  admission timeout and reported that the group was unreachable, when the
   group had heard it and decided against it. There is now an explicit
   `REJOIN_REFUSE`, signed with the refuser's identity key, which a returning
   machine can verify against the roster it stored before it left. Only an
@@ -2966,7 +2949,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - The build no longer deletes the output tree before rebuilding it. For the
   length of a rebuild the compiled SDK did not exist, and a dev-linked consumer
-  could resolve none of its imports — the mechanism behind a run of test
+  could resolve none of its imports, the mechanism behind a run of test
   failures that only appeared under concurrent load. Orphans are now swept
   after the build from tsc's own emitted-file list. The workspace lock also
   moved to the shared git directory, so worktrees of one checkout serialize
@@ -2979,7 +2962,7 @@ release necessary rather than optional, and it is the larger part of the work.
 - **A consumer could not pass `conversationGateConfig` to `SharedSessionBroker`
   at all.** `ConversationGateConfigReader.getCategory` was typed with the
   literal `'conversationGate'`, and `ConfigManager.getCategory` is generic over
-  `keyof GoodVibesConfig` — a union `conversationGate` only joins through the
+  `keyof GoodVibesConfig`, a union `conversationGate` only joins through the
   module augmentation in `config/schema-domain-conversation-gate.ts`. Inside
   this package that augmentation is always loaded, so the SDK's own composition
   root compiled and the defect was invisible. A consumer's program loads only
@@ -2990,7 +2973,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
   Which meant the one line that makes the daemon honor `conversationGate.mode`
   and `gatedSurfaces` on the live-agent handover path could not be written in
-  `goodvibes-tui` or `goodvibes-agent` — the gate silently ran on defaults in
+  `goodvibes-tui` or `goodvibes-agent`, the gate silently ran on defaults in
   both. The parameter is now `string`, so the contract depends on no
   augmentation, and `test/types/conversation-gate-config-reader.ts` pins the
   assignment from a consumer's vantage point by resolving through the package
@@ -3005,15 +2988,15 @@ release necessary rather than optional, and it is the larger part of the work.
   covers.** The gate answers an inbound channel message conversationally and,
   when the message reads as a work request, proposes the work over the channel
   it arrived on. Delivering that proposal went through a direct per-surface
-  push implemented for Slack, Discord and ntfy only — so on Telegram, Google
+  push implemented for Slack, Discord and ntfy only, so on Telegram, Google
   Chat, Signal, WhatsApp, telephony, iMessage, Microsoft Teams, BlueBubbles,
   Mattermost, Matrix and Home Assistant the proposal existed and could never
   be shown. The owner was asked nothing, saw nothing, and the work sat waiting
   for an answer to a question that was never posed.
 
   The notice now travels the same path a conversational reply already
-  travels — the surface's channel plugin, its `renderEvent`, and the channel
-  delivery router — so any surface the platform can talk to can carry a
+  travels, the surface's channel plugin, its `renderEvent`, and the channel
+  delivery router, so any surface the platform can talk to can carry a
   proposal. There is no second, gate-only delivery path to keep in sync. A
   channel that reports non-delivery and a transport that throws are both
   refusals, named in the log and in the returned outcome; neither is reported
@@ -3038,14 +3021,14 @@ release necessary rather than optional, and it is the larger part of the work.
 - **A surface notice that was never sent reported itself delivered.** Eleven
   surfaces had no notice implementation at all, and the send path read a clean
   return as proof of delivery. A proposal was marked deliverable and left
-  answerable while nothing had been sent — so the owner's next message, about
+  answerable while nothing had been sent, so the owner's next message, about
   anything, was matchable against a proposal they had never seen. Unsent now
   refuses at error level, naming the surface, the binding and the reason, and
   the proposal is dropped rather than left answerable.
 
 - **The shipped daemon discarded every log line it produced.** The daemon
   entrypoint never called `configureActivityLogger`, so the logger had no sink
-  and `~/.goodvibes/logs/` stayed empty — every failure above was invisible on
+  and `~/.goodvibes/logs/` stayed empty, every failure above was invisible on
   a real machine for exactly this reason. The logger sink is now established as
   a boot guarantee during facade construction rather than by each entrypoint
   remembering.
@@ -3065,7 +3048,7 @@ release necessary rather than optional, and it is the larger part of the work.
 
 - **A completed migration marker no longer hides a key promoted later.** The
   marker records the ownership set it covered, and a grown set re-runs the
-  migration once — which is what carries `conversationGate.*` across on
+  migration once, which is what carries `conversationGate.*` across on
   machines that migrated before it was daemon-owned.
 
 ### Changed
@@ -3117,15 +3100,15 @@ defaults.
   clipboard, and a small set of device commands (notification, link, buzz),
   carried over the existing peer transport as a new `device.capability` work
   type. It is a native contract, not an MCP server, and it is node-kind
-  neutral by construction — a node announces which capability ids it
+  neutral by construction, a node announces which capability ids it
   implements, and nothing in the catalog branches on what KIND of node it is,
   so a native app node pairs and serves through the same code path as the web
   app node shipping first.
 
   Every capture and every effect asks the person before it runs. Choosing
   "always allow" on that prompt writes ONE durable grant for that one
-  capability on that one phone — offered on every capability, front camera,
-  screen capture, precise location and clipboard read included — listed and
+  capability on that one phone, offered on every capability, front camera,
+  screen capture, precise location and clipboard read included, listed and
   revocable through `devices.grants.list` / `devices.grants.revoke`. A revoked
   grant is deleted rather than flagged, and grants are re-read from disk on
   every request, so revoking one takes effect on the very next request from
@@ -3145,7 +3128,7 @@ defaults.
   `device.clipboard.readMode`, `device.capture.retentionHours`, and the grant
   and node bounds.
 
-- **Wake-word detection has platform support — and says plainly that it does
+- **Wake-word detection has platform support, and says plainly that it does
   not run yet.** `platform/voice/wake` carries the whole surface-independent
   half: the audio front end computed in code rather than downloaded, the
   buffering the published classifier was trained against, the patience and
@@ -3155,7 +3138,7 @@ defaults.
   daemon child process and in a browser tab, because it takes an inference
   session from its host rather than importing a runtime.
 
-  Audio capture is deliberately not here — it is genuinely per-surface — and no
+  Audio capture is deliberately not here, it is genuinely per-surface, and no
   surface supplies it yet. So `voice.wake.enabled` is off by default and its
   own description opens by saying that turning it on does nothing in this
   build, the setting is remembered for the release that adds capture, and the
@@ -3167,7 +3150,7 @@ defaults.
 - **A setting is now stored by the runtime that acts on it.** Every product used
   to write every key into its own file (`~/.goodvibes/agent/settings.json`,
   `~/.goodvibes/tui/settings.json`, …), but the daemon reads exactly one of
-  them — so a Telegram bot username set from the agent reported success, landed
+  them, so a Telegram bot username set from the agent reported success, landed
   in the agent's file, and configured nothing, because Telegram runs in the
   daemon. Keys now carry an owner. Anything the daemon executes unattended
   (chat surfaces, control-plane binding, watchers and triggers, device pairing
@@ -3186,8 +3169,8 @@ defaults.
   lengths, so a malformed key was accepted with a 200 and surfaced weeks later
   as a delivery failure; it is refused at the moment it is offered, with the
   reason, and never written to disk. Housekeeping removes only provably-dead
-  records — a 404 or 410, repeated hard refusals, unusable key material, a torn
-  record — and age alone expires nothing, so a device that still works is never
+  records, a 404 or 410, repeated hard refusals, unusable key material, a torn
+  record, and age alone expires nothing, so a device that still works is never
   reaped. The VAPID contact address is held to the same rule by the config gate
   and the signer, rather than an invalid one being signed into every message the
   daemon sends.
@@ -3195,8 +3178,7 @@ defaults.
 ### Fixed
 
 - **A conversation that had already written to you could get no reply.** Every
-  channel surface built its reply directory only from optional configuration —
-  a default chat id, a bot username, and their per-surface equivalents — so on
+  channel surface built its reply directory only from optional configuration, a default chat id, a bot username, and their per-surface equivalents, so on
   an install where those were left blank the directory was empty, and an
   incoming message from a real conversation had no target to answer on. The
   directory is now built from the route bindings each adapter already writes on
@@ -3213,7 +3195,7 @@ defaults.
 - **A background command that timed out is now reported as finished even when
   it left a child behind.** A process's output pipe is inherited by everything
   it starts, so it signals end-of-output only when the last holder closes it. A
-  timeout kill reaches the command itself, not the descendants it spawned — so
+  timeout kill reaches the command itself, not the descendants it spawned, so
   for any command that left one running, the pipe stayed open and the process
   was never reported as done at all: `bg_status` showed it still running
   indefinitely and an on-exit trigger never fired. Whether a given command hit
@@ -3228,7 +3210,7 @@ defaults.
   accepts on the REQUEST; it was also being applied to the RESPONSE, so an
   endpoint registered as taking no reasoning parameter had any returned
   reasoning folded into ordinary content. Cerebras returns reasoning on exactly
-  that field, so its thinking became answer text — interleaved with the answer
+  that field, so its thinking became answer text, interleaved with the answer
   and past every visibility setting meant to control it. Reasoning returned on
   its own field is now carried on the reasoning channel, and reasoning wrapped
   in a tag inside the content stream is split out incrementally, so a tag that
@@ -3238,7 +3220,7 @@ defaults.
 
 - **A spent account is reported as a billing problem instead of retried as a
   rate limit.** Providers report an exhausted balance with wording, and often a
-  status code, that the rate-limit path keyed off — so a condition that never
+  status code, that the rate-limit path keyed off, so a condition that never
   clears by waiting was announced as "rate limited, retrying in 60s" three times
   over before failing. Both the retry decision and the error classifier now read
   the message, so an exhausted balance is reported once, in its own category,
@@ -3253,7 +3235,7 @@ defaults.
   bundles, in both onnx and TensorFlow Lite form, each with a checksum sidecar
   and a required attribution NOTICE. `WAKE_WORD_MODELS` pins the URL, byte size
   and sha256 of every artifact, and adopting a newer model is a one-line pin
-  change rather than re-plumbing — an accent-diverse retrain is expected to
+  change rather than re-plumbing, an accent-diverse retrain is expected to
   replace this one.
 
   The manifest records a recommended detection threshold of **0.9**, not
@@ -3263,7 +3245,7 @@ defaults.
   recall has no real microphones behind it. The false-accept figures are
   measured on 81 hours of real human speech.
 
-  This is the artifact, its pin, and its attribution only — the wake-word
+  This is the artifact, its pin, and its attribution only, the wake-word
   engine, config surface, provisioning flow and UI are not built yet. See
   `docs/wake-word-model.md`.
 
@@ -3279,8 +3261,7 @@ defaults.
 
   Work you already authorized is unaffected and never re-asks: schedules,
   triggers, on-exit chains, generic webhooks, and a proposal you just agreed to
-  were all authorized when they were set up. The terminal app is unchanged —
-  you are sitting in front of it and typed the thing, so work starting is the
+  were all authorized when they were set up. The terminal app is unchanged, you are sitting in front of it and typed the thing, so work starting is the
   expected outcome.
 
   The behavior is configurable. `propose` is the default described above;
@@ -3317,7 +3298,7 @@ defaults.
   the wildcard bind address verbatim, so tapping it on a phone went nowhere.
   The link now carries the machine's own routable address on the network, and
   when there is no such address to use, the link is omitted rather than
-  shipped broken. A loopback address is left alone — it is the shipped default
+  shipped broken. A loopback address is left alone, it is the shipped default
   and is correct for a notification clicked on the host itself.
 
 ## [1.13.1] - 2026-07-25
@@ -3327,8 +3308,8 @@ defaults.
 - **The append-only retention scheduler is reachable.** `RuntimeServices`
   requires an `appendOnlyRetentionScheduler`, but `AppendOnlyRetentionScheduler`
   and its options type were not exported from any public entry point in 1.13.0.
-  A host that composes its own `RuntimeServices` — rather than taking the one
-  `createRuntimeServices` builds — could not satisfy the interface at all, and
+  A host that composes its own `RuntimeServices`, rather than taking the one
+  `createRuntimeServices` builds, could not satisfy the interface at all, and
   so could not run the periodic sweep that release introduced. The class,
   `AppendOnlyRetentionSchedulerOptions` and `APPEND_ONLY_SWEEP_INTERVAL_MS` are
   now exported from the retention barrel, which means they arrive with the rest
@@ -3342,7 +3323,7 @@ defaults.
   only sending them. Polling mode keeps a persisted cursor, so a restart
   resumes from the last update it handled rather than replaying or skipping.
   Webhook mode registers and serves an endpoint instead. The two modes are
-  mutually exclusive by construction — configuring both is rejected rather
+  mutually exclusive by construction, configuring both is rejected rather
   than silently running one of them. `/start`, `/help` and `/stop` are handled
   as commands rather than forwarded into the conversation as chat text.
 - **Per-model reasoning effort.** Effort is now two distinct values: the level
@@ -3386,7 +3367,7 @@ defaults.
 
 - **Recovery offers respect live writers.** A snapshot whose file was written
   within the last 90 seconds is being actively maintained by a running
-  process — including one on an older build or another product — and is no
+  process, including one on an older build or another product, and is no
   longer offered as an orphaned crash at boot. The explicit per-session probe
   (`checkRecoveryForSession`) still answers honestly about live sessions.
 - **Snapshot retirement is exact.** `consumeRecovery` and `removeRecoveryPoint`
@@ -3411,8 +3392,8 @@ defaults.
 - **Ask-then-retire recovery lifecycle.** `consumeRecovery` (load-then-delete of
   exactly the identified snapshot), `removeRecoveryPoint` (user-driven discard),
   and `checkRecoveryForSession` (does a named session hold unsaved crash data
-  newer than its store). Offers now use per-session supersession — a snapshot is
-  live while newer than its own session's durable store — so unrelated session
+  newer than its store). Offers now use per-session supersession, a snapshot is
+  live while newer than its own session's durable store, so unrelated session
   activity can no longer bury crash data; the global pointer mtime is no longer
   consulted.
 - **Cross-process checkpoint lock.** Workspace checkpoint git operations are
@@ -3485,7 +3466,7 @@ defaults.
   job that runs only after every gating job is green on a push to `main`. When
   the release commit's version has no tag yet, it creates the annotated
   `v<version>` tag at that commit and dispatches the release workflow at the tag
-  ref with `mode=release` — no human step between a merged release commit and a
+  ref with `mode=release`, no human step between a merged release commit and a
   published release. A tag that already exists is a logged no-op, and the manual
   tag-push path is unchanged for redos. The release workflow gains a `mode`
   input (`dry-run` | `release`, default `dry-run`); every job previously gated to
@@ -3504,8 +3485,8 @@ defaults.
   packing the current directory, while keeping the already-published skip, the
   propagation poll, and a dry-run that verifies the staged tarball is present.
   A missing or non-`.tgz` path is rejected up front (exit 2) so a broken
-  pack→publish handoff fails loudly. This is the fix for consumers — such as the
-  agent, which bundles a runtime before packing — whose published bytes are
+  pack→publish handoff fails loudly. This is the fix for consumers, such as the
+  agent, which bundles a runtime before packing, whose published bytes are
   produced by a pack job rather than a bare checkout, so the publish must ship
   the staged artifact.
 
@@ -3518,7 +3499,7 @@ defaults.
   resolves the bin whose name matches the package's final path segment; with
   only the eleven `goodvibes-*` tool bins exposed, bunx silently fell back to
   the FIRST bin in the map (sdk-pin-gate) and ran it with the intended tool
-  name as a stray argument — crashing release-verify in checkout-less
+  name as a stray argument, crashing release-verify in checkout-less
   workspaces and, worse, capable of "passing" while running the wrong tool
   where a toolchain config exists. The dispatcher accepts bare
   (`per-job-green`) and prefixed (`goodvibes-per-job-green`) tool names, so
@@ -3530,13 +3511,13 @@ defaults.
 
 ### Added
 
-- **`@pellux/goodvibes-toolchain` — a shared CI/CD toolchain package (the 11th
+- **`@pellux/goodvibes-toolchain`, a shared CI/CD toolchain package (the 11th
   workspace package).** The release, publish, and verification scripts that
   previously lived as 2–3 parallel copies across the GoodVibes repos now have one
-  published home. Each tool — `sdk-pin-gate`, `build-binaries`, `release-cut`,
+  published home. Each tool, `sdk-pin-gate`, `build-binaries`, `release-cut`,
   `coverage-gate`, `verification-ledger`, `post-build-smoke`,
   `package-install-check`, `publish-package`, `per-job-green`, `changelog-gate`,
-  `sha256sums` — ships as a policy function with injectable I/O plus a thin CLI
+  `sha256sums`, ships as a policy function with injectable I/O plus a thin CLI
   (`bin`) entry. Repo-specific values are supplied by a documented
   `toolchain.config.json` contract (see `docs/release-and-publishing.md`);
   behavior lives in the package. Consumers dev-depend on it.
@@ -3553,7 +3534,7 @@ defaults.
 
 - **CI builds once; the platform matrix and eval gate restore that artifact.**
   `ci.yml` no longer rebuilds the workspace inside each matrix leg and the eval
-  gate — they restore the single `build` job's `workspace-build-output`. Gate
+  gate, they restore the single `build` job's `workspace-build-output`. Gate
   coverage is unchanged.
 - **The SDK release is now by reference.** `release.yml` replaces the
   ~45-minute `validate-release` re-run with `reusable-release-verify` plus an
@@ -3572,7 +3553,7 @@ defaults.
   need to name the complete runtime-services type. The previous release narrowed
   the foundation-clients options to a small slice of that interface, which
   removed the only public name for the whole thing and forced consumers to
-  re-derive it from the position of an argument in a function signature — a
+  re-derive it from the position of an argument in a function signature, a
   fragile anchor. The full interface is now exported by name as `RuntimeServices`
   from the runtime bootstrap surface (`@pellux/goodvibes-sdk/platform/runtime`,
   the `bootstrap` namespace), alongside the existing narrow
@@ -3582,15 +3563,15 @@ defaults.
   factory, but that factory had no import path of its own, so an app composing
   its own runtime had to rebuild it from lower-level pieces. It is now published
   at `@pellux/goodvibes-sdk/platform/runtime/voice-setup` (`createVoiceSetupService`),
-  so a consumer constructs the exact same service the daemon does — with its
-  provisioner and status-read seams injected — instead of duplicating the wiring.
+  so a consumer constructs the exact same service the daemon does, with its
+  provisioner and status-read seams injected, instead of duplicating the wiring.
 
 ## [1.10.0] - 2026-07-16
 
 ### Added
 
 - **Local voice now installs itself in one act, with a default voice and speech
-  engine — nothing downloads until you ask.** A new managed setup downloads and
+  engine, nothing downloads until you ask.** A new managed setup downloads and
   checksum-verifies the piper text-to-speech engine and a good default voice
   into a goodvibes-managed folder, then points the local-voice settings at them
   so speech works immediately, without any manual path configuration. It never
@@ -3616,7 +3597,7 @@ defaults.
   collection, then flush caches and pause deferrable background work (knowledge
   self-improvement, memory consolidation, and code-index reindex all honor the
   pause), then refuse new expensive work with an honest message. If memory keeps
-  climbing after a full flush — a genuine leak — it writes a diagnostic receipt
+  climbing after a full flush, a genuine leak, it writes a diagnostic receipt
   and exits cleanly so a supervisor restarts it fresh, instead of being killed
   at the edge of running the machine out of memory. Every cache the daemon keeps
   is registered so the governor can see and shrink it, and a new `ops.memory`
@@ -3629,23 +3610,23 @@ defaults.
 - **Local speech-to-text is now available out of the box on Linux x86_64.** The
   goodvibes-built whisper.cpp bundle is hosted, so `voice.local.install`
   downloads, checksum-verifies, and installs the speech engine and its default
-  model with no manual build — verified end to end (download, verify, extract,
+  model with no manual build, verified end to end (download, verify, extract,
   transcribe). Voice engine bundles live at a single append-only release tag
   with a checksum sidecar per asset; other platforms report "unsupported"
   honestly until their bundle is published there. A new setting,
   `memory.hardLimitPct` (default `90`), adds an absolute-memory backstop
-  anchored to the machine's real kill line — the daemon's own service/container
+  anchored to the machine's real kill line, the daemon's own service/container
   memory limit where one applies, else physical RAM.
 - **Voice install progress is visible while it runs.** `voice.local.install` is
   a plain request/response call, so surfaces could only show a spinner during
   the ~209MB download. `voice.local.status` now carries an `installInProgress`
-  section while — and only while — an install is running: per-component progress
+  section while, and only while, an install is running: per-component progress
   (name, phase: download/verify/extract, byte sizes where known), fed by the
   installer's own progress events. Surfaces simply poll status during an
   install to render real progress; a second concurrent install call still joins
   the one in-flight run. No new streaming machinery. (Note for surface authors:
   labeling the STT `bundle-unavailable` state as "not yet published" is an
-  accurate reading — the wire enum name is unchanged.)
+  accurate reading, the wire enum name is unchanged.)
 - **Product-generated macOS launchd service files now carry a provenance key.**
   Because launchd has no description field, a `GoodVibesManagedBy` entry (a
   stable marker plus the service description) is written into every plist
@@ -3685,8 +3666,8 @@ defaults.
   per-run history is bounded on disk and in memory, and full-store scans are
   single-pass with breathing room for other work.
 - **A control-plane relay leak that could grow the daemon's memory without
-  bound.** Requests tunneled to the daemon over the relay — each carrying its
-  authorization header — and the secure channels behind them are now capped and
+  bound.** Requests tunneled to the daemon over the relay, each carrying its
+  authorization header, and the secure channels behind them are now capped and
   released after delivery: too many open channels evict the coldest one, and a
   backlog of in-flight requests is refused with an honest "overloaded" response
   instead of piling up in memory. The 401 auto-refresh retry path also releases
@@ -3695,7 +3676,7 @@ defaults.
   After a burst of edits triggered knowledge enrichment, the follow-up
   self-improvement work could reschedule itself immediately over and over. It
   now waits a real minimum delay, collapses a burst of triggers into a single
-  pending run, and — when a run finds nothing left to improve — stops
+  pending run, and, when a run finds nothing left to improve, stops
   rescheduling and falls back to the normal hourly pass. A single run also no
   longer loads the entire knowledge store into memory at once; it reads in
   bounded pages.
@@ -3708,20 +3689,19 @@ defaults.
   When the installed piper/onnxruntime can't load a voice model on this host
   (for example, the model is newer than the engine supports), the provider now
   detects the hard failure on the first attempt and reports one clear,
-  actionable "engine unavailable" state — what failed and what to check —
-  instead of re-invoking the engine for every chunk and producing a storm of
+  actionable "engine unavailable" state, what failed and what to check, instead of re-invoking the engine for every chunk and producing a storm of
   crashes. Reconfiguring the engine or model clears the state and retries.
 - **The memory self-defense now also catches a SLOW leak and a service memory
   cap.** A leak too gradual to trip the growth-rate detector would previously
   ride all the way to a kernel out-of-memory kill with no receipt; an
   absolute-memory backstop now writes a diagnostic receipt and exits cleanly
-  just before the machine's real kill line — 90% of the daemon's own
+  just before the machine's real kill line, 90% of the daemon's own
   service/container memory limit where one applies, else 90% of physical RAM
   (`memory.hardLimitPct`, default `90`). The backstop is deliberately anchored
   to that kill line and not to the (intentionally small) memory budget: a
   daemon with a large but stable, healthy working set above the budget on a
-  big-memory host stays alive at the critical tier — refusing new expensive
-  work — rather than being restarted in a loop while most of the machine's
+  big-memory host stays alive at the critical tier, refusing new expensive
+  work, rather than being restarted in a loop while most of the machine's
   memory sits free. The budget also now honors a systemd `MemoryMax=` limit set
   on the daemon's own service unit (not just a container's), and the leak-exit's
   state snapshots run without being able to block the exit on a stalled disk.
@@ -3749,7 +3729,7 @@ defaults.
   task adversarially re-reviewed, and the merged result re-tested against the
   original ask. Surfaces render the graph via `fleet.graph.get` (nodes, edges,
   and the elastic-pool state), and an elastic pool spawns an agent for a ready
-  task when none is free — all under the one fleet ceiling.
+  task when none is free, all under the one fleet ceiling.
 - **The fleet observes externally-launched coding agents on the host.**
   Claude Code / Codex sessions the daemon did not spawn or host are found by
   read-only process-table detection and listed as `observed-external` rows
@@ -3757,7 +3737,7 @@ defaults.
   CPU-based liveness (active/quiet, never claiming quiet is proof of idle).
   They are observed, not owned: they never count against `fleet.maxSize`, and
   stop is never offered. Steering rides whatever channel the foreign session
-  genuinely exposes — a tmux pane, via send-keys — as a drill-in capability
+  genuinely exposes, a tmux pane, via send-keys, as a drill-in capability
   (`fleet.observed.steer`); where no channel exists the row says so instead of
   offering a dead action. Detection is opt-in at the daemon and degrades to a
   quiet empty set.
@@ -3784,7 +3764,7 @@ defaults.
   single writer) drives the consolidation pass at idle with a slow scheduled
   fallback: reversible merges and never-referenced decay just happen with
   retained receipts; judgment outcomes (contradictions, cross-scope
-  duplicates) become review-queue entries a human resolves — and the receipts
+  duplicates) become review-queue entries a human resolves, and the receipts
   plus pending proposals are served over `memory.consolidation.receipts`.
 - **CI watches mint themselves and retire.** A push seam registers the watch,
   the daemon polls it, a red run offers the fix through the approval
@@ -3795,7 +3775,7 @@ defaults.
 - **Plain http on the LAN is a supported posture.** LAN access over http is
   labeled, not walled; the recommended https path is tailscale serve, which
   terminates TLS with tailscale's own certificates. The daemon never mints
-  certificates — the certificate-minting helper was removed outright.
+  certificates, the certificate-minting helper was removed outright.
 - **A block on a human escalates past an attached surface.** A turn blocked
   too long on an approval or input escalates to push delivery even when a
   surface is attached, on a configurable grace, with bounded follow-ups.
@@ -3805,13 +3785,13 @@ defaults.
   the runs source reads incrementally from a moment.
 - **Memory-injection provenance rides the turn wire.** TURN_COMPLETED carries
   the turn's memory-sourced injected record ids as
-  `metadata.memory.recordIds` — the documented surface convention — with
+  `metadata.memory.recordIds`, the documented surface convention, with
   honest absence when nothing memory-sourced landed.
 
 ### Changed
 
 - **`orchestration.maxActiveAgents` is now `fleet.maxSize`** ("Maximum fleet
-  size") — the ONE ceiling on agents the daemon is responsible for: native
+  size"), the ONE ceiling on agents the daemon is responsible for: native
   spawned agents, hosted third-party agents, and elastic fix-task agents all
   count against it; merely observed external agents never do. **Migration:**
   an existing `orchestration.maxActiveAgents` value moves onto the new key
@@ -3819,7 +3799,7 @@ defaults.
   queue; spawn refusals name the new key.
 - **The WRFC reviewer verifies the contract, not the activity.** The reviewer
   derives an acceptance checklist from the original task, independently
-  exercises the deliverable, and scores against that checklist — structural
+  exercises the deliverable, and scores against that checklist, structural
   evidence (compilation, hashes, diffs, the engineer's own report) is
   supporting material only. The checklist gate is deterministic on BOTH review
   paths: any unverified item blocks a pass whatever the score, and an
@@ -3830,8 +3810,8 @@ defaults.
   invisible migration, external settings edits apply live through the config
   watcher (now wired at the composition root), and the shared activity log
   rotates at a size cap. Per-session crash snapshots restore silently with a
-  one-line receipt, and every append-only store the platform writes — session
-  journals, the activity log, telemetry ledgers, recovery snapshots — has a
+  one-line receipt, and every append-only store the platform writes, session
+  journals, the activity log, telemetry ledgers, recovery snapshots, has a
   registered retention owner swept at startup.
 
 ### Fixed
@@ -3855,7 +3835,7 @@ defaults.
   and `fleet.maxSize` had schema definitions but no typed entries), and a
   fail-closed gate now derives the key set from the schema domains so the
   drift class cannot return.
-- **Three phantom exports closed** — `./platform/power`, `./platform/relay`,
+- **Three phantom exports closed**, `./platform/power`, `./platform/relay`,
   and `./platform/version` are declared in the package exports map, and
   `MemoryConsolidationScheduler` is re-exported from `./platform/state`, so
   consumer composition roots stop deep-pathing and fork-mirroring.
@@ -3873,7 +3853,7 @@ defaults.
   "Ok to proceed?" class) now surfaces that prompt through the same approval
   machinery as a permission ask: your typed answer feeds the still-running
   command, and an unanswered prompt times out honestly with the prompt text
-  on the result — no more silently wedged interactive commands.
+  on the result, no more silently wedged interactive commands.
 - **Fleet nodes carry a headline and a stall tell.** Every fleet node
   exposes a one-line headline derived from its task/phase identity (never
   model output) and a quiet-too-long stall marker computed from timestamps,
@@ -3889,7 +3869,7 @@ defaults.
   machinery whose acceptance starts a fix session seeded with the failing
   jobs' logs, and a watch retires once its terminal verdict is delivered.
 - **A one-command service install.** `goodvibes-daemon --install-service`
-  writes the service unit and prints the follow-up commands — and
+  writes the service unit and prints the follow-up commands, and
   standalone spawned daemons now promote themselves to a supervised
   service at their first idle moment (`service.enabled=false` keeps them
   session-only), so the survives-reboots step stops being homework.
@@ -3900,7 +3880,7 @@ defaults.
   proves it by messaging first); unknown senders are denied before any route
   binding or session submit, with one log line per ignored message. A paired
   owner can approve, deny, or steer a pending permission ask by replying
-  with an explicit verb (approve/yes/allow, deny/no/reject) — the reply
+  with an explicit verb (approve/yes/allow, deny/no/reject), the reply
   resolves through the same approval broker every surface uses, the
   trailing text is delivered to the model as the decision's reason (deny
   guidance steers instead of behaving as a bare deny; approve text steers
@@ -3917,7 +3897,7 @@ defaults.
   model lists live using their already-configured credentials (Bedrock's
   foundation-model listing via the same signing path as chat; Vertex's
   publisher-model listing via the same ADC path; Copilot's models listing
-  on the chat host — its previous "no listing endpoint" claim was verified
+  on the chat host, its previous "no listing endpoint" claim was verified
   false for this auth mode). The packaged lists remain as dated offline
   fallbacks; a failed fetch logs and falls back, never breaks the provider.
 - **CI fix-sessions start with the real logs and announce their id.** A red
@@ -3929,18 +3909,17 @@ defaults.
   can open or attach the session. When the acceptance came from an approval
   card, the started id is ALSO stamped onto the resolved approval record
   (`fixSessionId`, published live through the broker), so the surface that
-  accepted has an in-process handle to jump straight to the session —
-  denied offers are never stamped.
+  accepted has an in-process handle to jump straight to the session, denied offers are never stamped.
 - **Feature announcements reach surfaces.** Announce-once lines (the web
   surface URL, the first contained exec run) now queue for delivery and
   ride the explicitly-consuming daemon status receipts read, so a surface
   attaching later renders them instead of them living only in the daemon
-  log — still exactly once per install. The automation
+  log, still exactly once per install. The automation
   create-your-first-routine copy now actually ships: the jobs list carries
   an emptyState block while automation is enabled with zero routines.
 - **Workspace registrations carry provenance.** Each registered root can
   record which surface/flow wrote it (`origin`) and whether it is in scope
-  for automatic checkpoints (`checkpointEligible` — absent means NO), so
+  for automatic checkpoints (`checkpointEligible`, absent means NO), so
   one surface registering a workspace never silently widens another
   consumer's checkpoint scope. Re-registering an existing root with the
   flag upgrades it (how the checkpoint-owning consumer stamps its roots on
@@ -3951,10 +3930,10 @@ defaults.
   (`pricing.modelPrices` config key, applied live) always wins, then a
   registration-supplied price on custom providers/models, then the
   provider's own machine-readable pricing (OpenRouter, aihubmix, and the
-  Vercel AI gateway serve rates in their /models payloads — fetched on the
+  Vercel AI gateway serve rates in their /models payloads, fetched on the
   same 24h TTL discipline as model lists, cache read/write rates included),
   then the models.dev catalog entry for that exact provider+model (dated),
-  then honest UNKNOWN — never $0, never inferred-free. `costUsdCents` (plus
+  then honest UNKNOWN, never $0, never inferred-free. `costUsdCents` (plus
   a `costSource` stamp) is now computed from actuals at every
   LLM_RESPONSE_RECEIVED emit site; `priceUsage`, the cost-attribution verbs,
   and orchestration dollar budgets all price through the same resolver, so a
@@ -3968,7 +3947,7 @@ defaults.
   new `permissions.rules.list` / `permissions.rules.delete` verbs. Duplicate
   in-flight asks coalesce to one prompt; a remembered decision sweeps queued
   asks it covers. A denial resolves the tool call with the structured
-  user-declined result — including the user's optional reason — in a
+  user-declined result, including the user's optional reason, in a
   continuing turn.
 - **One request-time credential chain with live re-registration.** Provider
   keys resolve env → secrets store → subscription accounts; writing,
@@ -3996,7 +3975,7 @@ defaults.
 - **Update lifecycle export paths:** `platform/runtime/self-update` (release
   artifact resolution, checksum verification, version banding),
   `platform/daemon/auto-updater` (DaemonAutoUpdater), and
-  `platform/daemon/receipts` (DaemonReceiptStore) — with an export-map
+  `platform/daemon/receipts` (DaemonReceiptStore), with an export-map
   resolution test that imports every new subpath through the package name,
   proving each against the committed manifest rather than just compilation.
 
@@ -4010,7 +3989,7 @@ defaults.
   401.
 - **Worktree eviction never destroys work.** When the kept-worktree cap
   evicts an orchestration item's worktree, dirty state is committed onto
-  the item's branch first and the branch survives — only the directory is
+  the item's branch first and the branch survives, only the directory is
   removed, and the eviction event names the branch and preservation commit.
 - **Bare configured model ids resolve instead of lecturing.** A bare
   `provider.model` value now resolves through the same shared resolver as
@@ -4022,24 +4001,24 @@ defaults.
   without ever blocking the response on a slow provider.
 - **Amazon Bedrock Mantle discovers models live** (same control-plane
   listing as Amazon Bedrock, dated offline fallback), and the provider
-  contract now requires every provider to declare its model source — a
+  contract now requires every provider to declare its model source, a
   bare hardcoded model array no longer passes.
 - **CI fix sessions hand you a real session id.** The id on the approval
   record, the verb result, and the channel notification is the actual
-  spawned session (attachable/resumable) — previously it was an internal
+  spawned session (attachable/resumable), previously it was an internal
   scheduling handle that resolved to "Session not found". A failed start
   records the honest failure instead of a dead id.
 - **The settings-migration receipt reaches your surface** via the same
-  attach-time receipts feed as other daemon notices, exactly once — it no
+  attach-time receipts feed as other daemon notices, exactly once, it no
   longer lives only in the activity log.
 - **The auto-update loop takes the HOST artifact's identity.** The daemon
   facade previously compared the SDK package version against release tags
-  and swapped `process.execPath` — wrong whenever the daemon is embedded in
+  and swapped `process.execPath`, wrong whenever the daemon is embedded in
   a host binary with its own version and release line. `DaemonConfig` (and
   `bootDaemon`) now accept `updateArtifact: { version, execPath? }`; the
   SDK's own daemon CLI passes its release version (behavior unchanged for
-  the SDK-shipped artifact), while the embedded default — no artifact
-  identity — means the host manages updates and no loop starts. An
+  the SDK-shipped artifact), while the embedded default, no artifact
+  identity, means the host manages updates and no loop starts. An
   embedder's version is never compared against SDK release tags.
 
 - **Priced values carry their provenance.** Every gateway verb that serves
@@ -4052,7 +4031,7 @@ defaults.
     null when undated/unpriced).
   - `providers.usage.get` / `providers.get` / `providers.list`: every model's
     served price now resolves through the one pricing resolver (manual price
-    wins — the price shown is the price charged) and carries
+    wins, the price shown is the price charged) and carries
     `pricing.source` + `pricing.asOf`; the usage snapshot's `pricingSource`
     widens to `user | catalog | provider | mixed | none` plus `pricingAsOf`.
   - Fleet verbs (`fleet.snapshot` / `fleet.list` / `fleet.archived.list` /
@@ -4060,12 +4039,12 @@ defaults.
     and `pricingAsOf`, stamped at pricing time and folded through aggregates
     (one shared source reports itself, disagreement is `mixed`, the oldest
     date wins). Usage records committed before this change report no
-    provenance — honest absence, never back-filled.
+    provenance, honest absence, never back-filled.
 
 - **`/status` receipt consumption is now explicit.** Daemon receipts
   (update/crash/migration notices) were delivered destructively to the FIRST
-  authenticated `/status` reader — including identity probes and keepalives
-  that parse only status/version — so a receipt could be eaten before any
+  authenticated `/status` reader, including identity probes and keepalives
+  that parse only status/version, so a receipt could be eaten before any
   rendering surface saw it. Now a plain `GET /status` never returns or
   consumes receipts; a reader that wants them passes `?receipts=consume`
   (typed on the operator client as `control.status` input
@@ -4084,7 +4063,7 @@ defaults.
   On engines that let a `/g`-flagged regex carry `lastIndex` state into a later
   `replace`, the sentinel-restore step could be skipped after many calls,
   leaving the placeholder in the pattern so a `**` rule silently stopped
-  matching — a directory-scoped approval would then re-ask for a sibling file
+  matching, a directory-scoped approval would then re-ask for a sibling file
   it had already covered. The conversion now runs as a single forward character
   scan that holds no state and cannot mis-fire, and the shared matcher's `**/`
   prefix expansion is fixed as well.
@@ -4092,8 +4071,8 @@ defaults.
   note/remember.** `POST /api/approvals/{id}/approve|deny` now carries
   `rememberTier` (tier grants mint durable rules and sweep queued asks they
   cover), the deny `reason` (rides the structured declined result so the
-  model adapts), and `modifiedArgs` (an argument-modifying approval — e.g.
-  the typed answer to a command's terminal prompt — reaches the waiting
+  model adapts), and `modifiedArgs` (an argument-modifying approval, e.g.
+  the typed answer to a command's terminal prompt, reaches the waiting
   call; `selectedHunks`, when present, supersedes it). Previously these
   worked in-process only: over HTTP, tier grants minted nothing, deny
   reasons vanished beyond the audit note, and an exec-prompt answer never
@@ -4117,21 +4096,21 @@ defaults.
 ## [1.7.1] - 2026-07-11
 
 **1.7.0 broke local-provider discovery in production. Consumers on 1.7.0 should
-upgrade straight to 1.7.1 — do not stay on 1.7.0.**
+upgrade straight to 1.7.1, do not stay on 1.7.0.**
 
 ### Fixed
 
 - **`GATE_SUITES` (the eval harness's standing-gate suite set, added in 1.7.0)
   was unreachable through any public import path.** `evaluateGate`'s new
-  absolute per-dimension floor enforcement and `GATE_SUITES` — documented
+  absolute per-dimension floor enforcement and `GATE_SUITES`, documented
   in-source as "the separate, all-floors-passing set the standing gate
-  runs" and the intended migration off `BUILTIN_SUITES` — were exported only
+  runs" and the intended migration off `BUILTIN_SUITES`, were exported only
   from the internal `platform/runtime/eval/index.ts` barrel. The public
   `platform/runtime/observability` subpath re-exported `BUILTIN_SUITES` but
   never `GATE_SUITES`, and there was no dedicated `platform/runtime/eval`
   subpath, so consumers had no way to import it. `GATE_SUITES` is now
   re-exported alongside `BUILTIN_SUITES` from `platform/runtime/observability`
-  (the existing, idiomatic barrel — no new subpath needed). The registry
+  (the existing, idiomatic barrel, no new subpath needed). The registry
   install-smoke check now resolves `GATE_SUITES` through the public
   specifier as part of every release.
 - **Local/discovered LLM providers (Ollama, LM Studio, llama.cpp, vLLM, TGI,
@@ -4142,7 +4121,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   registers every discovered local server with a hardcoded `apiKey: ''`
   (local servers don't need a real key), and that empty string reached
   `new OpenAI({ apiKey })` unchanged in `openai-compat.ts`, `openai.ts`, and
-  `lm-studio-helpers.ts` — so `ProviderRegistry.registerDiscoveredProviders()`
+  `lm-studio-helpers.ts`, so `ProviderRegistry.registerDiscoveredProviders()`
   crashed at startup for anyone running a local model server. Fixed by
   substituting a harmless placeholder (`'gv-local'`, the same literal the
   builtin-provider registry's own anonymous-provider fallback already used)
@@ -4153,7 +4132,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **The SDK's own `openai` dependency range (`^6.29.0`) let the published
   package resolve to a version its own test suite never ran against.**
   `bun.lock` pinned `openai@6.35.0`, so `bun install --frozen-lockfile` in CI
-  always tested a safe, older resolution — but a fresh consumer install
+  always tested a safe, older resolution, but a fresh consumer install
   (`npm install` / `bun add` with no matching lockfile) followed the semver
   range to whatever was newest (6.46.0), which carried the breaking
   constructor change above. The lockfile shielded CI from exactly what fresh
@@ -4170,11 +4149,11 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 
 - **Real WebAuthn step-up verification for mutating relay calls (server side).**
   The relay step-up policy previously shipped only a hook and a fail-closed
-  injected verifier — every mutating call over the relay was refused. It now
+  injected verifier, every mutating call over the relay was refused. It now
   ships a working ceremony over node/Web Crypto with no external WebAuthn
   library. Two admin/authenticated operator verbs drive it:
-  `stepup.credentials.register` (admin/local-only) stores a passkey — its
-  `credentialId`, COSE public key, and starting signature counter — in the
+  `stepup.credentials.register` (admin/local-only) stores a passkey, its
+  `credentialId`, COSE public key, and starting signature counter, in the
   daemon secret store and records the deployment policy (rpId, allowed origins,
   user-verification requirement), accepting `'none'` attestation (the standard
   self-hosted posture, documented in `docs/relay-zero-knowledge.md`); and
@@ -4194,8 +4173,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **Live event streaming over the relay tunnel.** The relay tunnel carried only
   unary request/response; live event subscriptions (SSE) fell back to polling for
   relay-connected surfaces. The hop/tunnel protocol now has a streaming frame
-  family over the established E2E channel — `stream-open` / `stream-data` /
-  `stream-overflow` / `stream-close` — all sealed as ciphertext to the relay
+  family over the established E2E channel, `stream-open` / `stream-data` /
+  `stream-overflow` / `stream-close`, all sealed as ciphertext to the relay
   exactly like every other payload. The daemon bridges its existing realtime
   event source into `stream-data` frames with a **bounded** per-stream send
   buffer and a per-pipe stream cap (consistent with the relay server's limits);
@@ -4204,7 +4183,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   the client, the relay-backed `fetch` opens a `text/event-stream` request as a
   tunneled stream and returns a streaming `Response`, so the existing
   Server-Sent-Events connector idiom (`openServerSentEventStream`) works over the
-  relay unchanged — a surface that rejects SSE over relay today can lift that
+  relay unchanged, a surface that rejects SSE over relay today can lift that
   rejection and call it directly. New tunnel frame types
   (`TunnelStreamOpenHeader`, `TunnelStreamDataHeader`, `TunnelStreamOverflowHeader`,
   `TunnelStreamCloseHeader`).
@@ -4214,18 +4193,18 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   per-command exec sandbox is active and a command needs host access a
   boundary-safe command would not (network, host-privilege escalation), that
   escalation is now brokered through the SAME approval broker as a permission ask
-  and an MCP elicitation — attributed to the sandbox and the specific escalation
-  (`{ kind: 'sandbox-escalation', sandbox, escalations }`) — so every surface's
+  and an MCP elicitation, attributed to the sandbox and the specific escalation
+  (`{ kind: 'sandbox-escalation', sandbox, escalations }`), so every surface's
   approval UI renders it and background bubbling applies. A refused escalation
   denies the command before it spawns; the frozen catastrophic block is enforced
   independently and untouched. (b) A new dark, graduation-tracked
   `sandbox-model-judgment` flag gates an optional model-judgment pass on the
   residual ask: a provider call over the command, its sandbox plan, workspace
   context, and the policy reasons produces a PROPOSED verdict with stated
-  reasons. Per recorded doctrine — "permission settings are the sole authority
+  reasons. Per recorded doctrine, "permission settings are the sole authority
   for command-class risk; the exec-layer unconditional block is a frozen
   catastrophic-only list … that must NEVER expand without Mike's explicit
-  approval" — the tier NEVER converts allow→deny and NEVER touches the frozen
+  approval", the tier NEVER converts allow→deny and NEVER touches the frozen
   list; its verdict either annotates the human ask ("model judgment: looks safe
   because… / flags risk because…", the default) or, only when the operator opts
   into `sandbox.judgmentAutoApprove`, auto-approves a looks-safe verdict. A
@@ -4238,14 +4217,14 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **A decision-log → OTLP exporter: the permission/policy decision log maps to
   OpenTelemetry span and log semantics.** The decision log already records every
   allow/deny with its evaluation layer and reason; this exposes that
-  ahead-of-field data by mapping each record to OTLP — `decision.id`, `tool.name`,
+  ahead-of-field data by mapping each record to OTLP, `decision.id`, `tool.name`,
   `command.class`, `permission.mode`, `decision.layer`, `decision.reason`, and
-  `decision.allowed` as attributes — and POSTing it as OTLP/HTTP JSON (which the
+  `decision.allowed` as attributes, and POSTing it as OTLP/HTTP JSON (which the
   protocol supports) with the platform's `instrumentedFetch`, so there is no new
   heavyweight dependency. Honest scope: EXPORT-ONLY, no ingestion. Off by default
-  behind three new config keys — `telemetry.decisionOtlpEnabled`,
+  behind three new config keys, `telemetry.decisionOtlpEnabled`,
   `telemetry.decisionOtlpEndpoint`, `telemetry.decisionOtlpSignal`
-  (`span` | `log` | `both`) — spans POST to `<endpoint>/v1/traces` and logs to
+  (`span` | `log` | `both`), spans POST to `<endpoint>/v1/traces` and logs to
   `<endpoint>/v1/logs`. Export never throws: an unreachable collector never
   blocks a permission decision. New: `exportDecisions`, `buildTracePayload`,
   `buildLogsPayload`, `decisionToSpan`, `decisionToLogRecord`,
@@ -4257,24 +4236,23 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   state, decisions made, open threads, key file/symbol references) which seeds a
   fresh context. Selection is the new `behavior.compactionStrategy` config key
   (`structured` default | `distiller`), and the distiller graduates through the
-  new dark, graduation-tracked `compaction-distiller-strategy` feature flag —
-  when the flag is off, a `distiller` config value honestly resolves back to
+  new dark, graduation-tracked `compaction-distiller-strategy` feature flag, when the flag is off, a `distiller` config value honestly resolves back to
   `structured`. Every distillation is scored through the SAME quality scorer as
   the structured strategy: a distillation below the quality floor (or a fresh
   call that is unavailable) FALLS BACK to the structured strategy, and the
   compaction receipt names the strategy that ran plus the requested strategy and
   the fallback reason. Standing instruction-chain / active-skill re-injection at
   the compaction boundary applies to both strategies (the distiller re-injects
-  through the same `buildReinjectedInstructions` seam — parity, not a second
+  through the same `buildReinjectedInstructions` seam, parity, not a second
   copy). New: `distillConversation`, `resolveCompactionStrategy`,
   `CompactionStrategyChoice`, and the `requestedStrategy` /
   `strategyFallbackReason` receipt fields.
 
 - **A steer message to a wedged agent now re-triggers its processing loop
   instead of being silently dropped.** `AgentManager.wakeWithSteer(agentId,
-  steer)` re-triggers a terminally-FAILED agent — one whose turn loop has
+  steer)` re-triggers a terminally-FAILED agent, one whose turn loop has
   definitively exited (an exhausted turn / circuit-breaker loop, idle-after-
-  error, or a watchdog kill) — by restoring honest prior context (a summary of
+  error, or a watchdog kill), by restoring honest prior context (a summary of
   the frozen transcript tail, not a risky tool-call replay) and injecting the
   steer as a fresh user turn. Only that safe subset is woken: re-running a
   still-live loop would race its promise, so a genuinely-running agent still
@@ -4285,8 +4263,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   still-running ('stalled') agent is not re-run (no false success).
 - **A model-invokable `context_accounting` tool: the model can read its own
   context composition honestly.** Registered on the standard tool roster (every
-  consumer inherits it like `repo_map`), it reports — from existing records,
-  never estimated-as-fact — what was passively injected this turn (memory record
+  consumer inherits it like `repo_map`), it reports, from existing records,
+  never estimated-as-fact, what was passively injected this turn (memory record
   ids, sources, and why), the recall-contract outcomes (relevance floor, records
   dropped to fit the budget, lexical-fallback degraded mode, index-unavailable
   reasons), compaction state, and token-budget state. Provider-measured token
@@ -4306,8 +4284,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   code is classified from the child's own record (`max_turns`,
   `circuit_breaker`, `watchdog_timeout`, `budget_exhausted`, `claim_unverified`,
   `api_error`, `killed`, `interrupted`, `error`); `partialOutputs` is whatever
-  the child genuinely produced — its last committed output and a role-tagged
-  transcript-tail summary from the live-or-frozen conversation snapshot — never
+  the child genuinely produced, its last committed output and a role-tagged
+  transcript-tail summary from the live-or-frozen conversation snapshot, never
   fabricated, with an honest note when it produced nothing. A failed WRFC
   owner's echoed failure message is not passed off as genuine output.
 - **Per-model edit-failure and declared-exec-expectation-miss telemetry, so
@@ -4322,14 +4300,13 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `toolFormat` key (`{ byModel: { [model]: { [class]: n } }, byClass }`). This
   is measurement only: nothing is read back to switch behavior, and it is
   explicitly NOT a per-model edit-format matrix. An ordinary non-zero exec exit
-  (no declared expectation) is not counted — only genuine format regressions.
+  (no declared expectation) is not counted, only genuine format regressions.
 - **MCP server elicitation requests now reach the model and the human through
   the one approval broker.** An MCP server's `elicitation/create` request (the
   spec's ask-the-user channel) was previously hard-rejected by the client with
   a JSON-RPC `-32601` before anyone was consulted. It is now translated into a
-  `PermissionPromptRequest` — attributed to the asking server
-  (`attribution: { kind: 'mcp-server', serverName }`), category `delegate` —
-  and routed through the same `ApprovalBroker.requestApproval` as a permission
+  `PermissionPromptRequest`, attributed to the asking server
+  (`attribution: { kind: 'mcp-server', serverName }`), category `delegate`, and routed through the same `ApprovalBroker.requestApproval` as a permission
   ask, so every surface's existing approval UI renders it and background-agent
   bubbling applies. Approve maps to the elicitation `accept` action (carrying
   any surface-supplied content, never fabricated); deny/expire maps to
@@ -4348,16 +4325,16 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   terminal turn events map to honest stop reasons (`end_turn`, `cancelled`,
   `max_tokens` for context overflow, `max_turn_requests` for the tool-loop
   circuit breaker, `refusal` otherwise). Unsupported protocol features are
-  reported honestly as `capability: false` — `loadSession`, image/audio/
-  embedded-context prompts, and client-supplied MCP servers — never stubbed;
+  reported honestly as `capability: false`, `loadSession`, image/audio/
+  embedded-context prompts, and client-supplied MCP servers, never stubbed;
   cancellation is best-effort (queued input cancelled via the broker, prompt
   resolves `cancelled`; an in-flight provider call is not aborted).
 - **The operator contract published as a real OpenAPI 3.1 document, generated
   with a drift gate.** `bun run openapi:generate` derives
   `operator-openapi.json` from the committed operator contract: all 378
-  cataloged methods appear — REST-bound methods as path operations with their
+  cataloged methods appear, REST-bound methods as path operations with their
   real JSON Schemas embedded (OpenAPI 3.1 takes full JSON Schema unmodified),
-  invoke-only methods listed on the generic invoke endpoint — plus the
+  invoke-only methods listed on the generic invoke endpoint, plus the
   contract's bearer/session-cookie auth schemes. The 97 methods lacking typed
   SDK client IO are marked honestly (`x-typed-client-io: false`, counted in
   `x-untyped-client-io-count`, mirrored in the `x-operator-methods` index),
@@ -4366,32 +4343,32 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   Fetchable as `@pellux/goodvibes-contracts/operator-openapi.json` /
   `@pellux/goodvibes-sdk/contracts/operator-openapi.json` and committed at
   `docs/operator-openapi.json` (byte-identical copies from one generator).
-  Drift in either copy reddens `contracts:check` — the generated-artifact idiom.
-- **SDK Embedding API 1.0 — a documented, stability-marked entry point
+  Drift in either copy reddens `contracts:check`, the generated-artifact idiom.
+- **SDK Embedding API 1.0, a documented, stability-marked entry point
   (`@pellux/goodvibes-sdk/embed`) for embedding a GoodVibes session in another
   application.** `createEmbeddedSession({ workspace, homeDirectory,
   requestPermission })` boots an in-process daemon for the workspace and returns
   an `EmbeddedSession` exposing the minimal stable contract: the runtime event
   bus to receive typed events, a `submit()` seam to send input, the approval
   broker with an injected permission callback bridged onto it, and an idempotent
-  `stop()`. The surface is a curation of existing runtime machinery — it invents
-  no new engine — and is FROZEN at 1.0, pinned by a dedicated api-extractor
+  `stop()`. The surface is a curation of existing runtime machinery, it invents
+  no new engine, and is FROZEN at 1.0, pinned by a dedicated api-extractor
   report (`etc/goodvibes-sdk-embed.api.md`) wired into `api:check` so an
   accidental breaking change to the embed surface fails the gate. The daemon
   facade now exposes its runtime bus and session broker (`eventBus` / `sessions`)
   so an in-process embedder can subscribe and submit without going over the wire.
 - **A capability-bundle plugin format with SHA-256-pinned distribution and a
   governed marketplace index.** A bundle manifest declares exactly which
-  capabilities a plugin needs — the security capabilities it uses plus the tools
+  capabilities a plugin needs, the security capabilities it uses plus the tools
   it registers, hooks it subscribes to, config domains it reads, and channels it
-  touches — and the runtime grants it ONLY what it declared. A deny-by-default
+  touches, and the runtime grants it ONLY what it declared. A deny-by-default
   guard (`createBundleCapabilityGuard` / `enforceBundleCapability`) refuses any
   tool, hook, config domain, channel, or security capability the manifest did not
   list; over-reach into high-risk capabilities beyond the bundle's trust tier is
   withheld and recorded (quarantined on install via `planBundleActivation`)
   rather than silently granted. Distribution is SHA-256 pinned:
   `fetchAndVerifyBundle` resolves a file/URL/git source and verifies the expected
-  hash BEFORE returning — a missing or mismatched pin is a hard `BundlePinRefusal`
+  hash BEFORE returning, a missing or mismatched pin is a hard `BundlePinRefusal`
   with no install-anyway path. The `PinnedMarketplaceIndex` format is governed by
   construction: each entry's pin and capability summary are required by the type,
   so a self-hostable registry built from it cannot represent an unpinned or
@@ -4407,7 +4384,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   dependency and nothing hand-rolled) runs INSIDE each pipe before any
   application byte, so the relay only ever sees ciphertext plus connection
   metadata. Daemon authentication is by static-key pinning from the pairing
-  payload — a curious or malicious relay that lacks the daemon's static private
+  payload, a curious or malicious relay that lacks the daemon's static private
   key cannot derive the session keys and its forged handshake confirmation is
   rejected. Ships the runtime-neutral protocol + crypto as
   `@pellux/goodvibes-transport-core/relay` (handshake, `RelaySecureChannel`,
@@ -4418,13 +4395,13 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   per-daemon pipes, message size) and per-address handshake rate limiting keep a
   public instance from becoming a liability; a client dialing an unregistered id
   gets an honest `daemon-offline` error.
-- **Daemon + client integration for the relay path — the existing typed client
+- **Daemon + client integration for the relay path, the existing typed client
   works unchanged over the relay.** Because the operator protocol is
   contract-driven REST-over-JSON, the relay tunnels whole HTTP request/response
   pairs inside the E2E channel: the client half is a relay-backed `fetch`
   (`createRelayClient` in `@pellux/goodvibes-transport-realtime`) you hand to the
   SDK as `fetchImpl`, so `sdk.approvals.list()` and every other typed call just
-  works — the operator's auth token rides inside the tunnel, invisible to the
+  works, the operator's auth token rides inside the tunnel, invisible to the
   relay. The daemon half (`createRelayDaemonRegistration` in
   `@pellux/goodvibes-daemon-sdk`) dials the relay OUTBOUND with reconnect/backoff,
   terminates the E2E channel INSIDE the daemon, and replays tunneled requests
@@ -4434,8 +4411,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   flag (default OFF) triple-gate it; the daemon facade starts an outbound
   registration at boot only when config + flag + url all agree. The daemon mints
   a QR-encodable pairing payload (rendezvous id + pinned public key + relay url)
-  a surface scans to connect. No new operator methods were added — reachability
-  reuses the existing REST surface — so the contract ratchet holds at 97 with REST
+  a surface scans to connect. No new operator methods were added, reachability
+  reuses the existing REST surface, so the contract ratchet holds at 97 with REST
   parity and Stage-B fixtures unchanged.
 - **Security posture around the relay path.** (a) A WebAuthn step-up policy hook:
   when `relay.requireStepUpForMutations` is on, mutating operator calls arriving
@@ -4443,7 +4420,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   comes from the existing catalog read/write split). The SDK ships the policy and
   verb metadata; actual assertion verification is a consumer-side ceremony wired
   as an injected `StepUpAssertionVerifier`, and the policy FAILS CLOSED until one
-  is — it never fakes a pass. (b) `mintLanCertificate` mints a local CA + SAN leaf
+  is, it never fakes a pass. (b) `mintLanCertificate` mints a local CA + SAN leaf
   certificate (via openssl, not hand-rolled ASN.1) for the daemon's LAN endpoints
   so browsers stop warning on LAN access; it generates + stores + returns paths
   that plug into `controlPlane.tls`, while trusting the CA on the OS is documented
@@ -4451,7 +4428,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   request carries `x-goodvibes-via-relay` (`isRelayTunneledRequest`) and the
   daemon exposes the relay registration status, so surfaces can show "via relay".
   A new docs page (`docs/relay-zero-knowledge.md`) states the threat model
-  plainly — what the relay can and cannot see, and what a malicious relay could
+  plainly, what the relay can and cannot see, and what a malicious relay could
   do (connection metadata, traffic analysis, DoS).
 - **A shared registered-workspace registry the whole platform reads.** A
   daemon-side store of the project roots an operator has explicitly opted into,
@@ -4462,7 +4439,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   registrations nest; a "no" to a prompt is remembered subtree-scoped at the
   root that was asked; and worktree inheritance follows the git
   worktree→main-repo LINK (resolved from `git rev-parse --git-common-dir`), not
-  path ancestry — so an orchestration-spawned sibling worktree living outside the
+  path ancestry, so an orchestration-spawned sibling worktree living outside the
   registered root still inherits its main repo's registration. Registering an
   absurdly broad root (`$HOME`, `/`, or the daemon state dir) is refused through
   the same root-guard the checkpoint manager uses. Ships as
@@ -4476,7 +4453,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   all-floors-passing `standing-gate` suite through the production eval paths
   (EvalRunner → scoreScenario → the gate), compares each suite against the
   checked-in baseline (`eval/baseline.json`), prints every scenario's PASS/FAIL
-  and score, and exits non-zero on ANY absolute-floor failure OR regression — no
+  and score, and exits non-zero on ANY absolute-floor failure OR regression, no
   silent green. It is wired into CI as a required `eval-gate` job (never
   `continue-on-error`), which drift-checks the baseline first
   (`bun run eval:baseline:check`) so a stale baseline fails loudly. Baselines
@@ -4487,7 +4464,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   (`runTaskSuite` and friends, exported from the eval module): it discovers a
   directory of tasks (each a `task.json` + verification script), runs each
   through an injected real-session executor, runs its verifier, and reports
-  pass/fail per task — the adapter contract plus a small bundled example suite,
+  pass/fail per task, the adapter contract plus a small bundled example suite,
   not a benchmark import.
 - **The sandbox policy surface is now reachable from public subpaths.**
   `decideSandboxedExec`, `detectSandboxAvailability`, and `probeSandboxHost`
@@ -4497,13 +4474,13 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   (`decideSandboxedExec` + its decision/input types) and
   `@pellux/goodvibes-sdk/platform/tools/exec/sandbox` (the runner:
   `detectSandboxAvailability`, `probeSandboxHost`, `buildBwrapArgv`, the
-  plan-resolution helpers, and their types) — the exact paths the exec-sandbox
+  plan-resolution helpers, and their types), the exact paths the exec-sandbox
   entry below names, now real, each with its own bundle budget.
 - **A per-command exec sandbox (bubblewrap) to shrink the approval tail.** When
   bubblewrap (`bwrap`) is available on a Linux host, exec tool calls can run
-  inside a per-command OS boundary — the workspace bound read-write, the rest of
+  inside a per-command OS boundary, the workspace bound read-write, the rest of
   the filesystem read-only, `/tmp` isolated, `$HOME` optionally masked, and
-  network disabled by default — composed with (not replacing) the existing
+  network disabled by default, composed with (not replacing) the existing
   credential-env scrub. Availability is detected honestly: no bwrap, or any
   non-Linux host, reports unavailable with a stated reason and the exec path is
   byte-for-byte unchanged; macOS is unavailable this release (no faked parity).
@@ -4513,7 +4490,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   permission input: a command that runs entirely inside the boundary with no
   host-access need can auto-allow where prompt mode would ask, while commands
   that need real host access surface as explicit escalation asks NAMING what
-  they want — "wants network", "wants host privilege escalation", "wants network
+  they want, "wants network", "wants host privilege escalation", "wants network
   (package install)". Network is off by default with a per-command/per-workspace
   egress allowlist that re-enables it as a named escalation; when bwrap cannot
   guarantee network isolation on the host, the decision metadata says so
@@ -4524,12 +4501,12 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   currently `dark`), `sandbox.egressAllowlist`, and `sandbox.workspaceWritable`.
   The frozen catastrophic command block (rm -rf /, dd to a device, mkfs, fork
   bomb …) stays an unconditional exec-time denial, in force identically inside
-  the boundary — the sandbox policy only ever relaxes an ask to an allow, never
+  the boundary, the sandbox policy only ever relaxes an ask to an allow, never
   a deny to an allow, and never inspects or expands that block.
 
 - **A unified message-anchored rewind service that joins the platform's three
   history systems.** New `@pellux/goodvibes-sdk/platform/rewind` is one
-  coordinator — never a fourth history store — over the workspace checkpoint
+  coordinator, never a fourth history store, over the workspace checkpoint
   manager (git-backed, sessionId-stamped), the conversation store, and file
   undo. Given a session turn anchor it can restore files (the nearest workspace
   checkpoint), the conversation (truncate session state to the anchor), or both,
@@ -4538,7 +4515,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   ws-only operator verbs land with typed IO and register together with their
   descriptors: `rewind.plan` is a read-only dry-run preview of exactly what
   would change plus a single-use confirm token, and `rewind.apply` is
-  confirm-gated (the checkpoints.restore idiom — an unconfirmed call returns a
+  confirm-gated (the checkpoints.restore idiom, an unconfirmed call returns a
   non-error refusal naming `rewind.plan`, a bad token is a 400, `confirm:true`
   bypasses). Every apply records an undo point so the rewind is itself
   reversible: the workspace restore reuses the pre-restore safety checkpoint it
@@ -4552,27 +4529,27 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   feature flags default-off and flips them on only once validated, but nothing
   forced a per-release decision about the flags that had earned their way on.
   New `@pellux/goodvibes-sdk/platform/runtime/feature-flags` graduation
-  bookkeeping gives every flag an owner-facing graduation state — `dark`
+  bookkeeping gives every flag an owner-facing graduation state, `dark`
   (default-off, no evidence), `soaking` (accumulating evidence),
   `graduate-candidate` (judged ready, awaiting a decision), `graduated`
-  (default flipped on), or `blocked` (held off with a dated reason) — plus a
+  (default flipped on), or `blocked` (held off with a dated reason), plus a
   validation-evidence bundle wired from the machinery that already exists (the
   permissions divergence simulator); a flag with no instrumentation honestly
   reports "no evidence collected" and is never given a fabricated readiness. A
   new read-only operator verb `flags.graduation.report` (ws-only, typed IO,
   registered with its handler) returns the report, and a release-time script
-  `bun run flags:graduation` — wired into `release:verify` — FAILS the release
+  `bun run flags:graduation`, wired into `release:verify`, FAILS the release
   when any flag sits in `graduate-candidate`, forcing each validated flag to
   flip on or record a dated blocker every release. It is bookkeeping that
   forces a decision, not a new simulation system.
 
 - **The Home Assistant conversation turn can ground itself in the pre-registered
   home graph.** The `/api/homeassistant/conversation` route now accepts an
-  optional grounding reference — a `knowledgeSpaceId` / `installationId` (nested
+  optional grounding reference, a `knowledgeSpaceId` / `installationId` (nested
   under `grounding`, or top-level, snake_case accepted). When present, the turn
   consults the pre-registered home-graph knowledge space (`HomeGraphService.ask`)
-  for the user's actual question and folds the retrieved grounding — the graph's
-  own answer text plus its confidence — into the turn's system prompt, closing
+  for the user's actual question and folds the retrieved grounding, the graph's
+  own answer text plus its confidence, into the turn's system prompt, closing
   the index-then-query loop the HA integration already opens by registering and
   refreshing the graph. Best-effort and honest: an absent reference or reader
   leaves the turn ungrounded, an empty answer adds nothing, and a graph failure
@@ -4590,7 +4567,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `runtime.permissions` `PERMISSION_MODE_CHANGED` event via the already-wired
   mode-change binding, and reports the `previousMode` it replaced.
   `sessions.contextUsage.get` returns `estimatedContextTokens` (the token
-  estimator's figure, flagged `estimated: true` — never presented as a measured
+  estimator's figure, flagged `estimated: true`, never presented as a measured
   provider count), the model `contextWindow`, and the derived `contextUsagePct`
   and `contextRemainingTokens` from the one shared `deriveContextUsage` helper
   the in-process context chip also uses. All three answer only for the live
@@ -4603,9 +4580,9 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   method becomes one tool, its dotted method id mapped to an MCP-safe name and
   its operator input schema carried over verbatim) rather than hand-writing
   them, so the tools an external agent tool sees can never drift from the
-  daemon's contract. The session lifecycle methods — create, attach
+  daemon's contract. The session lifecycle methods, create, attach
   (`sessions.get`), send a message (`sessions.messages.create`), read a
-  transcript (`sessions.messages.list`), and steer a live turn — are lifted to
+  transcript (`sessions.messages.list`), and steer a live turn, are lifted to
   the front as first-class tools. The server speaks JSON-RPC 2.0 over a
   newline-delimited (stdio) transport with no external MCP dependency, and
   dispatches every `tools/call` through an injected invoker, so the transport
@@ -4615,51 +4592,50 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **The single canonical skill service, hoisted into the SDK.** New
   `@pellux/goodvibes-sdk/platform/skills` owns one skill model (Markdown with
   YAML-style frontmatter), one progressive-disclosure read path (a cheap index
-  line — name + description + metadata, no body — loaded for every skill, the
+  line, name + description + metadata, no body, loaded for every skill, the
   full body read only for the one skill invoked), and one CRUD surface over an
   injectable store (a filesystem store of `<name>.md` documents and an in-memory
   store ship in the box), so consumers stop each carrying their own drifting
-  copy. Exposed over the operator surface as five new daemon gateway verbs —
-  `skills.list`, `skills.get`, `skills.create`, `skills.update`, `skills.delete`
-  — with typed IO, honest absence (`skills.get`/`skills.update` 404 when the
+  copy. Exposed over the operator surface as five new daemon gateway verbs, `skills.list`, `skills.get`, `skills.create`, `skills.update`, `skills.delete`
+ , with typed IO, honest absence (`skills.get`/`skills.update` 404 when the
   skill does not exist; `skills.delete` returns `{ deleted: false }` rather than
   pretending a phantom skill was removed), and a name-conflict 409 on create.
   The verbs' handlers register together with their descriptors, so a skills verb
   is never a cataloged-but-unhandled 501.
 
-- **`repo_map` tool — a model-invoked, token-budgeted repository map.** A new
+- **`repo_map` tool, a model-invoked, token-budgeted repository map.** A new
   read-only tool the model CALLS (never passive always-on injection) to orient in
   an unfamiliar codebase: it returns a per-directory source-file count plus the
-  highest-centrality source files — ranked by how many other files import them
-  (import-graph centrality), with file size as a tie-break — and each key file's
+  highest-centrality source files, ranked by how many other files import them
+  (import-graph centrality), with file size as a tie-break, and each key file's
   top-level exported symbols. It takes `{ path?, budgetTokens? }` and caps output
   to the token budget, omitting lower-ranked files once the budget is reached. It
-  reuses the SDK's existing `ImportGraph` plus a cheap export regex — no
+  reuses the SDK's existing `ImportGraph` plus a cheap export regex, no
   tree-sitter, no LLM, no process spawn. Registered with the tool registry and
   classified read-only so it auto-approves in prompt mode. As part of this, the
   `ImportGraph` specifier resolver now maps a `.js`/`.jsx`/`.mjs`/`.cjs` import
   specifier to its TypeScript sibling (`./core.js` → `core.ts`), so import edges
-  resolve in TS-ESM projects instead of silently dropping — which also sharpens
+  resolve in TS-ESM projects instead of silently dropping, which also sharpens
   the edit tool's downstream import-graph warning.
 - **Post-edit diagnostics in tool results.** After a successful, non-dry-run
   file write or edit, the tool result now carries cheap, in-process diagnostics
   for the touched file so the model sees a broken edit immediately instead of on
   a later build. The first (and only bundled) provider is tree-sitter-backed
-  SYNTAX diagnostics for TypeScript/JavaScript — in-process, no process spawn, no
-  type checking — and it only runs when a TS/JS project context (tsconfig.json /
+  SYNTAX diagnostics for TypeScript/JavaScript, in-process, no process spawn, no
+  type checking, and it only runs when a TS/JS project context (tsconfig.json /
   jsconfig.json) is detectable; otherwise it appends nothing (honest absence, not
   a fabricated "no errors"). The write tool attaches a structured `diagnostics`
   array to its JSON output; the edit tool appends a compact text block (its output
   already carries text suffixes). A `DiagnosticsProvider` interface is the seam a
   host can later implement with a full type-checking provider. Config key
-  `diagnostics.postEdit` (`'on'` default | `'off'`) — default on because the
+  `diagnostics.postEdit` (`'on'` default | `'off'`), default on because the
   bundled provider is cheap and never spawns a process.
 - **Background agents respect the session permission mode.** A background /
   subagent's tool calls now run through the same permission layer as the
   foreground turn loop instead of executing ungated. Each call the agent runner
   makes is brokered through the configured session mode (`permissions.mode`):
   `allow-all` changes nothing (zero new friction for autonomous runs);
-  `prompt`/`custom` ask via the same approval broker the foreground uses — so a
+  `prompt`/`custom` ask via the same approval broker the foreground uses, so a
   background ask surfaces through the existing blocked-on-user machinery, now
   carrying the subagent's attribution (agent id + template) on the
   `PermissionPromptRequest`; `plan` and `accept-edits` apply their matrices; and a
@@ -4669,15 +4645,14 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   deliberately exempt background agents from the gate.
 - **Fleet lifecycle events + attention state (poll-free fleet).** The live
   process registry now surfaces changes as events instead of poll-only snapshots.
-  (1) A new `fleet` runtime-event domain carries per-node lifecycle deltas —
-  `FLEET_NODE_STARTED`, `FLEET_NODE_STATE_CHANGED`, `FLEET_NODE_FINISHED`,
-  `FLEET_NODE_BLOCKED_ON_USER`, `FLEET_NODE_UNBLOCKED` — emitted by a bridge that
+  (1) A new `fleet` runtime-event domain carries per-node lifecycle deltas, `FLEET_NODE_STARTED`, `FLEET_NODE_STATE_CHANGED`, `FLEET_NODE_FINISHED`,
+  `FLEET_NODE_BLOCKED_ON_USER`, `FLEET_NODE_UNBLOCKED`, emitted by a bridge that
   diffs the registry's coalesced snapshots (seeds silently on first snapshot; never
   infers finish from absence). The control-plane gateway already fans this domain
   out to subscribed SSE/WebSocket clients, so surfaces can stop polling
   `fleet.snapshot` with no gateway change. (2) A `ProcessNode` blocked on a human
   (a pending shared approval) now carries a derived `needsAttention` marker with
-  its reason — a pure projection of state, recomputed each tick, never a second
+  its reason, a pure projection of state, recomputed each tick, never a second
   store. (3) A new `needs-input` push category (typed `PushNotificationData`
   payload) fires when a node blocks on the operator, carrying a session/node deep
   link, and is suppressed when an operator surface is already attached to that
@@ -4685,7 +4660,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **Structured tool-call denials.** A tool call refused by the permission layer
   now returns a structured, call-scoped `ToolDenial` (`{ denied, reason, scope }`)
   on the failed `ToolResult`, plus a self-explaining error string naming the reason
-  code and decision scope — never a hung promise or a bare "Permission denied"
+  code and decision scope, never a hung promise or a bare "Permission denied"
   line. Both the phased executor's permission phase and the main orchestrator
   tool-runtime path populate it, so an asking agent (including a background
   subagent) can continue and report honestly instead of guessing.
@@ -4697,7 +4672,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   path count + sample, diffstat) plus a short-lived (~2 min), single-use token
   that authorizes the matching restore. An unconfirmed `checkpoints.restore`
   returns a structured, non-destructive refusal body (`result: null,
-  refused: true, refusal: {...}` naming both options) — a 200, not an error.
+  refused: true, refusal: {...}` naming both options), a 200, not an error.
   MIGRATION: existing callers that already gate restore behind their own UI
   confirm add exactly one field, `confirm: true`, to their restore invocation;
   no preview round-trip is required. `checkpoints.restore`'s output gained
@@ -4712,7 +4687,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `runtime.metrics.get` gateway method. They are now one. `runtime.metrics.get`
   gains a `GATEWAY_REST_ROUTES` parity entry (`GET /api/runtime/metrics`), which
   `dispatchDaemonApiRoutes` serves ahead of the operator dispatcher, so the URL
-  keeps answering — now through the same in-process handler and the same
+  keeps answering, now through the same in-process handler and the same
   `read:telemetry` scope gate as the methodId-invoke endpoint. **Breaking for
   daemon-sdk embedders:** the `getRuntimeMetrics` member is removed from
   `DaemonRuntimeRouteHandlers`/`DaemonOperatorRuntimeRouteHandlers`, the
@@ -4735,7 +4710,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `MemoryUpdatePatch` (memory spine), `MemoryRecordUpdateInput` (daemon route
   body), and the `memory.records.update` operator method now carry
   `validFrom`/`validUntil`, threaded to the store's existing three-state window
-  semantics — a number sets the bound, an explicit `null` clears it, and an
+  semantics, a number sets the bound, an explicit `null` clears it, and an
   omitted field leaves it unchanged. A memory-projection proposal that changes
   only the window previously could not be applied (it reported failed-with-a-
   reason because the patch shape carried no window); it now round-trips end to
@@ -4751,7 +4726,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **The memory temporal helpers resist `.filter()` misuse.**
   `isMemoryTemporallyActive` and `isPromptActiveMemory` took an optional `now`
   as their second parameter, so passing one directly to `Array.prototype.filter`
-  bound the array INDEX to `now` — silently comparing every record's window
+  bound the array INDEX to `now`, silently comparing every record's window
   against a near-zero epoch and defeating expiry entirely. Both now carry a
   `...never[]` tail (rejecting the stray argument at the type level) and a
   runtime guard that throws a loud, explanatory `TypeError` when the array
@@ -4770,7 +4745,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **The per-model tool-format telemetry (`toolFormat` in `snapshotMetrics()`)
   is now actually reachable by consumers.** It was recorded but stranded: no
   package export subpath carried `snapshotMetrics`/its types, and no operator
-  method exposed it — only a bare, uncataloged `GET /api/runtime/metrics` route
+  method exposed it, only a bare, uncataloged `GET /api/runtime/metrics` route
   existed, invisible to the typed operator client, REST-parity checks, and
   Stage-B mock fixtures. Fixed both ends: (a) `snapshotMetrics` plus its new
   `RuntimeMetricsSnapshot`/`RuntimeMetricsBucket` types and
@@ -4779,7 +4754,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `runtime.metrics.get` operator method (typed IO, so the coverage ratchet
   holds at 97 untyped) is cataloged with its handler attached at composition
   time (`registerRuntimeMetricsGatewayMethods`, wired from
-  `registerGatewayVerbGroups` — the same descriptor+handler-together idiom
+  `registerGatewayVerbGroups`, the same descriptor+handler-together idiom
   `flags.graduation.report` uses, so it can never regress to the 501 "cataloged
   but not invokable" defect class; a pin test invokes it through a composed
   catalog). The existing REST binding is unchanged.
@@ -4802,13 +4777,13 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **Reactive compact-and-retry in the main session.** When a provider rejects
   a request as exceeding the context window (e.g. openai-codex
   `context_length_exceeded`), the main turn loop now compacts immediately and
-  retries the request once — previously it printed "Run /compact" and failed
+  retries the request once, previously it printed "Run /compact" and failed
   the turn. A second rejection in the same turn still surfaces as an error.
 - **Learned (observed) context ceilings.** That same rejection teaches the
   registry the endpoint's REAL limit: the rejected request's size is recorded
   per model (persisted alongside user overrides in
   `context-window-overrides.json`) and applied with new provenance
-  `observed_limit` whenever it is smaller than the catalog window — so
+  `observed_limit` whenever it is smaller than the catalog window, so
   compaction thresholds, meters, and the model picker stop trusting
   over-stated catalog values (a catalog can claim 1M where the subscriber
   endpoint enforces ~250k). Self-correcting in both directions: smaller
@@ -4821,7 +4796,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   runtime's registry) moves FINISHED process subtrees out of the live fleet
   view into a session-scoped archive: `archive(id)` / `unarchive(id)` /
   `archiveFinished()` / `listArchived()` / `archivedCount()`. Only
-  all-terminal subtrees can be archived — a finished member of a running
+  all-terminal subtrees can be archived, a finished member of a running
   swarm stays visible. Archived nodes remain fully inspectable. New
   control-plane verbs for remote surfaces (webui): `fleet.archive`,
   `fleet.unarchive`, `fleet.archiveFinished`, `fleet.archived.list`.
@@ -4832,7 +4807,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   queue's acknowledgment hooks were never called, so every tracked event
   (agent completed/failed, WRFC state changes) was re-injected into the
   conversation three times with escalating `[Replay][URGENT]` tags long
-  after the agent finished. Injection now acknowledges the event — each
+  after the agent finished. Injection now acknowledges the event, each
   event reaches the conversation exactly once, one turn after it fires.
 
 ## [1.5.0] - 2026-07-08
@@ -4844,8 +4819,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   that the model's context window filled up (Anthropic stop reason
   `model_context_window_exceeded`, or raw values like
   `context_length_exceeded` from openai-compatible servers), the orchestrator
-  now compacts at the next opportunity — before the next chat call in a tool
-  loop, or in post-turn maintenance — even when the local token estimate is
+  now compacts at the next opportunity, before the next chat call in a tool
+  loop, or in post-turn maintenance, even when the local token estimate is
   below the configured threshold and even when the percentage threshold is
   disabled. The provider's own report is authoritative over local estimates,
   matching how the reactive strategy already treats prompt-too-long errors.
@@ -4856,7 +4831,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   `isContextOverflowSignal` and `CONTEXT_OVERFLOW_RAW_STOP_REASONS` exports
   from the providers module.
 - **Persisted per-model context-window overrides.** `ProviderRegistry.setModelContextCap`
-  now works for any model (cloud, catalog, custom, or discovered — previously
+  now works for any model (cloud, catalog, custom, or discovered, previously
   local models only), and the override persists under the control-plane config
   dir (`context-window-overrides.json`), surviving restarts and applying to
   every consumer of the same home. New `clearModelContextCap` returns a model
@@ -4873,7 +4848,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   exec tool.** The exec guard previously hard-denied every command it
   classified as destructive (`kill`, `killall`, `pkill`, `rm`, `truncate`) or
   escalation (`docker`, `kubectl`, `sudo`, `helm`, …) with
-  `Command denied (baseline mode)` — unconditionally, ignoring the user's
+  `Command denied (baseline mode)`, unconditionally, ignoring the user's
   permission configuration entirely, and re-denying commands the permission
   layer had already approved (including explicit prompt approvals). A session
   with exec allowed could not kill a process or run `docker ps`. Class-level
@@ -4903,14 +4878,13 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   persisted honestly (`deliveryState: "cancelled"`, linked to its prompt via
   `inReplyTo`), announced-but-unresolved tool calls are closed with a
   synthetic error result, and the terminal `turn.cancelled` event reaches
-  every subscriber of the session stream — a stop issued from one client
+  every subscriber of the session stream, a stop issued from one client
   converges on all others. Honest machine-readable refusals: 404
-  `NO_ACTIVE_TURN` (benign — the turn finished first), 409 `TURN_MISMATCH`
+  `NO_ACTIVE_TURN` (benign, the turn finished first), 409 `TURN_MISMATCH`
   (a stale stop must not kill a newer turn); repeat cancels are idempotent.
 - **Queue-when-busy sends**: a message posted while another turn is running
-  now QUEUES — visible in the transcript immediately with
-  `deliveryState: "queued"`, answered in order when the current turn ends —
-  instead of racing a concurrent turn against the same conversation history
+  now QUEUES, visible in the transcript immediately with
+  `deliveryState: "queued"`, answered in order when the current turn ends, instead of racing a concurrent turn against the same conversation history
   (the previous behavior, which could garble a session's context).
 - **Steer** (`companion.chat.messages.steer`): interrupt-and-send-now. The
   message jumps to the front of the pending queue and the active turn is
@@ -4921,18 +4895,18 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   reliable pairing signal.
 - The interrupted partial (plus an explicit model-facing interruption note)
   is committed to the conversation history, so later turns can reason about
-  what the user saw and stopped — which is usually exactly what a follow-up
+  what the user saw and stopped, which is usually exactly what a follow-up
   or steer refers to.
 
 ### Fixed
 
 - Closing a session (or daemon shutdown) mid-turn now finalizes the turn
-  through the same cancellation path — honest partial persisted, terminal
-  `turn.cancelled` emitted — instead of silently discarding the streamed
+  through the same cancellation path, honest partial persisted, terminal
+  `turn.cancelled` emitted, instead of silently discarding the streamed
   content and leaving subscribers without a terminal event.
 - The Home Assistant conversation cancel route stops the in-flight turn and
-  keeps the session open (it previously closed the whole session — the only
-  available hammer — so the next utterance silently lost its conversation
+  keeps the session open (it previously closed the whole session, the only
+  available hammer, so the next utterance silently lost its conversation
   context).
 
 ## [1.3.3] - 2026-07-07
@@ -4959,7 +4933,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 ## [1.3.1] - 2026-07-06
 
 ### Fixed
-- Test-run suppression no longer silences the terminal bell — it silences only
+- Test-run suppression no longer silences the terminal bell, it silences only
   desktop notifications and webhooks. The 1.3.0 guard made `notifyCompletion()`
   return early under `NODE_ENV=test` / `GOODVIBES_SUPPRESS_NOTIFY`, which also
   suppressed the in-process terminal bell (a single `\x07` byte to the current
@@ -4970,7 +4944,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 ## [1.3.0] - 2026-07-06
 
 ### Added
-- **The knowledge wiki is now honest and compounding — no more silent
+- **The knowledge wiki is now honest and compounding, no more silent
   overwrites, and only real evidence resolves an answer gap.** Every
   content-changing node upsert now preserves the prior content in an
   append-only revision history and records what changed, exposed through a read
@@ -4982,8 +4956,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   drafts and are not served until a `reviewNode` decision accepts them, while
   existing active nodes stay active (pre-gate). Search and the semantic index
   serve only active nodes, so a draft or a stale record can no longer surface as
-  an answer. An answer gap resolves only from real repair evidence — a promoted
-  fact or an accepted source, with a truthful reason — otherwise it stays open.
+  an answer. An answer gap resolves only from real repair evidence, a promoted
+  fact or an accepted source, with a truthful reason, otherwise it stays open.
   Extractions now carry an `extractorVersion` stamped at the single
   `upsertExtraction` choke point, so advancing `KNOWLEDGE_EXTRACTOR_VERSION`
   re-processes older captures through the existing recompile job. See the
@@ -5002,7 +4976,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   the two previously hardcoded codes. The loop operates only on the home-graph
   store and the single resolved Home Assistant space; a proof test seeds a
   non-Home-Assistant space with the same issue code and asserts, byte for byte,
-  that a triage run leaves it untouched — the home-graph, wiki, and agent
+  that a triage run leaves it untouched, the home-graph, wiki, and agent
   knowledge functions share code but never share data, separate stores by
   construction. See the decision record at
   `docs/decisions/2026-07-07-home-graph-issue-triage.md`.
@@ -5010,8 +4984,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   surface-independent place.** The text-to-speech settings (`tts.provider`,
   `tts.voice`, `tts.speed`, `tts.llmProvider`, `tts.llmModel`) read from and write
   to one neutral file, `~/.goodvibes/shared/settings.json`, instead of each
-  surface's own settings folder. So a voice chosen in one place — terminal,
-  desktop, or the agent — is the voice every surface uses, rather than each keeping
+  surface's own settings folder. So a voice chosen in one place, terminal,
+  desktop, or the agent, is the voice every surface uses, rather than each keeping
   its own. A surface that has never set a shared voice keeps using its local
   setting, so existing setups are unchanged; a shared value simply wins once one is
   set. `ConfigManager.describeConfigKeySource(key)` reports which layer a value came
@@ -5032,8 +5006,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 - **Home Assistant conversations now stream incrementally instead of arriving all
   at once.** The `conversation/stream` route used to emit a single terminal SSE
   frame after the whole turn finished; it now bridges the chat manager's existing
-  per-turn events into the stream and emits incremental delta frames — each
-  carrying the new chunk and the running accumulation — as the model produces
+  per-turn events into the stream and emits incremental delta frames, each
+  carrying the new chunk and the running accumulation, as the model produces
   text. The terminal-frame contract is unchanged: exactly one final/error frame
   is still emitted last, so older consumers that ignore delta frames are
   unaffected. A throwing listener cannot break the turn.
@@ -5043,8 +5017,8 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   operation now says so plainly, instead of reporting an existing record as "not
   found."** The wire client distinguishes the two kinds of 404 by response code:
   a record-missing 404 carries the shared `MEMORY_RECORD_NOT_FOUND` code and
-  folds to `null`, while any other 404 — a route-not-found from an older daemon,
-  or a bare legacy 404 with no code — is treated as method-unavailable and
+  folds to `null`, while any other 404, a route-not-found from an older daemon,
+  or a bare legacy 404 with no code, is treated as method-unavailable and
   rejects honestly with the one canonical unavailable-verb message, never a
   silent `null`. This closes the version-skew path the memory-over-the-wire
   feature advertises. A shared `classifyMemoryWireError` discriminator is the
@@ -5055,16 +5029,16 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   whole seconds) rather than "STALE … 45000ms ago", matching the wording used
   elsewhere. The note also labels its record count honestly against how the snapshot
   was captured: an unfiltered browse capture is described as "in the browse set
-  (unfiltered — recall floor not applied)" rather than mislabeled "recall-eligible",
+  (unfiltered, recall floor not applied)" rather than mislabeled "recall-eligible",
   which only a recall-filtered capture earns.
 - **A fresh daemon home's default model now resolves without waiting on the
   network.** The default `openrouter:openrouter/free` model only appeared in the
   registry once the models.dev pricing catalog had loaded over the network, so
   on a brand-new daemon home (or offline) `getCurrentModel()` threw and crashed
   `GET /api/providers/{id}/usage`. The provider registry now recognizes the
-  well-known default directly — if the configured model belongs to a registered
+  well-known default directly, if the configured model belongs to a registered
   provider that already lists it, the registry synthesizes a minimal entry on
-  the spot instead of waiting for the catalog — and the usage-snapshot builder
+  the spot instead of waiting for the catalog, and the usage-snapshot builder
   degrades an unresolvable current model to an honest response rather than an
   unhandled exception. A genuinely wrong model reference still fails the same way
   as before, so this does not paper over real misconfiguration.
@@ -5084,7 +5058,7 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   content or scope, read and create links between records, the review queue, and
   bundle export/import. Combined with the operations that already existed
   (add/search/get/review/delete), a surface adopted to a daemon now reaches ALL of
-  its memory over the wire and never opens the database file — closing the last
+  its memory over the wire and never opens the database file, closing the last
   paths that still read a divergent local copy. Rebuilding the semantic index stays
   a host/admin action (the daemon keeps its own index current and offers an admin
   rebuild route) rather than a per-client operation, ruled explicitly. Semantic
@@ -5098,15 +5072,14 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   snapshot: an async pre-turn refresh captures the recall-eligible records, and the
   synchronous prompt build reads the cached snapshot with an honest note about how
   old it is and where it came from. Before the first refresh the snapshot is empty
-  and says so; past its freshness window it is flagged stale with a stated reason —
-  never a silent empty that reads as "nothing was ever stored." See the decision
+  and says so; past its freshness window it is flagged stale with a stated reason, never a silent empty that reads as "nothing was ever stored." See the decision
   record at `docs/decisions/2026-07-06-memory-wire-full-detach.md`.
 - **One shared text-to-speech engine now powers every surface's spoken output.**
-  The live speech pipeline — splitting a reply into sentences, batching and
+  The live speech pipeline, splitting a reply into sentences, batching and
   merging them into a bounded number of concurrent requests to the speech
   provider, retrying a failed request with backoff and honestly skipping ahead
   rather than losing the rest of the reply, and knowing when to let speech
-  finish naturally versus cut it off immediately on interrupt — used to be
+  finish naturally versus cut it off immediately on interrupt, used to be
   copied by hand between the terminal app and the agent. It now ships once in
   the SDK behind a small pluggable interface (an "audio sink") that only has to
   play, stop, and report when it's drained; the terminal surfaces keep their
@@ -5118,19 +5091,18 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
 ## [1.1.0] - 2026-07-06
 
 ### Added
-- **Cross-surface memory served by the daemon** — the daemon now hosts the one
+- **Cross-surface memory served by the daemon**, the daemon now hosts the one
   canonical memory store and serves it over its HTTP API, so no surface (TUI,
   agent, or web UI) opens the memory database file directly; a client surface
   reads and writes memory over the wire instead. This closes a real corruption
   risk: the underlying store rewrites the whole file on every save with no
   locking, so two processes writing it directly could clobber each other. The
-  same recall-honesty rules apply everywhere memory is reached — a search that
+  same recall-honesty rules apply everywhere memory is reached, a search that
   can't consult its semantic index falls back to a plain scan and says so
   (never a silent empty result), and stale or contradicted records are excluded
   and counted rather than served quietly. Offline surfaces with no daemon keep
   working exactly as before, reading and writing their local store directly.
-- **The daemon can now serve the web UI itself, same-origin or cross-origin —
-  both off by default.** Turning on same-origin serving points the daemon at a
+- **The daemon can now serve the web UI itself, same-origin or cross-origin, both off by default.** Turning on same-origin serving points the daemon at a
   built web UI bundle and it serves the app from its own address, so the
   browser never has to reach a different origin at all; the app still
   authenticates every API call with a token, so serving the bundle itself
@@ -5147,11 +5119,11 @@ upgrade straight to 1.7.1 — do not stay on 1.7.0.**
   turns are marked as superseded and kept, never deleted, so the prior answer
   or original wording is always still there to look back on; a new answer is
   generated from the edited or retried point forward.
-- **Browser push (Web Push) notifications** — a browser or installed web app
+- **Browser push (Web Push) notifications**, a browser or installed web app
   can now subscribe to receive approvals and completions as push
   notifications, with a full subscribe/list/unsubscribe/test-send lifecycle.
   The daemon generates its own signing key the first time it's needed and
-  stores it the same way it stores any other credential — the private signing
+  stores it the same way it stores any other credential, the private signing
   key is never written to config, never logged, and never handed back by any
   read; only the public key needed to create a subscription is served. Each
   notification is encrypted before it's sent, using the standard Web Push
@@ -5177,7 +5149,7 @@ First stable release. `1.0.0` stabilizes the public operator/peer contract, the
 runtime and platform surfaces, and the nine `@pellux/goodvibes-*` workspace
 packages, all published together in lockstep. It closes the goodvibes-tui
 evolution arc: the SDK is now the one platform substrate shared by
-the TUI, the agent fork, and the browser web UI — sessions, config, memory, and
+the TUI, the agent fork, and the browser web UI, sessions, config, memory, and
 presentation are cross-surface by construction, reached through one daemon.
 
 This release also executes the two breaking removals that were deliberately
@@ -5185,51 +5157,50 @@ parked for the major bump (the `danger.daemon` alias and the TUI staged-switch
 scaffolding); see **Removed** and **Migration**.
 
 ### Added
-- **One-broker session spine** — a single canonical session identity spine
+- **One-broker session spine**, a single canonical session identity spine
   (`SurfaceKind` unification, expanded `SharedSessionKind`, project-as-data) with
   the `sessions.register` wire method through the full contract pipeline, a boot
   migration importer that folds legacy per-surface stores into one home store,
   and one extracted SDK session-spine surface client + read facade
   (`./platform/runtime/session-spine`). Register is idempotent; the union view
   dedups a surface's own wire-mirrored session; restart survival is proven.
-- **Daemon is a system service** — detached spawn by default with opt-in
+- **Daemon is a system service**, detached spawn by default with opt-in
   in-process embedding (`daemon.enabled`, default on), a version-compatibility
   gate on adopt-or-start (refuse an incompatible daemon), and honest launchd
   restart (unload-then-load).
-- **Control-plane read + lifecycle verbs over the wire** — `fleet.*`,
+- **Control-plane read + lifecycle verbs over the wire**, `fleet.*`,
   `checkpoints.*`, `sessions.search`, `sessions.detach`, per-hunk approvals,
   catalog-driven invoke input validation, and SSE domain-scoped delivery for the
   broadcast fan-out. Typed I/O for the fleet/checkpoints/sessions.search/detach
   verbs.
-- **Presentation contract hoisted into the SDK** (`./platform/presentation`) —
-  glyphs, tones, spinner frames, and waiting/thinking wording as one
+- **Presentation contract hoisted into the SDK** (`./platform/presentation`), glyphs, tones, spinner frames, and waiting/thinking wording as one
   cross-surface source, so every surface renders identically.
-- **External calendar connectivity** — READ machinery (ICS parser, an honest
+- **External calendar connectivity**, READ machinery (ICS parser, an honest
   RRULE subset, a feed-subscription store) plus OAuth 2.0 provider connectivity
   for Google Calendar API v3 and Microsoft Graph over auth-code+PKCE and
   device-code. Unconfigured providers refuse honestly (`client-not-configured`)
   rather than faking success.
-- **Delete-means-delete** — real hard-delete for companion chat plus a new spine
+- **Delete-means-delete**, real hard-delete for companion chat plus a new spine
   `sessions.delete` verb; delete can never resurrect (map-delete, drain pending
   saves, then unlink; routes flush the broker sync before responding).
-- **Config sharing across surfaces** — a daemon-served shared config tier so
+- **Config sharing across surfaces**, a daemon-served shared config tier so
   a provider configured once is visible everywhere, reached through the existing
   `config.get`/`providers.*` plus one new admin-scoped, `read:config`-scoped
   credential-status read method. API keys stay env-only; the config snapshot stays
   secret-free; unavailable reads report an honest degraded state rather than a
   stale confident value.
-- **Memory unification** — one canonical cross-surface `MemoryStore` (a fact
+- **Memory unification**, one canonical cross-surface `MemoryStore` (a fact
   learned on one surface recalls on another), with the agent's recall-honesty
   discipline raised to the cross-surface contract (semantic-by-default; an
   unavailable index falls back to literal *with a stated reason*, never a silent
   empty; the injection floor is tied to the store's real baseline). `VIBE.md` is
   re-framed as a rendered projection of persona/constraint records rather than a
   separate source of truth.
-- **Core-verb command spec** — an SDK-owned canonical verb vocabulary
+- **Core-verb command spec**, an SDK-owned canonical verb vocabulary
   (`packages/contracts`) with a conformance lint that keeps shared verbs identical
   across surfaces, plus fixes to the worst-class collisions (schedule
   triple-meaning, memory fragmentation, the agent `/session` orphan).
-- **Consolidated local-SDK overlay tool** — one SDK-shipped `scripts/sdk-dev.ts`
+- **Consolidated local-SDK overlay tool**, one SDK-shipped `scripts/sdk-dev.ts`
   that enumerates the workspace packages (all nine, including
   `@pellux/goodvibes-contracts`); consumers reduce to a one-line alias, closing
   the contracts re-sync gap.
@@ -5243,7 +5214,7 @@ scaffolding); see **Removed** and **Migration**.
   (not a drift bug).
 
 ### Fixed
-- **Uncataloged-method 404 now carries a machine code** — the
+- **Uncataloged-method 404 now carries a machine code**, the
   "method unavailable" family is distinguished by code everywhere instead of by
   string-matching prose; `NOT_INVOKABLE` behavior is unchanged.
 - Idle-empty reaper never closes a live surface session; honest reopen-on-heartbeat.
@@ -5270,51 +5241,45 @@ scaffolding); see **Removed** and **Migration**.
 ## [0.38.0] - 2026-07-04
 
 A broad batch from the goodvibes-tui evolution effort: the SDK becomes an
-observability and orchestration substrate — a queryable process registry over
+observability and orchestration substrate, a queryable process registry over
 every runtime concern, workstream orchestration beyond fixed chains, passive
 knowledge injection for both turn loops, and a repo code index.
 
 ### Added
-- `@pellux/goodvibes-sdk`: **fleet process registry** (`./platform/runtime/fleet`) —
-  `createProcessRegistry` composes the EXISTING managers (agents, WRFC chains,
+- `@pellux/goodvibes-sdk`: **fleet process registry** (`./platform/runtime/fleet`), `createProcessRegistry` composes the EXISTING managers (agents, WRFC chains,
   orchestration, schedules, triggers, watchers, workflows, background processes,
   automation jobs, code index) into one queryable tree of `ProcessNode`s with
   derived states, per-node usage/cost, coalesced subscription ticks, and verbs:
   `interrupt`, `kill` (cascade), `steer`, `resume`, `dispose`. Zero new store
-  state — the registry is a view, not a second source of truth.
-- `@pellux/goodvibes-sdk`: **conversation snapshot bridge + steer** —
-  `AgentManager.getConversationSnapshot`, `AgentOrchestrator.setConversationSink`,
+  state, the registry is a view, not a second source of truth.
+- `@pellux/goodvibes-sdk`: **conversation snapshot bridge + steer**, `AgentManager.getConversationSnapshot`, `AgentOrchestrator.setConversationSink`,
   message-bus `steer` verb (verbatim injection at drain; consumption event emitted
   only AFTER a successful chat), `ProcessState 'interrupted'`,
   `AgentRecord.terminationKind`.
-- `@pellux/goodvibes-sdk`: **orchestration engine** (`./platform/orchestration`) —
-  Workstream/Phase/WorkItem model with float-ordinal phase insertion, capacity-slot
+- `@pellux/goodvibes-sdk`: **orchestration engine** (`./platform/orchestration`), Workstream/Phase/WorkItem model with float-ordinal phase insertion, capacity-slot
   scheduler, resume-prefix replay keyed (itemId, phaseId) with crash-artifact
   reconciliation (in-phase items re-queue on import), budget refuse-not-kill +
   `updateBudget` recovery, `fromChainSpec` compat, and the planner's
   `PlanProposal` (`assemblePlanProposal` / `singleItemProposal`).
-- `@pellux/goodvibes-sdk`: additive `Tool.execute(args, opts?: { signal? })` —
-  cooperative cancellation reaches exec/fetch child processes (closing a
+- `@pellux/goodvibes-sdk`: additive `Tool.execute(args, opts?: { signal? })`, cooperative cancellation reaches exec/fetch child processes (closing a
   previously deferred gap).
-- `@pellux/goodvibes-sdk`: **passive knowledge injection for BOTH turn loops** —
-  per-turn budgeted retrieval (default 800 tokens, relevance floor 95) composed
+- `@pellux/goodvibes-sdk`: **passive knowledge injection for BOTH turn loops**, per-turn budgeted retrieval (default 800 tokens, relevance floor 95) composed
   fresh on every LLM roundtrip (including chat retries), gated by the
   `agent-passive-knowledge-injection` flag; honest per-turn records
   (`TurnInjectionRecord`: query, candidates, injected ids, dropped-for-budget,
-  token cost) in bounded rings — `AgentRecord.turnInjections` and
+  token cost) in bounded rings, `AgentRecord.turnInjections` and
   `Orchestrator.getTurnInjections()`; `OrchestratorCoreServices.memoryRegistry`
   seam via `setCoreServices`.
-- `@pellux/goodvibes-sdk`: **repo code index** (`CodeIndexStore`, Stage A) —
-  tree-sitter chunking, bounded gitignore-aware walk (nested .gitignore honored),
+- `@pellux/goodvibes-sdk`: **repo code index** (`CodeIndexStore`, Stage A), tree-sitter chunking, bounded gitignore-aware walk (nested .gitignore honored),
   hash-gated incremental rebuilds, honest lexical/semantic labeling with
   embedding-provider identity pinned per build (mismatch degrades to lexical with
   a rebuild hint), sqlite-vec backend, fleet `code-index` node; auto-start off by
   default.
-- `@pellux/goodvibes-sdk`: **pause↔resume through the registry** — schedules,
+- `@pellux/goodvibes-sdk`: **pause↔resume through the registry**, schedules,
   triggers, and automation jobs report `'paused'` (previously mislabeled
   `'killed'`), expose `resumable`, and `ProcessRegistry.resume()` re-enables them;
   `/schedule`-managed AutomationManager jobs now surface in the fleet tree.
-- `@pellux/goodvibes-sdk`: `ConfigManager.removeCategoryKey` — clearing a
+- `@pellux/goodvibes-sdk`: `ConfigManager.removeCategoryKey`, clearing a
   category override (e.g. a feature-flag entry back to its default) was a silent
   no-op via merge; explicit removal now persists across reload.
 
@@ -5323,12 +5288,12 @@ knowledge injection for both turn loops, and a repo code index.
   controller-driven gating/committing phases no longer derive killed).
 - WRFC rollup double-counting in aggregates (leaf-only accounting).
 - Engine resume lost mid-phase items permanently (blocker class: 'in-phase'
-  deserialized verbatim occupied capacity forever) — reconciled to pending with
+  deserialized verbatim occupied capacity forever), reconciled to pending with
   agent id cleared on import.
 - Zombie chains reimported after restart with an all-dead agent roster are
   reaped terminal at import (resurrection-safe: any live member skips the reap).
 - Killed-run dirty residue can no longer be swept into the next workstream's
-  file-scoped commit — launch-dirty paths are content-hashed and excluded from
+  file-scoped commit, launch-dirty paths are content-hashed and excluded from
   scoped commits unless the run actually modified them; all-excluded commits are
   skipped with an honest recorded note.
 - Code index reroot-during-build race (epoch-guarded abort; no cross-root
@@ -5359,25 +5324,25 @@ knowledge injection for both turn loops, and a repo code index.
 ## [0.37.2] - 2026-07-04
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: **checkpoint creation no longer aborts in repos whose top-level `.gitignore` lists `.goodvibes/`** (which the goodvibes TUI itself writes at startup) — the side-git staging pathspec explicitly named `.goodvibes` in an exclude, triggering git's ignored-path abort and disabling ALL checkpointing in git repos. The redundant pathspec is removed; the checkpoint store's own `.goodvibes/.gitignore` self-ignore (written before any staging can run) is sufficient.
-- `@pellux/goodvibes-sdk`: **per-hunk approval selections are honored end-to-end** — `ApprovalBroker.requestApproval()` dropped `modifiedArgs` from prompt decisions in both its local-prompt bridge and `resolveApproval()`, so "Apply selected" executed the full unfiltered edit. The field now threads through; regression test drives the real broker→PermissionManager→executeToolCalls pipeline (the pre-existing test bypassed the broker).
+- `@pellux/goodvibes-sdk`: **checkpoint creation no longer aborts in repos whose top-level `.gitignore` lists `.goodvibes/`** (which the goodvibes TUI itself writes at startup), the side-git staging pathspec explicitly named `.goodvibes` in an exclude, triggering git's ignored-path abort and disabling ALL checkpointing in git repos. The redundant pathspec is removed; the checkpoint store's own `.goodvibes/.gitignore` self-ignore (written before any staging can run) is sufficient.
+- `@pellux/goodvibes-sdk`: **per-hunk approval selections are honored end-to-end**, `ApprovalBroker.requestApproval()` dropped `modifiedArgs` from prompt decisions in both its local-prompt bridge and `resolveApproval()`, so "Apply selected" executed the full unfiltered edit. The field now threads through; regression test drives the real broker→PermissionManager→executeToolCalls pipeline (the pre-existing test bypassed the broker).
 
 ## [0.37.1] - 2026-07-03
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager operations are now serialized** through an internal mutex — a background agent completing during a restore's read-tree/checkout-index window could previously interleave an auto-snapshot's `git add -A` and silently corrupt the restore (timing-dependent; found by adversarial review, proven with an injected race).
-- `@pellux/goodvibes-sdk`: **checkpoint retention GC genuinely reclaims disk** — checkpoint commits are now parentless (lineage lives in the manifest), so pruned refs' objects become unreachable and `git gc --prune=now` frees them (measured 64.6% object-store shrink in the test); previously the linear parent chain kept every pruned commit alive and the store grew unbounded.
+- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager operations are now serialized** through an internal mutex, a background agent completing during a restore's read-tree/checkout-index window could previously interleave an auto-snapshot's `git add -A` and silently corrupt the restore (timing-dependent; found by adversarial review, proven with an injected race).
+- `@pellux/goodvibes-sdk`: **checkpoint retention GC genuinely reclaims disk**, checkpoint commits are now parentless (lineage lives in the manifest), so pruned refs' objects become unreachable and `git gc --prune=now` frees them (measured 64.6% object-store shrink in the test); previously the linear parent chain kept every pruned commit alive and the store grew unbounded.
 
 ## [0.37.0] - 2026-07-03
 
-An early stage of the goodvibes-tui evolution effort, focused on reversibility. The headline is the workspace checkpoint engine — cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
+An early stage of the goodvibes-tui evolution effort, focused on reversibility. The headline is the workspace checkpoint engine, cheap whole-workspace snapshots and rewind, with zero pollution of the user's git state.
 
 ### Added
-- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager** (`./platform/workspace`) — a hidden side git repository (isolated `GIT_DIR`, the workspace as work-tree) provides content-addressed whole-workspace checkpoints: automatic snapshots at turn and agent-run boundaries (subscribing to existing TURN_*/AGENT_COMPLETED events), named manual checkpoints, checkpoint-to-checkpoint and checkpoint-to-working-tree diffs, and whole-workspace restore with a default safety checkpoint. Never touches the user repo's HEAD/index/stash (proven byte-identical in tests); works in non-git directories; honors .gitignore; bounded retention via the existing RetentionPolicy with ref-deletion GC. Constructed in `createRuntimeServices` and exposed on `RuntimeServices`.
-- `@pellux/goodvibes-sdk`: permission prompts can modify tool arguments — `PermissionPromptDecision`/`PermissionCheckResult` gain optional `modifiedArgs`, and the edit tool executes the approved subset, enabling per-edit accept/reject at the approval gate (whole-file `write` stays all-or-nothing for now).
+- `@pellux/goodvibes-sdk`: **WorkspaceCheckpointManager** (`./platform/workspace`), a hidden side git repository (isolated `GIT_DIR`, the workspace as work-tree) provides content-addressed whole-workspace checkpoints: automatic snapshots at turn and agent-run boundaries (subscribing to existing TURN_*/AGENT_COMPLETED events), named manual checkpoints, checkpoint-to-checkpoint and checkpoint-to-working-tree diffs, and whole-workspace restore with a default safety checkpoint. Never touches the user repo's HEAD/index/stash (proven byte-identical in tests); works in non-git directories; honors .gitignore; bounded retention via the existing RetentionPolicy with ref-deletion GC. Constructed in `createRuntimeServices` and exposed on `RuntimeServices`.
+- `@pellux/goodvibes-sdk`: permission prompts can modify tool arguments, `PermissionPromptDecision`/`PermissionCheckResult` gain optional `modifiedArgs`, and the edit tool executes the approved subset, enabling per-edit accept/reject at the approval gate (whole-file `write` stays all-or-nothing for now).
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: **compaction now accounts for completed subagent work** — two build sites filtered agent records with a premature active-only predicate, so a compaction summary after agents built a whole project claimed "no completed tool work". Completed agent runs (task, files touched, outcome) now reach the compaction sections.
+- `@pellux/goodvibes-sdk`: **compaction now accounts for completed subagent work**, two build sites filtered agent records with a premature active-only predicate, so a compaction summary after agents built a whole project claimed "no completed tool work". Completed agent runs (task, files touched, outcome) now reach the compaction sections.
 
 ### Notes
 - The `wcp_` workspace-checkpoint namespace is deliberately distinct from compaction's `cpt_` conversation snapshots and the generic retention `CheckpointRecord`.
@@ -5387,19 +5352,19 @@ An early stage of the goodvibes-tui evolution effort, focused on reversibility. 
 An early "trust repairs" round from the goodvibes-tui live-dogfooding effort: every fix closes a defect reproduced against v1.0.0 of the TUI where the SDK reported something other than the truth to the model or the user.
 
 ### Added
-- `@pellux/goodvibes-sdk`: `STREAM_RETRY` TurnEvent — in-flight provider `chat()` retries (the withRetry backoff path) now emit an observable event with attempt/max fields so consumers can render honest "reconnecting" state instead of a frozen spinner.
-- `@pellux/goodvibes-sdk`: optional `usage` payload on `AGENT_COMPLETED` events, and `AgentRecord.usage`/`toolCallCount` are now populated with real values on completion — including WRFC owner agents, which aggregate usage across every child agent in the chain (previously permanent zeros).
+- `@pellux/goodvibes-sdk`: `STREAM_RETRY` TurnEvent, in-flight provider `chat()` retries (the withRetry backoff path) now emit an observable event with attempt/max fields so consumers can render honest "reconnecting" state instead of a frozen spinner.
+- `@pellux/goodvibes-sdk`: optional `usage` payload on `AGENT_COMPLETED` events, and `AgentRecord.usage`/`toolCallCount` are now populated with real values on completion, including WRFC owner agents, which aggregate usage across every child agent in the chain (previously permanent zeros).
 - `@pellux/goodvibes-sdk`: WRFC auto-commit policy config (`off | scoped | all`, default `scoped`) and a `paths` parameter on `AgentWorktree.commitWorkingTree`.
-- `@pellux/goodvibes-sdk`: bounded WRFC transport-failure retry (default 1, configurable) with an observable chain failure state carrying the reason — a chain whose agent transport dies can never again evaporate silently.
+- `@pellux/goodvibes-sdk`: bounded WRFC transport-failure retry (default 1, configurable) with an observable chain failure state carrying the reason, a chain whose agent transport dies can never again evaporate silently.
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: **Tool failures no longer masked as "Unknown error"** — `ConversationManager.addToolResults` discarded `result.output` whenever `success` was false, so a failing test suite's exit code/stdout/stderr (which the exec tool returns faithfully in `output`) never reached the model. Output is now always preserved; the exec tool additionally sets a top-level one-line `error` summary when any command fails.
-- `@pellux/goodvibes-sdk`: **Output truncation now preserves the tail** (head 20% + tail 80%) instead of keeping only the head — test runners print failures at the end, so head-only truncation kept the progress dots and silently dropped the failing assertion. The honest truncation marker is unchanged.
-- `@pellux/goodvibes-sdk`: **WRFC auto-commit no longer sweeps the whole dirty working tree** — commits are scoped to the files the chain actually touched (from its own edit ledger), with full untruncated commit messages. Unrelated dirty/untracked files are left alone.
+- `@pellux/goodvibes-sdk`: **Tool failures no longer masked as "Unknown error"**, `ConversationManager.addToolResults` discarded `result.output` whenever `success` was false, so a failing test suite's exit code/stdout/stderr (which the exec tool returns faithfully in `output`) never reached the model. Output is now always preserved; the exec tool additionally sets a top-level one-line `error` summary when any command fails.
+- `@pellux/goodvibes-sdk`: **Output truncation now preserves the tail** (head 20% + tail 80%) instead of keeping only the head, test runners print failures at the end, so head-only truncation kept the progress dots and silently dropped the failing assertion. The honest truncation marker is unchanged.
+- `@pellux/goodvibes-sdk`: **WRFC auto-commit no longer sweeps the whole dirty working tree**, commits are scoped to the files the chain actually touched (from its own edit ledger), with full untruncated commit messages. Unrelated dirty/untracked files are left alone.
 - `@pellux/goodvibes-sdk`: the exec phase timeout now honors a caller-supplied `timeout_ms` larger than the phase default, so long full-suite runs are not killed at the generic deadline.
 
 ### Notes
-- Known follow-ups (documented, non-blocking): scoped-commit deletion paths must be repo-relative (absolute/'./'-prefixed self-reports are dropped, failing safe); the transport-retry budget is chain-global; `isTransportFailureMessage` deliberately matches broad substrings and can over-retry (bounded). Cooperative cancellation (AbortSignal through `Tool.execute`) remains unwired for all phased tools — an orphaned-child-process risk tracked for the orchestration wave.
+- Known follow-ups (documented, non-blocking): scoped-commit deletion paths must be repo-relative (absolute/'./'-prefixed self-reports are dropped, failing safe); the transport-retry budget is chain-global; `isTransportFailureMessage` deliberately matches broad substrings and can over-retry (bounded). Cooperative cancellation (AbortSignal through `Tool.execute`) remains unwired for all phased tools, an orphaned-child-process risk tracked for the orchestration wave.
 
 ## [0.35.0] - 2026-06-30
 
@@ -5409,7 +5374,7 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 - `@pellux/goodvibes-sdk`: `inferFallbackContextWindow` and `FALLBACK_CONTEXT_WINDOW` are now exported from the public `./platform/providers` entrypoint so consumers can share the family-aware pre-catalog context-window fallback instead of hardcoding their own.
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: **Tool-loop circuit breaker never terminated the loop** — the breaker set `continueLoop = false` which was then unconditionally clobbered by `continueLoop = results.continueLoop` on the next line (orchestrator-turn-loop.ts), so a model repeatedly producing all-failing tool calls looped until the iteration cap instead of tripping the breaker.
+- `@pellux/goodvibes-sdk`: **Tool-loop circuit breaker never terminated the loop**, the breaker set `continueLoop = false` which was then unconditionally clobbered by `continueLoop = results.continueLoop` on the next line (orchestrator-turn-loop.ts), so a model repeatedly producing all-failing tool calls looped until the iteration cap instead of tripping the breaker.
 - `@pellux/goodvibes-sdk`: **Auto-compaction safety buffer is now scaled to the context window** (capped at a window fraction) instead of a flat 15k, which forced near-constant compaction on small/medium windows; the buffer remains an independent backstop on large windows regardless of the percentage threshold.
 - `@pellux/goodvibes-sdk`: **`getContextWindowForModel` now honors a user `configured_cap` before the OpenRouter fuzzy lookup**, so an explicit cap is no longer silently widened by a fuzzy id match; and the method floors its result so a 0/NaN window can never poison budget math.
 - `@pellux/goodvibes-sdk`: **McpClient no longer auto-restarts after an intentional disconnect** (which spawned orphan server processes); restart is gated on an intentional-close flag.
@@ -5421,7 +5386,7 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 ## [0.34.2] - 2026-06-29
 
 ### Fixed
-- `@pellux/goodvibes-sdk`: Fixed a tool-loop circuit-breaker infinite loop introduced in 0.34.1. The 0.34.1 DRY consolidation moved the `isActiveAgent` predicate into `compaction-sections` and had the orchestrator turn-loop modules (`orchestrator-context-runtime`, `orchestrator-tool-runtime`) and `context-compaction` import it from there. That pulled the heavy `compaction-sections` module into the turn-loop import graph and created a circular dependency, leaving the circuit-breaker threshold constant in its temporal dead zone (undefined) at runtime — so the breaker never tripped and a model that repeatedly calls a missing/failing tool would loop forever instead of failing with `tool_loop_circuit_breaker`. `isActiveAgent` now lives in the dependency-free leaf `tools/agent/predicates`, and a regression guard (`test/orchestrator-active-agent-cycle.test.ts`) prevents the cyclic import from returning.
+- `@pellux/goodvibes-sdk`: Fixed a tool-loop circuit-breaker infinite loop introduced in 0.34.1. The 0.34.1 DRY consolidation moved the `isActiveAgent` predicate into `compaction-sections` and had the orchestrator turn-loop modules (`orchestrator-context-runtime`, `orchestrator-tool-runtime`) and `context-compaction` import it from there. That pulled the heavy `compaction-sections` module into the turn-loop import graph and created a circular dependency, leaving the circuit-breaker threshold constant in its temporal dead zone (undefined) at runtime, so the breaker never tripped and a model that repeatedly calls a missing/failing tool would loop forever instead of failing with `tool_loop_circuit_breaker`. `isActiveAgent` now lives in the dependency-free leaf `tools/agent/predicates`, and a regression guard (`test/orchestrator-active-agent-cycle.test.ts`) prevents the cyclic import from returning.
 
 ## [0.34.1] - 2026-06-29
 
@@ -5429,12 +5394,12 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 - `@pellux/goodvibes-sdk`: Agent progress no longer firehoses raw model output. The orchestrator stream handler overwrote `record.progress` (surfaced as `RuntimeAgent.latestProgress`) with the last ~100 chars of raw streamed output on every delta, clobbering the concise status strings ("Turn N · <tool>", "Thinking…"). Live output already flows via `record.streamingContent` / `emitStreamDelta`; progress now retains its last meaningful status.
 - `@pellux/goodvibes-sdk`: Family-aware context-window fallback for unknown/new public models (Gemini 1M, Claude 200k, Grok 256k, GPT-5/4.1 400k, o-series 200k) instead of a flat default, plus a `> 0` guard so a `context: 0` from the live catalog no longer propagates as a zero window (which silently disabled auto-compaction). `capabilities.ts` context-window data corrected (xAI 256k, o-series 200k, gpt-5/4.1 400k) and made consistent with the fallback.
 - `@pellux/goodvibes-sdk`: WRFC config now validated with `Number.isFinite` (a NaN `maxFixAttempts` previously made the fix loop never terminate); defaults aligned to the schema.
-- `@pellux/goodvibes-sdk`: WRFC gate-failure handling — a global gate failure now spawns exactly one gate-fixer instead of one per concurrent chain racing the shared project tree (orphan-safety re-check added).
+- `@pellux/goodvibes-sdk`: WRFC gate-failure handling, a global gate failure now spawns exactly one gate-fixer instead of one per concurrent chain racing the shared project tree (orphan-safety re-check added).
 - `@pellux/goodvibes-sdk`: Anthropic thinking-budget `max_tokens` bump is now clamp-aware (no longer risks exceeding the model output cap).
-- `@pellux/goodvibes-sdk`: `isRecord` array-semantics bug fixed — two copies (`mcp/client.ts`, `runtime/transports/http-helpers.ts`) wrongly treated arrays as records; all copies now use one canonical guard.
+- `@pellux/goodvibes-sdk`: `isRecord` array-semantics bug fixed, two copies (`mcp/client.ts`, `runtime/transports/http-helpers.ts`) wrongly treated arrays as records; all copies now use one canonical guard.
 
 ### Added
-- `@pellux/goodvibes-sdk`: `WORKFLOW_SCORE_REGRESSION` workflow event (advisory) — distinct from `WORKFLOW_CASCADE_ABORTED`, which was previously overloaded for both a real abort and an advisory score-regression signal.
+- `@pellux/goodvibes-sdk`: `WORKFLOW_SCORE_REGRESSION` workflow event (advisory), distinct from `WORKFLOW_CASCADE_ABORTED`, which was previously overloaded for both a real abort and an advisory score-regression signal.
 - `@pellux/goodvibes-sdk`: Session lineage now records the original task (`originalTask` was previously always undefined in the compaction handoff).
 
 ### Changed
@@ -5444,8 +5409,8 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 
 ### Added
 - `@pellux/goodvibes-sdk` / `@pellux/goodvibes-contracts`: Published 17 new operator method contracts so daemon-connected agents can detect and invoke them through the standard operator method protocol. These are additive, typed contract descriptors (no breaking changes to existing methods).
-  - **Channels** (new methods under the existing `channels.*` namespace): `channels.inbox.list` (provider inbound feed — Slack/Discord DMs, email threads; read-only), `channels.routing.list` / `channels.routing.assign` / `channels.routing.delete` (daemon-persisted channel-to-profile routing), and `channels.drafts.list` / `channels.drafts.get` / `channels.drafts.save` / `channels.drafts.delete` (server-side channel draft sync; webhook values must be transmitted redacted).
-  - **Email** (new `email.*` namespace, scopes `read:email` / `write:email`): `email.inbox.list`, `email.inbox.read` (read-only IMAP via BODY.PEEK), `email.draft.create` (IMAP Drafts append), and `email.send` (SMTP send — marked `dangerous`, requires `confirm: true`).
+  - **Channels** (new methods under the existing `channels.*` namespace): `channels.inbox.list` (provider inbound feed, Slack/Discord DMs, email threads; read-only), `channels.routing.list` / `channels.routing.assign` / `channels.routing.delete` (daemon-persisted channel-to-profile routing), and `channels.drafts.list` / `channels.drafts.get` / `channels.drafts.save` / `channels.drafts.delete` (server-side channel draft sync; webhook values must be transmitted redacted).
+  - **Email** (new `email.*` namespace, scopes `read:email` / `write:email`): `email.inbox.list`, `email.inbox.read` (read-only IMAP via BODY.PEEK), `email.draft.create` (IMAP Drafts append), and `email.send` (SMTP send, marked `dangerous`, requires `confirm: true`).
   - **Calendar** (new `calendar.*` namespace, scopes `read:calendar` / `write:calendar`): `calendar.events.list` / `calendar.events.get` / `calendar.events.create` and `calendar.ics.import` / `calendar.ics.export` (CalDAV-backed; writes require confirmation).
   - Mutating methods use `access: 'admin'` with `write:*` scopes; irreversible/destructive methods (`email.send`, routing/draft deletes) are flagged `dangerous`. Read methods use `read:*` scopes. The SDK publishes the contract surface only; daemon-side handlers implement the behavior.
 
@@ -5455,7 +5420,7 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 ## [0.33.38] - 2026-06-12
 
 ### Added
-- `@pellux/goodvibes-daemon-sdk` / `@pellux/goodvibes-sdk`: Added cursor-based pagination on 4 list endpoints: `GET /api/automation/jobs`, `GET /api/automation/runs`, `GET /api/knowledge/sources`, `GET /api/knowledge/nodes`. Pass `?limit=N&cursor=<opaque>` to activate; omit both params for the legacy array response (backward compatible). `GET /api/sessions` returns the session broker snapshot only (the integration helper is consumer-supplied and cannot be range-queried in daemon-sdk). New types: `PaginatedResponse<T>` (exported from `@pellux/goodvibes-daemon-sdk`). New helpers: `encodeCursor`, `decodeCursor`, `paginateItems`, `hasPaginationParams`. Paginated responses return `{ items, hasMore, nextCursor? }`; invalid cursors return HTTP 400 matching the existing error contract. `paginateItems` now accepts an optional `getCreatedAt` extractor: when a cursor’s item has been deleted mid-walk, the stable timestamp is used to locate the insertion point instead of restarting from index 0. `paginateItems` also accepts a `PaginateItemsOptions` argument (with `descending` flag) for stores sorted newest-first. Insertion-point recovery is **active** on `GET /api/knowledge/sources` and `GET /api/knowledge/nodes` (via `KnowledgeSourceRecord.updatedAt` / `KnowledgeNodeRecord.updatedAt`, matching the store’s `byUpdatedAtDesc` sort order; if an item is updated mid-walk its `updatedAt` increases and its old position vanishes — the insertion-point scan handles this identically to a deletion) and `GET /api/automation/runs` (via `AutomationRunLike.queuedAt`, descending order). `GET /api/automation/jobs` uses restart-from-0 fallback because `AutomationJobLike` exposes no timestamp field at the SDK boundary.
+- `@pellux/goodvibes-daemon-sdk` / `@pellux/goodvibes-sdk`: Added cursor-based pagination on 4 list endpoints: `GET /api/automation/jobs`, `GET /api/automation/runs`, `GET /api/knowledge/sources`, `GET /api/knowledge/nodes`. Pass `?limit=N&cursor=<opaque>` to activate; omit both params for the legacy array response (backward compatible). `GET /api/sessions` returns the session broker snapshot only (the integration helper is consumer-supplied and cannot be range-queried in daemon-sdk). New types: `PaginatedResponse<T>` (exported from `@pellux/goodvibes-daemon-sdk`). New helpers: `encodeCursor`, `decodeCursor`, `paginateItems`, `hasPaginationParams`. Paginated responses return `{ items, hasMore, nextCursor? }`; invalid cursors return HTTP 400 matching the existing error contract. `paginateItems` now accepts an optional `getCreatedAt` extractor: when a cursor's item has been deleted mid-walk, the stable timestamp is used to locate the insertion point instead of restarting from index 0. `paginateItems` also accepts a `PaginateItemsOptions` argument (with `descending` flag) for stores sorted newest-first. Insertion-point recovery is **active** on `GET /api/knowledge/sources` and `GET /api/knowledge/nodes` (via `KnowledgeSourceRecord.updatedAt` / `KnowledgeNodeRecord.updatedAt`, matching the store's `byUpdatedAtDesc` sort order; if an item is updated mid-walk its `updatedAt` increases and its old position vanishes, the insertion-point scan handles this identically to a deletion) and `GET /api/automation/runs` (via `AutomationRunLike.queuedAt`, descending order). `GET /api/automation/jobs` uses restart-from-0 fallback because `AutomationJobLike` exposes no timestamp field at the SDK boundary.
 - `@pellux/goodvibes-transport-realtime`: Added `ConnectorTransportEvent` discriminated union and
   `onTransportEvent` callback to `RuntimeEventConnectorOptions`. The connector now dispatches typed
   `TRANSPORT_CONNECTION_STATE`, `TRANSPORT_RECONNECT_ATTEMPT`, and `TRANSPORT_BACKPRESSURE` events
@@ -5473,7 +5438,7 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
 - `@pellux/goodvibes-errors`: Added `SDKErrorCode` string-literal union, `SDKErrorCodes` const object,
   `isErrorCode()` type guard, and `isKnownErrorCode()` helper for exhaustive consumer pattern-matching.
   The `code` field on `GoodVibesSdkError` is now typed as `SDKErrorCode | (string & {})` and is always
-  present (never `undefined`) — the SDK infers a canonical code from `status` or `category` when none
+  present (never `undefined`), the SDK infers a canonical code from `status` or `category` when none
   is explicitly supplied. HTTP status codes are mapped to specific codes (e.g. `429` → `RATE_LIMITED`,
   `401` → `AUTH_REQUIRED`, `404` → `NOT_FOUND`, `409` → `CONFLICT`). Existing callers that supply
   custom string codes are backward compatible.
@@ -5493,26 +5458,25 @@ Full deep-review audit of the SDK: 55 adversarially-verified findings fixed acro
   `getProjectConfigPath(): string | undefined` accessors so consumers no longer need to cast
   through `as unknown` to reach the private path fields.
 - `TtsConfig`: added `speed: number` field (playback speed multiplier, range 0.25–4.0;
-  default `1.0`; required — always present with its default). Mirrors the existing `speed` field
+  default `1.0`; required, always present with its default). Mirrors the existing `speed` field
   on `VoiceSynthesisRequest`. The config key `tts.speed` is now available in `ConfigKey`,
   `ConfigValue`, and `CONFIG_SCHEMA`. Values outside [0.25, 4.0] or non-finite values are rejected
   with `ConfigError` at `ConfigManager.set()` time.
 - `MemoryRegistry.reviewQueue()` / `MemoryApi.reviewQueue()`: added optional `scope` parameter
   (`'session' | 'project' | 'team'`) to filter the review queue at the registry level before
-  applying the `limit`. Fully backward compatible — existing calls with only `limit` are
+  applying the `limit`. Fully backward compatible, existing calls with only `limit` are
   unaffected. The daemon HTTP route `GET /api/memory/review-queue` also accepts the new
   `?scope=session|project|team` query parameter. A `scope` value that is present but not one of
   the three valid enum members returns HTTP 400.
 
 ### Changed
 - `@pellux/goodvibes-transport-realtime` `createWebSocketConnector`: Reconnect is now **only**
-  suppressed for genuine clean closes (`wasClean === true && code === 1000`). All other closes —
-  including code 1005 (No Status Received, synthesized by runtimes for abnormal drops with no close
-  frame) — schedule a reconnect as per RFC 6455 §7.4.1. The connector transitions directly to
+  suppressed for genuine clean closes (`wasClean === true && code === 1000`). All other closes, including code 1005 (No Status Received, synthesized by runtimes for abnormal drops with no close
+  frame), schedule a reconnect as per RFC 6455 §7.4.1. The connector transitions directly to
   `disconnected` only on deliberate clean server-side closes.
 
 ### Deprecated
-- `RuntimeEventConnectorOptions.onReconnect(attempt, delayMs)` — use `onReconnectAttempt(info)`
+- `RuntimeEventConnectorOptions.onReconnect(attempt, delayMs)`, use `onReconnectAttempt(info)`
   instead, which carries the same `attempt` and `delayMs` values plus `maxAttempts` and `reason`.
   The legacy `onReconnect` callback continues to fire alongside `onReconnectAttempt` for backward
   compatibility and will be removed in a future major release.

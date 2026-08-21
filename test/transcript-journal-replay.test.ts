@@ -2,7 +2,7 @@
  * Tests for folding a transcript journal back into a live conversation.
  *
  * Real file I/O in concurrency-safe temp directories, against a real
- * ConversationManager — the seam's whole job is what the conversation holds
+ * ConversationManager, the seam's whole job is what the conversation holds
  * afterwards, so a stub conversation would prove nothing.
  *
  * Scenarios covered:
@@ -126,7 +126,7 @@ describe('replayJournalIntoConversation', () => {
       persistSnapshot: () => { persistCalled = true; },
     });
 
-    // Nothing replayed — all records pre-date the snapshot timestamp.
+    // Nothing replayed, all records pre-date the snapshot timestamp.
     expect(result.replayed).toBe(0);
     expect(result.hadCorruptTail).toBe(false);
 
@@ -193,7 +193,7 @@ describe('replayJournalIntoConversation', () => {
       persistSnapshot: () => { persistCalled = true; },
     });
 
-    // Nothing replayed — version gate quarantined the file.
+    // Nothing replayed, version gate quarantined the file.
     expect(result.replayed).toBe(0);
     expect(result.hadCorruptTail).toBe(true);
 
@@ -397,7 +397,7 @@ describe('authoritative-record selection', () => {
     // (seq 0..2, earlier ts, STALE 10-message snapshots) are followed by a
     // fresh process's appends that restart at seq 0 (NEWER ts, CURRENT
     // 3-message snapshot). Sorting by seq alone leaves the stale seq-2 record
-    // last — recovery must instead pick the record with the newest ts.
+    // last, recovery must instead pick the record with the newest ts.
     const dir = join(journalPath, '..');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const header = JSON.stringify({

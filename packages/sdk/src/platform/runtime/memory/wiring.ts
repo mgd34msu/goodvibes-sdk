@@ -1,10 +1,10 @@
 /**
- * wiring.ts — daemon composition seam for the memory governance layer.
+ * wiring.ts, daemon composition seam for the memory governance layer.
  *
  * Builds the CacheRegistry, PauseController, and MemoryGovernor as one unit,
  * registers the known caches and the deferrable background jobs, wires ops
  * emission onto the runtime bus and the tripwire receipt onto disk, and (by
- * default — it is a safety feature the owner confirmed ON) starts the governor.
+ * default, it is a safety feature the owner confirmed ON) starts the governor.
  * Interactive/test compositions call this too but inject fake clocks/samplers.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -38,11 +38,11 @@ export interface MemoryGovernanceWiringOptions {
   /** Where the tripwire receipt is written so a supervisor sees the exit reason. */
   readonly receiptPath?: string | undefined;
   /**
-   * Graceful shutdown work run before a tripwire exit — the same session/store
+   * Graceful shutdown work run before a tripwire exit, the same session/store
    * snapshot + inhibitor-release path the daemon's signal handlers use.
    */
   readonly onTripwireShutdown?: ((receipt: MemoryTripwireReceipt) => Promise<void> | void) | undefined;
-  /** Default true — the governor is a safety feature and starts ON. */
+  /** Default true, the governor is a safety feature and starts ON. */
   readonly start?: boolean | undefined;
   /** Test injection for the governor's I/O (sampler, clock, gc, exit). */
   readonly deps?: Partial<Pick<MemoryGovernorDeps, 'sampler' | 'now' | 'gc' | 'exit' | 'resolveSystemRamMb'>> | undefined;
@@ -80,7 +80,7 @@ export function createMemoryGovernance(options: MemoryGovernanceWiringOptions): 
     writeReceipt: receiptPath
       ? (receipt): void => {
           try {
-            // A fresh install has no receipt directory yet — a bare write would
+            // A fresh install has no receipt directory yet, a bare write would
             // ENOENT and the tripwire's one forensic artifact would be lost.
             mkdirSync(dirname(receiptPath), { recursive: true });
             writeFileSync(receiptPath, JSON.stringify(receipt, null, 2), 'utf-8');
@@ -117,7 +117,7 @@ export interface DaemonMemoryGovernanceOptions {
  * every registered cache exposes a genuine retained-entry count and a trim that
  * actually reclaims (knowledge job-run history pruning, session broker GC +
  * bucket truncation). Caches with no reachable real adapter are NOT registered
- * — a no-op registration would make the governor's shed tiers theater and the
+ *, a no-op registration would make the governor's shed tiers theater and the
  * tripwire's "flush didn't help" note vacuous.
  */
 export function wireDaemonMemoryGovernance(options: DaemonMemoryGovernanceOptions): MemoryGovernanceHandles {

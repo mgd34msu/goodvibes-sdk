@@ -1,12 +1,12 @@
 /**
- * turn-anchors.ts — the session-scoped join key between the conversation
+ * turn-anchors.ts, the session-scoped join key between the conversation
  * and the workspace-checkpoint store, for message-anchored rewind.
  *
  * The unified rewind service next door (service.ts) anchors a rewind to a
  * `{ sessionId, turnId }`. Files-scope resolves that turnId against the
  * workspace checkpoints the turn engine already stamps with the same turnId.
  * Conversation-scope, however, needs to know HOW MANY conversation messages
- * existed at that turn boundary — a mapping the SDK's checkpoint store does not
+ * existed at that turn boundary, a mapping the SDK's checkpoint store does not
  * carry (turn checkpoints are not stamped with a conversation-message count).
  * This registry supplies exactly that mapping: at every TURN_COMPLETED a host
  * records the turnId together with the live `conversation.getMessageCount()`,
@@ -15,12 +15,12 @@
  *
  * Two layers, and a host chooses how far up it goes:
  *
- *   1. The registry — in-memory, keyed by sessionId, populated for the current
+ *   1. The registry, in-memory, keyed by sessionId, populated for the current
  *      process run. `recordTurnAnchor` / `getTurnAnchors` / `resolveTurnAnchor`
  *      / `clearTurnAnchors` are the whole of it, and they need nothing from
  *      disk. A host that stops here gets exactly the anchors this run recorded
  *      and never an invented boundary: an unrecorded turnId resolves to null.
- *   2. Cross-resume persistence — `persistTurnAnchors` mirrors the registry to
+ *   2. Cross-resume persistence, `persistTurnAnchors` mirrors the registry to
  *      a small per-session sidecar beside the session's JSONL
  *      (`<sessionsDir>/<sessionId>.anchors.json`) and `restoreTurnAnchors`
  *      reloads it, so message-anchored rewind behaves identically before and
@@ -38,13 +38,13 @@ import { join } from 'node:path';
 import type { SessionSurface } from '../runtime/session-surface.js';
 
 
-/** One recorded turn boundary — the rewind coordinator's per-turn anchor. */
+/** One recorded turn boundary, the rewind coordinator's per-turn anchor. */
 export interface TurnAnchor {
   /** The turn engine's turn id, shared with the workspace checkpoint's `turnId`. */
   readonly turnId: string;
   /** A short human label (the truncated user prompt) for the recent-turns picker. */
   readonly label: string;
-  /** `conversation.getMessageCount()` captured at this turn's completion — the conversation truncation boundary. */
+  /** `conversation.getMessageCount()` captured at this turn's completion, the conversation truncation boundary. */
   readonly messageCount: number;
   /** Wall-clock ms at capture, for ordering + age display. */
   readonly at: number;
@@ -99,7 +99,7 @@ export function clearTurnAnchors(sessionId: string): void {
 //
 // The registry is mirrored to a sidecar next to the session file.
 // The directory comes off the caller's SessionSurface (`surface.sessionsDir`),
-// the same handle the session JSONL itself is written through — so the sidecar
+// the same handle the session JSONL itself is written through, so the sidecar
 // and its session can never end up in different directories.
 const ANCHOR_SIDECAR_VERSION = 1;
 
@@ -198,7 +198,7 @@ export const ANCHOR_TMP_MAX_AGE_MS = 60 * 60 * 1000;
  * nothing about, and the window between reading a sidecar's content and
  * unlinking it is not atomic. Requiring the file to have been untouched for an
  * hour means a sidecar that some other instance is actively rewriting is never
- * a candidate, while genuine residue — whose writer is long gone — always is.
+ * a candidate, while genuine residue, whose writer is long gone, always is.
  * The sweep repeats, so the delay costs nothing.
  */
 export const ANCHOR_SIDECAR_SETTLE_MS = 60 * 60 * 1000;
@@ -225,7 +225,7 @@ export interface AnchorSidecarReapOptions {
  * nothing readable, and abandoned staging files.
  *
  * A sidecar survives when `<sessionsDir>/<sessionId>.jsonl` still exists AND
- * the sidecar itself parses into at least one usable anchor — content, not
+ * the sidecar itself parses into at least one usable anchor, content, not
  * mere existence, because a sidecar truncated by a crash restores nothing and
  * would otherwise sit there indefinitely looking like valid state. It also
  * survives while it is still fresh (see `ANCHOR_SIDECAR_SETTLE_MS`), which
@@ -276,7 +276,7 @@ export function reapOrphanedAnchorSidecars(
     if (sessionId.length === 0) continue;
     if (options.currentSessionId && sessionId === options.currentSessionId) continue;
 
-    // A sidecar written moments ago belongs to a writer that is still around —
+    // A sidecar written moments ago belongs to a writer that is still around,
     // possibly another instance whose session this process cannot see.
     let sidecarMtimeMs: number;
     try {
@@ -287,7 +287,7 @@ export function reapOrphanedAnchorSidecars(
     if (now - sidecarMtimeMs <= settleMs) continue;
 
     if (!existsSync(join(dir, `${sessionId}.jsonl`))) {
-      // The owning session is gone — this sidecar can never be used again.
+      // The owning session is gone, this sidecar can never be used again.
       if (unlinkAnchorFile(path)) reaped++;
       continue;
     }

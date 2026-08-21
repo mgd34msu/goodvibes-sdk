@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Phase-runner (see CHANGELOG 0.38.0) — runs one WorkItem through one Phase: spawn
+ * Phase-runner (see CHANGELOG 0.38.0), runs one WorkItem through one Phase: spawn
  * agent, await completion, verify claims, run gates, commit, cleanup.
  *
  * REUSES the hardened WRFC primitives verbatim (same functions WrfcController
@@ -14,7 +14,7 @@
  *
  * REALITY-WINS DIVERGENCE from the brief's design (c): WrfcController itself
  * (wrfc-controller.ts, verified) never calls AgentWorktree.create() for its
- * role agents — engineer/reviewer/fixer/integrator all run in the SAME
+ * role agents, engineer/reviewer/fixer/integrator all run in the SAME
  * shared `projectRoot` working directory; AgentWorktree is used ONLY for its
  * commitWorkingTree/merge/cleanup surface (merge/cleanup are safe no-ops
  * when no isolated worktree dir exists, which is always, today). There is no
@@ -23,7 +23,7 @@
  * fixed per AgentOrchestrator instance, not per-spawn), so a spawned agent
  * cannot actually be pointed at an isolated worktree directory without new
  * cross-cutting plumbing through AgentManager/AgentOrchestrator construction
- * — well beyond this module's boundary, and not something WrfcController
+ *, well beyond this module's boundary, and not something WrfcController
  * itself has either. This module therefore mirrors WrfcController's ACTUAL
  * (shared-directory) behavior rather than the brief's aspirational
  * per-item-isolated-worktree fan-out; true fan-out isolation is a valuable,
@@ -37,7 +37,7 @@
  *
  * - A DECLARED role template (reviewer/tester/verifier/qa/review/test) still
  *   triggers the rewrite whatever this module passes in, so review-kind phases
- *   must never be templated as one of those strings — use 'general' instead
+ *   must never be templated as one of those strings, use 'general' instead
  *   (see templateForPhase). That part is still load-bearing.
  * - The task-WORDING match (ROLE_ACTION_RE/ROLE_PREFIX_RE, e.g. "review the
  *   diff") no longer overrides the `dangerously_disable_wrfc: true` this module
@@ -68,13 +68,13 @@ import { classifyBookkeepingFailure } from './bookkeeping.js';
 import { mergeWorkItemUsage } from './types.js';
 import type { CommitExclusion, GateOutcome, Phase, PhaseCommitOutcome, PhaseResult, PriceProvenanceFn, WorkItem, WorkItemUsage, Workstream } from './types.js';
 
-/** Narrow structural pick — testable with stubs, mirrors AgentManagerLike (wrfc-config.ts). */
+/** Narrow structural pick, testable with stubs, mirrors AgentManagerLike (wrfc-config.ts). */
 export type PhaseRunnerAgentManagerLike = Pick<
   AgentManager,
   'spawn' | 'getStatus' | 'cancel' | 'registerCancellationSignal' | 'releaseCancellationSignal'
 >;
 
-/** Structural pick of AgentWorktree's surface — matches WrfcController's WrfcWorktreeOps injection seam exactly, so the same test doubles work for both. */
+/** Structural pick of AgentWorktree's surface, matches WrfcController's WrfcWorktreeOps injection seam exactly, so the same test doubles work for both. */
 export interface WrfcWorktreeOps {
   merge(agentId: string): Promise<boolean>;
   cleanup(agentId: string): Promise<void>;
@@ -86,7 +86,7 @@ export interface WrfcWorktreeOps {
  * The minimal surface of an item's IsolatedWorktree (worktree.ts) that the
  * phase-runner needs in `worktree` isolation mode: the on-disk `path` (used as
  * the spawned agent's working directory) and a scoped `commit` onto the item
- * branch. Notably NOT merge/cleanup — in worktree mode the item worktree
+ * branch. Notably NOT merge/cleanup, in worktree mode the item worktree
  * persists across the item's phases and the engine's sequential integration
  * lane owns the merge-back and cleanup, so a phase NEVER merges to base or
  * removes the worktree.
@@ -105,7 +105,7 @@ export interface PhaseRunnerDeps {
   readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
   readonly cancellation: CancellationRegistry;
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
-  /** Provenance for the same resolution priceUsage prices with — stamped onto the committed usage record at pricing time. */
+  /** Provenance for the same resolution priceUsage prices with, stamped onto the committed usage record at pricing time. */
   readonly priceProvenance?: PriceProvenanceFn | undefined;
   readonly skipClaimVerification?: boolean | undefined;
   /**
@@ -199,11 +199,11 @@ function usageFromRecord(
       if (priced !== null) {
         costUsd = priced;
         costState = 'priced';
-        // Same resolution instant as the dollars — never re-derived later.
+        // Same resolution instant as the dollars, never re-derived later.
         provenance = priceProvenance?.(record?.model) ?? null;
       }
     } catch {
-      // stays unpriced — never fabricate a cost from a throwing pricer.
+      // stays unpriced, never fabricate a cost from a throwing pricer.
     }
   }
   return {
@@ -242,7 +242,7 @@ async function evaluateGate(
     // verifies claims against that worktree path. BIG-1 fixed only the phantom
     // check; without this, gates (typecheck/lint/test) would run against the
     // shared projectRoot and never see the item's isolated changes. Absent
-    // (shared mode) ⇒ runWrfcGateChecks defaults cwd to projectRoot — unchanged.
+    // (shared mode) ⇒ runWrfcGateChecks defaults cwd to projectRoot, unchanged.
     ...(deps.itemWorktree ? { cwd: deps.itemWorktree.path } : {}),
   })];
 
@@ -254,7 +254,7 @@ async function evaluateGate(
 
   if (report.archetype === 'engineer' && !deps.skipClaimVerification) {
     // Worktree mode: the agent's files landed in the item's OWN worktree, not
-    // the shared projectRoot — verify claims (existence + `git diff`) against
+    // the shared projectRoot, verify claims (existence + `git diff`) against
     // that worktree path, or every real change would be falsely flagged as
     // phantom work (nothing to find at projectRoot).
     const verification = verifyEngineerClaims(report, deps.itemWorktree?.path ?? deps.projectRoot);
@@ -301,8 +301,8 @@ interface CommitPhaseWorkResult {
  * outcome HONESTLY rather than swallowing failures. The gate has already
  * decided the phase passed; this step only records the changes, so its result
  * is bookkeeping: a failure surfaces to the engine as a warning on a passed
- * item (or, for the narrow negating set — workspace corruption, see
- * bookkeeping.ts — as an item failure), never as a silent no-op that lets the
+ * item (or, for the narrow negating set, workspace corruption, see
+ * bookkeeping.ts, as an item failure), never as a silent no-op that lets the
  * fleet imply a commit happened when it did not.
  */
 async function commitPhaseWork(
@@ -322,13 +322,13 @@ async function commitPhaseWork(
   // Worktree mode: the item commits onto its own branch INSIDE its dedicated
   // worktree, which the engine created fresh (and therefore clean) at claim.
   // The launch-dirty snapshot is taken against the SHARED projectRoot, so it
-  // has nothing to say about a just-created worktree — a fresh worktree starts
+  // has nothing to say about a just-created worktree, a fresh worktree starts
   // clean, so its launch-dirty residue is trivially empty. Skip the residue
   // exclusion entirely and commit straight onto the item branch; NO merge to
   // base (the sequential integration lane owns that at item termination).
   if (deps.itemWorktree) {
     try {
-      const result = await deps.itemWorktree.commit(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
+      const result = await deps.itemWorktree.commit(`orchestration: ${item.title}, ${phase.kind} phase`, paths);
       const ignoredNote = result.skippedIgnored.length > 0
         ? `${result.skippedIgnored.length} ignored path${result.skippedIgnored.length === 1 ? '' : 's'} skipped`
         : undefined;
@@ -353,10 +353,10 @@ async function commitPhaseWork(
       if (excluded.length > 0) {
         exclusion = { excludedPaths: excluded, skipped: included.length === 0 };
         if (included.length === 0) {
-          // Every candidate path is untouched launch-dirty residue — an
+          // Every candidate path is untouched launch-dirty residue, an
           // honest "nothing this phase did needs committing", not a silent
           // no-op AND not a fallback to sweeping the whole working tree.
-          logger.info('orchestration phase-runner: scoped commit skipped — every candidate path is untouched launch-dirty residue', {
+          logger.info('orchestration phase-runner: scoped commit skipped, every candidate path is untouched launch-dirty residue', {
             itemId: item.id,
             phaseId: phase.id,
             excludedPaths: excluded,
@@ -374,13 +374,13 @@ async function commitPhaseWork(
   }
 
   try {
-    const result = await worktree.commitWorkingTree(`orchestration: ${item.title} — ${phase.kind} phase`, paths);
+    const result = await worktree.commitWorkingTree(`orchestration: ${item.title}, ${phase.kind} phase`, paths);
     await worktree.merge(agentId);
     const ignoredNote = result.skippedIgnored.length > 0
       ? `${result.skippedIgnored.length} ignored path${result.skippedIgnored.length === 1 ? '' : 's'} skipped`
       : undefined;
     if (result.hash === null) {
-      // A null hash is "nothing was staged" — an honest skip, not a landed commit.
+      // A null hash is "nothing was staged", an honest skip, not a landed commit.
       return { exclusion, commit: { status: 'skipped', reason: ignoredNote ? `nothing to stage (${ignoredNote})` : 'nothing to stage' } };
     }
     return {
@@ -392,7 +392,7 @@ async function commitPhaseWork(
     const negating = classifyBookkeepingFailure(error) === 'negating';
     // Non-fatal by default: the gate already passed, so the engine treats this
     // as a warning on a passed item. Only a NEGATING failure (workspace
-    // corruption — bookkeeping.ts) flips the item to failed.
+    // corruption, bookkeeping.ts) flips the item to failed.
     logger.warn('orchestration phase-runner: scoped commit/merge did not complete', {
       itemId: item.id, phaseId: phase.id, error: reason, negating,
     });

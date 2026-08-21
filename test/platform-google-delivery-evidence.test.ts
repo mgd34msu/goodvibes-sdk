@@ -1,5 +1,5 @@
 /**
- * PERMANENT REGRESSION GUARDS — do not weaken.
+ * PERMANENT REGRESSION GUARDS, do not weaken.
  *
  * Verification-email correlation gates on which address a message arrived at.
  * If that value can come from the `To:` header, an attacker who guesses an

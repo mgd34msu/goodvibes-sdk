@@ -7,7 +7,7 @@
  *
  * It was the first thing. `notices.send` ran, `records.record` then threw, the
  * intake threw, the sink released its claim, the cursor stayed below the
- * message, and the watcher fetched it again — and announced it again, on every
+ * message, and the watcher fetched it again, and announced it again, on every
  * pass, for as long as the store kept failing. Dedup could not suppress any of
  * it, because releasing the claim is exactly how the retry is enabled: the
  * guard against duplicate notices was the mechanism producing them.
@@ -77,7 +77,7 @@ function registryAt(dir: string): InboundExpectationRegistry {
  *
  * A pass that rejects is what releases the claim and leaves the cursor below
  * the message, so `pass()` swallowing the rejection and being called again IS
- * the redelivery. Nothing here simulates the duplicate — it is produced by the
+ * the redelivery. Nothing here simulates the duplicate, it is produced by the
  * same mechanism production uses.
  */
 function watcher(options: {
@@ -124,7 +124,7 @@ describe('a failing record write cannot produce a repeated announcement', () => 
     const registry = registryAt(dir);
     const rig = watcher({
       registry,
-      // ENOSPC, a read-only state directory — the store simply cannot write.
+      // ENOSPC, a read-only state directory, the store simply cannot write.
       records: {
         findByMessage: async () => null,
         record: async () => { throw new Error('ENOSPC: no space left on device'); },
@@ -146,7 +146,7 @@ describe('a failing record write cannot produce a repeated announcement', () => 
 
   test('the same failure with the notice SUPPRESSED behaves identically, so the count is about ordering', async () => {
     // A control. If the zero above came from the notice never being reached
-    // for some unrelated reason, this would be indistinguishable from it —
+    // for some unrelated reason, this would be indistinguishable from it,
     // here the notice is deliberately not attempted, and the failure shape is
     // the same, which is what makes the previous case's zero mean something.
     const dir = scratch();
@@ -183,7 +183,7 @@ describe('nothing after the send may throw, because a throw there re-announces',
         record: async (input: InboundMailRecordInput) => {
           writes += 1;
           // The FIRST write is the `pending` row, before the notice. The
-          // second is the one carrying the real outcome, after it — and only
+          // second is the one carrying the real outcome, after it, and only
           // that one fails here.
           if (writes >= 2) throw new Error('ENOSPC: no space left on device');
           return store.record(input);
@@ -196,7 +196,7 @@ describe('nothing after the send may throw, because a throw there re-announces',
 
     // The pass COMPLETED. If it had thrown, the sink would release the claim,
     // the cursor would stay put, and the next pass would announce the message
-    // a second time — the H1 defect reached through a different verb.
+    // a second time, the H1 defect reached through a different verb.
     expect(rig.failures).toEqual([]);
     expect(rig.sent).toHaveLength(1);
     // What was given up is stated rather than hidden: the record is still at

@@ -1,6 +1,6 @@
 /**
  * Compile-time pin: RuntimeFoundationClientsOptions.runtimeServices is the
- * NARROW published slice, not the entire internal RuntimeServices — an
+ * NARROW published slice, not the entire internal RuntimeServices, an
  * external fork that composes its own runtime services can construct the
  * options from a minimal object literal WITHOUT fabricating unexported
  * internals (memory governor, cache registry, pause controller, schedulers).
@@ -28,7 +28,7 @@ type Slice = bootstrap.RuntimeFoundationServicesSlice;
 
 declare function stub<T>(): T;
 
-// Exactly the published slice — no memoryGovernor / cacheRegistry /
+// Exactly the published slice, no memoryGovernor / cacheRegistry /
 // pauseController and none of the rest of the internal composition.
 const runtimeServices: Slice = {
   runtimeBus: stub<Slice['runtimeBus']>(),

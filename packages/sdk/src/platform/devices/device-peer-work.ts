@@ -1,11 +1,11 @@
 /**
- * device-peer-work.ts — the wire shape of one device capability request.
+ * device-peer-work.ts, the wire shape of one device capability request.
  *
  * A capability request rides the existing distributed-runtime peer transport as
  * work of type `device.capability`: the host enqueues it, the node pulls it,
  * runs it, and completes it. This module is the ONE definition of what goes on
- * the wire in each direction, so a host and a node written independently — in
- * different languages, on different platforms — agree without reading each
+ * the wire in each direction, so a host and a node written independently, in
+ * different languages, on different platforms, agree without reading each
  * other's code. That is what makes a native node a drop-in peer rather than a
  * second implementation to keep in sync.
  *
@@ -126,7 +126,7 @@ export function parseDeviceCapabilityWorkResult(payload: unknown): DeviceCapabil
 }
 
 /**
- * Encode capture bytes the way this contract carries them — the exact inverse
+ * Encode capture bytes the way this contract carries them, the exact inverse
  * of `decodeDeviceCapabilityMedia`.
  *
  * The node encodes a capture to reach the host; the host encodes the same bytes

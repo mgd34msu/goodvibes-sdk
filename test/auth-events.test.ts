@@ -6,12 +6,12 @@ import { resetMetrics } from '../packages/sdk/src/platform/runtime/metrics.js';
 import { trackDisposables } from './_helpers/disposables.ts';
 import { stopListenerTimers } from './_helpers/listener-teardown.ts';
 
-// These listeners are never start()ed — only `handleRequest` is exercised — so
+// These listeners are never start()ed, only `handleRequest` is exercised, so
 // `stop()` would early-return and leave their rate-limiter sweeps running.
 const disposables = trackDisposables();
 
 /**
- * Auth events — verifies that auth-related metric counters exist and
+ * Auth events, verifies that auth-related metric counters exist and
  * that the RuntimeMeter Counter instruments use the correct API.
  * Includes integration test driving the login path to assert counter wiring.
  */
@@ -77,7 +77,7 @@ describe('auth counter wiring — login path', () => {
     const configManager = new ConfigManager({ configDir: dir });
     // NOTE: `as unknown as` is used here to access the internal handleRequest
     // method without a public test hook. Any future signature change will surface at
-    // runtime rather than compile time — acceptable trade-off for this integration test.
+    // runtime rather than compile time, acceptable trade-off for this integration test.
     const listener = disposables.add(new HttpListener({ port: 0, userAuth, configManager }), stopListenerTimers) as unknown as {
       handleRequest: (req: Request) => Promise<Response>;
     };

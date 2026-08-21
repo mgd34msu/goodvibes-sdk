@@ -1,23 +1,23 @@
 /**
- * trust.ts — untrusted content can never write to the owner profile.
+ * trust.ts, untrusted content can never write to the owner profile.
  *
  * Three layers, all built on the EXISTING security modules. No parallel notion
  * of trust is introduced here and none of their logic is copied: this file
  * decides which questions to ask, `security/untrusted-content.ts` and
  * `security/content-taint.ts` answer them.
  *
- *   Layer 1 — authority. A write is refused unless the surface carries command
+ *   Layer 1, authority. A write is refused unless the surface carries command
  *     authority, i.e. unless it is `owner-direct`. `web-page`, `email`,
  *     `channel-message` and `document` are refused by construction.
  *
- *   Layer 2 — derivation. Layer 1 trusts the caller's claim about its own
+ *   Layer 2, derivation. Layer 1 trusts the caller's claim about its own
  *     surface; layer 2 does not. The proposed value and the quote are checked
  *     against the untrusted text actually read this turn. A page saying "the
  *     user's home address is 1 Attacker Way", read and then written back, fails
  *     here even with a forged `owner-direct` claim, because the value appears
  *     verbatim in the ledger's retained page text.
  *
- *   Layer 3 — a verbatim quote must exist. A fact learned from a page has no
+ *   Layer 3, a verbatim quote must exist. A fact learned from a page has no
  *     owner utterance to quote, so the requirement is itself a filter, and it is
  *     what makes "where did you get that" answerable later.
  *
@@ -56,7 +56,7 @@ export interface ProfileWriteAttempt {
    *
    * Checked because `appendProse` CREATES `## <section>` when no existing
    * heading matches, so an unchecked section is a second way for text lifted
-   * off a page to reach the file — as structure rather than as a claim, but
+   * off a page to reach the file, as structure rather than as a claim, but
    * reaching it all the same. Omitted for a mechanical field, which lands in a
    * section chosen by the field registry rather than by the caller.
    */
@@ -108,14 +108,14 @@ function noAuthority(action: string, authority: AuthoritySurface, verb: string):
  * The two passes exist because `findContentTaint` treats a field named in
  * `exactMatchFields` by exact containment and then skips the length checks for
  * it entirely. Listing a field there is therefore strictly WEAKER for long
- * values — a reworded postal address would clear exact containment and never
+ * values, a reworded postal address would clear exact containment and never
  * reach the span check. Running both passes means no value's only defence is
  * exact string equality, and no value is exempt from exact containment either.
  *
  *  - Pass 1 catches the long payloads: a postal address, a note, an instruction
  *    lifted from a page, including reworded and partly-quoted forms.
  *  - Pass 2 catches the short high-signal ones: an email address, a phone
- *    number, an agent alias — all under both the 8-word and 40-character
+ *    number, an agent alias, all under both the 8-word and 40-character
  *    thresholds, where the whole value IS the payload.
  */
 function findProfileTaint(
@@ -124,7 +124,7 @@ function findProfileTaint(
   section: string | undefined,
   ledger: UntrustedContentLedger,
 ): readonly TaintFinding[] {
-  // Pass 1 — length-based derivation, over a window one turn boundary wide.
+  // Pass 1, length-based derivation, over a window one turn boundary wide.
   //
   // NOT `taintSourcesThisTurn()`. The gateway starts a turn as the first
   // statement of `invokeGatewayMethodCall`, before dispatch, so a `profile.set`
@@ -149,7 +149,7 @@ function findProfileTaint(
     if (lengthBased.length > 0) return lengthBased;
   }
 
-  // Pass 2 — exact containment, over EVERYTHING retained.
+  // Pass 2, exact containment, over EVERYTHING retained.
   //
   // A value that appears verbatim inside something a stranger wrote is not a
   // coincidence however many turns ago it was read, and scoping this one to a
@@ -157,8 +157,8 @@ function findProfileTaint(
   // because it is exact: the fuzzy check above stays bounded so it cannot start
   // refusing ordinary work and get itself switched off.
   //
-  // A non-canonical section is included here too — a made-up heading lifted
-  // verbatim is the case pass 1's length floor cannot see — while a canonical
+  // A non-canonical section is included here too, a made-up heading lifted
+  // verbatim is the case pass 1's length floor cannot see, while a canonical
   // one is left out for the "Notes" reason above.
   const retained = ledger.taintSourcesRetained();
   if (retained.length === 0) return [];
@@ -182,7 +182,7 @@ function findProfileTaint(
  * refused whether or not anything untrusted was read.
  */
 export function evaluateProfileWrite(input: ProfileWriteAttempt): ProfileWriteDecision {
-  // Layer 1 — authority.
+  // Layer 1, authority.
   if (!surfaceHasCommandAuthority(input.authority)) {
     return refuse(
       `${noAuthority(describeTarget(input.fieldId), input.authority, 'record')} `
@@ -190,14 +190,14 @@ export function evaluateProfileWrite(input: ProfileWriteAttempt): ProfileWriteDe
     );
   }
 
-  // Layer 2 — derivation, which does not take the caller's word for layer 1.
+  // Layer 2, derivation, which does not take the caller's word for layer 1.
   const ledger = input.ledger ?? getProcessUntrustedContentLedger();
   const taint = findProfileTaint(input.value, input.said, input.section, ledger);
   if (taint.length > 0) {
     return refuse(describeContentTaint(describeTarget(input.fieldId), taint), taint);
   }
 
-  // Layer 3 — a verbatim quote must exist.
+  // Layer 3, a verbatim quote must exist.
   if (input.said.trim().length === 0) {
     return refuse(
       `Refused ${describeTarget(input.fieldId)}: a recorded fact must carry the words you said that `
@@ -218,7 +218,7 @@ export interface ProfileRemovalAttempt {
  * The gate on `forget` and `undo`.
  *
  * Removing a fact is a write. An injection that cannot ADD one could otherwise
- * still DELETE one — "forget the user's shipping address" is tampering and
+ * still DELETE one, "forget the user's shipping address" is tampering and
  * denial rather than exfiltration, but it is squarely inside what the
  * untrusted-content boundary exists to stop, and deleting `contact.email` would
  * be worse still because it is what consumers fall back to.

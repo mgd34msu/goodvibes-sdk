@@ -345,7 +345,7 @@ describe('--continue is a pure parse-time flag', () => {
 
 describe('-y / --yes bypass availability', () => {
   test('--yes flag is present on the flags object for bypass wiring', () => {
-    // --yes is a global flag — after the command is consumed, remaining tokens go to commandArgs
+    // --yes is a global flag, after the command is consumed, remaining tokens go to commandArgs
     // The key invariant: yes=true when the global flag is set before the command
     const global = parse(['--yes', 'sessions', 'list']);
     expect(global.flags.yes).toBe(true);

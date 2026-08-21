@@ -1,15 +1,15 @@
 /**
- * voice/wake — wake-word detection, SDK-owned and isomorphic.
+ * voice/wake, wake-word detection, SDK-owned and isomorphic.
  *
  * The engine runs unchanged in a daemon child process and in a browser tab: it
  * never imports an inference runtime, taking a session loader from the host
  * instead, and its front end is computed in code rather than downloaded.
  *
- * What lives here is behaviour every surface must share — the front end, the
+ * What lives here is behaviour every surface must share, the front end, the
  * buffering the published classifier was trained against, the patience and
  * cooldown rules, the restart policy, and the checksum-pinned provisioning with
  * its recovery housekeeping, plus the settings resolution and the listener that
- * drive them. Opening a device does NOT live here — that is per-surface, and
+ * drive them. Opening a device does NOT live here, that is per-surface, and
  * arrives as an opener from ../capture, which the listener consumes.
  */
 export {

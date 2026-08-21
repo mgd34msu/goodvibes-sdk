@@ -17,7 +17,7 @@
 // additionalProperties true/false/schema, and the JSON-value family (identity-
 // matched, since those schemas are self-referential and structural recursion
 // would never terminate). A construct it does not understand throws rather than
-// guessing — a loud failure, not a silent wrong render.
+// guessing, a loud failure, not a silent wrong render.
 
 import {
   JSON_ARRAY_SCHEMA,
@@ -36,7 +36,7 @@ export function renderType(schema: Record<string, unknown>): string {
   }
 
   // The self-referential JSON-value family renders as the fixed literals the
-  // existing file uses everywhere (verified against the committed entries) —
+  // existing file uses everywhere (verified against the committed entries),
   // identity-matched, because structural recursion would never terminate.
   if (schema === (JSON_VALUE_SCHEMA as unknown as Record<string, unknown>)) {
     return '({  } & { readonly [key: string]: JsonValue }) | boolean | null | number | readonly JsonValue[] | string';
@@ -57,7 +57,7 @@ export function renderType(schema: Record<string, unknown>): string {
     // (knowledge.ingest.connector: one of input/content/path). It is not a
     // union of independent shapes, so rendering the bare branches would throw
     // on a node with no `type`. Render it as the union of the base object with
-    // each branch's keys promoted to required — the honest TS equivalent.
+    // each branch's keys promoted to required, the honest TS equivalent.
     const isPureRequiredRefinement = (branch: Record<string, unknown>) =>
       Array.isArray(branch.required) && Object.keys(branch).length === 1;
     if (
@@ -142,7 +142,7 @@ export function renderType(schema: Record<string, unknown>): string {
       return `(${body} & { readonly [key: string]: unknown })`;
     }
     // A SCHEMA-valued additionalProperties is a record whose values all satisfy
-    // that schema — the shape the existing file already renders for
+    // that schema, the shape the existing file already renders for
     // JSON_OBJECT_SCHEMA and METADATA_SCHEMA above, generalized.
     if (
       schema.additionalProperties &&

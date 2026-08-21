@@ -18,7 +18,7 @@ function isMissingGitIdentityError(error: unknown): boolean {
 /**
  * Extract bare repo-relative conflict paths from a failed merge's message.
  *
- * The documented contract is PATHS — a conflict-resolution session seeds from
+ * The documented contract is PATHS, a conflict-resolution session seeds from
  * this list, so a `path:reason` entry is a product defect. Two real raw shapes
  * exist depending on the git/simple-git output pairing:
  *
@@ -26,11 +26,11 @@ function isMissingGitIdentityError(error: unknown): boolean {
  *     `CONFLICT (content): Merge conflict in <path>`
  *  2. simple-git's parsed merge-summary rendering (a merge rejection built
  *     with no explicit message stringifies its summary):
- *     `CONFLICTS: <path>:<reason>[, <path>:<reason>…]` — each entry is the
+ *     `CONFLICTS: <path>:<reason>[, <path>:<reason>…]`, each entry is the
  *     parsed conflict's `file:reason` pair (e.g. `shared.txt:content`), so
  *     the `:<reason>` suffix must be stripped to recover the bare path.
  *
- * This is the FALLBACK route only — the merge handler prefers the structured
+ * This is the FALLBACK route only, the merge handler prefers the structured
  * conflict entries the git library attaches to its rejection. Exported so
  * regression tests can pin both raw shapes as fixtures with no dependence on
  * the host's git version.
@@ -50,7 +50,7 @@ export function conflictPathsFromMergeOutput(message: string): string[] {
       continue;
     }
     if (!line.includes('CONFLICT')) continue;
-    // `CONFLICT (content): Merge conflict in <path>` -> `<path>` — the prose
+    // `CONFLICT (content): Merge conflict in <path>` -> `<path>`, the prose
     // ("Merge conflict in ...") used to leak through and downstream consumers
     // saw it as the "file".
     const path = line.replace(/^.*CONFLICT.*?:\s*/, '').replace(/^Merge conflict in\s+/, '').trim();
@@ -60,7 +60,7 @@ export function conflictPathsFromMergeOutput(message: string): string[] {
 }
 
 /**
- * GitService — Wraps simple-git with hook emission on all mutating operations.
+ * GitService, Wraps simple-git with hook emission on all mutating operations.
  *
  * Read-only operations (status, branch, log, diff, blame) do NOT emit hooks.
  * Mutating operations (commit, push, pull, merge, checkout, stash, worktreeAdd,
@@ -71,7 +71,7 @@ export class GitService {
    * The `simple-git` instance, built on first use rather than in the
    * constructor. `simple-git` is an optionalDependency, and a static import
    * plus a constructor-time `simpleGit(...)` put the specifier on the module
-   * graph of everything that reaches git integration — the daemon included —
+   * graph of everything that reaches git integration, the daemon included,
    * so an absent optional package removed the process instead of the feature
    * (see utils/optional-dependency.ts). The promise is memoised, so the
    * instance is still built exactly once per service, and every method here
@@ -144,7 +144,7 @@ export class GitService {
   }
 
   // ---------------------------------------------------------------------------
-  // Status & info (read-only — no hooks)
+  // Status & info (read-only, no hooks)
   // ---------------------------------------------------------------------------
 
   async status(): Promise<Awaited<ReturnType<SimpleGit['status']>>> {
@@ -181,8 +181,8 @@ export class GitService {
 
   /**
    * The FULL working-tree diff (optionally vs a ref), parsed into structured
-   * per-file/per-hunk form with no size cap — the diff-view serving path that
-   * replaces consumer-side raw-text truncation. Read-only — no hooks emitted.
+   * per-file/per-hunk form with no size cap, the diff-view serving path that
+   * replaces consumer-side raw-text truncation. Read-only, no hooks emitted.
    */
   async diffStructured(ref?: string): Promise<StructuredDiff> {
     return parseUnifiedDiff(await this.diff(ref));
@@ -195,7 +195,7 @@ export class GitService {
 
   /**
    * Get the diff for a single file, optionally from the staging area.
-   * Read-only — no hooks emitted.
+   * Read-only, no hooks emitted.
    */
   async diffFile(filePath: string, staged: boolean): Promise<string> {
     const args = staged
@@ -206,7 +206,7 @@ export class GitService {
 
   /**
    * Get the full diff between two refs, optionally scoped to specific files.
-   * Read-only — no hooks emitted.
+   * Read-only, no hooks emitted.
    */
   async diffBetween(before: string, after: string, files?: string[]): Promise<string> {
     const args = [before, after];
@@ -218,7 +218,7 @@ export class GitService {
 
   /**
    * Get the --stat summary between two refs.
-   * Read-only — no hooks emitted.
+   * Read-only, no hooks emitted.
    */
   async diffStat(before: string, after: string): Promise<string> {
     return (await this.git()).raw(['diff', '--stat', before, after]);
@@ -359,7 +359,7 @@ export class GitService {
       await this.firePost('merge', { branch, success: true });
       return { success: true };
     } catch (err) {
-      // simple-git throws on merge conflicts — only handle actual conflicts.
+      // simple-git throws on merge conflicts, only handle actual conflicts.
       // Prefer the machine-readable conflict entries simple-git parsed from
       // the merge output (GitResponseError.git.conflicts: {file, reason})
       // over scraping the message: the message's shape varies with the

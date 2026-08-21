@@ -1,7 +1,7 @@
 /**
  * payments-card-entry-surface.test.ts
  *
- * Card details are accepted only at a local terminal — the TUI and the agent's
+ * Card details are accepted only at a local terminal, the TUI and the agent's
  * own terminal.
  *
  * ── Attribution, because an earlier version of this file got it wrong ──────
@@ -12,11 +12,11 @@
  *   "and in the agent - basically ui should expose it in both."
  *
  * Asked directly afterwards about the webui, he ruled for full parity across
- * all three — choosing it with the exposure stated in front of him, over a
+ * all three, choosing it with the exposure stated in front of him, over a
  * settings-only alternative, and attaching the six browser-side conditions
  * asserted here. Those conditions are part of his ruling.
  *
- * COORDINATOR ruling — the refusal of card details on remote messaging
+ * COORDINATOR ruling, the refusal of card details on remote messaging
  * surfaces, and the reasoning that a card number typed into a hosted chat is
  * stored on that provider's servers, in history nobody here can erase, having
  * already traversed their infrastructure. Recorded as the coordinator's because
@@ -50,7 +50,7 @@ describe('entering and approving are different questions', () => {
 
   test('the webui may too, by the owner\'s direct ruling', () => {
     // Asked directly after he named only the TUI and the agent, he ruled for
-    // full parity — with the exposure stated in front of him, and with the
+    // full parity, with the exposure stated in front of him, and with the
     // browser-side conditions attached as part of the ruling.
     expect(mayEnterCardDetails('webui')).toBe(true);
     expect(mayOfferCardEntryFlow('webui')).toBe(true);
@@ -117,7 +117,7 @@ describe('card details arriving on a remote channel are refused', () => {
 
   test('THE REFUSAL DOES NOT ECHO THE DIGITS', () => {
     // The refusal is delivered over the same channel that stored the message.
-    // Quoting the value — even masked — would write it there a second time.
+    // Quoting the value, even masked, would write it there a second time.
     const decision = evaluateCardEntry({ surface: 'telegram', text: `card ${FIXTURE_PAN} exp 12/34` });
     const reply = decision.reason ?? '';
     expect(reply).not.toContain(FIXTURE_PAN);

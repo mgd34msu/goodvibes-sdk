@@ -35,16 +35,16 @@ export interface CompanionChatMessageAttachment extends ArtifactDescriptor {
 }
 
 /**
- * Why a message was superseded. A superseded message is NEVER deleted — it is
+ * Why a message was superseded. A superseded message is NEVER deleted, it is
  * retained in the message list and on disk, flagged so a client can tell the
  * active conversation chain from the retained history behind a regenerate or an
  * edit. This is the honest-lineage contract: regenerating a response or editing
  * a message forks the conversation and keeps the old branch retrievable, it does
  * not silently drop it.
  *
- * - `regenerate` — the assistant response was re-run; this is the previous
+ * - `regenerate`, the assistant response was re-run; this is the previous
  *   response (and any turns that followed it), kept as history.
- * - `edit` — the user edited an earlier message and the conversation branched
+ * - `edit`, the user edited an earlier message and the conversation branched
  *   from there; this is the original message (or a turn after the edit point),
  *   kept as history.
  */
@@ -76,7 +76,7 @@ export interface CompanionChatMessage {
   /**
    * Delivery honesty marker; absent = a normally delivered message.
    * - `'cancelled'` (assistant): the turn was stopped mid-generation
-   *   (companion.chat.turns.cancel, a session close, or daemon shutdown) —
+   *   (companion.chat.turns.cancel, a session close, or daemon shutdown),
    *   the content is the honest partial that existed when the stop landed.
    *   Clients must badge this so a partial never masquerades as a finished
    *   answer.
@@ -89,7 +89,7 @@ export interface CompanionChatMessage {
   /**
    * On an assistant message: the id of the user message this reply answers.
    * The transcript is append-ordered, so with queued sends a reply can land
-   * AFTER a later user message — this link lets clients pair prompt and
+   * AFTER a later user message, this link lets clients pair prompt and
    * reply honestly regardless of position.
    */
   readonly inReplyTo?: string | undefined;
@@ -184,7 +184,7 @@ export interface RegenerateCompanionChatMessageOutput {
   readonly sessionId: string;
   /** The assistant message id whose turn was re-run (now superseded, still retrievable). */
   readonly regeneratedFrom: string;
-  /** Every message id superseded by this regenerate — retained history, never deleted. */
+  /** Every message id superseded by this regenerate, retained history, never deleted. */
   readonly supersededMessageIds: readonly string[];
   /** True when a new turn was started to produce the replacement response. */
   readonly turnStarted: boolean;
@@ -205,7 +205,7 @@ export interface EditCompanionChatMessageOutput {
   readonly editedFrom: string;
   /** The id of the new user message carrying the edited content. */
   readonly messageId: string;
-  /** Every message id superseded by this edit — retained history, never deleted. */
+  /** Every message id superseded by this edit, retained history, never deleted. */
   readonly supersededMessageIds: readonly string[];
   /** True when a new turn was started to answer the edited message. */
   readonly turnStarted: boolean;
@@ -216,7 +216,7 @@ export interface CancelCompanionChatTurnInput {
    * Optional guard: when provided and it is NOT the currently active turn,
    * the cancel is refused (409 TURN_MISMATCH) instead of cancelling a newer
    * turn a stale stop click raced against. Omitted, THE active turn for the
-   * session is cancelled — required for stops issued before the client has
+   * session is cancelled, required for stops issued before the client has
    * received `turn.started` (which is what delivers the turn id).
    */
   readonly turnId?: string | undefined;
@@ -235,7 +235,7 @@ export interface CancelCompanionChatTurnOutput {
   readonly sessionId: string;
   readonly turnId: string;
   readonly cancelled: true;
-  /** True when this turn had already been cancelled — repeat cancels are idempotent. */
+  /** True when this turn had already been cancelled, repeat cancels are idempotent. */
   readonly alreadyCancelled?: boolean | undefined;
   /**
    * True when the non-empty partial reply was persisted by the time this
@@ -306,7 +306,7 @@ export type CompanionChatTurnStoppedBy = 'user' | 'session-closed' | 'shutdown';
 
 /**
  * Terminal event for a cancelled turn. Emitted to EVERY subscriber of the
- * session's event stream — this is what makes a stop issued from one client
+ * session's event stream, this is what makes a stop issued from one client
  * converge on all others (a phone that stops a turn ends the spinner on the
  * desktop too). Exactly one terminal event ends a turn: `turn.completed`,
  * `turn.error`, or this. Any `turn.tool_call` without a matching
@@ -323,7 +323,7 @@ export interface CompanionChatTurnCancelledEvent {
   /** Present only when a partial was persisted. */
   readonly assistantMessageId?: string | undefined;
   /**
-   * Present only when a partial was persisted — same envelope shape and keys
+   * Present only when a partial was persisted, same envelope shape and keys
    * as `turn.completed`, so clients render the partial through the exact code
    * path that renders a completed reply.
    */

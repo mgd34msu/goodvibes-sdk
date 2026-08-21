@@ -7,7 +7,7 @@
  * would index the wrong tree. That index holds a debounced 5s flush timer.
  *
  * `registerAllTools` hands the index back to its caller, and the orchestrator
- * threw the return value away — so the only remaining references lived inside
+ * threw the return value away, so the only remaining references lived inside
  * the tool closures of a cached registry. Nothing could flush it, nothing could
  * cancel its timer, and dropping the registry (a channel plugin changing the
  * registry version, or the graph being disposed) simply orphaned it.
@@ -28,7 +28,7 @@ import { createRuntimeServices, type RuntimeServices } from '../packages/sdk/src
 import type { ProjectIndex } from '../packages/sdk/src/platform/state/project-index.ts';
 
 /**
- * `getFullRegistry(cwd)` is private — it is reached from `execute()` with a
+ * `getFullRegistry(cwd)` is private, it is reached from `execute()` with a
  * record's workingDirectory, and standing up a full agent run to observe an
  * object-ownership property would measure ten other things at once. Other tests
  * in this suite reach internals the same way (see auth-events.test.ts).
@@ -77,8 +77,8 @@ beforeAll(() => {
   ownedIndex?.upsertFile('src/example.ts', 120);
   flushTimerBeforeDispose = (ownedIndex as unknown as IndexInternals | undefined)?.flushTimer;
 
-  // The SHARED index — the one the composition root owns and the orchestrator
-  // only borrows — gets a pending flush too, so the next assertion can show
+  // The SHARED index, the one the composition root owns and the orchestrator
+  // only borrows, gets a pending flush too, so the next assertion can show
   // dispose() left it alone instead of reaching past its own property.
   const sharedIndex = orchestrator.toolDeps!.projectIndex;
   sharedIndexRef = sharedIndex;

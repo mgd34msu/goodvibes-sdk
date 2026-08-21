@@ -81,7 +81,7 @@ import {
 } from '../agents/turn-knowledge-injection.js';
 import type { OrchestratorUsageTotals } from './orchestrator-usage.js';
 
-/** Minimal interface for hook dispatch — allows any hook dispatcher implementation */
+/** Minimal interface for hook dispatch, allows any hook dispatcher implementation */
 interface HookDispatcherLike {
   fire(event: HookEvent): Promise<HookResult>;
 }
@@ -159,7 +159,7 @@ export class Orchestrator {
   public thinkingFrame = 0;
   public usage: OrchestratorUsageTotals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
   /**
-   * Input tokens from the most recent LLM response (incl. cache read/write) —
+   * Input tokens from the most recent LLM response (incl. cache read/write),
    * current context-window usage; 0 before the first response.
    */
   public lastInputTokens = 0;
@@ -208,7 +208,7 @@ export class Orchestrator {
   /** True when the turn failed (set in catch; read in finally for markComplete vs markFailed). */
   private _turnFailed = false;
 
-  /** Event replay queue — ensures model acknowledges significant events */
+  /** Event replay queue, ensures model acknowledges significant events */
   private readonly replayQueue: EventReplayQueue;
 
   /** Cleanup function returned by the active replay queue attachment. */
@@ -247,7 +247,7 @@ export class Orchestrator {
   private hookDispatcher: HookDispatcherLike | null;
 
   /**
-   * Per-turn passive-injection state for the MAIN interactive session —
+   * Per-turn passive-injection state for the MAIN interactive session,
    * see core/orchestrator-turn-loop.ts for the retrieval/budget wiring that reads and
    * mutates these. `turnKnowledgeIdsAlreadySurfaced` has no spawn-time baseline (unlike
    * an AgentRecord's `knowledgeInjections`) so it starts empty and grows monotonically
@@ -408,7 +408,7 @@ export class Orchestrator {
 
   /**
    * Bounded ring of per-turn passive-injection honesty records for the
-   * MAIN interactive session — the main-session counterpart to `AgentRecord.turnInjections`
+   * MAIN interactive session, the main-session counterpart to `AgentRecord.turnInjections`
    * on the agent path. There is no AgentRecord for the primary conversation, so this is the exact
    * accessor a `/recall`-style renderer should read as the main-session default when no
    * agent id is given. See agents/turn-knowledge-injection.ts for the record shape and
@@ -542,7 +542,7 @@ export class Orchestrator {
       return;
     }
 
-    // Set the original task on the first user message (idempotent — subsequent calls are no-ops)
+    // Set the original task on the first user message (idempotent, subsequent calls are no-ops)
     getSessionLineageTracker(this.coreServices, this.ownedSessionLineageTracker).setOriginalTask(text.slice(0, 200));
 
     await this.runTurn(text, content, options);
@@ -591,7 +591,7 @@ export class Orchestrator {
     this.streamingOutputTokens = 0;
     this.abortController = new AbortController();
     // animInterval is always (re)started on every think call to reset the frame
-    // counter and ensure a fresh animation cycle — even if already running.
+    // counter and ensure a fresh animation cycle, even if already running.
     if (this.animInterval) clearInterval(this.animInterval);
     this.animInterval = setInterval(() => {
       this.thinkingFrame++;
@@ -626,7 +626,7 @@ export class Orchestrator {
     // deliberately does not. Here rather than in handleUserInput so a message
     // queued mid-thinking gets its own turn, and ahead of the config and
     // provider lookups because a turn the owner started is his whether or not
-    // this runtime can resolve a model for it — a boundary that depends on
+    // this runtime can resolve a model for it, a boundary that depends on
     // unrelated resolution succeeding silently stops moving when it fails.
     // Reasoning and classification: security/turn-boundary.ts.
     startTurnForOwnerInput(options?.origin);
@@ -635,7 +635,7 @@ export class Orchestrator {
     const configManager = requireConfigManager(this.coreServices);
     const providerRegistry = requireProviderRegistry(this.coreServices);
 
-    // --- Phase 1: Preflight — idempotency, event emission, plan injection ---
+    // --- Phase 1: Preflight, idempotency, event emission, plan injection ---
     const preflight = this.runTurnPreflight(text, content, options, providerRegistry);
     if (!preflight) return; // duplicate in-flight turn was rejected and reported
     const { submissionKey, turnId, preTurnPlan } = preflight;
@@ -682,7 +682,7 @@ export class Orchestrator {
 
     if (submissionCheck.status === 'in-flight') {
       const reason = 'Duplicate turn submission rejected because an equivalent turn is already in flight.';
-      logger.warn('Orchestrator: duplicate turn submission detected (in-flight) — rejecting', {
+      logger.warn('Orchestrator: duplicate turn submission detected (in-flight), rejecting', {
         sessionId: this.sessionId,
         submissionKey,
       });
@@ -702,7 +702,7 @@ export class Orchestrator {
       this.currentSubmissionKey = null;
       return null;
     }
-    // 'duplicate' (completed/failed) — allow re-run (user sent same text intentionally).
+    // 'duplicate' (completed/failed), allow re-run (user sent same text intentionally).
     // We just let it proceed; the prior record will be overwritten.
 
     if (this.runtimeBus) {
@@ -877,7 +877,7 @@ export class Orchestrator {
     });
     this.conversation.addSystemMessage(msg);
     this.requestRender();
-    // Graceful degradation — suggest alternative when provider fails non-transiently
+    // Graceful degradation, suggest alternative when provider fails non-transiently
     const autoSwitch = configManager.get('behavior.suggestAlternativeOnProviderFail') as boolean;
     if (autoSwitch && isNonTransientProviderFailure(err)) {
       const currentModel = providerRegistry.getCurrentModel();
@@ -935,7 +935,7 @@ export class Orchestrator {
     // Inject unacknowledged events as system messages, then acknowledge them:
     // injection IS delivery, so each event reaches the conversation exactly
     // once (previously nothing ever acknowledged, so every event re-injected
-    // maxReplays times with escalating [URGENT] tags — noise turns after the
+    // maxReplays times with escalating [URGENT] tags, noise turns after the
     // agent had already finished).
     const eventsToReplay = this.replayQueue.onTurnComplete();
     if (eventsToReplay.length > 0) {
@@ -1017,7 +1017,7 @@ export class Orchestrator {
    * Returns `true` when the GC-ORCH-015 reconciliation feature is active.
    *
    * Defaults to `true` (flag `defaultState: 'enabled'`) when no flag manager
-   * has been wired in — safe for tests that omit the optional constructor arg.
+   * has been wired in, safe for tests that omit the optional constructor arg.
    */
   /** The per-turn flag reads, and their differing defaults: ./orchestrator-turn-flags.ts. */
   private get turnFlags(): TurnFlagSources { return turnFlagSources(this.flagManager, this.coreServices); }
@@ -1091,7 +1091,7 @@ export class Orchestrator {
     try {
       model = this.coreServices.providerRegistry?.getCurrentModel()?.registryKey ?? 'unknown';
     } catch {
-      // No configured provider (e.g. a bare test harness) — record under 'unknown'.
+      // No configured provider (e.g. a bare test harness), record under 'unknown'.
     }
     toolFormatTelemetry.observeToolResults(model, calls, results);
     return results;

@@ -84,7 +84,7 @@ export const GOODVIBES_RUNTIME_CAPABILITIES: readonly GoodVibesRuntimeCapability
     entrypoints: GOODVIBES_CLIENT_SAFE_ENTRYPOINTS,
     surfaces: ['client', 'edge', 'mobile'],
     requirements: ['fetch', 'websocket'],
-    // Display-only patterns — not glob patterns for resolution; document the npm package family.
+    // Display-only patterns, not glob patterns for resolution; document the npm package family.
     dependencyFamilies: [
       '@pellux/goodvibes-transport-*',
       '@pellux/goodvibes-operator-sdk',

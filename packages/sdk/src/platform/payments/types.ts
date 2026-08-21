@@ -1,5 +1,5 @@
 /**
- * types.ts — the vocabulary of the payment capability.
+ * types.ts, the vocabulary of the payment capability.
  *
  * Two things in here are load-bearing rather than descriptive, and both exist to
  * make a class of mistake impossible instead of merely discouraged:
@@ -13,7 +13,7 @@
  *
  *  - `CommandAuthorityChannel` has no `'email'` member. Approval and veto answers
  *    arrive over the TUI, the agent terminal, or a channel like Telegram, and
- *    never over email — permanently. Expressing that as a union means routing a
+ *    never over email, permanently. Expressing that as a union means routing a
  *    payment prompt to email does not typecheck.
  *
  * Money is integer minor units everywhere. There is no floating-point arithmetic
@@ -67,8 +67,8 @@ export function unsafeOwnerSuppliedTextForTests(value: string): OwnerSuppliedTex
  * Surfaces that may deliver a payment prompt and accept its answer.
  *
  * Email is not a member and must never become one. It is already structurally
- * absent from the platform — not a `ChannelSurface`, not a `SurfaceKind`, no
- * delivery strategy — and this union is the second lock. See docs/payments.md
+ * absent from the platform, not a `ChannelSurface`, not a `SurfaceKind`, no
+ * delivery strategy, and this union is the second lock. See docs/payments.md
  * §8.2.
  */
 export type CommandAuthorityChannel = 'tui' | 'agent-terminal' | 'telegram';
@@ -87,14 +87,14 @@ export function parseCommandAuthorityChannel(raw: string): CommandAuthorityChann
   return COMMAND_AUTHORITY_CHANNELS.includes(value) ? (value as CommandAuthorityChannel) : null;
 }
 
-/** Ordinal against what the checkout actually offers — never a delivery-day promise. */
+/** Ordinal against what the checkout actually offers, never a delivery-day promise. */
 export type ShippingTier = 'normal' | 'fast' | 'fastest';
 
 export const SHIPPING_TIERS: readonly ShippingTier[] = ['normal', 'fast', 'fastest'];
 
 /** One delivery option as the checkout presented it. */
 export interface ShippingOption {
-  /** The checkout's own label, retained for the audit record only — never rendered in a prompt. */
+  /** The checkout's own label, retained for the audit record only, never rendered in a prompt. */
   readonly rawLabel: string;
   readonly costMinorUnits: MinorUnits;
 }

@@ -104,17 +104,17 @@ function loadConventions(workingDirectory: string): string | null {
   }
 }
 
-const AUTONOMOUS_OPENING = 'You are an autonomous agent in GoodVibes. Complete your task fully. No human is monitoring you — never ask questions, never wait for guidance. If something is ambiguous, make the best choice and continue.';
+const AUTONOMOUS_OPENING = 'You are an autonomous agent in GoodVibes. Complete your task fully. No human is monitoring you, never ask questions, never wait for guidance. If something is ambiguous, make the best choice and continue.';
 
 /**
  * The opening for a reply to a person.
  *
  * The autonomous opening is false here in a way that shows: a human IS
- * monitoring this run — they sent a message and are waiting on their phone for
+ * monitoring this run, they sent a message and are waiting on their phone for
  * the answer. Telling the model otherwise is part of what produced a filed
  * report instead of a reply.
  */
-const CONVERSATIONAL_OPENING = 'You are GoodVibes, replying to a person who just messaged you. They are waiting for your answer, so answer them directly. If you need something from them to answer well, ask for it — this is a conversation, not a job.';
+const CONVERSATIONAL_OPENING = 'You are GoodVibes, replying to a person who just messaged you. They are waiting for your answer, so answer them directly. If you need something from them to answer well, ask for it, this is a conversation, not a job.';
 
 /** The completion-report contract every working agent owes the WRFC controller. */
 const REPORT_OUTPUT_SECTION = `## Output
@@ -192,7 +192,7 @@ The report format depends on your role:
  * What a conversational spawn is asked for instead.
  *
  * The completion report is a contract with the WRFC controller, and a
- * conversational run has no controller to hand it to — so asking for one
+ * conversational run has no controller to hand it to, so asking for one
  * produced pure paperwork. "Hey, are you there?" came back to the owner's
  * phone as a filled-in form: a Summary heading, `Changes: None`, `Decisions:`,
  * `Issues:`, `Uncertainties:`. The channel boundary strips that shape as a
@@ -203,11 +203,11 @@ const CONVERSATIONAL_OUTPUT_SECTION = `## Output
 You are writing a message to a person, most likely read on a phone.
 
 - Answer in plain sentences. Lead with the answer.
-- No completion report, no JSON block, and no report sections — no "Summary:",
+- No completion report, no JSON block, and no report sections, no "Summary:",
   no "Changes:", no "Decisions:", no "Issues:", no "Uncertainties:". Those are
   internal machinery and mean nothing to the person reading this.
 - No headings, no status lines, no restating the question, no sign-off.
-- Say what is true, at whatever length that takes — usually a sentence or two.
+- Say what is true, at whatever length that takes, usually a sentence or two.
   Brevity is not the goal; not padding is.
 - If you have genuinely nothing to say, say so in a sentence rather than
   filling in a form.`;
@@ -241,7 +241,7 @@ export function buildOrchestratorSystemPrompt(
 
   const toolLines = record.tools
     .filter(t => t !== 'agent')
-    .map(t => toolDescriptions[t] ? `- ${t} — ${toolDescriptions[t]}` : `- ${t}`)
+    .map(t => toolDescriptions[t] ? `- ${t}, ${toolDescriptions[t]}` : `- ${t}`)
     .join('\n');
 
   const toolNames = record.tools.filter(t => t !== 'agent').join(', ');
@@ -297,7 +297,7 @@ ${conversational ? `${CONVERSATIONAL_OUTPUT_SECTION}\n\n${CONVERSATIONAL_DIAGNOS
   // role descriptions above and a project's own archetype file can end with
   // "Your final message MUST include a structured EngineerReport JSON block".
   // On a conversational run that instruction is the one thing that must not be
-  // followed, and it arrives AFTER the output section — so the override goes
+  // followed, and it arrives AFTER the output section, so the override goes
   // after it too, where it is the last word on the subject.
   if (conversational) {
     parts.push('## Reply style\nThis run is a reply to a person, not a work deliverable. Any instruction above to produce a completion report, a JSON report block, or Summary/Changes/Decisions/Issues/Uncertainties sections does not apply here. Write the answer as an ordinary message.');
@@ -417,8 +417,8 @@ export function buildLayeredOrchestratorSystemPrompt(
  * Append the owner profile's OPEN tier to a system prompt, if there is one.
  *
  * Lives here because this file is where a system prompt is assembled, and it is
- * reached from both per-turn composers — the main conversation loop's
- * (`core/orchestrator-turn-loop.ts`) and the agent runner's — so the wording
+ * reached from both per-turn composers, the main conversation loop's
+ * (`core/orchestrator-turn-loop.ts`) and the agent runner's, so the wording
  * exists once and the two surfaces cannot drift.
  *
  * Two invariants the callers must keep, both of which cost real prompt tokens
@@ -432,8 +432,8 @@ export function buildLayeredOrchestratorSystemPrompt(
  *    deliberately no "profile unavailable" placeholder: that would put a file
  *    path in front of the model on every single turn and buy nothing.
  *
- * The CLOSED tier — his name, contact details, home address, everything
- * commercial, and the People / Places / Work / Notes sections — is never
+ * The CLOSED tier, his name, contact details, home address, everything
+ * commercial, and the People / Places / Work / Notes sections, is never
  * injected by this or any other path. See docs/owner-profile.md §11.2.
  */
 export function withOpenTierProfileBlock(base: string): string {

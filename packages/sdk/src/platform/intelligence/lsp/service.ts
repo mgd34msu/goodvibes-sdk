@@ -40,7 +40,7 @@ function resolveCommand(command: string, workingDirectory: string): string {
   // Try system PATH
   const system = Bun.which(command);
   if (system) return system;
-  // Return as-is — spawn will fail with a clear error
+  // Return as-is, spawn will fail with a clear error
   return command;
 }
 

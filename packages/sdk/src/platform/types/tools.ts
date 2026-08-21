@@ -37,8 +37,8 @@ export interface ToolCall {
  * Structured denial detail for a tool call the permission layer blocked.
  *
  * Rides on the failed ToolResult so the ASKING agent receives machine-readable
- * denial data scoped to that exact call — never a hung promise and never a bare
- * throw — and can continue and report honestly instead of parsing an error
+ * denial data scoped to that exact call, never a hung promise and never a bare
+ * throw, and can continue and report honestly instead of parsing an error
  * string. `reason` is the permission layer's reason code (see
  * PermissionDecisionReasonCode, e.g. 'user_denied' / 'config_deny') and `scope`
  * is the layer that produced the decision (see PermissionDecisionSource, e.g.
@@ -68,7 +68,7 @@ export interface ToolResult {
   denial?: ToolDenial | undefined;
   /**
    * True when this specific call was cancelled by the user mid-flight (per-call
-   * cooperative cancellation — NOT a whole-turn abort). The turn continues:
+   * cooperative cancellation, NOT a whole-turn abort). The turn continues:
    * the model sees this structured result and adapts. `error` carries the
    * human-readable "cancelled by user"; partial `output` is preserved when the
    * tool produced any before stopping.
@@ -82,7 +82,7 @@ export interface ToolResult {
  * `signal` is ADDITIVE: it was not present before, and every
  * existing tool implementation that declares `execute(args)` with a single
  * parameter remains a valid implementation of this interface (structural
- * typing — an unused trailing optional parameter is simply never read). Only
+ * typing, an unused trailing optional parameter is simply never read). Only
  * tools that opt in (exec, fetch) read it to propagate cooperative
  * cancellation into a spawned child process or an in-flight request.
  */
@@ -93,6 +93,6 @@ export interface ToolExecuteOptions {
 /** A registered tool with its definition and executor. */
 export interface Tool {
   definition: ToolDefinition;
-  /** Tools return a result without callId — the registry injects callId when wrapping. */
+  /** Tools return a result without callId, the registry injects callId when wrapping. */
   execute(args: Record<string, unknown>, opts?: ToolExecuteOptions): Promise<Omit<ToolResult, 'callId'>>;
 }

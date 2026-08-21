@@ -3,21 +3,21 @@
  *
  * Review finding: `fleet.list`'s paginateItems call sorted nodes by
  * `id` but handed `startedAt` to paginateItems as the deleted-cursor recovery
- * key WITHOUT `{ descending }` matching that sort — the recovery key and the
+ * key WITHOUT `{ descending }` matching that sort, the recovery key and the
  * array's actual order disagreed, so once a process is gc'd between page
  * fetches, the createdAt-based recovery walk (which assumes the array is
  * ordered by the field it's given) could resume at the wrong index: repeating
  * already-returned nodes or skipping unseen ones. The fix (routes/fleet.ts,
  * createFleetListHandler) sorts by startedAt DESC with an id tiebreak and
  * hands paginateItems that SAME startedAt extractor + `{ descending: true }`
- * — mirroring routes/session-search.ts's sortSessions-then-paginateItems
+ *, mirroring routes/session-search.ts's sortSessions-then-paginateItems
  * pattern (updatedAt desc, id asc tiebreak, `getCreatedAt: updatedAt`,
  * `{ descending: true }`).
  *
  * These tests drive `createFleetListHandler` directly against a fake
  * `FleetQueryOnlyRegistry` (the exact structural dependency the handler
  * declares) so a "process gc'd between pages" is just mutating the fake
- * registry's backing array between two handler calls — no real daemon, no
+ * registry's backing array between two handler calls, no real daemon, no
  * real process spawn needed.
  */
 import { describe, expect, test } from 'bun:test';
@@ -51,7 +51,7 @@ function node(id: string, startedAt: number | undefined): ProcessNode {
   };
 }
 
-/** A fake ProcessRegistry whose `query()` reads a mutable backing array — lets a test "gc" a node between two handler calls. */
+/** A fake ProcessRegistry whose `query()` reads a mutable backing array, lets a test "gc" a node between two handler calls. */
 function fakeRegistry(nodes: ProcessNode[]): FleetQueryOnlyRegistry {
   return {
     query(_filter?: FleetQueryFilter): FleetSnapshot {
@@ -79,7 +79,7 @@ async function callFleetList(registry: FleetQueryOnlyRegistry, body: Record<stri
 describe('fleet.list pagination — sort key and recovery key must agree (Finding 3)', () => {
   test('sorts newest-first by startedAt (not alphabetically by id)', async () => {
     // ids deliberately scrambled vs startedAt order, so an id-sorted array
-    // would disagree with a startedAt-sorted array — proves which key is
+    // would disagree with a startedAt-sorted array, proves which key is
     // actually driving the order.
     const nodes = [
       node('zebra', 500),
@@ -115,7 +115,7 @@ describe('fleet.list pagination — sort key and recovery key must agree (Findin
     expect(page1.nextCursor).toBeDefined();
 
     // Simulate the cursor's own node (apple, startedAt=400) being gc'd
-    // between the two page fetches — the exact scenario the finding
+    // between the two page fetches, the exact scenario the finding
     // describes ("a process is gc'd between pages").
     backing.splice(backing.findIndex((n) => n.id === 'apple'), 1);
 

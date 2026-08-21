@@ -1,5 +1,5 @@
 /**
- * Crash capture — the last durable trace a surface writes before an uncaught
+ * Crash capture, the last durable trace a surface writes before an uncaught
  * fault takes the process down.
  *
  * Why this exists: an agent process died on an uncaught exception and the
@@ -10,7 +10,7 @@
  *
  * What lands: one JSON record per fault carrying the stack, the surface
  * version, the pid, the session that was active at the moment of the fault,
- * and the timestamp — the five fields forensics actually needed and did not
+ * and the timestamp, the five fields forensics actually needed and did not
  * have.
  *
  * Persisted-state doctrine (bounded / content-validated / disclosed):
@@ -170,7 +170,7 @@ export function readCrashRecords(filePath: string): CrashRecord[] {
 /**
  * Append one crash record, enforcing the count cap.
  *
- * Fast path is a plain O_APPEND write — a single small line, which is the
+ * Fast path is a plain O_APPEND write, a single small line, which is the
  * cheapest thing that can land from a dying process. The rewrite that enforces
  * {@link CRASH_LOG_MAX_RECORDS} only runs once the file has actually grown
  * past the cap, and goes through `writeFileAtomic` so a crash during the

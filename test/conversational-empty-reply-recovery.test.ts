@@ -6,7 +6,7 @@
  *
  * So a run that owes a person an answer and produces nothing gets one more
  * attempt, and then says plainly that no reply was generated. A background run
- * that produces nothing notifies nobody — no bare "Done.", no "Completed".
+ * that produces nothing notifies nobody, no bare "Done.", no "Completed".
  */
 import { describe, expect, test } from 'bun:test';
 import {
@@ -58,9 +58,9 @@ describe('a conversation always gets a response', () => {
     expect(chat.messages.at(-1)).toEqual({ role: 'user', content: CONVERSATIONAL_REGENERATION_REQUEST });
 
     // Turn 2: asked again, it answers.
-    expect(completeOrRegenerate(agent, chat, { content: "Yes — I'm here." })).toBe(false);
+    expect(completeOrRegenerate(agent, chat, { content: "Yes, I'm here." })).toBe(false);
     recoverEmptyConversationalReply(agent);
-    expect(agent.fullOutput).toBe("Yes — I'm here.");
+    expect(agent.fullOutput).toBe("Yes, I'm here.");
   });
 
   test('whitespace is empty', () => {
@@ -78,7 +78,7 @@ describe('a conversation always gets a response', () => {
     recoverEmptyConversationalReply(agent);
 
     expect(agent.fullOutput).toBe(CONVERSATIONAL_EMPTY_REPLY_NOTICE);
-    expect(agent.fullOutput).toBe('No reply was generated — something went wrong on my side.');
+    expect(agent.fullOutput).toBe('No reply was generated, something went wrong on my side.');
     // One notice, not a repeated one, and no bare acknowledgement anywhere.
     expect(agent.fullOutput).not.toContain('Done');
     expect(agent.fullOutput).not.toContain('Completed');

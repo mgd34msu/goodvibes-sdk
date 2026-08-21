@@ -1,5 +1,5 @@
 /**
- * routes/hosted-sessions.ts — the handlers behind `sessions.hosted.*`.
+ * routes/hosted-sessions.ts, the handlers behind `sessions.hosted.*`.
  *
  * Thin on purpose: argument reading and error mapping. Everything a hosted
  * session IS lives in platform/hosted-sessions, so the verbs and the engine
@@ -229,7 +229,7 @@ export function registerHostedSessionGatewayMethods(
  * The descriptors are builtins: they are present whether or not a product
  * stated how a hosted session's workspace floor is built. With no engine there
  * is no handler either, and dispatch fell through to the branch for a verb with
- * neither handler nor route — a 501 whose body carried no code, and a plain
+ * neither handler nor route, a 501 whose body carried no code, and a plain
  * `Error` for anyone calling `catalog.invoke()` directly, which is a 500. Both
  * read as "this daemon is broken" for a capability that is simply off.
  *

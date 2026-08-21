@@ -5,7 +5,7 @@
  * conversation a message arrived from. The provider directory used to gate its
  * only candidate behind optional config (`surfaces.telegram.defaultChatId`,
  * `surfaces.slack.token`, and the equivalent field on eleven more surfaces) and
- * return ZERO candidates when those were empty — which is the out-of-the-box
+ * return ZERO candidates when those were empty, which is the out-of-the-box
  * state. A fresh install could receive a message, answer it internally, and
  * deliver nothing, with no error anywhere.
  *
@@ -34,7 +34,7 @@ const SURFACES: readonly ManagedSurface[] = [
   'homeassistant',
 ] as unknown as readonly ManagedSurface[];
 
-/** Config with every optional field empty — a freshly connected install. */
+/** Config with every optional field empty, a freshly connected install. */
 function emptyConfigManager() {
   const category = new Proxy({}, { get: () => new Proxy({}, { get: () => '' }) });
   return {

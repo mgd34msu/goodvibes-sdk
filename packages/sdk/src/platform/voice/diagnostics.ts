@@ -1,11 +1,11 @@
 /**
- * diagnostics.ts — where a voice failure is written down.
+ * diagnostics.ts, where a voice failure is written down.
  *
  * A wake word fired, an utterance was captured, transcription failed, and the
  * reason was handed to `notify()` and persisted NOWHERE. The user saw one line
  * in a scrolling UI; by the time anyone asked what happened, the only record
- * was gone. Every question that followed — which provider ran, where its config
- * came from, what the exception actually said — was unanswerable from disk.
+ * was gone. Every question that followed, which provider ran, where its config
+ * came from, what the exception actually said, was unanswerable from disk.
  *
  * So a failure on the voice path lands here, with the three facts that make it
  * diagnosable: the PROVIDER that ran, the CONFIG SOURCE it was resolved from,
@@ -71,7 +71,7 @@ function isEntry(value: unknown): value is VoiceDiagnosticEntry {
 
 /**
  * Read the diagnostics entries, newest last. Never throws: a store that cannot
- * be read is empty rather than fatal — it is evidence, and evidence that fails
+ * be read is empty rather than fatal, it is evidence, and evidence that fails
  * to load must not take the voice path down with it.
  */
 export function readVoiceDiagnostics(managedRoot: string): readonly VoiceDiagnosticEntry[] {
@@ -141,5 +141,5 @@ export function describeVoiceDiagnostic(entry: VoiceDiagnosticEntry): string {
       ? 'in this process'
       : 'with no route available';
   const tail = entry.ok ? (entry.detail ?? '') : (entry.error ?? entry.detail ?? 'no reason recorded');
-  return `${entry.at} ${entry.operation} ${outcome} ${where} — provider ${entry.provider}, config from ${entry.configSource}${tail ? `: ${tail}` : ''}`;
+  return `${entry.at} ${entry.operation} ${outcome} ${where}, provider ${entry.provider}, config from ${entry.configSource}${tail ? `: ${tail}` : ''}`;
 }

@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/voice (STT, realtime providers)
+ * Coverage-gap smoke test, platform/voice (STT, realtime providers)
  * Verifies VoiceProviderRegistry can register a mock provider and query it.
  * Closes coverage gap: platform/voice/stt and realtime
  */

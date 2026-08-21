@@ -19,7 +19,7 @@ export async function isPortAvailable(port: number, host = '0.0.0.0'): Promise<b
         close() {},
       },
     }).catch(() => {
-      // Connection refused — port is free
+      // Connection refused, port is free
       resolve(true);
     });
   });

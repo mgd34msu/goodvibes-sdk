@@ -2,13 +2,13 @@
  * client-runtime-services.test.ts
  *
  * The pure-client composition shape, measured on a real composition rather than
- * a stand-in — the whole point of the shape is what it does and does not
+ * a stand-in, the whole point of the shape is what it does and does not
  * construct, and a stand-in constructs nothing.
  *
  * Four things are checked:
  *
- *  1. A realistic minimal client composition — what a TUI or agent interactive
- *     loop actually needs — builds, has the loop pieces, has NONE of the
+ *  1. A realistic minimal client composition, what a TUI or agent interactive
+ *     loop actually needs, builds, has the loop pieces, has NONE of the
  *     daemon furniture, and comes down cleanly (twice).
  *  2. The inbound-dispatch seam: a surface still runs the loop, so it binds its
  *     continuation runner into whatever hands it inbound work; the default is a
@@ -146,7 +146,7 @@ test('a surface composes its interactive loop without any daemon furniture', () 
 
 test('the daemon-grade graph still satisfies the shared part of the client shape', () => {
   // The compile-time proof lives in test/types/client-runtime-shape.ts; this is
-  // the runtime half of it — every shared field is really there on the daemon
+  // the runtime half of it, every shared field is really there on the daemon
   // graph, so an SDK helper typed against the narrow view accepts either.
   const sharedView: ClientRuntimeServicesFromHost = daemon;
   expect(sharedView.agentOrchestrator).toBe(daemon.agentOrchestrator);
@@ -168,8 +168,8 @@ test('the inbound-dispatch seam takes the surface loop runner', async () => {
   client.sessionBroker.setContinuationRunner(runner);
   expect(held.runner()).toBe(runner);
 
-  // A supplied dispatch — a wire-backed inbound poller, or the daemon's own
-  // broker in an embedded composition — receives the same call.
+  // A supplied dispatch, a wire-backed inbound poller, or the daemon's own
+  // broker in an embedded composition, receives the same call.
   const bound: unknown[] = [];
   const dispatch: SessionContinuationDispatch = {
     setContinuationRunner: (value) => { bound.push(value); },
@@ -204,7 +204,7 @@ test('both compositions get the agent graph from the one wiring function', () =>
   expect(daemonLinks.conversationSink).not.toBeNull();
   expect(daemonLinks.cancellationSource).not.toBeNull();
 
-  // Called directly, the same function produces the same wiring — there is no
+  // Called directly, the same function produces the same wiring, there is no
   // third spelling of it anywhere.
   const standalone = createAgentGraph({
     runtimeBus: new RuntimeEventBus(),

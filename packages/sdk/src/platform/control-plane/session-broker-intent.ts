@@ -26,7 +26,7 @@ import { decideContinuationEscalation } from '../agents/conversation-continuatio
 import type { ConversationGateConfigReader } from '../agents/conversation-gate.js';
 import { logger } from '../utils/logger.js';
 
-/** Max inputs retained per session bucket (moved here with handleIntent — see
+/** Max inputs retained per session bucket (moved here with handleIntent, see
  * session-broker.ts's MAX_PERSISTED_INPUTS for its former home). */
 const MAX_PERSISTED_INPUTS = 500;
 
@@ -65,7 +65,7 @@ export interface HandleSharedSessionIntentDeps {
   /**
    * Reads `conversationGate.*` for the live-agent handover decision below.
    * Optional: absent means the defaults in conversation-gate.ts, which gate
-   * every channel surface and exempt local ones — the safe direction, since
+   * every channel surface and exempt local ones, the safe direction, since
    * the failure mode of gating is an answer instead of a chain.
    */
   readonly conversationGateConfig?: ConversationGateConfigReader | undefined;
@@ -85,7 +85,7 @@ function bindingMayRebind(binding: AutomationRouteBinding): boolean {
 }
 
 /**
- * Why the session a route binding names cannot carry this message — or `null`
+ * Why the session a route binding names cannot carry this message, or `null`
  * when it can.
  *
  * A binding's `sessionId` is a ROUTING HINT, not a fact. It is written once and
@@ -96,12 +96,12 @@ function bindingMayRebind(binding: AutomationRouteBinding): boolean {
  * conversation on the other end has no way to know or to say so.
  *
  * Two of those deserve naming precisely, because the cluster layer decides
- * them and its answer is short. Sessions do not replicate — the store is
+ * them and its answer is short. Sessions do not replicate, the store is
  * `~/.goodvibes/control-plane/sessions.json` on ONE machine, and
  * cluster/index.ts says so outright ("sessions... never pass through here").
  * Neither does `automation-routes.json`. What a surface election moves is the
  * right to READ the inbox, nothing else. So a promotion or a reconnect never
- * produces "a session owned elsewhere" — there is no node-identity field on
+ * produces "a session owned elsewhere", there is no node-identity field on
  * either record to express such a thing. It produces exactly one observable:
  * a binding naming a session this node's store does not have. Which is the
  * first branch below, and which used to be absorbed in silence.
@@ -126,7 +126,7 @@ function describeUnusableBoundSession(session: SharedSessionRecord | undefined):
  * Say out loud that a conversation is moving to a new session, and name any
  * still-'active' sessions this same route is listed on while doing it.
  *
- * Those stranded actives are a real and separate problem — sessions whose host
+ * Those stranded actives are a real and separate problem, sessions whose host
  * process is long gone and which nothing will ever close, so they sit 'active'
  * forever. Reaping them belongs to session GC, not here. But the rollover is
  * the one moment the code can prove it is stepping over them, and a log line
@@ -162,7 +162,7 @@ function logChannelSessionRollover(
  * turns that into something comprehensible.
  *
  * Sent through the broker's surface-notice port, which the composition root
- * wires to `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice` — the same path
+ * wires to `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice`, the same path
  * every other unsolicited message to a channel goes out on. Fire-and-forget on
  * purpose: a notice that cannot be delivered is logged by that helper, and must
  * never be a reason the owner's actual message fails to be processed.
@@ -176,7 +176,7 @@ function announceRolloverOnChannel(
   try {
     deps.sendSurfaceNotice(
       binding.id,
-      `Picking this up in a fresh conversation — ${reason}, so I no longer have the earlier messages in view. Nothing was deleted; the previous conversation is kept as history.`,
+      `Picking this up in a fresh conversation, ${reason}, so I no longer have the earlier messages in view. Nothing was deleted; the previous conversation is kept as history.`,
     );
   } catch (error) {
     logger.warn('Rollover notice could not be handed to the surface delivery path', {
@@ -197,7 +197,7 @@ export async function handleSharedSessionIntent(
   const binding = await deps.resolveBinding(input);
   // WHERE the session came from decides what a CLOSED one means, and the two
   // sources are not interchangeable. `input.sessionId` is a caller naming one
-  // specific record — it asked about THAT session, and the honest answer when
+  // specific record, it asked about THAT session, and the honest answer when
   // that session is closed is the 409 below. `binding.sessionId` is only where
   // the route last parked this conversation; the sender named nothing.
   let session = input.sessionId ? deps.sessions.get(input.sessionId) ?? undefined : undefined;
@@ -223,7 +223,7 @@ export async function handleSharedSessionIntent(
       rolledOverFrom = binding.sessionId;
       logChannelSessionRollover(deps, binding, binding.sessionId, unusable, input);
       // Only worth explaining when there WAS a conversation to lose. A binding
-      // whose target merely never existed on this node still gets the notice —
+      // whose target merely never existed on this node still gets the notice,
       // that is the restored-backup / re-elected-node case, and it is precisely
       // the one that otherwise looks like unexplained amnesia.
       announceRolloverOnChannel(deps, binding, unusable);
@@ -256,7 +256,7 @@ export async function handleSharedSessionIntent(
 
   // Closed sessions are history: steer/follow-up/submit against an EXISTING
   // closed record are rejected before mutation; auto-create for a missing session is untouched.
-  // A channel binding that landed on a closed record never reaches here — it
+  // A channel binding that landed on a closed record never reaches here, it
   // rolled over above, because no channel sender can act on this error.
   if (session.status === 'closed') throw Object.assign(new Error('Session is closed'), { code: SDKErrorCodes.SESSION_CLOSED, status: 409 });
   const updatedSession = await deps.attachParticipantAndRoute(session, input, binding ?? undefined);
@@ -293,7 +293,7 @@ export async function handleSharedSessionIntent(
   // body straight to it as a `directive`. That is right for the operator typing
   // in their terminal. It was NOT right for a message arriving over a chat
   // surface: every channel adapter converges here through submitMessage, the
-  // branch returns `continued-live`, and each adapter early-returns on it —
+  // branch returns `continued-live`, and each adapter early-returns on it,
   // BEFORE the conversation gate that guards their spawn path. So a message
   // that would have been proposed if no agent were running was instead injected
   // as a directive into whatever chain was already running. On a machine with a
@@ -324,8 +324,8 @@ export async function handleSharedSessionIntent(
         detail: 'the conversation gate decides whether it is answered or proposed',
       });
     }
-    // Only the handover is withheld. Every other decision in this block —
-    // notably the steer rejection below — keeps its exact previous behavior.
+    // Only the handover is withheld. Every other decision in this block,
+    // notably the steer rejection below, keeps its exact previous behavior.
     const sent = handover.startsWorkChain
       && deps.messageSender.send('orchestrator', activeAgentId, input.body, { kind: 'directive' });
     if (sent) {
@@ -351,7 +351,7 @@ export async function handleSharedSessionIntent(
       // agent id to bind a reply to, and every adapter early-returns here.
       // Without this announcement the running agent answers a message that
       // arrived from Telegram/Slack/ntfy and the answer never leaves the
-      // daemon — the message is received, the work is done, and the sender
+      // daemon, the message is received, the work is done, and the sender
       // sees silence. The binder is idempotent, so an agent that already
       // carries a pending reply keeps the one it has.
       deps.announceSurfaceReply({

@@ -1,5 +1,5 @@
 /**
- * routes/attribution-ingest.ts — the runtime-bus → cost-attribution ingest.
+ * routes/attribution-ingest.ts, the runtime-bus → cost-attribution ingest.
  *
  * LLM usage lands from LLM_RESPONSE_RECEIVED turn events (with agent /
  * tool / hook / MCP origin dimensions and quota-window snapshots from
@@ -7,7 +7,7 @@
  * PROVIDER_VOICE_USAGE events: the billable unit count lands on inputTokens
  * under a voice-scoped model key (e.g. `elevenlabs:voice-tts:characters`),
  * honestly UNPRICED until the one-key manual price (pricing.modelPrices)
- * names the USD per 1M units. Local voice engines never emit the event —
+ * names the USD per 1M units. Local voice engines never emit the event,
  * no billing dimension at all, never a fake $0.00.
  */
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
@@ -54,7 +54,7 @@ export function bindCostAttributionIngest(
         cacheReadTokens: event.cacheReadTokens ?? 0,
         cacheWriteTokens: event.cacheWriteTokens ?? 0,
       });
-      // Quota snapshot from rate-limit headers on THIS (successful) response —
+      // Quota snapshot from rate-limit headers on THIS (successful) response,
       // the pre-limit signal, not just the post-429 cooldown.
       if (event.rateLimit) {
         quotaWindow.record({
@@ -67,7 +67,7 @@ export function bindCostAttributionIngest(
         });
       }
     } else if (event.type === 'STREAM_RETRY' && isRateLimitReason(event.reason)) {
-      // A rate-limit retry carries the provider's requested backoff — the real
+      // A rate-limit retry carries the provider's requested backoff, the real
       // cooldown window the fan-out assessment reasons over.
       quotaWindow.record({ provider: event.provider, at: Date.now(), retryAfterMs: event.delayMs });
     }

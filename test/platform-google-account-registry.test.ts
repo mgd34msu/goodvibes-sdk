@@ -14,7 +14,7 @@ import { mintAddressFor } from '../packages/sdk/src/platform/google/signup-addre
 //
 // This registry is the only enumerable list of accounts the agent created in the
 // owner's name. Two properties must never regress: the credential value never
-// reaches this file, and a damaged file never makes the list unreadable — a
+// reaches this file, and a damaged file never makes the list unreadable, a
 // corrupt registry is exactly when enumeration matters most.
 // ─────────────────────────────────────────────────────────────────────────────
 

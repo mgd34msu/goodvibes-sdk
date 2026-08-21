@@ -32,7 +32,7 @@ const CALENDAR_EVENT_DETAIL_SCHEMA = objectSchema({
 }, ['id', 'title', 'start', 'end']);
 
 /**
- * Calendar operator methods — event read/write and iCalendar import/export
+ * Calendar operator methods, event read/write and iCalendar import/export
  * through the standard operator method protocol.
  *
  * These are SERVED. `registerCalendarGatewayMethods`
@@ -48,7 +48,7 @@ const CALENDAR_EVENT_DETAIL_SCHEMA = objectSchema({
  * calendar-routes.ts, and no handler. They carried `invokable: false` so the
  * published contract and the live method-dispatch path both said "cataloged,
  * not callable" rather than letting a caller discover the 404 the hard way.
- * The reason was never the routing — it was that the only implementation
+ * The reason was never the routing, it was that the only implementation
  * lived inside one product, so the daemon had nothing to call, and scheduled
  * work, triggers and channel-driven work could not touch a calendar at all.
  * Hoisting the connector into the SDK is what made serving them possible.

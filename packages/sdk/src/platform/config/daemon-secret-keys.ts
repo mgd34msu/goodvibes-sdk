@@ -1,5 +1,5 @@
 /**
- * daemon-secret-keys.ts — which SECRET the daemon owns, derived from which
+ * daemon-secret-keys.ts, which SECRET the daemon owns, derived from which
  * CONFIG the daemon owns.
  *
  * `config-ownership.ts` answers "who writes this setting". A credential is the

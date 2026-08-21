@@ -1,5 +1,5 @@
 /**
- * terminal-notice.ts — routing a terminal inbound-mail failure to the OWNER.
+ * terminal-notice.ts, routing a terminal inbound-mail failure to the OWNER.
  *
  * docs/inbound-email.md §3.4b: *"A terminal state is announced, not merely
  * recorded... Silent permanent death is the failure this entire round exists to
@@ -9,8 +9,8 @@
  * watcher reaches a terminal verdict, builds an `InboundMailTerminalFailure`
  * carrying the exact remedial step, and announces it once per transition. The
  * supervisor forwards it. The composition root holds
- * `deliverStructuredNotice` — the same port arriving mail is announced through
- * — and used it for arriving mail and not for the one condition that means no
+ * `deliverStructuredNotice`, the same port arriving mail is announced through
+ *, and used it for arriving mail and not for the one condition that means no
  * mail will ever arrive again: the only consumer of `terminalFailure` was
  * `logger.error`. A log line is a record, not an announcement, and this is the
  * capability whose whole promise is that the owner does not have to be watching
@@ -20,7 +20,7 @@
  *
  * **Once per transition, not once per probe.** The watcher already suppresses
  * a repeat of the same verdict, but it is not the only thing that can produce a
- * terminal failure — a supervisor whose run loop dies produces one too — so the
+ * terminal failure, a supervisor whose run loop dies produces one too, so the
  * latch lives here as well, keyed on the condition rather than on the wording:
  * a server that phrases the same refusal differently each hour must not become
  * an hourly alarm. Recovering to any non-`insufficient` state re-arms it, so
@@ -49,7 +49,7 @@ import type {
  * Never a bare boolean and never `void`, for the reason the whole file exists:
  * the delivery port RESOLVES a refusal rather than rejecting it, so a caller
  * that only catches sees every refusal as a success. `void` would be worse
- * still — a port that says nothing forces this module to guess, and the guess
+ * still, a port that says nothing forces this module to guess, and the guess
  * that used to be made here was "it went out".
  *
  * Structurally compatible with the daemon layer's `SurfaceNoticeDelivery`,
@@ -77,7 +77,7 @@ export interface InboundTerminalFailureAnnouncerOptions {
    * layer. That reasoning had a hole in it: `deliverStructuredNotice` reports a
    * refusal by RESOLVING `{ delivered: false, reason }`, not by rejecting, so
    * the `.catch()` this module relied on never fired. With no route binding
-   * configured — the ordinary state of a fresh install — the owner was not
+   * configured, the ordinary state of a fresh install, the owner was not
    * told, the latch was set anyway, every later occurrence was suppressed, and
    * the log line recorded `announced: true`. A log asserting the owner was told
    * when he was not, for the one condition that means no mail will ever arrive
@@ -103,7 +103,7 @@ export interface InboundTerminalFailureAnnouncer extends InboundMailObserver {
  *
  * Synchronous, because `InboundMailObserver` is synchronous: it is a report
  * sink and the reporting path must never be able to hold up the watcher. The
- * send is started and its failure is logged rather than propagated — a
+ * send is started and its failure is logged rather than propagated, a
  * notification route being down must not become a second failure on top of the
  * one being reported.
  */
@@ -115,7 +115,7 @@ export function createInboundTerminalFailureAnnouncer(
    * The condition whose notice REACHED the owner, or null when none has.
    *
    * Set only after a confirmed delivery. It used to be set before the send, on
-   * the assumption that attempting was the same as arriving — which made the
+   * the assumption that attempting was the same as arriving, which made the
    * FIRST failure permanent: the owner was never told, and the latch then
    * suppressed every subsequent occurrence of the same condition for the life
    * of the process.
@@ -127,7 +127,7 @@ export function createInboundTerminalFailureAnnouncer(
    * Separate from `announced` because the two answer different questions. This
    * one stops a burst of identical failures from firing a send each while the
    * first is still in flight; `announced` stops them once one has actually
-   * landed. Collapsing them is what produced the defect — a single flag cannot
+   * landed. Collapsing them is what produced the defect, a single flag cannot
    * mean both "being tried" and "confirmed".
    */
   const inFlight = new Set<string>();
@@ -155,7 +155,7 @@ export function createInboundTerminalFailureAnnouncer(
 
       // The CONDITION, recorded synchronously. Deliberately carries no
       // `announced` field: nothing has been sent at this point, so there is no
-      // honest value for it. Claiming one here is precisely the defect — the
+      // honest value for it. Claiming one here is precisely the defect, the
       // old line wrote `announced: true` whenever the latch happened to be
       // clear, which is a statement about a local variable dressed up as a
       // statement about the owner.
@@ -191,7 +191,7 @@ export function createInboundTerminalFailureAnnouncer(
         }));
       } catch (error) {
         // A `send` that throws synchronously rather than rejecting. The
-        // reporting path cannot become a failure of its own — but it also does
+        // reporting path cannot become a failure of its own, but it also does
         // not get to latch, because nothing was delivered.
         inFlight.delete(key);
         undelivered(summarizeError(error), 'send-threw');
@@ -202,7 +202,7 @@ export function createInboundTerminalFailureAnnouncer(
         (result) => {
           inFlight.delete(key);
           // A port that answered with something other than a delivery verdict
-          // — an untyped embedder returning `undefined`, say. It has not said
+          //, an untyped embedder returning `undefined`, say. It has not said
           // the owner was reached, so he was not reached. Reading `.delivered`
           // off it unguarded would throw inside this handler, where the
           // rejection arm below cannot catch it.

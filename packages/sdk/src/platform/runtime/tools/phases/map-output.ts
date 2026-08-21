@@ -9,7 +9,7 @@ import { summarizeError } from '../../../utils/error-display.js';
 import { attachVisibleToolWarning } from './warnings.js';
 
 /**
- * mapOutput — Phase 5 of the tool execution pipeline.
+ * mapOutput, Phase 5 of the tool execution pipeline.
  *
  * Transforms/annotates the raw tool result before it reaches the LLM:
  *
@@ -20,7 +20,7 @@ import { attachVisibleToolWarning } from './warnings.js';
  *    handling are applied per tool class via `applyOutputPolicy`.
  * 3. No-ops cleanly when there is no result to map (defensive guard).
  */
-/** Type guard — true when `tool` carries phased execution metadata. */
+/** Type guard, true when `tool` carries phased execution metadata. */
 function isPhasedTool(tool: Tool): tool is PhasedTool {
   return 'category' in tool && typeof (tool as PhasedTool).category === 'string';
 }
@@ -50,7 +50,7 @@ export async function mapOutputPhase(
   const start = performance.now();
 
   if (!record.result) {
-    // No result to map — this is a no-op (execute phase may have failed)
+    // No result to map, this is a no-op (execute phase may have failed)
     return {
       phase: 'mapped',
       success: true,

@@ -1,5 +1,5 @@
 /**
- * subpath-export-coverage.test.ts — every public platform module is reachable.
+ * subpath-export-coverage.test.ts, every public platform module is reachable.
  *
  * ── The gap this closes ───────────────────────────────────────────────────
  *
@@ -11,7 +11,7 @@
  *
  * The failure mode is invisible in the worst possible way. The source compiles,
  * the module's own tests pass, `dist/` contains the built files, api-extractor
- * is happy, and the whole suite is green — while
+ * is happy, and the whole suite is green, while
  * `import … from '@pellux/goodvibes-sdk/platform/<name>'` fails resolution for
  * every consumer. The capability is built, tested, shipped, and unreachable.
  *
@@ -22,7 +22,7 @@
  * ── Why an allowlist rather than "export everything" ──────────────────────
  *
  * Some platform modules are genuinely daemon-internal, and publishing them would
- * widen the public API surface — and its compatibility obligations — by
+ * widen the public API surface, and its compatibility obligations, by
  * accident. So the rule is: every `src/platform/<name>/index.ts` is either in the
  * exports map or named below as a deliberate decision. Adding a module and
  * forgetting both is what fails.
@@ -39,7 +39,7 @@ const PLATFORM_DIR = join(PACKAGE_DIR, 'src', 'platform');
  *
  * Each is daemon-internal: it has an `index.ts` for internal composition and no
  * consumer imports it. Verified at the time of writing by grepping the TUI,
- * webui and agent worktrees — all five had zero import sites.
+ * webui and agent worktrees, all five had zero import sites.
  *
  * Adding a name here is a decision to keep a module private. Removing one, or
  * adding its subpath to the manifest, publishes it and takes on its

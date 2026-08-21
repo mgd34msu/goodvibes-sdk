@@ -172,11 +172,11 @@ describe('transport realtime', () => {
       sessionEvents.alpha.on('ALPHA_READY', (payload) => received.push(payload));
 
       await Promise.resolve();
-      // Wrong session — should be filtered out.
+      // Wrong session, should be filtered out.
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
-      // No sessionId — also dropped.
+      // No sessionId, also dropped.
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
-      // Correct session — should fire.
+      // Correct session, should fire.
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
 
       expect(received).toHaveLength(1);
@@ -201,9 +201,9 @@ describe('transport realtime', () => {
       // Trigger one that matches.
       await Promise.resolve();
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-A', payload: { ok: true } });
-      // Trigger one that does NOT match — should be filtered out.
+      // Trigger one that does NOT match, should be filtered out.
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', sessionId: 'session-B', payload: { ok: false } });
-      // Trigger one with no sessionId — also dropped.
+      // Trigger one with no sessionId, also dropped.
       dispatchRef.dispatch?.({ type: 'ALPHA_READY', payload: { ok: null } });
 
       expect(received).toEqual(['session-A']);
@@ -482,7 +482,7 @@ describe('transport realtime', () => {
     // Both connectors call getStreamReconnectDelay with a 1-based attempt counter.
     // WS: nextAttempt = reconnectAttempt + 1, then getStreamReconnectDelay(nextAttempt, policy).
     // SSE: nextAttempt = reconnectAttempts + 1, then getStreamReconnectDelay(nextAttempt, policy).
-    // Both forms are symmetric — verified by inspecting the single shared helper path.
+    // Both forms are symmetric, verified by inspecting the single shared helper path.
     // This test validates the shared helper's output, which both connectors consume identically.
     const policy = normalizeStreamReconnectPolicy({
       enabled: true,

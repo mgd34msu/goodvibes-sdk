@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Integrations domain state — tracks external service integrations
+ * Integrations domain state, tracks external service integrations
  * such as email, CMS, file storage, analytics, and custom webhooks.
  */
 
@@ -46,7 +46,7 @@ export interface IntegrationRecord {
 }
 
 /**
- * IntegrationDomainState — all external service integrations.
+ * IntegrationDomainState, all external service integrations.
  */
 export interface IntegrationDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

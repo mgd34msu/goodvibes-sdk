@@ -1,7 +1,7 @@
 /**
  * The wiring: a structured notice reaches a channel escaped for THAT channel.
  *
- * The escapers existed and nothing called them — `renderNoticeForChannel` had
+ * The escapers existed and nothing called them, `renderNoticeForChannel` had
  * no caller outside its own module, so every one of them was dead code and
  * the guarantee they describe was not in force anywhere. These cover the seam
  * that puts them in the delivery path.
@@ -10,7 +10,7 @@
  * the first version of that table was wrong in a way no test caught: it gave
  * Telegram MarkdownV2 escaping for a `sendMessage` that sets no `parse_mode`,
  * which would have shipped visible backslashes to the owner while leaving the
- * live risk — client-side auto-linking — untouched.
+ * live risk, client-side auto-linking, untouched.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -65,7 +65,7 @@ describe('a surface gets the escaper its own send site needs', () => {
     // deliverSurfaceNotice reaches fifteen surface kinds and only four have
     // had their send sites read. Mapping the rest on inference is how an
     // escaper ends up aimed at syntax the channel does not interpret while
-    // missing the syntax it does — exactly what the Telegram entry did.
+    // missing the syntax it does, exactly what the Telegram entry did.
     expect(noticeChannelForSurface(surface)).toBe('plain');
   });
 
@@ -98,7 +98,7 @@ describe('the rendered string is escaped for the destination, not for a guess', 
     // dispatch's composition, so it needs its own defanging rather than
     // inheriting it.
     expect(text).not.toContain('https://evil.example');
-    // Neutralized, but the words survive — the owner can still tell what the
+    // Neutralized, but the words survive, the owner can still tell what the
     // mail said, which is the whole reason this escapes rather than strips.
     expect(text).toContain('Approved');
   });
@@ -124,7 +124,7 @@ describe('the delivery seam picks the escaper from the binding, not from the cal
   test('a structured notice is escaped for the surface it is actually bound for', async () => {
     // The point of the companion: the destination is not knowable at the call
     // site, so a caller holding a StructuredNotice cannot pick the wrong
-    // escaper — or skip escaping — because it never holds a string to pass.
+    // escaper, or skip escaping, because it never holds a string to pass.
     const calls: { surface: string; text: string }[] = [];
     const helper = new DaemonSurfaceDeliveryHelper({
       pendingSurfaceReplies: new Map(),
@@ -153,7 +153,7 @@ describe('the delivery seam picks the escaper from the binding, not from the cal
     expect(telegram).toEqual({ delivered: true });
     expect(calls).toHaveLength(2);
 
-    // Different surfaces, different escaping — proof the binding chose it.
+    // Different surfaces, different escaping, proof the binding chose it.
     expect(calls[0]!.surface).toBe('discord');
     expect(calls[1]!.surface).toBe('telegram');
     expect(calls[0]!.text).not.toBe(calls[1]!.text);

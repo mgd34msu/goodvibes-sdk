@@ -10,14 +10,14 @@ import type { WorktreeSetupResult } from './setup.js';
 const STORE_VERSION = 1;
 
 /**
- * Age TTL for a `kept` TOMBSTONE — a record for a worktree that is no longer
+ * Age TTL for a `kept` TOMBSTONE, a record for a worktree that is no longer
  * on disk but that the user deliberately asked to preserve.
  *
  * 90 days. A tombstone is not immortal: it is a note-to-self about work that
  * was set aside, and the register it lives in is read on every worktree
  * listing. A quarter is far longer than any "I'll come back to this" horizon
  * anyone actually honours, and the underlying git BRANCH is never touched by
- * this expiry — only the registry note about it goes away, so nothing the user
+ * this expiry, only the registry note about it goes away, so nothing the user
  * asked to keep is destroyed by the TTL.
  *
  * A `kept` record whose worktree is STILL PRESENT is a live worktree, never a
@@ -40,7 +40,7 @@ const MAX_TOMBSTONES = 200;
  */
 const PRESERVED_STORE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Count cap on preserved-aside registry files — a repeating fault can mint one per read, so the age TTL alone is not a bound. Newest are kept. */
+/** Count cap on preserved-aside registry files, a repeating fault can mint one per read, so the age TTL alone is not a bound. Newest are kept. */
 const MAX_PRESERVED_STORES = 10;
 
 /** Suffix marking a registry file preserved aside for forensics. */
@@ -70,7 +70,7 @@ export interface ManagedWorktreeMeta {
   /**
    * Cold-start setup outcome for this worktree, when setup ran (on creation or
    * a re-run). Persisted so a failed setup is a VISIBLE worktree/fleet-node
-   * state, never silent — surfaces read it straight off the worktree record
+   * state, never silent, surfaces read it straight off the worktree record
    * (worktrees.snapshot). Absent when no setup has ever run for this worktree.
    */
   readonly setup?: WorktreeSetupResult | undefined;
@@ -179,8 +179,8 @@ type StoreVerdict =
  *
  * Version policy: a file at or below the current version is read, because
  * every field is validated record by record right here. A file written by a
- * NEWER runtime is not interpreted — its records may carry meanings this code
- * would get wrong — and is preserved aside rather than overwritten.
+ * NEWER runtime is not interpreted, its records may carry meanings this code
+ * would get wrong, and is preserved aside rather than overwritten.
  */
 function parseStore(text: string): StoreVerdict {
   if (text.trim().length === 0) {
@@ -246,7 +246,7 @@ function preserveUnreadableStore(storePath: string, detail: string, bytes: numbe
     });
     return null;
   }
-  logger.warn('worktree registry: register failed content validation — preserved aside, not overwritten', {
+  logger.warn('worktree registry: register failed content validation, preserved aside, not overwritten', {
     storePath,
     preservedPath,
     detail,
@@ -322,7 +322,7 @@ function removeFile(path: string): boolean {
  *
  * A missing file is a normal empty register. A file that exists but cannot be
  * trusted is DISCLOSED and preserved aside (so the `kept` tombstones the user
- * asked for stay recoverable) before an empty register is returned — the old
+ * asked for stay recoverable) before an empty register is returned, the old
  * behaviour discarded them silently.
  */
 function readStore(storePath: string): WorktreeStore {
@@ -422,7 +422,7 @@ export function summarizeWorktreeOwnership(records: readonly ManagedWorktreeMeta
 /**
  * Write the register atomically: temp file, then rename.
  *
- * HONEST SCOPE — this makes each write ALL-OR-NOTHING, so a crash mid-write
+ * HONEST SCOPE, this makes each write ALL-OR-NOTHING, so a crash mid-write
  * can no longer leave a torn register (it leaves at most a stray temp file,
  * which the next write of that pid replaces and which is never read). It does
  * NOT make the read-modify-write cycle cross-process safe: two processes that
@@ -471,7 +471,7 @@ export class WorktreeRegistry {
    * This is also the register's recurring housekeeping point: surfaces poll it,
    * so reaping here is not startup-only. It reclaims records whose worktree is
    * gone, ages out and count-caps `kept` tombstones, and sweeps expired
-   * preserved-aside register files — disclosing every count.
+   * preserved-aside register files, disclosing every count.
    */
   public async list(): Promise<WorktreeStatusRecord[]> {
     const store = readStore(getStorePath(this.workingDirectory, this.surfaceRoot));
@@ -508,7 +508,7 @@ export class WorktreeRegistry {
       };
     }
     // REAP: a record whose worktree is no longer on disk has lost its owner.
-    // `kept` records are exempt — they are deliberate tombstones — but they get
+    // `kept` records are exempt, they are deliberate tombstones, but they get
     // their own age TTL and count cap below so they are bounded rather than
     // immortal. Everything reclaimed here is disclosed.
     let vanished = 0;
@@ -621,12 +621,12 @@ export class WorktreeRegistry {
   }
 
   /**
-   * DISCARD actually discards — per the eviction-preserving rules:
+   * DISCARD actually discards, per the eviction-preserving rules:
    *  1. Any uncommitted state is first COMMITTED onto the worktree's branch
    *     (data safety; a preservation failure refuses the removal rather than
    *     losing work).
    *  2. The worktree DIRECTORY is removed (`git worktree remove`).
-   *  3. The BRANCH is kept — never deleted on this path.
+   *  3. The BRANCH is kept, never deleted on this path.
    * Returns an honest receipt either way; the record is dropped only when the
    * directory really came off disk.
    */
@@ -648,7 +648,7 @@ export class WorktreeRegistry {
         preservedCommit = commit.hash;
       }
     } catch (error) {
-      // Preservation failed — refuse the removal (losing work is worse than a
+      // Preservation failed, refuse the removal (losing work is worse than a
       // lingering directory) and say so honestly.
       return {
         path: normalized,

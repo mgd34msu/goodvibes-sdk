@@ -1,5 +1,5 @@
 /**
- * device-lines.ts — the one rendering of a paired-device list.
+ * device-lines.ts, the one rendering of a paired-device list.
  *
  * Every surface that lists devices (a /devices command family, a settings
  * device-management modal) renders each per-device token the same way

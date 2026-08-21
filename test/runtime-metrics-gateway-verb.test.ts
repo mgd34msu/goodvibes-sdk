@@ -6,7 +6,7 @@
  * "Gateway method is not invokable" over both websocket and HTTP invoke).
  * Proves the descriptor and its handler are registered together on a composed
  * catalog, and that invoking it returns the SAME live data snapshotMetrics()
- * returns directly — not a stub.
+ * returns directly, not a stub.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
 import { GatewayMethodCatalog } from '../packages/sdk/src/platform/control-plane/method-catalog.js';
@@ -65,7 +65,7 @@ describe('runtime.metrics.get gateway registration', () => {
 //
 // runtime.metrics.get is cataloged with scopes: ['read:telemetry']
 // (method-catalog-runtime.ts). Scope checking is NOT re-implemented per
-// method — it is enforced once, generically, by
+// method, it is enforced once, generically, by
 // DaemonControlPlaneHelper.validateGatewayInvocation (daemon/control-plane.ts),
 // which every invoke path (invokeGatewayMethodCall, the WS method+path call)
 // runs before GatewayMethodCatalog.invoke() is ever reached. These tests pin

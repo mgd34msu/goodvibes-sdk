@@ -1,5 +1,5 @@
 /**
- * policy.ts — the per-composition postures every command in an exec call is
+ * policy.ts, the per-composition postures every command in an exec call is
  * judged against, and the refusals they produce.
  *
  * Four things a composition may state about its exec tool: the boundary wiring
@@ -63,7 +63,7 @@ export function ownerTerminalRefusal(policy: ExecRunPolicy, cmdStr: string): Exe
  * `--die-with-parent`, so wrapping one would kill the process the caller asked
  * to detach. A composition that requires containment therefore has no contained
  * background path, and the command is refused rather than quietly granted the
- * exemption the detach needs — `background: true` must not be the spelling that
+ * exemption the detach needs, `background: true` must not be the spelling that
  * gets a contained turn onto the host.
  */
 export function backgroundContainmentRefusal(policy: ExecRunPolicy, cmdStr: string): ExecCommandResult | null {
@@ -72,7 +72,7 @@ export function backgroundContainmentRefusal(policy: ExecRunPolicy, cmdStr: stri
     cmdStr,
     'Command refused: a background command cannot run inside the exec boundary '
     + '(the boundary dies with this tool call, which would defeat the detach), and this '
-    + `session requires containment — ${policy.containment.reason}\n`
+    + `session requires containment, ${policy.containment.reason}\n`
     + 'Run it in the foreground, or report what you would need instead.',
   );
 }

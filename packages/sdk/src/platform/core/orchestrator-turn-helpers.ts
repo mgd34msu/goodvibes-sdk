@@ -150,7 +150,7 @@ export async function handleToolResponseOutcome(args: {
   messageQueueLength: number;
   requestRender: () => void;
   sessionId?: string | undefined;
-  /** This turn's MEMORY-sourced injected knowledge ids — stamped onto TURN_COMPLETED as metadata.memory.recordIds when non-empty (absent otherwise). */
+  /** This turn's MEMORY-sourced injected knowledge ids, stamped onto TURN_COMPLETED as metadata.memory.recordIds when non-empty (absent otherwise). */
   memoryRecordIds?: readonly string[] | undefined;
 }): Promise<{ continueLoop: boolean; results: ToolResult[] }> {
   const toolCalls = attachAuthoritativeTaskToAgentCalls(args.response.toolCalls, args.userText);
@@ -270,7 +270,7 @@ export function handleFinalResponseOutcome(args: {
   setAutoSpawnTimeout: (timeout: ReturnType<typeof setTimeout> | null) => void;
   autoSpawnTimeoutMs: number;
   sessionId?: string | undefined;
-  /** This turn's MEMORY-sourced injected knowledge ids — stamped onto TURN_COMPLETED as metadata.memory.recordIds when non-empty (absent otherwise). */
+  /** This turn's MEMORY-sourced injected knowledge ids, stamped onto TURN_COMPLETED as metadata.memory.recordIds when non-empty (absent otherwise). */
   memoryRecordIds?: readonly string[] | undefined;
 }): false {
   args.conversation.addAssistantMessage(args.response.content, {

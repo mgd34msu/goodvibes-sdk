@@ -1,5 +1,5 @@
 /**
- * terminal-shell-conformance.test.ts — the package's own regression gate for
+ * terminal-shell-conformance.test.ts, the package's own regression gate for
  * @pellux/goodvibes-terminal-shell.
  *
  * Reproduces the exact 501 defect class the package exists to prevent: a
@@ -127,7 +127,7 @@ describe('attachWsOnlyGatewayVerbHandlers — real SDK catalog', () => {
       assertEveryDescriptorHasHandler(after, { onlyIds: wsOnlyRepresentatives }),
     ).not.toThrow();
 
-    // And the same scoped assert FAILS before attach — the gate catches the defect.
+    // And the same scoped assert FAILS before attach, the gate catches the defect.
     expect(() =>
       assertEveryDescriptorHasHandler(before, { onlyIds: wsOnlyRepresentatives }),
     ).toThrow(/no attached handler/);

@@ -1,7 +1,7 @@
 /**
  * checkpoint-restore-tokens.test.ts
  *
- * Unit coverage for RestoreTokenStore — the in-memory, single-use, TTL-bound
+ * Unit coverage for RestoreTokenStore, the in-memory, single-use, TTL-bound
  * confirmation-token store behind the checkpoints.restore confirmation gate.
  * Uses an injected clock so expiry is deterministic (no real waiting).
  */

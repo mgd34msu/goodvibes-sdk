@@ -1,13 +1,13 @@
 /**
  * Behavior pins for two context-window policies:
  *
- * 1. Persisted per-model context-window overrides — ProviderRegistry
+ * 1. Persisted per-model context-window overrides, ProviderRegistry
  *    setModelContextCap/clearModelContextCap/getModelContextCap work for any
  *    model, apply as a 'configured_cap' overlay, persist under the
  *    control-plane config dir, and survive a registry restart. Clearing
  *    returns the model to its automatic window.
  *
- * 2. Model-issued compaction warning — when the model/provider itself reports
+ * 2. Model-issued compaction warning, when the model/provider itself reports
  *    context exhaustion (isContextOverflowSignal), checkContextWindowPreflight
  *    and handlePostTurnContextMaintenance compact immediately, regardless of
  *    locally estimated usage and even when the percentage threshold is
@@ -340,7 +340,7 @@ describe('model-issued compaction warning — post-turn maintenance', () => {
       () => { cleared = true; },
     );
 
-    // 10k of 200k = 5% usage — far below every threshold.
+    // 10k of 200k = 5% usage, far below every threshold.
     await handlePostTurnContextMaintenance(deps, 'turn-1', 10_000);
     await new Promise((resolve) => setTimeout(resolve, 0)); // drain the void compact chain
 

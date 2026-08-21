@@ -87,7 +87,7 @@ const MAGIC_BYTES: Map<string, Array<{ offset?: number; bytes: number[] }>> = ne
   ['.tiff', [{ bytes: [0x49, 0x49, 0x2a, 0x00] }, { bytes: [0x4d, 0x4d, 0x00, 0x2a] }]], // LE + BE
   ['.tif', [{ bytes: [0x49, 0x49, 0x2a, 0x00] }, { bytes: [0x4d, 0x4d, 0x00, 0x2a] }]],   // LE + BE
   // AVIF: ftyp box at offset 4 + brand at offset 8 ('avif', 'avis', or 'mif1')
-  // (validated via isAvifBuffer helper — entry kept as sentinel for lookup)
+  // (validated via isAvifBuffer helper, entry kept as sentinel for lookup)
   ['.avif', [{ offset: 4, bytes: [0x66, 0x74, 0x79, 0x70] }]],
   // PDF
   ['.pdf', [{ bytes: [0x25, 0x50, 0x44, 0x46] }]],
@@ -106,12 +106,12 @@ const DETECT_SIGNATURES: Array<{ type: string; sigs: Array<{ offset?: number; by
   { type: 'webp', sigs: [{ bytes: [0x52, 0x49, 0x46, 0x46] }, { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] }] },
   { type: 'bmp', sigs: [{ bytes: [0x42, 0x4d] }] },
   { type: 'ico', sigs: [{ bytes: [0x00, 0x00, 0x01, 0x00] }] },
-  // Two separate TIFF entries (LE + BE) — matchesSigs uses .every(), so each
+  // Two separate TIFF entries (LE + BE), matchesSigs uses .every(), so each
   // endianness must be its own entry rather than combined into one sigs array.
   { type: 'tiff', sigs: [{ bytes: [0x49, 0x49, 0x2a, 0x00] }] }, // little-endian
   { type: 'tiff', sigs: [{ bytes: [0x4d, 0x4d, 0x00, 0x2a] }] }, // big-endian
   // AVIF detection is handled specially in validateMagicBytes via isAvifBuffer;
-  // sigs intentionally empty — isAvifBuffer() is always called instead.
+  // sigs intentionally empty, isAvifBuffer() is always called instead.
   { type: 'avif', sigs: [] },
   { type: 'pdf', sigs: [{ bytes: [0x25, 0x50, 0x44, 0x46] }] },
   { type: 'zip', sigs: [{ bytes: [0x50, 0x4b, 0x03, 0x04] }] },
@@ -153,7 +153,7 @@ export function validateMagicBytes(
   const probe = buffer.subarray(0, 16);
   const normalExt = ext.toLowerCase();
 
-  // SVG is text-based — check the first 256 bytes
+  // SVG is text-based, check the first 256 bytes
   if (normalExt === '.svg') {
     const head = buffer.subarray(0, 256).toString('utf-8');
     return { valid: head.includes('<svg') };
@@ -161,7 +161,7 @@ export function validateMagicBytes(
 
   const expectedSigs = MAGIC_BYTES.get(normalExt);
   if (!expectedSigs) {
-    // Unknown extension — no validation, assume valid
+    // Unknown extension, no validation, assume valid
     return { valid: true };
   }
 
@@ -178,7 +178,7 @@ export function validateMagicBytes(
     return { valid: false };
   }
 
-  // TIFF can be either LE or BE — allow both for .tiff and .tif
+  // TIFF can be either LE or BE, allow both for .tiff and .tif
   // For extensions with multiple sigs (e.g. webp, tiff), we determine match strategy:
   // - TIFF: ANY sig must match (LE or BE)
   // - WebP: ALL sigs must match
@@ -330,7 +330,7 @@ export async function tryLoadSharp(): Promise<SharpFactory | null> {
       throw new Error('sharp module did not expose a callable factory');
     }
   } catch (err) {
-    logger.debug('[media] sharp not available — image resizing/conversion disabled', { error: summarizeError(err) });
+    logger.debug('[media] sharp not available, image resizing/conversion disabled', { error: summarizeError(err) });
     return null;
   }
 }
@@ -354,7 +354,7 @@ export interface ResizeResult {
  * Format conversion notes (intentional for LLM consumption):
  * - WebP input is converted to PNG (losing WebP compression efficiency), since
  *   sharp's resize pipeline outputs JPEG or PNG only.
- * - GIF input loses animation — only the first frame is preserved.
+ * - GIF input loses animation, only the first frame is preserved.
  * - These trade-offs are intentional: LLMs expect static raster images.
  */
 export async function resizeImage(

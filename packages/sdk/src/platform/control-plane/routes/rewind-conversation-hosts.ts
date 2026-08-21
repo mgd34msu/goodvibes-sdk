@@ -1,10 +1,10 @@
 /**
- * routes/rewind-conversation-hosts.ts — the surface-facing half of
+ * routes/rewind-conversation-hosts.ts, the surface-facing half of
  * conversation-scope rewind.
  *
  * `rewind.plan` and `rewind.apply` (routes/rewind.ts) are the CALLER's side:
  * anyone with the scopes can ask for a rewind of any session. These five verbs
- * are the other side, and only one kind of caller uses them — the surface that
+ * are the other side, and only one kind of caller uses them, the surface that
  * is actually running a session's conversation. It offers that conversation,
  * takes the questions the daemon puts to it, and answers them.
  *
@@ -12,7 +12,7 @@
  * the daemon's, so files rewind works from anywhere, but the messages live in
  * whichever process runs the loop. Once the surfaces became pure clients that
  * process is not the daemon, and the daemon's in-process conversation registry
- * — which nothing outside the daemon could populate — answered "0 messages to
+ *, which nothing outside the daemon could populate, answered "0 messages to
  * drop" for every one of them. The mechanics of the offer, the lease and the
  * bounded wait are in platform/rewind/conversation-host-broker.ts; this module
  * is the wire shape and the honest refusals.
@@ -62,8 +62,8 @@ function requireCount(value: unknown, field: string): number {
 }
 
 /**
- * Every broker refusal is about the caller's input — a host id that is not the
- * host, a request that is no longer waiting — so each carries the field it is
+ * Every broker refusal is about the caller's input, a host id that is not the
+ * host, a request that is no longer waiting, so each carries the field it is
  * about and a 409: the call was well-formed, the world had moved on.
  */
 function asVerbError(error: unknown): never {
@@ -78,7 +78,7 @@ function asVerbError(error: unknown): never {
  *
  * The kind comes from the request the broker raised, never from the caller. An
  * answer that restated it could only ever disagree with it, and the disagreement
- * would be silent — a preview answer accepted for a rewind request would report
+ * would be silent, a preview answer accepted for a rewind request would report
  * a truncation that never happened.
  */
 function readAnswer(
@@ -171,7 +171,7 @@ export function createConversationRequestsAnswerHandler(broker: ConversationRewi
     const params = readInvocationParams(invocation);
     const hostId = requireString(params.hostId, 'hostId');
     const requestId = requireString(params.requestId, 'requestId');
-    // Which request this is — and whether this surface may answer it at all —
+    // Which request this is, and whether this surface may answer it at all,
     // is settled before the payload is read, so a caller answering something
     // that is no longer waiting is told that, rather than being marched through
     // a field check for a question nobody is listening to.

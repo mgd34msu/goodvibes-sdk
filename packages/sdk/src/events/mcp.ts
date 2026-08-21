@@ -6,7 +6,7 @@ export type { McpServerRole, McpTrustMode, QuarantineReason } from './mcp-types.
 import type { McpServerRole, McpTrustMode, QuarantineReason } from './mcp-types.js';
 
 /**
- * McpEvent — discriminated union covering all MCP (Model Context Protocol) server events.
+ * McpEvent, discriminated union covering all MCP (Model Context Protocol) server events.
  *
  * Covers MCP server lifecycle events for the runtime event bus.
  */

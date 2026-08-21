@@ -8,11 +8,11 @@
  * available context window data for each model.
  *
  * Discovery chain (ordered most-verbose to least-verbose):
- *   1. /api/v1/models  — LM Studio rich format (key + max_context_length)
- *   2. /api/tags       — Ollama list + per-model /api/show for context_length
- *   3. /v1/models      — OpenAI compat (id, optionally max_model_len for vLLM)
- *   4. /props          — llama.cpp server-level n_ctx (single context all models)
- *   5. /info           — TGI format (max_input_tokens / max_total_tokens)
+ *   1. /api/v1/models , LM Studio rich format (key + max_context_length)
+ *   2. /api/tags      , Ollama list + per-model /api/show for context_length
+ *   3. /v1/models     , OpenAI compat (id, optionally max_model_len for vLLM)
+ *   4. /props         , llama.cpp server-level n_ctx (single context all models)
+ *   5. /info          , TGI format (max_input_tokens / max_total_tokens)
  *
  * Capability gate: `local-provider-context-ingestion` (provider.localContextIngestion, default on)
  */
@@ -101,7 +101,7 @@ async function parseJSON<T>(response: Response, url: string): Promise<T | null> 
 }
 
 // ---------------------------------------------------------------------------
-// Probe 1: LM Studio — /api/v1/models
+// Probe 1: LM Studio, /api/v1/models
 // ---------------------------------------------------------------------------
 
 interface LMStudioModel {
@@ -145,7 +145,7 @@ async function probeLMStudio(
 }
 
 // ---------------------------------------------------------------------------
-// Probe 2: Ollama — /api/tags + /api/show
+// Probe 2: Ollama, /api/tags + /api/show
 // ---------------------------------------------------------------------------
 
 interface OllamaTagModel {
@@ -251,7 +251,7 @@ async function probeOllama(
 }
 
 // ---------------------------------------------------------------------------
-// Probe 3: OpenAI compat — /v1/models
+// Probe 3: OpenAI compat, /v1/models
 // ---------------------------------------------------------------------------
 
 interface OpenAICompatModel {
@@ -311,13 +311,13 @@ async function probeOpenAICompat(
     }
   }
 
-  // Return even if empty — the endpoint existing is meaningful
+  // Return even if empty. The endpoint existing is meaningful
   logger.debug('[context-discovery] OpenAI compat probe completed', { url, count: result.size });
   return result;
 }
 
 // ---------------------------------------------------------------------------
-// Probe 4: llama.cpp — /props
+// Probe 4: llama.cpp, /props
 // ---------------------------------------------------------------------------
 
 interface LlamaCppProps {
@@ -345,7 +345,7 @@ async function probeLlamaCpp(
 }
 
 // ---------------------------------------------------------------------------
-// Probe 5: TGI — /info
+// Probe 5: TGI, /info
 // ---------------------------------------------------------------------------
 
 interface TGIInfo {
@@ -399,7 +399,7 @@ async function probeTGI(
  *   5. TGI `/info`
  *
  * The first probe that yields a non-null result populates the map. Subsequent
- * probes only ADD entries for model IDs not yet present — they never overwrite
+ * probes only ADD entries for model IDs not yet present, they never overwrite
  * data from a more-informative probe.
  *
  * @param baseURL - Provider base URL (e.g. `http://localhost:11434/v1`).
@@ -433,7 +433,7 @@ export async function discoverContextWindows(
   // each successful probe short-circuits by populating result, and merge() skips
   // model IDs already present. Parallel probing would lose this precedence guarantee.
 
-  // Probe 1: LM Studio (richest — has max_context_length per model)
+  // Probe 1: LM Studio (richest, has max_context_length per model)
   merge(await probeLMStudio(origin, apiKey));
 
   // Probe 2: Ollama (per-model show with context_length / num_ctx)

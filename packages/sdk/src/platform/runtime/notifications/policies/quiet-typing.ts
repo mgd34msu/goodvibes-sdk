@@ -1,5 +1,5 @@
 /**
- * Quiet-while-typing policy — suppresses non-critical notifications when
+ * Quiet-while-typing policy, suppresses non-critical notifications when
  * the user is actively composing input, preventing distracting UI churn
  * mid-keystroke.
  */
@@ -16,8 +16,8 @@ const UNSUPPRESSABLE_LEVELS = new Set<NotificationLevel>(['critical']);
  * Determines if a notification at the given level and target should be
  * suppressed while the user is actively typing.
  *
- * - `critical` — never suppressed
- * - `warning` / `info` / `debug` — suppressed when quiet mode is active
+ * - `critical`, never suppressed
+ * - `warning` / `info` / `debug`, suppressed when quiet mode is active
  *   AND the resolved target would surface above `panel_only`
  *
  * @param level         - Notification severity level.

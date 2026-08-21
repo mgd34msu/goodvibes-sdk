@@ -11,8 +11,8 @@ Rendering typed IO for every catalogued verb takes the operator method maps from
 files stop compiling, both with **TS2590, "Expression produces a union type that
 is too complex to represent"**:
 
-- `packages/operator-sdk/src/client-core.ts:279` — `const client: OperatorRemoteClient = {`
-- `packages/sdk/src/browser-scoped.ts:198` — `const operator: ScopedOperatorClient<TMethodId> = {`
+- `packages/operator-sdk/src/client-core.ts:279`, `const client: OperatorRemoteClient = {`
+- `packages/sdk/src/browser-scoped.ts:198`, `const operator: ScopedOperatorClient<TMethodId> = {`
 
 Both are the same shape: an object literal being related to an interface whose
 members are generic over `OperatorTypedMethodId`, the union of all 464 method
@@ -29,11 +29,10 @@ export type OperatorMethodInput<TMethodId extends OperatorTypedMethodId> =
 ```
 
 That is a **distributive** conditional. Relating the literal to the interface
-instantiates the signature at its constraint — the whole union — so the
+instantiates the signature at its constraint, the whole union, so the
 conditional splits into one instantiation per id and evaluates its branch 464
 times. Everything downstream rides along: `MethodArgs`, and `RequiredNamedKeys`
-and `OmitNamed` beneath it. `RequiredNamedKeys` is homomorphic (deliberately —
-see `packages/contracts/src/typed-io-keys.ts`), so against a union it maps per
+and `OmitNamed` beneath it. `RequiredNamedKeys` is homomorphic (deliberately, see `packages/contracts/src/typed-io-keys.ts`), so against a union it maps per
 member, and the branched inputs (`Base & (A | B | C)`, from
 `method-catalog-shared.ts` `branchedSchema`) are themselves unions. The product
 is what exceeds the compiler's union-complexity ceiling.
@@ -56,7 +55,7 @@ The fallback branch existed only for ids with no entry. There are none:
 `generate-foundation-io-entries.ts` renders all 464,
 `check-foundation-io-types.ts` diffs all 464 against their catalog schemas, and
 the coverage ratchet is pinned at 0. If a verb ever does lack an entry this now
-fails to compile, which is louder — and better — than silently widening it to a
+fails to compile, which is louder, and better, than silently widening it to a
 bare record.
 
 ### Measured, `packages/operator-sdk`, 464 entries, node's default 4 GB heap
@@ -74,8 +73,8 @@ type-tests): **clean in 35–37 s**.
 Per-namespace clients (`client.automation.jobs.create(...)`) and an
 overload/lookup shape that resolves one id without distributing were both
 considered. They were rejected because they are **breaking public API changes to
-`OperatorRemoteClient`** — consumed by `goodvibes-tui`, `goodvibes-agent` and
-`goodvibes-webui` — and the measurement above shows they are not needed. The
+`OperatorRemoteClient`**, consumed by `goodvibes-tui`, `goodvibes-agent` and
+`goodvibes-webui`, and the measurement above shows they are not needed. The
 distribution, not `invoke`'s genericity, was the multiplier. Removing it fixes
 both failing sites at once, including `browser-scoped.ts`, which a change
 confined to `invoke` would not have touched.
@@ -88,7 +87,7 @@ every id in the map, and all 464 are in the map. No consumer call site changes.
 
 - `OmitNamed` had to be made **distributive** (`T extends unknown ? ... : never`)
   in the same change. Applied to a branched input `(Base & A) | (Base & B)` all
-  at once, `keyof` sees only the keys the branches SHARE — nothing — so every
+  at once, `keyof` sees only the keys the branches SHARE, nothing, so every
   branch's requiredness was dropped and the path helpers accepted `{}` again.
   This is the same trap `RequiredNamedKeys` is homomorphic to avoid, arriving
   from the other side. Guarded by `test/types/typed-client-wrong-body.ts`.

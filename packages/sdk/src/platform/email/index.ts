@@ -5,7 +5,7 @@
  * text message over the protocols themselves, with no provider API in between.
  *
  * This lives in the SDK rather than in any one product because every surface is
- * equally entitled to it — and because the daemon is one of those surfaces.
+ * equally entitled to it, and because the daemon is one of those surfaces.
  * While this code sat inside a single product, the daemon had no implementation
  * to call: scheduled work, triggers and channel replies could not send mail at
  * all, because the only IMAP and SMTP clients in the platform were in a binary
@@ -22,7 +22,7 @@
  * getter, secrets as a `get`, the sender-claim wording as
  * `EmailSenderClaimDescriber`, the untrusted-ingest ledger as a recorder
  * callback, and the credential-shaped-text check as a `SecretLikeTextPredicate`
- * — so the entire service, including a full IMAP conversation, runs against an
+ *, so the entire service, including a full IMAP conversation, runs against an
  * in-process fake server with no TLS and no real host. The concrete bun/node
  * transports live in the sibling `email/node` entry and are deliberately NOT
  * re-exported from here.
@@ -53,7 +53,7 @@
  *  - **Nothing goes on the wire unquoted.** IMAP credentials are RFC 3501
  *    quoted-strings with CR/LF and non-ASCII rejected outright; SMTP addresses
  *    and subjects are rejected for control characters, angle brackets and
- *    comma-lists — at the service boundary as well as in the client, so
+ *    comma-lists, at the service boundary as well as in the client, so
  *    injection is blocked regardless of which client a caller reaches for.
  *  - **STARTTLS is not negotiated blind.** The upgrade aborts if the server
  *    sends any byte after its `220` before TLS begins.
@@ -64,7 +64,7 @@
  *  - **Attachments are described, never downloaded.** `fetchMessage` reads the
  *    server's BODYSTRUCTURE and then fetches only the text sections, so an
  *    unread message with a large or hostile attachment on it costs a filename
- *    and a size — not its bytes, and not the memory to hold them.
+ *    and a size, not its bytes, and not the memory to hold them.
  *  - **Sending is never implicit.** `EmailService.sendMail` throws without
  *    `confirm: true`, and the style-reply composer has no send path at all.
  *    Saving a draft (`createDraft`) sends nothing, and appends only to the

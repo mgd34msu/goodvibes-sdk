@@ -1,4 +1,4 @@
-# Android Integration
+# Android integration
 
 This repo publishes TypeScript packages, but Android companion teams can still use the same GoodVibes platform contracts directly from Kotlin.
 
@@ -16,13 +16,13 @@ The source of truth for Android companion integrations in this repo is:
 
 ## Installation
 
-Native Android apps consume the JSON contracts rather than the npm package — see the [entry point guide](./packages.md) for the install matrix. If you bundle the contracts from npm, install `@pellux/goodvibes-sdk` (the canonical install command and version live in [Getting started](./getting-started.md#install)) and read them from the `@pellux/goodvibes-sdk/contracts/*.json` subpaths. Pin to the SDK release whose contracts you target.
+Native Android apps consume the JSON contracts rather than the npm package. See the [entry point guide](./packages.md) for the install matrix. If you bundle the contracts from npm, install `@pellux/goodvibes-sdk` (the canonical install command and version live in [Getting started](./getting-started.md#install)) and read them from the `@pellux/goodvibes-sdk/contracts/*.json` subpaths. Pin to the SDK release whose contracts you target.
 
 ## Connecting
 
 - **Auth:** bearer token (`Authorization: Bearer <token>`); `POST /login` mints one and `GET /api/control-plane/auth` verifies the current principal.
 - **Realtime transport:** WebSocket at `/api/control-plane/ws?domains=<comma-joined>&clientKind=web`, with a `{ "type": "auth", "token": "<token>", "domains": ["<domain>"] }` frame sent as the first message.
-- **Method calls:** over HTTP — invoke with `POST /api/control-plane/methods/{method}/invoke`; list the catalog with `GET /api/control-plane/methods`.
+- **Method calls:** over HTTP. Invoke with `POST /api/control-plane/methods/{method}/invoke`. List the catalog with `GET /api/control-plane/methods`.
 
 See the [companion wire protocol](./companion-wire-protocol.md) for the full reference (URL upgrade rules, optional trace headers, method-catalog endpoints, and contract artifacts).
 

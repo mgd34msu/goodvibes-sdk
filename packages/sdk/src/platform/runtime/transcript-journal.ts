@@ -1,5 +1,5 @@
 /**
- * transcript-journal.ts — WAL-style append-only transcript journal.
+ * transcript-journal.ts, WAL-style append-only transcript journal.
  *
  * Purpose
  * ───────
@@ -8,12 +8,12 @@
  * provides an append-only journal that records each durable conversation event
  * (user message submitted, assistant turn finalised, tool results appended,
  * compaction performed) so that a kill at any moment loses at most the
- * in-flight append — never a full turn.
+ * in-flight append, never a full turn.
  *
  * File format (NDJSON)
  * ────────────────────
- * Line 0  — header:  { version: 1, sessionId: "...", createdAt: <epochMs> }
- * Line 1+ — records: { type, seq, ts, messages: ConversationMessageSnapshot[] }
+ * Line 0 , header:  { version: 1, sessionId: "...", createdAt: <epochMs> }
+ * Line 1+, records: { type, seq, ts, messages: ConversationMessageSnapshot[] }
  *
  * The header carries the schemaVersion so that a reader from a future process
  * can gate on it (readVersioned convention: unknown version → quarantine).
@@ -23,7 +23,7 @@
  * appendRecord() performs one appendFileSync + one fsyncSync per call.
  * This means one fsync per durable conversation event (user message,
  * assistant turn, tool result batch, compaction). It does NOT fsync per
- * streaming token — the streaming path never calls appendRecord().
+ * streaming token, the streaming path never calls appendRecord().
  *
  * At typical usage (a few events per user turn), this is 2–6 fsyncs/min,
  * well within the durability/throughput envelope of any modern filesystem.
@@ -32,7 +32,7 @@
  *
  * Recovery semantics
  * ──────────────────
- * 1. Read the header line. Gate on version — quarantine if unrecognised.
+ * 1. Read the header line. Gate on version, quarantine if unrecognised.
  * 2. Read subsequent lines until EOF. Stop at the first line that is not
  *    valid JSON or lacks the expected shape. Quarantine the remainder of
  *    the file from that point onward (rename to .unrecognized). Never crash.
@@ -119,14 +119,14 @@ export interface TranscriptJournal {
    * Append one durable event record and fsync it to disk.
    *
    * Best-effort: if the write fails (e.g. disk full), the error is swallowed
-   * — the journal is durability-enhancing, never a hard requirement.
+   *, the journal is durability-enhancing, never a hard requirement.
    */
   appendRecord(type: JournalEventType, messages: ConversationMessageSnapshot[]): void;
 
   /**
    * Delete the journal file (called after a fresh snapshot is written).
    * The next appendRecord() will recreate the file with a fresh header.
-   * Best-effort — silently swallows errors.
+   * Best-effort, silently swallows errors.
    */
   rotate(): void;
 
@@ -137,7 +137,7 @@ export interface TranscriptJournal {
    * Point this journal at a different session's file, resetting the sequence
    * counter and initialization flag. Used when the session a journal was
    * opened for is switched out from under it (e.g. `/session resume` or
-   * `/session fork` reassigning `runtime.sessionId`) — without this, the
+   * `/session fork` reassigning `runtime.sessionId`), without this, the
    * journal keeps appending the NEW session's records into the OLD session's
    * file. Does not touch the old file on disk; it is simply no longer
    * written to.
@@ -306,7 +306,7 @@ class TranscriptJournalImpl implements TranscriptJournal {
         closeSync(fd);
       }
     } catch {
-      // Best-effort — never crash the host over a journal failure.
+      // Best-effort, never crash the host over a journal failure.
     }
   }
 
@@ -333,7 +333,7 @@ class TranscriptJournalImpl implements TranscriptJournal {
     };
     // Append the header as the first line. If the file already exists with
     // content (e.g. process restarted mid-session), we start appending records
-    // after whatever is already there — the replay function handles seq
+    // after whatever is already there, the replay function handles seq
     // ordering.
     //
     // The guard is `journalHasContent`, not `existsSync`: a crash between
@@ -341,7 +341,7 @@ class TranscriptJournalImpl implements TranscriptJournal {
     // an existence-only check would then skip the header forever. Every record
     // appended after that would sit in a header-less file, so the next replay
     // would read record 0 where the header belongs, fail the version gate, and
-    // quarantine the entire journal — losing exactly the turns this module
+    // quarantine the entire journal, losing exactly the turns this module
     // exists to preserve. Deciding on content instead means a zero-byte
     // journal is re-headered and stays replayable.
     if (!journalHasContent(this.path)) {
@@ -372,7 +372,7 @@ function quarantineJournal(journalPath: string): void {
   try {
     renameSync(journalPath, `${journalPath}${UNRECOGNIZED_SUFFIX}`);
   } catch {
-    // Best-effort — if rename fails, proceed silently.
+    // Best-effort, if rename fails, proceed silently.
   }
 }
 
@@ -389,7 +389,7 @@ function journalHasContent(journalPath: string): boolean {
 //
 // `rotate()` deletes a journal once its records have been folded into a
 // snapshot or replayed. A session that crashes and is never resumed never
-// reaches either, so its journal stays on disk forever — one file per
+// reaches either, so its journal stays on disk forever, one file per
 // abandoned session. The SDK's registered append-only retention sweep does not
 // cover this home-scoped path, so the reclaim happens here.
 
@@ -415,7 +415,7 @@ export interface JournalReapResult {
 export interface JournalReapOptions {
   /**
    * Is this session open in a still-running process? Injected rather than
-   * imported so this module keeps no dependency on the liveness marker — the
+   * imported so this module keeps no dependency on the liveness marker, the
    * composition point (runtime/durability-housekeeping.ts) supplies the real
    * check, and tests supply their own.
    */

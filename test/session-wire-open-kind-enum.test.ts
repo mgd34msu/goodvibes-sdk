@@ -6,7 +6,7 @@ import {
   SHARED_SESSION_REGISTER_INPUT_SCHEMA,
 } from '../packages/sdk/src/platform/control-plane/operator-contract-schemas-runtime.ts';
 
-// D1 — CONTRACT-VALIDATION ENUM LEG. Response validation must treat the session
+// D1, CONTRACT-VALIDATION ENUM LEG. Response validation must treat the session
 // `kind` as an OPEN enum on READ (accept unknown strings per-record so one alien
 // record can never blank a sessions.list envelope), while INPUT/write validation
 // stays strict (sessions.register 400s on an unknown kind).

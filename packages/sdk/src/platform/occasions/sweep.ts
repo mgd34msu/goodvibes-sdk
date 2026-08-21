@@ -1,5 +1,5 @@
 /**
- * sweep.ts — which occasions are entering their lead window, and may be raised.
+ * sweep.ts, which occasions are entering their lead window, and may be raised.
  *
  * This is the whole decision, as ONE PURE FUNCTION. It takes a clock reading,
  * the declared occasions, the plans, the recorded answers and the open items,
@@ -92,7 +92,7 @@ export interface OccasionsPolicy extends CadencePolicy {
 export interface DueOccasion {
   readonly occasion: Occasion;
   readonly occurrence: IsoDate;
-  /** Whole days from today. Never rendered — see nudge.ts. */
+  /** Whole days from today. Never rendered, see nudge.ts. */
   readonly daysUntil: number;
 }
 
@@ -138,7 +138,7 @@ const EMPTY: SweepDecision = {
  *
  * The owner's words were *"8am to 10pm are generally fine, anything outside of
  * that probably not, so quiet outside of that range"*, so the setting names the
- * ACTIVE window rather than the quiet one — a setting whose value is the thing
+ * ACTIVE window rather than the quiet one, a setting whose value is the thing
  * he said. The parse is the check-in's, so the two cannot disagree about what
  * `HH:MM-HH:MM` means; the evaluation is not, because the check-in reads the
  * host's local clock and this has to read `daemon.timezone`.
@@ -218,15 +218,15 @@ export function decideSweep(context: SweepContext): SweepDecision {
 
     const answer = answerFor(context.acknowledgements, occasion.id, occurrence);
     if (answer?.answer === 'no' || answer?.answer === 'yes') continue;
-    // He said he has this one. The item stays open and stays enumerable — the
-    // pull still shows it, and shows that he acknowledged it — and nothing is
+    // He said he has this one. The item stays open and stays enumerable, the
+    // pull still shows it, and shows that he acknowledged it, and nothing is
     // pushed at him about this occurrence again.
     if (answer?.answer === 'acknowledged') continue;
     if (answer?.answer === 'later' && (answer.returnOn ?? occurrence) > today) continue;
     if (occasion.mirrored && policy.suppressMirroredNudges) continue;
 
     // The two-raise ceiling, and the only gate on a nudge. Not "is its due date
-    // here" — a due date that cannot move past the occurrence is due forever on
+    // here", a due date that cannot move past the occurrence is due forever on
     // the day itself, which is precisely how an hourly sweep turned into an
     // hourly reminder. A served boundary is spent, and there are two.
     const dayOf = dayOfBoundaryDate(occurrence, today, context.plans, policy.awayAdjust);
@@ -298,8 +298,8 @@ export function decideSweep(context: SweepContext): SweepDecision {
  * An open nudge that exists to be FOUND, never to be sent.
  *
  * Both boundaries spent from the moment it is written. This is how an occasion
- * about him that he only has to remember stays enumerable — "anything coming
- * up?" answers with it — while having no reachable state in which it speaks.
+ * about him that he only has to remember stays enumerable, "anything coming
+ * up?" answers with it, while having no reachable state in which it speaks.
  */
 function quietOpenItem(input: {
   readonly id: string;

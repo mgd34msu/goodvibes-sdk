@@ -12,7 +12,7 @@ import type { ModelDefinition } from '../packages/sdk/src/platform/providers/reg
 import type { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 import type { ResolvedModelPricing } from '../packages/sdk/src/platform/providers/model-pricing.js';
 
-/** None of these tests exercise cost attribution — every route reports unpriced. */
+/** None of these tests exercise cost attribution, every route reports unpriced. */
 function resolveModelPricingStub(): ResolvedModelPricing {
   return { status: 'unknown' };
 }

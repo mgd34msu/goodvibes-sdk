@@ -1,5 +1,5 @@
 /**
- * PlannerEvent — discriminated union for adaptive planner decisions and overrides.
+ * PlannerEvent, discriminated union for adaptive planner decisions and overrides.
  */
 
 export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'remote';

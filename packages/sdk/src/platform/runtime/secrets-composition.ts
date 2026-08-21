@@ -1,5 +1,5 @@
 /**
- * secrets-composition.ts — building the credential store with its homes wired
+ * secrets-composition.ts, building the credential store with its homes wired
  * to the ones the host was actually told about.
  *
  * ── The failure this exists to prevent ────────────────────────────────────
@@ -11,7 +11,7 @@
  * So "isolating" a daemon by giving it `--daemon-home /tmp/...` moved its
  * identity directory and nothing else. Its credential store stayed at
  * `<realHome>/.goodvibes/daemon`, and when that held nothing the read order
- * walks the working directory's ancestors — which, for any process running
+ * walks the working directory's ancestors, which, for any process running
  * under the owner's home, reaches the owner's real project secret store.
  *
  * A throwaway daemon therefore held the owner's real credentials. One of them
@@ -24,7 +24,7 @@
  * somebody else's secrets.
  *
  * Note what this does NOT fix, deliberately: a `daemonHome` override does not
- * relocate the project/user tiers, and it should not — those are genuinely
+ * relocate the project/user tiers, and it should not, those are genuinely
  * addressed by `projectRoot` and `globalHome`. Isolating a daemon completely
  * means moving all three outside the real home, which is why
  * `describeSecretIsolation` reports what is and is not isolated rather than

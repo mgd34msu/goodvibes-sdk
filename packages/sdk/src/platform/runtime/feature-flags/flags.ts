@@ -9,7 +9,7 @@
  *
  * This module is implementation detail: the emergency kill-switch plumbing
  * keys off these ids, but no surface renders this registry as its own
- * category — consumers render FEATURE_SETTINGS (domain, option shapes,
+ * category, consumers render FEATURE_SETTINGS (domain, option shapes,
  * descriptions) from feature-settings.ts.
  *
  * Ids follow the kebab-case naming convention used throughout the runtime.
@@ -79,7 +79,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     id: 'watcher-triggers',
     name: 'Trigger Family',
     description:
-      'Enables three unattended watcher kinds over one supervision spine: stream watchers that regex-filter and batch a long-lived command\'s output; model-free condition checks running a declarative probe/extract/rule pipeline with no LLM in the loop; and one-shot on-exit triggers where GoodVibes launches a command and fires exactly one payload when it terminates (daemon-owned, so a six-hour build does not hold an agent turn open). A firing trigger runs an agent turn or a pre-registered digest-pinned action grant — never a command composed at fire time. Off by default: a trigger launches and supervises real processes with nobody watching, so turning it on is a deliberate choice; with it on and no triggers defined the supervisor idles and consumes nothing. Tune the backoff ladder, strike breaker, retention bounds, batching and process caps via the watchers.triggers.* settings.',
+      'Enables three unattended watcher kinds over one supervision spine: stream watchers that regex-filter and batch a long-lived command\'s output; model-free condition checks running a declarative probe/extract/rule pipeline with no LLM in the loop; and one-shot on-exit triggers where GoodVibes launches a command and fires exactly one payload when it terminates (daemon-owned, so a six-hour build does not hold an agent turn open). A firing trigger runs an agent turn or a pre-registered digest-pinned action grant, never a command composed at fire time. Off by default: a trigger launches and supervises real processes with nobody watching, so turning it on is a deliberate choice; with it on and no triggers defined the supervisor idles and consumes nothing. Tune the backoff ladder, strike breaker, retention bounds, batching and process caps via the watchers.triggers.* settings.',
     defaultState: 'disabled',
     tier: 3,
     runtimeToggleable: true,
@@ -175,7 +175,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'threads, key file/symbol references) that seeds a fresh context, instead of '
       + 'assembling a handoff from many targeted extraction calls. The distillation is scored '
       + 'through the SAME quality scorer as the structured strategy and falls back to '
-      + 'structured when it scores below the floor or the fresh call is unavailable — the '
+      + 'structured when it scores below the floor or the fresh call is unavailable, the '
       + 'receipt names the strategy used and any fallback. Standing instruction-chain / '
       + 'active-skill re-injection at the boundary applies to both strategies. Not the '
       + 'default: structured remains the default strategy until quality-score evidence '
@@ -314,12 +314,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'When the query would benefit and the index is built, similarity-ranked code chunks are '
       + 'injected as untrusted reference pointers, each recorded on the turn injection record with '
       + 'source=code-index and its honest match label (semantic/lexical). Never injects from an '
-      + 'empty or provider-mismatched index, or from a hashed-only (no real semantic) provider — '
+      + 'empty or provider-mismatched index, or from a hashed-only (no real semantic) provider, '
       + 'the store exposes each of those and the turn record states which. '
       + 'DEFAULT OFF (unlike agent-passive-knowledge-injection, which defaults on): code injection '
-      + 'is a newer, higher-variance signal than reviewed project memory — code chunks carry no '
+      + 'is a newer, higher-variance signal than reviewed project memory, code chunks carry no '
       + 'review/trust provenance and a weak similarity match can pull in a plausibly-worded but '
-      + 'wrong chunk — so this first landing is opt-in, earned on by the same hard-budget + '
+      + 'wrong chunk, so this first landing is opt-in, earned on by the same hard-budget + '
       + 'honest-record discipline before it becomes a default. Also respects the embedder’s '
       + 'storage.codeIndexEnabled setting; disable either to revert to memory-only injection.',
     defaultState: 'disabled',
@@ -468,12 +468,12 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     // leaving this OFF made a fresh daemon return 503 on the live-stream path (the
     // "stock daemon is dead" bug).
     //
-    // HONEST SURFACE STATEMENT: flipping this default ON DOES expose surface — just not
+    // HONEST SURFACE STATEMENT: flipping this default ON DOES expose surface, just not
     // an UNAUTHENTICATED one. Concretely it turns on: (1) the auth-gated streaming surface
-    // — SSE `/api/control-plane/events`, the companion-chat `.../events` stream, and the WS
-    // control channel — every one of which returns 401 before any principal is resolved
+    //, SSE `/api/control-plane/events`, the companion-chat `.../events` stream, and the WS
+    // control channel, every one of which returns 401 before any principal is resolved
     // (daemon-sdk/control-routes.ts), and per-channel scopes are enforced on the fan-out
-    // (e.g. read:sessions on session-update); and (2) the inert pre-auth login shell — the
+    // (e.g. read:sessions on session-update); and (2) the inert pre-auth login shell, the
     // handful of unauthenticated bootstrap endpoints that carry NO session/runtime data and
     // exist only to establish auth. The default bind stays loopback and the 60/min + 5/min
     // rate limiters are unchanged. It remains runtimeToggleable, so an operator who wants a
@@ -571,7 +571,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     runtimeToggleable: true,
   },
   // Every remaining channel adapter carries its own surface gate entry, bound
-  // (constant kind) to its surfaces.<x>.enabled domain key — the honest
+  // (constant kind) to its surfaces.<x>.enabled domain key, the honest
   // user-facing switch. The capability is always present; activation needs
   // the enabled key + credentials. Ids match the surface strings the channel
   // plugin registry registers (see channels/builtin/plugins.ts).
@@ -758,13 +758,13 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Enables an optional model-judgment pass on the residual sandbox ask-tail: when the '
       + 'per-command exec sandbox is active and a command still lands on ask (a boundary needing '
-      + 'host access — network, host-privilege escalation), a provider call over the command, its '
+      + 'host access, network, host-privilege escalation), a provider call over the command, its '
       + 'sandbox plan, workspace context, and the policy reasons produces a PROPOSED verdict with '
       + 'stated reasons. The tier NEVER converts allow→deny and NEVER touches the frozen '
       + 'catastrophic-only exec block (rm -rf /, dd to devices, mkfs, fork bomb…); it can only '
       + 'ANNOTATE the human ask ("model judgment: looks safe because… / flags risk because…") or, '
       + 'ONLY when the operator opted into sandbox.judgment auto-approve, auto-approve a looks-safe '
-      + 'verdict. A flags-risk verdict never auto-denies — it annotates the ask the human still '
+      + 'verdict. A flags-risk verdict never auto-denies, it annotates the ask the human still '
       + 'decides; a judgment failure degrades to a plain ask. Every judgment leaves a receipt. '
       + 'On by default in annotate-only mode (sandbox.judgment annotate); auto-approval is a '
       + 'separate explicit opt-in (sandbox.judgment auto-approve).',
@@ -784,7 +784,7 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
       + 'authenticated to surfaces by static-key pinning from the pairing payload. Relay, channel, and '
       + 'OAuth credentials at rest are encrypted under the random secrets keyfile (never host-derived '
       + 'identity). No connection is made without explicit configuration: the relay.enabled config '
-      + 'switch and a configured relay.url still gate every connection — leave either unset to keep '
+      + 'switch and a configured relay.url still gate every connection, leave either unset to keep '
       + 'the daemon LAN-only.',
     defaultState: 'enabled',
     tier: 11,
@@ -797,13 +797,13 @@ export const FEATURE_FLAGS: FeatureFlag[] = [
     description:
       'Lets the agent use a PAIRED phone as a tool: either camera, its screen, its location, its '
       + 'clipboard, and a small set of device commands (notification, link, buzz). It rides the '
-      + 'existing peer transport as a native contract — never an MCP server — so a web app node and '
+      + 'existing peer transport as a native contract, never an MCP server, so a web app node and '
       + 'a native app node are the same kind of peer. Every capture and every effect asks the person '
       + 'first; choosing "always allow" on that prompt writes ONE durable grant for that one '
       + 'capability on that one phone, listed and revocable in the grants surface, with an age TTL '
       + 'and a count cap so nothing is granted forever. Pictures the phone takes are kept for 24 '
       + 'hours by default and then deleted, and every housekeeping sweep discloses exactly what it '
-      + 'removed and why. Configure the whole posture through device.* — device.capabilities.mode '
+      + 'removed and why. Configure the whole posture through device.*, device.capabilities.mode '
       + 'chooses between off, ask-every-time, and honouring grants; device.capabilities.allowAlwaysOffer '
       + 'chooses which capabilities may be granted durably; device.capture.retentionHours sets how '
       + 'long a picture lives.',

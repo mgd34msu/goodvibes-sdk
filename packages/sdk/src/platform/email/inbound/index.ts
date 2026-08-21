@@ -8,7 +8,7 @@
  * daemon wiring imports this path directly.
  *
  * Nothing exported here can start work. There is no `trySpawnAgent`, no
- * session broker and no reply queue in any argument of any function below —
+ * session broker and no reply queue in any argument of any function below,
  * an arriving message can cause a store write, a delivered notice and a status
  * change, and there is nothing else to call.
  */
@@ -150,8 +150,8 @@ export {
   DEFAULT_DISCLOSURE_RETENTION_MS,
   InboundMailHousekeeper,
   // Exported because the disclosure log is a FILE on the owner's disk, not an
-  // internal of this class. Anything else that reads it — a doctor verb, a
-  // surface rendering "what was reaped" — would otherwise parse persisted state
+  // internal of this class. Anything else that reads it, a doctor verb, a
+  // surface rendering "what was reaped", would otherwise parse persisted state
   // with no validator, which is the exact defect this round closed inside
   // `listDisclosures()`. The safe path has to be the reachable one.
   validateDisclosedHousekeepingReport,

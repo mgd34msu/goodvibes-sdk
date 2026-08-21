@@ -1,7 +1,7 @@
 /**
  * operator-contract-schemas-rewind.ts
  *
- * Input/output JSON schemas for rewind.plan + rewind.apply — the unified
+ * Input/output JSON schemas for rewind.plan + rewind.apply, the unified
  * message-anchored rewind (see platform/rewind/). rewind.plan is a read-only
  * dry-run preview that mints a single-use confirm token; rewind.apply consumes
  * it (or confirm:true) and returns a receipt whose `undo` block records how to
@@ -233,7 +233,7 @@ export const REWIND_CONVERSATION_REQUESTS_TAKE_OUTPUT_SCHEMA = objectSchema(
  * from anything the caller declares: a request is a preview or a rewind, the
  * broker recorded which when it raised it, and an answer that restated it could
  * only ever disagree with it. So the flat required array here is the honest
- * one — there is no client-supplied discriminator a schema could branch on, and
+ * one, there is no client-supplied discriminator a schema could branch on, and
  * naming `messagesToDrop` required would refuse every rewind answer.
  *
  * `unavailableReason` is the one field that overrides the request's kind: a

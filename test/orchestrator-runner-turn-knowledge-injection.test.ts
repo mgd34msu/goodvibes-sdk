@@ -77,7 +77,7 @@ function makeMemoryRecord(overrides: Partial<MemoryRecord> & { id: string }): Me
 
 /**
  * Three high-scoring, task-matching filler records. Spawn-time injection
- * (buildOrchestratorSystemPrompt) has NO relevance floor and NO budget — it takes the
+ * (buildOrchestratorSystemPrompt) has NO relevance floor and NO budget, it takes the
  * top-3 candidates by score>0, so a lone topically-unrelated record would otherwise be
  * trivially "the only candidate" and land in the spawn baseline regardless of
  * relevance. These fillers occupy that top-3 for a frozen task of
@@ -92,7 +92,7 @@ function makeDeploymentDocsFillers(): MemoryRecord[] {
   ];
 }
 
-/** getAll() call count is the cheap, reliable proxy for "did retrieval actually run" —
+/** getAll() call count is the cheap, reliable proxy for "did retrieval actually run",
  *  selectKnowledgeForTaskScored calls registry.getAll() exactly once per invocation,
  *  spawn-time or per-turn, with or without a searchSemantic method present. */
 function makeCountingMemoryRegistry(records: MemoryRecord[]) {
@@ -222,8 +222,8 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
 
     // mem_ratelimit's baseline score against the frozen task (confidence 55 + fresh +20 =
     // 75, no token match) sits BELOW both the 3 fillers' scores (so spawn-time's top-3
-    // excludes it) and the default relevance floor (95, so turn-1 per-turn retrieval —
-    // which does query against the still-frozen task — excludes it too). Only the
+    // excludes it) and the default relevance floor (95, so turn-1 per-turn retrieval,
+    // which does query against the still-frozen task, excludes it too). Only the
     // steer's "rate limiting" tokens (+20 each) push its score to 115, clearing the floor.
     const { registry: memoryRegistry } = makeCountingMemoryRegistry([
       ...makeDeploymentDocsFillers(),
@@ -259,7 +259,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
     expect(chatCallCount).toBe(2);
     expect(record.status).toBe('completed');
 
-    // Turn 1: the frozen task never mentions rate limiting — the spawn-time baseline
+    // Turn 1: the frozen task never mentions rate limiting, the spawn-time baseline
     // (top-3 fillers) and turn-1 per-turn retrieval (same frozen query, below floor) both
     // leave mem_ratelimit out.
     expect(capturedSystemPrompts[0]).not.toContain('mem_ratelimit');
@@ -292,7 +292,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
     ]);
 
     let chatCallCount = 0;
-    // Snapshot the CUMULATIVE getAll() count at the moment each chat() call is made —
+    // Snapshot the CUMULATIVE getAll() count at the moment each chat() call is made,
     // retrieval for a turn always runs (or is skipped) before that turn's chat call, so
     // this pins exactly which turns re-ran the ranking pipeline. Reading the counter only
     // after runAgentTask resolves (as the whole task loop has already finished by then)
@@ -305,11 +305,11 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
         chatCallCount += 1;
         getAllCallsAtChat.push(counters.getAllCalls);
         if (chatCallCount < 3) {
-          // Turns 1 and 2: a tool call, no steer — no new conversation input.
+          // Turns 1 and 2: a tool call, no steer, no new conversation input.
           return { content: '', toolCalls: [{ id: `call-${chatCallCount}`, name: 'nonexistent_tool', arguments: {} }], usage: { inputTokens: 1, outputTokens: 1 }, stopReason: 'tool_call' };
         }
         if (chatCallCount === 3) {
-          // Turn 3: a steer is queued mid-turn — it lands on the message bus AFTER this
+          // Turn 3: a steer is queued mid-turn, it lands on the message bus AFTER this
           // chat call's own (already-made) retrieval decision, so it cannot affect turn
           // 3's own count; it becomes visible to turn 4's drain instead.
           registry.steer(record.id, 'also check the burst allowance');
@@ -326,10 +326,10 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
     expect(chatCallCount).toBe(4);
     expect(record.status).toBe('completed');
     // getAll() is called once for the spawn-time baseline (buildOrchestratorSystemPrompt)
-    // and once for turn 1's per-turn retrieval (turn===1 counts as "new input") — both
+    // and once for turn 1's per-turn retrieval (turn===1 counts as "new input"), both
     // BEFORE turn 1's chat call. Turns 2 and 3 have no new input, so the pipeline is not
-    // re-invoked (count holds at 2). Turn 4 drains turn 3's steer at its own top — that
-    // IS new input — so the count grows to 3 exactly there, not before.
+    // re-invoked (count holds at 2). Turn 4 drains turn 3's steer at its own top, that
+    // IS new input, so the count grows to 3 exactly there, not before.
     expect(getAllCallsAtChat).toEqual([2, 2, 2, 3]);
 
     registry.dispose();
@@ -371,7 +371,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
 
     expect(chatCallCount).toBe(2);
     // The spawn-time baseline (buildOrchestratorSystemPrompt, pre-existing/out-of-scope
-    // for this per-turn injection feature) is unaffected by this flag and may still appear in both prompts — that is
+    // for this per-turn injection feature) is unaffected by this flag and may still appear in both prompts, that is
     // fine and expected. What must hold, and is asserted here, is that turn 2's prompt is
     // BYTE-IDENTICAL to turn 1's (the steer changed nothing) and that no per-turn record
     // was ever produced.
@@ -435,7 +435,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
     const runtimeBus = new RuntimeEventBus();
     // Reuse the "deployment docs" frozen task from the first test: the 3 fillers occupy
     // spawn-time's top-3 (mem_big's baseline score of confidence 90 + reviewed +40 = 130
-    // loses to each filler's ~206-210), so mem_big is excluded from the SPAWN baseline —
+    // loses to each filler's ~206-210), so mem_big is excluded from the SPAWN baseline,
     // isolating this test to the PER-TURN budget mechanism alone. mem_big still clears
     // the default relevance floor (95) on baseline score alone, so turn-1 per-turn
     // retrieval attempts to inject it; only its size against a tight budget is at stake.
@@ -456,7 +456,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
     // Measure the REAL base prompt's token cost first (same call runAgentTask makes
     // internally at systemPrompt = buildOrchestratorSystemPrompt(record, undefined, context)),
     // using the SAME memoryRegistry so the spawn-time baseline this computes (the 3
-    // fillers) matches what the real run will produce — then pick a context window whose
+    // fillers) matches what the real run will produce, then pick a context window whose
     // 85% threshold sits only slightly above that, leaving a small but nonzero headroom
     // for a block, and no headroom at all for one that's too large to fit.
     const probeContext = makeContext({
@@ -467,7 +467,7 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
       memoryRegistry,
     });
     // NOTE: the actual chat() call wraps the composed systemPrompt in
-    // appendGoodVibesRuntimeAwarenessPrompt(...) at the call site — a fixed-size runtime
+    // appendGoodVibesRuntimeAwarenessPrompt(...) at the call site, a fixed-size runtime
     // notice appended AFTER every budget/threshold decision runs (pre-existing behavior,
     // unrelated to and unchanged by the per-turn knowledge injection feature: neither the old nor the new code counts this
     // suffix in applyContextWindowAwareness's own sysTokens estimate). Folding its cost
@@ -505,12 +505,12 @@ describe('orchestrator-runner — per-turn passive knowledge injection', () => {
 
     expect(chatCallCount).toBe(1);
     // Whatever the runner decided to send, it must never exceed the same 85% threshold
-    // applyContextWindowAwareness itself enforces — the block cannot silently push it over.
+    // applyContextWindowAwareness itself enforces, the block cannot silently push it over.
     const sentTokens = estimateTokens(capturedSystemPrompts[0]!) + estimateConversationTokens([{ role: 'user', content: record.task } as ProviderMessage]);
     expect(sentTokens).toBeLessThanOrEqual(Math.floor(tightWindow * 0.85));
     // The oversized record could not fit in ~40 tokens of headroom, so it must be absent
     // (and the top-3 fillers, having already been surfaced at spawn time, do not appear
-    // a second time either — dedupe, not budget, explains their absence from any
+    // a second time either, dedupe, not budget, explains their absence from any
     // per-turn block, but either way none of them re-inflate the prompt).
     expect(capturedSystemPrompts[0]).not.toContain('mem_big');
 

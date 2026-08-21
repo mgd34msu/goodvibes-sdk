@@ -1,5 +1,5 @@
 /**
- * cli-types.ts — the shared shape of a `goodvibes` front-end's command line:
+ * cli-types.ts, the shared shape of a `goodvibes` front-end's command line:
  * every recognized command word, every global flag, and the parse result a
  * caller consumes.
  */

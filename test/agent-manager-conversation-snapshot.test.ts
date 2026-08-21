@@ -7,7 +7,7 @@
  * ends. AgentManager.registerConversationSource/releaseConversationSource/
  * getConversationSnapshot bridges that gap for RUNNING agents (live read)
  * and gives a bounded grace window for just-completed agents (frozen final
- * snapshot, retained until evicted from a size-bounded ring) — without
+ * snapshot, retained until evicted from a size-bounded ring), without
  * retaining every finished agent's full history forever.
  *
  * These tests exercise AgentManager's public bridge API directly (the
@@ -46,7 +46,7 @@ describe('AgentManager — conversation snapshot bridge', () => {
     let live = snap('turn 1');
     manager.registerConversationSource('ag-running', () => live);
     expect(manager.getConversationSnapshot('ag-running')).toEqual(snap('turn 1'));
-    // The agent keeps talking — the bridge must reflect growth, proving it
+    // The agent keeps talking, the bridge must reflect growth, proving it
     // calls the source function each time rather than caching turn 1 forever.
     live = snap('turn 1 + turn 2');
     expect(manager.getConversationSnapshot('ag-running')).toEqual(snap('turn 1 + turn 2'));
@@ -60,7 +60,7 @@ describe('AgentManager — conversation snapshot bridge', () => {
     manager.releaseConversationSource('ag-done');
     // The live source is gone: further mutation of the (now-orphaned)
     // variable must not change what's served.
-    live = snap('mutated after release — must not leak through');
+    live = snap('mutated after release, must not leak through');
     expect(manager.getConversationSnapshot('ag-done')).toEqual(snap('final content'));
   });
 
@@ -123,7 +123,7 @@ describe('AgentManager — conversation snapshot bridge', () => {
     manager.registerConversationSource('ag-b', () => snap('b'));
     manager.releaseConversationSource('ag-b');
     // ag-a runs again (e.g. re-spawned under the same id in a test harness)
-    // and completes again — this should move it to "freshest", not create a
+    // and completes again, this should move it to "freshest", not create a
     // duplicate ring slot.
     manager.registerConversationSource('ag-a', () => snap('a-second'));
     manager.releaseConversationSource('ag-a');

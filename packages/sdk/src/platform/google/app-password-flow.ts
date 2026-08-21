@@ -5,10 +5,10 @@
  * Three states are not "ready" and are detected and returned distinctly
  * instead of retried in a loop:
  *
- *  - `sign-in-required`  — Google redirected to a sign-in page.
- *  - `two-step-required` — the account has no 2-Step Verification, so Google
+ *  - `sign-in-required` , Google redirected to a sign-in page.
+ *  - `two-step-required`, the account has no 2-Step Verification, so Google
  *                           makes app passwords unavailable outright.
- *  - `label-already-exists` — an app password with this label is already
+ *  - `label-already-exists`, an app password with this label is already
  *                              listed. Google never re-displays an existing
  *                              password, so the only way forward is reusing
  *                              the one already stored, or deleting that entry
@@ -17,7 +17,7 @@
  *                              duplicate app passwords on every re-run.
  *
  * The created password is returned only in the dedicated `password` field of
- * the `ok` result. It is never written into `detail`, `problem`, or `fix` —
+ * the `ok` result. It is never written into `detail`, `problem`, or `fix`,
  * those are the strings that get logged and shown in error messages.
  */
 
@@ -60,7 +60,7 @@ export interface CreateAppPasswordOptions {
    * Overrides the page navigated to. Defaults to Google's real app-password
    * page. The only legitimate reason to override it is a test driving this
    * flow's real logic against a local fake page instead of a live Google
-   * account — production callers never set this.
+   * account, production callers never set this.
    */
   readonly pageUrl?: string;
 }
@@ -78,7 +78,7 @@ function signInNeeded(url: string): AppPasswordNeedsHuman {
  * Text Google shows on the app-password page when 2-Step Verification is not
  * on. Matched loosely because the exact wording was not re-verified live for
  * this change (the automated browser is never pointed at a real Google
- * account in this environment) — treat this as best-effort and confirm
+ * account in this environment), treat this as best-effort and confirm
  * against a live account before relying on it.
  */
 const TWO_STEP_REQUIRED_TEXT =
@@ -163,7 +163,7 @@ export async function createAppPassword(
   const createButtonLookup = requireElement(elements, { role: 'button', nameIncludes: 'create' });
 
   // No sign-in prompt, no two-step message, no existing entry, and yet the
-  // create form itself is missing — Google most likely disabled the form
+  // create form itself is missing, Google most likely disabled the form
   // because 2-Step Verification is off, even though the page text did not
   // match the patterns above.
   if (!nameFieldLookup.found && !createButtonLookup.found) {

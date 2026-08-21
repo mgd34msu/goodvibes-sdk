@@ -1,5 +1,5 @@
 /**
- * McpClient — connects to a single MCP server over stdio (spawned process,
+ * McpClient, connects to a single MCP server over stdio (spawned process,
  * newline-delimited JSON-RPC 2.0) or Streamable HTTP (config `url`).
  *
  * Protocol currency: speaks the stateless 2026-07-28 revision (per-request
@@ -128,7 +128,7 @@ export class McpClient {
   }
 
   /**
-   * connect — Start the transport and negotiate a protocol version.
+   * connect, Start the transport and negotiate a protocol version.
    * After connect, listTools() is available. No tool data is fetched here.
    */
   async connect(): Promise<void> {
@@ -157,7 +157,7 @@ export class McpClient {
   }
 
   /**
-   * listTools — Return tool names and descriptions (progressive loading).
+   * listTools, Return tool names and descriptions (progressive loading).
    * Full schemas are NOT fetched here; call getToolSchema() to get them.
    */
   async listTools(): Promise<McpToolInfo[]> {
@@ -175,7 +175,7 @@ export class McpClient {
   }
 
   /**
-   * getToolSchema — Fetch full JSON schema for a tool (lazy, cached).
+   * getToolSchema, Fetch full JSON schema for a tool (lazy, cached).
    * MCP protocol provides full schemas in tools/list; we cache them on first access.
    */
   async getToolSchema(toolName: string): Promise<McpToolSchema | null> {
@@ -214,7 +214,7 @@ export class McpClient {
   }
 
   /**
-   * callTool — Execute a tool on the MCP server.
+   * callTool, Execute a tool on the MCP server.
    * Fetches full schema on first use (if not already cached).
    * Modern-era servers may answer with an input_required interim result
    * (Multi Round-Trip Requests); elicitation input requests are resolved
@@ -277,7 +277,7 @@ export class McpClient {
   }
 
   /**
-   * disconnect — Stop the server process and clean up.
+   * disconnect, Stop the server process and clean up.
    */
   async disconnect(): Promise<void> {
     // Mark this as a deliberate shutdown so the read-loop finally does not
@@ -511,7 +511,7 @@ export class McpClient {
         }
         this.pendingRequests.clear();
 
-        // Auto-restart only on an unexpected crash — never after a deliberate disconnect.
+        // Auto-restart only on an unexpected crash, never after a deliberate disconnect.
         if (this.intentionalClose) {
           // Deliberate shutdown: leave the process down.
         } else if (this.restartCount < MAX_RESTART_ATTEMPTS) {
@@ -633,7 +633,7 @@ export class McpClient {
             id: request.id,
             err: summarizeError(err),
           });
-          // A resolver failure is not the same as an unsupported method — report
+          // A resolver failure is not the same as an unsupported method, report
           // an internal error so the server can distinguish the two.
           this._sendJsonRpcError(request.id, -32603, 'Elicitation request could not be resolved');
         });
@@ -738,7 +738,7 @@ export class McpClient {
   }
 
   /**
-   * ping — Check whether the server is healthy.
+   * ping, Check whether the server is healthy.
    * The 2026-07-28 revision removed `ping`; modern-era servers are probed
    * with `server/discover` instead. Legacy servers keep the classic ping.
    */

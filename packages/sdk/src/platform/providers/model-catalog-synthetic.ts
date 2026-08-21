@@ -188,7 +188,7 @@ export function getSyntheticModelDefinitions(
       provider: 'synthetic',
       registryKey: `synthetic:${canonical.id}`,
       displayName,
-      description: `Synthetic failover model — ${canonical.backendCount} provider${canonical.backendCount !== 1 ? 's' : ''} available`,
+      description: `Synthetic failover model, ${canonical.backendCount} provider${canonical.backendCount !== 1 ? 's' : ''} available`,
       capabilities: {
         toolCalling: true,
         codeEditing: true,

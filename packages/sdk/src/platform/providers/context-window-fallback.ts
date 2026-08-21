@@ -2,7 +2,7 @@
  * Provider/model-family-aware context-window fallback.
  *
  * Used only when neither the live catalog (models.dev) nor the provider API
- * reports a context window for a model — e.g. a model newer than the models.dev
+ * reports a context window for a model, e.g. a model newer than the models.dev
  * snapshot (the "brand-new gpt-5.5" case). A single flat default badly mis-sizes
  * the window and drives auto-compaction to fire far too early (small default) or
  * too late (large default, risking a provider "context length exceeded" error).

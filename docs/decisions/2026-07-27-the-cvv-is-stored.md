@@ -18,8 +18,7 @@ something PCI DSS 3.2 prohibits storing after authorization. That recognition is
 correct and the conclusion you are about to draw from it is wrong for this
 system. Here is the reasoning, so you do not have to reconstruct it.
 
-**Autonomous action is the entire capability.** Not a convenience on top of it —
-the thing itself. The design rests on two windows, and the in-budget one is a
+**Autonomous action is the entire capability.** Not a convenience on top of it, the thing itself. The design rests on two windows, and the in-budget one is a
 veto: the owner is told what is about to happen, and if he says nothing the
 purchase proceeds. His words for why it works that way:
 
@@ -42,7 +41,7 @@ he is carrying.
 
 Anyone who can read both `~/.goodvibes/daemon/secrets.enc` and
 `~/.goodvibes/secrets.key` holds the card number, the expiry, the CVV and the
-billing address — a complete card-not-present kit, usable at any merchant, with
+billing address, a complete card-not-present kit, usable at any merchant, with
 no further access to this machine. Filesystem permissions and AES-256-GCM at rest
 defend against another user on the same host. Neither defends against a process
 running as the owner, and a home-directory backup carries the whole set.
@@ -63,12 +62,11 @@ reduction lives:
 The decision is safe to live with because of the containment, not because of any
 argument about scope. Each of these is asserted by a test over real output:
 
-- Daemon secret tier only, forced by `resolveSecretWriteScope` — never the config
+- Daemon secret tier only, forced by `resolveSecretWriteScope`, never the config
   file.
 - Encrypted at rest; the on-disk bytes do not contain the value.
 - Never logged, on any path.
-- Never rendered on any surface. `payments.cards.*` returns metadata only —
-  there is no operator method that can return it.
+- Never rendered on any surface. `payments.cards.*` returns metadata only, there is no operator method that can return it.
 - Never echoed while being typed, not only masked at rest.
 - Absent from every export, diagnostic dump and support bundle, verified by
   walking the real payloads.
@@ -81,5 +79,5 @@ is. Deleting the stored CVV is not on it.
 `payments.cvvHandling` ships as a real setting per the platform rule that a flag
 is a feature: `'stored'` (default) and `'prompt'`. Choosing `'prompt'` disables
 unattended purchasing, and the surface says exactly that at the moment of
-selection — `CVV_PROMPT_TRADEOFF_WARNING` in `platform/payments/index.ts`. The
+selection, `CVV_PROMPT_TRADEOFF_WARNING` in `platform/payments/index.ts`. The
 trade-off belongs in front of whoever flips the switch.

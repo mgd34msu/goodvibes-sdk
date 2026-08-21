@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — external task-suite adapter (Terminal-Bench-style).
+ * Evaluation Harness, external task-suite adapter (Terminal-Bench-style).
  *
  * A Terminal-Bench task suite is a DIRECTORY of tasks, each its own
  * subdirectory holding a task definition and a verification script:
@@ -10,9 +10,9 @@
  *       verify.sh     exits 0 = pass, non-zero = fail
  *       ...           any fixtures the task needs
  *
- * This adapter runs each task through a REAL session — supplied by the caller as
+ * This adapter runs each task through a REAL session, supplied by the caller as
  * an injectable `TaskSessionExecutor` (the seam a consumer fills with an actual
- * model-driven session operating in the task's working directory) — and then
+ * model-driven session operating in the task's working directory), and then
  * runs the task's verification script to decide pass/fail. It reports a
  * per-task result and an aggregate.
  *
@@ -97,7 +97,7 @@ export interface TaskSuiteResult {
 }
 
 export interface RunTaskSuiteOptions {
-  /** The real-session seam. Required — there is no faked default session. */
+  /** The real-session seam. Required, there is no faked default session. */
   readonly executor: TaskSessionExecutor;
   /** Verification runner. Defaults to {@link defaultShellVerifier} (runs the script, exit 0 = pass). */
   readonly verifier?: TaskVerifier;

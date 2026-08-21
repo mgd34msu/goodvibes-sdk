@@ -4,7 +4,7 @@
  * WeakRef proof that the reactive-401 retry path releases the original 401
  * error during the refresh+retry await window. The transport's end-of-chain
  * catch sets ctx.error to the SAME object innerFetch threw, so clearing only
- * the middleware's local variable was a no-op — the error (which transitively
+ * the middleware's local variable was a no-op, the error (which transitively
  * retains the failed request, whose headers carry the operator-token
  * Authorization header) stayed pinned via ctx.error for the whole window.
  * Mirrors the reviewer's probe: real composeMiddleware + real

@@ -1,5 +1,5 @@
 /**
- * daemon-tier-migration-ownership.test.ts — a process migrates ON DISK only the
+ * daemon-tier-migration-ownership.test.ts, a process migrates ON DISK only the
  * files it owns.
  *
  * The defect this pins, from the owner's machine: `~/.goodvibes/daemon/
@@ -7,14 +7,14 @@
  * because a client resolves daemon-owned keys in order to show and edit them.
  * The payments money-key migration ran during that read. So a client on the
  * 2.0.5 runtime renamed `payments.budget.perPurchaseCeilingCents` to
- * `perPurchaseCeiling` on disk while the running daemon was still 1.28.6 — and
+ * `perPurchaseCeiling` on disk while the running daemon was still 1.28.6, and
  * that daemon, seeing a key its build did not know, skipped it. The configured
  * $100 ceiling stopped resolving. Nothing was corrupt and nothing was wrong
  * about the rename; the wrong process performed it.
  *
  * The rule under test: the owner migrates the file and files a receipt; a
  * non-owning reader migrates its in-memory view, writes no bytes, and files no
- * receipt — a receipt without the rename on disk would be a lie.
+ * receipt, a receipt without the rename on disk would be a lie.
  */
 import { describe, expect, test } from 'bun:test';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -212,7 +212,7 @@ describe('the migrated file says which reader can understand it', () => {
     });
 
     // The floor is a marker ABOUT the file, not a setting in it. If it were
-    // screened it would be announced as an unknown key — the exact sentence
+    // screened it would be announced as an unknown key, the exact sentence
     // this whole change exists to stop producing.
     expect(daemon.getIngestionQuarantine().filter((n) => n.key.includes('goodvibes'))).toEqual([]);
 
@@ -242,7 +242,7 @@ describe('the migrated file says which reader can understand it', () => {
       refusal = error instanceof Error ? error.message : String(error);
     }
 
-    // It refuses on the VERSION — the cause — naming both numbers and the fix.
+    // It refuses on the VERSION, the cause, naming both numbers and the fix.
     expect(refusal).toContain('1.28.6');
     expect(refusal).toContain(PAYMENTS_BUDGET_AMOUNTS_READER_FLOOR);
     expect(refusal).toContain('payments-budget-amounts-migration');
@@ -257,7 +257,7 @@ describe('the skew that actually happened', () => {
     const { home, configDir, daemonTierPath } = makeHomeWithOldKeysFile('gv-own-skew', 'tui');
     const original = readFileSync(daemonTierPath, 'utf-8');
 
-    // 1. The new client starts first — this is the step that broke the machine.
+    // 1. The new client starts first, this is the step that broke the machine.
     const client = new ConfigManager({
       configDir: join(home, '.goodvibes', 'tui'),
       homeDir: home,
@@ -286,7 +286,7 @@ describe('the skew that actually happened', () => {
     expect(daemon.get('payments.budget.perPurchaseCeiling')).toBe(100);
 
     // 3. Exactly once. The migration is idempotent, so a second owner load has
-    // nothing left to rename — the bytes settle and stop moving.
+    // nothing left to rename, the bytes settle and stop moving.
     const daemonAgain = new ConfigManager({
       configDir: daemonConfigDir,
       homeDir: home,

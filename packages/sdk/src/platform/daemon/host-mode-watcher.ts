@@ -31,7 +31,7 @@ export interface HostModeWatcherOptions {
 }
 
 export interface HostModeWatcherHandle {
-  /** Detach all subscriptions — safe to call multiple times. */
+  /** Detach all subscriptions, safe to call multiple times. */
   unsubscribe: () => void;
 }
 

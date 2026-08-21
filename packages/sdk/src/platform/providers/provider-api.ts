@@ -155,7 +155,7 @@ export interface ProviderApi {
   /**
    * Re-check live model discovery for one provider (or all providers that
    * support it when omitted). This is the registry-level hook a picker-open
-   * handler or an explicit user "refresh models" command calls — routine
+   * handler or an explicit user "refresh models" command calls, routine
    * background refreshes respect each provider's on-disk TTL cache;
    * `force: true` bypasses it for an explicit user-triggered check.
    */
@@ -440,7 +440,7 @@ async function resolvePinnedRegistryKeyOrThrow(
 ): Promise<string> {
   const models = deps.providerRegistry.listModels();
   // A pinned favorite may reference a model no longer in the live registry
-  // (that's exactly why the favorites fallback below exists) — if resolution
+  // (that's exactly why the favorites fallback below exists), if resolution
   // fails (unknown/ambiguous bare id), fall back to treating modelRef as a
   // literal registryKey rather than losing the favorites-fallback path.
   let registryKey: string;

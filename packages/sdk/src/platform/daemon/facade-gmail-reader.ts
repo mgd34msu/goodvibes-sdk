@@ -1,19 +1,19 @@
 /**
- * facade-gmail-reader.ts — where the daemon's Google credential meets inbound
+ * facade-gmail-reader.ts, where the daemon's Google credential meets inbound
  * mail.
  *
  * The counterpart of `control-plane/routes/calendar-composition.ts`, and
  * assembled the same way and in the same tier for the same reason: the daemon
  * reads the connection from the DAEMON config and secret stores and from
- * nowhere else, so a Google setup performed in any surface — the agent, the
- * TUI, the web UI — is readable here the moment it lands and stays readable
+ * nowhere else, so a Google setup performed in any surface, the agent, the
+ * TUI, the web UI, is readable here the moment it lands and stays readable
  * after that surface has exited. The runtime that has to notice a verification
  * email at 3am is not the one the owner did the setup in.
  *
  * Why this is a separate file from `facade-inbound-mail.ts`
  * ────────────────────────────────────────────────────────
- * That file owns the inbound graph — three persisted stores, the expectation
- * book, the supervisor — and knows nothing about OAuth. This file owns exactly
+ * That file owns the inbound graph, three persisted stores, the expectation
+ * book, the supervisor, and knows nothing about OAuth. This file owns exactly
  * one question: does this machine have a Google credential that can read the
  * mailbox, and if not, why not. Keeping them apart is what lets the inbound
  * composition be exercised with a reader that reports `unavailable` without a
@@ -23,7 +23,7 @@
  * ─────────────────────────────────────────────────
  * It is called once per supervisor start rather than once at boot, so a
  * credential the owner adopts while the daemon is running is picked up on the
- * next start instead of at the next restart — the same property
+ * next start instead of at the next restart, the same property
  * `InboundMailSupervisorDeps.selectionFacts` already states for the two facts
  * it asks for.
  */
@@ -41,7 +41,7 @@ export interface DaemonGmailInboundReaderDeps {
   readonly secretsManager: { get(key: string): Promise<string | null> };
   /**
    * The daemon's own home. Absent in narrow compositions, and the adoption
-   * probe cannot run without one — `~/.gmail-mcp` is a path, not a guess.
+   * probe cannot run without one, `~/.gmail-mcp` is a path, not a guess.
    */
   readonly homeDirectory?: string | undefined;
   /** Test seam: overrides the injected fetch, so no socket is opened. */
@@ -59,7 +59,7 @@ const NO_HOME: GmailInboundReaderProvider = async () => ({
 /**
  * The provider `composeInboundMail` takes.
  *
- * Always returns a function — never `undefined`. An optional Gmail arm is
+ * Always returns a function, never `undefined`. An optional Gmail arm is
  * exactly what let the whole path ship inert: `deps.gmail` was optional,
  * nothing filled it, and the absence looked identical to a machine with no
  * Google account. A provider that reports `unavailable` with a reason is the
@@ -75,7 +75,7 @@ export function createDaemonGmailInboundReader(
     sources: {
       files: nodeGoogleFilePort,
       homeDirectory: home,
-      // `get` throws on a config section that does not exist yet — the Google
+      // `get` throws on a config section that does not exist yet, the Google
       // section is app-layer and absent on a machine where nobody has run
       // setup. The connector reads every config value through its own guard
       // (platform/google/config-access.ts), so an absent section reads as "not

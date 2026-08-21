@@ -1,7 +1,7 @@
 /**
  * distiller-compaction.ts
  *
- * Fresh-context DISTILLER compaction strategy — an alternative to the in-place
+ * Fresh-context DISTILLER compaction strategy, an alternative to the in-place
  * structured summarization in `context-compaction.ts`.
  *
  * Where the structured strategy assembles a handoff from many targeted
@@ -15,7 +15,7 @@
  * frontmatter are re-injected at the boundary here through the SAME
  * `buildReinjectedInstructions` seam the structured strategy uses (never a
  * second copy), and prior re-injected blocks are stripped from the history
- * before it is handed to the distiller model call — identical to
+ * before it is handed to the distiller model call, identical to
  * `runCompaction`.
  *
  * The distiller does NOT decide whether its own output is good enough: the
@@ -75,7 +75,7 @@ function buildTranscript(messages: readonly ProviderMessage[]): string {
   }
   const joined = lines.join('\n\n');
   if (joined.length <= MAX_TRANSCRIPT_CHARS) return joined;
-  // Keep the tail — the most recent exchanges carry the live task state.
+  // Keep the tail, the most recent exchanges carry the live task state.
   return joined.slice(joined.length - MAX_TRANSCRIPT_CHARS);
 }
 
@@ -85,7 +85,7 @@ function buildDistillerPrompt(transcript: string, planTitle: string | null): str
   return (
     'You are distilling a long assistant/tool conversation into a compact, ' +
     'structured CONTINUATION BRIEF so a fresh context can resume the work with ' +
-    'no loss of task state. Do not summarize for a reader — write for the agent ' +
+    'no loss of task state. Do not summarize for a reader, write for the agent ' +
     'that will continue. Be concrete: name files, symbols, decisions, and the ' +
     'exact next steps.\n\n' +
     taskHint +
@@ -131,7 +131,7 @@ function resolveProvider(
 }
 
 /**
- * distillConversation — fresh-context distiller strategy entry point.
+ * distillConversation, fresh-context distiller strategy entry point.
  *
  * Makes one fresh model call to produce a structured continuation brief,
  * re-injects the standing instruction chain + active skill at the boundary, and
@@ -177,7 +177,7 @@ export async function distillConversation(
   }
 
   // Assemble the compacted context: handoff header, then the re-injected
-  // standing instructions (SAME seam as structured — parity, not a second
+  // standing instructions (SAME seam as structured, parity, not a second
   // copy), then the distilled brief.
   const header = buildHandoffHeader();
   const reinjected = buildReinjectedInstructions(ctx.instructionChain, ctx.activeSkillFrontmatter);

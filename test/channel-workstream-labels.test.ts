@@ -3,7 +3,7 @@
  *
  * The round that put an audience on render events kept this family owner-facing
  * on purpose: someone who asked for a long-running workstream is owed its legs.
- * What it left behind was the text itself — every line led with
+ * What it left behind was the text itself, every line led with
  * `WRFC chain 7f3a91c02b4e`, a name for the machinery and a register id, and
  * outward-facing text carries neither.
  *
@@ -11,7 +11,7 @@
  * is a different defect:
  *
  *   1. no rendered line contains the chain id (or a prefix of it);
- *   2. the lines still ARRIVE — this is not a suppression fix;
+ *   2. the lines still ARRIVE, this is not a suppression fix;
  *   3. two workstreams running at once are still told apart, in words.
  */
 import { describe, expect, test, beforeEach, spyOn } from 'bun:test';
@@ -25,7 +25,7 @@ import { RuntimeEventBus } from '../packages/sdk/src/platform/runtime/events/ind
  * `Parameters<typeof bus.emit>[1]` was wrong here: `emit` is generic over the
  * domain, so reading its parameters without supplying one instantiates the
  * type variable at its constraint and yields the union envelope across every
- * domain — which the `workflows` overload does not accept. The instantiation
+ * domain, which the `workflows` overload does not accept. The instantiation
  * expression pins the domain, so this alias stays correct as the event map
  * grows instead of silently widening again.
  */
@@ -62,7 +62,7 @@ const TASK = 'rewrite the retry backoff so it stops hammering the mail host';
  * Every workflow event the renderer turns into an owner-facing line.
  *
  * Each envelope gets its own trace id and timestamp because the pipeline's
- * delta watermark keys on the render event id, which is built from both — reuse
+ * delta watermark keys on the render event id, which is built from both, reuse
  * them and the second event of a chain looks like one already delivered.
  */
 function workflowEnvelopes(chainId: string, task: string) {
@@ -104,7 +104,7 @@ describe('the id never reaches a rendered line', () => {
     const body = lines.join('\n');
     expect(body).not.toContain(CHAIN_ID);
     expect(body).not.toContain(CHAIN_ID_SHORT);
-    // The name for the machinery goes with it — outward-facing text carries
+    // The name for the machinery goes with it, outward-facing text carries
     // neither an id nor an internal codename.
     expect(body).not.toContain('WRFC');
   });
@@ -174,7 +174,7 @@ describe('two workstreams at once are told apart, in words', () => {
   });
 
   test('the second opening line says which one it is', () => {
-    // Only the opening events — running two whole lifecycles would retire the
+    // Only the opening events, running two whole lifecycles would retire the
     // first workstream before the second one started, which is not the case
     // under test.
     const openingLine = (chainId: string): string | null => {
@@ -213,7 +213,7 @@ describe('two workstreams at once are told apart, in words', () => {
 
   test('a workstream started after its namesake finished stands alone again', () => {
     // The same ask, run twice, one after the other. There is nothing live to
-    // tell the second run apart from, so it is not qualified — and it does not
+    // tell the second run apart from, so it is not qualified, and it does not
     // reuse the place the first run wore.
     rememberWorkstreamLabel(CHAIN_ID, TASK);
     finishWorkstreamLabel(CHAIN_ID);
@@ -235,12 +235,12 @@ describe('what the label module promises', () => {
   test('a terminal event leaves the name readable for every other subscriber', () => {
     rememberWorkstreamLabel(CHAIN_ID, TASK);
     expect(workstreamLabelInline(CHAIN_ID)).toContain('rewrite the retry backoff');
-    // WORKFLOW_CHAIN_PASSED — the second-to-last envelope in the family.
+    // WORKFLOW_CHAIN_PASSED, the second-to-last envelope in the family.
     normalizeChannelRenderEventFromRuntime(workflowEnvelopes(CHAIN_ID, TASK).at(-2)!);
 
     // Still readable, deliberately. Three subscribers build a line from this
-    // one event — the channel renderer, the conversation follow-up and the
-    // webhook notifier — and dropping the name on the first of them would make
+    // one event, the channel renderer, the conversation follow-up and the
+    // webhook notifier, and dropping the name on the first of them would make
     // the other two say "the workstream" purely because of subscription order.
     // Reaping is by the map's bound, where nothing is racing.
     expect(workstreamLabelInline(CHAIN_ID)).toContain('rewrite the retry backoff');
@@ -299,7 +299,7 @@ describe('what the label module promises', () => {
 
 describe('the other places a workstream line reaches a person', () => {
   test('a webhook body names the workstream, not the chain', async () => {
-    // A webhook body is read by whatever the operator pointed it at — a Slack
+    // A webhook body is read by whatever the operator pointed it at, a Slack
     // channel, a phone. Outward-facing text, same rule.
     const sent: string[] = [];
     const bus = new RuntimeEventBus();
@@ -384,7 +384,7 @@ describe('end to end, on every surface', () => {
       expect(body).not.toContain(CHAIN_ID);
       expect(body).not.toContain(CHAIN_ID_SHORT);
       expect(body).not.toContain('WRFC');
-      // Still delivered — the owner's workstream still reports its legs.
+      // Still delivered, the owner's workstream still reports its legs.
       expect(body).toContain('rewrite the retry backoff');
     });
   }

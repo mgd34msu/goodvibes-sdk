@@ -1,10 +1,10 @@
 /**
- * tool-call-cancel-and-queued-messages.test.ts — two small interaction wins.
+ * tool-call-cancel-and-queued-messages.test.ts, two small interaction wins.
  *
  * 1. Per-tool cancel: ONE running tool call can be killed through the
  *    cooperative abort machinery (Tool.execute opts.signal). The cancelled call
  *    settles as a structured "cancelled by user" result (cancelled: true) and
- *    the TURN CONTINUES — sibling calls in the same batch are unaffected and
+ *    the TURN CONTINUES, sibling calls in the same batch are unaffected and
  *    still execute. Previously the only lever was the whole-turn abort.
  *
  * 2. Queued mid-turn messages: the orchestrator queue was push/shift only.
@@ -73,7 +73,7 @@ describe('per-tool cancel — one call dies, the turn continues', () => {
     };
 
     // Cancel the slow call shortly after it starts (calls run sequentially:
-    // slow first, then fast — exactly the mid-turn shape).
+    // slow first, then fast, exactly the mid-turn shape).
     setTimeout(() => {
       expect(aborts.cancel('call-slow')).toBe(true);
     }, 50);
@@ -83,7 +83,7 @@ describe('per-tool cancel — one call dies, the turn continues', () => {
       { id: 'call-fast', name: 'fast', arguments: {} },
     ]);
 
-    // BOTH results exist — the batch (and thus the turn) continued.
+    // BOTH results exist, the batch (and thus the turn) continued.
     expect(results.length).toBe(2);
     const slow = results.find((r) => r.callId === 'call-slow')!;
     const fast = results.find((r) => r.callId === 'call-fast')!;

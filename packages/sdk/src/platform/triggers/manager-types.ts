@@ -1,12 +1,12 @@
 /**
- * manager-types.ts — the ports and configuration surface of the trigger
+ * manager-types.ts, the ports and configuration surface of the trigger
  * supervisor.
  *
  * Split out of manager.ts so the supervisor's wiring contract can be read (and
  * implemented by a host, or faked by a test) without paging through the
  * lifecycle logic that consumes it. Everything with an effect the supervisor
- * needs — running an agent turn, running a confirmed grant, supervising a
- * long-lived command — arrives through one of these interfaces.
+ * needs, running an agent turn, running a confirmed grant, supervising a
+ * long-lived command, arrives through one of these interfaces.
  */
 
 import type { TriggerProcessHost } from './process-triggers.js';
@@ -86,7 +86,7 @@ export interface TriggerManagerOptions {
 
 /**
  * Raised instead of silently doing nothing when the family is off. A watcher
- * that quietly declines to exist is the worst of both worlds — the operator
+ * that quietly declines to exist is the worst of both worlds, the operator
  * believes it is running.
  */
 export class TriggerDisabledError extends Error {

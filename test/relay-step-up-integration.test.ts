@@ -5,7 +5,7 @@
  * on and a verifier wired, a MUTATING call arriving over the relay is rejected
  * (401) unless it carries a genuinely-verified assertion, while read calls pass
  * untouched. Driven through the real daemon wiring (buildDaemonRelayReachability)
- * and a real relay server + client, so the composition — not a stub — is tested.
+ * and a real relay server + client, so the composition, not a stub, is tested.
  */
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createBunRelayServer } from '../packages/daemon-sdk/src/index.js';

@@ -334,7 +334,7 @@ export function loadSessionBrokerState(snapshot: SharedSessionStoreSnapshot | nu
  * Build the durable snapshot with a PER-SESSION message cap.
  *
  * `maxPersistedMessagesPerSession` bounds each session's retained bodies
- * independently — NOT the flattened total. The old global slice-after-flatten
+ * independently, NOT the flattened total. The old global slice-after-flatten
  * behaviour silently dropped whole sessions' transcripts (the oldest ones) once
  * the combined message count crossed the cap, while `messageCount` stayed
  * inflated. Capping per session keeps every session's most recent bodies and,
@@ -363,7 +363,7 @@ export function createSessionBrokerSnapshot(
     if (retained < session.messageCount) {
       return { ...session, retainedMessageCount: retained };
     }
-    // Nothing pruned — drop any stale marker so the common case carries none.
+    // Nothing pruned, drop any stale marker so the common case carries none.
     if (session.retainedMessageCount !== undefined) {
       const { retainedMessageCount: _drop, ...rest } = session;
       return rest;
@@ -399,7 +399,7 @@ export function reconcileSessionBrokerBoot(
   sessions: Map<string, SharedSessionRecord>,
   inputs: Map<string, SharedSessionInputRecord[]>,
 ): Set<string> {
-  const restartReason = 'daemon restart — agent state unknown';
+  const restartReason = 'daemon restart, agent state unknown';
   const changed = new Set<string>();
   for (const [sessionId, bucket] of inputs.entries()) {
     for (let i = 0; i < bucket.length; i++) {

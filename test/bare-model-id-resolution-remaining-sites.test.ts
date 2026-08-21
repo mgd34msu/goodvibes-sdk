@@ -1,5 +1,5 @@
 /**
- * "Bare model IDs just work" — proves the shared resolver (model-id-resolution.ts)
+ * "Bare model IDs just work", proves the shared resolver (model-id-resolution.ts)
  * is wired into the remaining mapped sites not already covered by
  * model-routes.test.ts, openai-compatible-routes.test.ts,
  * provider-registry-canonical-api.test.ts, and feature-flag-gates.test.ts:
@@ -51,7 +51,7 @@ describe('media/builtin-image-understanding.ts — bare model id resolution', ()
       describeRuntime: async () => null,
     };
     const mediaProvider = createBuiltinImageUnderstandingProvider(registry, {
-      readContent: async () => { throw new Error('not used — dataBase64 supplied directly'); },
+      readContent: async () => { throw new Error('not used, dataBase64 supplied directly'); },
     });
     expect(mediaProvider.analyze).toBeDefined();
     const result = await mediaProvider.analyze!({
@@ -138,7 +138,7 @@ describe('providers/provider-api.ts — bare model id resolution', () => {
   test('listBenchmarks({registryKeys}) resolves a bare model id in the filter list', async () => {
     const model = makeModel('anthropic', 'claude-fable-5');
     const api = createProviderApi(makeDeps([model]));
-    // No benchmark data registered — this proves resolution succeeds (no throw)
+    // No benchmark data registered, this proves resolution succeeds (no throw)
     // rather than the old format-lecture rejection; an empty result is expected.
     const records = await api.listBenchmarks({ registryKeys: ['claude-fable-5'] });
     expect(records).toEqual([]);

@@ -1,5 +1,5 @@
 /**
- * google-calendar-api.ts — the Google Calendar API v3 client over an access token
+ * google-calendar-api.ts, the Google Calendar API v3 client over an access token
  * and the injected HttpFetch. Lists calendars (calendarList.list), lists events
  * (events.list with timeMin/timeMax paging and singleEvents=true so instances are
  * already expanded), and creates events (events.insert). Every event is normalized

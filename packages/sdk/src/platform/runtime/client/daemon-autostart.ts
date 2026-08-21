@@ -1,17 +1,17 @@
 /**
- * daemon-autostart.ts — starting a daemon that is installed but not running,
+ * daemon-autostart.ts, starting a daemon that is installed but not running,
  * once, at boot.
  *
  * ── Why this exists ────────────────────────────────────────────────────────
  *
  * A surface product used to solve "no daemon on the port" by BEING one: it
- * embedded a daemon server in its own process. That is gone — the daemon is its
+ * embedded a daemon server in its own process. That is gone, the daemon is its
  * own product and a surface adopts one or does without.
  *
  * Which leaves a case that must not become the user's problem: the daemon is
  * installed on this machine, the service is simply stopped, and the surface
  * boots to "no daemon" with a suggestion to go type something. So boot
- * discovery gets exactly one recovery step — ask the platform service manager
+ * discovery gets exactly one recovery step, ask the platform service manager
  * whether the daemon's service entry exists, start it if it does, wait a bounded
  * time, and re-probe.
  *
@@ -26,8 +26,8 @@
  * ── The boundaries, which stay strict ──────────────────────────────────────
  *
  * - A REACHABLE daemon is never restarted. Adopting is the whole point.
- * - A HELD port — `blocked` (an unverified process) or `incompatible` (a
- *   GoodVibes daemon on a wire version this build refuses) — is left alone.
+ * - A HELD port, `blocked` (an unverified process) or `incompatible` (a
+ *   GoodVibes daemon on a wire version this build refuses), is left alone.
  *   Those are the closest states a probe has to "another owner is mid-update",
  *   and stepping on either turns a transient state into an outage.
  * - A service the manager already reports ACTIVE gets a bounded wait, never a
@@ -59,7 +59,7 @@ export interface DaemonServiceSnapshot {
   /**
    * False on the 'manual' platform: there the service manager would spawn its
    * own locally-resolved command, which a surface cannot honestly resolve for a
-   * daemon it does not own — those stay on the guidance path.
+   * daemon it does not own, those stay on the guidance path.
    */
   readonly startSupported: boolean;
 }
@@ -178,7 +178,7 @@ export type DaemonAutostartInactionReason =
   | 'daemon-active'
   | 'port-held'
   | 'daemon-disabled'
-  /** A probe verdict this policy does not recognise — never treated as recoverable. */
+  /** A probe verdict this policy does not recognise, never treated as recoverable. */
   | 'unrecognized-mode';
 
 /** What the one boot-time recovery step did. */
@@ -212,7 +212,7 @@ function classifyMode(daemonMode: string): DaemonAutostartInactionReason | 'reco
       return 'daemon-active';
     case 'blocked':
     case 'incompatible':
-      // The port is held — by an unverified process or a daemon this build
+      // The port is held, by an unverified process or a daemon this build
       // refuses to adopt. Either way another owner may be mid-update or
       // mid-restart; never fight it.
       return 'port-held';
@@ -229,7 +229,7 @@ function classifyMode(daemonMode: string): DaemonAutostartInactionReason | 'reco
  * Start an installed-but-stopped daemon once, and wait a bounded time for it.
  *
  * Returns what happened rather than throwing: the caller renders it, and a
- * failure here never breaks boot. Pure over its seams — every effect goes
+ * failure here never breaks boot. Pure over its seams, every effect goes
  * through `control` and `isReachable`.
  */
 export async function autostartInstalledDaemon(options: DaemonAutostartOptions): Promise<DaemonAutostartOutcome> {
@@ -260,7 +260,7 @@ export async function autostartInstalledDaemon(options: DaemonAutostartOptions):
   const installedEntries = options.control.snapshot().filter((entry) => entry.installed);
   if (installedEntries.length === 0) return { action: 'not-installed' };
   // Prefer a unit already running (wait only), then one this host can actually
-  // start, and only then whatever is installed — so a machine carrying both a
+  // start, and only then whatever is installed, so a machine carrying both a
   // startable unit and an unstartable one is not refused because of the latter.
   const target = installedEntries.find((entry) => entry.running)
     ?? installedEntries.find((entry) => entry.startSupported)
@@ -268,13 +268,13 @@ export async function autostartInstalledDaemon(options: DaemonAutostartOptions):
   if (!target) return { action: 'not-installed' };
 
   if (target.running) {
-    // The service manager already reports the unit active — it may be mid-start
+    // The service manager already reports the unit active, it may be mid-start
     // or mid-restart. Wait for it, but never issue another start underneath it.
     if (await waitForAnswer()) return { action: 'came-online', serviceName: target.serviceName };
     return {
       action: 'start-failed',
       serviceName: target.serviceName,
-      reason: `service "${target.serviceName}" is active per the service manager but the daemon did not answer within ${waitTimeoutMs}ms — check its logs`,
+      reason: `service "${target.serviceName}" is active per the service manager but the daemon did not answer within ${waitTimeoutMs}ms, check its logs`,
     };
   }
 
@@ -313,7 +313,7 @@ export function describeDaemonAutostart(
   adoptedAfterwards: boolean,
   adoptionFailureReason?: string | undefined,
 ): { readonly level: 'low' | 'high'; readonly text: string } | null {
-  const suffix = adoptedAfterwards ? '' : ` — but adopting it still failed: ${adoptionFailureReason ?? 'unknown reason'}`;
+  const suffix = adoptedAfterwards ? '' : `, but adopting it still failed: ${adoptionFailureReason ?? 'unknown reason'}`;
   switch (outcome.action) {
     case 'started':
       return { level: 'low', text: `[Startup] The daemon was installed but stopped; started it (service "${outcome.serviceName}")${suffix}.` };

@@ -126,7 +126,7 @@ export const builtinGatewayPrincipalsMethodDescriptors: readonly GatewayMethodDe
   methodDescriptor({
     id: 'principals.delete',
     title: 'Delete Principal',
-    description: 'Permanently delete a principal. Returns { deleted: false } when no principal with that id existed — an honest boolean, never a 200 that pretends a phantom principal was removed.',
+    description: 'Permanently delete a principal. Returns { deleted: false } when no principal with that id existed, an honest boolean, never a 200 that pretends a phantom principal was removed.',
     category: 'principals',
     scopes: ['write:principals'],
     http: { method: 'DELETE', path: '/api/principals/{principalId}' },
@@ -137,7 +137,7 @@ export const builtinGatewayPrincipalsMethodDescriptors: readonly GatewayMethodDe
   methodDescriptor({
     id: 'principals.resolve',
     title: 'Resolve Sender Identity',
-    description: 'Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false — the registry never guesses.',
+    description: 'Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false, the registry never guesses.',
     category: 'principals',
     scopes: ['read:principals'],
     http: { method: 'POST', path: '/api/principals/resolve' },

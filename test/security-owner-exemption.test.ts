@@ -97,7 +97,7 @@ describe('attacks on the exemption — every one must fail', () => {
   });
 
   test('a colleague on the owner\'s own domain is not exempt', () => {
-    // Not a domain rule — a forward to a colleague is a third-party disclosure.
+    // Not a domain rule, a forward to a colleague is a third-party disclosure.
     expect(isSendToOwnerOnly('someone-else@example.com', owners)).toBe(false);
   });
 

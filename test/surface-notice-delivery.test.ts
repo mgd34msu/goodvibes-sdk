@@ -3,8 +3,8 @@
  *
  * The defect this pins: `deliverSurfaceNotice` used to push through
  * `deliverSurfaceProgress`, which is implemented for slack, discord and ntfy
- * only. Telegram — the surface whose bot demonstrably answers chat messages,
- * because those answers go through the channel delivery router — had no notice
+ * only. Telegram, the surface whose bot demonstrably answers chat messages,
+ * because those answers go through the channel delivery router, had no notice
  * path at all. A work-shaped Telegram message therefore produced a proposal
  * that could never be shown, so the owner was asked nothing and saw nothing.
  *
@@ -135,7 +135,7 @@ describe('surface notice delivery', () => {
   test('with no plugin registered the direct push is used, and still refuses honestly', async () => {
     // render() returning null means no plugin owns the surface. The fallback is
     // deliverSurfaceProgress, which throws by name for surfaces it does not
-    // implement — it must not read as a delivery.
+    // implement, it must not read as a delivery.
     const helper = makeHelper({ render: async () => null });
 
     const outcome = await helper.deliverSurfaceNotice(makeBinding('telegram'), 'proposal');

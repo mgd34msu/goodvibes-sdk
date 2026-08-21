@@ -11,7 +11,7 @@ import type {
  *
  * The acceptance bar is "first call works on a clean machine". That means every
  * failure mode is either handled here or reported as a plain-language problem
- * with a named fix — never a raw Playwright stack trace and never a silent
+ * with a named fix, never a raw Playwright stack trace and never a silent
  * "browser not available".
  *
  * Handled without user action:
@@ -31,7 +31,7 @@ export interface EnsureBrowserOptions {
    * This covers the DRIVER install as well as the browser download. `status` is
    * a read-only action in every place the tool is gated
    * (BROWSER_TOOL_READ_ONLY_ACTIONS, and READ_ONLY_BROWSER_ACTIONS in the
-   * permission classifier), and it says so in the CLI help — a status call that
+   * permission classifier), and it says so in the CLI help, a status call that
    * fetched a package from the registry and wrote it into the owner's home was
    * doing exactly what the read-only classification promises it will not, and
    * it also destroyed the one thing status is for: observing whether a driver is
@@ -100,7 +100,7 @@ async function verifyExecutable(io: BrowserProvisionIo, executablePath: string):
 
 /**
  * The managed cache entry for one browser build (…/ms-playwright/chromium-1234).
- * Removing this directory — and only this directory — is how a partial download
+ * Removing this directory, and only this directory, is how a partial download
  * self-heals without disturbing other browser builds sharing the cache.
  */
 function revisionDirectory(browsersPath: string, executablePath: string): string | null {
@@ -129,7 +129,7 @@ export interface InstallRuntimeCandidate {
  * the managed browser download unreachable on exactly the machine this whole
  * capability is built for: a downloaded binary, no package manager, no
  * interpreter installed. On such a machine the install step failed instantly
- * and the agent could only fall back to a system Chrome/Chromium — so a user
+ * and the agent could only fall back to a system Chrome/Chromium, so a user
  * with neither got no browser at all, which is the same "browser control does
  * not exist in the shipped artifact" outcome shipping the driver was meant to
  * end.
@@ -164,7 +164,7 @@ export function installRuntimeCandidates(): readonly InstallRuntimeCandidate[] {
 /**
  * Whether a spawn failure means "that program is not on this machine".
  *
- * Bun does not report a missing executable as ENOENT — it says
+ * Bun does not report a missing executable as ENOENT, it says
  * `Executable not found in $PATH: "node"`. Matching only ENOENT meant a missing
  * interpreter was treated as a real install failure: the loop returned on the
  * FIRST candidate instead of trying the next, and the owner was handed
@@ -234,17 +234,17 @@ function failureGuidance(failure: BrowserProvisionFailure, detail: string, drive
         // is a reporting call describing a machine that has simply not made its
         // first browser call yet.
         problem: 'The browser driver is not installed yet, and this call installs nothing.',
-        fix: 'Nothing to do — the first browser call installs the driver automatically. To install it now, run the browser tool with action:"provision".',
+        fix: 'Nothing to do, the first browser call installs the driver automatically. To install it now, run the browser tool with action:"provision".',
       };
     case 'download-blocked-offline':
       return {
         problem: `The browser download could not reach the Playwright CDN (${detail}).`,
-        fix: 'Connect to a network and retry, or install Chrome/Chromium with the system package manager — the browser tool will use an installed browser when a download is not possible.',
+        fix: 'Connect to a network and retry, or install Chrome/Chromium with the system package manager, the browser tool will use an installed browser when a download is not possible.',
       };
     case 'download-failed':
       return {
         problem: `The browser download failed (${detail}).`,
-        fix: 'Retry the call — provisioning deletes the partial download and reinstalls. If it keeps failing, install Chrome/Chromium with the system package manager.',
+        fix: 'Retry the call, provisioning deletes the partial download and reinstalls. If it keeps failing, install Chrome/Chromium with the system package manager.',
       };
     case 'binary-missing-after-install':
       return {
@@ -397,12 +397,12 @@ async function provision(io: BrowserProvisionIo, options: EnsureBrowserOptions):
     // produce a receipt claiming a driver was installed.
     recorder.note(
       'install-driver-skipped',
-      'this call reports what is present and installs nothing — the first browser call installs the driver',
+      'this call reports what is present and installs nothing, the first browser call installs the driver',
       true,
     );
   }
   if (!driverInstallSkipped && !resolvedDriver.available && io.installDriver && io.managedDriverRoot) {
-    // Nothing shipped a driver — a binary that was moved without its companion
+    // Nothing shipped a driver, a binary that was moved without its companion
     // files, or a release that predates shipping one. Provisioning it is the
     // agent's job, not the user's, so it happens here rather than being
     // reported as a missing prerequisite. Installing is attempted BEFORE any
@@ -415,7 +415,7 @@ async function provision(io: BrowserProvisionIo, options: EnsureBrowserOptions):
         ok: outcome.code === 0,
         detail: outcome.code === 0
           ? outcome.stdout.trim() || `installed the browser driver into ${target}`
-          : `could not install the browser driver into ${target} — ${(outcome.spawnError ?? (outcome.stderr.trim() || `install exited with code ${String(outcome.code)}`)).slice(0, 400)}`,
+          : `could not install the browser driver into ${target}, ${(outcome.spawnError ?? (outcome.stderr.trim() || `install exited with code ${String(outcome.code)}`)).slice(0, 400)}`,
         value: outcome,
       };
     });

@@ -115,7 +115,7 @@ export {
 // The launch-tolerant provider registry: a ProviderRegistry construction that
 // never dies at boot on a missing provider API key by planting a placeholder
 // value for construction only, then reverting env and un-configuring the
-// providers it faked — hoisted from the agent, which was the only consumer
+// providers it faked, hoisted from the agent, which was the only consumer
 // that had it (the checklist's parity gap: any daemon host needs the same
 // must-boot property).
 export { createLaunchTolerantProviderRegistry } from './launch-tolerant-registry.js';

@@ -258,7 +258,7 @@ describe('fetchModelContextWindows - generic (unknown/lm-studio/etc)', () => {
           }),
         } as unknown as Response;
       }
-      // No other endpoints needed — the rich probe succeeds
+      // No other endpoints needed, the rich probe succeeds
       return { ok: false, json: async () => null } as unknown as Response;
     }) as typeof globalThis.fetch;
 

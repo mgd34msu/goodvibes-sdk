@@ -1,5 +1,5 @@
 /**
- * Task emitters — typed emission wrappers for TaskEvent domain.
+ * Task emitters, typed emission wrappers for TaskEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

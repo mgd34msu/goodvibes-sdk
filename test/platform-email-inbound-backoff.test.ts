@@ -1,5 +1,5 @@
 /**
- * Backoff, capability verdicts and state transitions — the parts of the
+ * Backoff, capability verdicts and state transitions, the parts of the
  * inbound watcher that are decisions rather than protocol.
  *
  * Pure functions and small objects with injected time and chance, so every
@@ -144,7 +144,7 @@ describe('capability verdicts', () => {
     // The whole reason this round exists. Gmail answers a
     // simultaneous-connection refusal at the login step, and calling that a
     // rejected credential stops the watcher permanently on something that
-    // clears in seconds — a mailbox that looks quiet while mail piles up.
+    // clears in seconds, a mailbox that looks quiet while mail piles up.
     const result = classifyOpenFailure(
       refusedAtLogin('NO [LIMIT] Too many simultaneous connections'),
     );
@@ -224,7 +224,7 @@ describe('capability verdicts', () => {
     expect(busy.terminal).toBe(false);
     expect(busy.verdict.reason).toBe('server-unavailable');
 
-    // When the refusal says nothing about itself, the phase decides — and the
+    // When the refusal says nothing about itself, the phase decides, and the
     // two phases are different claims about the mailbox.
     const ambiguousSearch = classifyReadFailure(
       new Error('IMAP command failed: A0006 NO Request failed'),
@@ -241,7 +241,7 @@ describe('capability verdicts', () => {
     expect(ambiguousFetch.verdict.reason).toBe('fetch-refused');
 
     // Mid-session, the same response code means the same thing it means at
-    // login — one classifier, asked from both places.
+    // login, one classifier, asked from both places.
     const limited = classifyReadFailure(
       new Error('IMAP command failed: A0007 NO [LIMIT] Too many simultaneous connections'),
     );
@@ -276,7 +276,7 @@ describe('resolving whether the server can push', () => {
   test('a server that says nothing is asked, and its silence is named', async () => {
     // The tri-state's whole point: an empty capability set means the server
     // said NOTHING, which is not "no". It is resolved by asking, and when even
-    // asking gets no answer the reason says so — so the surfaced status can
+    // asking gets no answer the reason says so, so the surfaced status can
     // explain why it is polling rather than let the owner assume his provider
     // cannot do better.
     expect(await resolveIdleSupport(readerWith([])))
@@ -307,7 +307,7 @@ describe('resolving whether the server can push', () => {
 
   test('the batch size cannot be configured above what one FETCH accepts', () => {
     // `fetchEnvelopes` REFUSES an over-long batch rather than trimming it, so
-    // a batch size above the ceiling would not fetch fewer messages — it would
+    // a batch size above the ceiling would not fetch fewer messages, it would
     // fetch none, on every pass, and the delta would never drain.
     expect(resolveWatcherSettings({
       account: 'a', mailbox: 'INBOX', deltaBatchSize: 5_000,
@@ -364,8 +364,8 @@ describe('protocol details', () => {
   test('IDLE is issued without retaining its own untagged lines', async () => {
     // An IDLE is outstanding for twenty-seven minutes. Every untagged line
     // that arrives in that window would otherwise be retained in the command's
-    // own buffer for a reader that never comes — the IDLE completion is read
-    // for its status, never for its lines — so a busy mailbox grows that
+    // own buffer for a reader that never comes, the IDLE completion is read
+    // for its status, never for its lines, so a busy mailbox grows that
     // buffer for the whole round. The subscription is where those lines are
     // actually used, and it is unaffected.
     const sent: { text: string; options: unknown }[] = [];
@@ -394,7 +394,7 @@ describe('protocol details', () => {
 
   test('an inverted `n:*` range cannot redeliver the newest message', async () => {
     // RFC 3501 ranges are unordered pairs, so `UID SEARCH UID 105:*` on a
-    // mailbox whose highest UID is 104 is the range 104:105 and matches 104 —
+    // mailbox whose highest UID is 104 is the range 104:105 and matches 104,
     // which the cursor says is already done. Trusting the server's answer here
     // redelivers the newest message on every single pass.
     const wire = stubWire(['* SEARCH 104', 'A0005 OK SEARCH completed']);

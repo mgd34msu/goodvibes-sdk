@@ -23,7 +23,7 @@ export { resolveSqliteVecPath } from './sqlite-vec-loader.js';
 // under any non-Bun runtime (Node's ESM linker rejects the `bun:` scheme at link
 // time, breaking the release install-smoke check and any Node import of the
 // surfaces that transitively reach this module). Resolve the Database constructor
-// lazily via require so the `bun:` specifier stays off the static import graph —
+// lazily via require so the `bun:` specifier stays off the static import graph,
 // it is only pulled on the Bun-only code path that opens a database. Real Bun
 // behavior is unchanged.
 let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
@@ -68,7 +68,7 @@ export interface MemoryVectorStats {
   error?: string | undefined;
   /**
    * Set when the vector index is unavailable because the RUNTIME PLATFORM
-   * cannot load SQLite extensions (a permanent capability limit — e.g. a
+   * cannot load SQLite extensions (a permanent capability limit, e.g. a
    * macOS-compiled binary on Apple's system SQLite). Deliberately NOT the
    * `error` field: a capability limit is not a fault, and fault monitors
    * must not fire on it. Semantic search degrades to literal matching.
@@ -172,7 +172,7 @@ export class SqliteVecMemoryIndex {
         // never through the error field (fault monitors and release smokes
         // treat `error` as a defect signal, and this is not one).
         this.platformLimitReason = err.message;
-        logger.warn('Memory vector index unavailable on this platform — memory search uses literal matching', {
+        logger.warn('Memory vector index unavailable on this platform, memory search uses literal matching', {
           backend: 'sqlite-vec',
           reason: err.message,
         });

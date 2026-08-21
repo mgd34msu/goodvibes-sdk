@@ -1,5 +1,5 @@
 /**
- * group-state.ts — the replicated membership document, and how two copies of it
+ * group-state.ts, the replicated membership document, and how two copies of it
  * are reconciled.
  *
  * Every member holds the whole document and every member may edit it, so the
@@ -8,7 +8,7 @@
  * what makes a partition heal into one answer instead of two.
  *
  * The document is PUBLIC to the group. It holds public keys and display names
- * and nothing else — no join key, no group key, no surface, no hostname. The
+ * and nothing else, no join key, no group key, no surface, no hostname. The
  * secret half lives in the encrypted key store (group-store.ts) and is never
  * written here.
  */
@@ -18,9 +18,9 @@ export interface GroupMember {
   readonly nodeId: string;
   /** Operator-facing label for this machine. Never a hostname unless typed as one. */
   readonly displayName: string;
-  /** ed25519 public key — how this node proves it is itself, forever. */
+  /** ed25519 public key, how this node proves it is itself, forever. */
   readonly identityKey: string;
-  /** x25519 public key — where a new group key is sealed to. */
+  /** x25519 public key, where a new group key is sealed to. */
   readonly agreementKey: string;
   readonly admittedAt: number;
   readonly lastSeenAt: number;
@@ -32,7 +32,7 @@ export interface GroupMember {
 }
 
 /**
- * A removal. Not the absence of a member — the PRESENCE of a refusal.
+ * A removal. Not the absence of a member, the PRESENCE of a refusal.
  *
  * An absent member is indistinguishable from a member this copy has not
  * learned about yet, so a merge that treated absence as removal would let a
@@ -49,7 +49,7 @@ export interface GroupTombstone {
 
 /** The whole replicated document. */
 export interface GroupStateDocument {
-  /** Schema version — a document from a future build is refused, not guessed at. */
+  /** Schema version, a document from a future build is refused, not guessed at. */
   readonly version: 1;
   readonly groupId: string;
   /**
@@ -66,7 +66,7 @@ export interface GroupStateDocument {
    * The public half of the GROUP's signing key, and its generation.
    *
    * Replicated because a machine that has been away has to be able to check a
-   * reply against the group rather than against whichever member answered — and
+   * reply against the group rather than against whichever member answered, and
    * its own copy of this is the one it stored the day it joined. Higher
    * generation wins, exactly like every other record here.
    */
@@ -84,7 +84,7 @@ export const DEFAULT_GROUP_DISPLAY_NAME = 'goodvibes group';
 
 /**
  * Bounds. Persisted state that can only grow is a slow leak, so both lists are
- * capped and swept — see `sweepGroupState`.
+ * capped and swept, see `sweepGroupState`.
  *
  * 64 members is far past any homelab and still a trivial document to gossip.
  * 256 tombstones at 180 days is likewise generous; the reasoning for why
@@ -155,7 +155,7 @@ function readTombstone(value: unknown): GroupTombstone | null {
 }
 
 /**
- * Parse an untrusted document — from disk after a crash, or off the wire from a
+ * Parse an untrusted document, from disk after a crash, or off the wire from a
  * peer running a different build.
  *
  * Malformed ENTRIES are dropped individually rather than failing the whole
@@ -253,7 +253,7 @@ function normalizeGroupState(state: GroupStateDocument): GroupStateDocument {
  *    is an add or a tombstone;
  *  - at EQUAL generation a tombstone beats an add. Removal is always written
  *    at a generation above any add the writer has seen, so an equal generation
- *    means two copies disagree about the same step — and resolving that toward
+ *    means two copies disagree about the same step, and resolving that toward
  *    "removed" is the only direction that cannot resurrect a machine the
  *    operator deliberately ejected. The reverse rule would mean a node that
  *    was partitioned away during the removal could re-add it on heal;
@@ -378,7 +378,7 @@ export function admitMember(state: GroupStateDocument, input: AdmitMemberInput):
  *
  * Clears the tombstone and admits at a generation above it, so the add wins
  * every subsequent merge. Reached ONLY from a request that proved the current
- * join key — see rule 3 of `decideAdmission`. A stale add arriving from a
+ * join key, see rule 3 of `decideAdmission`. A stale add arriving from a
  * partitioned peer still loses to the tombstone, because a stale add is not a
  * join and never reaches here.
  */
@@ -416,7 +416,7 @@ export function readmitMember(state: GroupStateDocument, input: AdmitMemberInput
  *
  * The generation is taken ABOVE every record this copy holds for that node, so
  * a peer that only learns of the removal later cannot have an add that outranks
- * it. Rotating the group key alongside this is what makes the removal bite —
+ * it. Rotating the group key alongside this is what makes the removal bite,
  * that is the caller's job, and group-runtime.ts does it in the same step.
  */
 export function removeMember(
@@ -474,7 +474,7 @@ export interface GroupStateSweepResult {
  * than any partition that ends in a heal rather than a rebuild.
  *
  * Members are NOT swept by age. A machine that has been off all winter is still
- * a member, and reaping it would mean the operator has to re-join it by hand —
+ * a member, and reaping it would mean the operator has to re-join it by hand,
  * exactly the zero-touch return this design exists to provide.
  */
 export function sweepGroupState(state: GroupStateDocument, now: number): GroupStateSweepResult {

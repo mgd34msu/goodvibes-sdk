@@ -33,7 +33,7 @@ describe('DEFAULT_CONFIG runtime section', () => {
 // Recently-added domains must each carry a DEFAULT_CONFIG entry, or every
 // resolvePath() through them throws "section '<domain>' does not exist".
 // Regression guard for the worktree gap (worktree.setup.* was read via
-// configManager.get but the domain was never registered) — and for the
+// configManager.get but the domain was never registered), and for the
 // already-registered checkin.* / atRest.* neighbors.
 // ---------------------------------------------------------------------------
 
@@ -145,7 +145,7 @@ describe('ConfigManager resolves all CONFIG_SCHEMA keys without throwing', () =>
     mkdirSync(configDir, { recursive: true });
     const manager = new ConfigManager({ configDir });
 
-    // This replicates what buildResolvedEntries() does — if runtime section is missing,
+    // This replicates what buildResolvedEntries() does, if runtime section is missing,
     // this loop throws at the runtime.* entry and test fails.
     const errors: string[] = [];
     for (const setting of CONFIG_SCHEMA) {
@@ -165,8 +165,8 @@ describe('ConfigManager resolves all CONFIG_SCHEMA keys without throwing', () =>
 
     // A schema key whose top-level domain is absent from DEFAULT_CONFIG resolves
     // fine on read of the default snapshot but throws at set() (resolvePath walks
-    // the live config). Writing each key's own default exercises the set path —
-    // validation, enum, and object-path resolution — without changing any value.
+    // the live config). Writing each key's own default exercises the set path,
+    // validation, enum, and object-path resolution, without changing any value.
     const errors: string[] = [];
     for (const setting of CONFIG_SCHEMA) {
       try {

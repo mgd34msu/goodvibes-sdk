@@ -1,8 +1,8 @@
 /**
- * LAN leader election — exactly one node consumes each inbound surface.
+ * LAN leader election, exactly one node consumes each inbound surface.
  *
  * Wire a `ClusterCoordinator` in a composition root, register every INBOUND
- * consumer with it — one gate per surface it can actually serve — and start it.
+ * consumer with it, one gate per surface it can actually serve, and start it.
  * Outbound sends, sessions, the control plane and HTTP never pass through here:
  * leadership gates what a node listens to, never what it can do.
  *
@@ -11,7 +11,7 @@
  * anything else.
  *
  * The protocol is LAN-only. Nothing in this module contacts Telegram, ntfy, or
- * any other external service, and nothing in it is ever surfaced to a user —
+ * any other external service, and nothing in it is ever surfaced to a user,
  * elections, heartbeats and promotions are log lines and a `/status` section,
  * never a notification and never a transcript line. Surfaces travel as digests,
  * so a packet capture on the LAN never yields a topic name or a bot id.

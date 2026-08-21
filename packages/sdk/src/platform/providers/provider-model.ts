@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * provider-model.ts — tolerant parsing of the `provider:model` string that
+ * provider-model.ts, tolerant parsing of the `provider:model` string that
  * config stores in `provider.model`.
  *
  * Relationship to {@link splitModelRegistryKey} (registry-helpers.ts): that one

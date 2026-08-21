@@ -1,5 +1,5 @@
 /**
- * daemon-config-migration.ts — move daemon-owned keys out of the per-surface
+ * daemon-config-migration.ts, move daemon-owned keys out of the per-surface
  * silos and into the daemon's own store, once, idempotently, with disclosure.
  *
  * Values MOVE. Nothing is copied (a copy is drift waiting to happen) and
@@ -10,7 +10,7 @@
  *   1. A value already in the daemon store wins. This is what makes a re-run
  *      safe: after a partial run the daemon store is authoritative and a second
  *      pass cannot undo it.
- *   2. Otherwise the PRIMARY surface wins — the surface whose settings file the
+ *   2. Otherwise the PRIMARY surface wins, the surface whose settings file the
  *      daemon has actually been reading (`tui`, because the daemon binary is
  *      the TUI binary). Choosing it preserves the behavior the machine has
  *      right now: whatever the daemon was doing before the migration, it keeps
@@ -103,7 +103,7 @@ export function migrateDaemonOwnedConfig(
   const done = readDaemonConfigMovedMarker(markerPath);
   // "Complete" is only complete for the ownership set the marker covers. A key
   // promoted to daemon-owned after that run has never been migrated, and its
-  // value is still sitting in a client store the daemon does not read — so a
+  // value is still sitting in a client store the daemon does not read, so a
   // grown owned set means there is work to do, not that the job is finished.
   if (done && ownedKeys.every((key) => done.coveredKeys.includes(key))) {
     return { migrated: false, marker: done, markerPath };
@@ -144,7 +144,7 @@ export function migrateDaemonOwnedConfig(
   writeJsonAtomic(markerPath, { ...marker, status: 'in-progress' });
   // 2. The daemon store becomes authoritative.
   if (plan.storeChanged || !existsSync(storePath)) writeJsonAtomic(storePath, plan.store);
-  // 3. Only then do the surfaces give the keys up — one writer per key.
+  // 3. Only then do the surfaces give the keys up, one writer per key.
   for (const entry of surfaceFiles) {
     if (!entry.stripped) continue;
     writeJsonAtomic(entry.path, entry.raw);
@@ -170,7 +170,7 @@ interface Plan {
 }
 
 /**
- * Decide, per daemon-owned key, which store's value survives — and record every
+ * Decide, per daemon-owned key, which store's value survives, and record every
  * value that does not. Mutates `surfaceFiles[].raw` to strip the moved keys and
  * flags which files actually changed.
  */

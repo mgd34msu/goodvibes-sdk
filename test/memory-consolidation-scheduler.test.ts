@@ -1,8 +1,8 @@
 /**
- * memory-consolidation-scheduler.test.ts — consolidation actually runs.
+ * memory-consolidation-scheduler.test.ts, consolidation actually runs.
  *
  * The engine (state/memory-consolidation.ts) was complete but had no production
- * wiring in this runtime. The daemon — the memory store's single writer — now
+ * wiring in this runtime. The daemon, the memory store's single writer, now
  * drives it through MemoryConsolidationScheduler on the engine's own triggers:
  * idle (preferred) and the slow schedule fallback. Mechanical outcomes just
  * happen with the engine's receipts; judgment outcomes stay proposals; nothing
@@ -18,7 +18,7 @@ import type {
 } from '../packages/sdk/src/platform/state/index.js';
 // MemoryReviewPatch is defined in memory-store.ts but not re-exported from the
 // state/index.ts barrel (index.ts re-exports MemoryReviewState from the same
-// module but omits MemoryReviewPatch) — import it directly from its module.
+// module but omits MemoryReviewPatch), import it directly from its module.
 import type { MemoryReviewPatch } from '../packages/sdk/src/platform/state/memory-store.js';
 
 const NOW = 1_700_000_000_000;
@@ -34,7 +34,7 @@ const disposables = trackDisposables();
  * In production that is harmless, because `tick()` only ever runs from the timer
  * that just fired and so consumed itself. These tests drive `tick()` by hand
  * while a handle is still pending, so every manual tick strands the previous
- * one — and `stop()` only clears the last. Registering each handle means the
+ * one, and `stop()` only clears the last. Registering each handle means the
  * suite clears them all, instead of leaving 1000-second timers behind in a
  * process that every other test file shares.
  */
@@ -108,7 +108,7 @@ function makeScheduler(input: {
     configSource: configSource(input.config ?? {}),
     isIdle: () => idle,
     now: input.now ?? (() => NOW),
-    // Timers never fire in tests — ticks are driven manually.
+    // Timers never fire in tests, ticks are driven manually.
     setTimer: inertTimer,
     onReceipt: (receipt) => receipts.push(receipt),
   });
@@ -219,7 +219,7 @@ describe('memory consolidation scheduler — the daemon runs the engine', () => 
       config: { minIdleMs: 10 * 60 * 1000 },
     });
 
-    // First idle observation starts the continuous-idle window — not enough yet.
+    // First idle observation starts the continuous-idle window, not enough yet.
     scheduler.tick();
     expect(receipts.length).toBe(0);
     // Activity resets the window.

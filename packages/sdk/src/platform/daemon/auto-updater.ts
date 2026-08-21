@@ -1,5 +1,5 @@
 /**
- * DaemonAutoUpdater — the daemon's self-update loop.
+ * DaemonAutoUpdater, the daemon's self-update loop.
  *
  * Owner-directed behavior: the daemon looks for updates shortly after it
  * starts and hourly after that, updates when one is found, and auto-restarts.
@@ -8,17 +8,17 @@
  * (boot-settle first check, hourly steady state, short retry while busy).
  *
  * Safety contract: a swap only ever happens at a no-active-work moment. The
- * activity probe (the daemon's real busy signal — sessions with pending
+ * activity probe (the daemon's real busy signal, sessions with pending
  * input / agents mid-turn) is consulted immediately before swapping; while
  * busy, the verified update is held in memory and re-attempted on a short
  * retry cadence until an idle moment arrives. A mid-turn daemon never swaps.
  *
- * Restart: the swap is followed by the daemon's OWN orderly stop — the same
+ * Restart: the swap is followed by the daemon's OWN orderly stop, the same
  * stop path a SIGTERM takes, so every shutdown hook fires on an update restart
  * instead of being skipped by a bare exit. Only then does the process hand
  * over: when the daemon runs under the service manager, a non-blocking service
- * restart; when it runs unsupervised, the service manager first ADOPTS it —
- * installs the unit and enqueues a service start — and the old process exits
+ * restart; when it runs unsupervised, the service manager first ADOPTS it,
+ * installs the unit and enqueues a service start, and the old process exits
  * so the supervised instance (already the new binary on disk) takes over.
  *
  * Every applied update leaves a receipt ("updated from X to Y at HH:MM") in
@@ -29,8 +29,8 @@
  *   - It never re-installs a release that already crash looped here. A boot
  *     rollback records the version it rejected; the loop reads that record on
  *     every check and holds. Without it the loop and the rollback form a cycle
- *     — install, fail three starts, roll back, reinstall the same release an
- *     interval later — and the installed daemon oscillates instead of moving
+ *    , install, fail three starts, roll back, reinstall the same release an
+ *     interval later, and the installed daemon oscillates instead of moving
  *     forward. It resumes on its own as soon as a NEWER tag ships.
  *   - It never fails silently. Checks that keep throwing are counted, and once
  *     the count crosses the threshold the owner is told over a channel that
@@ -81,7 +81,7 @@ export interface DaemonUpdateInstallLocation {
 /**
  * One installed file an update replaces (and a rollback restores).
  * `assetName` is null when this platform/arch publishes no release asset for
- * it — such a file can still be rolled back, it just cannot be downloaded.
+ * it, such a file can still be rolled back, it just cannot be downloaded.
  */
 export interface DaemonInstalledFile {
   readonly label: string;
@@ -92,7 +92,7 @@ export interface DaemonInstalledFile {
 
 /**
  * The set of files a daemon update owns: the daemon binary, plus the
- * sqlite-vec addon when it is installed beside it — the addon is compiled
+ * sqlite-vec addon when it is installed beside it, the addon is compiled
  * against the same build and ships in the same release, so an update refreshes
  * it in the same verified pass and never leaves a mismatched pair installed.
  *
@@ -102,8 +102,8 @@ export interface DaemonInstalledFile {
  * keep them matched. The daemon is now its own product with its own repository
  * and its own release line, and a daemon-repository release publishes no
  * `goodvibes-<os>-<arch>` asset at all. A daemon that still claimed the app
- * binary would look for an asset that does not exist, and — worse, if one ever
- * did appear under that name — would overwrite a terminal app that updates
+ * binary would look for an asset that does not exist, and, worse, if one ever
+ * did appear under that name, would overwrite a terminal app that updates
  * itself from a different repository on a different version line. Each product
  * updates its own binary now; `goodvibes` sitting in the same directory is a
  * neighbour, not cargo.
@@ -169,13 +169,13 @@ export interface DaemonAutoUpdaterOptions {
    */
   readonly rejectedVersion?: (() => string | null) | undefined;
   /**
-   * Put one line in front of the owner over a channel that still works — the
+   * Put one line in front of the owner over a channel that still works, the
    * daemon's existing owner-alert path. Absent = no channel to alert on (an
    * embedded daemon, a test), in which case the ERROR log line is the record.
    */
   readonly alertOwner?: ((text: string) => void) | undefined;
   /**
-   * Consecutive failed checks before the owner is told. Default 3 — one flaky
+   * Consecutive failed checks before the owner is told. Default 3, one flaky
    * network hour is not news; three in a row means the daemon has stopped
    * being able to update itself.
    */
@@ -298,7 +298,7 @@ export class DaemonAutoUpdater {
     this.failureAlertedAt = now;
     this.alertOwner(
       `the daemon has not been able to check for updates ${this.consecutiveFailures} times in a row`
-      + ` — it is still running v${normalizeVersion(this.options.currentVersion)} and will keep retrying.`
+      + `, it is still running v${normalizeVersion(this.options.currentVersion)} and will keep retrying.`
       + ` Last error: ${detail}`,
     );
   }
@@ -313,7 +313,7 @@ export class DaemonAutoUpdater {
     if (!wasAlerted) return;
     this.alertOwner(
       `update checks are working again after ${failures} consecutive failures`
-      + ` — the daemon is on v${normalizeVersion(this.options.currentVersion)} and checking on schedule`,
+      + `, the daemon is on v${normalizeVersion(this.options.currentVersion)} and checking on schedule`,
     );
   }
 
@@ -328,7 +328,7 @@ export class DaemonAutoUpdater {
    * Everything here was already tracked and already decided the loop's
    * behaviour; none of it was answerable from outside the process. "Is this
    * daemon updating itself, and if not why not" was a question only the log
-   * could answer, and only to someone with shell access to the host — which is
+   * could answer, and only to someone with shell access to the host, which is
    * how three releases shipped past a daemon whose checks had been failing for
    * days with nobody able to see it from any surface.
    */
@@ -384,7 +384,7 @@ export class DaemonAutoUpdater {
       // A release that already crash looped on this host does not get installed
       // again just because it is still the newest one. Without this the loop is
       // a cycle: swap, fail to start three times, roll back, and one check
-      // interval later download the identical release and do it again — which
+      // interval later download the identical release and do it again, which
       // is what kept an installed daemon pinned to an old build for days while
       // three releases came and went.
       const rejected = this.rejectedVersion();
@@ -442,7 +442,7 @@ export class DaemonAutoUpdater {
     // rather than only being asked to restart.
     this.options.receipts.record(
       `updated from ${from} to ${to} at ${formatReceiptTime(now())}`
-      + ` — already-running goodvibes clients keep their old build until restarted;`
+      + `, already-running goodvibes clients keep their old build until restarted;`
       + ` anything older than ${CLIENT_COMPATIBILITY_FLOOR} has stopped taking shared-session work`,
     );
 
@@ -455,7 +455,7 @@ export class DaemonAutoUpdater {
       const raw = this.options.rejectedVersion?.() ?? null;
       return raw === null || raw.trim().length === 0 ? null : normalizeVersion(raw);
     } catch (error) {
-      // An unreadable marker must not stop the daemon from updating — the
+      // An unreadable marker must not stop the daemon from updating, the
       // failure mode of guessing "nothing is rejected" is one retry of a bad
       // release, and the failure mode of throwing is never updating again.
       logger.warn('DaemonAutoUpdater: could not read the rejected-version record; proceeding as if none stands', {
@@ -466,7 +466,7 @@ export class DaemonAutoUpdater {
   }
 
   /**
-   * Say — once per rejected release, to the owner — that the newest release is
+   * Say, once per rejected release, to the owner, that the newest release is
    * being held back because it would not start here. Once per release, not once
    * per check: this repeats hourly until a fixed release ships, and an alert
    * that fires hourly is an alert nobody reads. The daemon resumes updating on
@@ -514,7 +514,7 @@ export class DaemonAutoUpdater {
       actions.restartService();
       return;
     }
-    // Unsupervised: adopt into the service first, then step aside — the
+    // Unsupervised: adopt into the service first, then step aside, the
     // supervised instance starts from the already-swapped new binary.
     logger.info('DaemonAutoUpdater: unsupervised daemon; adopting into the service manager and handing over');
     actions.adoptIntoService();

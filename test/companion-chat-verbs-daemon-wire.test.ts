@@ -1,8 +1,8 @@
 /**
  * companion-chat-verbs-daemon-wire.test.ts
  *
- * The two new companion chat verbs — regenerate (companion.chat.messages.retry)
- * and edit-and-branch (companion.chat.messages.edit) — proven over a REAL
+ * The two new companion chat verbs, regenerate (companion.chat.messages.retry)
+ * and edit-and-branch (companion.chat.messages.edit), proven over a REAL
  * bootDaemon (isolated home, ephemeral port, token auth), through BOTH the
  * direct HTTP routes and the generic control-plane invoke endpoint.
  *
@@ -11,12 +11,12 @@
  * mock provider in companion-chat-branching.test.ts). What this file proves over
  * the wire is the honesty-load-bearing half that runs synchronously, before any
  * turn: the LINEAGE. A seeded on-disk conversation (loaded by the real daemon at
- * boot) is regenerated / edited, and we assert the predecessor is RETAINED —
- * still returned by the messages endpoint, flagged superseded — never silently
+ * boot) is regenerated / edited, and we assert the predecessor is RETAINED,
+ * still returned by the messages endpoint, flagged superseded, never silently
  * gone; plus the closed-session and deleted-session refusals carry the honest
  * machine codes.
  *
- * Never touches the user's real daemons on 3421/4444 — ephemeral port 0 only.
+ * Never touches the user's real daemons on 3421/4444, ephemeral port 0 only.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -155,7 +155,7 @@ describe('companion.chat.messages.retry — regenerate over the wire', () => {
     expect(body.supersededMessageIds).toContain('a1');
     expect(body.turnStarted).toBe(true);
 
-    // The old response is RETAINED and RETRIEVABLE — still returned, flagged superseded.
+    // The old response is RETAINED and RETRIEVABLE, still returned, flagged superseded.
     const messages = await getMessages('seed-regen');
     const old = messages.find((m) => m.id === 'a1');
     expect(old).toBeDefined();
@@ -189,7 +189,7 @@ describe('companion.chat.messages.edit — edit + branch over the wire', () => {
     expect(body.supersededMessageIds).toEqual(expect.arrayContaining(['u1', 'a1']));
 
     const messages = await getMessages('seed-edit');
-    // Original user message retained + superseded — retrievable history.
+    // Original user message retained + superseded, retrievable history.
     const originalUser = messages.find((m) => m.id === 'u1')!;
     expect(originalUser.content).toBe('Tell me about cats');
     expect(typeof originalUser.supersededAt).toBe('number');

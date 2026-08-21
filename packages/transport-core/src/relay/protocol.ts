@@ -4,11 +4,11 @@
 // operator can read: connection-control frames (who is a daemon, who is a
 // client, which rendezvous id, which multiplexed pipe) plus opaque binary
 // payloads it forwards verbatim. The relay never sees the end-to-end keys or
-// plaintext — every binary payload is ciphertext produced by secure-channel.ts.
+// plaintext, every binary payload is ciphertext produced by secure-channel.ts.
 //
 // Two message shapes travel over each relay WebSocket:
-//   1. Control frames  — JSON text messages (this module encodes/decodes them).
-//   2. Data frames     — binary messages: on the daemon<->relay leg they carry a
+//   1. Control frames , JSON text messages (this module encodes/decodes them).
+//   2. Data frames    , binary messages: on the daemon<->relay leg they carry a
 //      16-byte pipe-id prefix (relay-hop routing metadata) followed by opaque
 //      ciphertext; on the client<->relay leg they are bare opaque ciphertext
 //      (a client owns exactly one pipe).

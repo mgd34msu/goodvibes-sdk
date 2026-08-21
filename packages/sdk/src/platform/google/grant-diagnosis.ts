@@ -3,8 +3,8 @@
  *
  * The defect this exists to fix: a refresh returned `invalid_grant` and the
  * agent retried the identical request six times. Every attempt was guaranteed
- * to fail — `invalid_grant` is Google's way of saying the token is not coming
- * back, ever — and none of the six produced a single word about why. The
+ * to fail, `invalid_grant` is Google's way of saying the token is not coming
+ * back, ever, and none of the six produced a single word about why. The
  * person watching learned nothing across six round trips.
  *
  * `invalid_grant` has a small number of real causes and they need different
@@ -40,7 +40,7 @@ export interface GoogleGrantDiagnosis {
   readonly problem: string;
   /** What to do, naming a command that exists. */
   readonly fix: string;
-  /** True for every cause here — a dead grant always needs a person. */
+  /** True for every cause here, a dead grant always needs a person. */
   readonly needsReauthorization: true;
 }
 
@@ -93,7 +93,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
         `This credential was granted by ${signedIn}, but this product is set up for ${intended}. `
         + 'A refresh token belongs to the account that approved it, so one account\'s token can never speak for another\'s mailbox or calendar.',
       fix:
-        `${REAUTHORIZE_OFFER}. On the Google consent screen, sign in as ${intended} — `
+        `${REAUTHORIZE_OFFER}. On the Google consent screen, sign in as ${intended}, `
         + `not ${signedIn}. If the account picker is already showing ${signedIn}, choose "Use another account".`,
       needsReauthorization: true,
     };
@@ -132,7 +132,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
         'The OAuth app is still in "Testing" publishing status, and Google expires refresh tokens from a Testing app seven days after they are issued. '
         + 'This credential has almost certainly hit that fuse.',
       fix:
-        'Publish the app at https://console.cloud.google.com/auth/audience — set publishing status to "In production", which is self-certified and needs no review — '
+        'Publish the app at https://console.cloud.google.com/auth/audience, set publishing status to "In production", which is self-certified and needs no review, '
         + `then ${REAUTHORIZE_OFFER.toLowerCase()}.`,
       needsReauthorization: true,
     };
@@ -150,7 +150,7 @@ export function diagnoseInvalidGrant(input: GrantDiagnosisInput): GoogleGrantDia
       + 'Google account than the one configured here, the grant was revoked at https://myaccount.google.com/permissions, or the token does not match the '
       + `stored client id.${adoptedNote}`,
     fix:
-      `${REAUTHORIZE_OFFER} — watch which account it offers, because approving as the wrong account is the most common cause of this.`,
+      `${REAUTHORIZE_OFFER}, watch which account it offers, because approving as the wrong account is the most common cause of this.`,
     needsReauthorization: true,
   };
 }

@@ -1,18 +1,18 @@
 /**
- * permission-composition.ts — the permission side of a runtime composition,
+ * permission-composition.ts, the permission side of a runtime composition,
  * written once for both the daemon-grade graph and a pure-client surface.
  *
  * Four things belong together and kept drifting apart when each composition
  * spelled them out itself:
  *
  * 1. the durable user-origin rule store (remembered approvals) and its
- *    fail-safe init — a store that failed to load must make asks PROMPT, never
+ *    fail-safe init, a store that failed to load must make asks PROMPT, never
  *    make them fail;
  * 2. the permission manager built over one ask seam, carrying the
  *    background-agent attribution so a subagent's ask surfaces as that
  *    subagent's ask rather than an anonymous one;
  * 3. the three handlers that must ride the SAME ask seam as a tool permission
- *    (sandbox-boundary escalation, a blocked exec prompt, a loopback fetch) —
+ *    (sandbox-boundary escalation, a blocked exec prompt, a loopback fetch),
  *    one learned pattern for a person, not four;
  * 4. the announce-once containment receipt attached to the first contained run.
  *
@@ -62,7 +62,7 @@ export type ApprovalRaiser = (input: {
  * read the remembered rules, add a newly remembered one. Typed as this rather
  * than the concrete `UserPermissionRuleStore` so a surface can remember its own
  * approvals locally while the daemon keeps the canonical `permissions.rules.*`
- * store — the two are the same contract, and neither has to be the other.
+ * store, the two are the same contract, and neither has to be the other.
  */
 export type UserPermissionRuleAccess = Pick<UserPermissionRuleStore, 'rules' | 'add'>;
 
@@ -103,7 +103,7 @@ export interface BrokeredPermissionManagerOptions {
  *
  * Background/subagent tool calls are brokered through the SAME session
  * permission mode as the foreground turn loop, so a background ask surfaces
- * through the same blocked-on-user machinery — here carrying the subagent's
+ * through the same blocked-on-user machinery, here carrying the subagent's
  * attribution. The escape hatch (config `permissions.backgroundAgents:
  * 'allow-all'`) exempts background agents.
  */
@@ -149,7 +149,7 @@ export interface ApprovalDerivedHandlers {
 
 export function createApprovalDerivedHandlers(options: ApprovalDerivedHandlerOptions): ApprovalDerivedHandlers {
   // Sandbox boundary escalations ride the SAME ask seam as a permission ask and
-  // an MCP elicitation — one learned pattern, not five. The optional
+  // an MCP elicitation, one learned pattern, not five. The optional
   // model-judgment tier (dark flag) annotates or opt-in auto-approves the ask;
   // it never converts allow→deny and never touches the frozen catastrophic block.
   const sandboxEscalationHandler = buildSandboxEscalationHandler({

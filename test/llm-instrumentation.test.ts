@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * LLM instrumentation — verifies instrumentedLlmCall wraps async functions
+ * LLM instrumentation, verifies instrumentedLlmCall wraps async functions
  * and tracks durationMs in the returned InstrumentedLlmResult.
  * Includes integration tests asserting platformMeter instruments are recorded.
  */

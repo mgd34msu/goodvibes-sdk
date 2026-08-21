@@ -27,7 +27,7 @@ describe('ConfigManager persistence', () => {
     // The one place the skip-by-default rule does not apply: the reader cannot
     // tell whether the unreadable bytes held a permission gate, so it cannot
     // know that carrying on without them is safe. Unlike a single bad key, this
-    // stops the process — so the line has to name the file and the parse error,
+    // stops the process, so the line has to name the file and the parse error,
     // which is what turns "the daemon will not start" into a two-minute fix.
     const entry = unreadableSettingsFileNotice('/tmp/daemon/settings.json', "JSON Parse error: Expected '}'");
     expect(entry.action).toBe('refused');
@@ -75,7 +75,7 @@ describe('ConfigManager persistence', () => {
     manager.removeCategoryKey('helper', 'testEntry');
     expect('testEntry' in (manager.getCategory('helper') as unknown as Record<string, string>)).toBe(false);
 
-    // The removal must survive a reload from disk — this is the exact path
+    // The removal must survive a reload from disk, this is the exact path
     // that silently kept stale overrides alive across restarts.
     const reloaded = new ConfigManager({ configDir });
     expect('testEntry' in (reloaded.getCategory('helper') as unknown as Record<string, string>)).toBe(false);

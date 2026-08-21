@@ -49,7 +49,7 @@ export interface PolicyPanelSnapshot {
 }
 
 /**
- * PolicyPanel — diagnostics data provider for the policy registry.
+ * PolicyPanel, diagnostics data provider for the policy registry.
  *
  * Usage:
  * ```ts
@@ -97,7 +97,7 @@ export class PolicyPanel {
   }
 
   /**
-   * recordTrendEntry — Forwards to the attached DivergencePanel if present.
+   * recordTrendEntry, Forwards to the attached DivergencePanel if present.
    *
    * Call periodically (e.g. every 30 seconds) while simulation is active.
    */
@@ -107,7 +107,7 @@ export class PolicyPanel {
   }
 
   /**
-   * notify — Trigger a subscriber notification.
+   * notify, Trigger a subscriber notification.
    *
    * Call after registry state changes (load, promote, rollback) so the
    * diagnostics view can re-render.
@@ -117,7 +117,7 @@ export class PolicyPanel {
   }
 
   /**
-   * getSnapshot — Returns the current combined policy + divergence snapshot.
+   * getSnapshot, Returns the current combined policy + divergence snapshot.
    */
   public getSnapshot(): PolicyPanelSnapshot {
     const current = this._registry.getCurrent();

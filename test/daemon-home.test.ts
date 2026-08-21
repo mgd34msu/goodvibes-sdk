@@ -57,7 +57,7 @@ describe('resolveDaemonHomeDir', () => {
   });
 
   // The tree root, not the login home. GOODVIBES_HOME relocates the whole
-  // GoodVibes tree — settings, workspace state, every secret tier — and this
+  // GoodVibes tree, settings, workspace state, every secret tier, and this
   // resolver used to call homedir() directly, so a daemon started under a
   // redirected root kept its identity files in the REAL home.
   test('derives the default from GOODVIBES_HOME when it names a tree root', () => {
@@ -301,7 +301,7 @@ describe('WorkspaceSwapManager', () => {
 });
 
 // ---------------------------------------------------------------------------
-// B9 — path traversal behaviour
+// B9, path traversal behaviour
 // ---------------------------------------------------------------------------
 
 describe('WorkspaceSwapManager: path traversal', () => {
@@ -458,9 +458,9 @@ describe('WorkspaceSwapManager: edge cases', () => {
       rerootStores: async () => { await rerootDone; },
     });
 
-    // Fire first swap — hangs in rerootStores
+    // Fire first swap, hangs in rerootStores
     const first = mgr.requestSwap(join(baseDir, 'concurrent-a'));
-    // Fire second swap immediately — must be WORKSPACE_BUSY (mutex holds)
+    // Fire second swap immediately, must be WORKSPACE_BUSY (mutex holds)
     const second = await mgr.requestSwap(join(baseDir, 'concurrent-b'));
     expect(second.ok).toBe(false);
     if (!second.ok) {

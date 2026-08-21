@@ -1,6 +1,6 @@
 # Security Policy
 
-## Supported Versions
+## Supported versions
 
 | Version | Supported |
 |---------|-----------|
@@ -9,7 +9,7 @@
 
 Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
 
-## Dependency Audit Disclosures
+## Dependency audit disclosures
 
 The repo uses package-manager overrides for transitive advisory remediation when
 the upstream dependency range has not yet moved but a compatible fixed package is
@@ -71,7 +71,7 @@ not inherit dependency-package overrides:
 }
 ```
 
-## Reporting a Vulnerability
+## Reporting a vulnerability
 
 **Please do not file public GitHub issues for security vulnerabilities.**
 
@@ -107,14 +107,14 @@ Security-sensitive areas in this SDK include:
 - Daemon route embedding
 - Structured error propagation
 
-## Consumer Guidance
+## Consumer guidance
 
-For the full security model — authentication modes, token management, secret handling, and daemon hardening — see [docs/security.md](./docs/security.md).
+The full security model covers authentication modes, token management, secret handling, and daemon hardening. See [docs/security.md](./docs/security.md).
 
 When building with this SDK:
 
 - Prefer bearer tokens for service-to-service and mobile companion clients
 - Use secure storage for persisted tokens
 - Avoid logging raw credentials or bearer tokens
-- Treat structured error fields as telemetry/debug metadata — do not expose directly to end users without review
+- Treat structured error fields as telemetry or debug metadata. Do not expose them directly to end users without review
 - Validate CORS and cookie/session assumptions explicitly when using browser session auth

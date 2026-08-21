@@ -54,7 +54,7 @@ const result = await verifyPerJobGreen(
 consoleLogger.info(`per-job-green: ${result.reason}`);
 if (result.failures.length > 0) consoleLogger.info(`  non-green: ${result.failures.join(', ')}`);
 if (result.ok && result.runId === null) {
-  consoleLogger.warn('per-job-green: verdict is green but the run id is UNRESOLVED — run_id output is empty; artifact restores keyed on it must fail fast rather than download from the wrong run');
+  consoleLogger.warn('per-job-green: verdict is green but the run id is UNRESOLVED, run_id output is empty; artifact restores keyed on it must fail fast rather than download from the wrong run');
 }
 
 if (process.env.GITHUB_OUTPUT) {

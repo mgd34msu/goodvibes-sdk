@@ -77,7 +77,7 @@ export interface FallbackTestResult {
 /**
  * Optimizer that selects the best provider/model for a given request profile.
  *
- * When disabled (`enabled = false`) every method returns null/empty — the
+ * When disabled (`enabled = false`) every method returns null/empty, the
  * optimizer has zero effect on normal request flow.
  *
  * When enabled, routing decisions are driven entirely by `ProviderCapabilityRegistry`
@@ -129,9 +129,9 @@ export class ProviderOptimizer {
 
   /**
    * Set the routing mode.
-   * - `auto`   — optimizer selects the best capable provider for each request profile.
-   * - `manual` — optimizer is advisory only; caller drives provider selection.
-   * - `pinned` — optimizer always returns the pinned provider/model (if capable).
+   * - `auto`  , optimizer selects the best capable provider for each request profile.
+   * - `manual`, optimizer is advisory only; caller drives provider selection.
+   * - `pinned`, optimizer always returns the pinned provider/model (if capable).
    */
   setMode(mode: OptimizerMode): void {
     this._mode = mode;
@@ -180,7 +180,7 @@ export class ProviderOptimizer {
   /**
    * Select the best route for the given request profile.
    *
-   * Returns `null` when the optimizer is disabled — callers must handle null
+   * Returns `null` when the optimizer is disabled, callers must handle null
    * and fall through to their own provider selection logic.
    *
    * @param profile        - Capability requirements for the request.
@@ -191,7 +191,7 @@ export class ProviderOptimizer {
    * @remarks
    * `selectRoute` is wired by the orchestrator when the `provider-optimizer`
    * gate is on (provider.optimizerMode). This follows the same deferred-integration pattern
-   * as session emitters — the method is fully functional but called externally
+   * as session emitters, the method is fully functional but called externally
    * only when the feature is active. Until then it is a no-op (returns `null`).
    */
   selectRoute(
@@ -203,7 +203,7 @@ export class ProviderOptimizer {
     const candidates = this.registry.getSelectableModels();
     const allCandidates: RouteExplanation[] = [];
 
-    // Pinned mode — evaluate only the pinned target
+    // Pinned mode, evaluate only the pinned target
     if (this._mode === 'pinned' && this._pinnedProvider && this._pinnedModel) {
       const explanation = this.capabilityRegistry.getRouteExplanation(
         this._pinnedProvider,
@@ -221,8 +221,8 @@ export class ProviderOptimizer {
       };
     }
 
-    // Auto mode — evaluate all selectable models; pick first capable
-    // Manual mode — same evaluation but result is advisory (caller may ignore)
+    // Auto mode, evaluate all selectable models; pick first capable
+    // Manual mode, same evaluation but result is advisory (caller may ignore)
     let selected: ModelDefinition | null = null;
     let selectedExplanation: RouteExplanation | null = null;
 
@@ -249,7 +249,7 @@ export class ProviderOptimizer {
     }
 
     if (!selected || !selectedExplanation) {
-      // No capable provider found — return first candidate's explanation as the decision
+      // No capable provider found, return first candidate's explanation as the decision
       // so callers get a fully-populated rejection explanation
       const fallbackExpl = allCandidates[0]! ?? this._emptyExplanation();
       return {

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * CompactionEvent — discriminated union covering all context compaction events.
+ * CompactionEvent, discriminated union covering all context compaction events.
  *
  * Covers compaction lifecycle events for the runtime event bus.
  */
@@ -34,7 +34,7 @@ export type CompactionEvent =
    * manual) compaction path so a compaction is never silent. Carries what was
    * compacted, token/message counts before and after, the strategy, the quality
    * score/grade the guard computed, whether the standing instruction chain was
-   * re-injected, and the outcome — `applied` (compacted context committed),
+   * re-injected, and the outcome, `applied` (compacted context committed),
    * `kept-original` (quality guard rejected it, conversation retained), or
    * `failed` (compaction threw before producing a usable result).
    */

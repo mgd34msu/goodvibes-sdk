@@ -3,8 +3,8 @@
  *
  * The engine under platform/browser/ is deliberately free of product-surface
  * imports (no command context, no tool registry, no renderer). Every external
- * effect it needs — spawning a process, touching the filesystem, loading the
- * Playwright driver, recording untrusted content — arrives through an injected
+ * effect it needs, spawning a process, touching the filesystem, loading the
+ * Playwright driver, recording untrusted content, arrives through an injected
  * record, so the same engine serves the agent, the daemon, and any other
  * surface without carrying one product's wiring or being untestable offline.
  */
@@ -109,7 +109,7 @@ export interface BrowserProvisionIo {
   readonly now: () => number;
 }
 
-/** How a browser session came to exist — the ownership fact the safety rules key on. */
+/** How a browser session came to exist, the ownership fact the safety rules key on. */
 export type BrowserSessionOrigin =
   /** This process started the browser. Only these may ever be closed by it. */
   | 'launched'
@@ -139,7 +139,7 @@ export interface BrowserSessionInfo {
  * What `launch()` returns: the ordinary session facts plus whether this call
  * reused an already-open session instead of starting a new one.
  *
- * `reused: true` is the single-instance rule made visible to the caller — a
+ * `reused: true` is the single-instance rule made visible to the caller, a
  * second launch request while one managed session is still open gets that
  * session back rather than a second browser process pointed at the same
  * profile directory, which is what used to open a new window per retry.
@@ -187,8 +187,8 @@ export interface BrowserElementRef {
    * This control is a payment field, so its `value` is never reported.
    *
    * Present so the absence is legible rather than mysterious: a model that sees
-   * `cardField: true` and no value knows the field exists and is addressable —
-   * it can still be filled, by asking the daemon to type into it — instead of
+   * `cardField: true` and no value knows the field exists and is addressable,
+   * it can still be filled, by asking the daemon to type into it, instead of
    * concluding the snapshot is broken and reading the page another way.
    */
   readonly cardField?: boolean | undefined;
@@ -207,13 +207,13 @@ export interface BrowserElementRef {
  * ── What a guard adds, and what its absence prevents ──────────────────────
  *
  * The engine works normally without one, and a snapshot still suppresses the
- * value of any control a page declares to be a payment field — that rule is
+ * value of any control a page declares to be a payment field, that rule is
  * structural and needs no state. What a guard adds is the value-based layer:
  * the exact strings the daemon typed, removed from any page-derived text they
  * appear in, including text a hostile page synthesised to smuggle them out.
  *
  * A card fill REFUSES TO RUN against an engine with no guard installed. That is
- * the enforcement — not a warning and not a default-on flag. An engine without
+ * the enforcement, not a warning and not a default-on flag. An engine without
  * one cannot be used to pay for anything, so there is no configuration in which
  * material is typed and then reportable.
  */
@@ -224,7 +224,7 @@ export interface CardFieldGuard {
    * Remove every live secret from page-derived text.
    *
    * Called unconditionally on anything crossing out of the engine, never behind
-   * a "does this contain a secret" test — a check followed by an action is one
+   * a "does this contain a secret" test, a check followed by an action is one
    * refactor away from the check being dropped. Returns the input unchanged
    * when the page holds nothing.
    */
@@ -251,9 +251,9 @@ export interface BrowserSnapshot {
  * sit in one process, so page content is labelled where it enters and outward
  * effects are refused once a turn has read any.
  *
- * The contract that decides all of that — what counts as untrusted, what an
+ * The contract that decides all of that, what counts as untrusted, what an
  * origin is, which surfaces carry command authority, and the running ledger of
- * what has been read this turn — belongs to the PRODUCT, not to this module.
+ * what has been read this turn, belongs to the PRODUCT, not to this module.
  * It has to, because the same ledger is shared with the email surface: reading
  * a page here and trying to send a message there is one composition, and only a
  * single shared ledger can see both halves.
@@ -289,7 +289,7 @@ export interface OwnerApproval {
   readonly action: string;
   readonly grantedAt: string;
   readonly surface: 'owner-direct';
-  /** When it stops being spendable — approvals are minutes, not sessions. */
+  /** When it stops being spendable, approvals are minutes, not sessions. */
   readonly expiresAt: string;
   /**
    * The exact payload the owner was shown, digested; `null` when the approving
@@ -311,7 +311,7 @@ export interface OutwardEffectDecision {
  * The product's untrusted-content contract, narrowed to what browsing needs.
  *
  * An implementation is expected to be bound to the process-wide ledger the
- * email surface also writes to, and to the 'web-page' surface — this module
+ * email surface also writes to, and to the 'web-page' surface, this module
  * never names a surface, so an implementation cannot be reused for the wrong
  * one by accident.
  */
@@ -336,7 +336,7 @@ export interface UntrustedContentPort {
      * Supplying it is what lets a later outward action be checked for
      * DERIVATION from this page rather than merely for having happened after
      * it. Without it the guard falls back to "this turn read something", which
-     * in a daemon is permanently true and therefore refuses everything — the
+     * in a daemon is permanently true and therefore refuses everything, the
      * over-strict behaviour that gets a boundary switched off.
      */
     readonly content?: string | undefined;
@@ -353,7 +353,7 @@ export interface UntrustedContentPort {
      * The fields about to leave the machine, when this action knows them.
      *
      * Without this the port could only ask "has this turn read anything",
-     * which in a daemon is permanently yes — so every caller behind the port
+     * which in a daemon is permanently yes, so every caller behind the port
      * took the blunt path regardless of how well it knew its own payload. A
      * caller that genuinely cannot enumerate its fields omits this and is
      * still guarded, by the coarse rule, rather than waved through.

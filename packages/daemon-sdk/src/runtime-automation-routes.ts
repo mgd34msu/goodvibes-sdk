@@ -232,7 +232,7 @@ function handleGetAutomationRun(context: DaemonRuntimeRouteContext, runId: strin
 }
 
 function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
-  // exact-match only — prefix match was non-deterministic when multiple ids share a prefix.
+  // exact-match only, prefix match was non-deterministic when multiple ids share a prefix.
   return context.automationManager.listJobs().find((entry) => entry.id === id);
 }
 
@@ -243,7 +243,7 @@ function findAutomationJob(context: DaemonRuntimeRouteContext, id: string) {
  * With pagination params: returns `PaginatedResponse<AutomationJobLike>` as `{ items, nextCursor, hasMore }`.
  *
  * ### Deletion recovery
- * `AutomationJobLike` exposes only `{ id: string }` at the SDK boundary — there is
+ * `AutomationJobLike` exposes only `{ id: string }` at the SDK boundary, there is
  * no stable timestamp field on jobs.  Insertion-point recovery on mid-walk deletion
  * is therefore **not available** for this endpoint; if the cursor item is deleted,
  * the walk restarts from index 0.  If a timestamp is added to `AutomationJobLike`
@@ -270,7 +270,7 @@ function handleGetAutomationJobs(context: DaemonRuntimeRouteContext, url: URL | 
 /**
  * Apply an optional `?since=<epoch-ms>` filter to the run list.
  *
- * A run is kept when it was active on or after `since` — queued at/after it, or
+ * A run is kept when it was active on or after `since`, queued at/after it, or
  * ended at/after it (a run that started earlier but finished during the window).
  * This is the host-side source an away-digest reads to report the runs that
  * fired, failed, were missed, or delivered since the operator was last present.

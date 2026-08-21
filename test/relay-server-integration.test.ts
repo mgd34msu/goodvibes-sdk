@@ -4,7 +4,7 @@
  * End-to-end proof over a REAL relay server and REAL WebSockets: a daemon
  * registers outbound, a client dials the same rendezvous id, the two complete
  * the NK handshake THROUGH the relay, and application bytes tunnel across in
- * both directions. Critically, the relay only ever forwards ciphertext — this
+ * both directions. Critically, the relay only ever forwards ciphertext, this
  * test drives the actual `createBunRelayServer` process, not a stub.
  *
  * It doubles as the reference for how the daemon and client halves speak the

@@ -331,7 +331,7 @@ export class GatewayMethodCatalog {
 
   /**
    * Run a method's registered internal handler directly. Note this does NOT consult
-   * `descriptor.invokable` for a method that HAS a handler — see the field's doc
+   * `descriptor.invokable` for a method that HAS a handler, see the field's doc
    * comment in method-catalog-shared.ts: a runtime that registered a real handler is
    * authoritative over whether the method works, the descriptor's `invokable` flag
    * is not. `invokeGatewayMethodCall` (../daemon/control-plane.ts) is what enforces
@@ -340,22 +340,22 @@ export class GatewayMethodCatalog {
    */
   async invoke(id: string, invocation: GatewayMethodInvocation): Promise<unknown> {
     const entry = this.methods.get(id);
-    // Uncataloged id — a real machine code (METHOD_NOT_FOUND), not a prose Error, so
+    // Uncataloged id, a real machine code (METHOD_NOT_FOUND), not a prose Error, so
     // any direct caller of invoke() (bypassing the HTTP dispatch's own 404 below) gets
     // the same code-driven signal as invokeGatewayMethod/getGatewayMethod
     // (daemon-sdk/control-routes.ts) and invokeGatewayMethodCall (../daemon/control-
-    // plane.ts) — distinct from NOT_INVOKABLE (cataloged but not invokable), which is
+    // plane.ts), distinct from NOT_INVOKABLE (cataloged but not invokable), which is
     // the id existing but refusing dispatch, not the id being unknown outright.
     if (!entry) {
       throw new GatewayVerbError(`Unknown gateway method: ${id}`, SDKErrorCodes.METHOD_NOT_FOUND, 404);
     }
     if (!entry.handler) {
       // A method explicitly marked invokable:false with no registered handler is
-      // honestly "not invokable anywhere" (see the field's doc comment) — distinct
+      // honestly "not invokable anywhere" (see the field's doc comment), distinct
       // from a method that a caller expected to have a handler here but doesn't (a
       // real bug in that caller's wiring). A GatewayVerbError flows straight through
       // invokeGatewayMethodCall's existing catch into an honest 400/NOT_INVOKABLE
-      // instead of a generic 500 — and gives any OTHER caller of `invoke()` directly
+      // instead of a generic 500, and gives any OTHER caller of `invoke()` directly
       // (bypassing the HTTP gate) the same honest, typed signal.
       if (entry.descriptor.invokable === false) {
         throw new GatewayVerbError(

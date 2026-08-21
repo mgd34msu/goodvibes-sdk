@@ -31,27 +31,27 @@ export interface GatewayMethodDescriptor {
    * (`invokeGatewayMethodCall`/`invokeWebSocketControlPlaneCall` in
    * `../daemon/control-plane.ts`, guarded by `validateGatewayInvocation`, which
    * rejects it with an honest 400 `NOT_INVOKABLE` before any handler or route is
-   * even considered) — nothing more, nothing less.
+   * even considered), nothing more, nothing less.
    *
    * This is a statement about ONE dispatch path, not a claim that the method can
    * never run anywhere. Two independent reasons a descriptor carries
    * `invokable: false`:
    *  - No route or internal handler exists at all for this build (e.g. `email.*`,
-   *    `calendar.*` — cataloged so the contract is honest about the capability's
+   *    `calendar.*`, cataloged so the contract is honest about the capability's
    *    shape, but genuinely unavailable everywhere).
    *  - A real route DOES exist and IS served (e.g. `voice.tts.stream`,
    *    `control.events.stream`, `artifacts.content.get`), just not through the
-   *    generic JSON-envelope invoke path — the response is binary/streaming/HTML
+   *    generic JSON-envelope invoke path, the response is binary/streaming/HTML
    *    (see `metadata.responseKind`) and callers must use the direct HTTP path
    *    instead.
    *
    * A runtime that registers a real in-process handler for this method id (via
    * `GatewayMethodCatalog.register(descriptor, handler)`) and calls
    * `GatewayMethodCatalog.invoke()` DIRECTLY (bypassing `validateGatewayInvocation`)
-   * still serves it — `invoke()` itself does not consult this flag, by design: a
+   * still serves it, `invoke()` itself does not consult this flag, by design: a
    * consuming runtime that has wired up a genuine handler is authoritative over
    * whether the method actually works, this descriptor is not. `invoke()` only
-   * refuses when BOTH `invokable === false` AND no handler is registered — see
+   * refuses when BOTH `invokable === false` AND no handler is registered, see
    * `method-catalog.ts`'s `invoke()`.
    */
   readonly invokable?: boolean | undefined;
@@ -220,7 +220,7 @@ export function bodyEnvelopeSchema(
 }
 
 /**
- * An input schema for a verb whose required set is CONDITIONAL — "id when kind
+ * An input schema for a verb whose required set is CONDITIONAL, "id when kind
  * names a specific item", "one of dataBase64/text/path/uri", "cron when the
  * schedule is a cron".
  *
@@ -229,8 +229,8 @@ export function bodyEnvelopeSchema(
  * not required for `kind: 'overview'`, so declaring it required would refuse
  * calls that work today.
  *
- * The encoding is a BASE schema — every property, plus whatever is required
- * unconditionally — carrying an `anyOf` of small requirement branches. Both
+ * The encoding is a BASE schema, every property, plus whatever is required
+ * unconditionally, carrying an `anyOf` of small requirement branches. Both
  * consumers read it that way:
  *   - `invoke-input-validation.ts` checks the base first and then requires one
  *     branch to match (proper JSON Schema conjunction).
@@ -239,13 +239,13 @@ export function bodyEnvelopeSchema(
  * Why factored rather than a union of whole objects, which reads more directly:
  * repeating a thirty-property object four times, twice (automation's job and
  * schedule create verbs), made the operator client's method map exceed
- * TypeScript's union-complexity limit outright — `client-core.ts` stopped
+ * TypeScript's union-complexity limit outright, `client-core.ts` stopped
  * compiling with TS2590. Intersecting one base with small branches says the
  * same thing at a fraction of the type size.
  *
  * Each branch must still be a real object schema naming its own required
  * fields as properties, with `additionalProperties: true` so it constrains
- * only what it names — `requirementBranch` builds that shape. A bare
+ * only what it names, `requirementBranch` builds that shape. A bare
  * `{ required: [...] }` fragment would render as `unknown`, which is how
  * `knowledge.ingest.connector` ended up with no consumer type at all.
  */
@@ -262,13 +262,13 @@ export function branchedSchema(
  * which is where the full property list and the open-ended body envelope live.
  *
  * The branch is `additionalProperties: true`, and that is not incidental. These
- * schemas are PUBLISHED — they become the operator contract artifact and the
+ * schemas are PUBLISHED, they become the operator contract artifact and the
  * OpenAPI document that third-party validators read. A branch saying
  * `{ required: ['text'], additionalProperties: false }` inside an `anyOf`
  * rejects `{ text: 'hello', kind: 'note' }`, because the only branch that
  * accepts `text` forbids `kind`. Our own invoke gate never enforces
  * `additionalProperties` so nothing would break here, and the published
- * contract would be quietly wrong for everyone else — the worst kind of wrong,
+ * contract would be quietly wrong for everyone else, the worst kind of wrong,
  * since it reads as more precise.
  *
  * `scripts/check-foundation-io-types.ts` drops the resulting index signature

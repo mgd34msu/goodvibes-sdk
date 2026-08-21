@@ -1,5 +1,5 @@
 /**
- * surface-id.ts — naming an inbound surface on the wire without naming it.
+ * surface-id.ts, naming an inbound surface on the wire without naming it.
  *
  * A "surface" is one inbound consumer identity: a specific Telegram bot, a
  * specific ntfy topic on a specific server, one inbox account. Each of those
@@ -10,8 +10,8 @@
  * label, it is a capability: anyone who learns `gv-a8f31c` can read that topic
  * and publish to it, on ntfy.sh, without any other credential. A Telegram bot
  * id is weaker but still identifies the install. Matching works exactly as
- * well on a hash as on the name — the protocol only ever asks "is this the
- * same surface as mine?", never "what is it called" — so the name never leaves
+ * well on a hash as on the name, the protocol only ever asks "is this the
+ * same surface as mine?", never "what is it called", so the name never leaves
  * the process.
  *
  * The digest is deliberately NOT keyed with the group secret. A keyed digest
@@ -22,7 +22,7 @@
  * the signing layer's job, not this function's.
  *
  * The plaintext key stays available LOCALLY as a label for this host's logs and
- * its own `/status` — a topic name in a log file on the machine that already
+ * its own `/status`, a topic name in a log file on the machine that already
  * holds the topic's credentials discloses nothing new.
  */
 import { createHash } from 'node:crypto';
@@ -37,7 +37,7 @@ export type ClusterSurfaceKind =
   | 'custom';
 
 /**
- * A surface's LOCAL identity. Never serialized onto the wire — only its digest
+ * A surface's LOCAL identity. Never serialized onto the wire, only its digest
  * is. `discriminator` is whatever distinguishes one surface of this kind from
  * another on the same network: a bot id, a server-and-topic pair, an account.
  */
@@ -100,7 +100,7 @@ export function surfaceLabel(key: ClusterSurfaceKey): string {
  * A Telegram bot's public numeric id, taken from its token.
  *
  * A bot token is `<botId>:<secret>`. Only the id half ever reaches this module,
- * and even that is hashed before it is sent — the secret half is never read,
+ * and even that is hashed before it is sent, the secret half is never read,
  * never logged, and never hashed.
  */
 export function telegramBotIdFromToken(token: string): string {
@@ -140,7 +140,7 @@ export function providerSurface(kind: ClusterSurfaceKind, discriminator: string)
  * The spread tiebreak: a stable pseudo-random ordering of nodes, DIFFERENT for
  * every surface.
  *
- * Using the nodeId alone as the final tiebreak — as the whole-node design did —
+ * Using the nodeId alone as the final tiebreak, as the whole-node design did,
  * hands every surface that reaches the tiebreak to the same node, which is the
  * exact concentration this ranking exists to avoid. Mixing the surface into
  * the hash makes each surface prefer a different node, so a two-node cluster

@@ -8,7 +8,7 @@ import type { BrowserContext, Page } from 'playwright-core';
  * Talks to the Node-hosted browser process.
  *
  * The objects handed back here are shaped like the Playwright objects the
- * engine already uses, so every operation — snapshots, refs, clicks, frames —
+ * engine already uses, so every operation, snapshots, refs, clicks, frames,
  * runs unchanged whether the browser was launched in this process or attached
  * to through the host. There is no second implementation of how the browser is
  * driven, only a second way of reaching it.
@@ -41,7 +41,7 @@ function nodeCandidates(): readonly string[] {
  * the build stages the script for anyone consuming the published package. The
  * second is the source tree, so the suite and a dev-linked checkout find it
  * without a build. A product that compiles this module into a single-file
- * executable stages the script itself and passes `scriptPath` instead — there
+ * executable stages the script itself and passes `scriptPath` instead, there
  * is nowhere for this function to look inside a binary.
  */
 export function browserHostScriptPath(): string {
@@ -106,7 +106,7 @@ export class BrowserHostClient {
     }
     throw new BrowserHostError(
       `Could not start the browser host: ${lastError}`,
-      'Attaching to an already-open browser needs real Node on PATH — the shim Bun provides is not enough. Install Node, or use action:"launch", which needs no Node and opens a visible window with a saved profile you can sign into once.',
+      'Attaching to an already-open browser needs real Node on PATH, the shim Bun provides is not enough. Install Node, or use action:"launch", which needs no Node and opens a visible window with a saved profile you can sign into once.',
     );
   }
 
@@ -203,7 +203,7 @@ function sourceOf(fn: unknown): string {
   return typeof fn === 'function' ? fn.toString() : String(fn);
 }
 
-/** A locator addressed by page, frame chain, and selector — no remote handles. */
+/** A locator addressed by page, frame chain, and selector, no remote handles. */
 function remoteLocator(
   client: BrowserHostClient,
   pageId: string,
@@ -257,7 +257,7 @@ function remoteFrameLocator(client: BrowserHostClient, pageId: string, chain: re
  * A Page as the engine uses one, backed by the host.
  *
  * `__frameChain` on the frame objects is read by the snapshot code, which would
- * otherwise have to ask each frame for its own element — a round trip the host
+ * otherwise have to ask each frame for its own element, a round trip the host
  * already made when it listed them.
  */
 export function remotePage(client: BrowserHostClient, pageId: string, initialUrl: string): Page {

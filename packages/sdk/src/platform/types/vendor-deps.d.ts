@@ -4,7 +4,7 @@
  *
  * Each module here is an actual SDK dependency (not a peer dep) that lacks
  * a `@types/` package or built-in `.d.ts` files. The declarations are kept
- * intentionally minimal — only the shapes actually consumed by SDK code.
+ * intentionally minimal, only the shapes actually consumed by SDK code.
  *
  * TS7016 root cause: these modules use CommonJS or untyped dist/ bundles
  * that TypeScript cannot introspect under `noImplicitAny`. Adding ambient
@@ -12,7 +12,7 @@
  * overrides or per-file `@ts-ignore` suppressions.
  */
 
-// @agentclientprotocol/sdk — ACP client/agent protocol library.
+// @agentclientprotocol/sdk, ACP client/agent protocol library.
 declare module '@agentclientprotocol/sdk' {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   export type Client = any;
@@ -86,7 +86,7 @@ declare module '@agentclientprotocol/sdk' {
   }
 }
 
-// Fuse.js — fuzzy-search library (used by registry-tool / knowledge search).
+// Fuse.js, fuzzy-search library (used by registry-tool / knowledge search).
 declare module 'fuse.js' {
   export interface IFuseOptions<T> {
     keys?: Array<string | { name: string; weight: number }>;
@@ -107,7 +107,7 @@ declare module 'fuse.js' {
   }
 }
 
-// node-edge-tts — Microsoft Edge TTS voice provider.
+// node-edge-tts, Microsoft Edge TTS voice provider.
 declare module 'node-edge-tts' {
   export interface EdgeTTSOptions {
     voice?: string;
@@ -135,7 +135,7 @@ declare module 'node-edge-tts/dist/drm.js' {
   export function generateSecMsGecToken(clientToken?: string, version?: string): string;
 }
 
-// simple-git — Git wrapper used by the git integration service.
+// simple-git, Git wrapper used by the git integration service.
 declare module 'simple-git' {
   export interface SimpleGitOptions {
     baseDir?: string;

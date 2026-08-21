@@ -12,14 +12,14 @@
  * Resolution order (first match wins):
  *   1. --daemon-home=<path> CLI arg (passed as daemonHomeArg)
  *   2. GOODVIBES_DAEMON_HOME environment variable
- *   3. <tree root>/.goodvibes/daemon/ — the tree root being what
+ *   3. <tree root>/.goodvibes/daemon/, the tree root being what
  *      `GOODVIBES_HOME` names, falling back to the login home.
  *
  * That third step used to call `homedir()` directly, which is the defect this
  * header now records. `GOODVIBES_HOME` relocates the tree root for every other
- * part of the platform (settings, workspace state, every secret tier — see
+ * part of the platform (settings, workspace state, every secret tier, see
  * config/goodvibes-home.ts), so a daemon started under a redirected root kept
- * its identity files — auth users, operator tokens, daemon settings — in the
+ * its identity files, auth users, operator tokens, daemon settings, in the
  * REAL `~/.goodvibes/daemon`. A relocation one resolver ignores is not a
  * relocation; the tree root is resolved in exactly one place now and this
  * module derives from it rather than recomputing a home of its own.
@@ -63,13 +63,13 @@ export interface DaemonHomeOptions {
  * process's identity directory and nothing else. Everything below it is the
  * platform's one home resolution: `GOODVIBES_DAEMON_HOME` names the identity
  * directory specifically, and absent that the directory falls under the tree
- * root `GOODVIBES_HOME` names — so a redirected tree takes its daemon identity
+ * root `GOODVIBES_HOME` names, so a redirected tree takes its daemon identity
  * with it instead of reaching back into the login home.
  */
 export function resolveDaemonHomeDir(options: DaemonHomeOptions = {}): string {
   const env = options.env ?? process.env;
 
-  // 1. CLI arg — names this directory outright, above both env vars.
+  // 1. CLI arg, names this directory outright, above both env vars.
   if (options.daemonHomeArg) {
     const p = options.daemonHomeArg.trim();
     if (p) return isAbsolute(p) ? resolve(p) : resolve(process.cwd(), p);
@@ -130,7 +130,7 @@ export function writeOperatorTokenFile(daemonHomeDir: string, content: string): 
   writeFileSync(tmpPath, content, { encoding: 'utf-8', mode: 0o600 });
   chmodSync(tmpPath, 0o600);
   renameSync(tmpPath, tokenPath);
-  // Apply chmod again after rename — some filesystems reset permissions on rename
+  // Apply chmod again after rename, some filesystems reset permissions on rename
   try {
     chmodSync(tokenPath, 0o600);
   } catch (error) {
@@ -191,7 +191,7 @@ export function writeDaemonSetting(daemonHomeDir: string, key: string, value: st
       existing = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     } catch (err: unknown) {
       // Overwrite corrupt file; log so ops can see when this happens
-      logger.warn('[DaemonHome] daemon-settings.json parse failed — overwriting with fresh state', {
+      logger.warn('[DaemonHome] daemon-settings.json parse failed, overwriting with fresh state', {
         path: settingsPath,
         error: String(err),
       });

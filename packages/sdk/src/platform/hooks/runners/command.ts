@@ -1,5 +1,5 @@
 /**
- * SECURITY MODEL — TRUST BOUNDARY
+ * SECURITY MODEL, TRUST BOUNDARY
  *
  * Hook commands are user-defined and execute with full process privileges
  * via `sh -c <command>`. Shell injection is by design: users author their
@@ -50,7 +50,7 @@ export async function run(hook: HookDefinition, event: HookEvent): Promise<HookR
 
     // Start draining stdout/stderr concurrently with the exit wait. If we only
     // read after exit, a hook that writes more than the OS pipe buffer (~64KB)
-    // blocks on write — the child never exits and `await proc.exited` deadlocks
+    // blocks on write, the child never exits and `await proc.exited` deadlocks
     // until the timeout kills it, discarding the hook's intended output.
     const stdoutPromise = new Response(proc.stdout).text();
     const stderrPromise = new Response(proc.stderr).text();

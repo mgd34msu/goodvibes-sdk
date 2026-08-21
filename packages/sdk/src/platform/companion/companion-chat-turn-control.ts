@@ -8,7 +8,7 @@
  *
  * Split out of companion-chat-manager.ts (which is under the repo's line
  * cap): everything here is policy over structural dependencies the manager
- * injects — no manager privates are imported, matching the pattern the other
+ * injects, no manager privates are imported, matching the pattern the other
  * companion helper modules use.
  */
 
@@ -74,7 +74,7 @@ export interface TurnSettleResult {
  */
 export interface ActiveCompanionTurn {
   readonly turnId: string;
-  /** Per-turn controller — chained UNDER the session controller, never the reverse. */
+  /** Per-turn controller, chained UNDER the session controller, never the reverse. */
   readonly controller: AbortController;
   /** Set by cancel before aborting; distinguishes a user stop from a session close. */
   cancelRequested: boolean;
@@ -85,7 +85,7 @@ export interface ActiveCompanionTurn {
 export interface TurnAbortScope {
   readonly activeTurn: ActiveCompanionTurn;
   readonly abortSignal: AbortSignal;
-  /** Settle the turn (idempotent — the first call wins). */
+  /** Settle the turn (idempotent, the first call wins). */
   readonly settle: (result: TurnSettleResult) => void;
   /** Detach the session-abort chain listener. Call on every exit path. */
   readonly detach: () => void;
@@ -95,7 +95,7 @@ export interface TurnAbortScope {
  * Create the per-turn abort scope, chained UNDER the session-level controller.
  * A user cancel aborts ONLY this turn; the session controller (close/delete/
  * shutdown) still aborts everything. The session controller must never be
- * aborted for a single-turn stop — its signal stays aborted forever and would
+ * aborted for a single-turn stop, its signal stays aborted forever and would
  * poison every later turn in the session.
  */
 export function createTurnAbortScope(turnId: string, sessionSignal: AbortSignal): TurnAbortScope {
@@ -124,7 +124,7 @@ export function createTurnAbortScope(turnId: string, sessionSignal: AbortSignal)
 /**
  * Appended (model-facing only) to an interrupted partial when it is committed
  * to the conversation history, so the model can reason about the true chain
- * of events on later turns — a user's follow-up often refers to what it was
+ * of events on later turns, a user's follow-up often refers to what it was
  * watching at the moment it hit stop. The transcript copy stays clean; the UI
  * carries the marker as the deliveryState badge instead.
  */
@@ -138,7 +138,7 @@ export interface CancelFinalizeContext {
   readonly assistantMessageId: string;
   /** The user message that started the turn (the partial's inReplyTo link). */
   readonly userMessageId: string;
-  /** Read at finalize time — the streamed partial accumulates in a mutable local. */
+  /** Read at finalize time, the streamed partial accumulates in a mutable local. */
   readonly getAssistantContent: () => string;
   /**
    * The portion of the partial NOT yet committed to the conversation history
@@ -247,9 +247,9 @@ const CANCEL_SETTLE_TIMEOUT_MS = 3_000;
 
 /**
  * Cancel the given active turn. Refusals are honest machine codes:
- * no turn in flight → 404 NO_ACTIVE_TURN (benign — the turn finished before
+ * no turn in flight → 404 NO_ACTIVE_TURN (benign, the turn finished before
  * the stop landed); `turnId` guard mismatch → 409 TURN_MISMATCH (a newer turn
- * took the slot — a stale stop click must not kill it). Repeat cancels are
+ * took the slot, a stale stop click must not kill it). Repeat cancels are
  * idempotent successes, never errors. The caller resolves the session
  * (SESSION_NOT_FOUND is its refusal).
  */
@@ -260,13 +260,13 @@ export async function cancelActiveTurn(
 ): Promise<CancelCompanionChatTurnOutput> {
   if (!turn) {
     throw Object.assign(
-      new Error('No turn is in flight for this session — it may have finished before the stop landed.'),
+      new Error('No turn is in flight for this session, it may have finished before the stop landed.'),
       { code: 'NO_ACTIVE_TURN', status: 404 },
     );
   }
   if (input.turnId !== undefined && input.turnId !== turn.turnId) {
     throw Object.assign(
-      new Error('The requested turn is not the active turn — a newer turn is already running.'),
+      new Error('The requested turn is not the active turn, a newer turn is already running.'),
       { code: 'TURN_MISMATCH', status: 409 },
     );
   }
@@ -276,7 +276,7 @@ export async function cancelActiveTurn(
     turn.controller.abort();
   }
   // The settle deadline is cancelled once the race is decided. Left uncleared,
-  // a turn that settles promptly — the normal case — still strands a
+  // a turn that settles promptly, the normal case, still strands a
   // CANCEL_SETTLE_TIMEOUT_MS handle holding this closure, once per cancel.
   let cancelSettleDeadline: (() => void) | undefined;
   let settled: Awaited<typeof turn.settled> | null;
@@ -314,7 +314,7 @@ export interface CompanionReplyWait {
 
 /**
  * Wrap a post in a bounded reply wait: resolves with the turn's reply result,
- * a timeout marker, or the post failure — never rejects. The `post` callback
+ * a timeout marker, or the post failure, never rejects. The `post` callback
  * receives the pending-reply record to register (resolve + its timeout handle)
  * and returns the message id; `onTimeout` lets the caller drop the
  * registration when the bound fires first.
@@ -354,7 +354,7 @@ export function awaitCompanionReply(
  * A user message whose LLM turn has not started yet. The transcript message
  * is already appended (marked `deliveryState: 'queued'`); the provider-ready
  * conversation content is stashed here and committed to the conversation only
- * when the turn actually starts — committing at post time would leak the
+ * when the turn actually starts, committing at post time would leak the
  * queued message into the ACTIVE turn's later tool rounds, which re-read the
  * conversation every round.
  */
@@ -362,7 +362,7 @@ export function awaitCompanionReply(
  * What a caller may say about a message it is posting.
  *
  * Shared by `postMessage` and `steerMessage` because a steer is a message with
- * a queue position, not a different kind of thing — and when the two shapes
+ * a queue position, not a different kind of thing, and when the two shapes
  * drifted apart it was possible to wire provenance into one and forget the
  * other, which is precisely the class of miss this field exists to prevent.
  */
@@ -370,7 +370,7 @@ export interface CompanionPostMessageOptions {
   readonly attachments?: readonly CompanionChatMessageAttachmentInput[] | undefined;
   readonly metadata?: Record<string, unknown> | undefined;
   /**
-   * True ONLY from a transport that authenticated the OWNER — it starts a new
+   * True ONLY from a transport that authenticated the OWNER, it starts a new
    * untrusted-content turn. A caller that cannot prove who is speaking leaves
    * it unset; see platform/security/turn-boundary.ts for why that asymmetry
    * only works in one direction.
@@ -382,7 +382,7 @@ export interface QueuedCompanionTurn {
   readonly userMessageId: string;
   /**
    * True when the transport that posted this message can honestly attest the
-   * OWNER sent it — it authenticated him over the daemon's bearer-token API.
+   * OWNER sent it, it authenticated him over the daemon's bearer-token API.
    *
    * It rides the queue entry rather than being read at turn-start because a
    * message can wait here behind an active turn, and by then the call that

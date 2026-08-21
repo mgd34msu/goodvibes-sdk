@@ -3,7 +3,7 @@
  *
  * THE PARITY GATE. HTTP + WebSocket parity is automatic (the operator-sdk client is
  * contract-driven), but DirectTransport (the TUI's in-process path) is HAND-WIRED in
- * runtime/operator-client.ts — a method can be HTTP-reachable while being invisible
+ * runtime/operator-client.ts, a method can be HTTP-reachable while being invisible
  * in-process, and nothing caught that today. This gate makes the asymmetry fail loudly so
  * a later `fleet.*` addition (which the TUI renders locally) cannot silently ship HTTP-only.
  *
@@ -49,9 +49,9 @@ const DIRECT_TRANSPORT_NAMESPACES = ['sessions', 'fleet'] as const;
  *   - the name of the method on createOperatorClient(...).sessions (or .fleet) that serves
  *     it in-process, OR
  *   - the sentinel 'http-only' if the method is intentionally NOT exposed in-process
- *     (webui-only) — a documented, deliberate skip.
+ *     (webui-only), a documented, deliberate skip.
  *
- * A new namespace method with no entry here FAILS the gate — that is the forcing function.
+ * A new namespace method with no entry here FAILS the gate, that is the forcing function.
  */
 const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // sessions.* → operator-client `sessions` surface (runtime/operator-client.ts)
@@ -72,7 +72,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.inputs.deliver': 'deliverInput',
   'sessions.integration.snapshot': 'current',
   // sessions.search: a NEW, wire-only query (cursor pagination over
-  // the home-scoped store) with no existing in-process consumer — every
+  // the home-scoped store) with no existing in-process consumer, every
   // other sessions.* verb here mirrors whole-session access the TUI already
   // gets in-process via services.sessionBroker directly (through this same
   // operator-client), which sessions.search does not add anything over.
@@ -85,15 +85,15 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // (webui) which cannot read the in-process per-session runtime state the TUI
   // sees directly. The TUI reads its own runtime's permission mode + context
   // usage in-process (config + the session read model), so no DirectTransport
-  // wrapper is needed — 'http-only' documents that deliberate skip.
+  // wrapper is needed, 'http-only' documents that deliberate skip.
   'sessions.permissionMode.get': 'http-only',
   'sessions.permissionMode.set': 'http-only',
   'sessions.contextUsage.get': 'http-only',
   // Live-turn verbs (per-call cancel + queued-message management) act on the
-  // daemon's LIVE local runtime through the bound live-turn controls — the
+  // daemon's LIVE local runtime through the bound live-turn controls, the
   // same daemon-only shape as permissionMode/contextUsage above; same
   // deliberate 'http-only' skip.
-  // power.* act on the daemon's own host (sleep inhibitors) — daemon-only by
+  // power.* act on the daemon's own host (sleep inhibitors), daemon-only by
   // nature, same deliberate 'http-only' skip as the session-runtime verbs.
   'power.status.get': 'http-only',
   'power.keepAwake.set': 'http-only',
@@ -104,11 +104,11 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   // sessions.changes.get: aggregate workspace file changes for a session,
   // joined over its stamped WorkspaceCheckpoints. A wire-only read for REMOTE
   // surfaces that cannot reach the in-process workspaceCheckpointManager the
-  // TUI holds directly — 'http-only' documents the deliberate skip, exactly as
+  // TUI holds directly, 'http-only' documents the deliberate skip, exactly as
   // sessions.search / checkpoints.* do.
   'sessions.changes.get': 'http-only',
   // sessions.hosted.*: a hosted session's loop runs INSIDE the daemon process,
-  // so there is nothing for a DirectTransport to reach — an in-process caller
+  // so there is nothing for a DirectTransport to reach, an in-process caller
   // that wanted one would be the daemon asking itself. Every consumer is a
   // client on the other side of the wire, which is what these verbs exist for;
   // the same deliberate 'http-only' skip as the live-turn verbs above.
@@ -119,14 +119,14 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'sessions.hosted.list': 'http-only',
   // fleet.*: the TUI's fleet panel (src/panels/fleet-read-model.ts)
   // already holds a direct reference to the SDK's ProcessRegistry and calls
-  // `registry.query()` in-process — it does NOT go through operator-client
+  // `registry.query()` in-process, it does NOT go through operator-client
   // at all, so no DirectTransport wrapper is needed here. fleet.snapshot/
   // fleet.list exist for REMOTE consumers (webui, a detached session view)
   // that don't share the daemon's process and can only reach the registry
   // over the wire.
   'fleet.snapshot': 'http-only',
   'fleet.list': 'http-only',
-  // fleet archive verbs: same in-process story as fleet.snapshot/fleet.list —
+  // fleet archive verbs: same in-process story as fleet.snapshot/fleet.list,
   // the TUI drives the archive through its direct ArchivableProcessRegistry
   // reference (withFleetArchive, runtime/fleet/archive.ts); the wire verbs
   // exist for remote consumers (webui archive view).
@@ -135,7 +135,7 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'fleet.archiveFinished': 'http-only',
   'fleet.archived.list': 'http-only',
   // fleet.attempts.* (best-of-N held-merge): same in-process story as the other
-  // fleet.* verbs — the TUI drives best-of-N through its direct orchestration
+  // fleet.* verbs, the TUI drives best-of-N through its direct orchestration
   // engine reference (listHeldMergeGroups / pickAttemptWinner / proposeAttemptWinner),
   // not through operator-client; the wire verbs exist for remote consumers
   // (a webui diff-review cockpit).
@@ -145,12 +145,12 @@ const DIRECT_TRANSPORT_COVERAGE: Record<string, string> = {
   'fleet.graph.get': 'http-only',
   'fleet.attempts.judge': 'http-only',
   // fleet.conflicts.* (merge-conflict rows + the one-action resolution): same
-  // in-process story — the TUI reads conflicts off its direct engine reference;
+  // in-process story, the TUI reads conflicts off its direct engine reference;
   // the wire verbs exist for remote consumers.
   'fleet.conflicts.list': 'http-only',
   'fleet.conflicts.resolve': 'http-only',
   // fleet.observed.steer (drill-in steer of an observed foreign agent): same
-  // in-process story — the TUI drives observed rows off its direct registry
+  // in-process story, the TUI drives observed rows off its direct registry
   // reference; the wire verb exists for remote consumers.
   'fleet.observed.steer': 'http-only',
 };
@@ -199,7 +199,7 @@ function findDirectTransportGaps(
     if (!DIRECT_TRANSPORT_NAMESPACES.includes(namespace as (typeof DIRECT_TRANSPORT_NAMESPACES)[number])) continue;
     const mapped = manifest[id];
     if (!mapped) {
-      violations.push({ id, reason: `no DirectTransport disposition — add to DIRECT_TRANSPORT_COVERAGE (map to a client method or 'http-only')` });
+      violations.push({ id, reason: `no DirectTransport disposition, add to DIRECT_TRANSPORT_COVERAGE (map to a client method or 'http-only')` });
       continue;
     }
     if (mapped === 'http-only') continue;
@@ -365,7 +365,7 @@ describe('S2b parity gate — DirectTransport routing (effect-based)', () => {
       const fn = (client.sessions as unknown as Record<string, (...a: unknown[]) => unknown>)[mappedMethod];
       expect(typeof fn, `${wireId} → sessions.${mappedMethod} must exist`).toBe('function');
       void fn!(...routing!.args);
-      // The RIGHT underlying method fired — a mis-wire (e.g. list→getSession) fails here.
+      // The RIGHT underlying method fired, a mis-wire (e.g. list→getSession) fails here.
       expect(calls, `${wireId} → sessions.${mappedMethod} must fire ${routing!.effect}`).toContain(routing!.effect);
     }
   });

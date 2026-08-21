@@ -1,8 +1,8 @@
-# Companion Wire Protocol (Native Clients)
+# Companion wire protocol (native clients)
 
 Native Kotlin (Android) and Swift (iOS) companion apps talk to the GoodVibes daemon directly over the same HTTP and WebSocket contract the TypeScript SDK uses. This page is the shared wire reference for both platforms; the platform guides ([Android](./android-integration.md), [iOS](./ios-integration.md)) cover only what differs (secure storage and HTTP client).
 
-If your app is React Native or Expo based, do not implement this protocol yourself — use [`@pellux/goodvibes-sdk/react-native`](./react-native-integration.md) or [`@pellux/goodvibes-sdk/expo`](./expo-integration.md), which implement it for you.
+If your app is React Native or Expo based, do not implement this protocol yourself. Use [`@pellux/goodvibes-sdk/react-native`](./react-native-integration.md) or [`@pellux/goodvibes-sdk/expo`](./expo-integration.md), which implement it for you.
 
 ## Source of truth
 
@@ -12,8 +12,8 @@ If your app is React Native or Expo based, do not implement this protocol yourse
 
 ## Auth
 
-- `POST /login` — username/password login when you need to mint a token.
-- `GET /api/control-plane/auth` — verify the current principal.
+- `POST /login`: username/password login when you need to mint a token.
+- `GET /api/control-plane/auth`: verify the current principal.
 - Send the bearer token as `Authorization: Bearer <token>` on every HTTP request.
 
 ## Runtime events (WebSocket)
@@ -38,6 +38,6 @@ When W3C trace propagation is enabled, the SDK also adds optional `traceparent` 
 
 Method invocation uses the HTTP transport (the contract's `transports.http.methodsPath`); the WebSocket transport delivers runtime events. Make method calls over HTTP rather than the WebSocket.
 
-- `GET /api/control-plane/methods` — list the method catalog (useful when debugging or building dynamic tooling).
-- `GET /api/control-plane/methods/{method}` — inspect a single method.
-- `POST /api/control-plane/methods/{method}/invoke` — invoke a method with a JSON body.
+- `GET /api/control-plane/methods`: list the method catalog (useful when debugging or building dynamic tooling).
+- `GET /api/control-plane/methods/{method}`: inspect a single method.
+- `POST /api/control-plane/methods/{method}/invoke`: invoke a method with a JSON body.

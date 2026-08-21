@@ -4,7 +4,7 @@
 // exhaustion, an exhausted turn/circuit-breaker loop, or a cancel/kill must
 // deliver a structured {agentId, phase, reason, partialOutputs} envelope to its
 // supervising parent as the RESULT of the parent's poll (status/get/wait/
-// cohort-report) — never a silent stall and never a bare status string. The
+// cohort-report), never a silent stall and never a bare status string. The
 // envelope is assembled ENTIRELY from what the child's own record + transcript
 // actually hold; partialOutputs is whatever the child genuinely produced (its
 // last committed output and a transcript-tail summary), never fabricated.
@@ -29,7 +29,7 @@ export interface ChildFailureEnvelope {
   readonly phase: string;
   readonly reason: {
     readonly code: ChildFailureReasonCode;
-    /** The child record's own error text — never invented. */
+    /** The child record's own error text, never invented. */
     readonly message: string;
   };
   readonly partialOutputs: {
@@ -39,7 +39,7 @@ export interface ChildFailureEnvelope {
     readonly transcriptTail?: readonly string[] | undefined;
     /** How many turns the child completed before terminating, when known. */
     readonly turnsCompleted?: number | undefined;
-    /** Honest note — set when the child produced nothing before it died. */
+    /** Honest note, set when the child produced nothing before it died. */
     readonly note?: string | undefined;
   };
 }
@@ -96,7 +96,7 @@ function summarizeTranscriptTail(
 /**
  * Assemble the failure envelope from the child's record plus (optionally) a
  * transcript-tail snapshot the caller fetched from the AgentManager. Everything
- * here is drawn from real recorded state — nothing is fabricated.
+ * here is drawn from real recorded state, nothing is fabricated.
  */
 export function buildChildFailureEnvelope(
   record: AgentRecord,
@@ -104,7 +104,7 @@ export function buildChildFailureEnvelope(
 ): ChildFailureEnvelope {
   const reasonCode = classifyChildFailureReason(record);
   // A failed WRFC owner's fullOutput is set to the failure message itself
-  // (completeOwnerAgent), which would merely echo reason.message — treat that as
+  // (completeOwnerAgent), which would merely echo reason.message, treat that as
   // "no genuine output" so partialOutputs stays honest rather than redundant.
   const lastOutput = record.fullOutput
     && record.fullOutput.trim().length > 0

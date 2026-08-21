@@ -90,7 +90,7 @@ export class HomeGraphService {
       readonly semanticService?: KnowledgeSemanticService;
       /**
        * MemoryGovernor admission gate: the HTTP-exposed ingest verbs run the
-       * whole ingestion pipeline (artifact writes, extraction, enrichment) —
+       * whole ingestion pipeline (artifact writes, extraction, enrichment),
        * at the critical tier they refuse with an honest structured reason.
        */
       readonly admitExpensiveWork?: ((label: string) => { allowed: boolean; reason?: string | undefined }) | undefined;

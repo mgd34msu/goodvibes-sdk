@@ -35,7 +35,7 @@ interface FileWriteResult {
   } | undefined;
   /** true if this was a dry-run entry */
   would_write?: boolean | undefined;
-  /** decoded content — used internally to avoid double resolveContent call */
+  /** decoded content, used internally to avoid double resolveContent call */
   _content?: string | undefined;
 }
 
@@ -82,7 +82,7 @@ function buildBackupPath(resolvedPath: string, projectRoot: string): string {
   return join(projectRoot, '.goodvibes', '.backups', `${rel}.${Date.now()}`);
 }
 
-/** Module-level constant — avoids re-allocating the Set on every validation call. */
+/** Module-level constant, avoids re-allocating the Set on every validation call. */
 const VALID_CELL_TYPES = new Set(['code', 'markdown', 'raw']);
 
 /**
@@ -228,7 +228,6 @@ function processSingleWrite(
 
   const byteSize = Buffer.byteLength(content, encoding);
 
-  // Check existence
   const alreadyExists = existsSync(resolvedPath);
 
   if (alreadyExists && mode === 'fail_if_exists') {
@@ -475,7 +474,7 @@ export function createWriteTool(options?: {
 
         results.push(outcome.result);
 
-        // State integration — only for real writes, not dry runs
+        // State integration, only for real writes, not dry runs
         if (!dryRun) {
           let content = outcome.result._content ?? '';
 
@@ -648,7 +647,7 @@ export function createWriteTool(options?: {
         finalOutput.errors = errors;
       }
 
-      // Post-write validation — run after all files are written, even if partial errors occurred
+      // Post-write validation, run after all files are written, even if partial errors occurred
       if (!dryRun && results.length > 0 && input.validate?.after && input.validate.after.length > 0) {
         const validatorNames = input.validate.after as ValidatorName[];
         logger.debug('write tool: running post-write validators', { validators: validatorNames });
@@ -682,7 +681,7 @@ export function createWriteTool(options?: {
         }
       }
 
-      // Post-edit diagnostics — cheap, in-process syntax check of each file we
+      // Post-edit diagnostics, cheap, in-process syntax check of each file we
       // just wrote, appended so the model sees a broken edit immediately. Off
       // when configured off; absent (no field) when the provider produces
       // nothing (honest absence, never a fabricated "no errors").

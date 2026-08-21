@@ -26,7 +26,7 @@ export async function handleGitHubAutomationWebhook(
     context.githubWebhookSecret
     ?? await context.serviceRegistry.resolveSecret('github', 'signingSecret');
   if (!githubWebhookSecret) {
-    logger.warn('handleGitHubAutomationWebhook: GITHUB_WEBHOOK_SECRET not configured — rejecting');
+    logger.warn('handleGitHubAutomationWebhook: GITHUB_WEBHOOK_SECRET not configured, rejecting');
     return Response.json({ error: 'Webhook not configured' }, { status: 503 });
   }
 

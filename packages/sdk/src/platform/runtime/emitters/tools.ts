@@ -1,5 +1,5 @@
 /**
- * Tool emitters — typed emission wrappers for ToolEvent domain.
+ * Tool emitters, typed emission wrappers for ToolEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

@@ -71,7 +71,7 @@ export class BrowserEngine {
   /**
    * Strip live card material out of anything a page produced. Applied to every
    * value, name, body text, extracted field and ledger entry leaving this
-   * class, unconditionally — see `CardFieldGuard` in browser-types.ts.
+   * class, unconditionally, see `CardFieldGuard` in browser-types.ts.
    */
   private scrub(sessionId: string, pageId: string, text: string): string {
     return this.cardGuard === null ? text : this.cardGuard.redact(sessionId, pageId, text);
@@ -95,7 +95,7 @@ export class BrowserEngine {
    *
    * The text matters as much as the origin. Without it, a later outward action
    * can only be judged on "did this turn read anything", which in a daemon is
-   * permanently true — so every send would be refused and the boundary would
+   * permanently true, so every send would be refused and the boundary would
    * be switched off. With it, the guard can ask the answerable question:
    * does what is about to leave derive from what was read.
    */
@@ -117,8 +117,8 @@ export class BrowserEngine {
    * instead, which is to take it to the owner.
    *
    * `content` is what is about to be submitted, when the caller could work it
-   * out. Supplying it turns the coarse question into the answerable one — does
-   * this submission repeat what was read — which is the difference between a
+   * out. Supplying it turns the coarse question into the answerable one, does
+   * this submission repeat what was read, which is the difference between a
    * form filled from the owner's instruction going through and every form on a
    * browsing session being refused.
    */
@@ -149,7 +149,7 @@ export class BrowserEngine {
    * Password values are read but never returned. A password is high-entropy by
    * construction, so it contributes nothing to a derivation check, while
    * putting one into a `TaintFinding` excerpt would print it in a refusal
-   * message — the check would have leaked what it was defending.
+   * message, the check would have leaked what it was defending.
    *
    * Returns undefined when the values cannot be established: the element is
    * outside a form, the page is cross-origin-restricted, the evaluate times
@@ -353,7 +353,7 @@ export class BrowserEngine {
 
   /**
    * Refuses to drive a sign-in page. Called before every interactive action
-   * (click, type, press, select) — never before a read-only one, since
+   * (click, type, press, select), never before a read-only one, since
    * reading is exactly what lets the caller notice a sign-in page and hand
    * the URL back instead of clicking through it. See `credentialPageRefusal`
    * in browser-engine-contract.ts for what counts as a sign-in page and why:
@@ -464,8 +464,8 @@ export class BrowserEngine {
    * The counterpart to `type` for card material, and deliberately not a flag on
    * it. `value` never came from the model: it is read from the daemon's secret
    * store in-process and passed here directly, and nothing on the control plane
-   * can supply one or observe one. The mechanics — refusing without a guard,
-   * and discarding the driver's error because it quotes what it tried to type —
+   * can supply one or observe one. The mechanics, refusing without a guard,
+   * and discarding the driver's error because it quotes what it tried to type,
    * live in browser-secret-fill.ts.
    *
    * The caller arms the guard before calling this. Not done here because a fill
@@ -486,7 +486,7 @@ export class BrowserEngine {
       timeoutMs: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS,
     });
     // The stored snapshot still holds this element's pre-fill value, and the
-    // next snapshot suppresses it — clearing here means no path can serve a
+    // next snapshot suppresses it, clearing here means no path can serve a
     // cached one from before the guard was armed.
     this.snapshots.clear(sessionId, pageId);
     return {
@@ -646,7 +646,7 @@ export class BrowserEngine {
     // Declared explicitly rather than inferred from the tool-event stream: that
     // classifier deliberately refuses to grant a waiver for browser and shell
     // writes, because those paths did not pass through the model. This one did
-    // not either — but the browser engine KNOWS it just created this exact
+    // not either, but the browser engine KNOWS it just created this exact
     // file, which is the case the explicit entry point exists for.
     this.options.recordSessionWrite?.(path);
     return {
@@ -710,7 +710,7 @@ export class BrowserEngine {
    *
    * This replaced an `evaluate` action that ran caller-supplied JavaScript in
    * the page. That action was guarded by searching the source for `fetch`,
-   * `sendBeacon` and friends — a denylist standing between attacker-influenced
+   * `sendBeacon` and friends, a denylist standing between attacker-influenced
    * text and arbitrary code execution, which is a losing shape. An expression
    * built as `globalThis[atob('ZmV0Y2g=')]` defeats a string match while doing
    * exactly what the match existed to stop.
@@ -718,7 +718,7 @@ export class BrowserEngine {
    * So there is no longer any way to express code here. The caller supplies a
    * CSS selector or a ref and names the fields it wants; the function that runs
    * in the page is fixed, ships in this file, and reads DOM properties. A
-   * network call is not something this contract can describe — not something we
+   * network call is not something this contract can describe, not something we
    * try to notice.
    *
    * What that costs: running page functions, computing values in-page, and
@@ -763,7 +763,7 @@ export class BrowserEngine {
       }
     }
 
-    // Extracted field values are page-written text exactly as body text is —
+    // Extracted field values are page-written text exactly as body text is,
     // a value lifted out of a form or a table is as good an injection carrier
     // as a paragraph, and recording the origin without the words would leave
     // the derivation check with nothing to compare against.

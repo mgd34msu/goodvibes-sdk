@@ -208,7 +208,7 @@ export class CompanionChatRateLimiter {
   ): Bucket {
     let bucket = map.get(key);
     if (!bucket) {
-      // LRU eviction — evict the least-recently-used entry when the map
+      // LRU eviction, evict the least-recently-used entry when the map
       // is at capacity. JS Map preserves insertion order; the first key is LRU.
       if (map.size >= MAX_RATE_LIMITER_BUCKETS) {
         const lruKey = map.keys().next().value as string;

@@ -1,5 +1,5 @@
 /**
- * feature-announcements.ts — announce-once receipts for default-on features.
+ * feature-announcements.ts, announce-once receipts for default-on features.
  *
  * Nothing default-on requires a setup step to function; instead, each
  * newly-default-on capability announces itself exactly once, usably:
@@ -40,14 +40,14 @@ interface AnnouncementFileState {
 /**
  * Persisted announce-once bookkeeping under the control-plane config
  * directory, so an announcement made by any process of this install is made
- * exactly once — PLUS a pending-delivery queue: an announcement recorded with
+ * exactly once, PLUS a pending-delivery queue: an announcement recorded with
  * text waits here until a rendering surface drains it (the daemon folds the
  * queue into the explicitly-consuming /status receipts read), so
  * announce-once lines reach surfaces instead of dead-ending in the log.
  *
  * File format: `{ announced: { id -> timestamp }, pending: [{id,text,at}] }`.
  * The legacy format (a plain id->timestamp map) reads as announced-with-
- * nothing-pending — old installs never re-announce.
+ * nothing-pending, old installs never re-announce.
  */
 export class FeatureAnnouncementStore {
   constructor(private readonly path: string) {}
@@ -105,7 +105,7 @@ export class FeatureAnnouncementStore {
    * Record an announcement; returns true only on the FIRST record (the caller
    * announces), false when it was already made (the caller stays silent).
    * With `text`, the first record also enqueues the line for surface delivery
-   * (see drainPending) — so the announcement reaches a rendering surface, not
+   * (see drainPending), so the announcement reaches a rendering surface, not
    * only the log.
    */
   record(id: string, text?: string): boolean {
@@ -160,7 +160,7 @@ export const SANDBOX_CONTAINED_ANNOUNCEMENT_TEXT =
 
 /**
  * Collect the announce-once lines due at daemon start. Each returned line is
- * recorded in the store as announced — the caller renders every returned
+ * recorded in the store as announced, the caller renders every returned
  * line (daemon-start log, footer, ...), exactly once per install.
  */
 export function collectStartupAnnouncements(deps: {
@@ -173,7 +173,7 @@ export function collectStartupAnnouncements(deps: {
     // The scope suffix MUST come from the RESOLVER, not the raw stored value: a
     // case/space variant ('  Local ') is recognized-local and still needs the
     // scope note the old raw `=== 'local'` check silently dropped, and an
-    // unrecognized value ('LAN') is served at loopback under the safe fallback —
+    // unrecognized value ('LAN') is served at loopback under the safe fallback,
     // it must be announced as unrecognized, never as the network mode the
     // operator may have believed they set.
     const rawHostMode = deps.configManager.get('web.hostMode');
@@ -184,9 +184,9 @@ export function collectStartupAnnouncements(deps: {
     });
     let suffix = '';
     if (!binding.recognized) {
-      suffix = ` — web.hostMode value ${JSON.stringify(String(rawHostMode))} is unrecognized; applied the safe local default, so this serves this machine only`;
+      suffix = `, web.hostMode value ${JSON.stringify(String(rawHostMode))} is unrecognized; applied the safe local default, so this serves this machine only`;
     } else if (binding.effectiveMode === 'local') {
-      suffix = ' — serving this machine only until web.hostMode is widened';
+      suffix = ', serving this machine only until web.hostMode is widened';
     }
     const text = `Web surface ready: ${url}${suffix}`;
     // Recording WITH text also enqueues the line for surface delivery.
@@ -206,7 +206,7 @@ export interface AutomationEmptyState {
 /**
  * Automation's how-to-create-your-first-routine empty state: present while
  * automation is enabled and has zero routines, absent otherwise. Persistent
- * state (not once-only) — it disappears by itself when the first routine
+ * state (not once-only), it disappears by itself when the first routine
  * exists, so nothing default-on ever needs a setup step to be honest.
  */
 export function buildAutomationEmptyState(input: {
@@ -218,7 +218,7 @@ export function buildAutomationEmptyState(input: {
     title: 'No routines yet',
     body:
       'Automation is on and idle. Create your first routine with /automation create '
-      + '(name, schedule, prompt) or the schedule verb — it runs on its cadence with '
+      + '(name, schedule, prompt) or the schedule verb, it runs on its cadence with '
       + 'durable run history, retries, and delivery receipts.',
   };
 }

@@ -1,12 +1,12 @@
 /**
  * routes/invocation-params.ts
  *
- * (see CHANGELOG 1.0.0, post-S1 alignment) — one params view for the handler-registered
+ * (see CHANGELOG 1.0.0, post-S1 alignment), one params view for the handler-registered
  * verbs (fleet.*, checkpoints.*, sessions.search).
  *
  * S1's invoke-layer input gate (invoke-input-validation.ts, wired in
  * daemon/control-plane.ts invokeGatewayMethodCall) validates the invoke BODY
- * against a handler verb's typed inputSchema — a method with no http binding
+ * against a handler verb's typed inputSchema, a method with no http binding
  * is body-carrying by that gate's definition. So the BODY is the canonical,
  * schema-validated params channel for these verbs, and callers should put
  * params there.

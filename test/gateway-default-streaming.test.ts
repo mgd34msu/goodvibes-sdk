@@ -2,7 +2,7 @@
  * gateway-default-streaming.test.ts
  *
  * Proves the control-plane-gateway flag defaults ON so a STOCK daemon (no config) can
- * stream companion chat over SSE — the literal "stock daemon is dead" repro — while
+ * stream companion chat over SSE, the literal "stock daemon is dead" repro, while
  * keeping every honest failure mode intact:
  *   - default-ON assertion + kill-switch honesty (config can still turn it off)
  *   - stock-daemon companion SSE happy path: 200 text/event-stream through the REAL
@@ -208,7 +208,7 @@ describe('S2a — stock daemon streams companion chat (no 503 dead end)', () => 
 });
 
 // ---------------------------------------------------------------------------
-// Honest degraded mode — flag explicitly OFF is legible, not silent
+// Honest degraded mode, flag explicitly OFF is legible, not silent
 // ---------------------------------------------------------------------------
 
 describe('S2a — honest degraded mode when the flag is explicitly OFF', () => {
@@ -243,7 +243,7 @@ describe('S2a — honest degraded mode when the flag is explicitly OFF', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Auth is orthogonal to the flag — flipping it ON exposes nothing un-authed
+// Auth is orthogonal to the flag, flipping it ON exposes nothing un-authed
 // ---------------------------------------------------------------------------
 
 describe('S2a — auth still gates every entry point when the flag is ON', () => {
@@ -304,11 +304,11 @@ describe('S2a — auth still gates every entry point when the flag is ON', () =>
   // dispatches the router with auth applied UPSTREAM, so the companion 401 is
   // asserted there rather than duplicated against an auth-open router here.
   test('the companion SSE stream is part of the auth-gated streaming surface (flag ON ⇏ open)', () => {
-    // Sanity pin: enabling the gateway does not make the streaming surface public —
+    // Sanity pin: enabling the gateway does not make the streaming surface public,
     // the control SSE (its shared entry gate) still refuses a principal-less request.
     const { gateway } = makeStockGateway();
     // isEnabled() is private; getSnapshot() is the public surface that reflects
-    // it — a disabled gateway's snapshot carries `disabled: true` and nothing else.
+    // it, a disabled gateway's snapshot carries `disabled: true` and nothing else.
     expect((gateway.getSnapshot() as { disabled?: boolean }).disabled).not.toBe(true);
   });
 });

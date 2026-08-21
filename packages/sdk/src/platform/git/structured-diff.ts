@@ -1,10 +1,10 @@
 /**
- * structured-diff.ts — parse raw `git diff` output into a complete, structured
+ * structured-diff.ts, parse raw `git diff` output into a complete, structured
  * form consumers render with their diff-view machinery.
  *
  * The old consumer path for `/git diff` sliced the raw text at 4,000 chars and
  * printed the stub. This module is the SDK-side replacement: the FULL diff is
- * parsed into per-file entries with per-hunk lines — no size cap anywhere — so
+ * parsed into per-file entries with per-hunk lines, no size cap anywhere, so
  * a surface renders it structurally (per-file, per-hunk, colored lines) and the
  * truncation branch dies. `reconstructUnifiedDiff` proves the structure is
  * complete: parse → reconstruct round-trips the original text.
@@ -66,7 +66,7 @@ function parsePath(line: string, prefix: string): string | null {
 }
 
 /**
- * Parse raw unified-diff text (any size — no cap) into structured files/hunks.
+ * Parse raw unified-diff text (any size, no cap) into structured files/hunks.
  * Unknown leading material and binary-file notices are handled; an empty diff
  * yields zero files.
  */
@@ -174,7 +174,7 @@ export function parseUnifiedDiff(raw: string): StructuredDiff {
 }
 
 /**
- * Rebuild unified-diff text from the structure — the completeness proof used
+ * Rebuild unified-diff text from the structure, the completeness proof used
  * by tests (parse → reconstruct round-trips byte-for-byte for text diffs) and
  * an escape hatch for consumers that still want raw text for one file.
  */

@@ -7,8 +7,8 @@
  * `SkillServiceError` to an honest wire status (INVALID_ARGUMENT -> 400,
  * NOT_FOUND -> 404, ALREADY_EXISTS -> 409).
  *
- * Wired via `GatewayMethodCatalog.register(descriptor, handler)` — the same
- * mechanism fleet.* / checkpoints.* / push.* use — against descriptors already
+ * Wired via `GatewayMethodCatalog.register(descriptor, handler)`, the same
+ * mechanism fleet.* / checkpoints.* / push.* use, against descriptors already
  * cataloged (without a handler) from ../method-catalog-skills.ts. Attaching the
  * handler and the descriptor together is what keeps a skills verb from being a
  * cataloged-but-unhandled 501.
@@ -127,7 +127,7 @@ function createSkillsDeleteHandler(service: SkillsGatewayService): GatewayMethod
 /**
  * Attach the skills.* handlers to the descriptors already registered (without a
  * handler) from ../method-catalog-skills.ts. A missing descriptor
- * (contract/registration drift) is a silent no-op rather than a throw —
+ * (contract/registration drift) is a silent no-op rather than a throw,
  * construction must never fail because a wire verb failed to register; the
  * operator-contract gates catch a real drift.
  */

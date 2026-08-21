@@ -10,7 +10,7 @@
  * reads as protection.
  *
  * It is now set by the transports that can honestly claim it, and deliberately
- * NOT set by the ones that cannot — scheduled work, triggers and channel-driven
+ * NOT set by the ones that cannot, scheduled work, triggers and channel-driven
  * work are exactly the callers the distinction exists to separate from a live
  * human action. Nothing new is gated on it here; establishing the signal
  * honestly is the work.
@@ -59,7 +59,7 @@ describe('the header a transport uses to claim a live human action', () => {
     expect(read('1')).toBe(false);
     expect(read('yes')).toBe(false);
     expect(read('')).toBe(false);
-    // Absent is not false — it is "did not claim", which is what a scheduled
+    // Absent is not false, it is "did not claim", which is what a scheduled
     // run legitimately reports.
     expect(read(null)).toBeUndefined();
   });

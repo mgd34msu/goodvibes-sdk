@@ -10,12 +10,12 @@
  *   - packages/contracts/artifacts/operator-contract.json  (methods, IO schemas,
  *     REST bindings, auth scheme, transports)
  *   - packages/contracts/src/generated/foundation-client-types.ts +
- *     operator-method-ids.ts (the typed-client-IO ratchet inputs) — used to mark
+ *     operator-method-ids.ts (the typed-client-IO ratchet inputs), used to mark
  *     the untyped methods HONESTLY: every method whose SDK client IO resolves to
  *     `unknown` carries `x-typed-client-io: false`. They are never omitted.
  *
  * Outputs (both committed, kept in lockstep by this one generator):
- *   - packages/contracts/artifacts/operator-openapi.json  (package-exported —
+ *   - packages/contracts/artifacts/operator-openapi.json  (package-exported,
  *     prepare-sdk-package copies the artifacts dir into the SDK dist)
  *   - docs/operator-openapi.json                          (docs-fetchable copy)
  *
@@ -198,7 +198,7 @@ function buildDocument(contract: OperatorContractManifest, untyped: Set<string>)
   }
   paths[INVOKE_PATH] = { post: buildInvokeOperation(invokeOnly) };
 
-  // Every method — REST-bound or invoke-only — appears in this index with its
+  // Every method, REST-bound or invoke-only, appears in this index with its
   // honest coverage marking; the 97 untyped ids are visible, not omitted.
   const methodIndex = methods.map((m) => ({
     id: m.id,
@@ -291,7 +291,7 @@ drifted = writeIfChanged(ARTIFACT_OUT, json) || drifted;
 drifted = writeIfChanged(DOCS_OUT, json) || drifted;
 
 if (CHECK_ONLY && drifted) {
-  console.error('[openapi] drift detected — run `bun run openapi:generate`');
+  console.error('[openapi] drift detected, run `bun run openapi:generate`');
   process.exit(1);
 }
 if (!CHECK_ONLY) {

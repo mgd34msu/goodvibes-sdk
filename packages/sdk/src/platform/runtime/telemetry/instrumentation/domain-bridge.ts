@@ -1,5 +1,5 @@
 /**
- * DomainBridge — bridges RuntimeEventBus events to OTel span creation.
+ * DomainBridge, bridges RuntimeEventBus events to OTel span creation.
  *
  * Subscribes to all domain channels on the RuntimeEventBus and routes
  * lifecycle events to the appropriate span helper functions. Maintains
@@ -7,9 +7,9 @@
  * and terminal events close them with outcome context.
  *
  * Design principles:
- * - Span creation is purely observational — bridge failures must not
+ * - Span creation is purely observational, bridge failures must not
  *   affect the domain logic that emits events.
- * - All map lookups are safe — missing spans on terminal events are no-ops.
+ * - All map lookups are safe, missing spans on terminal events are no-ops.
  * - The bridge is opt-in: calling `attach()` wires it; `detach()` unwires.
  */
 import type { RuntimeEventBus } from '../../events/index.js';

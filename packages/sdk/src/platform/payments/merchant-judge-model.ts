@@ -1,5 +1,5 @@
 /**
- * merchant-judge-model.ts — the judgement, made by a model.
+ * merchant-judge-model.ts, the judgement, made by a model.
  *
  * ══ The last link in "determine if it is reputable" ═══════════════════════
  *
@@ -29,7 +29,7 @@
  * ══ Every failure is not-major ════════════════════════════════════════════
  *
  * Helper disabled, no route configured, a timeout, a malformed answer, prose
- * where JSON was asked for, a verdict word we do not recognise — all resolve to
+ * where JSON was asked for, a verdict word we do not recognise, all resolve to
  * `qualifies: false, confident: false`, which `classifyMerchant` turns into an
  * approval window where silence denies.
  *
@@ -63,10 +63,10 @@ const RESPONSE_INSTRUCTIONS = [
   '{"qualifies": true|false, "confident": true|false, "recourse": "<short phrase>", "marketplace": "<optional>"}',
   '',
   '"qualifies" is your verdict against the criterion above.',
-  '"confident" is false when you do not recognise the domain well enough to be sure —',
+  '"confident" is false when you do not recognise the domain well enough to be sure,',
   'say so rather than guessing, because an unsure answer is treated the same as no.',
   '"recourse" is a short phrase naming what protection you believe exists, in plain words,',
-  'for a human to read on their phone — for example "established electronics retailer with a returns process"',
+  'for a human to read on their phone, for example "established electronics retailer with a returns process"',
   'or "marketplace with buyer protection". Do not restate the domain.',
 ].join('\n');
 
@@ -101,7 +101,7 @@ function parseVerdict(raw: string): MerchantJudgement | null {
   const record = parsed as Record<string, unknown>;
 
   // `qualifies` must be a real boolean. A string "true", a 1, or a missing
-  // field is not a verdict — it is a model that did not follow the format, and
+  // field is not a verdict, it is a model that did not follow the format, and
   // coercing it would be inventing an answer.
   if (typeof record['qualifies'] !== 'boolean') return null;
 
@@ -126,8 +126,8 @@ function parseVerdict(raw: string): MerchantJudgement | null {
 /**
  * A judge backed by the helper model.
  *
- * `intent_classify` is the routing task: this IS a classification — one short
- * input, one closed verdict — and it inherits that route's model and limits
+ * `intent_classify` is the routing task: this IS a classification, one short
+ * input, one closed verdict, and it inherits that route's model and limits
  * rather than introducing a payment-specific route the owner would have to
  * configure separately before he could buy anything.
  */

@@ -1,65 +1,65 @@
-# Platform Layer Architecture
+# Platform layer architecture
 
-> **Internal source map:** This document describes the internal source layout under `packages/sdk/src/platform/`. It is an orientation guide for contributors navigating the codebase — **not** a consumer import reference.
+> **Internal source map:** This document describes the internal source layout under `packages/sdk/src/platform/`. It is an orientation guide for contributors navigating the codebase, **not** a consumer import reference.
 >
 > Consumers access these modules via explicit `./platform/...` entrypoints as documented in [Public Surface Reference](./public-surface.md). See [Published Surface Matrix](./surfaces.md) for the distinction between the full surface (Bun) and companion surfaces (Hermes/browser/React Native).
 
 This document maps every top-level directory under `packages/sdk/src/platform/`. Each directory is a bounded subsystem with a single responsibility. Use this as an orientation guide when navigating the codebase.
 
-## Directory Map
+## Directory map
 
 | Directory | Purpose |
 |---|---|
-| `acp/` | Agent Control Protocol — message envelope types, handshake state machine, per-agent connection lifecycle, and `AcpManager` |
-| `adapters/` | Shared adapter helpers and types; concrete platform adapters live under `adapters/<platform>/` (Slack, Discord, Telegram, etc.) — see Channel System |
+| `acp/` | Agent Control Protocol: message envelope types, handshake state machine, per-agent connection lifecycle, and `AcpManager` |
+| `adapters/` | Shared adapter helpers and types; concrete platform adapters live under `adapters/<platform>/` (Slack, Discord, Telegram, etc.): see Channel system |
 | `agents/` | Sub-agent orchestration: `AgentOrchestrator`, `AgentMessageBus`, WRFC controller and all WRFC support files, worktree management, agent archetypes |
-| `artifacts/` | Ephemeral artifact store — typed blobs (images, files, diffs) produced during agent runs, keyed by artifact ID |
+| `artifacts/` | Ephemeral artifact store: typed blobs (images, files, diffs) produced during agent runs, keyed by artifact ID |
 | `automation/` | Scheduled job engine: job definitions, run records, schedule management, delivery, reconcile loop, and the `AutomationManager` runtime |
 | `batch/` | Opt-in daemon batch queue manager, provider batch adapters, local queueing, and batch job lifecycle helpers |
-| `bookmarks/` | Session bookmark manager — named save-points within a session for quick navigation and branching |
+| `bookmarks/` | Session bookmark manager: named save-points within a session for quick navigation and branching |
 | `channels/` | Channel surface registry, delivery router, delivery strategies (core / bridge / enterprise), plugin registry, and builtin channel runtime |
 | `cloudflare/` | Optional Cloudflare control plane integration: token creation, account/zone/resource discovery, Workers, Queues, DNS, Tunnel, Access, KV, Durable Objects, R2, Secrets Store, and verification |
 | `companion/` | Companion-app chat routes and types: bidirectional messaging between companion mobile/web clients and the daemon |
 | `config/` | `ConfigManager`, `SecretsManager`, secret-ref resolution, service registry, API-key management, subscription auth, OAuth local listener, and config schema |
 | `control-plane/` | Control-plane gateway and auth snapshot: operator-level commands, approval broker, conversation-message relay, and web-UI gateway bridge |
-| `core/` | Orchestrator turn loop, `ConversationManager`, `ToolRegistry`, `PermissionManager`, `CompactionManager`, `SessionLineageTracker` — the core agent engine |
+| `core/` | Orchestrator turn loop, `ConversationManager`, `ToolRegistry`, `PermissionManager`, `CompactionManager`, `SessionLineageTracker`: the core agent engine |
 | `daemon/` | HTTP server bootstrap (`DaemonServer`), `api-router`, `http-policy`, and all route-group files (runtime, session, control, channel, knowledge, telemetry, etc.) |
-| `discovery/` | Workspace and MCP-server scanner — detects available MCP servers, indexes project structure for tool and plugin discovery |
+| `discovery/` | Workspace and MCP-server scanner: detects available MCP servers, indexes project structure for tool and plugin discovery |
 | `export/` | Session export formatters: JSON, Markdown, and HTML renderers with optional sensitive-data redaction |
-| `git/` | Git service — branch, commit, diff, and file-history operations used by tools and the intelligence layer |
+| `git/` | Git service: branch, commit, diff, and file-history operations used by tools and the intelligence layer |
 | `hooks/` | Lifecycle hook system: `HookDispatcher`, chain engine, event matcher, workbench, and runners for prompt / agent / HTTP / TypeScript / command hook types |
 | `integrations/` | Third-party integration connectors (non-channel services: Linear, Jira, Notion, etc.) |
-| `intelligence/` | Code-intelligence facade over tree-sitter and LSP: symbol extraction, outline parsing, language detection, diagnostics, and hover — with graceful degradation when either backend is absent |
+| `intelligence/` | Code-intelligence facade over tree-sitter and LSP: symbol extraction, outline parsing, language detection, diagnostics, and hover, with graceful degradation when either backend is absent |
 | `knowledge/` | Persistent queryable memory store: ingestion pipelines (files, URLs, browser-local history/bookmark metadata, agent output), GraphQL query API, projections for prompt injection, consolidation/deduplication, and scheduling |
 | `mcp/` | MCP client (stdio JSON-RPC 2.0 transport), server registry, and per-server configuration; connects external MCP server processes and exposes their tools to the LLM |
 | `media/` | Media provider registry: metadata, image-understanding, transform, generate, and attachment-store capability surfaces for images and binary attachments |
-| `multimodal/` | Multimodal content service — encodes images and files into provider-specific prompt structures for vision-capable models |
+| `multimodal/` | Multimodal content service: encodes images and files into provider-specific prompt structures for vision-capable models |
 | `node/` | Runtime capability metadata and Node-like runtime-boundary detection helpers (no Bun globals); backs the public `./platform/node` and `./platform/node/runtime-boundary` subpaths |
 | `pairing/` | Companion pairing: token generation, `CompanionConnectionInfo` encoding, QR matrix generation and ASCII rendering, token revocation |
 | `permissions/` | `PermissionManager`, layered policy evaluation (allow/deny/auto-approve), per-call approval prompting, and brief generation for operator review |
 | `plugins/` | Plugin loader, `PluginManager` lifecycle (registration → activation → hook dispatch → deactivation), `PluginApi`, hook dispatcher |
-| `profiles/` | Named configuration profiles — display, provider model, and behavior overrides that can be switched per session |
+| `profiles/` | Named configuration profiles: display, provider model, and behavior overrides that can be switched per session |
 | `providers/` | `ProviderRegistry` and per-provider adapters (Anthropic, OpenAI, Gemini, Inception Labs, Ollama, etc.); stop-reason canonical mapper |
 | `runtime/` | Runtime subsystems: `RuntimeStore` (Redux-style state), `RuntimeEventBus`, compaction strategies, session memory, diagnostics panels, perf monitor, task adapters |
 | `scheduler/` | Cron-based task scheduler: cron expression evaluation, task persistence, missed-run tracking, and prompt dispatch to the agent engine |
 | `security/` | Security utilities: input sanitization, CSP helpers, private-host policy enforcement |
 | `sessions/` | Session persistence: session-file I/O, last-session pointer, recovery files, session-directory resolution under `surfaceRoot` |
 | `state/` | Cross-cutting persistence layer: SQLite and KV stores, file cache, file-undo log, file watcher, memory vector store, project index, mode manager, and telemetry recorder |
-| `templates/` | Agent template manager — stores and resolves named agent archetypes (engineer, reviewer, etc.) referenced by the scheduler and sub-agent orchestrator |
+| `templates/` | Agent template manager: stores and resolves named agent archetypes (engineer, reviewer, etc.) referenced by the scheduler and sub-agent orchestrator |
 | `tools/` | Built-in platform tools (exec, file, search, etc.) and shared tool helpers; the tool list surfaced to the LLM per session |
 | `types/` | Shared internal TypeScript types that cross multiple platform subsystems and cannot live in a single owner directory |
 | `utils/` | General internal utilities (logging, async helpers, string manipulation) with no platform-subsystem affiliation |
 | `voice/` | Voice provider registry: TTS, streaming TTS, STT, realtime voice adapters, service facade, and builtin provider registrations |
-| `watchers/` | File system watcher registry and persistent store — tracks active watch subscriptions across sessions |
+| `watchers/` | File system watcher registry and persistent store: tracks active watch subscriptions across sessions |
 | `web-search/` | Web search provider registry and service: supports Tavily, Exa, Brave, DuckDuckGo, SearXNG, Perplexity, and Firecrawl |
-| `workflow/` | Trigger executor — evaluates hook-event conditions against registered `TriggerDefinition`s and dispatches shell or agent actions on match |
+| `workflow/` | Trigger executor: evaluates hook-event conditions against registered `TriggerDefinition`s and dispatches shell or agent actions on match |
 | `workspace/` | Workspace-level helpers for project roots, worktree context, and runtime workspace metadata |
 
 > **Note:** There is no `platform/auth/` directory. The client auth classes live outside `platform/`: `TokenStore`, `SessionManager`, and `PermissionResolver` in `src/client-auth/`, and `OAuthClient` in `platform/runtime/auth/oauth-client.ts`, with the `GoodVibesAuthClient` facade in `src/auth.ts`. Server-side user authentication is the separate `security/` subsystem (see the `security/` row), not a `platform/auth/` module.
 
 ---
 
-## Dependency Sketch
+## Dependency sketch
 
 The diagram below shows the major dependency directions. Arrows point from **consumer** to **dependency**. All dependencies are intra-`platform/` unless otherwise noted.
 
@@ -106,13 +106,13 @@ mcp ─────────────────────────�
 ```
 
 **Key rules:**
-- `types/` and `utils/` have no intra-platform dependencies — they are leaf nodes.
+- `types/` and `utils/` have no intra-platform dependencies. They are leaf nodes.
 - `core/` depends on `providers/` and `config/` but not on `daemon/`, `channels/`, or `agents/`.
 - `runtime/` is a shared service consumed broadly; it does not depend on `core/` or `agents/`.
 
 ---
 
-## Package Facade Pattern
+## Package facade pattern
 
 The main SDK package is a facade over the monorepo packages. Implementation source for `contracts`, `errors`, `transport-*`, `daemon-sdk`, `operator-sdk`, and `peer-sdk` lives in those packages. SDK-owned runtime, platform, and knowledge implementation lives under `packages/sdk/src/platform`.
 
@@ -127,7 +127,7 @@ Implementation drift is no longer possible because there is one implementation s
 
 ---
 
-## Extraction Candidates vs. Internal-Only
+## Extraction candidates vs. internal-only
 
 Not all directories are equal candidates for eventual extraction to their own npm package. The following table captures current thinking:
 

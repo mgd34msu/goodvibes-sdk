@@ -1,4 +1,4 @@
-# Telegram Integration
+# Telegram integration
 
 Telegram support is an SDK-owned daemon surface. A Telegram bot becomes a way to
 send the daemon work from a phone and get replies back, without exposing the
@@ -33,7 +33,7 @@ inbound delivery in one of exactly two ways, chosen by
 
 | Mode | How updates arrive | Needs a public URL? | Use when |
 |---|---|---|---|
-| `polling` | The daemon long-polls `getUpdates` | No | The daemon runs on a laptop, a home server, or anything behind NAT — the common case |
+| `polling` | The daemon long-polls `getUpdates` | No | The daemon runs on a laptop, a home server, or anything behind NAT, the common case |
 | `webhook` | Telegram POSTs to `/webhook/telegram` | Yes, public HTTPS | The daemon is already published at a public HTTPS address |
 
 **The two modes are mutually exclusive.** Telegram answers `getUpdates` with
@@ -50,12 +50,12 @@ firewall rule, no tunnel, and no certificate.
 > start, and the daemon will log an inactive-with-reason warning at startup
 > pointing you here. Set `mode` to `polling` explicitly for a local daemon.
 
-## Step 1 — Create a bot and get a token
+## Step 1: create a bot and get a token
 
 1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
 2. Send `/newbot`.
 3. Give it a display name (anything) and then a username, which must end in
-   `bot` — for example `mikes_goodvibes_bot`.
+   `bot`: for example `mikes_goodvibes_bot`.
 4. BotFather replies with a token that looks like
    `123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw`.
 
@@ -75,7 +75,7 @@ While you are in BotFather, two optional settings make the bot nicer to use:
   stop - Stop the current task
   ```
 
-## Step 2 — Store the token
+## Step 2: store the token
 
 Store the token as a secret rather than pasting it into a settings file.
 `surfaces.telegram.botToken` accepts either a literal token or a
@@ -96,11 +96,11 @@ The `TELEGRAM_BOT_TOKEN` environment variable is also honoured, and a
 
 Resolution order for the bot token:
 
-1. Service registry — `telegram` / `primary`
+1. Service registry: `telegram` or `primary`
 2. `surfaces.telegram.botToken` (literal or `goodvibes://` reference)
 3. `TELEGRAM_BOT_TOKEN`
 
-### Which config file — this trips people up
+### Which config file: this trips people up
 
 The daemon reads its own surface-scoped settings, **not** the ones belonging to
 another GoodVibes surface. Each host owns a separate `.goodvibes/<surface>/`
@@ -112,12 +112,12 @@ tree, and they are not shared:
 | `goodvibes-agent` | `~/.goodvibes/agent/settings.json` | `~/.goodvibes/agent/secrets.enc` |
 
 Setting a Telegram bot token inside `goodvibes-agent` writes it to the **agent's**
-tree. The daemon does not read that file, and nothing copies the value across —
-there is no config push between them. If you want the daemon to receive Telegram
+tree. The daemon does not read that file, and nothing copies the value across.
+There is no config push between them. If you want the daemon to receive Telegram
 messages, set the token in the daemon's own settings, or via
 `TELEGRAM_BOT_TOKEN` in the daemon's environment.
 
-## Step 3 — Enable the surface
+## Step 3: enable the surface
 
 ### Polling mode (no public URL)
 
@@ -142,13 +142,13 @@ Telegram ingress active  mode=polling  reason=long-polling Telegram getUpdates f
 ```
 
 Polling holds one HTTP request open against Telegram for up to 25 seconds at a
-time, so it is close to idle when nothing is happening — it is not a busy loop.
+time, so it is close to idle when nothing is happening. It is not a busy loop.
 
 ### Webhook mode (public HTTPS required)
 
 Webhook mode needs an address **Telegram's servers** can reach. That means:
 
-- `https://` — Telegram will not deliver to plain HTTP.
+- `https://`: Telegram will not deliver to plain HTTP.
 - A publicly resolvable hostname. `localhost`, `127.0.0.1`, `192.168.x.x`,
   `10.x.x.x`, `172.16–31.x.x`, and `*.local` are all rejected up front, because
   registering a webhook Telegram can never deliver to produces a surface that
@@ -185,7 +185,7 @@ daemon (Cloudflare Tunnel, Tailscale Funnel, ngrok, or a reverse proxy on a VPS)
 and set `web.publicBaseUrl` to the tunnel's public HTTPS URL. Or just use
 `polling`, which is what the tunnel is working around.
 
-## Config Keys
+## Config keys
 
 | Key | Default | Purpose |
 |---|---:|---|
@@ -205,7 +205,7 @@ In a **direct chat**, every message you send is a task. Just type it.
 
 In a **group**, the bot only acts on messages addressed to it:
 
-- `/goodvibes check the build` — the `/goodvibes` prefix is stripped, and
+- `/goodvibes check the build`: the `/goodvibes` prefix is stripped, and
   `check the build` becomes the task.
 - `@mikes_goodvibes_bot check the build`
 
@@ -220,9 +220,9 @@ work:
 
 While a task is running:
 
-- `status <id>` — progress
-- `cancel <id>` — stop it
-- `retry <id>` — run it again after a failure
+- `status <id>`: progress
+- `cancel <id>`: stop it
+- `retry <id>`: run it again after a failure
 
 ## Verifying it works
 
@@ -235,13 +235,13 @@ While a task is running:
    The third one names what to fix. A configured surface never fails silently.
 
 2. **Send `/start` to your bot.** You should get the usage reply back within a
-   couple of seconds. This exercises the full inbound path — Telegram to daemon,
-   route binding, and the outbound reply — without spawning an agent.
+   couple of seconds. This exercises the full inbound path, Telegram to daemon,
+   route binding, and the outbound reply, without spawning an agent.
 
 3. **Send a real task**, for example `what is the current git branch`. You
    should see the agent spawn in the daemon log and a reply in the chat.
 
-4. **Webhook mode only** — ask Telegram what it thinks is registered:
+4. **Webhook mode only.** Ask Telegram what it thinks is registered:
 
    ```bash
    curl -s "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
@@ -249,10 +249,10 @@ While a task is running:
 
    `url` should be your `{publicBaseUrl}/webhook/telegram`, `pending_update_count`
    should be near zero, and `last_error_message` should be absent. A populated
-   `last_error_message` is Telegram telling you exactly why delivery failed —
+   `last_error_message` is Telegram telling you exactly why delivery failed,
    usually a certificate or DNS problem.
 
-5. **Polling mode only** — `getWebhookInfo` should show an empty `url`. If it
+5. **Polling mode only.** `getWebhookInfo` should show an empty `url`. If it
    does not, something re-registered a webhook and polling will report a
    conflict.
 
@@ -267,7 +267,7 @@ daemon's own settings (see "Which config file" above).
 **`409 Conflict: can't use getUpdates method while webhook is active`.**
 A webhook is registered for this bot, so polling cannot run. The daemon clears it
 automatically and retries. If it cannot clear it after several attempts it stops
-with a message saying so rather than retrying forever — that usually means a
+with a message saying so rather than retrying forever. That usually means a
 second process (another daemon, or an old deployment) is re-registering the
 webhook against the same bot token. One bot token supports exactly one ingress.
 
@@ -278,15 +278,15 @@ token from BotFather with `/token`.
 
 **The bot ignores me in a group.**
 Either address it explicitly (`/goodvibes …` or `@yourbot …`), or turn off
-privacy mode in BotFather with `/setprivacy`. With privacy mode on — the default
-— Telegram does not even deliver ordinary group messages to the bot.
+privacy mode in BotFather with `/setprivacy`. With privacy mode on, the default,
+Telegram does not even deliver ordinary group messages to the bot.
 
 **Messages sent while the daemon was down.**
 Telegram retains undelivered updates for about 24 hours, and polling picks up
 that backlog on the next start. The read cursor is persisted at
 `.goodvibes/goodvibes/channels/telegram-offset.json`, so a restart resumes
 exactly where it stopped rather than replaying or skipping. If that file is ever
-found torn — a crash mid-write — the daemon logs the fact and skips ahead to the
+found torn, a crash mid-write, the daemon logs the fact and skips ahead to the
 newest message instead of replaying the backlog, because re-running work that
 already ran is worse than missing a message you can resend.
 

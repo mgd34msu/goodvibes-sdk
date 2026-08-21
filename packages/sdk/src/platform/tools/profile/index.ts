@@ -1,5 +1,5 @@
 /**
- * tools/profile — the agent tool that records what the owner says about himself.
+ * tools/profile, the agent tool that records what the owner says about himself.
  *
  * ## Why the tool cannot be told its own authority
  *
@@ -14,7 +14,7 @@
  * produce the instance that run sees. The model chooses WHAT to record and
  * never whether it is allowed to.
  *
- * An unbound instance — a local surface, a turn nobody resolved a channel for —
+ * An unbound instance, a local surface, a turn nobody resolved a channel for,
  * keeps the default the composition root gave it, which is the owner's own
  * authority for a surface he is sitting at.
  *
@@ -165,7 +165,7 @@ function createInstance(
           id: occasionId,
           savedTo: 'your occasions state',
           // Both halves, every time. Saying only "muted" is how he ends up
-          // unsure whether the rest of his dates went quiet too — which is
+          // unsure whether the rest of his dates went quiet too, which is
           // exactly what happened the day the whole feature got switched off
           // to stop one reminder.
           tellHim: outcome.reply,
@@ -234,10 +234,10 @@ function createInstance(
         const date = text(input.date);
         const kind = text(input.kind);
         if (title.length === 0) return refused('The date needs a name before I can record it.');
-        if (date.length === 0) return refused('I need the date itself — MM-DD for a yearly one, YYYY-MM-DD for a single day.');
+        if (date.length === 0) return refused('I need the date itself, MM-DD for a yearly one, YYYY-MM-DD for a single day.');
         if (kind.length === 0) {
           return refused(
-            'Ask him which kind this is — something to sort a gift for, something to just remember, '
+            'Ask him which kind this is, something to sort a gift for, something to just remember, '
             + 'or neither. Nothing is recorded until he says, because that is not something to guess at.',
           );
         }

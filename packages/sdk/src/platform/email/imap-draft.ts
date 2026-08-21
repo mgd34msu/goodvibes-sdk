@@ -6,7 +6,7 @@
  * `appendDraft` turns caller-supplied strings into real RFC 5322 header lines.
  * A bare CR or LF anywhere in `to`, `from`, `subject`, `inReplyTo` or
  * `references` would end the header being written and start one the caller
- * chose — `Bcc:` being the one that matters, because a draft the owner later
+ * chose, `Bcc:` being the one that matters, because a draft the owner later
  * sends would carry it. Every field is REFUSED rather than sanitized: silently
  * stripping the newline would send something the caller did not ask for, and a
  * caller that meant to inject learns nothing from a rejection but an attacker
@@ -38,11 +38,11 @@ export const DEFAULT_DRAFTS_MAILBOX = 'Drafts';
 // Header validation
 // ---------------------------------------------------------------------------
 
-/** CR, LF, and the other C0 and C1 control characters — same set as the SMTP side. */
+/** CR, LF, and the other C0 and C1 control characters, same set as the SMTP side. */
 const CONTROL_CHAR_RE = /[\x00-\x1f\x7f-\x9f]/;
 
 /**
- * Validate a header value that is neither an address nor a subject —
+ * Validate a header value that is neither an address nor a subject,
  * `In-Reply-To` and `References`, both of which hold message ids.
  *
  * @throws Error with a plain-language message on invalid input.
@@ -82,7 +82,7 @@ const RFC5322_MONTHS = [
   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
-/** `Mon, 27 Jul 2026 14:03:05 +0000` — RFC 5322 §3.3, always in UTC. */
+/** `Mon, 27 Jul 2026 14:03:05 +0000`, RFC 5322 §3.3, always in UTC. */
 export function formatRfc5322Date(date: Date): string {
   const pad = (n: number): string => String(n).padStart(2, '0');
   const day = RFC5322_DAYS[date.getUTCDay()] ?? 'Mon';
@@ -220,11 +220,11 @@ export function parseMailboxList(lines: readonly string[]): MailboxEntry[] {
  * Choose the Drafts mailbox from a LIST reply, in descending order of how much
  * the server actually told us:
  *
- *   1. the folder carrying the `\Drafts` special-use attribute (RFC 6154) —
+ *   1. the folder carrying the `\Drafts` special-use attribute (RFC 6154),
  *      the server's own answer, and the only one that survives a mailbox named
  *      in another language;
  *   2. a folder literally named `drafts`, case-insensitively;
- *   3. a folder whose last path segment is `drafts` — this is what finds
+ *   3. a folder whose last path segment is `drafts`, this is what finds
  *      Gmail's `[Gmail]/Drafts`;
  *
  * and null when the reply names none of those, which leaves the caller to fall

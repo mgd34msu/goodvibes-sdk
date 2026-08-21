@@ -1,5 +1,5 @@
 /**
- * Idempotency — store and key generation.
+ * Idempotency, store and key generation.
  *
  * Provides an in-process idempotency store for tool-call deduplication across
  * replay, reconnect, and restart scenarios. Keys are deterministic (derived from
@@ -49,7 +49,7 @@ function missingRecordError(operation: 'markComplete' | 'markFailed', key: strin
 }
 
 /**
- * IdempotencyStore — bounded, TTL-evicted in-process store.
+ * IdempotencyStore, bounded, TTL-evicted in-process store.
  *
  * Thread safety: Node.js is single-threaded; no locking is required.
  * Suitable for in-process use within a single runtime session.
@@ -107,9 +107,9 @@ export class IdempotencyStore {
    * Check whether a key has been seen before and record it as `in-flight` if new.
    *
    * Returns a discriminated union:
-   * - `{ status: 'new' }`        — key is unseen; record created and marked in-flight.
-   * - `{ status: 'in-flight' }`  — a prior submission is still running.
-   * - `{ status: 'duplicate', record }` — prior submission completed; record holds cached result.
+   * - `{ status: 'new' }`       , key is unseen; record created and marked in-flight.
+   * - `{ status: 'in-flight' }` , a prior submission is still running.
+   * - `{ status: 'duplicate', record }`, prior submission completed; record holds cached result.
    *
    * @param key - Idempotency key from `generateKey`.
    */
@@ -126,15 +126,15 @@ export class IdempotencyStore {
         return { status: 'in-flight', record: existing };
       }
       if (existing.status === 'failed') {
-        // Failed records allow retry — delete and fall through to register as new.
+        // Failed records allow retry, delete and fall through to register as new.
         this.store.delete(key);
       } else {
-        // completed — return cached result to duplicate callers
+        // completed, return cached result to duplicate callers
         return { status: 'duplicate', record: existing };
       }
     }
 
-    // New key — record as in-flight
+    // New key, record as in-flight
     const record: IdempotencyRecord = {
       key,
       status: 'in-flight',

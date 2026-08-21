@@ -5,7 +5,7 @@ import type { AgentRecord } from './manager.js';
 /**
  * Returns true when an agent is active (running or pending).
  *
- * Pure predicate with no runtime dependencies — intentionally a leaf module so
+ * Pure predicate with no runtime dependencies, intentionally a leaf module so
  * core/orchestrator code can share it without importing the heavier
  * `compaction-sections` module. Importing the predicate from `compaction-sections`
  * previously pulled that module into the orchestrator turn-loop graph, creating a

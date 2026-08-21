@@ -1,7 +1,7 @@
 /**
  * manager.ts
  *
- * WorkspaceCheckpointManager — the coarse, whole-workspace rewind layer.
+ * WorkspaceCheckpointManager, the coarse, whole-workspace rewind layer.
  *
  * Complements (does not replace) FileUndoManager (../../state/file-undo.ts),
  * which stays as the fine-grained, in-memory, per-file /undo layer. This
@@ -12,17 +12,17 @@
  * it looked an hour ago".
  *
  * Storage layout (workspace-local, see side-git.ts for the git mechanics):
- *   <workspaceRoot>/.goodvibes/checkpoints/git         — side GIT_DIR
- *   <workspaceRoot>/.goodvibes/checkpoints/index.json  — manifest (JsonFileStore)
+ *   <workspaceRoot>/.goodvibes/checkpoints/git        , side GIT_DIR
+ *   <workspaceRoot>/.goodvibes/checkpoints/index.json , manifest (JsonFileStore)
  *
  * Checkpoint refs live at refs/goodvibes/checkpoints/<id> inside the side
  * repo, entirely separate from the user's real git refs and from compaction's
  * `cpt_` boundary commits (which are conversation snapshots, not filesystem
- * snapshots, and are not stored in git at all — see types.ts's header comment
+ * snapshots, and are not stored in git at all, see types.ts's header comment
  * for the full disambiguation).
  *
  * Automatic snapshots subscribe to EXISTING runtime bus events
- * (TURN_COMPLETED / TURN_ERROR / TURN_CANCEL / AGENT_COMPLETED) — no new
+ * (TURN_COMPLETED / TURN_ERROR / TURN_CANCEL / AGENT_COMPLETED), no new
  * event contract is introduced by this module.
  */
 
@@ -34,6 +34,7 @@ import { join } from 'node:path';
 import { logger } from '../../utils/logger.js';
 import { summarizeError } from '../../utils/error-display.js';
 import { JsonFileStore } from '../../state/json-file-store.js';
+import { quarantineCorruptFile } from '../../utils/atomic-json-store.js';
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
 import type { TurnEvent } from '../../../events/turn.js';
 import type { AgentEvent } from '../../../events/agents.js';
@@ -93,18 +94,19 @@ import type {
 } from './manager-options.js';
 
 /**
- * WorkspaceCheckpointManager — create/list/diff/restore/gc for whole-workspace
+ * WorkspaceCheckpointManager, create/list/diff/restore/gc for whole-workspace
  * git-backed snapshots, plus automatic snapshotting on existing turn/agent
  * lifecycle events.
  */
 export class WorkspaceCheckpointManager {
   // Resolved at init (git-root preference can move it off the raw option), so
-  // these are reassigned once by `buildForRoot` — not `readonly`.
+  // these are reassigned once by `buildForRoot`, not `readonly`.
   // Assigned by `buildForRoot`, which the constructor always calls.
   workspaceRoot!: string;
   private checkpointRootDir!: string;
   private sideGit!: SideGitRunner;
   private manifestStore!: JsonFileStore<Manifest>;
+  private manifestPath!: string;
   private retentionPolicy!: RetentionPolicy;
   private readonly now: () => number;
   private readonly runtimeBus: RuntimeEventBus | undefined;
@@ -150,26 +152,26 @@ export class WorkspaceCheckpointManager {
    * to race) before calling `withLock`; the actual git-touching work lives in
    * a same-named `*Internal` method. Internal callers that need another
    * locked operation's behavior (e.g. `restore()`'s safety checkpoint) call
-   * the `*Internal` method directly — never the public wrapper — so a single
+   * the `*Internal` method directly, never the public wrapper, so a single
    * logical operation never tries to re-enter its own lock.
    *
    * This in-process chain only serializes callers within THIS process. Two
    * separate processes sharing the same checkpoint directory (two daemon
    * instances, or a daemon and a CLI invocation, pointed at the same
-   * workspace) have no in-process chain in common — see the cross-process
+   * workspace) have no in-process chain in common, see the cross-process
    * file lock acquired alongside it below (cross-process-lock.ts).
    */
   private lockChain: Promise<void> = Promise.resolve();
 
   private withLock<T>(fn: () => Promise<T>): Promise<T> {
     // `lockChain` is constructed below so it never itself rejects (its
-    // continuation always swallows both outcomes) — chaining with a single
+    // continuation always swallows both outcomes), chaining with a single
     // `.then(...)` is enough to guarantee the body only starts after every
     // previously-queued operation (in this process) has settled, regardless
     // of whether that prior operation resolved or rejected. The body itself
     // additionally acquires the cross-process lock file before running `fn`,
     // so a concurrent operation in ANOTHER process sharing this same
-    // checkpoint directory is serialized too — released in `finally` even if
+    // checkpoint directory is serialized too, released in `finally` even if
     // `fn` throws.
     const result = this.lockChain.then(async () => {
       const release = await acquireCrossProcessLock(join(this.sideGit.gitDir, '.gv-lock'));
@@ -217,14 +219,15 @@ export class WorkspaceCheckpointManager {
     this.workspaceRoot = root;
     // Precedence: an explicit checkpointDir override always wins; otherwise a
     // surface's checkpointsDir (fixed to the surface's own workingDirectory,
-    // not re-derived from `root` — see WorkspaceCheckpointManagerOptions.surface);
+    // not re-derived from `root`, see WorkspaceCheckpointManagerOptions.surface);
     // otherwise the legacy, unscoped `<root>/.goodvibes/checkpoints` (compat).
     this.checkpointRootDir = this.explicitCheckpointDir ?? this.surfaceCheckpointsDir ?? join(root, '.goodvibes', 'checkpoints');
     this.sideGit = new SideGitRunner({
       workspaceRoot: root,
       gitDir: join(this.checkpointRootDir, 'git'),
     });
-    this.manifestStore = new JsonFileStore<Manifest>(join(this.checkpointRootDir, 'index.json'));
+    this.manifestPath = join(this.checkpointRootDir, 'index.json');
+    this.manifestStore = new JsonFileStore<Manifest>(this.manifestPath);
     this.retentionPolicy = new RetentionPolicy(
       this.retentionOverride,
       this.now,
@@ -252,7 +255,15 @@ export class WorkspaceCheckpointManager {
   async init(): Promise<void> {
     if (this.initialized) return;
     if (!this.initPromise) {
-      this.initPromise = this._init();
+      // A failed init must not be cached: every public method starts with
+      // `await this.init()`, so a single transient failure (a busy side repo,
+      // an unreadable manifest) would otherwise replay the same rejection for
+      // the life of the process and disable checkpoints entirely. Clearing the
+      // slot on rejection makes the next call a real retry.
+      this.initPromise = this._init().catch((error: unknown) => {
+        this.initPromise = null;
+        throw error;
+      });
     }
     await this.initPromise;
   }
@@ -274,7 +285,7 @@ export class WorkspaceCheckpointManager {
         release();
       }
     }
-    const manifest = await this.manifestStore.load();
+    const manifest = await this.loadManifestOrQuarantine();
     this.checkpoints = new Map((manifest?.checkpoints ?? []).map((c) => [c.id, c]));
     for (const checkpoint of this.checkpoints.values()) {
       this.retentionPolicy.register({
@@ -346,11 +357,11 @@ export class WorkspaceCheckpointManager {
   // ---------------------------------------------------------------------------
 
   /**
-   * Subscribes to the EXISTING turn/agent lifecycle events — no new event
+   * Subscribes to the EXISTING turn/agent lifecycle events, no new event
    * types are introduced. A snapshot is taken at the boundary AFTER each
    * turn/agent-run finishes, meaning "revert everything turn N did" means
    * restoring the checkpoint captured BEFORE turn N, i.e. checkpoint[N-1] in
-   * `list()`'s (newest-first) ordering — an intentional off-by-one, documented
+   * `list()`'s (newest-first) ordering, an intentional off-by-one, documented
    * here rather than hidden: this module always snapshots "where things ended
    * up", never "where things started".
    *
@@ -405,18 +416,18 @@ export class WorkspaceCheckpointManager {
 
   /**
    * Create a new checkpoint. Returns `null` (a cheap no-op) when the current
-   * workspace tree is identical to the parent checkpoint's tree — no commit,
+   * workspace tree is identical to the parent checkpoint's tree, no commit,
    * no ref, no manifest entry is created in that case.
    *
    * Serialized against every other index-touching operation on this manager
-   * — see `withLock`.
+   *, see `withLock`.
    */
   async create(opts: CreateCheckpointOptions): Promise<WorkspaceCheckpoint | null> {
     await this.init();
     if (this.rootRefusal) throw new Error(this.rootRefusal);
     const checkpoint = await this.withLock(() => this.createInternal(opts));
     // After a real (non-no-op) create, sweep retention if a limit is now
-    // crossed — outside the lock, non-blocking, so create() stays fast.
+    // crossed, outside the lock, non-blocking, so create() stays fast.
     if (checkpoint) this.maybeRunRetention();
     return checkpoint;
   }
@@ -493,7 +504,7 @@ export class WorkspaceCheckpointManager {
    * `b` is omitted.
    *
    * Serialized against every other index-touching operation on this manager
-   * — see `withLock`. The single-argument form (`b` omitted, diffing against
+   *, see `withLock`. The single-argument form (`b` omitted, diffing against
    * the live working tree) refreshes the side index's stat cache as a side
    * effect, so it is not purely read-only.
    */
@@ -522,7 +533,7 @@ export class WorkspaceCheckpointManager {
   }
 
   /**
-   * Aggregate the file changes a single session made — the "what changed in
+   * Aggregate the file changes a single session made, the "what changed in
    * this session" surface a remote view needs, one diff spanning every
    * turn/agent snapshot stamped with `sessionId` (see
    * {@link computeSessionChanges} for the base/latest selection and the honest
@@ -543,22 +554,22 @@ export class WorkspaceCheckpointManager {
    *
    * Whole-workspace restore (no `opts.paths`):
    *   1. Snapshot the current tracked-file set (via the safety checkpoint, or
-   *      a transient write-tree when `safetyCheckpoint: false`) — this is the
+   *      a transient write-tree when `safetyCheckpoint: false`), this is the
    *      "before" set.
    *   2. Reset the side index to the target checkpoint's tree and check every
    *      file in it out to disk (re-creates anything the checkpoint had that
    *      is currently missing or modified).
    *   3. Remove exactly the files that were in the "before" set but are NOT
    *      in the target checkpoint's tree (files created/tracked after the
-   *      checkpoint). Anything NOT in the "before" set — i.e. any untracked
-   *      path outside what this engine has ever snapshotted — is never
+   *      checkpoint). Anything NOT in the "before" set, i.e. any untracked
+   *      path outside what this engine has ever snapshotted, is never
    *      touched, by construction: it never appears in either set.
    *
    * Scoped restore (`opts.paths` provided) only checks out those paths from
    * the target tree; it never removes files outside the given paths.
    *
    * Serialized against every other index-touching operation on this manager
-   * — see `withLock`. Without this, an auto-snapshot `create()` firing on a
+   *, see `withLock`. Without this, an auto-snapshot `create()` firing on a
    * bus event could run its `git add -A` in between the `read-tree --reset`
    * and `checkout-index -a -f` calls below, silently corrupting the restore.
    */
@@ -575,7 +586,7 @@ export class WorkspaceCheckpointManager {
     let safetyCheckpointId: string | null = null;
     if (wantSafety) {
       // Calls createInternal directly (not the public, lock-acquiring
-      // `create()`) — this whole method already holds the lock.
+      // `create()`), this whole method already holds the lock.
       const safety = await this.createInternal({ kind: 'manual', label: `pre-restore safety (before ${id})`, retentionClass: 'forensic' });
       safetyCheckpointId = safety?.id ?? null;
       const current = safety ?? this.mostRecentCheckpoint();
@@ -636,7 +647,7 @@ export class WorkspaceCheckpointManager {
    * Apply retention limits: `RetentionPolicy` selects prune candidates,
    * `WorkspaceCheckpointPruner` deletes their refs, then (only if anything
    * was actually deleted) a single `git gc --prune=now` reclaims the now-
-   * unreachable objects. This never touches compaction's boundary commits —
+   * unreachable objects. This never touches compaction's boundary commits,
    * they are tracked in an entirely separate `RetentionPolicy` instance
    * (../../runtime/compaction) with no shared state.
    *
@@ -646,7 +657,7 @@ export class WorkspaceCheckpointManager {
    * deleted it is genuinely unreachable and `--prune=now` frees it.
    *
    * Serialized against every other index/object-store-touching operation on
-   * this manager — see `withLock`. Without this, a `create()` racing this
+   * this manager, see `withLock`. Without this, a `create()` racing this
    * method could write a loose commit object that isn't ref'd yet at the
    * moment `--prune=now` runs, and lose it.
    */
@@ -682,7 +693,7 @@ export class WorkspaceCheckpointManager {
 
   /**
    * Before the FIRST-ever whole-workspace snapshot for this store, refuse if
-   * the sweep would capture more than `maxFirstSnapshotFiles` files — a cheap
+   * the sweep would capture more than `maxFirstSnapshotFiles` files, a cheap
    * `ls-files`-style enumeration (no blobs written), not a full stage. This
    * catches an over-broad root (e.g. a home directory) before it materializes
    * a large object store, rather than proceeding silently. Only the first
@@ -728,7 +739,7 @@ export class WorkspaceCheckpointManager {
    * sizes of the changed paths, read immediately after they were staged and
    * committed (so they still reflect exactly the content just captured).
    * Deleted paths (no longer on disk) contribute 0. This is deliberately not
-   * exact git object-store accounting — it exists for retention's `maxSizeBytes`
+   * exact git object-store accounting, it exists for retention's `maxSizeBytes`
    * bookkeeping, not for a byte-perfect audit.
    */
   private async computeSizeBytes(paths: string[]): Promise<number> {
@@ -744,6 +755,29 @@ export class WorkspaceCheckpointManager {
       }
     }
     return total;
+  }
+
+  /**
+   * Load the manifest, moving it aside instead of failing when it cannot be
+   * parsed.
+   *
+   * An index.json left unreadable by an unclean shutdown must not wedge the
+   * whole checkpoint feature: the file is quarantined with a receipt and the
+   * manager starts from an empty index, which the next save rewrites. Only the
+   * index is lost, the checkpoint commits themselves stay in the side repo and
+   * remain reachable by ref.
+   */
+  private async loadManifestOrQuarantine(): Promise<Manifest | null> {
+    try {
+      return await this.manifestStore.load();
+    } catch (error) {
+      quarantineCorruptFile(this.manifestPath, {
+        label: 'workspace/checkpoints',
+        reason: summarizeError(error),
+        recovery: 'The checkpoint index was rebuilt empty; snapshot commits in the side repo are untouched but are no longer listed',
+      });
+      return null;
+    }
   }
 
   private async persistManifest(): Promise<void> {

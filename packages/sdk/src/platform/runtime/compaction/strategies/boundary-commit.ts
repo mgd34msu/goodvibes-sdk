@@ -1,7 +1,7 @@
 /**
  * strategies/boundary-commit.ts
  *
- * Boundary commit — persists a compacted snapshot as a named checkpoint with
+ * Boundary commit, persists a compacted snapshot as a named checkpoint with
  * full lineage tracking for replay-safe session resumption.
  *
  * A boundary commit is always created after a successful compaction strategy

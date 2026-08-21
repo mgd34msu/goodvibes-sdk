@@ -11,7 +11,7 @@ import {
 } from '../runtime/auth/oauth-core.js';
 
 /**
- * The shared tier's directory name under `~/.goodvibes/` — the same
+ * The shared tier's directory name under `~/.goodvibes/`, the same
  * surface-root-independent convention used by the config shared tier
  * (shared-config-tier.ts), the canonical memory store (canonical-memory.ts),
  * and the workspace register (shared-register-path.ts). Kept as a local
@@ -29,14 +29,14 @@ export interface SubscriptionShellPaths {
 /**
  * Where provider subscriptions (OAuth sessions for providers like
  * 'openai-subscriber') live: `~/.goodvibes/shared/subscriptions.json`, one
- * file read and written by every surface on the machine — the daemon, the
+ * file read and written by every surface on the machine, the daemon, the
  * TUI, the agent.
  *
  * A login is one event; every surface that later needs the token must see
  * it. Before this, each surface constructed its own `SubscriptionManager`
  * against `~/.goodvibes/<surfaceRoot>/subscriptions.json`, so a login
  * completed in the TUI was invisible to the daemon that actually hosts
- * conversation turns — the daemon kept refreshing whatever it already had
+ * conversation turns, the daemon kept refreshing whatever it already had
  * (or nothing), and a successful login changed nothing from its point of
  * view.
  */
@@ -102,7 +102,7 @@ function isSubscriptionExpired(expiresAt?: number, bufferMs = 60_000): boolean {
 }
 
 /**
- * SubscriptionManager — OAuth flows for **provider subscriptions**.
+ * SubscriptionManager, OAuth flows for **provider subscriptions**.
  *
  * Manages OAuth-based subscriptions to external AI providers (OpenAI,
  * Anthropic, Gemini, etc.) including authorization URL generation, code
@@ -112,7 +112,7 @@ function isSubscriptionExpired(expiresAt?: number, bufferMs = 60_000): boolean {
  * For OAuth flows that authenticate the SDK client with the goodvibes daemon
  * itself, see {@link OAuthClient} in `../runtime/auth/oauth-client.ts`.
  *
- * @see OAuthClient — OAuth flows for daemon authentication.
+ * @see OAuthClient, OAuth flows for daemon authentication.
  */
 export interface SubscriptionManagerOptions {
   /**
@@ -138,7 +138,7 @@ export class SubscriptionManager {
   /**
    * Best-effort, READ-ONLY parse of a legacy store for migration. Never
    * throws and never quarantines: quarantining renames the file, and a
-   * legacy path is not this manager's file to touch — an older build still
+   * legacy path is not this manager's file to touch, an older build still
    * pointed at it must find it exactly as it left it, corrupt or not. Any
    * parse failure just yields nothing to fold, which is the same outcome as
    * "no legacy store existed".
@@ -172,7 +172,7 @@ export class SubscriptionManager {
    * re-fold or a downgrade: once the shared record's `updatedAt` is at least
    * as new as the legacy one (which it is, immediately after the first
    * fold), the same legacy file folds in nothing on every later boot. Only
-   * `subscriptions` are folded — `pending` OAuth logins carry a verifier tied
+   * `subscriptions` are folded, `pending` OAuth logins carry a verifier tied
    * to one in-flight browser round trip and are meaningless to resume across
    * processes or after a restart.
    *
@@ -209,7 +209,7 @@ export class SubscriptionManager {
    *
    * Corrupt content is quarantined (moved aside with a `.why` receipt and
    * logged at error level) instead of being silently discarded the way the
-   * bare `catch` here used to discard it — the caller still gets the same
+   * bare `catch` here used to discard it, the caller still gets the same
    * empty store, but the evidence of what went wrong survives on disk. A read
    * failure that leaves nothing to quarantine (permissions) also degrades to
    * the empty store, preserving this method's never-throws contract.

@@ -1,5 +1,5 @@
 /**
- * Runtime store — Zustand vanilla store for the GoodVibes platform runtime.
+ * Runtime store, Zustand vanilla store for the GoodVibes platform runtime.
  *
  * Uses `createStore` from `zustand/vanilla` (NOT the React `create` hook)
  * because this runtime uses Zustand directly with no React renderer.

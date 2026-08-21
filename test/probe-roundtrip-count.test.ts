@@ -2,7 +2,7 @@
  * The probe's cost, counted on the wire rather than asserted from reading.
  *
  * This existed as two separate probes making three round trips between them on
- * every non-empty connect — a `UID FETCH ... BODY.PEEK[TEXT]` from one and a
+ * every non-empty connect, a `UID FETCH ... BODY.PEEK[TEXT]` from one and a
  * `FETCH n (UID BODYSTRUCTURE)` / `FETCH n BODY.PEEK[]` pair from the other.
  * Unifying them was supposed to make the connect CHEAPER as well as coherent,
  * and "supposed to" is not a measurement, so the count is pinned here.

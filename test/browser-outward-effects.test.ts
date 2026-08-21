@@ -16,7 +16,7 @@ import { BrowserSessionManager } from '../packages/sdk/src/platform/browser/brow
  * This file used to declare its own `grantOwnerApproval` returning an object
  * literal. That literal went stale the moment `OwnerApproval` grew `expiresAt`
  * and `contentFingerprint`, and nothing noticed until `test/` was brought under
- * the typecheck — a fixture that mints a shape production no longer mints is
+ * the typecheck, a fixture that mints a shape production no longer mints is
  * not a fixture, it is a second implementation drifting on its own. Using the
  * product's factory also means the "a page cannot grant one" assertion below
  * exercises the refusal that actually ships.
@@ -30,7 +30,7 @@ import type {
   UntrustedContentPort,
 } from '../packages/sdk/src/platform/browser/browser-types.js';
 
-// BrowserEngine.screenshot() does a real mkdirSync(screenshotDirectory, ...) —
+// BrowserEngine.screenshot() does a real mkdirSync(screenshotDirectory, ...),
 // no test here currently calls .screenshot(), so this is not an active leak,
 // but a fixed literal '/tmp/...' string would create that directory in the
 // real host /tmp the moment one did, bypassing the TMPDIR redirection
@@ -43,8 +43,8 @@ const SCREENSHOT_DIRECTORY = join(tmpdir(), 'goodvibes-outward-shots');
  * text tries to make it act outwards. Reading must keep working; acting must
  * not, unless the owner asked for it.
  *
- * The trust CONTRACT — what an origin is, what the standing rule says, when an
- * approval counts — belongs to the product, and reaches the engine through
+ * The trust CONTRACT, what an origin is, what the standing rule says, when an
+ * approval counts, belongs to the product, and reaches the engine through
  * `UntrustedContentPort`. So this file supplies a reference implementation of
  * that port and asserts what the ENGINE does with it: that page text and
  * snapshots and extractions are all labelled where they enter, that every

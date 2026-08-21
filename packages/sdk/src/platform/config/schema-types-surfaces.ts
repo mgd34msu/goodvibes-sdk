@@ -164,7 +164,7 @@ export interface MatrixSurfaceConfig {
  * Which mechanism reads the mailbox (docs/inbound-email.md §3.4d).
  *
  * `auto` picks Gmail when Google credentials have been adopted and the
- * configured account is a Gmail account, and IMAP otherwise — so connecting
+ * configured account is a Gmail account, and IMAP otherwise, so connecting
  * Google is the whole of the setup. The two are not equivalent: IMAP holds an
  * IDLE connection and is true push, while Gmail is polled and its worst case
  * is the poll interval.
@@ -181,7 +181,7 @@ export type InboundEmailNoticeMode = 'all' | 'expected-only' | 'none';
 export type InboundEmailCapabilityPolicy = 'refuse-and-notify' | 'notice-only';
 
 /**
- * The inbound-mail watcher's own configuration — the `inbound` section of
+ * The inbound-mail watcher's own configuration, the `inbound` section of
  * `surfaces.email` (see the individual settings declared below).
  * See `docs/inbound-email.md` §8 for the ruled defaults and §2 for why this
  * capability carries no command authority.
@@ -192,7 +192,7 @@ export interface InboundEmailConfig {
    * JSON-encoded array of configured mailbox account identifiers to watch,
    * e.g. `["primary"]`. Stored as a JSON string rather than a native array
    * because the hand-rolled `ConfigSettingDefinition` format has no array
-   * type — the same convention `DaemonCalendarConfig.calendars` already uses.
+   * type, the same convention `DaemonCalendarConfig.calendars` already uses.
    */
   accounts: string;
   source: InboundEmailSource;
@@ -221,7 +221,7 @@ export interface InboundEmailConfig {
 }
 
 /**
- * The daemon's own mailbox — the account it reads and sends AS, rather than a
+ * The daemon's own mailbox, the account it reads and sends AS, rather than a
  * chat service it talks TO. Both key spellings are declared because both are
  * genuinely read; see schema-domain-daemon-mailbox.ts for which reader uses
  * which, and why declaring one would strand the other.
@@ -291,7 +291,7 @@ export interface SurfacesConfig {
   /**
    * Not chat adapters. These two are the daemon's OWN mail account and
    * calendar, which sit under `surfaces.` so they inherit the domain's
-   * daemon-ownership rule — the daemon is the process that acts on them, so
+   * daemon-ownership rule, the daemon is the process that acts on them, so
    * the daemon tier is their only home.
    */
   email: DaemonMailboxConfig;

@@ -1,10 +1,10 @@
 /**
- * coordinator.ts — the one object a composition root wires up.
+ * coordinator.ts, the one object a composition root wires up.
  *
  * A process has exactly ONE coordinator. Several inbound consumers register
- * with it — the SDK daemon facade registers Telegram ingress and one gate per
+ * with it, the SDK daemon facade registers Telegram ingress and one gate per
  * ntfy topic; the goodvibes-tui daemon additionally registers one gate per
- * inbox provider — and each of them follows the leadership OF ITS OWN SURFACE.
+ * inbox provider, and each of them follows the leadership OF ITS OWN SURFACE.
  * Two coordinators in one process would be two nodes in the group arguing with
  * each other, so a composition that already has one passes it down rather than
  * making a second.
@@ -86,8 +86,8 @@ export class ClusterCoordinator {
   /**
    * True between `start()` and `stop()`.
    *
-   * Read by anything that retries registering a surface in the background — a
-   * Slack workspace whose identity would not resolve the first time — so it
+   * Read by anything that retries registering a surface in the background, a
+   * Slack workspace whose identity would not resolve the first time, so it
    * stops retrying once the daemon is shutting down instead of registering
    * consumers into a coordinator that has already left the group.
    */
@@ -108,12 +108,12 @@ export class ClusterCoordinator {
   }
 
   /**
-   * The surfaces this node is currently consuming, and why — the answer
+   * The surfaces this node is currently consuming, and why, the answer
    * `ClusterGroupRuntimeOptions.surfaceHoldings` asks for.
    *
    * The per-surface election owns this fact, so the group layer is handed a
    * reader for it rather than keeping a second copy that could disagree with
-   * the elections actually running. `null` — not an empty array — when there is
+   * the elections actually running. `null`, not an empty array, when there is
    * no election to ask, because "this node holds nothing" and "nobody can say
    * what this node holds" are different answers and `cluster status` prints
    * them differently.
@@ -145,8 +145,8 @@ export class ClusterCoordinator {
    * function.
    *
    * Registering while the node is already running starts that surface's
-   * election immediately, so a consumer composed late — a topic added at
-   * runtime, an account that finished authenticating — still comes up without
+   * election immediately, so a consumer composed late, a topic added at
+   * runtime, an account that finished authenticating, still comes up without
    * a restart.
    */
   register(gate: ClusterConsumerGate): () => void {
@@ -164,9 +164,9 @@ export class ClusterCoordinator {
    * Register work that decides WHICH surfaces this node can serve, to run once
    * at `start()` before any election begins.
    *
-   * It exists because that decision is asynchronous — a surface is servable
+   * It exists because that decision is asynchronous, a surface is servable
    * only if its credential actually resolves, and a `goodvibes://secrets/...`
-   * reference resolves off disk — while composition roots are not. Registering
+   * reference resolves off disk, while composition roots are not. Registering
    * a surface after the boot probe would make it sit out its own first
    * election; guessing synchronously would let a node with an unresolvable
    * token win one and then read nothing.
@@ -221,7 +221,7 @@ export class ClusterCoordinator {
     try {
       await this.election.start();
     } catch (error) {
-      // Coordination could not be established at all — the socket would not
+      // Coordination could not be established at all, the socket would not
       // bind, or the transport threw. Consume anyway. A node that answers a
       // message twice is a nuisance; a network where NOBODY reads the inbox
       // is a user whose messages vanish, and that is strictly worse. Said at
@@ -251,7 +251,7 @@ export class ClusterCoordinator {
     await this.stopAllUngated(reason);
   }
 
-  /** Wait for any in-flight transition — tests and orderly shutdown use it. */
+  /** Wait for any in-flight transition, tests and orderly shutdown use it. */
   async settled(): Promise<void> {
     await this.election?.settled();
   }

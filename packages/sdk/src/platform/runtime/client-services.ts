@@ -1,11 +1,11 @@
 /**
- * client-services.ts — the composition shape for a surface that runs its own
+ * client-services.ts, the composition shape for a surface that runs its own
  * interactive loop and reaches a daemon for everything else.
  *
  * ── The problem this solves ────────────────────────────────────────────────
  *
  * `RuntimeServices` (services.ts) is the DAEMON-GRADE graph: a hundred-odd
- * required fields, several of them concretely typed daemon furniture — the
+ * required fields, several of them concretely typed daemon furniture, the
  * persisting `SharedSessionBroker`, the `GatewayMethodCatalog` that SERVES
  * verbs, the watcher registry, channel delivery, automation, pairing tokens.
  * A product whose job is a terminal or a chat surface cannot type-check against
@@ -14,7 +14,7 @@
  *
  * `ClientRuntimeServices` is the other shape: what a surface's turn genuinely
  * needs IN-PROCESS. Nothing here is removed from `RuntimeServices` and nothing
- * about it changes — this is purely additive, and the daemon-grade graph still
+ * about it changes, this is purely additive, and the daemon-grade graph still
  * satisfies the shared part of this shape unchanged (see
  * {@link ClientRuntimeServicesFromHost} and the compile-pin in the tests).
  *
@@ -24,7 +24,7 @@
  * cannot run correctly without it in-process. Everything a daemon can answer
  * over a verb is out.
  *
- * IN — the loop itself (agent graph, tool-facing state, workflow services,
+ * IN, the loop itself (agent graph, tool-facing state, workflow services,
  * sandbox session registry, the two settable holders an interactive session
  * binds its orchestrator into), the model stack (registry, optimizer, limits,
  * favourites, benchmarks, tool LLM), permissions AS A CLIENT (a manager, a
@@ -34,7 +34,7 @@
  * project index the file tools read, transcript persistence, and the two spine
  * CLIENTS through which session identity and memory reach the daemon.
  *
- * OUT — the session broker as a SERVER (only the dispatch seam remains, see
+ * OUT, the session broker as a SERVER (only the dispatch seam remains, see
  * below), the gateway method catalog, watchers, channels and delivery routing,
  * automation, cluster, device posture, the knowledge/home-graph/code-index
  * stores and their schedulers, voice and media services, fleet aggregation,
@@ -42,8 +42,8 @@
  * governor. Each is either something the daemon serves over an existing verb
  * family or something only one process on a machine may own.
  *
- * This is a FLOOR, not a ceiling. A surface that wants more — the review/fix
- * workstream controller, a voice path, its own fleet view — builds it over the
+ * This is a FLOOR, not a ceiling. A surface that wants more, the review/fix
+ * workstream controller, a voice path, its own fleet view, builds it over the
  * pieces here; none of those need daemon furniture either, they are simply not
  * required for a turn to run.
  *
@@ -54,13 +54,13 @@
  * single change to it) but are typed as INTERFACES rather than the concrete
  * classes:
  *
- * - `sessionBroker: SessionContinuationDispatch` — the inbound-dispatch seam
+ * - `sessionBroker: SessionContinuationDispatch`, the inbound-dispatch seam
  *   only. A surface still runs the loop, so it must be able to bind "work
  *   arrived for a session I host" to its own runner; it must NOT have to own a
  *   persisting broker to do so. `SharedSessionBroker` satisfies this, and so
  *   does a wire-backed dispatch that polls `sessions.inputs.list` and calls the
  *   same runner.
- * - `userPermissionRuleStore: UserPermissionRuleAccess` — read the remembered
+ * - `userPermissionRuleStore: UserPermissionRuleAccess`, read the remembered
  *   rules, add one. Local remembering by a surface is legitimate (it is the
  *   surface that prompted); the canonical store and its `permissions.rules.*`
  *   verbs stay with the daemon. `PermissionManager` already took exactly this
@@ -133,7 +133,7 @@ import { MemorySpineClient, type MemoryAccess, type MemoryTransport } from './me
 
 export type { ApprovalRaiser, UserPermissionRuleAccess } from './permissions/permission-composition.js';
 // The three floor options a product may need to preserve a posture the default
-// would silently reverse — launch tolerance, discovery timing, and whether a
+// would silently reverse, launch tolerance, discovery timing, and whether a
 // hook can reach the agent manager. Re-exported here so a caller configures the
 // floor through one import rather than reaching into provider-stack.
 export type {
@@ -142,8 +142,8 @@ export type {
   ProviderRegistryFactory,
 } from './provider-stack.js';
 // The manager itself, beside the two types this module already published. Every
-// composition that brokers its asks — this one, the SDK's daemon-grade graph,
-// and the daemon product's — needs the same mapping from a background-agent
+// composition that brokers its asks, this one, the SDK's daemon-grade graph,
+// and the daemon product's, needs the same mapping from a background-agent
 // attribution to the raise's routeId/metadata, and a composition that cannot
 // import it writes that mapping out again.
 export { createBrokeredPermissionManager } from './permissions/permission-composition.js';
@@ -164,7 +164,7 @@ export interface SessionContinuationDispatch {
 }
 
 /**
- * A dispatch seam that holds the runner and nothing else — for a surface with
+ * A dispatch seam that holds the runner and nothing else, for a surface with
  * no inbound source yet, and for tests. `runner()` returns whatever was bound,
  * so a caller that later grows an inbound source can drive it.
  */
@@ -239,7 +239,7 @@ export interface ClientRuntimeServices {
   readonly hookWorkbench: HookWorkbench;
   readonly pluginManager: PluginManager;
   readonly policyRuntimeState: PolicyRuntimeState;
-  /** Durable rules this surface remembered for its OWN asks — the interface, not the daemon's store. */
+  /** Durable rules this surface remembered for its OWN asks, the interface, not the daemon's store. */
   readonly userPermissionRuleStore: UserPermissionRuleAccess;
   /** The foreground permission gate for this surface's turns. */
   readonly permissionManager: PermissionManager;
@@ -248,13 +248,13 @@ export interface ClientRuntimeServices {
 
   /**
    * The inbound-dispatch seam. Named `sessionBroker` because that is the field
-   * a daemon-grade `RuntimeServices` already carries — the NAME is shared so
+   * a daemon-grade `RuntimeServices` already carries, the NAME is shared so
    * the graphs stay interchangeable; the TYPE is narrowed to what a surface
    * needs (see {@link SessionContinuationDispatch}).
    */
   readonly sessionBroker: SessionContinuationDispatch;
 
-  // The two spine clients. Null means "this surface mirrors nowhere" — an
+  // The two spine clients. Null means "this surface mirrors nowhere", an
   // honest offline posture, not a missing dependency.
   readonly sessionSpine: SessionSpineClient | null;
   readonly memoryAccess: MemorySpineClient | null;
@@ -330,7 +330,7 @@ export interface ClientRuntimeServicesOptions {
   } | undefined;
   /**
    * Whether a session id still has an owner, for the cross-session task
-   * reaper. Default: always true — an unknown session is treated as still
+   * reaper. Default: always true, an unknown session is treated as still
    * owned, so ignorance never reaps.
    */
   readonly isSessionLive?: ((sessionId: string) => boolean) | undefined;
@@ -348,7 +348,7 @@ export interface ClientRuntimeServicesOptions {
    * Whether provider model discovery runs at construction. Default: `run`.
    *
    * `skip` is for a composition that will not outlive discovery's unawaited
-   * write — a suite against a temp workspace, a one-shot subcommand.
+   * write, a suite against a temp workspace, a one-shot subcommand.
    */
   readonly modelDiscovery?: ProviderModelDiscoveryMode | undefined;
   /**
@@ -357,7 +357,7 @@ export interface ClientRuntimeServicesOptions {
    * `withhold` is a deliberate capability boundary, not an oversight: a hook
    * that cannot reach the agent manager cannot spawn an agent, and at least one
    * product pins that refusal as a feature. It is spelled out as an option
-   * precisely so the absence stays legible — an omitted dependency reads as a
+   * precisely so the absence stays legible, an omitted dependency reads as a
    * wiring bug to the next person, a named `withhold` reads as the decision it is.
    */
   readonly hookAgentManager?: 'attach' | 'withhold' | undefined;
@@ -366,7 +366,7 @@ export interface ClientRuntimeServicesOptions {
    * Default: `off`.
    *
    * `claim` refuses to compose when another LIVE process already owns
-   * `<homeDirectory>/.goodvibes/<surfaceRoot>/` — throwing
+   * `<homeDirectory>/.goodvibes/<surfaceRoot>/`, throwing
    * `SurfaceHomeInUseError`, whose message names the holding pid
    * (runtime/home-single-writer.ts). It is the boot-time answer to a second
    * copy of a singleton product being started onto a home that is already in
@@ -374,7 +374,7 @@ export interface ClientRuntimeServicesOptions {
    * ghost "active" sessions behind.
    *
    * It is OFF by default because it is not true of every surface. A terminal is
-   * legitimately run twice over one project — refusing the second window would
+   * legitimately run twice over one project, refusing the second window would
    * break a shape people use every day. A product that IS a singleton (the
    * agent: one per machine, holding one home) passes `claim`.
    *
@@ -458,7 +458,7 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
   const hookActivityTracker = new HookActivityTracker();
   const hookDispatcher = new HookDispatcher(
     {
-      // Withheld only when the caller says so by name — see `hookAgentManager`.
+      // Withheld only when the caller says so by name, see `hookAgentManager`.
       ...((options.hookAgentManager ?? 'attach') === 'attach' ? { agentManager: agents.agentManager } : {}),
       toolLLM: providers.toolLLM,
       projectRoot: workingDirectory,
@@ -636,7 +636,7 @@ export function createClientRuntimeServices(options: ClientRuntimeServicesOption
 
 /**
  * Read the shared part of the client shape off any composition that carries it
- * — a daemon-grade `RuntimeServices` included. A convenience for call sites
+ *, a daemon-grade `RuntimeServices` included. A convenience for call sites
  * that hold one graph and want to hand a turn-runner the narrow view.
  */
 export function asClientRuntimeView<T extends ClientRuntimeServicesFromHost>(services: T): ClientRuntimeServicesFromHost {

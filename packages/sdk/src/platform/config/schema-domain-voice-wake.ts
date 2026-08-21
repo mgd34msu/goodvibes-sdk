@@ -1,5 +1,5 @@
 /**
- * schema-domain-voice-wake.ts — wake-word detection settings (`voice.wake.*`).
+ * schema-domain-voice-wake.ts, wake-word detection settings (`voice.wake.*`).
  *
  * A domain of its own rather than another block inside schema-domain-voice-local.ts
  * because the two configure unrelated things: `voice.local.*` points at local STT/TTS
@@ -11,8 +11,8 @@
  * why its default is what it is. `voice.wake.enabled` defaults to `false`: an
  * always-on microphone must be an explicit act.
  *
- * The MODEL is not that act. It ships with the installation — the installer and the
- * npm postinstall provision it, and a daemon retries at boot — so the row above is
+ * The MODEL is not that act. It ships with the installation, the installer and the
+ * npm postinstall provision it, and a daemon retries at boot, so the row above is
  * the only thing between an installed machine and a working wake word. What still
  * never happens is a download triggered by a switch: enabling detection on a host
  * whose artifacts are absent reports which are missing and names the recovery
@@ -35,7 +35,7 @@
  * tab has no filesystem for `voice.wake.retainAudio` or a local
  * `voice.wake.activationSoundPath`. Those are refused or reported by
  * resolveWakeRuntimeSettings, which reads every row here and is the one place they become
- * behaviour — a row it does not read is a row that configures nothing, and a test asserts
+ * behaviour, a row it does not read is a row that configures nothing, and a test asserts
  * that set against this one.
  *
  * THE 26 ROWS AND THE ONE DELIBERATE DEVIATION
@@ -48,7 +48,7 @@
  *    wake-server is Tier B and "NOT built; needs its own explicit owner go", which
  *    has not been given. Shipping the key without the server behind it would be a
  *    bare toggle wired to nothing, so the key waits for the feature.
- *  - `voice.wake.threshold` defaults to **0.9, not the accepted 0.5** — see that
+ *  - `voice.wake.threshold` defaults to **0.9, not the accepted 0.5**, see that
  *    row's description for the measurement that overrode it.
  *
  * `voice.wake.models` is a comma-separated list rather than the design's `string[]`.
@@ -164,7 +164,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'Off by default because an always-on microphone must be an explicit act, not something a user discovers after '
       + 'the fact. '
       + 'THE MODEL IS ALREADY THERE: installing goodvibes downloads and checksum-verifies the pinned classifier, and a '
-      + 'daemon retries at boot if the install could not reach the network — so turning this on normally needs no setup '
+      + 'daemon retries at boot if the install could not reach the network, so turning this on normally needs no setup '
       + 'step at all. Turning it on never downloads anything itself: on a host whose artifacts are missing or fail '
       + 'verification it says exactly which, and names the command that fetches them, rather than silently pulling '
       + '6.1 MB the moment a switch moves.',
@@ -176,7 +176,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Comma-separated wake-word models to run concurrently, by id. Default "hey_goodvibes" is the model the SDK pins, hosts, '
       + 'and verifies by checksum. Additional ids resolve against voice.wake.customModelDir. Each model costs one classifier '
-      + 'inference per 80 ms frame — the shared melspectrogram and speech-embedding front end is computed once regardless of how '
+      + 'inference per 80 ms frame, the shared melspectrogram and speech-embedding front end is computed once regardless of how '
       + 'many models are listed, so a second model is far cheaper than a second detector. An empty list disables detection '
       + 'without stopping the service.',
   },
@@ -189,10 +189,10 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       'Score, 0 to 1, a frame must reach for the wake phrase to count as heard. '
       + 'DELIBERATELY 0.9, NOT openWakeWord\'s upstream default of 0.5 and not the 0.5 originally accepted for this row: measurement on '
       + 'the shipped hey_goodvibes model showed 0.5 fires on 34.5% of never-trained minimal-pair phrases ("hey good vibe check", '
-      + '"hey goodbye vibes" — ordinary English a user will actually say) at 99.2% recall, while 0.9 cuts that to 24.7% for 96.8% recall. '
+      + '"hey goodbye vibes", ordinary English a user will actually say) at 99.2% recall, while 0.9 cuts that to 24.7% for 96.8% recall. '
       + 'Trading 2.4 points of recall to remove roughly a third of the wrong wakes is the better default for a microphone that is always on. '
       + 'Lower it toward 0.5 if the detector misses you; raise it above 0.9 if it fires when you did not speak to it. '
-      + 'Recall figures here are synthetic-only — no human has recorded the phrase.',
+      + 'Recall figures here are synthetic-only, no human has recorded the phrase.',
   },
   {
     key: 'voice.wake.patienceFrames',
@@ -222,11 +222,11 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Speech-probability floor, 0 to 1, from the speech gate run ahead of the wake classifier; frames below it are withheld '
       + 'from scoring instead of being classified. The gate is our own speech/non-speech head over the SAME embedding the wake '
-      + 'classifier consumes, so it costs one extra inference of 0.025 ms per 80 ms frame — beside the detector\'s own 3.46 ms — '
+      + 'classifier consumes, so it costs one extra inference of 0.025 ms per 80 ms frame, beside the detector\'s own 3.46 ms, '
       + 'and no extra front end. It provisions with the wake models. '
       + 'Measured on 106,390 held-out frames: at 0.3 it passes 96.0% of speech frames and withholds 95.7% of non-speech ones, '
       + 'which is the recommended value; lower passes more speech and screens less, higher screens more and starts costing '
-      + 'wakes. 0 is the shipped default and turns the stage off entirely — it is the configuration that has been exercised '
+      + 'wakes. 0 is the shipped default and turns the stage off entirely, it is the configuration that has been exercised '
       + 'longest, and a gate can only ever cost you a detection. '
       + 'A surface that has not loaded the gate REFUSES TO START with any value above 0, rather than running unscreened frames '
       + 'through a stage you have configured.',
@@ -237,11 +237,11 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 'none',
     enumValues: ['none', 'speex'],
     description:
-      'Noise suppression applied to captured audio before anything reads it — the wake classifier scores filtered frames, and the '
+      'Noise suppression applied to captured audio before anything reads it, the wake classifier scores filtered frames, and the '
       + 'utterance recorded after a wake (and push-to-talk voice input) is filtered audio too. '
       + '"speex" is SpeexDSP\'s own denoiser, carried in the platform as a WebAssembly module and applied on every surface that has '
       + 'WebAssembly, which is both shipped ones: nothing to install, nothing to download, no per-host library. It attenuates the '
-      + 'estimated noise floor by about 15 dB — measured at 13.2 dB against a synthetic tone-plus-white-noise set, for 0.24 ms of '
+      + 'estimated noise floor by about 15 dB, measured at 13.2 dB against a synthetic tone-plus-white-noise set, for 0.24 ms of '
       + 'work per 80 ms frame beside the detector\'s own 3.46 ms. '
       + '"none" ships as the default and is a true passthrough: the captured bytes reach the detector exactly as the device produced '
       + 'them. Choose "speex" on a noisy input (a fan, an air conditioner, street noise through an open window), and "none" on a '
@@ -255,7 +255,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       'Capture device to listen on. Empty means the operating system default source. '
       + 'Shared by BOTH microphone consumers: wake detection and push-to-talk voice input open the same device through the '
       + 'same path, so this row moves both rather than only the always-on one. '
-      + 'Device identifiers are host-specific — list real ones with `pactl list short sources` or `arecord -L`, or use a '
+      + 'Device identifiers are host-specific, list real ones with `pactl list short sources` or `arecord -L`, or use a '
       + 'navigator.mediaDevices deviceId in a browser tab. Note pw-record takes a PipeWire node serial or node name here, '
       + 'not a PulseAudio device name, and sox cannot target a device at all (it reads AUDIODEV from the environment), which '
       + 'the surface reports rather than silently ignoring.',
@@ -266,7 +266,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 'auto',
     enumValues: ['auto', 'pw-record', 'parecord', 'arecord', 'ffmpeg', 'sox'],
     description:
-      'Which recorder feeds capture on a HOST surface — the terminal and the daemon child process. A browser tab ignores this '
+      'Which recorder feeds capture on a HOST surface, the terminal and the daemon child process. A browser tab ignores this '
       + 'row and uses getUserMedia. Feeds both consumers: wake detection and push-to-talk voice input. '
       + '"auto" probes for pw-record, parecord, arecord, ffmpeg, then sox and uses the first present, mirroring how local audio '
       + 'playback discovers its player. Name one explicitly to pin the choice on a host where the probe picks a device-starved '
@@ -281,14 +281,14 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       'Listen for the wake phrase on the terminal, through a recorder subprocess on the host. On by default: once wake detection '
       + 'is enabled the terminal is the primary surface, and a wake that reaches no surface is a detector that appears broken. '
       + 'A confirmed wake plays the activation sound, shows the listening indicator, captures the utterance that follows and '
-      + 'sends it to speech-to-text, then places the transcript in the composer — or submits it when voice.wake.autoSubmit is on.',
+      + 'sends it to speech-to-text, then places the transcript in the composer, or submits it when voice.wake.autoSubmit is on.',
   },
   {
     key: 'voice.wake.surfaces.agent',
     type: 'boolean',
     default: false,
     description:
-      'Listen for the wake phrase on the agent surface, through a recorder subprocess on the host — the same capture path the '
+      'Listen for the wake phrase on the agent surface, through a recorder subprocess on the host, the same capture path the '
       + 'terminal uses. Turning this on with voice.wake.enabled opens the microphone on the agent, and a confirmed wake sends '
       + 'the utterance that follows to speech-to-text and puts the transcript into the agent conversation input, or submits it '
       + 'when voice.wake.autoSubmit is on. '
@@ -303,7 +303,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Listen for the wake phrase in the web UI, which runs the detector inside the browser tab on a WASM backend and downloads the '
       + 'pinned model through the daemon. Off by default because browser capture is a separate stack with its own per-origin '
-      + 'microphone permission prompt — it is opted into per browser, not inherited from the host. While it is off the tab never '
+      + 'microphone permission prompt, it is opted into per browser, not inherited from the host. While it is off the tab never '
       + 'calls getUserMedia at all, so no permission prompt appears. A plain-http origin cannot capture and says so instead of '
       + 'failing silently.',
   },
@@ -314,7 +314,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     enumValues: ['none', 'chime', 'custom'],
     description:
       'Sound played the moment a wake is confirmed. "chime" by default because audible confirmation is how a user knows the '
-      + 'microphone acted — a silent wake is the behaviour people distrust. "custom" plays voice.wake.activationSoundPath; '
+      + 'microphone acted, a silent wake is the behaviour people distrust. "custom" plays voice.wake.activationSoundPath; '
       + '"none" is silent and leaves voice.wake.indicator as the only feedback.',
   },
   {
@@ -324,7 +324,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     description:
       'Absolute path to the audio file played on wake. Read only when voice.wake.activationSound is "custom"; ignored otherwise. '
       + 'A host surface plays the file through the same player local voice output uses. A browser tab cannot read a path on your '
-      + 'machine, so it plays the built-in chime instead and reports that this row is not in force there — a wake stays audible '
+      + 'machine, so it plays the built-in chime instead and reports that this row is not in force there, a wake stays audible '
       + 'either way.',
   },
   {
@@ -334,7 +334,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     enumValues: ['off', 'statusline', 'banner'],
     description:
       'How the surface shows that the microphone is live. "statusline" keeps a persistent listening marker for as long as the '
-      + 'detector runs — not only at the moment of a wake — so an always-on microphone is never invisible: a footer row in the '
+      + 'detector runs, not only at the moment of a wake, so an always-on microphone is never invisible: a footer row in the '
       + 'terminal, a status-strip chip in the web UI. "banner" is more prominent; "off" removes the marker entirely and is not '
       + 'the default for that reason.',
   },
@@ -360,7 +360,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + '0 REMOVES THE CEILING: speech-to-text imposes no length limit of its own, so the ceiling is policy rather than a '
       + 'technical bound, and a long dictated thought is a real thing to want. It still defaults to 10 because the ceiling is '
       + 'the backstop for the OTHER stop condition failing. Post-wake capture normally ends about voice.wake.silenceStopMs '
-      + 'after you stop talking, which depends on frames reading as silence — with the ceiling off, a stream that goes stuck '
+      + 'after you stop talking, which depends on frames reading as silence, with the ceiling off, a stream that goes stuck '
       + 'or a room the silence floor cannot resolve holds the microphone open with nothing left to close it. Turn it off '
       + 'alongside a silence-stop you have seen work in your room; voice.wake.silenceFloorRms is the row that makes that '
       + 'reliable.',
@@ -383,7 +383,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     ...intRange(0, 8000),
     description:
       'The audio level at or below which a frame counts as silence, on the int16 magnitude scale the capture path uses '
-      + '(full scale 32768, so 180 is about -45 dBFS). 0 — the default — MEASURES IT PER UTTERANCE from the audio captured '
+      + '(full scale 32768, so 180 is about -45 dBFS). 0, the default, MEASURES IT PER UTTERANCE from the audio captured '
       + 'just before the wake fired, and places the floor 12 dB above the room\'s own noise. '
       + 'That measurement is what makes voice.wake.silenceStopMs work at all in a room that is not quiet: with a fixed floor, '
       + 'steady background noise above it means no frame is ever silent, silence never accumulates, and every capture runs to '
@@ -394,7 +394,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'time, so it cannot end up above your own voice. '
       + 'Set a number to pin the floor instead, which is worth doing if the measurement guesses wrong in your room: raise it '
       + 'if capture keeps running after you stop, lower it if capture cuts off while you are still speaking. A number you set '
-      + 'here is used exactly as given AND frozen — it stays where you put it for the whole capture, with no following. The '
+      + 'here is used exactly as given AND frozen, it stays where you put it for the whole capture, with no following. The '
       + 'first measured value is never allowed below 180 or above 1440; the following that comes after it may reach 5760.',
   },
   {
@@ -410,7 +410,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'voice.wake.captureMaxSeconds ceiling every time however long ago you stopped. '
       + '150 ms sits under the shortest syllable anyone ends a sentence on and over the longest of those noises. Raise it if '
       + 'capture still will not end in a room full of short noises; lower it if the first word of a resumed sentence gets '
-      + 'clipped. 0 turns it off, so every loud frame resets the wait — the behaviour before this row existed.',
+      + 'clipped. 0 turns it off, so every loud frame resets the wait, the behaviour before this row existed.',
   },
   {
     key: 'voice.wake.autoSubmit',
@@ -429,7 +429,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
     default: 'none',
     enumValues: ['none', 'session-temp'],
     description:
-      'Whether captured audio is written to disk. "none" by default — nothing is stored, which is the only setting under which '
+      'Whether captured audio is written to disk. "none" by default, nothing is stored, which is the only setting under which '
       + 'the microphone leaves no recording behind. "session-temp" keeps clips in a session-scoped directory that is deleted when '
       + 'the session ends and swept on recovery, and exists to debug a bad transcript, not as a recording feature. '
       + 'A browser tab has no filesystem to retain into: it reports that this row is not in force rather than appearing to store '
@@ -483,7 +483,7 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'per-frame cost already beats real time by a wide margin, and WebGPU cannot run the front end without splitting the graph '
       + 'across devices, which costs more in transfers than it saves. "webgpu" is available for hosts that measure otherwise. '
       + 'Read by the browser tab when it creates its inference sessions; a host surface always runs WASM and ignores this row. '
-      + 'BOTH VALUES LOAD THE SAME ENGINE BINARY — the WebGPU-capable build carries the CPU engine too — so switching costs no '
+      + 'BOTH VALUES LOAD THE SAME ENGINE BINARY, the WebGPU-capable build carries the CPU engine too, so switching costs no '
       + 'extra download, and a tab set to "webgpu" on a browser without navigator.gpu falls back to the CPU provider inside '
       + 'the binary it already has.',
   },

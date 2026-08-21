@@ -1,5 +1,5 @@
 /**
- * address-digest.ts — how a mail address is written down when something has to
+ * address-digest.ts, how a mail address is written down when something has to
  * be written down.
  *
  * An operational log needs to be able to say "the same recipient again" and
@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
  * A stable, non-reversible digest of an address, for logging.
  *
  * Normalised (trimmed, lower-cased) before hashing so `Alice@Example.com ` and
- * `alice@example.com` digest identically — otherwise correlating on the digest
+ * `alice@example.com` digest identically, otherwise correlating on the digest
  * would silently miss the same person written two ways.
  *
  * A recipient list (`a@x, b@y`) digests as ONE value, which is what the caller

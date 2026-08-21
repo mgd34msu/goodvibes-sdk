@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// workstream-draft-edits.test.ts — pure plan-review-gate item edits
+// workstream-draft-edits.test.ts, pure plan-review-gate item edits
 //
 // Unit-level coverage of the pure spec mutations behind /workstream's
 // edit-item / remove-item / move-item (see runtime/workstream-draft-edits.ts).
-// No engine, no I/O — just spec-in, spec-or-error-out.
+// No engine, no I/O, just spec-in, spec-or-error-out.
 // ---------------------------------------------------------------------------
 
 import { describe, expect, test } from 'bun:test';
@@ -77,7 +77,7 @@ describe('removeItemFromSpec', () => {
   test('refuses to remove the last item', () => {
     const single = specOf([{ id: 'x', title: 'only', task: 'only' }]);
     const res = removeItemFromSpec(single, '1');
-    expect(res).toEqual({ error: 'Cannot remove the last item — a workstream needs at least one.' });
+    expect(res).toEqual({ error: 'Cannot remove the last item, a workstream needs at least one.' });
   });
 });
 

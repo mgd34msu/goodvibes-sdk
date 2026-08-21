@@ -1,5 +1,5 @@
 /**
- * health.ts — email's own health entry, deliberately NOT a channel's.
+ * health.ts, email's own health entry, deliberately NOT a channel's.
  *
  * Why this is not a `ChannelStatusSnapshot` with `surface: 'email'`
  * ────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@
  * being a member of the union. §2.1 removes exactly those capabilities from
  * inbound mail structurally rather than by a guard, so widening the union to
  * fit email into the existing status list would hand every one of them back by
- * inheritance — the removal undone by a type edit nobody would read as a
+ * inheritance, the removal undone by a type edit nobody would read as a
  * capability change. `ChannelSurface` has no `'email'` member and is not
  * widened here.
  *
@@ -20,8 +20,8 @@
  * Read from the live supervisor, never from config presence
  * ────────────────────────────────────────────────────────
  * `ChannelStatusSnapshot.state` is computed today purely from whether a
- * surface is configured — `surfaceDeliveryEnabled(...) ? 'healthy' : 'disabled'`
- * — so a surface whose ingress died reports healthy because its credential is
+ * surface is configured, `surfaceDeliveryEnabled(...) ? 'healthy' : 'disabled'`
+ *, so a surface whose ingress died reports healthy because its credential is
  * still in the file. That is the pattern this function does not copy: every
  * field below comes from what the supervisor is DOING right now, and an enabled
  * mailbox that cannot be read reports `degraded`, not `healthy`.
@@ -78,7 +78,7 @@ export interface InboundMailHealthInput {
  *
  * `disabled` is reserved for "the owner switched it off". An enabled mailbox
  * that cannot be read is `degraded` and never `disabled`, because `disabled`
- * reads as a choice and this is a fault — that distinction is the entire
+ * reads as a choice and this is a fault, that distinction is the entire
  * reason this function exists rather than a config lookup.
  *
  * A mailbox being READ but whose notices are all being refused is `degraded`
@@ -103,7 +103,7 @@ export function describeInboundMailHealth(
   return {
     kind: 'email-inbound',
     id: `email-inbound:${input.account}:${input.mailbox}`,
-    label: `Email (inbound) — ${input.account}`,
+    label: `Email (inbound), ${input.account}`,
     state: healthState(input),
     enabled: input.enabled,
     account: input.account,

@@ -1,5 +1,5 @@
 /**
- * Getting OAuth client credentials into the agent — the pluggable front step.
+ * Getting OAuth client credentials into the agent, the pluggable front step.
  *
  * This module exists to draw one line: **everything downstream of it neither
  * knows nor cares where the client credentials came from.** Consent, refresh
@@ -9,16 +9,16 @@
  *
  * Three routes converge here:
  *
- *   1. `console-walkthrough` — the browser drives the user's own Google
+ *   1. `console-walkthrough`, the browser drives the user's own Google
  *      account through project → APIs → consent screen → Desktop client.
  *      This is the only UI-dependent, brittle part of the whole integration,
  *      and it is deliberately quarantined behind this boundary: a Google
  *      console redesign breaks the walkthrough and nothing else.
- *   2. `client-json-file` — point at a client JSON from any source. A user
+ *   2. `client-json-file`, point at a client JSON from any source. A user
  *      who already has one skips the walkthrough entirely. This is also how
  *      credentials from an existing local tool are adopted; that is not a
  *      special case, it is just this route.
- *   3. `manual-entry` — paste a client id and secret.
+ *   3. `manual-entry`, paste a client id and secret.
  *
  * Because routes 2 and 3 need no browser, the connector can be tested end to
  * end without ever launching one.
@@ -63,13 +63,13 @@ function readString(value: unknown): string | null {
  */
 function validateClientId(clientId: string): string | null {
   if (!clientId.endsWith('.apps.googleusercontent.com')) {
-    return 'That does not look like a Google OAuth client id — they end in ".apps.googleusercontent.com".';
+    return 'That does not look like a Google OAuth client id, they end in ".apps.googleusercontent.com".';
   }
   return null;
 }
 
 /**
- * Route 2 — parse a downloaded client JSON.
+ * Route 2, parse a downloaded client JSON.
  *
  * Google wraps the credentials in `installed` for Desktop clients and `web`
  * for web clients; some tools store them unwrapped. All three are accepted,
@@ -134,7 +134,7 @@ export function readClientCredentialsFromJson(rawText: string): GoogleClientInta
   };
 }
 
-/** Route 3 — a client id and secret typed or pasted in directly. */
+/** Route 3, a client id and secret typed or pasted in directly. */
 export function clientCredentialsFromInput(input: {
   readonly clientId: string;
   readonly clientSecret: string;

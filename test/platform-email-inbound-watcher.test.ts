@@ -6,7 +6,7 @@
  * injected clock), and no test that waits minutes for anything.
  *
  * These are gates. Each asserts a behaviour that, if it regressed, would end
- * with the owner hearing nothing about mail that arrived — which is the exact
+ * with the owner hearing nothing about mail that arrived, which is the exact
  * failure the capability exists to eliminate.
  */
 
@@ -177,8 +177,8 @@ describe('inbound watcher — IDLE', () => {
   test('a server that puts the UID data item last delivers mail all the same', async () => {
     // RFC 3501 §6.4.8 makes `UID FETCH` add the UID item; it does not say
     // where, and both positions are in the wild. When it lands after the
-    // header literal it is not on the `* n FETCH` line at all — it is on the
-    // line that closes the response — and a client that searches only the
+    // header literal it is not on the `* n FETCH` line at all, it is on the
+    // line that closes the response, and a client that searches only the
     // start line finds no UIDs, produces no envelopes, and hands the drain
     // loop what looks exactly like a mailbox whose messages were all expunged.
     const harness = await build({
@@ -416,7 +416,7 @@ describe('inbound watcher — capability sufficiency', () => {
     expect(harness.sink.delivered).toEqual([]);
 
     // Re-probe three times. The condition persists, so the watcher keeps
-    // checking — and says nothing further, because nothing has changed.
+    // checking, and says nothing further, because nothing has changed.
     for (let round = 0; round < 3; round += 1) {
       const before = harness.mailbox.connectionCount;
       await harness.clock.advance(60 * 60_000);
@@ -461,7 +461,7 @@ describe('inbound watcher — capability sufficiency', () => {
 
   test('a simultaneous-connection refusal is degraded in the provider’s words', async () => {
     // Gmail answers this at the LOGIN step, which the email layer used to call
-    // a rejected credential — terminal — stopping the watcher permanently on a
+    // a rejected credential, terminal, stopping the watcher permanently on a
     // condition that clears in seconds. It now reads the [LIMIT] response code
     // and reports the server's own unavailability instead.
     const harness = await build({ server: { login: 'connection-limit' } });
@@ -476,7 +476,7 @@ describe('inbound watcher — capability sufficiency', () => {
     expect(verdict.detail).toContain('Too many simultaneous connections');
     expect(harness.observer.terminals).toEqual([]);
 
-    // It keeps trying — the limit clears on its own — but on a longer ceiling.
+    // It keeps trying, the limit clears on its own, but on a longer ceiling.
     const before = harness.mailbox.connectionCount;
     await harness.clock.advance(15 * 60_000);
     await waitFor(
@@ -489,13 +489,13 @@ describe('inbound watcher — capability sufficiency', () => {
   test('a refused FETCH is insufficient; a refused SEARCH is only a reconnect', async () => {
     // Two refusals, two different claims. A server withholding message data
     // means arrival can be seen and never read, which no amount of
-    // reconnecting fixes. A server refusing a search is routinely transient —
-    // load, a folder being reindexed — and stopping the watcher over one would
+    // reconnecting fixes. A server refusing a search is routinely transient,
+    // load, a folder being reindexed, and stopping the watcher over one would
     // turn a hiccup into silence.
     //
     // The refused FETCH is now reached by the connect-time probe rather than by
-    // the first drain, so it lands as `bodies-unfetchable` — the reason that
-    // names what the account may READ — instead of the `fetch-refused` the
+    // the first drain, so it lands as `bodies-unfetchable`, the reason that
+    // names what the account may READ, instead of the `fetch-refused` the
     // reactive path produces. Same insufficiency, named for what was actually
     // established. `fetch-refused` remains the verdict for a fetch that fails
     // during normal draining, which `handleDrainFailure` still classifies.
@@ -534,7 +534,7 @@ describe('inbound watcher — capability sufficiency', () => {
     // connection slot". Gmail allows fifteen simultaneous IMAP connections and
     // EmailService takes a fresh one per request, so a watcher parked on an
     // open socket for an hour while refusing to read from it makes the
-    // server-unavailable verdict more likely on every OTHER mailbox — the same
+    // server-unavailable verdict more likely on every OTHER mailbox, the same
     // limit pressure with none of the benefit.
     const harness = await build({
       server: { fetch: 'refused', initial: [message(101, 'a')] },
@@ -578,7 +578,7 @@ describe('inbound watcher — capability sufficiency', () => {
 // `docs/inbound-email.md` §3.4d, "Scope sufficiency applies to both": a
 // non-empty mailbox gets one BODY.PEEK at connect, answering whether the
 // server will hand over message content before any expectation could be
-// opened — instead of finding out reactively, on the first real fetch, which
+// opened, instead of finding out reactively, on the first real fetch, which
 // for a signup workstream is the verification mail itself.
 
 describe('inbound watcher — connect-time body probe', () => {
@@ -627,12 +627,12 @@ describe('inbound watcher — connect-time body probe', () => {
     await idleReached(harness);
 
     const probe = harness.watcher.status.bodyProbe;
-    // Asserted on the discriminant directly, not via a truthiness check —
+    // Asserted on the discriminant directly, not via a truthiness check,
     // `unproven` and `readable` must never read as interchangeable
     // "it's fine" values.
     expect(probe?.outcome).toBe('unproven');
     expect(probe?.outcome).not.toBe('readable');
-    // Not a capability FAILURE — the watcher runs and delivers — but not
+    // Not a capability FAILURE, the watcher runs and delivers, but not
     // healthy either: nothing has demonstrated this account can read a body,
     // and `degraded` is what says so without refusing to watch the empty
     // signup alias this capability exists to serve.
@@ -650,14 +650,14 @@ describe('inbound watcher — connect-time body probe', () => {
  * delivers empty-bodied messages that read as a quiet mailbox.
  *
  * Gmail can compare scopes, because Google publishes what a grant covers. IMAP
- * has no scopes and no such statement, so the equivalent is evidence — one
+ * has no scopes and no such statement, so the equivalent is evidence, one
  * message read, and what came back checked against what the server itself said
  * was there.
  *
  * THE LIMIT OF THIS COVERAGE, stated so nobody reads more into it than is here:
  * every case below is driven by `fake-imap-mailbox.ts`, including the withheld
  * body. No real provider that permits headers and withholds content has ever
- * been exercised against this code — such an account is not something the suite
+ * been exercised against this code, such an account is not something the suite
  * can conjure, and fabricating one would be worse than the gap. What these
  * tests establish is that the CLIENT reaches the right verdict when a server
  * behaves that way on the wire; that a given real provider behaves that way is
@@ -695,7 +695,7 @@ describe('inbound watcher — can it read message content at all', () => {
     // The quiet-mailbox impostor, and the reason a refusal-only check is not
     // enough: every command succeeds, and the body comes back empty for a
     // message whose own BODYSTRUCTURE declared 120 octets of text. From the
-    // outside that is indistinguishable from a mailbox nobody wrote to — which
+    // outside that is indistinguishable from a mailbox nobody wrote to, which
     // is exactly what a metadata-only grant looked like on the Gmail side.
     const harness = await build({
       server: { bodyProbe: 'withheld', initial: [message(101, 'a')] },
@@ -752,7 +752,7 @@ describe('inbound watcher — can it read message content at all', () => {
     // capability working: `serve()` has to hand it to
     // `verdictForOpenConnection`, or the tracker records `idle-push`/`healthy`
     // and the owner gets a green light for a watcher that has never once shown
-    // it can read a message. That gap is what this asserts against — the check
+    // it can read a message. That gap is what this asserts against, the check
     // is present, compiles, and passes every other test in this file with the
     // argument dropped, and only this assertion notices.
     const harness = await build({ server: { initial: [] } });
@@ -770,7 +770,7 @@ describe('inbound watcher — can it read message content at all', () => {
 
   test('a message with a legitimately zero-octet body is not a failure', async () => {
     // Nothing came back and nothing was declared, so nothing was learned. That
-    // is `unproven`, not a withheld body — treating it as a failure would stop
+    // is `unproven`, not a withheld body, treating it as a failure would stop
     // a working watcher over a message somebody sent with an empty body.
     const harness = await build({
       server: { bodyProbe: 'zero-octet-body', initial: [message(101, 'a')] },
@@ -799,7 +799,7 @@ describe('inbound watcher — can it read message content at all', () => {
     // The BODYSTRUCTURE is sequence-addressed (it is what supplies the declared
     // octets); the body fetch is UID-addressed (it is what exercises the
     // drain's own addressing). Both counts are asserted, so a change that
-    // quietly reintroduces a second probe — or drops one of the two forms —
+    // quietly reintroduces a second probe, or drops one of the two forms,
     // fails here rather than costing an extra round trip on every connect in
     // silence.
     const structureProbes = harness.mailbox.commands
@@ -890,7 +890,7 @@ describe('inbound watcher — the cursor', () => {
 
     // Waits on the CURSOR, not on the sink. The cursor advances only after
     // deliver() resolves, so "25 messages delivered" is one step short of
-    // "25 messages fully processed" — and asserting the cursor on the strength
+    // "25 messages fully processed", and asserting the cursor on the strength
     // of the sink count is a race that only loses under I/O pressure. It did:
     // this read 125 instead of 126 in a full-suite run while passing alone and
     // under eight concurrent runs of its own file.
@@ -954,7 +954,7 @@ describe('inbound watcher — the cursor', () => {
 // so an absent UIDNEXT established the cursor at UID 0. UID 0 is below every
 // message that exists, so the first drain searched `UID 1:*`, matched the
 // whole mailbox, and delivered every message in it to the owner's notification
-// channel as new mail — while the note it had just emitted said the opposite
+// channel as new mail, while the note it had just emitted said the opposite
 // in three clauses at once ("Listening from UID 0 onwards", "n message(s) …
 // were not read", "starts listening now rather than backfilling").
 
@@ -979,8 +979,8 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
     await idleReached(harness);
     await flush();
 
-    // The cursor is ESTABLISHED at 103 — the same mark `UIDNEXT - 1` would
-    // have given — rather than established at 0 and walked up to 103 by
+    // The cursor is ESTABLISHED at 103, the same mark `UIDNEXT - 1` would
+    // have given, rather than established at 0 and walked up to 103 by
     // replaying the mailbox. Asserted on the argument `resolve` received,
     // because the stored `lastSeenUid` is 103 either way once a backfill
     // finishes and so cannot tell the two apart.
@@ -1010,7 +1010,7 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
     expect(detail).toContain('3 message(s) already in the mailbox were not read');
     expect(detail).toContain('starts listening now rather than backfilling');
     // And the note does not pretend the mark came from the server's own
-    // UIDNEXT when it did not — a cursor derived by asking is a materially
+    // UIDNEXT when it did not, a cursor derived by asking is a materially
     // different provenance and is disclosed as one.
     expect(detail).toContain('without reporting a UIDNEXT');
     expect(detail).toContain('UID SEARCH');
@@ -1076,7 +1076,7 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
   test('a search that names nothing while the mailbox reports messages is refused, not zeroed', async () => {
     // The one case where the derivation cannot answer: the server says the
     // mailbox holds three messages and its search names none of them. The only
-    // mark available from here is 0, which would replay all three — so the
+    // mark available from here is 0, which would replay all three, so the
     // watcher refuses instead, under a reason that names the real condition.
     const harness = await build({
       server: { omitUidNext: true, search: 'empty', initial: OLD },
@@ -1095,7 +1095,7 @@ describe('inbound watcher — a server that does not report UIDNEXT', () => {
 
   test('a refused search while deriving is a reconnect, not a capability verdict', async () => {
     // §13.1: a refused SEARCH is routinely transient. Deriving the mark must
-    // not turn one into a permanent refusal — that would let a hiccup on the
+    // not turn one into a permanent refusal, that would let a hiccup on the
     // first connection permanently disable the mailbox.
     const harness = await build({
       server: { omitUidNext: true, search: 'refused', initial: OLD },

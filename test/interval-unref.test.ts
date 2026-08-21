@@ -26,7 +26,7 @@ const SDK_SRC = resolve(import.meta.dir, '../packages/sdk/src/platform');
  * 1. Parse the file with @ast-grep/napi using the TypeScript language.
  * 2. Find all nodes matching `setInterval($$$ARGS)`.
  * 3. For each match, inspect the parent statement:
- *    - If the call is directly chained: `setInterval(...).unref?.()` — OK.
+ *    - If the call is directly chained: `setInterval(...).unref?.()`, OK.
  *    - If the call is assigned: check the enclosing block for a `.unref?.()` call
  *      on the same variable name within the next 25 lines.
  * 4. Return a list of violations (setInterval sites without .unref).
@@ -40,7 +40,7 @@ function findUnrefViolations(
   const root = parse(Lang.TypeScript, content).root();
 
   // Find all setInterval call expressions
-  // findAll() returns SgNode[] directly — each element IS the node
+  // findAll() returns SgNode[] directly, each element IS the node
   const matches = root.findAll({ rule: { pattern: 'setInterval($$$ARGS)' } });
 
   for (const match of matches) {
@@ -50,13 +50,13 @@ function findUnrefViolations(
     // Get the text of the matched setInterval call
     const callText = match.text();
 
-    // Case 1: Inline chain — setInterval(...).unref?.() or .unref()
+    // Case 1: Inline chain, setInterval(...).unref?.() or .unref()
     const parentText = match.parent()?.text() ?? '';
     if (/\.unref\??\(\)/.test(parentText)) {
       continue; // unref is chained on same expression
     }
 
-    // Case 2: Assignment — find the variable name being assigned
+    // Case 2: Assignment, find the variable name being assigned
     // Walk up to the variable declarator or expression statement
     let assignTarget: string | null = null;
     let cursor = match.parent();
@@ -100,7 +100,7 @@ function findUnrefViolations(
       }
     }
 
-    // Case 3: Class field or complex pattern — scan enclosing block for any .unref
+    // Case 3: Class field or complex pattern, scan enclosing block for any .unref
     let blockCursor = match.parent();
     while (blockCursor) {
       const kind = blockCursor.kind();
@@ -119,7 +119,7 @@ function findUnrefViolations(
         if (/\.unref\??\(\)/.test(afterCall)) {
           break; // found .unref in the enclosing function
         }
-        // No .unref found in enclosing function scope — this is a violation
+        // No .unref found in enclosing function scope, this is a violation
         violations.push({
           line: startLine + 1, // convert to 1-indexed
           snippet: callText.slice(0, 120),
@@ -162,7 +162,7 @@ describe('setInterval .unref() coverage (AST walk)', () => {
         .map((v) => `  ${v.file}:${v.line}: ${v.snippet}`)
         .join('\n');
       throw new Error(
-        `${allViolations.length} setInterval site(s) missing .unref?.() — add .unref?.() to keep process exit clean:\n${details}`,
+        `${allViolations.length} setInterval site(s) missing .unref?.(), add .unref?.() to keep process exit clean:\n${details}`,
       );
     }
 

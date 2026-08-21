@@ -1,24 +1,24 @@
 // ---------------------------------------------------------------------------
-// workstream-services.ts — one OrchestrationEngine instance, plus the
+// workstream-services.ts, one OrchestrationEngine instance, plus the
 // command-facing facade a surface drives it through.
 //
 // Why a facade and not the bare engine: createOrchestrationEngine() is a pure
 // construction call with no auto-start and NO concept of a not-yet-launched
-// "proposal" a human can review and edit before anything is spent — its only
+// "proposal" a human can review and edit before anything is spent, its only
 // creation entry point, createWorkstream(), immediately materializes a real,
 // ticking-eligible Workstream. A surface's workstream command needs a
 // create -> propose -> approve -> launch flow: render the plan before spending
 // anything, the same shape a plan approval step has.
 //
 // So WorkstreamDraft is FACADE state, held on this module's instance
-// (constructed once, threaded onto the caller's command context) — never a
+// (constructed once, threaded onto the caller's command context), never a
 // module-level ambient global. Durability is facade-owned too: the facade
 // journals every draft to disk through workstream-draft-store.ts (a drafts/
 // subdirectory ALONGSIDE the engine's own workstream snapshots) and reloads
 // them at construction, so a create / reshape / approve done before a restart
 // is still here to launch afterward. The engine gains no draft concept. A
-// journal write that fails degrades to in-memory-only for that one draft —
-// never a crash — and the store never resurrects a launched draft (its snapshot
+// journal write that fails degrades to in-memory-only for that one draft,
+// never a crash, and the store never resurrects a launched draft (its snapshot
 // is removed the moment the engine takes ownership).
 // ---------------------------------------------------------------------------
 
@@ -68,14 +68,14 @@ export interface WorkstreamCommandService {
   proposeDraft(task: string, isolation?: WorkstreamIsolation): Promise<WorkstreamDraft>;
   getDraft(id: string): WorkstreamDraft | undefined;
   listDrafts(): WorkstreamDraft[];
-  /** Re-derive a held draft's spec + decomposition from a new task string. Clears any prior approval — an edit must be re-approved. `isolation` omitted ⇒ keeps the draft's current choice (an edit that only changes the task text must not silently reset isolation back to shared). */
+  /** Re-derive a held draft's spec + decomposition from a new task string. Clears any prior approval, an edit must be re-approved. `isolation` omitted ⇒ keeps the draft's current choice (an edit that only changes the task text must not silently reset isolation back to shared). */
   editDraft(id: string, task: string, isolation?: WorkstreamIsolation): Promise<WorkstreamDraft | undefined>;
   /**
    * Plan-review-gate item edits over a held draft's launchable spec (see
    * workstream-draft-edits.ts). Each returns the updated draft on success,
    * `{ error }` with an honest user-facing reason on a bad reference/argument,
    * or `undefined` when no draft with that id is held. Every successful edit
-   * clears approval — a reshaped plan must be re-approved before launch.
+   * clears approval, a reshaped plan must be re-approved before launch.
    */
   editItem(id: string, itemRef: string, brief: string): WorkstreamDraft | { error: string } | undefined;
   removeItem(id: string, itemRef: string): WorkstreamDraft | { error: string } | undefined;
@@ -171,7 +171,7 @@ function createWorkstreamCommandService(
 
   // The facade's draft journal (workstream-draft-store.ts). Load every persisted
   // proposal at construction so a create/reshape/approve done before a restart
-  // is still here to launch afterward — the plan-review gate survives restart,
+  // is still here to launch afterward, the plan-review gate survives restart,
   // exactly as the live-workstream snapshots do via resumeAllFromDisk().
   // Reclaiming an abandoned draft deletes a plan the user once wrote, so it is
   // never done silently: the store reaps at load and on a throttled save, and
@@ -192,7 +192,7 @@ function createWorkstreamCommandService(
 
   /**
    * Run the decomposition service: it spawns a bounded, read-only planning
-   * agent (which surfaces in the fleet like any agent — kill/steer reach it,
+   * agent (which surfaces in the fleet like any agent, kill/steer reach it,
    * and a kill lands as a 'cancelled' fallback) and validates its structured
    * output, or falls back to the heuristic single-item path on any failure.
    * The returned proposal is engine-agnostic; the launchable `spec` is still
@@ -219,14 +219,14 @@ function createWorkstreamCommandService(
    *    into >1 work item) is assembled by fromPlanProposal into the
    *    REAL multi-item workstream: one engineer→review-phased item per proposal
    *    item, inter-item dependencies preserved as scheduling constraints, and
-   *    workstream-level provenance carried. This is the plan the engine runs —
+   *    workstream-level provenance carried. This is the plan the engine runs,
    *    no flattening.
    *  - A SINGLE-ITEM proposal (the heuristic single-item path, a gate-decline,
    *    or an agent that honestly returned one item) keeps the fromChainSpec
    *    COMPAT path: byte-for-byte the same engineer→review chain
    *    WrfcController.createChain would start. A single item carries no
    *    dependencies and no multi-item structure, so the proposal mapping would
-   *    add nothing — the compat path is the honest, unchanged choice.
+   *    add nothing, the compat path is the honest, unchanged choice.
    *
    * The rendered draft shows THIS spec, so the proposal preview and the launch
    * are always the same plan.
@@ -243,7 +243,7 @@ function createWorkstreamCommandService(
    * Threads the three outcomes straight through: `undefined` (no such draft) so
    * the command layer can print its not-found message, `{ error }`
    * (a bad reference/argument) verbatim, or the mutated draft. A successful edit
-   * clears approval — a reshaped plan must be re-approved before it can launch.
+   * clears approval, a reshaped plan must be re-approved before it can launch.
    */
   function applyItemEdit(
     id: string,
@@ -326,7 +326,7 @@ function createWorkstreamCommandService(
  * below has something to resume) and a plain AgentWorktree(projectRoot) for the
  * (default) `shared`-isolation path. A draft's `isolation: 'worktree'` opts a
  * single workstream into per-item git-worktree isolation
- * (WorktreeIsolationManager, engine-side) instead — the engine, not this facade,
+ * (WorktreeIsolationManager, engine-side) instead, the engine, not this facade,
  * owns that lifecycle.
  */
 export function createWorkstreamServices(deps: WorkstreamServicesDeps): WorkstreamServices {
@@ -343,7 +343,7 @@ export function createWorkstreamServices(deps: WorkstreamServicesDeps): Workstre
   });
   // Honest resume: a prior process's still-in-flight workstreams pick back up
   // (and reappear in the fleet tree) instead of silently vanishing on
-  // restart. Never throws — persistence.ts guards every read/parse and
+  // restart. Never throws, persistence.ts guards every read/parse and
   // quarantines an unrecognized snapshot rather than propagating.
   orchestrationEngine.resumeAllFromDisk();
   const workstreamCommands = createWorkstreamCommandService(

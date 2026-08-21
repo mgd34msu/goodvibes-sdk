@@ -69,12 +69,12 @@ export type {
 // is the narrow `Pick<>` a foundation-clients consumer needs; this is the whole
 // interface a fork that composes its own runtime services owns and constructs.
 // It is the stable public name for what `startHostServices`'s runtimeServices
-// parameter takes — consumers name this alias instead of re-anchoring through
+// parameter takes, consumers name this alias instead of re-anchoring through
 // the positional `Parameters<typeof startHostServices>[3]`.
 export type { RuntimeServices } from './services.js';
 // The OTHER composition shape: what a surface product's interactive loop needs
 // in-process, without the daemon-grade furniture `RuntimeServices` requires.
-// Purely additive — `RuntimeServices` is unchanged and still satisfies the
+// Purely additive, `RuntimeServices` is unchanged and still satisfies the
 // shared part of it (`ClientRuntimeServicesFromHost`).
 export {
   createClientRuntimeServices,

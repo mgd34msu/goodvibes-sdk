@@ -47,7 +47,7 @@ export interface HomeAssistantChatInput {
   readonly tools?: readonly string[] | undefined;
   readonly context?: JsonRecord | undefined;
   /**
-   * Optional grounding reference — the pre-registered home-graph knowledge
+   * Optional grounding reference, the pre-registered home-graph knowledge
    * space / Home Assistant installation this turn should consult. When present
    * (and a home-graph reader is wired), the turn queries that space and folds
    * the retrieved grounding into its system prompt, closing the
@@ -99,7 +99,7 @@ export async function postHomeAssistantChatMessage(
   // surface is a room: anyone within earshot of the speaker can address it, and
   // a voice pipeline reports WHICH device heard something, never who said it.
   // The daemon genuinely cannot establish the owner here, so it does not claim
-  // to — the window stays open and outward effects stay judged on derivation.
+  // to, the window stays open and outward effects stay judged on derivation.
   // Wiring this honestly would need speaker identification, not a flag.
   if (options.wait === false) {
     const messageId = await runtime.chatManager.postMessage(resolution.session.id, formatHomeAssistantUserMessage(input), clientId);
@@ -256,7 +256,7 @@ async function resolveHomeGraphGrounding(
       'Treat this grounding as prior knowledge about the home; still verify live device/entity state through Home Assistant tools before acting on it.',
     ].join('\n');
   } catch {
-    // Grounding is best-effort — an unreachable/empty graph must never break the turn.
+    // Grounding is best-effort, an unreachable/empty graph must never break the turn.
     return undefined;
   }
 }

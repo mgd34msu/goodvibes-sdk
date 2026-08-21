@@ -1,9 +1,9 @@
 /**
- * handoff-mint.ts — the one place a pairing producer mints a link.
+ * handoff-mint.ts, the one place a pairing producer mints a link.
  *
  * Every producer (a `pair` CLI block, a pairing modal's QR, a /qrcode flow)
  * routes through mintPairingHandoff, which mints a fresh per-device token and
- * encodes the canonical `#pair=<token>` deep link from pairing-handoff.ts —
+ * encodes the canonical `#pair=<token>` deep link from pairing-handoff.ts,
  * byte-for-byte the same shape the `pairing.handoff.create` gateway verb's
  * handler produces (mint + buildPairingHandoffLink). No producer encodes a raw
  * JSON connection blob: a camera scan of the QR opens the web app already
@@ -21,7 +21,7 @@ import {
 import { describeOriginPosture, type OriginPosture } from './origin-posture.js';
 import type { MintedPairingToken } from './pairing-token-store.js';
 
-/** The token-minting surface a handoff needs — satisfied by {@link PairingTokenManager}. */
+/** The token-minting surface a handoff needs, satisfied by {@link PairingTokenManager}. */
 export interface PairingTokenMinter {
   mint(input: { readonly name: string }): MintedPairingToken;
 }
@@ -31,10 +31,10 @@ export interface PairingHandoff {
   readonly offers: readonly PairingHandoffOfferKind[];
   /** `#pair=<token>` (with an `offers=` key when offers are present). */
   readonly fragment: string;
-  /** `<webOrigin>/#pair=<token>` — present only when a web origin is known. */
+  /** `<webOrigin>/#pair=<token>`, present only when a web origin is known. */
   readonly deepLink?: string | undefined;
   /**
-   * The honest TLS/capability posture of the web origin the deep link opens —
+   * The honest TLS/capability posture of the web origin the deep link opens,
    * the same field the `pairing.handoff.create` gateway verb carries (both
    * computed by describeOriginPosture). Present only when a web origin
    * is known; a surface renders its one honest LAN line and its labeled
@@ -68,8 +68,8 @@ export function mintPairingHandoff(input: MintPairingHandoffInput): PairingHando
   const deepLink = input.webOrigin
     ? buildPairingHandoffLink({ webOrigin: input.webOrigin, token: token.token, offers: input.offers })
     : undefined;
-  // The posture is described from the SAME web origin the deep link opens — the
-  // identical computation the gateway verb performs — so a locally-minted handoff
+  // The posture is described from the SAME web origin the deep link opens, the
+  // identical computation the gateway verb performs, so a locally-minted handoff
   // carries the same honest posture as one minted over the wire.
   const posture = input.webOrigin ? describeOriginPosture(input.webOrigin) : undefined;
   return { token, offers: input.offers, fragment, ...(deepLink ? { deepLink } : {}), ...(posture ? { posture } : {}) };

@@ -136,7 +136,7 @@ export async function executeFilesQuery(
   // Read-side deny enforcement: a file whose read is currently restricted keeps
   // its PATH in listings (hiding existence would be dishonest) but never has its
   // CONTENT read or returned. Files mode is path-oriented, so restricted entries
-  // are marked, not dropped — except has_content, which cannot be verified
+  // are marked, not dropped, except has_content, which cannot be verified
   // without reading, so restricted entries are excluded from that content query.
   const restrictedPaths = new Set<string>(
     readAccessFilter ? entries.filter((e) => !readAccessFilter(e.path)).map((e) => e.path) : [],

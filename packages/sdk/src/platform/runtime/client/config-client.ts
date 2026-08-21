@@ -1,5 +1,5 @@
 /**
- * config-client.ts — reading and writing the settings the DAEMON owns.
+ * config-client.ts, reading and writing the settings the DAEMON owns.
  *
  * ── The split, and why it is not "all config goes over the wire" ───────────
  *
@@ -25,7 +25,7 @@
  * ── Degrading honestly ─────────────────────────────────────────────────────
  *
  * With no reachable daemon a daemon-owned WRITE fails, loudly, with the
- * refusal reason — it does not fall back to writing the local file. A silent
+ * refusal reason, it does not fall back to writing the local file. A silent
  * local write is the exact failure this split exists to end: it looks like it
  * worked and changes nothing. A daemon-owned READ falls back to the local
  * value, because a stale-but-real number renders better than a blank field and
@@ -43,7 +43,7 @@ export interface DaemonConfigClient {
   ownsKey(key: string): boolean;
   /**
    * Write a daemon-owned key. Rejects (never falls back to a local write) when
-   * no daemon is reachable — a write that configures nothing must not report
+   * no daemon is reachable, a write that configures nothing must not report
    * success.
    */
   set(key: string, value: unknown): Promise<void>;
@@ -56,7 +56,7 @@ export interface DaemonConfigClient {
 /**
  * Walk a dotted config path through a nested snapshot.
  *
- * `config.get` returns the whole RESOLVED config tree — it takes no key. That
+ * `config.get` returns the whole RESOLVED config tree, it takes no key. That
  * is the right shape for the daemon (one read answers a settings view) and the
  * wrong shape for a single-key read, so the walk happens here rather than in
  * every caller that wanted one value.

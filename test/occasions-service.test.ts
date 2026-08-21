@@ -294,7 +294,7 @@ describe('the sweep and the answer', () => {
     const held = await h.service.sweep();
     expect(held.hold).toBe('quiet-hours');
     expect(h.delivered).toHaveLength(0);
-    // Housekeeping still ran — the reap does not depend on being allowed to speak.
+    // Housekeeping still ran, the reap does not depend on being allowed to speak.
     expect(held.housekeeping).not.toBeNull();
 
     h.setNow(Date.parse('2026-03-06T10:00:00Z'));
@@ -553,7 +553,7 @@ describe('what is outstanding, and where it may go', () => {
     expect(outcome.delivered).toBe(false);
     expect(outcome.deliveries).toHaveLength(1);
     expect(outcome.deliveries[0]!.failure).toContain('not accepting messages');
-    // Nothing was stamped, so the nudge is not lost — it is still outstanding.
+    // Nothing was stamped, so the nudge is not lost, it is still outstanding.
     expect((await h.state.openItems())[0]!.agentPushedOn).toBeUndefined();
     expect((await h.service.pending()).nudge).not.toBeNull();
   });

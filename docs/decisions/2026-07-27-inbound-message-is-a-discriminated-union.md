@@ -8,7 +8,7 @@ Status: accepted
 
 `docs/inbound-email.md` §3.4d states that `InboundMailboxMessage`,
 `InboundMailSink`, `MailboxCursorPort`, `InboundMailObserver` and
-`InboundCapabilityVerdict` "are already source-agnostic — only
+`InboundCapabilityVerdict` "are already source-agnostic, only
 `MailboxConnectionPort`, `MailboxReader` and `MailboxWire` are IMAP-shaped."
 
 **That is wrong about `InboundMailboxMessage`, and it was verified wrong by
@@ -28,7 +28,7 @@ export interface InboundMailboxMessage {
 `uidValidity`, `uid` and `ImapEnvelope` are IMAP, all three. A Gmail message
 has a message resource id (an opaque string), a `historyId` (a decimal uint64
 string), and a `GmailMessageBody`. It has no UID and no `UIDVALIDITY`, and
-there is no mailbox in Gmail's sense either — mail is filed under labels and a
+there is no mailbox in Gmail's sense either, mail is filed under labels and a
 plus-addressed alias still lands in the one INBOX.
 
 So the seam does not already exist at the sink. It has to be cut, and how it is
@@ -97,7 +97,7 @@ then be written into a cursor, compared against a real one, and used to decide
 what has already been handled. `source-cursor.ts` discards rather than coerces
 for exactly this reason, and the message shape must not undo that one layer up.
 
-**Widen `InboundMailboxMessage` with optional fields** — `uid?`, `historyId?`.
+**Widen `InboundMailboxMessage` with optional fields**, `uid?`, `historyId?`.
 Rejected for the reason given in `source-cursor.ts`'s header: a record that is
 always half-filled makes "half-filled" and "torn" indistinguishable, and every
 consumer then does its own `if (msg.uid !== undefined)` with its own idea of
@@ -105,7 +105,7 @@ what the other case means. The union makes the exhaustive switch the compiler's
 job.
 
 **Two sinks, one per source.** Rejected: it duplicates expectation matching,
-taint labelling, dedup, notice rendering and disclosure — the exact five things
+taint labelling, dedup, notice rendering and disclosure, the exact five things
 §3.4d exists to write once. The whole value of the seam is that those are
 written against `InboundMessageCommon` and never switch on `source` at all.
 
@@ -143,7 +143,7 @@ written against `InboundMessageCommon` and never switch on `source` at all.
    the compiler can hold it.
 
 5. **`claimedDate` is named for what it is.** It was `envelope.date`. Anything
-   that sorts or windows on it is sorting on a value the sender wrote — the
+   that sorts or windows on it is sorting on a value the sender wrote, the
    defect this round already fixed once in the webui inbox, and the subject of
    `2026-07-27-calendar-start-sort-is-not-the-defect.md`. The name is the
    warning.

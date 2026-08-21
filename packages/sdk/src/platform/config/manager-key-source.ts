@@ -1,5 +1,5 @@
 /**
- * manager-key-source.ts — "where did this value actually come from".
+ * manager-key-source.ts, "where did this value actually come from".
  *
  * Split out of manager.ts (line cap) and worth its own file anyway: the whole
  * daemon-owned-config change exists because nobody could see which store a

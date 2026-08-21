@@ -1,5 +1,5 @@
 /**
- * taint-gate.ts — who may INITIATE a purchase, and who may choose the merchant.
+ * taint-gate.ts, who may INITIATE a purchase, and who may choose the merchant.
  *
  * These are two different questions and the owner ruled them differently. This
  * module used to conflate them, refusing any purchase whose merchant came from
@@ -12,13 +12,13 @@
  *
  * ══ What relaxed, and what did not ════════════════════════════════════════
  *
- * RELAXED — **who chooses the merchant** on a purchase he initiated. "Buy the
+ * RELAXED, **who chooses the merchant** on a purchase he initiated. "Buy the
  * cheapest X you can find" is his instruction; the item and the intent are his,
  * and only the storefront was found on a page. That now proceeds, with the
  * merchant graded by `merchant-recourse.ts` into a veto (silence proceeds) or an
  * approval (silence denies).
  *
- * NOT RELAXED — **who initiates.** Content-initiated purchases are refused
+ * NOT RELAXED, **who initiates.** Content-initiated purchases are refused
  * absolutely. An email or a web page saying "buy X from Y" cannot start a
  * purchase, cannot name a merchant, and cannot set an amount. There is no
  * owner-approval escape hatch, for the same reason this module has always argued
@@ -34,7 +34,7 @@
  * `security/untrusted-content.ts` exposes `evaluateOutwardEffect`, which
  * `email.send` uses. It accepts an `OwnerApproval` and, when one matches the
  * action, returns `allowed: true` FOR TAINTED CONTENT. That escape hatch is
- * right for email — the owner can decide to forward something a stranger wrote —
+ * right for email, the owner can decide to forward something a stranger wrote,
  * and wrong for money. The reliable way to guarantee it cannot fire is to not be
  * on that code path, so this module calls `findContentTaint` directly. A test
  * passes a valid `OwnerApproval` for the same action and asserts a
@@ -42,16 +42,16 @@
  *
  * ══ Which fields are checked ══════════════════════════════════════════════
  *
- * ALWAYS — `item` and `requestedMax`. These come from him or the purchase does
+ * ALWAYS, `item` and `requestedMax`. These come from him or the purchase does
  * not exist. A page that supplies the thing to buy, or the ceiling to buy it
  * under, is initiating a purchase whatever else is true.
  *
- * CONDITIONALLY — `merchant` and `checkoutUrl`. Checked when he NAMED the
+ * CONDITIONALLY, `merchant` and `checkoutUrl`. Checked when he NAMED the
  * merchant, because then it has to be his. Not checked when
  * `merchantDiscovered` is set, because there the storefront came off a page by
- * design, and grading it — not refusing it — is the safeguard.
+ * design, and grading it, not refusing it, is the safeguard.
  *
- * NEVER — the merchant's quoted price, tax, fees and shipping. They are read
+ * NEVER, the merchant's quoted price, tax, fees and shipping. They are read
  * from the merchant by definition; checking them would refuse every purchase and
  * the check would be removed within a release. The BUDGET is their defence: an
  * inflated price hits the daily budget or the per-purchase ceiling and needs an
@@ -67,7 +67,7 @@ import type { UntrustedContentLedger } from '../security/untrusted-content.js';
  * A purchase the OWNER asked for.
  *
  * `merchantDiscovered` says whether the storefront was found while browsing
- * rather than named by him. It lives only on this variant — a content-origin
+ * rather than named by him. It lives only on this variant, a content-origin
  * intent never reaches the point of choosing a merchant.
  */
 export interface OwnerOriginIntent {
@@ -80,7 +80,7 @@ export interface OwnerOriginIntent {
 }
 
 /**
- * A purchase something else asked for — a page, an email, a channel message.
+ * A purchase something else asked for, a page, an email, a channel message.
  *
  * Deliberately has no `merchantDiscovered` field. Every intent of this shape is
  * refused, so it never gets to choose anything.
@@ -111,7 +111,7 @@ export interface PaymentTaintDecision {
 export function describeContentInitiatedRefusal(): string {
   return (
     'Refused: nothing you said started this purchase. It came from content that arrived '
-    + 'from outside — a page, a message, or a mailbox — and content from outside cannot decide '
+    + 'from outside, a page, a message, or a mailbox, and content from outside cannot decide '
     + 'that money moves, however reasonable it looks. If you want this, ask me for it yourself '
     + 'and I will find it and price it against your budget.'
   );
@@ -120,7 +120,7 @@ export function describeContentInitiatedRefusal(): string {
 /**
  * Evaluate a payment intent against the untrusted content read this turn.
  *
- * `ledger` is the process-wide untrusted-content ledger — the same one the
+ * `ledger` is the process-wide untrusted-content ledger, the same one the
  * browser's page reads and the mail surface's body reads both record into, so
  * "read a stranger's page, then buy something" is visible here as one act.
  */
@@ -141,8 +141,8 @@ export function evaluatePaymentTaint(input: {
   const intent = input.intent;
   const sources = input.ledger.taintSourcesThisTurn();
 
-  // What must be his, always. A page supplying the thing to buy — or the
-  // ceiling to buy it under — is initiating a purchase whatever else is true.
+  // What must be his, always. A page supplying the thing to buy, or the
+  // ceiling to buy it under, is initiating a purchase whatever else is true.
   const fields: Record<string, string | undefined> = {
     item: intent.item,
     requestedMax: intent.requestedMax,
@@ -155,7 +155,7 @@ export function evaluatePaymentTaint(input: {
   if (!intent.merchantDiscovered) {
     fields['merchant'] = intent.merchant;
     fields['checkoutUrl'] = intent.checkoutUrl;
-    // Short, high-signal fields whose entire value is the payload — length
+    // Short, high-signal fields whose entire value is the payload, length
     // thresholds are the wrong instrument, so both are tested by containment.
     exactMatchFields.push('merchant', 'checkoutUrl');
   }

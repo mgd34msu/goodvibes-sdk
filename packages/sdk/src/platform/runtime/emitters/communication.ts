@@ -1,5 +1,5 @@
 /**
- * Communication emitters — typed emission wrappers for communication domain.
+ * Communication emitters, typed emission wrappers for communication domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';
@@ -38,7 +38,7 @@ export function emitCommunicationDelivered(
 }
 
 /**
- * The honest "consumed at boundary" signal — emitted once, at the drain
+ * The honest "consumed at boundary" signal, emitted once, at the drain
  * site (orchestrator-runner.ts), the turn a queued message is actually
  * injected into the target agent's conversation. Never repurpose
  * `emitCommunicationDelivered` for this: it fires eagerly at send() time.

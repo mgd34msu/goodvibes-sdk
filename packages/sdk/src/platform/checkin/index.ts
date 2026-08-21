@@ -1,5 +1,5 @@
 /**
- * checkin/ — the proactive check-in (the "heartbeat initiative").
+ * checkin/, the proactive check-in (the "heartbeat initiative").
  *
  * On a configured cadence the platform assembles a compact briefing of current
  * state and the model judges whether anything warrants contacting the user; if

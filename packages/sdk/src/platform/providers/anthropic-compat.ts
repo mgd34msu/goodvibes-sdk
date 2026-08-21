@@ -87,7 +87,7 @@ export interface AnthropicCompatOptions {
 }
 
 /**
- * AnthropicCompatProvider — generic provider for endpoints that speak the
+ * AnthropicCompatProvider, generic provider for endpoints that speak the
  * Anthropic Messages API (SSE streaming variant). Useful for self-hosted
  * proxies, Claude-compatible services, and any backend that follows the
  * Anthropic Messages API spec.
@@ -181,13 +181,13 @@ export class AnthropicCompatProvider implements LLMProvider {
       ? `set ${this.authEnvVars.join(' or ')}, or store a key for "${this.name}"`
       : `configure credentials for "${this.name}"`;
     throw new ProviderError(
-      `Provider "${this.name}" has no API key configured — the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
+      `Provider "${this.name}" has no API key configured, the request for model "${model ?? this.defaultModel}" was not sent. To use this provider, ${keyHint}.`,
     );
   }
 
   /**
    * Re-check this backend's live model listing (Anthropic-style GET
-   * {baseURL}/models). Always resolves — falls back to the on-disk cache,
+   * {baseURL}/models). Always resolves, falls back to the on-disk cache,
    * then the dated-static baseline, with the honest failure reason; never
    * blanks the model list. When the backend has no listing API
    * (`modelListing: 'none'`, verified per provider), reports the
@@ -219,7 +219,7 @@ export class AnthropicCompatProvider implements LLMProvider {
       } else {
         // Listing endpoints on mixed-surface backends (e.g. a listing that
         // lives on the backend's OpenAI-style surface) may expect bearer
-        // auth; send both — servers ignore the header they don't use.
+        // auth; send both, servers ignore the header they don't use.
         headers['x-api-key'] = this.apiKey;
         headers['Authorization'] = `Bearer ${this.apiKey}`;
       }

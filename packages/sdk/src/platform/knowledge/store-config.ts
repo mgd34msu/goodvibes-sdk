@@ -11,7 +11,7 @@ export const GOODVIBES_AGENT_KNOWLEDGE_DB_FILE = 'knowledge-agent.sqlite';
 /**
  * The three physically separate knowledge families. There is one KnowledgeStore
  * class and one schema; the wall between the general wiki, the home-graph, and the
- * agent personal-ops knowledge is held by construction — separate SQLite files
+ * agent personal-ops knowledge is held by construction, separate SQLite files
  * opened by separate store instances. When a caller declares which family it is
  * constructing, the store asserts the resolved file name matches that family so a
  * mis-wired construction site fails loudly instead of silently sharing a file.
@@ -30,7 +30,7 @@ export interface KnowledgeStoreConfig {
   /**
    * The knowledge family this store belongs to. When provided, the resolved db
    * file name must match {@link KNOWLEDGE_FAMILY_DB_FILE} for that family, or
-   * construction throws — the cheap guard that turns a silent cross-family
+   * construction throws, the cheap guard that turns a silent cross-family
    * mis-wire into a loud failure.
    */
   readonly family?: KnowledgeStoreFamily | undefined;
@@ -50,8 +50,8 @@ export interface KnowledgeStoreConfig {
 /**
  * Default auto-accept threshold. Chosen just below the lowest confidence the
  * existing synthesis producers emit (deterministic facts at 45, deterministic
- * wiki pages at 55) so those flows keep activating — now with honest,
- * numeric provenance rather than silently — while genuinely low-confidence
+ * wiki pages at 55) so those flows keep activating, now with honest,
+ * numeric provenance rather than silently, while genuinely low-confidence
  * synthesized content (below 40) is held as 'draft' for review. The mechanism is
  * the deliverable; consumers raise this threshold to hold more for review.
  */
@@ -71,7 +71,7 @@ export function resolveKnowledgeDbPath(config: KnowledgeStoreConfig): string {
     if (actual !== expected) {
       throw new Error(
         `KnowledgeStore family mismatch: constructed for '${config.family}' (expected file '${expected}') but resolved db file is '${actual}'. `
-        + 'This guards the wall between the wiki, home-graph, and agent knowledge families — the construction site is wired to the wrong file.',
+        + 'This guards the wall between the wiki, home-graph, and agent knowledge families, the construction site is wired to the wrong file.',
       );
     }
   }

@@ -5,7 +5,7 @@
  * session: it resolves WHO the sender is (a named principal, via the principal
  * registry) and WHICH profile the originating channel binds (model/permission
  * defaults, via the channel-profile registry), and packages both into the two
- * things the origination path needs — session metadata (attribution) and spawn
+ * things the origination path needs, session metadata (attribution) and spawn
  * overrides (model/provider) plus the permission posture.
  *
  * These are pure functions over the two registries so intake adopts them with a
@@ -35,7 +35,7 @@ export const CHANNEL_PROFILE_PROVIDER_KEY = 'channelProfileProvider';
 export const CHANNEL_PROFILE_PERMISSION_MODE_KEY = 'channelProfilePermissionMode';
 
 export interface InboundSender {
-  /** The surface the message arrived on (e.g. 'slack') — used as the identity channel. */
+  /** The surface the message arrived on (e.g. 'slack'), used as the identity channel. */
   readonly surfaceKind: string;
   /** The sender's channel-specific id (a Slack user id, an address, a number). */
   readonly userId?: string | undefined;
@@ -46,13 +46,13 @@ export interface InboundSender {
 /**
  * Resolve the sending principal for an inbound message and produce the session
  * metadata that attributes the originated session to it. An absent userId or an
- * unmapped identity attributes to the honest unknown principal (known:false) —
+ * unmapped identity attributes to the honest unknown principal (known:false),
  * never a guess.
  *
  * `channelPolicy`, when supplied, is the one exception to "never a guess": a
  * sender who is not in the named-principal registry but whom the channel's OWN
  * ingress policy already authorized as its owner (the per-surface allowlist
- * self-seeded from whoever pairs the channel first — see
+ * self-seeded from whoever pairs the channel first, see
  * `ChannelPolicyManager.evaluateIngress`) is attributed to the honest OWNER
  * principal, not the unknown one. Channel policy already decided this sender is
  * the owner in order to let the message through at all; attribution repeating
@@ -107,7 +107,7 @@ export async function resolveOriginationProfile(
 
 /**
  * Merge a channel profile's model/provider into a spawn input WITHOUT overriding
- * values the caller already set explicitly — a channel default fills a gap, it
+ * values the caller already set explicitly, a channel default fills a gap, it
  * never overrules an intent the intake path expressed. Returns a new object.
  */
 export function applyChannelProfileToSpawn<T extends { model?: string; provider?: string }>(

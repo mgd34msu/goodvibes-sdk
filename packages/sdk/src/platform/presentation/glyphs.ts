@@ -1,5 +1,5 @@
 /**
- * glyphs.ts — the canonical glyph registry for status/frame/navigation/meter
+ * glyphs.ts, the canonical glyph registry for status/frame/navigation/meter
  * rendering, hoisted from `goodvibes-tui` src/renderer/ui-primitives.ts (GLYPHS)
  * and src/renderer/status-glyphs.ts (STATE_GLYPHS).
  *
@@ -10,16 +10,16 @@
  * the one both renderers converge on.
  *
  * Reconciliation (the one real content choice this hoist makes): the TUI and
- * agent status groups disagreed —
+ * agent status groups disagreed,
  *   - TUI:   idle = '◌' (U+25CC), info = '○' (U+25CB), warn = '⚠' present
  *   - agent: idle = '○' (U+25CB), info = '•' (U+2022), no `warn` key
  * GLYPHS.status below is the TUI's values verbatim. Consumers that previously
  * carried the agent's values will see idle/info visibly change when they adopt
- * this module — an intentional convergence, not a regression (see the decision
+ * this module, an intentional convergence, not a regression (see the decision
  * record's divergence ruling).
  */
 
-/** The full glyph registry — frame/surface/navigation/status/meter groups. */
+/** The full glyph registry, frame/surface/navigation/status/meter groups. */
 export const GLYPHS = {
   frame: {
     topLeft: '┌',
@@ -83,7 +83,7 @@ export const GLYPHS = {
 export type StatusState = 'good' | 'warn' | 'bad' | 'info';
 
 /**
- * STATE_GLYPHS — the 4-state semantic alias map, aliased to GLYPHS.status (the
+ * STATE_GLYPHS, the 4-state semantic alias map, aliased to GLYPHS.status (the
  * TUI's mechanism). The agent's twin (status-glyphs.ts) hardcoded its own
  * literals ('✓'/'⚠'/'✕'/'○') instead of aliasing a shared registry; hoisting
  * the TUI's alias pattern here means there is exactly one place these four

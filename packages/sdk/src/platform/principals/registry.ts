@@ -2,14 +2,14 @@
  * principals/registry.ts
  *
  * The principal identity registry: the CRUD gateway backing store plus the one
- * operation channel intake actually depends on — resolveByIdentity, which turns
+ * operation channel intake actually depends on, resolveByIdentity, which turns
  * a channel-specific sender identity into the named principal it belongs to (or
  * the honest unknown principal when nothing maps).
  *
  * Identity uniqueness is a hard invariant: a given {channel, value} identity
  * belongs to at most one principal. create/update refuse (CONFLICT) to attach an
  * identity already claimed by a different principal rather than silently moving
- * it — reattaching an identity must be a deliberate delete-then-recreate.
+ * it, reattaching an identity must be a deliberate delete-then-recreate.
  */
 import { randomUUID } from 'node:crypto';
 import { StoreWriteQueue } from '../state/store-write-queue.js';
@@ -90,7 +90,7 @@ export class PrincipalRegistry {
    * ORDER, and `records` is one live array every method mutates in place, so two
    * gateway calls in flight at once finished in whatever order their renames
    * landed. Unordered, a `create` could land after the `delete` that followed
-   * it — and a principal is the thing channel intake resolves a sender identity
+   * it, and a principal is the thing channel intake resolves a sender identity
    * against, so a deleted principal back on disk is a person whose messages are
    * still attributed to a named identity after they were unmapped.
    *
@@ -199,7 +199,7 @@ export class PrincipalRegistry {
 
   /**
    * Resolve a channel-specific sender identity to its named principal. An
-   * unmapped identity resolves to the unknown principal with known:false — the
+   * unmapped identity resolves to the unknown principal with known:false, the
    * registry never guesses.
    */
   async resolveByIdentity(identity: PrincipalIdentity): Promise<PrincipalResolution> {

@@ -1,5 +1,5 @@
 /**
- * windows.ts — the approval gate and the veto window.
+ * windows.ts, the approval gate and the veto window.
  *
  * ══ READ THIS BEFORE UNIFYING THEM ════════════════════════════════════════
  *
@@ -19,12 +19,12 @@
  * They answer different questions. The approval asks *may this happen at all*,
  * and an unanswered question about money above the limit must resolve to no. The
  * veto announces *this is about to happen*, and an unanswered announcement about
- * money inside a limit he already set must resolve to yes — otherwise the limit
+ * money inside a limit he already set must resolve to yes, otherwise the limit
  * does nothing and every purchase is an approval.
  *
  * Collapsing them means picking one silence rule for both. Either every
  * above-budget purchase starts going through unattended, or every in-budget one
- * stalls waiting for a human — and the second gets "fixed" by flipping the
+ * stalls waiting for a human, and the second gets "fixed" by flipping the
  * default, which produces the first.
  *
  * The duplication below is load-bearing. There is deliberately no shared
@@ -33,7 +33,7 @@
  * ══ Presence is not attention ═════════════════════════════════════════════
  *
  * The window runs its full configured duration regardless of where he is. No
- * presence, focus, idle or activity signal shortens, skips or extends it — the
+ * presence, focus, idle or activity signal shortens, skips or extends it, the
  * deadline is a function of the start instant and the configured duration and
  * nothing else. Owner's reasoning:
  *
@@ -129,7 +129,7 @@ export function isTerminalVeto(state: VetoState): boolean {
   return state !== 'pending-dispatch' && state !== 'open';
 }
 
-/** The deadline. A pure function of the start and the duration — nothing else. */
+/** The deadline. A pure function of the start and the duration, nothing else. */
 export function windowDeadlineMs(startedAtMs: number, minutes: number): number {
   return startedAtMs + Math.max(0, minutes) * 60_000;
 }
@@ -278,6 +278,6 @@ export function recoverInterruptedWindow(input: {
     outcome: 'expiry-stands',
     backfillChannels: delivered.map((entry) => entry.channel),
     reopenChannels: [],
-    reason: 'He was notified and the window elapsed. Backfill first, then settle — but do not ask him twice.',
+    reason: 'He was notified and the window elapsed. Backfill first, then settle, but do not ask him twice.',
   };
 }

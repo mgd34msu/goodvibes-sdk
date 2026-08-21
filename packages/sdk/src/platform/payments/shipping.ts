@@ -1,9 +1,9 @@
 /**
- * shipping.ts — the tier preference, and the ladder that steps down one rung.
+ * shipping.ts, the tier preference, and the ladder that steps down one rung.
  *
  * The preference is ORDINAL against what the checkout actually offers, not
  * against delivery-day promises. Merchants describe delivery in incomparable
- * ways — "2-day", "express", "by Tuesday" — and a rule written against those
+ * ways, "2-day", "express", "by Tuesday", and a rule written against those
  * words breaks on the next merchant. Ranking the offered options cheapest-first
  * and indexing into that ranking works everywhere and is honest about what it
  * is doing.
@@ -19,7 +19,7 @@
  * one-rung rule gets him $9 delivery and the shortcut gets him $5 delivery he
  * did not ask for.
  *
- * A step-down needs no approval — it is within budget by construction — but it
+ * A step-down needs no approval, it is within budget by construction, but it
  * IS recorded and surfaced, because he must not learn about it from a late
  * package.
  *
@@ -73,7 +73,7 @@ export interface ShippingLadderResult {
  *
  * `budgetForOverage` is what the overage pool can still cover; `fixedUnavoidable`
  * is tax plus mandatory fees, which no amount of stepping down can reduce.
- * Returns null when nothing fits even at the cheastest rung — the caller then
+ * Returns null when nothing fits even at the cheastest rung, the caller then
  * either draws on the tolerance pool or refuses, per the decision order.
  */
 export function walkShippingLadder(input: {

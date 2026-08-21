@@ -1,5 +1,5 @@
 /**
- * schema-domain-update.ts — the daemon self-update config domain.
+ * schema-domain-update.ts, the daemon self-update config domain.
  *
  * The daemon checks for a new release hourly, downloads and
  * checksum-verifies it, swaps binaries at a no-active-work moment (never

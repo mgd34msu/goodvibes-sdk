@@ -1,13 +1,13 @@
 /**
- * schema-domain-features.ts — config domains for runtime features whose
+ * schema-domain-features.ts, config domains for runtime features whose
  * meaningful tuning knobs were previously constructor- or tool-call-only:
  * fetch sanitization, the token audit, integration delivery, policy bundles,
  * and agent context/injection tuning. Defaults equal the values those features
  * hardcoded before promotion, so a fresh config reproduces prior behaviour;
  * constructor/per-call params still override.
  *
- * These five sections are top-level config domains, so — like the worktree
- * domain in schema-domain-runtime.ts — they augment GoodVibesConfig via
+ * These five sections are top-level config domains, so, like the worktree
+ * domain in schema-domain-runtime.ts, they augment GoodVibesConfig via
  * `declare module` here (co-located with their defaults) instead of editing
  * schema-types.ts. Registering the domain is what keeps get('fetch.*') etc. from
  * throwing "section 'fetch' does not exist"; the scalar keys additionally appear
@@ -83,7 +83,7 @@ export interface AgentsConfig {
   contextCompactThreshold: number;
   /** Default per-agent turn budget (hard cap on turns before a run is a max-turns failure). */
   maxTurns: number;
-  /** Upper bound a per-spawn maxTurns override cannot exceed — the policy cap always wins. */
+  /** Upper bound a per-spawn maxTurns override cannot exceed, the policy cap always wins. */
   maxTurnsCap: number;
 }
 

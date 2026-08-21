@@ -38,7 +38,7 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
     // runtime.ts) so this exercises the plain foreground path specifically;
     // the progress-streamed path (timeout_ms above the threshold, which is
     // what the exec tool's own 120s DEFAULT timeout always triggers) is
-    // covered separately below — both are wired for opts.signal. Only
+    // covered separately below, both are wired for opts.signal. Only
     // `until`-pattern commands (runUntil) are explicitly deferred, see the
     // WO report.
     const resultPromise = tool.execute(
@@ -52,7 +52,7 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
     const elapsedMs = Date.now() - start;
 
     // If the signal had NOT reached Bun.spawn's child process, this would
-    // block for the full 30s sleep (or the 120s default global timeout) —
+    // block for the full 30s sleep (or the 120s default global timeout),
     // bun:test's own per-test timeout would fail this test long before a
     // false pass could sneak through.
     expect(elapsedMs).toBeLessThan(5_000);
@@ -106,12 +106,12 @@ describe('exec tool — AbortSignal reaches the spawned child process', () => {
     const controller = new AbortController();
 
     const start = Date.now();
-    // No explicit timeout_ms — this is the real-world default shape, and
+    // No explicit timeout_ms, this is the real-world default shape, and
     // the exec tool's own 120s DEFAULT_TIMEOUT_MS exceeds
     // PROGRESS_AUTO_THRESHOLD_MS (30s), so it auto-engages
     // runCommandWithProgress. Before this WO wired that path too, a
     // cancellation here would silently do nothing until the full 120s
-    // default elapsed — exactly the orphaned-child-process gap the brief
+    // default elapsed, exactly the orphaned-child-process gap the brief
     // calls out.
     const resultPromise = tool.execute(
       { working_dir: root, commands: [{ cmd: 'sleep 60' }] },

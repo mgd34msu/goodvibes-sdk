@@ -1,5 +1,5 @@
 /**
- * memory-transport.ts — an in-process stand-in for the multicast socket.
+ * memory-transport.ts, an in-process stand-in for the multicast socket.
  *
  * Exported rather than kept in a test file because both consumer repositories
  * need it: a composition that wires the election has to be able to prove its

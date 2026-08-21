@@ -49,7 +49,7 @@ describe('readCompilerOutput', () => {
     // containing "TS" or "error" gets switched off, which fails the same way a
     // blind gate does. api-extractor.json is full of lines like the first one.
     const benign = [
-      '// TS2307: Cannot find module — suppressed for optional peer deps.',
+      '// TS2307: Cannot find module, suppressed for optional peer deps.',
       '"TS2307": { "logLevel": "none" },',
       'error handling is described in docs/errors.md',
       'Found 0 errors.',

@@ -4,13 +4,13 @@
  * A credential the daemon executes with has exactly ONE home, and neither an
  * undeclared config path nor an explicit scope argument may move it.
  *
- * Two defects sat behind this file, and they compose into the same symptom —
+ * Two defects sat behind this file, and they compose into the same symptom,
  * a password that reports success and does nothing:
  *
  *  1. The daemon-owned SECRET set is derived by walking the ENUMERATED
  *     daemon-owned config paths, not by prefix. `surfaces.` has always been a
  *     daemon-owned prefix, so `isDaemonOwnedConfigKey('surfaces.email.password')`
- *     answered true — but nothing enumerated that path, so no daemon-owned
+ *     answered true, but nothing enumerated that path, so no daemon-owned
  *     credential was derived from it and `GOODVIBES_SURFACES_EMAIL_PASSWORD`
  *     was filed in whichever client store the operator happened to be sitting
  *     in. The daemon reads none of those.
@@ -126,8 +126,8 @@ describe('an explicit scope cannot move a daemon-owned credential', () => {
   test('an undeclared path derives no daemon-owned credential, which is what defect 1 was', () => {
     // The guard against "fix the symptom by special-casing the name": routing
     // follows the DECLARATION, so a path nobody declares still routes nowhere
-    // special. That is the mechanism, and it is why declaring the paths — not
-    // patching the key list — was the fix.
+    // special. That is the mechanism, and it is why declaring the paths, not
+    // patching the key list, was the fix.
     const undeclared = daemonSecretKeyFor('surfaces.email.notARealSetting');
     expect(isDaemonOwnedSecretKey(undeclared)).toBe(false);
     expect(resolveSecretWriteScope(undeclared, 'user')).toBe('user');
@@ -140,14 +140,14 @@ describe('an explicit scope cannot move a daemon-owned credential', () => {
 
 /**
  * The predicate tests above prove the RULE. These prove the store obeys it,
- * and — just as importantly — that obeying it does not break the callers that
+ * and, just as importantly, that obeying it does not break the callers that
  * were already passing an explicit scope.
  *
  * The onboarding wizard is the concrete caller: it writes
  * `GOODVIBES_SURFACES_SLACK_BOT_TOKEN` with `scope: 'project'` and then reads
  * it straight back to verify. That read must still find the value after the
  * write is relocated to the daemon tier, or fixing the storage bug would break
- * first-run setup — a strictly worse outcome than the bug.
+ * first-run setup, a strictly worse outcome than the bug.
  */
 describe('the real SecretsManager', () => {
   function makeManager(): { manager: SecretsManager; root: string } {

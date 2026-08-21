@@ -1,5 +1,5 @@
 /**
- * Fleet emitters — typed wrappers for the FleetEvent domain.
+ * Fleet emitters, typed wrappers for the FleetEvent domain.
  *
  * Used by the fleet emit-bridge (runtime/fleet/emit-bridge.ts) to surface
  * process-registry lifecycle deltas onto the runtime event bus `fleet` domain,

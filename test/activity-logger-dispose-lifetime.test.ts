@@ -3,7 +3,7 @@
  *
  * Found by counting temp directories, not by reading the code. A tui test
  * process deletes its temp tree at teardown and the tree came back, holding
- * `workspace/.goodvibes/logs/activity.md` — written AFTER the delete. The
+ * `workspace/.goodvibes/logs/activity.md`, written AFTER the delete. The
  * mechanism is in this file's own doc comment: a flush whose destination has
  * vanished RECREATES it and retries. That behaviour is correct for a live
  * logger whose directory was moved underneath it, and it is what made a
@@ -12,7 +12,7 @@
  * Two distinct holes, both driven below:
  *   - `dispose()` flushed through the recreating path, so disposal itself
  *     could rebuild the destination;
- *   - `dispose()` cleared the timer but left the logger armed — the next
+ *   - `dispose()` cleared the timer but left the logger armed, the next
  *     `info()` re-buffered, re-scheduled a flush, and wrote again.
  *
  * The live-recreate behaviour is deliberate and is asserted here too, so a fix
@@ -67,7 +67,7 @@ describe('dispose() is final', () => {
       logger.dispose();
       rmSync(root, { recursive: true, force: true });
 
-      // A component that outlives its logger — the case that produced the
+      // A component that outlives its logger, the case that produced the
       // observed leak.
       logger.info('after dispose');
       logger.warn('after dispose');

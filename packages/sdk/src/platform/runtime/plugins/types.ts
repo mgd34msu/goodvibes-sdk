@@ -56,7 +56,7 @@ export const HIGH_RISK_CAPABILITIES: ReadonlyArray<PluginCapability> = [
  * Capability manifest embedded in (or derived from) a plugin's manifest.json.
  *
  * `requested` lists every capability the plugin declares it needs.
- * `granted` is resolved by the runtime after validation — it may be a strict
+ * `granted` is resolved by the runtime after validation, it may be a strict
  * subset of `requested` if some capabilities are denied by policy.
  */
 export interface PluginCapabilityManifest {
@@ -141,7 +141,7 @@ export interface PluginHealthCheckResult {
 // ── Runtime plugin record ─────────────────────────────────────────────────────
 
 /**
- * PluginLifecycleRecord — full runtime record for a plugin tracked by the
+ * PluginLifecycleRecord, full runtime record for a plugin tracked by the
  * PluginLifecycleManager. Extends the basic RuntimePlugin from the store
  * domain with the capability manifest and transition history.
  */

@@ -14,8 +14,8 @@
  *  - `processTelegramUpdate` driven against a REAL broker whose route binding
  *    names a closed session answers with queued work and a reply, not a throw.
  *    This is the drop that must no longer happen.
- *  - a supervisor whose processing DOES fail — for anything else, since nobody
- *    predicted the first one either — still advances its cursor, but now goes
+ *  - a supervisor whose processing DOES fail, for anything else, since nobody
+ *    predicted the first one either, still advances its cursor, but now goes
  *    degraded and reaches the owner, and clears both when the next update lands.
  */
 
@@ -47,7 +47,7 @@ async function waitFor(predicate: () => boolean, label: string, ceilingMs = 10_0
 }
 
 // ---------------------------------------------------------------------------
-// Half one — the adapter over a real broker
+// Half one, the adapter over a real broker
 // ---------------------------------------------------------------------------
 
 describe('an inbound Telegram message whose bound session is closed is answered, not dropped', () => {
@@ -128,7 +128,7 @@ describe('an inbound Telegram message whose bound session is closed is answered,
 });
 
 // ---------------------------------------------------------------------------
-// Half two — the poller when processing fails for some OTHER reason
+// Half two, the poller when processing fails for some OTHER reason
 // ---------------------------------------------------------------------------
 
 interface ApiCall { readonly method: string; readonly body: Record<string, unknown>; }
@@ -209,7 +209,7 @@ describe('a skipped update advances the cursor LOUDLY', () => {
       };
 
       // The failing update is delivered immediately. The recovering one is held
-      // back until the test has observed the degraded state — otherwise the two
+      // back until the test has observed the degraded state, otherwise the two
       // race, and a green run would prove only that the poller is fast.
       let releaseSecond = false;
       telegram.queue('getUpdates', okResult([textUpdate(882095266, 'first')]));
@@ -252,7 +252,7 @@ describe('a skipped update advances the cursor LOUDLY', () => {
         await supervisor.start();
 
         await waitFor(() => alerts.length > 0, 'the owner to be alerted about a skipped message');
-        // The reason travels with it — this is the thing the warn line buried.
+        // The reason travels with it, this is the thing the warn line buried.
         expect(alerts[0]).toContain('could not be processed');
         expect(alerts[0]).toContain('the store rejected the write');
         expect(alarm.failure('telegram')?.count).toBe(1);
@@ -268,7 +268,7 @@ describe('a skipped update advances the cursor LOUDLY', () => {
           runtime: observeTelegramRuntime(degraded),
         })).toBe('degraded');
 
-        // The cursor still advanced — a poison update must not wedge the channel.
+        // The cursor still advanced, a poison update must not wedge the channel.
         releaseSecond = true;
         await waitFor(() => processed.length > 0, 'the next update to be processed');
         expect(processed).toEqual(['second']);

@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/multimodal
+ * Coverage-gap smoke test, platform/multimodal
  * Instantiates MultimodalService with minimal stub dependencies and
  * invokes getStatus() and listProviders() to assert observable return shapes.
  * Closes coverage gap: platform/multimodal
@@ -8,26 +8,26 @@
 import { describe, expect, test } from 'bun:test';
 import { MultimodalService } from '../packages/sdk/src/platform/multimodal/service.js';
 
-/** Minimal stub for MediaProviderRegistry — returns empty provider list. */
+/** Minimal stub for MediaProviderRegistry, returns empty provider list. */
 function makeMediaProviders() {
   return {
     status: async () => [],
   };
 }
 
-/** Minimal stub for VoiceService — returns status with empty providers. */
+/** Minimal stub for VoiceService, returns status with empty providers. */
 function makeVoiceService() {
   return {
     getStatus: async (_detail?: boolean) => ({ providers: [] }),
   };
 }
 
-/** Minimal stub for ArtifactStore — not used by getStatus/listProviders. */
+/** Minimal stub for ArtifactStore, not used by getStatus/listProviders. */
 function makeArtifactStore() {
   return {};
 }
 
-/** Minimal stub for KnowledgeService — not used by getStatus/listProviders. */
+/** Minimal stub for KnowledgeService, not used by getStatus/listProviders. */
 function makeKnowledgeService() {
   return {};
 }

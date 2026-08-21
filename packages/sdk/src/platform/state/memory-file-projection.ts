@@ -1,17 +1,17 @@
 /**
- * memory-file-projection.ts — standing memory records as GIT-BACKED markdown
+ * memory-file-projection.ts, standing memory records as GIT-BACKED markdown
  * files that ROUND-TRIP through the confirmation-gated mutation path.
  *
  * The platform's memory should be inspectable and correctable as files. This
  * module projects standing (project/team-scope) MemoryRecords to one markdown
- * file per record under a git-backed directory, and reads user edits BACK — but
+ * file per record under a git-backed directory, and reads user edits BACK, but
  * never as a silent write to the store. A user edit or deletion becomes a
  * PROPOSAL (a review-queue entry); the store is mutated only for proposals the
  * caller explicitly confirms, through the registry's own update/delete. The disk
  * file is a correction surface, not a second source of truth.
  *
  * Temporal validity (validFrom/validUntil) is projected into each file's
- * front-matter and its live status is labelled — an expired record is shown as
+ * front-matter and its live status is labelled, an expired record is shown as
  * `status: expired`, not silently dropped from the projection.
  */
 
@@ -21,7 +21,7 @@ import { join } from 'node:path';
 import type { MemoryClass, MemoryRecord, MemoryScope, MemoryTemporalStatus } from './memory-store.js';
 import { memoryRecordTemporalStatus } from './memory-store.js';
 
-/** Scopes eligible for the file projection — standing memory only (not per-session). */
+/** Scopes eligible for the file projection, standing memory only (not per-session). */
 const DEFAULT_PROJECTION_SCOPES: readonly MemoryScope[] = ['project', 'team'];
 
 export interface MemoryProjectionOptions {
@@ -32,8 +32,8 @@ export interface MemoryProjectionOptions {
 /**
  * Optional git seam: durably commit the projected files. Injectable for tests.
  *
- * The projection only ever commits to a repository it OWNS — one whose
- * toplevel is the projection directory itself — never a repository the
+ * The projection only ever commits to a repository it OWNS, one whose
+ * toplevel is the projection directory itself, never a repository the
  * directory merely sits inside. `projectMemoryToFiles` enforces that policy:
  * it resolves the enclosing toplevel first, and when the directory is not its
  * own repository root (nested in a foreign checkout, or not in any repository
@@ -194,7 +194,7 @@ export function projectMemoryToFiles(
     // Ownership gate: the projection only ever commits to a repository whose
     // toplevel IS the projection directory. A directory nested inside some
     // other checkout (or in no repository at all) gets its own repository
-    // initialized first — committing into an enclosing repository would
+    // initialized first, committing into an enclosing repository would
     // pollute a checkout the projection merely sits inside.
     const toplevel = options.git.resolveToplevel(dir);
     if (toplevel === null || !samePath(toplevel, dir)) {
@@ -249,14 +249,14 @@ export function parseProjectedMemoryFile(path: string, content: string): MemoryP
 
 /**
  * One entry in the LIVE memory projection (computed from the store's standing
- * records, not read from disk) — the shape the memory.projections.* wire verbs
+ * records, not read from disk), the shape the memory.projections.* wire verbs
  * expose. `status` is the record's live temporal status (active / expired /
  * pending), so an expired record is visibly labelled rather than silently
  * dropped, exactly as the file projection labels it.
  */
 export interface MemoryProjectionEntry {
   readonly id: string;
-  /** The `<id>.md` filename the file projection would use — a stable per-record handle. */
+  /** The `<id>.md` filename the file projection would use, a stable per-record handle. */
   readonly filename: string;
   readonly scope: MemoryScope;
   readonly cls: MemoryClass;
@@ -286,7 +286,7 @@ function toProjectionEntry(record: MemoryRecord, now: number): MemoryProjectionE
 }
 
 /**
- * The live projection of standing (project/team) memory records — one metadata
+ * The live projection of standing (project/team) memory records, one metadata
  * entry per record, oldest first. Does not touch disk. Session-scope records are
  * excluded (they are not standing memory), matching the file projection's own
  * scope selection.
@@ -332,7 +332,7 @@ export function readProjectedMemoryFiles(dir: string): MemoryProjectionFile[] {
 export type MemoryProjectionProposalKind = 'update' | 'delete';
 
 /**
- * A proposed change from the projection round-trip — a review-queue entry, NOT a
+ * A proposed change from the projection round-trip, a review-queue entry, NOT a
  * write. The caller confirms (or not) each entry; only confirmed entries mutate
  * the store, through the registry's own update/delete.
  */
@@ -362,7 +362,7 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
 
 /**
  * Diff the current record set against the projected files and produce proposals.
- * PURE — no I/O. An edited file whose fields differ from its record yields an
+ * PURE, no I/O. An edited file whose fields differ from its record yields an
  * `update` proposal; an in-scope record with NO file yields a `delete` proposal
  * (the user removed the file); a file with no matching record is ignored (its
  * record is already gone). Nothing here mutates the store.
@@ -425,7 +425,7 @@ export function diffProjectionToProposals(
   return proposals;
 }
 
-/** The registry surface the projection apply needs — update + delete only. */
+/** The registry surface the projection apply needs, update + delete only. */
 export interface MemoryProjectionRegistry {
   update(id: string, patch: {
     scope?: MemoryScope;
@@ -440,7 +440,7 @@ export interface MemoryProjectionRegistry {
 
 export interface MemoryProjectionApplyReceipt {
   readonly applied: readonly MemoryProjectionProposal[];
-  /** Proposals the caller did NOT confirm — left untouched (the gate). */
+  /** Proposals the caller did NOT confirm, left untouched (the gate). */
   readonly skipped: readonly MemoryProjectionProposal[];
   /** Proposals confirmed but whose store mutation returned no record / false. */
   readonly failed: readonly MemoryProjectionProposal[];
@@ -449,7 +449,7 @@ export interface MemoryProjectionApplyReceipt {
 /**
  * Apply ONLY the proposals the caller confirms, through the registry's own
  * update/delete. This is the confirmation gate: a proposal is never applied
- * unless `confirm(proposal)` returns true — a file edit can never become a
+ * unless `confirm(proposal)` returns true, a file edit can never become a
  * silent store write. Unconfirmed proposals are recorded as skipped.
  */
 export function applyMemoryProjectionProposals(

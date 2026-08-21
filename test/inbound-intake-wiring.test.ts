@@ -90,7 +90,7 @@ describe('inbound-intake enrichment — pure metadata mapping', () => {
     );
     expect(metadata[ATTRIBUTED_PRINCIPAL_KNOWN_KEY]).toBe(false);
     expect(metadata[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(UNKNOWN_PRINCIPAL_ID);
-    // The profile still applies — it binds to the channel, not the sender.
+    // The profile still applies, it binds to the channel, not the sender.
     expect(metadata[CHANNEL_PROFILE_MODEL_KEY]).toBe('claude-profile-model');
   });
 

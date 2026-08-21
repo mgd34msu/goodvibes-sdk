@@ -1,5 +1,5 @@
 /**
- * ops-control-plane.test.ts — SDK-owned behavioral coverage for
+ * ops-control-plane.test.ts, SDK-owned behavioral coverage for
  * OpsControlPlane (runtime/ops/control-plane.ts).
  *
  * This class ships from the SDK but had ZERO SDK-side tests (its only living

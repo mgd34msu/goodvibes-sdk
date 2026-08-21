@@ -87,7 +87,7 @@ export function listKnowledgeNodes(view: KnowledgeStoreReadView, limit = 100): K
  * copies at most `limit` records starting at `offset`. Callers that need EVERY
  * record (e.g. distinct-space discovery) loop over ascending offsets until a
  * short page is returned, keeping each iteration's allocation bounded to `limit`
- * — unlike {@link listKnowledgeSources}, which spreads and sorts the entire map.
+ *, unlike {@link listKnowledgeSources}, which spreads and sorts the entire map.
  */
 export function pageKnowledgeSources(view: KnowledgeStoreReadView, offset: number, limit: number): KnowledgeSourceRecord[] {
   const start = Math.max(0, Math.trunc(offset));

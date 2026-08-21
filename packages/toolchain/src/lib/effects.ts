@@ -83,7 +83,7 @@ export function realFsReader(root: string): FsReader {
   };
 }
 
-/** Real HTTP GET returning parsed JSON. Non-2xx does not throw — the status is reported so callers can branch (e.g. 503 fallback). */
+/** Real HTTP GET returning parsed JSON. Non-2xx does not throw, the status is reported so callers can branch (e.g. 503 fallback). */
 export const realHttpGetJson: HttpGetJson = async (url, headers) => {
   const response = await fetch(url, { headers });
   const text = await response.text();

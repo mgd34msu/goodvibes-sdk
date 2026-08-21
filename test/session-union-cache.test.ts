@@ -3,7 +3,7 @@
  *
  * Unit evidence for the cross-surface read facade moved into the SDK. Drives
  * the facade with a fake sync local reader + a fake async wire reader (no real
- * daemon here — the daemon-integration test covers the real wire) to prove the
+ * daemon here, the daemon-integration test covers the real wire) to prove the
  * honesty contract: embedded/local passthrough; adopted-online union (deduped, local
  * wins); adopted-offline degrades to local-only + honest note with a stale flag; the
  * probe-timeout bound; and the generation guard (a superseded activate's in-flight
@@ -360,7 +360,7 @@ describe('SessionUnionCache — honest cross-surface read facade', () => {
       cache.activate(wire.reader);
       await cache.refresh();
       const union = cache.listSessions();
-      // Exactly N (other-1) + 1 (local-own-id) = 2 rows, NOT 3 — the
+      // Exactly N (other-1) + 1 (local-own-id) = 2 rows, NOT 3, the
       // wire-mirrored-id row is recognized as "mine" and dropped, while
       // local's own view (under its own id) is kept.
       expect(union.map((r) => r.id).sort()).toEqual(['local-own-id', 'other-1']);

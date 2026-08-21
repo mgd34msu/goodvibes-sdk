@@ -7,13 +7,13 @@
  * update threw, the poller logged `update processing failed; advancing past it`
  * at WARN into a multi-megabyte debug file, and advanced its cursor. Channel
  * health went on reporting Telegram healthy the whole time, because health
- * asked whether the poll LOOP was running — and it was, perfectly. The owner
+ * asked whether the poll LOOP was running, and it was, perfectly. The owner
  * found out by noticing silence.
  *
  * These pin the two things that now happen instead:
  *
  *  1. the surface's reported health goes `degraded`, through the observation
- *     the existing health rule already reads — no parallel mechanism;
+ *     the existing health rule already reads, no parallel mechanism;
  *  2. the owner is told once, on a channel that works, and NOT again for every
  *     subsequent message; recovery says so once and clears the state.
  *
@@ -64,7 +64,7 @@ describe('a skipped inbound message alarms once, not once per message', () => {
     const notified = alarm.recordFailure('telegram', 'Session is closed');
     expect(notified).toBe(false);
     expect(sent).toHaveLength(1);
-    // The count still climbs — "37 messages skipped" is the number that makes
+    // The count still climbs, "37 messages skipped" is the number that makes
     // the state undeniable, and suppressing it would hide the scale.
     expect(alarm.failure('telegram')?.count).toBe(2);
   });

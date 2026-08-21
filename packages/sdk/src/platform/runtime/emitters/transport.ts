@@ -1,5 +1,5 @@
 /**
- * Transport emitters — typed emission wrappers for TransportEvent domain.
+ * Transport emitters, typed emission wrappers for TransportEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

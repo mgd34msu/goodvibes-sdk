@@ -1,13 +1,13 @@
 /**
- * facade-boot-guarantees — the things the daemon must not depend on its host to
+ * facade-boot-guarantees, the things the daemon must not depend on its host to
  * have remembered.
  *
  * Both of these used to be the embedding entrypoint's job, and both were
  * silently skipped by a shipped host. They have the same shape: an omission
  * with no symptom at the point of omission, and an expensive symptom much
  * later somewhere else. Neither is detectable from inside the components that
- * suffer from it, so the daemon facade — the one construction every host goes
- * through — owns them.
+ * suffer from it, so the daemon facade, the one construction every host goes
+ * through, owns them.
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -40,7 +40,7 @@ import { summarizeError } from '../utils/error-display.js';
  * operator will ever get. Those all go through `logger`, which discards every
  * entry until a host names a destination. One shipped daemon binary never
  * named one, and the result was a process that ran the entire channel stack
- * and said nothing about any of it for its whole lifetime — an enabled,
+ * and said nothing about any of it for its whole lifetime, an enabled,
  * configured, inert surface and a healthy-looking daemon.
  *
  * A host that already configured a log keeps it; this never relocates one.
@@ -61,7 +61,7 @@ export function ensureDaemonActivityLog(workingDirectory: string): void {
  *
  * Idempotent and self-limiting: the migration records the ownership set its
  * marker covers, so a start whose owned set is unchanged does nothing. That
- * record is also what makes ownership GROWTH safe — a key promoted to
+ * record is also what makes ownership GROWTH safe, a key promoted to
  * daemon-owned in a later release migrates on the next daemon start instead of
  * never, which is exactly how `conversationGate.*` stayed in a client file the
  * daemon does not read.
@@ -106,8 +106,8 @@ export function migrateDaemonOwnedConfigOnBoot(
  * The config sibling above moves SETTINGS. This moves the credentials those
  * settings point at, and it exists because routing new writes correctly does
  * nothing for the person who already ran setup. The owner did: `/google adopt`
- * reported success in the agent, and the daemon answering Telegram — with the
- * agent closed — said no email integration was available.
+ * reported success in the agent, and the daemon answering Telegram, with the
+ * agent closed, said no email integration was available.
  *
  * Ordering is the safety property, and it is enforced in the migration itself:
  * the surface copy is removed only after the daemon copy has been read BACK and
@@ -241,7 +241,7 @@ async function sweepPlaintextCredentialsOnBoot(
  * that goes with it nowhere, and a daemon reporting no account connected while
  * being told the setup had succeeded.
  *
- * Runs only where a Google credential is already stored — finishing what a
+ * Runs only where a Google credential is already stored, finishing what a
  * person started, never starting one for them. See google/connection-repair.ts.
  */
 async function repairGoogleConnectionOnBoot(

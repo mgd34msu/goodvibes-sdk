@@ -72,7 +72,7 @@ export function startBackgroundProviderDiscovery(
       );
       for (const server of persisted) {
         systemMessageRouter.low(
-          `[Local] ${server.name} at ${server.host}:${server.port} (${server.models.length} model${server.models.length !== 1 ? 's' : ''}) — from last session`,
+          `[Local] ${server.name} at ${server.host}:${server.port} (${server.models.length} model${server.models.length !== 1 ? 's' : ''}), from last session`,
         );
       }
       requestRender();
@@ -116,7 +116,7 @@ export function startBackgroundProviderDiscovery(
       removePersistedProviders({ ...shellPaths, surfaceRoot }, removedServers);
       for (const server of removedServers) {
         systemMessageRouter.low(
-          `[Scan] ${server.name} at ${server.host}:${server.port} is no longer reachable — removed`,
+          `[Scan] ${server.name} at ${server.host}:${server.port} is no longer reachable, removed`,
         );
         const currentModelBareId = splitModelRegistryKey(currentModel).resolvedModelId;
         const wasActive = server.models.includes(currentModelBareId);
@@ -132,7 +132,7 @@ export function startBackgroundProviderDiscovery(
             });
           }
           systemMessageRouter.high(
-            `[Scan] Active model was on ${server.name} — switched to ${FALLBACK_MODEL.model}`,
+            `[Scan] Active model was on ${server.name}, switched to ${FALLBACK_MODEL.model}`,
           );
         }
       }

@@ -1,5 +1,5 @@
 /**
- * settings.ts — turn a `cluster.*` config category into usable settings.
+ * settings.ts, turn a `cluster.*` config category into usable settings.
  *
  * Values are clamped rather than rejected. A daemon whose inbound messaging
  * refuses to start because someone typed `heartbeatSeconds: 0` is a worse
@@ -8,7 +8,7 @@
 import type { ClusterSettings } from './types.js';
 
 /**
- * Administratively-scoped multicast group (239.0.0.0/8, RFC 2365) — never
+ * Administratively-scoped multicast group (239.0.0.0/8, RFC 2365), never
  * routed off the local network by a conforming router. The last two octets
  * are the ASCII codes for "GV", which keeps the address recognisable in a
  * packet capture without encoding anything about the install.

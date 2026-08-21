@@ -62,7 +62,7 @@ describe('ChannelReplyPipeline', () => {
       });
 
       await waitFor(() => delivered.length === 1);
-      // The answer is the point of the notification, on ntfy as anywhere else —
+      // The answer is the point of the notification, on ntfy as anywhere else,
       // and it is the WHOLE notification. How long the run took is operator
       // telemetry that no channel user receives.
       expect(delivered[0]).toContain('child done');
@@ -276,7 +276,7 @@ describe('ChannelReplyPipeline', () => {
       await helper.pollPendingSurfaceReplies(() => {});
 
       // ntfy renders what every other surface renders: the agent's answer.
-      // This used to assert the opposite — that the output was withheld and a
+      // This used to assert the opposite, that the output was withheld and a
       // canned "Agent <id> finished initial work" line went out in its place,
       // which is how the owner's primary surface came to deliver everything
       // except the reply. Tracking still stays alive for the chain's later legs.

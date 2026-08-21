@@ -1,5 +1,5 @@
 /**
- * message.ts — what the approval and veto prompts say, and why no page can
+ * message.ts, what the approval and veto prompts say, and why no page can
  * influence a single character of it.
  *
  * The attack this exists to stop: if merchant page text can reach the message,
@@ -10,9 +10,9 @@
  * So the message is rendered from a CLOSED STRUCT OF TYPED SCALARS, and there is
  * no field in it that can carry free text from a page:
  *
- *   merchantDomain  registrableDomain() of the VALIDATED url — computed by us,
+ *   merchantDomain  registrableDomain() of the VALIDATED url, computed by us,
  *                   never the page's own claimed name
- *   item            OwnerSuppliedText — a branded type only constructible from
+ *   item            OwnerSuppliedText, a branded type only constructible from
  *                   an owner-direct turn, so assigning page text is a compile
  *                   error. (And if the item only exists on the page, the taint
  *                   gate already refused the purchase.)
@@ -38,7 +38,7 @@ import type {
  * The merchant identity the owner is shown.
  *
  * It is the registrable domain computed by `registrableDomain()` from the
- * VALIDATED checkout url — never the page's own claimed name, because a page can
+ * VALIDATED checkout url, never the page's own claimed name, because a page can
  * call itself anything. A computed hostname always passes `isPlainHostname`; if
  * one ever does not, the identity did not come from where the caller believed,
  * and the honest response is a placeholder rather than rendering it.
@@ -114,14 +114,14 @@ export function formatMinorUnits(amount: MinorUnits, currency: CurrencyCode): st
 }
 
 /**
- * The approval prompt — ABOVE budget, silence DENIES.
+ * The approval prompt, ABOVE budget, silence DENIES.
  *
  * States the silence rule in the message. He should never have to remember which
  * kind of window he is looking at, and the two say opposite things.
  */
 export function renderApprovalMessage(facts: PurchaseFacts, expiresInMinutes: number): string {
   const lines = [
-    `Approval needed — this is over your daily item budget.`,
+    `Approval needed, this is over your daily item budget.`,
     ``,
     `  ${renderItem(facts.item)}`,
     `  from ${renderMerchant(facts.merchantDomain)}`,
@@ -138,14 +138,14 @@ export function renderApprovalMessage(facts: PurchaseFacts, expiresInMinutes: nu
 }
 
 /**
- * The veto prompt — WITHIN budget, silence PROCEEDS.
+ * The veto prompt, WITHIN budget, silence PROCEEDS.
  *
  * Also states its silence rule, and states it as the opposite of the approval's,
  * because the whole design rests on him knowing which one he is holding.
  */
 export function renderVetoMessage(facts: PurchaseFacts, expiresInMinutes: number): string {
   const lines = [
-    `About to buy this — it is within your budget.`,
+    `About to buy this, it is within your budget.`,
     ``,
     `  ${renderItem(facts.item)}`,
     `  from ${renderMerchant(facts.merchantDomain)}`,
@@ -192,7 +192,7 @@ function amountLines(facts: PurchaseFacts): string[] {
  * The report after an objection.
  *
  * One word cancels, and then he is told what was stopped and the state it was
- * left in — never a silent abandonment that leaves him wondering whether a cart
+ * left in, never a silent abandonment that leaves him wondering whether a cart
  * is sitting somewhere half-driven.
  */
 export function renderCancellationReport(facts: PurchaseFacts): string {
@@ -211,7 +211,7 @@ export function renderCancellationReport(facts: PurchaseFacts): string {
  * The ONE purchase notice, and the only send site.
  *
  * The owner collapsed "show it to him" and "alert him if it is not a major
- * retailer" into a single step — "2 and 3 are basically the same step". So there
+ * retailer" into a single step, "2 and 3 are basically the same step". So there
  * is one message, sent once, when the item is chosen and the final total is
  * known, before payment. The retailer only changes what SILENCE means.
  *
@@ -222,8 +222,8 @@ export function renderCancellationReport(facts: PurchaseFacts): string {
  * This exists so the selection is a branch at one call site rather than an
  * invitation to add a third message type. `renderApprovalMessage` and
  * `renderVetoMessage` stay separate because their SILENCE RULES are opposite and
- * must never be unified — see
- * docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md — but
+ * must never be unified, see
+ * docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md, but
  * callers should reach for this, not for either of them directly.
  */
 export function renderPurchaseNotice(input: {
@@ -231,12 +231,12 @@ export function renderPurchaseNotice(input: {
   readonly mode: 'approval' | 'veto';
   readonly expiresInMinutes: number;
   /**
-   * Why this merchant qualified, or why it did not — from `classifyMerchant`.
+   * Why this merchant qualified, or why it did not, from `classifyMerchant`.
    *
    * Always rendered when present, because the verdict alone is not useful to
    * him. "Etsy, buyer protection applies" is something he can weigh at a
    * glance; "on your approved list" sends him off to go check a list. On the
-   * other side it reads as a checkpoint — not on the list, so I am asking —
+   * other side it reads as a checkpoint, not on the list, so I am asking,
    * and never implies anything is wrong with the seller.
    *
    * Sanitised like every other merchant-adjacent string, and prefixed by us so
@@ -304,8 +304,8 @@ export function renderPurchaseReport(input: {
  * A confirmation email arrives from outside, at the exact moment he is
  * expecting one, which makes it the single most attractive thing for an
  * attacker to forge. Its body is not rendered, not quoted, and not summarised.
- * What reaches him is a small set of STRUCTURED fields — an order number, a
- * ship date, a tracking reference — each neutralised, plus our own record of
+ * What reaches him is a small set of STRUCTURED fields, an order number, a
+ * ship date, a tracking reference, each neutralised, plus our own record of
  * what was bought, which the email cannot influence at all.
  *
  * The email also carries no authority. It cannot confirm that a purchase

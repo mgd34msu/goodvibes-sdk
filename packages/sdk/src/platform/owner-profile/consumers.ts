@@ -1,5 +1,5 @@
 /**
- * consumers.ts — every place that used to hold or guess a fact about the owner,
+ * consumers.ts, every place that used to hold or guess a fact about the owner,
  * reading it from here instead.
  *
  * docs/owner-profile.md §13. One declared map from a CONSUMER CONFIG KEY to a
@@ -14,7 +14,7 @@
  *    unmerged branch a live round owns. A map keyed by config path wires those
  *    consumers the moment their keys exist, with no change to their code and no
  *    edit to a file another round is holding. Rows for keys absent from today's
- *    schema are inert and cost nothing — `ConfigManager.get()` never reaches the
+ *    schema are inert and cost nothing, `ConfigManager.get()` never reaches the
  *    fallback for a key whose section does not exist, because `resolvePath()`
  *    throws first, and {@link profileFallbackStatus} catches that throw so a
  *    report over the map cannot fail on the same rows.
@@ -22,7 +22,7 @@
  * ## Where the fallback applies
  *
  * `ConfigManager.get()` only. Never a bulk listing, category read, dump or
- * export — see `config/profile-fallback.ts` for the rule and the reasoning:
+ * export, see `config/profile-fallback.ts` for the rule and the reasoning:
  * a config dump resolving through the profile would hand a caller
  * `commerce.shippingAddress` when it asked for "the settings", without ever
  * passing the closed-tier disclosure rule.
@@ -32,7 +32,7 @@
  * `resolveOwnerAddresses()` decides which addresses count as "the owner's own",
  * and that set gates the single exemption to the content-taint rule. Its own
  * module header says the exemption is safe precisely because spoofing it needs
- * an authenticated write to daemon config — a strictly stronger capability than
+ * an authenticated write to daemon config, a strictly stronger capability than
  * sending mail. A profile written autonomously from conversation is a WEAKER
  * input than daemon config, so feeding it into that gate would lower a bar the
  * module documents as high. Recorded here as a decision, not an oversight.
@@ -45,7 +45,7 @@ import type { OwnerProfileStore } from './store.js';
 
 /**
  * One declared consumer wiring: which config key falls back to which profile
- * field, and — for a structured destination — which part of that value.
+ * field, and, for a structured destination, which part of that value.
  */
 export interface ConsumerFallbackRow {
   /** The consumer's config dot-path, e.g. `checkin.quietHours`. */
@@ -141,7 +141,7 @@ const ROW_BY_CONFIG_KEY = new Map(CONSUMER_FALLBACKS.map((row) => [row.configKey
  * direction for an address: a key left unset is visible and fixable, while a
  * confidently-wrong `region` is a parcel delivered to the wrong state.
  *
- * `name` is never inferred — a profile line holds an address, not an addressee,
+ * `name` is never inferred, a profile line holds an address, not an addressee,
  * and guessing a recipient name out of a street line would be invention.
  */
 export function splitPostalAddress(value: string): Partial<Record<PostalAddressPart, string>> {
@@ -155,7 +155,7 @@ export function splitPostalAddress(value: string): Partial<Record<PostalAddressP
 
   // `MI 48933`, a bare `48933`, or a region with no postal code at all. The
   // trailing token becomes the postal code only when it actually looks like
-  // one — carries a digit and is postal-code shaped — so `Nordrhein Westfalen`
+  // one, carries a digit and is postal-code shaped, so `Nordrhein Westfalen`
   // stays one region rather than losing its last word to a postal field.
   const tokens = regionAndPostal.split(/\s+/).filter((token) => token.length > 0);
   const last = tokens[tokens.length - 1] ?? '';
@@ -185,7 +185,7 @@ export type FallbackEnabledPredicate = () => boolean;
  * The reader installed into `ConfigManager.attachProfileFallback`.
  *
  * Answers `undefined` for everything it has no declared row for, for a field
- * the owner has not recorded, and for a value the parser marked invalid — §4.3
+ * the owner has not recorded, and for a value the parser marked invalid, §4.3
  * says an invalid mechanical value's consumer falls back exactly as if the
  * field were unset, and this is the place that promise is kept.
  */
@@ -223,7 +223,7 @@ export interface ConsumerFallbackStatus {
  * §13.1: a listing may show THAT a key resolves from the profile; it does not
  * show the value, and nothing here returns one. The `get` call is wrapped
  * because `ConfigManager.resolvePath()` throws for a section that does not
- * exist, which is exactly the state of every `payments.*` row on this branch —
+ * exist, which is exactly the state of every `payments.*` row on this branch,
  * a report that threw on them would be a report nobody could run.
  */
 export function profileFallbackStatus(
@@ -256,7 +256,7 @@ export function profileFallbackStatus(
  *
  * `guarded` is everything ordinary: closed-tier mechanical field values, and
  * the prose of every CLOSED section. `profileSectionTier` makes every heading
- * except `Style` closed — including ones the owner invented — and an earlier
+ * except `Style` closed, including ones the owner invented, and an earlier
  * version of this function collected prose from only the four canonical
  * prose-only sections, so `note: Home is the blue house on the corner of Elm`
  * under a heading of his own left a session export in the clear while `People`
@@ -276,8 +276,8 @@ export function profileFallbackStatus(
  *
  * Read through `read()`, not `section()`: the store's generic section accessor
  * refuses the closed tier on purpose, so no consumer assembling something can
- * enumerate `People`. Redaction is the opposite kind of caller — it is deciding
- * what must NOT leave — and `read()` is the disclosure path that returns the
+ * enumerate `People`. Redaction is the opposite kind of caller, it is deciding
+ * what must NOT leave, and `read()` is the disclosure path that returns the
  * whole document.
  */
 export function closedTierRedactionValues(source: ConsumerProfileSource): ProfileRedactionValues {
@@ -310,13 +310,13 @@ const EMPTY_REDACTION_VALUES: ProfileRedactionValues = { guarded: [], absolute: 
  *
  * `redactSensitiveData` runs on every at-rest write, every exported message and
  * every `redactedErrorMessage`. Recomputing the value set there means calling
- * `read()`, which rebuilds a view object per section per call — O(document)
+ * `read()`, which rebuilds a view object per section per call, O(document)
  * allocation on paths that were O(1), for a set that only changes when the file
  * is re-read.
  *
  * The cache key is the identity of the object `status()` returns. `adopt()`
  * builds a fresh state object on every successful load, so object identity IS
- * the load generation — no counter to add to the store and no way for the cache
+ * the load generation, no counter to add to the store and no way for the cache
  * to survive a reload it should not.
  */
 function memoizedRedactionValues(source: ConsumerProfileSource): () => ProfileRedactionValues {
@@ -357,7 +357,7 @@ export interface OwnerProfileConsumerHost {
  *
  * Both live toggles are read through predicates rather than snapshotted, so
  * `profile.consumerFallback` and `profile.injectOpenTier` take effect on the
- * next read instead of on the next restart — they ship as real settings, and a
+ * next read instead of on the next restart, they ship as real settings, and a
  * setting that needs a restart to mean anything is not one.
  */
 export function installOwnerProfileConsumers(

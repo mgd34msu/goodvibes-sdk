@@ -13,7 +13,7 @@ import type { HttpTransportTelemetryMetricsSnapshot, HttpTransportTelemetryQuery
 import { normalizeTelemetryQuery } from './http-helpers.js';
 
 // ---------------------------------------------------------------------------
-// Runtime validators — replace `as unknown as X` casts with checked coercions
+// Runtime validators, replace `as unknown as X` casts with checked coercions
 // ---------------------------------------------------------------------------
 
 type SdkTelemetryQuery = {
@@ -175,7 +175,7 @@ export function assertTelemetryMetricsSnapshot(value: unknown, endpoint: string)
 
 /** The session kinds this build knows. A response carrying anything else is
  * from a newer/older peer; we degrade honestly rather than surface an invalid
- * kind (mixed-version stance — docs/decisions/2026-07-05-session-wire-mixed-version.md). */
+ * kind (mixed-version stance, docs/decisions/2026-07-05-session-wire-mixed-version.md). */
 const KNOWN_SESSION_KINDS = new Set<SharedSessionRecord['kind']>([
   'tui', 'agent', 'webui', 'companion-task', 'companion-chat', 'automation', 'channel', 'acp', 'hosted',
 ]);

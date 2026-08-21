@@ -10,7 +10,7 @@ import { summarizeError } from '../utils/error-display.js';
  * The raw identity a product declares once at startup: which surface it is
  * (`'tui'`, `'agent'`, a future third-party name...) plus the two directories
  * every storage path derives from. `createSessionSurface` turns this into a
- * fully-resolved `SessionSurface` — the declare-once handle every reader and
+ * fully-resolved `SessionSurface`, the declare-once handle every reader and
  * writer in that product threads through instead of re-deriving paths per call.
  */
 export interface SurfaceIdentity {
@@ -25,7 +25,7 @@ export interface SurfaceIdentity {
 /**
  * A product's declare-once storage handle. Every path a session-persistence
  * or session-manager call needs is pre-resolved here, at construction, from a
- * single `SurfaceIdentity` — so a writer and a reader that both hold the same
+ * single `SurfaceIdentity`, so a writer and a reader that both hold the same
  * `SessionSurface` can never disagree about where a file lives. This replaces
  * the old pattern of passing `surfaceRoot` / `workingDirectory` / `homeDirectory`
  * independently to each call, where an omitted `surfaceRoot` silently fell back
@@ -42,10 +42,10 @@ export interface SessionSurface {
   /** `sessionsDir/last-session.json` */
   readonly lastSessionPointer: string;
   /**
-   * `<workingDirectory>/.goodvibes/<surfaceRoot>/recovery` — anchored to
+   * `<workingDirectory>/.goodvibes/<surfaceRoot>/recovery`, anchored to
    * `workingDirectory`, NOT `homeDirectory`. A crash-recovery snapshot lives
    * with the project it happened in, so a crash in one project never nags
-   * the boot of an unrelated project — the defect the legacy, home-anchored
+   * the boot of an unrelated project, the defect the legacy, home-anchored
    * `getRecoveryDir` (session-persistence-scope.ts) has, and keeps having for
    * callers that stay on the legacy option form.
    */
@@ -54,7 +54,7 @@ export interface SessionSurface {
   readonly stateDir: string;
   /** `<workingDirectory>/.goodvibes/<surfaceRoot>/checkpoints` */
   readonly checkpointsDir: string;
-  /** `recoveryDir/recovery-<sanitized sessionId>.jsonl` — the per-session crash-recovery snapshot path. */
+  /** `recoveryDir/recovery-<sanitized sessionId>.jsonl`, the per-session crash-recovery snapshot path. */
   recoveryFile(sessionId: string): string;
 }
 
@@ -67,8 +67,8 @@ function requireNonEmptyDirectory(value: string, source: string): string {
 }
 
 /**
- * Build a `SessionSurface` from a `SurfaceIdentity`. Throws synchronously —
- * at construction, not on first use — when `surfaceRoot` is omitted, empty, or
+ * Build a `SessionSurface` from a `SurfaceIdentity`. Throws synchronously,
+ * at construction, not on first use, when `surfaceRoot` is omitted, empty, or
  * not a single path segment (delegated to `requireSurfaceRoot`), or when
  * `workingDirectory` / `homeDirectory` is empty. A product calls this exactly
  * once at startup and threads the resulting handle through every reader and

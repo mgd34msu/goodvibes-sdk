@@ -35,9 +35,9 @@ SSE and WebSocket connectors share reconnect policy shapes. The WebSocket
 connector (`createWebSocketConnector`) adds connection-lifecycle hooks that the
 SSE connector (`createEventSourceConnector`) does not fire:
 
-- `onConnectionStateChange(state)` — `state` is one of `'connecting'`,
+- `onConnectionStateChange(state)`: `state` is one of `'connecting'`,
   `'connected'`, `'reconnecting'`, `'disconnected'`, `'failed'`.
-- `onReconnectAttempt(info)` — `info` is `{ attempt, maxAttempts, delayMs, reason }`.
+- `onReconnectAttempt(info)`: `info` is `{ attempt, maxAttempts, delayMs, reason }`.
   The legacy `onReconnect(attempt, delayMs)` is `@deprecated` but still fired.
 - `onOpen()` and `onBackpressure(info)` signal connect and outbound-queue saturation.
 
@@ -56,7 +56,7 @@ const events = createRemoteRuntimeEvents(
 ```
 
 See [Realtime and telemetry](./realtime-and-telemetry.md) for the full connector
-surface — domain events, outbound-queue backpressure caps, and the `ws://` auth guard.
+surface: domain events, outbound-queue backpressure caps, and the `ws://` auth guard.
 
 Transport errors should preserve useful event fields and use typed SDK error
 classes. Retryable HTTP status codes come from `@pellux/goodvibes-errors`.

@@ -1,7 +1,7 @@
 /**
  * strategies/collapse.ts
  *
- * Collapse strategy — full context collapse into a single compacted summary
+ * Collapse strategy, full context collapse into a single compacted summary
  * message. This is the most aggressive strategy, used when token pressure
  * exceeds 85% or when manually triggered.
  *

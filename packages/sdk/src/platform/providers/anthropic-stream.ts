@@ -3,7 +3,7 @@
  *
  * Extracted to avoid duplicating the effort-versus-budget decision across the
  * Anthropic-family providers (anthropic.ts, anthropic-compat.ts,
- * anthropic-sdk-provider.ts — and, by inheritance, amazon-bedrock.ts,
+ * anthropic-sdk-provider.ts, and, by inheritance, amazon-bedrock.ts,
  * amazon-bedrock-mantle.ts and anthropic-vertex.ts).
  *
  * Which field a model takes is not a stylistic choice. Anthropic's own
@@ -53,7 +53,7 @@ export type AnthropicReasoningParams = Pick<
  *   - `max_tokens <= modelOutputCap` (avoids over-cap requests).
  *
  * If the budget meets or exceeds the model's output cap, thinking is skipped
- * entirely — it is impossible to satisfy `max_tokens > budget_tokens` within
+ * entirely, it is impossible to satisfy `max_tokens > budget_tokens` within
  * the cap. Pass `Infinity` for compat/SDK providers that have no per-model cap.
  *
  * Only reached for models whose resolved spec is budget-typed; see

@@ -3,7 +3,7 @@
  *
  * The on-disk record of which devices an operator has registered for browser
  * push. Persisted with the same atomic-JSON `PersistentStore` the approval and
- * session stores use — the capability URLs and key material stay on disk in the
+ * session stores use, the capability URLs and key material stay on disk in the
  * daemon's own state directory, never on the wire.
  *
  * Delete means delete: `remove()` drops the record entirely (it does not flag a
@@ -14,7 +14,7 @@
  *  - Content is validated at REGISTRATION, so a record that could never receive
  *    a push is refused with a plain reason instead of being stored and failing
  *    weeks later at delivery time.
- *  - `sweep()` removes only records that are PROVABLY dead — unusable key
+ *  - `sweep()` removes only records that are PROVABLY dead, unusable key
  *    material, a torn record, or a push service that has refused it past the
  *    bounded-failure threshold. There is no age TTL and no eviction to make
  *    room: a quiet device that still works is never removed, so nobody ever has
@@ -113,7 +113,7 @@ export function endpointHashFor(endpoint: string): string {
 
 export class PushSubscriptionStore {
   private readonly store: PersistentStore<SubscriptionSnapshot>;
-  /** `<store>.json.lock` — the cross-process mutex, or null for an in-memory store. */
+  /** `<store>.json.lock`, the cross-process mutex, or null for an in-memory store. */
   private readonly lockPath: string | null;
   private readonly disclosure: PushHousekeepingDisclosure;
   private readonly policy: () => PushSubscriptionPolicy;
@@ -194,7 +194,7 @@ export class PushSubscriptionStore {
    * identity when the input carries a deviceId (a browser whose endpoint
    * rotated presents the same deviceId with a new endpoint, healing the one
    * record), otherwise on the raw endpoint (legacy). Either way a re-register
-   * clears the failure counter — the client just proved the device is live.
+   * clears the failure counter, the client just proved the device is live.
    *
    * Throws `PushSubscriptionValidationError` when the endpoint or key material
    * could never receive a push.
@@ -260,7 +260,7 @@ export class PushSubscriptionStore {
           principalId: input.principalId,
           held,
           warnAbove: policy.warnAbovePerPrincipal,
-          note: 'accepted anyway — no working subscription is ever removed to make room',
+          note: 'accepted anyway, no working subscription is ever removed to make room',
         });
       }
       await this.discloseRegistrationPass(
@@ -309,14 +309,14 @@ export class PushSubscriptionStore {
     return records.find((r) => r.id === id) ?? null;
   }
 
-  /** Every stored subscription — the delivery fan-out reads this. Not for the wire. */
+  /** Every stored subscription, the delivery fan-out reads this. Not for the wire. */
   async all(): Promise<readonly StoredPushSubscription[]> {
     return this.loadUsable();
   }
 
   /**
    * Delete a subscription. Returns true if a record was actually removed, false
-   * if the id was already absent — the caller reports an honest 404 rather than
+   * if the id was already absent, the caller reports an honest 404 rather than
    * a 200-noop. An optional `principalId` scopes the delete so one operator
    * cannot remove another's device.
    */
@@ -369,7 +369,7 @@ export class PushSubscriptionStore {
 
   /**
    * One housekeeping pass: remove every record that is provably dead, keep
-   * everything else, and disclose the result. Idempotent — a second pass over
+   * everything else, and disclose the result. Idempotent, a second pass over
    * the same file removes nothing. Safe to run concurrently with another
    * process: removals are computed by id and applied to a fresh read, so a
    * record registered in between survives.
@@ -413,7 +413,7 @@ export class PushSubscriptionStore {
   /**
    * Keep sweeping on an interval. A long-lived daemon that only swept at boot
    * would never sweep at all, so this is not optional wiring. The timer is
-   * unref'd — a pending sweep never holds the process open.
+   * unref'd, a pending sweep never holds the process open.
    */
   startPeriodicSweep(intervalMs: number): void {
     this.stopPeriodicSweep();

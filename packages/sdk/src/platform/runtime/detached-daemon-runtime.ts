@@ -1,10 +1,10 @@
 /**
- * D7a Layer 2 — pid/port discovery for the detached daemon.
+ * D7a Layer 2, pid/port discovery for the detached daemon.
  *
  * When a surface spawns the daemon as a detached, standalone process, it records
  * the pid/host/port to a small JSON file under the daemon home so a later surface
  * (or a `GET /api/service/status` call against the daemon HTTP API) can discover and adopt it without a fresh
- * spawn. This is deliberately a plain record — not a lock — since the daemon's own
+ * spawn. This is deliberately a plain record, not a lock, since the daemon's own
  * identity probe is the source of truth for "is it actually alive and mine".
  */
 
@@ -43,7 +43,7 @@ export function detachedDaemonReapedPath(runtimeDir: string): string {
 
 /**
  * The part of a runtime record that endpoint discovery actually uses: where to
- * dial, and whose liveness to check. Kept narrow deliberately — a caller
+ * dial, and whose liveness to check. Kept narrow deliberately, a caller
  * supplying a hint should not have to invent a `command` and a `startedAt` it
  * has no opinion about, and the full record satisfies this by construction.
  */
@@ -57,7 +57,7 @@ export interface DetachedDaemonRuntimeHint {
 export type ProcessAliveCheck = (pid: number) => boolean;
 
 /**
- * Default liveness check. `kill(pid, 0)` sends no signal — it only asks the
+ * Default liveness check. `kill(pid, 0)` sends no signal, it only asks the
  * kernel whether the pid exists and is signallable. EPERM means it exists and
  * belongs to another user, which still counts as alive.
  */
@@ -74,7 +74,7 @@ export const defaultProcessAliveCheck: ProcessAliveCheck = (pid) => {
  * Whether the process this record names still exists.
  *
  * A record with NO pid cannot be checked this way and is not declared dead on
- * that basis — the port probe is then the only evidence, and calling it dead
+ * that basis, the port probe is then the only evidence, and calling it dead
  * here would strand a daemon that simply recorded no pid.
  */
 export function detachedDaemonProcessAlive(
@@ -99,7 +99,7 @@ export interface DetachedDaemonReapReceipt {
  * and leave a receipt saying so.
  *
  * Best-effort and idempotent: two processes can reap the same record
- * concurrently and neither throws. Removing the record is the point — while it
+ * concurrently and neither throws. Removing the record is the point, while it
  * sits there, every endpoint discovery keeps preferring an address nothing
  * answers at, which is exactly the failure this reaping exists to end.
  */

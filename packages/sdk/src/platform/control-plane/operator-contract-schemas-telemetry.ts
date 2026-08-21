@@ -353,10 +353,10 @@ export const OTLP_METRIC_DOCUMENT_SCHEMA = objectSchema({
 const COST_STATE_SCHEMA = enumSchema(['priced', 'estimated', 'unpriced']);
 
 // Where an aggregate's priced dollars came from: 'user' (manual/registration
-// price — "your price"), 'provider' (provider-served rates), 'catalog' (the
+// price, "your price"), 'provider' (provider-served rates), 'catalog' (the
 // dated pricing catalog), 'mixed' (priced contributors disagree), or null
 // (nothing priced). pricingAsOf is the oldest ISO date (YYYY-MM-DD) among the
-// dated catalog/provider snapshots that contributed — null when none carried
+// dated catalog/provider snapshots that contributed, null when none carried
 // a date (user prices are undated).
 const COST_SOURCE_SCHEMA = nullableSchema(enumSchema(['user', 'provider', 'catalog', 'mixed']));
 
@@ -421,7 +421,7 @@ export const QUOTA_FANOUT_GET_INPUT_SCHEMA = objectSchema({
 
 /**
  * Pre-fan-out quota assessment. verdict `unknown` (with empty evidence) when no
- * signal has been observed for the provider — never a fabricated certainty. A
+ * signal has been observed for the provider, never a fabricated certainty. A
  * `likely-exhausts` verdict always carries the evidence it rests on.
  */
 export const QUOTA_FANOUT_GET_OUTPUT_SCHEMA = objectSchema({
@@ -441,7 +441,7 @@ export const QUOTA_SNAPSHOT_GET_INPUT_SCHEMA = objectSchema({
  * A point-in-time view of a provider's observed quota window, parsed from
  * rate-limit headers on ordinary (successful) responses. `hasSignal:false` (with
  * every observed-* field absent) when nothing has been observed for the provider
- * — an honest "no observation", never a fabricated full quota.
+ *, an honest "no observation", never a fabricated full quota.
  */
 export const QUOTA_SNAPSHOT_GET_OUTPUT_SCHEMA = objectSchema({
   provider: STRING_SCHEMA,

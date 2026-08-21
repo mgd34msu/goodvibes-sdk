@@ -1,5 +1,5 @@
 /**
- * fleet-union.ts — a fleet view shows everything running, not just what this
+ * fleet-union.ts, a fleet view shows everything running, not just what this
  * surface started.
  *
  * ── What a fleet panel used to show, and why that stopped being enough ─────
@@ -9,29 +9,29 @@
  * hosted a daemon, that registry was also the daemon's, so "everything running"
  * and "everything I started" were the same list.
  *
- * They are not any more. The daemon runs work of its own — scheduled jobs,
+ * They are not any more. The daemon runs work of its own, scheduled jobs,
  * channel-driven runs, sessions other surfaces started, the external coding
- * agents it observes on this machine — and none of it appears in a registry
+ * agents it observes on this machine, and none of it appears in a registry
  * this process owns. A view that quietly showed half the fleet would be worse
  * than one that showed none: the half it showed would look complete.
  *
  * ── What is here, and what deliberately is not ────────────────────────────
  *
- * Here: the daemon-rows POLL and the MERGE rule. Both are policy — how often
+ * Here: the daemon-rows POLL and the MERGE rule. Both are policy, how often
  * the remote half is re-read, what happens to the last known rows when a poll
  * fails, which copy of a row wins when both halves carry the same node id, and
  * what a surface says when asked to act on a row it does not own.
  *
  * Not here: how a product renders rows, sorts them, or builds its own snapshot
  * type. Those are surface idioms, and a product binds them by calling
- * {@link mergeFleetNodes} and passing the result to its own snapshot builder —
+ * {@link mergeFleetNodes} and passing the result to its own snapshot builder,
  * so the rollups, the cost/token totals and the ordering are computed once,
  * over the whole fleet, rather than summed from two halves.
  *
  * ── Who wins ──────────────────────────────────────────────────────────────
  *
  * Local rows are AUTHORITATIVE for processes this surface spawned. They are
- * live — the registry pushes on every state change, with sub-second latency —
+ * live, the registry pushes on every state change, with sub-second latency,
  * and they carry the capabilities that make a row actionable here (interrupt,
  * resume, kill, steer all reach a real child process). The daemon's copy of the
  * same row, arriving over a poll, is necessarily staler; where both describe
@@ -46,7 +46,7 @@
  * ── Acting on a row you do not own ────────────────────────────────────────
  *
  * `interrupt`/`resume`/`kill`/`steer` reach this process's own children. A
- * daemon row has no child here to signal, so those refuse — and `steer`, which
+ * daemon row has no child here to signal, so those refuse, and `steer`, which
  * has a reason channel, says why rather than returning a bare false that reads
  * as "the agent ignored you". A product's own act surface drives the daemon's
  * verbs for the acts the daemon serves.
@@ -65,7 +65,7 @@ export interface DaemonFleetRows {
 }
 
 /**
- * Read `fleet.snapshot`'s payload. Returns null — not an empty fleet — when the
+ * Read `fleet.snapshot`'s payload. Returns null, not an empty fleet, when the
  * shape is not what a daemon answers with, so "nobody answered" and "nothing is
  * running" stay distinguishable all the way to the view.
  */
@@ -99,7 +99,7 @@ export function mergeFleetNodes(
  * needs to be able to tell them apart.
  */
 export function daemonOnlyFleetActRefusal(nodeId: string, surfaceLabel: string): string {
-  return `${nodeId} is running on the daemon, not in ${surfaceLabel} — this act reaches only processes started here`;
+  return `${nodeId} is running on the daemon, not in ${surfaceLabel}, this act reaches only processes started here`;
 }
 
 export interface DaemonFleetRowsPollerOptions {
@@ -124,7 +124,7 @@ export interface DaemonFleetRowsPoller {
  * Poll the adopted daemon's fleet rows on an interval.
  *
  * Inert until the first refresh lands: before then, and whenever the daemon
- * cannot answer, `rows()` is null — which is the honest answer, not a degraded
+ * cannot answer, `rows()` is null, which is the honest answer, not a degraded
  * one. A daemon that stops answering keeps its LAST known rows rather than
  * dropping them, so a momentary blip does not make half the fleet blink out and
  * back.

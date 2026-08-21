@@ -3,7 +3,7 @@
  *
  * The defect, end to end: a hosted conversation opened a FRESH event stream per
  * turn and presented no `Last-Event-ID`, so the gateway's catch-up replay
- * handed the new stream the tail of the previous turn — that turn's
+ * handed the new stream the tail of the previous turn, that turn's
  * `TURN_COMPLETED` included. Two things went wrong with the same frame:
  *
  *  - The previous turn's final assistant message was appended a second time
@@ -18,7 +18,7 @@
  *  (a) The stream now SURFACES the position it reached, and the connector that
  *      composes it remembers that position across stream lifetimes, so the next
  *      stream presents `Last-Event-ID` and is replayed nothing it has seen. The
- *      gateway honours the header — and, where it used to silently fall back to
+ *      gateway honours the header, and, where it used to silently fall back to
  *      the full catch-up window when it could not resolve the id, now replays
  *      nothing and says so.
  *
@@ -111,7 +111,7 @@ describe('the gateway replays only what a client has not already seen', () => {
     // The id aged out of the ring, or the gateway restarted. Ids are random per
     // record, not ordered, so "everything after it" cannot be computed. Falling
     // back to the whole catch-up window is what re-sent turn-1's TURN_COMPLETED
-    // into turn-2 — a client that states a position never gets that guess.
+    // into turn-2, a client that states a position never gets that guess.
     expect(replayIds('evt-gone')).toEqual([]);
     expect(resolveReplayResume(ring(), 'evt-gone')).toEqual({ resume: 'unresolved', sinceId: 'evt-gone' });
   });
@@ -200,7 +200,7 @@ describe('a replayed terminal frame cannot finish a turn it does not belong to',
 
   test('the replayed tail of the previous turn is refused while a new turn runs', () => {
     const gate = createTurnLifecycleGate();
-    // Turn 2 starts — this is the turn the consumer is rendering.
+    // Turn 2 starts, this is the turn the consumer is rendering.
     expect(gate.accepts(frame('TURN_SUBMITTED', 'turn-2'))).toBe(true);
     // The replayed tail of turn 1 arrives. Under the defect this finished the
     // renderer and every subsequent turn-2 frame was dropped.
@@ -212,7 +212,7 @@ describe('a replayed terminal frame cannot finish a turn it does not belong to',
   });
 
   test('a terminal frame for a turn never seen to start is refused outright', () => {
-    // The replay lands BEFORE the new turn is submitted — the exact ordering on
+    // The replay lands BEFORE the new turn is submitted, the exact ordering on
     // a fresh per-turn stream. Nothing is bound yet, and a consumer that never
     // saw a turn run has no turn to finish.
     const gate = createTurnLifecycleGate();
@@ -274,7 +274,7 @@ describe('a replayed terminal frame cannot finish a turn it does not belong to',
     expect(gate.accepts(frame('TURN_SUBMITTED', 't1', 's1'))).toBe(true);
     expect(gate.accepts(frame('TURN_SUBMITTED', 't2', 's2'))).toBe(true);
     expect(gate.accepts(frame('TURN_SUBMITTED', 't3', 's3'))).toBe(true);
-    // s1 is gone, so it is unbound rather than wrong — its next start rebinds.
+    // s1 is gone, so it is unbound rather than wrong, its next start rebinds.
     expect(gate.boundTurnId('s1')).toBeUndefined();
     expect(gate.boundTurnId('s3')).toBe('t3');
     expect(gate.accepts(frame('TURN_SUBMITTED', 't4', 's1'))).toBe(true);

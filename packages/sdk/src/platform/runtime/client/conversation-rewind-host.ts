@@ -1,5 +1,5 @@
 /**
- * conversation-rewind-host.ts — a surface answering the daemon's questions
+ * conversation-rewind-host.ts, a surface answering the daemon's questions
  * about a conversation only it is holding.
  *
  * ── What was broken ───────────────────────────────────────────────────────
@@ -7,8 +7,8 @@
  * Files rewind works from anywhere, because the workspace checkpoint store is
  * the daemon's. The conversation half is answerable only by the process running
  * the loop, and once the surfaces became pure clients that process is not the
- * daemon. The daemon's in-process conversation registry — which nothing outside
- * the daemon could populate — answered "0 messages to drop" for every session
+ * daemon. The daemon's in-process conversation registry, which nothing outside
+ * the daemon could populate, answered "0 messages to drop" for every session
  * hosted elsewhere: a confident answer to a question it could not reach.
  *
  * This module is the other end of the fix. The surface OFFERS the conversation
@@ -18,14 +18,14 @@
  *
  * This is a reverse call: the daemon asking a connected client and awaiting an
  * answer while a `rewind.plan` call waits on it. The delivery is a `take` that
- * the surface holds open — a long poll, not a tight loop. With nothing waiting
+ * the surface holds open, a long poll, not a tight loop. With nothing waiting
  * the call parks for up to the daemon's own ceiling and returns empty; with
  * work waiting it returns immediately. So the steady state is one open request,
  * not repeated requests, and an answer starts moving the instant the question
  * is raised.
  *
  * The same call renews the lease. A surface that is polling is a surface that
- * is alive, so there is no separate keepalive to get out of step with it — and
+ * is alive, so there is no separate keepalive to get out of step with it, and
  * a crashed surface simply stops being consulted when its lease lapses, with
  * nobody cleaning up after it.
  *
@@ -61,7 +61,7 @@ interface HostRequest {
 
 export interface ConversationRewindHostOptions {
   readonly verbs: DaemonVerbCaller;
-  /** The port that answers — this process's own conversations, by session id. */
+  /** The port that answers, this process's own conversations, by session id. */
   readonly port: RewindConversationPort;
   /** Whether this process is actually holding that session's conversation. */
   readonly hosts: (sessionId: string) => boolean;
@@ -78,8 +78,8 @@ export interface ConversationRewindHostClient {
   /**
    * Name the session whose conversation this surface is holding, without
    * starting the polling loop. The registration itself happens on the first
-   * `pump`, so a caller that wants to drive the cycles deterministically — a
-   * test, or a one-shot check — uses `offer` + `pump` and never has two takes
+   * `pump`, so a caller that wants to drive the cycles deterministically, a
+   * test, or a one-shot check, uses `offer` + `pump` and never has two takes
    * racing on one host id.
    */
   offer(sessionId: string): void;
@@ -126,7 +126,7 @@ export function createConversationRewindHost(options: ConversationRewindHostOpti
     }
   };
 
-  /** Build the answer for one question — or the honest reason there is none. */
+  /** Build the answer for one question, or the honest reason there is none. */
   const answerFor = async (request: HostRequest): Promise<Record<string, unknown>> => {
     if (!options.hosts(request.sessionId)) {
       // Never zero. A real zero and a conversation this process is not holding
@@ -159,7 +159,7 @@ export function createConversationRewindHost(options: ConversationRewindHostOpti
         hostId, requestId: request.requestId, ...payload,
       });
     } catch (error) {
-      // A 409 here means the question stopped waiting — it expired, or another
+      // A 409 here means the question stopped waiting, it expired, or another
       // surface took the session over. Nothing to do but say so.
       log.debug('[rewind] the daemon would not accept this answer', {
         requestId: request.requestId, error: summarizeError(error),

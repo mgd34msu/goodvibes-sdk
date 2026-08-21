@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Config emit-bridge — turns in-process `ConfigManager.subscribe` callbacks
+ * Config emit-bridge, turns in-process `ConfigManager.subscribe` callbacks
  * into poll-free key-level events on the runtime event bus `config` domain.
  *
  * ── Why a bridge rather than a new hook on ConfigManager ────────────────────
@@ -10,7 +10,7 @@
  * fires on an in-process `set`/`setDynamic` AND on an external file edit the
  * watcher picked up (`reloadFromDiskAndNotify` diffs precisely the keys
  * something subscribed to). Subscribing every known path therefore gets both
- * paths for free — and, not incidentally, is what makes the external-edit case
+ * paths for free, and, not incidentally, is what makes the external-edit case
  * work at all: that diff walks the SUBSCRIBED keys, so a key nobody subscribed
  * to was never compared and never fired. Attaching this bridge widens that walk
  * to the whole declared surface as a side effect of doing its own job.
@@ -24,7 +24,7 @@
  * The domain is not filtered down to daemon-owned keys, deliberately. A client
  * subscribing to this stream is watching the DAEMON's settings, and which of
  * them the daemon considers client-owned is a fact the subscriber may want to
- * see rather than one the emitter should decide for it — each notice carries
+ * see rather than one the emitter should decide for it, each notice carries
  * its `scope`, so a consumer that only cares about daemon-owned keys filters on
  * a field instead of losing the others silently.
  *
@@ -60,7 +60,7 @@ export interface ConfigChangeSource {
 }
 
 export interface ConfigEmitBridgeDeps {
-  /** The live ConfigManager — only its per-key subscription is used. */
+  /** The live ConfigManager, only its per-key subscription is used. */
   readonly config: ConfigChangeSource;
   /** The runtime event bus the config events are emitted onto. */
   readonly bus: Pick<RuntimeEventBus, 'emit'>;
@@ -99,8 +99,8 @@ export function listWatchableConfigPaths(additionalKeys: readonly string[] = [])
  * A value that cannot survive a JSON round trip (a function, a class instance,
  * a cyclic object) is dropped rather than coerced into something that reads as
  * the setting: an event saying `value: "[object Object]"` is worse than one
- * saying only that the key changed, and the subscriber's fallback — re-read the
- * key — is correct in both cases.
+ * saying only that the key changed, and the subscriber's fallback, re-read the
+ * key, is correct in both cases.
  */
 export function toConfigEventValue(value: unknown): ConfigEventValue | undefined {
   if (value === undefined) return undefined;
@@ -116,7 +116,7 @@ export function toConfigEventValue(value: unknown): ConfigEventValue | undefined
  *
  * Safe to call once at composition time. Detaching matters: the subscriptions
  * are held by the ConfigManager, so a bridge that outlived its bus would keep
- * emitting into a torn-down graph — the same reason the push event sources are
+ * emitting into a torn-down graph, the same reason the push event sources are
  * registered with the disposal registry.
  */
 export function attachConfigEmitBridge(deps: ConfigEmitBridgeDeps): () => void {
@@ -131,7 +131,7 @@ export function attachConfigEmitBridge(deps: ConfigEmitBridgeDeps): () => void {
       unsubscribes.push(deps.config.subscribe(key, (newValue) => {
         // A settings change belongs to no conversation, so the envelope's
         // required sessionId carries the emitter's own name rather than a
-        // borrowed one — the same sentinel shape the fleet bridge uses for a
+        // borrowed one, the same sentinel shape the fleet bridge uses for a
         // node with no session.
         const ctx: EmitterContext = {
           traceId: nextTraceId(),

@@ -170,7 +170,7 @@ describe('createExpoSecureTokenStore (real factory + mock module)', () => {
 
 describe('createExpoSecureTokenStore — missing peer dep', () => {
   it('throws SDKError with kind=config and install hint when module absent', async () => {
-    // No __loadModule provided — factory will try real dynamic import('expo-secure-store')
+    // No __loadModule provided, factory will try real dynamic import('expo-secure-store')
     // which fails because expo-secure-store is not installed in this test environment
     const ts = createExpoSecureTokenStore({ key: 'gv-test' });
 

@@ -6,7 +6,7 @@
  * keeps running its old build, keeps heartbeating into the shared session
  * store, and keeps executing shared-session work with whatever rules that old
  * build shipped with. A behavioral fix landed in the daemon is therefore
- * INVISIBLE for as long as one stale client is still attached — the old build
+ * INVISIBLE for as long as one stale client is still attached, the old build
  * simply does the old thing beside the new one, and the two are
  * indistinguishable from the outside except by which host their notification
  * links point at.
@@ -31,7 +31,7 @@ export const CLIENT_COMPATIBILITY_FLOOR_HEADER = 'X-Goodvibes-Client-Floor';
  *
  * 1.14.0 is the release in which the conversation-first spawn gate exists at
  * all. A client below it, handed a shared session, will open a review chain
- * for a one-word message because its build has no gate to consult — which is
+ * for a one-word message because its build has no gate to consult, which is
  * exactly the production failure this floor exists to stop repeating.
  *
  * Raise this only for a behavioral change a client MUST have. It costs a
@@ -52,7 +52,7 @@ export interface ClientCompatibilityVerdict {
 /**
  * Compare two dotted build versions numerically, segment by segment.
  * Returns <0, 0, >0. Pre-release suffixes ("1.14.0-rc.1") compare on their
- * numeric prefix, so a release candidate is treated as its release — this
+ * numeric prefix, so a release candidate is treated as its release, this
  * gates on behavior, and an rc carries the behavior.
  */
 export function compareBuildVersions(a: string, b: string): number {
@@ -78,8 +78,8 @@ export function compareBuildVersions(a: string, b: string): number {
  *
  * An unparseable or absent client version is 'unknown', NOT 'ok': the point of
  * the floor is that a build which cannot prove it carries a required behavior
- * is treated as one that does not. An absent FLOOR is a different thing — a
- * daemon too old to publish one — and yields 'ok', because that daemon is not
+ * is treated as one that does not. An absent FLOOR is a different thing, a
+ * daemon too old to publish one, and yields 'ok', because that daemon is not
  * asking for anything.
  */
 export function evaluateClientCompatibility(input: {
@@ -107,7 +107,7 @@ export function evaluateClientCompatibility(input: {
   if (compareBuildVersions(clientVersion, floor) < 0) {
     return {
       status: 'restart-required',
-      message: `This process is running build ${clientVersion}; the daemon requires ${floor} or newer. It has stopped taking shared-session work — restart it to rejoin.`,
+      message: `This process is running build ${clientVersion}; the daemon requires ${floor} or newer. It has stopped taking shared-session work, restart it to rejoin.`,
       clientVersion,
       floor,
     };

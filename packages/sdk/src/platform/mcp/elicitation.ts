@@ -2,7 +2,7 @@
 //
 // STANDING RULE: an MCP server's `elicitation/create` request (the spec's
 // ask-the-user channel) must reach the model and the human through the SAME
-// approval broker as a permission ask — not a separate, unrendered path and not
+// approval broker as a permission ask, not a separate, unrendered path and not
 // a silent `-32601` drop. This module is the translation seam: it turns an
 // incoming elicitation request into a `PermissionPromptRequest` (attributed to
 // the MCP server) and turns the broker's approve/deny decision back into the
@@ -103,7 +103,7 @@ export function createMcpElicitationApprovalHandler(
     }
     // The approving surface may return structured content via modifiedArgs; if it
     // does, hand it back to the server verbatim. Otherwise accept with no content
-    // (the honest default — we never fabricate field values the human did not
+    // (the honest default, we never fabricate field values the human did not
     // supply).
     const content = decision.modifiedArgs && typeof decision.modifiedArgs === 'object'
       ? (decision.modifiedArgs as Record<string, unknown>)

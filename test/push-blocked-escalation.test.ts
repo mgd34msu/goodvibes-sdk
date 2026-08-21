@@ -2,7 +2,7 @@
  * push-blocked-escalation.test.ts
  *
  * A block on a human escalates to a device push once it has waited past its
- * grace WITH NO HUMAN RESPONSE — regardless of an attached surface. Presence
+ * grace WITH NO HUMAN RESPONSE, regardless of an attached surface. Presence
  * (an open TUI / heartbeat) suppresses only the immediate push, never the
  * escalation; a real interaction that clears the block cancels it. These tests
  * drive the source with a manual scheduler + clock so escalation is
@@ -98,7 +98,7 @@ describe('PushService blocked-too-long escalation', () => {
     const clock = manualScheduler();
     const { service, delivered } = makeService({ scheduler: clock.scheduler, now: () => now });
     const { source, push } = fakeSource();
-    // Presence reports attached the whole time — a heartbeat, not a human answer.
+    // Presence reports attached the whole time, a heartbeat, not a human answer.
     service.attachFleetNeedsInputSource(source, { isAttached: () => true });
 
     push(blocked('n1', 's1'));

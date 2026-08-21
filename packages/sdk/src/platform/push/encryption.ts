@@ -2,7 +2,7 @@
  * push/encryption.ts
  *
  * Browser-push payload encryption, implemented with Node's built-in crypto
- * (node:crypto) — no third-party web-push dependency. This is the daemon-side
+ * (node:crypto), no third-party web-push dependency. This is the daemon-side
  * (Node/Bun) delivery path only; nothing here is imported by the runtime-neutral
  * or browser bundles (see scripts/browser-compat-check.ts).
  *
@@ -23,7 +23,7 @@ import { describeAuthSecretProblem, describeP256dhProblem } from './subscription
 
 /** The subscription's own key material, base64url-encoded (browser PushSubscription shape). */
 export interface SubscriptionKeyMaterial {
-  /** The receiver's public key — 65-byte uncompressed P-256 point, base64url. */
+  /** The receiver's public key, 65-byte uncompressed P-256 point, base64url. */
   readonly p256dh: string;
   /** The receiver's 16-byte authentication secret, base64url. */
   readonly auth: string;
@@ -32,7 +32,7 @@ export interface SubscriptionKeyMaterial {
 export interface EncryptedPushPayload {
   /** The aes128gcm request body: header || ciphertext || GCM tag. */
   readonly body: Buffer;
-  /** Always `aes128gcm` — the value for the Content-Encoding request header. */
+  /** Always `aes128gcm`, the value for the Content-Encoding request header. */
   readonly contentEncoding: 'aes128gcm';
 }
 
@@ -63,7 +63,7 @@ function base64UrlToBuffer(value: string): Buffer {
  * Encrypt `plaintext` for a subscription's key material.
  *
  * A fresh ephemeral sender keypair and salt are generated per call (RFC 8291
- * requires this — the same salt/key pair must never encrypt two messages), so
+ * requires this, the same salt/key pair must never encrypt two messages), so
  * the result is non-deterministic by design.
  */
 export function encryptPushPayload(

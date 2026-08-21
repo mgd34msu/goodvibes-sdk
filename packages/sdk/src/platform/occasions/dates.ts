@@ -1,10 +1,10 @@
 /**
- * dates.ts — the calendar arithmetic behind an occasion.
+ * dates.ts, the calendar arithmetic behind an occasion.
  *
  * Everything here works on CALENDAR DATES (`YYYY-MM-DD`) rather than instants.
  * A birthday is not a moment in time: it is a day, and the only instant-shaped
- * question this feature asks — "what day is it where he is, and is it a
- * reasonable hour to say something" — is answered once, at the edge, by
+ * question this feature asks, "what day is it where he is, and is it a
+ * reasonable hour to say something", is answered once, at the edge, by
  * {@link todayInZone} and {@link minutesOfDayInZone}. Everything downstream is
  * string dates and whole days, so nothing in the sweep can be off by an hour
  * because a caller happened to run it near midnight in a different offset.
@@ -107,7 +107,7 @@ export function occurrenceInYear(date: OccasionDate, year: number): IsoDate {
 /**
  * The next occurrence on or after `today`, or `null` when there is not one.
  *
- * A `once` occasion that has passed returns `null` — it is over, and an
+ * A `once` occasion that has passed returns `null`, it is over, and an
  * occasion that keeps proposing a date in the past would nudge forever.
  * An `annual` occasion always has a next one.
  */
@@ -194,7 +194,7 @@ function clockFormatterFor(timezone: string): Intl.DateTimeFormat {
  * `hourCycle: 'h23'` and `formatToParts` together, rather than slicing a
  * formatted string: an `en-US` time format is 12-hour by default, so a naive
  * slice reads 10pm as minute 600 and puts the quiet-hours boundary fourteen
- * hours out — in the direction that sends a message at 10pm believing it is
+ * hours out, in the direction that sends a message at 10pm believing it is
  * 10am.
  */
 export function minutesOfDayInZone(nowMs: number, timezone: string): number {

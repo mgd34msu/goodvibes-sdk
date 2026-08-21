@@ -4,7 +4,7 @@
 // needs no inbound port or public IP), registers under its rendezvous id, and
 // terminates the end-to-end secure channel INSIDE this process. Tunneled HTTP
 // requests are decrypted here and replayed against the daemon's own route
-// dispatcher, exactly as if they had arrived on the local HTTP listener — the
+// dispatcher, exactly as if they had arrived on the local HTTP listener, the
 // relay only ever moved ciphertext.
 //
 // Reconnect uses the same capped exponential-backoff shape as the transport
@@ -86,15 +86,15 @@ export interface RelayDaemonRegistrationOptions {
    * 512). Each pipe holds a live secure channel derived from the connecting
    * surface's session; a relay that drops pipes WITHOUT sending a pipe-close
    * control frame (crash, network partition) would otherwise leave the channel
-   * context — and the operator-token-authenticated requests riding it — pinned
+   * context, and the operator-token-authenticated requests riding it, pinned
    * forever. When the cap is hit the least-recently-used pipe is evicted (its
    * streams closed) so retained-context count stays bounded.
    */
   readonly maxPipes?: number;
   /**
    * Max concurrently in-flight tunneled REQUESTS across all pipes (default
-   * 1024). Each in-flight request retains its reconstructed Request — headers
-   * (including the operator-token Authorization header) and any buffered body —
+   * 1024). Each in-flight request retains its reconstructed Request, headers
+   * (including the operator-token Authorization header) and any buffered body,
    * for the FULL lifetime: dispatch AND response buffering (the max-memory
    * phase). When the cap is hit a new request is refused with
    * an honest 503 `relay-overloaded` response instead of being retained, so a
@@ -188,7 +188,7 @@ async function readTunnelBodyBounded(response: Response, maxBytes: number): Prom
  * into `stream-data` frames and writes them to the relay socket, applying a
  * bounded buffer so a slow consumer can never make the daemon buffer without
  * limit. When the buffer is full a chunk is DROPPED and counted, and the next
- * successful flush emits a `stream-overflow` notice carrying the dropped count —
+ * successful flush emits a `stream-overflow` notice carrying the dropped count,
  * an honest gap signal, never a silent one. Clean close is explicit in both
  * directions (`stream-close`).
  */
@@ -301,7 +301,7 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
   /**
    * Enforce the maxPipes cap by evicting the least-recently-used pipe(s). Each
    * eviction closes the pipe's streams and drops its channel, releasing the
-   * retained request/session context with a structured, counted log line —
+   * retained request/session context with a structured, counted log line,
    * never a silent leak.
    */
   function enforcePipeCap(): void {
@@ -311,7 +311,7 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
       channels.delete(oldest);
       closePipeStreams(oldest);
       droppedPipes += 1;
-      logger.warn('relay pipe cap exceeded — evicted coldest pipe', {
+      logger.warn('relay pipe cap exceeded, evicted coldest pipe', {
         maxPipes,
         droppedPipes,
         pipe: oldest,
@@ -391,13 +391,13 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
     ws: RelayClientWebSocket,
   ): Promise<void> {
     // In-flight request cap: refuse (don't retain) when saturated. Each in-flight
-    // request pins its reconstructed Request — headers carry the operator-token
-    // Authorization header — until dispatch resolves, so an unbounded backlog is
+    // request pins its reconstructed Request, headers carry the operator-token
+    // Authorization header, until dispatch resolves, so an unbounded backlog is
     // exactly the retained-context leak this guard prevents. The refusal is an
     // honest structured 503 the surface can surface and retry.
     if (inFlightRequests >= maxInFlightRequests) {
       droppedRequests += 1;
-      logger.warn('relay in-flight request cap exceeded — refused', {
+      logger.warn('relay in-flight request cap exceeded, refused', {
         maxInFlightRequests,
         droppedRequests,
       });
@@ -418,7 +418,7 @@ export function createRelayDaemonRegistration(options: RelayDaemonRegistrationOp
       ...(body.length > 0 ? { body } : {}),
       signal: abort.signal,
     });
-    // The in-flight count covers the FULL request lifetime — dispatch AND
+    // The in-flight count covers the FULL request lifetime, dispatch AND
     // response buffering. Buffering is the max-memory phase; releasing the slot
     // at dispatch-resolve would let N buffering requests bypass the cap.
     inFlightRequests += 1;

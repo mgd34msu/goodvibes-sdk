@@ -44,8 +44,8 @@ Card number, expiry, CVV, billing address, shipping address, and budget settings
 
 ### 2.1 Virtual cards are the recommended configuration
 
-**Recommendation (not a blocker):** configure a virtual card — an issuer-minted
-number with a hard spend cap set at the issuer — rather than the real card.
+**Recommendation (not a blocker):** configure a virtual card, an issuer-minted
+number with a hard spend cap set at the issuer, rather than the real card.
 
 The reason is where the limit lives. A budget enforced by this software is
 enforced by code that a bug, a misconfiguration or a successful injection can
@@ -58,7 +58,7 @@ So the design supports both, prefers one:
 
 - `payments.cards[].kind: 'virtual' | 'real'`
 - A virtual card records `issuerCapCents` and `issuerCapWindow` as **declared**
-  facts — the daemon cannot verify them, so they are shown to the owner as "you
+  facts, the daemon cannot verify them, so they are shown to the owner as "you
   told us this" and never treated as an enforcement layer of ours.
 - Configuring a `real` card surfaces the recommendation once, records the
   acknowledgement, and proceeds. It is not blocked.
@@ -92,7 +92,7 @@ regardless of what scope a caller asks for:
 **These are write-only across every wire.** There is no operator method that
 returns them, no log line that contains them, and no error message that echoes
 them. Read-back for surfaces goes through the existing secret-free status
-adapter pattern — `createCredentialStatusProvider()` in
+adapter pattern, `createCredentialStatusProvider()` in
 `config/credential-status.ts`, which returns
 `{ configured, usable, source, scope, secure, overriddenByEnv }` and never a
 value. `payments.cards.list` returns metadata only: `id`, `label`, `brand`,
@@ -165,7 +165,7 @@ for defaults here:
 
 Zero is the most safe number: the capability is fully configured and still buys
 nothing until he affirmatively sets an amount. A refusal against a zero budget
-reads "the daily item budget is 0 — set one" rather than failing obscurely.
+reads "the daily item budget is 0, set one" rather than failing obscurely.
 
 **Note on the billing address.** It sits in config rather than in the secret
 store because surfaces must display and edit it, and it is not card material.
@@ -179,7 +179,7 @@ them.
 
 All payment state resolves through the formalized surface-root mechanism in
 `platform/runtime/surface-root.ts` (`resolveSharedDirectory`,
-`resolveSurfaceDirectory`, `requireSurfaceRoot`) — no hand-built paths.
+`resolveSurfaceDirectory`, `requireSurfaceRoot`), no hand-built paths.
 
 | State | Location |
 |---|---|
@@ -238,7 +238,7 @@ smooth over.
 Every spend record stores its UTC timestamp. Today's totals are **recomputed**
 from those timestamps under the current zone rather than carried as a running
 counter. Without that, changing the timezone would roll the day over and hand
-back a fresh budget — a trivial way around the limit, reachable by anything that
+back a fresh budget, a trivial way around the limit, reachable by anything that
 can write daemon config. Timezone changes are recorded in the audit ledger.
 
 ---
@@ -251,7 +251,7 @@ Three pools, all keyed by day:
 |---|---|---|
 | **Item** | The item price. | `budget.dailyItem` |
 | **Overage** | Only charges that cannot be avoided on an approved purchase: sales tax, mandatory handling or booking fees, and the delivery option actually used. | `budget.dailyOverage` |
-| **Tolerance** | The shortfall when the overage pool cannot cover even the cheapest delivery — only when `overageToleranceEnabled`. | `budget.overageToleranceDailyAllowance` |
+| **Tolerance** | The shortfall when the overage pool cannot cover even the cheapest delivery, only when `overageToleranceEnabled`. | `budget.overageToleranceDailyAllowance` |
 
 **What the overage pool does not cover:** expedited shipping beyond what the
 ladder in §7 selects, shipping insurance, gift wrap, extended warranties,
@@ -291,16 +291,15 @@ Taken when the decision order reaches step 3, held across the window, and either
 charge failed, expired). **On a cluster, exactly one node may act.** `payments.*` config replicates to
 every opted-in node (`cluster/config-replication-policy.ts`) so a node that takes
 over a handover has the owner's real limits rather than defaults. Today's SPEND
-does not replicate — it lives in the payments spend ledger, which is not config —
-so a second node acting would start from a clean daily budget and could spend the
+does not replicate, it lives in the payments spend ledger, which is not config, so a second node acting would start from a clean daily budget and could spend the
 day twice. Until the ledger itself replicates, `checkPaymentGates` refuses on any
 node that is not the elected payments leader, and `isPaymentsLeader` is a
 required input with no default so a caller cannot omit it into a pass.
 
 Reservations are persisted so a daemon restart does not
-release money that is mid-flight, and — per the platform rule that anything
+release money that is mid-flight, and, per the platform rule that anything
 persisted across restarts reaps, bounds, validates by content, sweeps
-periodically and discloses — they are swept on a timer, capped in count, dropped
+periodically and discloses, they are swept on a timer, capped in count, dropped
 when they fail content validation, and the sweep's actions appear in the audit
 ledger rather than happening silently.
 
@@ -405,7 +404,7 @@ the same option; a merchant offering one leaves nothing to choose.
 
 The chosen tier's cost draws on the overage pool. When the pool cannot cover it,
 **step down one tier at a time until it fits, stopping at the cheapest.** Never
-jump straight to the cheapest — the owner asked for one step at a time, and the
+jump straight to the cheapest, the owner asked for one step at a time, and the
 difference is real when three tiers cost $15 / $9 / $5 and $9 fits.
 
 A step-down needs no approval, because it is within budget. It is **recorded in
@@ -417,7 +416,7 @@ invariant, not a preference: the checkout driver has no verb that adds a line th
 owner did not ask for, and `assertCartMatchesRequest` compares the cart's lines
 against the request immediately before payment and aborts on any extra line.
 There is no free-shipping-threshold logic anywhere in the capability, and its
-absence is asserted by a test that greps the payments module for it — the point
+absence is asserted by a test that greps the payments module for it, the point
 being that a later "helpful" addition fails a test rather than shipping.
 
 ---
@@ -435,8 +434,8 @@ They are **deliberately opposite and must stay that way.**
 | Explicit "no" | Denies | Cancels and reports |
 | Default duration | `windows.approvalMinutes` = 60 | `windows.vetoMinutes` = 10 |
 
-**Why the approval window is an hour.** Denial is the recoverable outcome — he
-re-asks and it goes through — so the cost of too-short is friction and the cost
+**Why the approval window is an hour.** Denial is the recoverable outcome, he
+re-asks and it goes through, so the cost of too-short is friction and the cost
 of too-long is a cart holding a price that may drift. An hour survives a meeting
 or a commute. It is configurable, and someone who is away for long stretches
 should raise it.
@@ -453,7 +452,7 @@ Separate types, separate transition functions, separate terminal sets. Every
 terminal state maps to exactly one budget action (`commit` or `release`), so a
 window can never end without settling its reservation.
 
-**Approval gate — above budget.**
+**Approval gate, above budget.**
 
 ```
                     ┌──────────────────────────────────────────┐
@@ -473,7 +472,7 @@ Terminal: `approved`, `denied-explicit`, `denied-timeout`,
 `denied-undeliverable`, `void`.
 **Every non-`approved` terminal releases.** `silenceMeans: 'denied'`.
 
-**Veto window — within budget.**
+**Veto window, within budget.**
 
 ```
   pending-dispatch ─┬─ dispatch fails on every channel ──▶ proceeding-undelivered
@@ -526,7 +525,7 @@ export const VETO_WINDOW   = { kind: 'veto',     silenceMeans: 'proceeds' } as c
   value individually so a change to either fails with a message naming the
   ruling.
 - The two state machines are separate functions. There is no shared
-  `openTimedPrompt()` they both call — the duplication is the point.
+  `openTimedPrompt()` they both call, the duplication is the point.
 
 ### 8.2 Delivery is restricted to command-authority surfaces
 
@@ -536,13 +535,12 @@ Telegram. **Never email, permanently.**
 There is no single command-authority enum in the platform today. There are two
 separate mechanisms, deliberately not unified, and this capability uses both:
 
-1. **Content trust** — `platform/security/untrusted-content.ts`:
+1. **Content trust**, `platform/security/untrusted-content.ts`:
    `surfaceHasCommandAuthority(surface)` is true only for `'owner-direct'`.
    Note that at this layer `'channel-message'` is *untrusted*, exactly like
    `'email'`. That is about whether text just read can direct the runtime, not
    about whether a human on that channel can answer a question we asked.
-2. **Channel identity resolving a pending ask** —
-   `platform/daemon/approval-reply.ts`: `parseApprovalReplyVerb(text)` and
+2. **Channel identity resolving a pending ask**, `platform/daemon/approval-reply.ts`: `parseApprovalReplyVerb(text)` and
    `tryResolveApprovalReplyFromChannel(...)`, gated on
    `ChannelPolicyRecord.allowlistUserIds` (`platform/channels/types.ts`). This is
    what lets the owner reply "approve" in Telegram and have it resolve a broker
@@ -581,7 +579,7 @@ it wrong and relayed a coordinator decision as an owner ruling:
 > *"and in the agent - basically ui should expose it in both."*
 
 He named the **TUI and the agent**. The webui question was then put to him
-directly, as a two-option choice with the exposure stated — PAN on a browser
+directly, as a two-option choice with the exposure stated, PAN on a browser
 page, form autofill, password managers, browser history, XSS in our own UI. He
 selected the option labelled **"Card entry in webui too"**, and wrote:
 
@@ -597,9 +595,9 @@ verbatim owner wording exists for it.
 | | Answering | Entering |
 |---|---|---|
 | The question | May this surface say yes or no to a purchase? | May card details be typed here? |
-| Telegram and other live channels | **Yes** — owner's explicit ruling, and it stays | **No** |
-| TUI, agent terminal | Yes | **Yes** — the two he named first |
-| The webui | Yes | **Yes** — his direct ruling, with the conditions in §8.2.3 |
+| Telegram and other live channels | **Yes**, owner's explicit ruling, and it stays | **No** |
+| TUI, agent terminal | Yes | **Yes**, the two he named first |
+| The webui | Yes | **Yes**, his direct ruling, with the conditions in §8.2.3 |
 | Email | Never | Never |
 
 **Remote channels have authority to decide about a purchase. They have no path
@@ -609,7 +607,7 @@ The reason entering is stricter is concrete. A card number typed into Telegram
 is **stored on Telegram's servers, in message history nobody here controls or
 can erase, and it travelled through their infrastructure before it reached
 us**. The same is true of every hosted chat channel. Encryption at rest is
-irrelevant to a value already copied somewhere else on its way in — the damage
+irrelevant to a value already copied somewhere else on its way in, the damage
 is complete before any storage decision of ours applies.
 
 An "approve" typed into the same chat carries no such residue: it is one word
@@ -622,7 +620,7 @@ there, and the invitation is what puts the number on someone else's server.
 Refusing the answer afterwards is too late.
 
 When card-shaped content does arrive on a remote channel anyway, it is refused
-without being stored, without being logged, and **without being echoed** — the
+without being stored, without being logged, and **without being echoed**, the
 refusal travels over the same channel that already stored the message, so
 quoting the value, even masked, would write it there a second time. The reply
 names the shape that matched, never the value, and tells him to delete the
@@ -642,11 +640,11 @@ quietly implement a weaker version.
 | Condition | Why |
 |---|---|
 | Posted over the **authenticated daemon channel** | The same path as any other secret; nothing bespoke for card material. |
-| **Never in a URL** — no query parameter, fragment, or path segment | URLs reach browser history, referrer headers and server logs, none of which this system controls. |
-| **Never rendered back after entry** — no response returns the value, no field repopulates from the server | A rendered value reaches the DOM and anything reading it, and a repopulated field is a read path. |
+| **Never in a URL**, no query parameter, fragment, or path segment | URLs reach browser history, referrer headers and server logs, none of which this system controls. |
+| **Never rendered back after entry**, no response returns the value, no field repopulates from the server | A rendered value reaches the DOM and anything reading it, and a repopulated field is a read path. |
 | **`autocomplete="off"`** on every card field | Keeps the browser from retaining it. |
-| **No password-manager capture** — the fields must not present as ones a manager offers to save | A manager copies the value into storage this system does not control and cannot clear. |
-| **No value retained in DOM state** — cleared from component state after submit | State surviving navigation outlives the submit that needed it. |
+| **No password-manager capture**, the fields must not present as ones a manager offers to save | A manager copies the value into storage this system does not control and cannot clear. |
+| **No value retained in DOM state**, cleared from component state after submit | State surviving navigation outlives the submit that needed it. |
 
 Asserted the same way the CVV containment is: a test walks real output and fails
 if a card field appears in any URL or comes back in any response body.
@@ -655,7 +653,7 @@ if a card field appears in any URL or comes back in any response body.
 
 Delivery goes through `ChannelDeliveryRouter.deliver()`
 (`platform/channels/delivery-router.ts`), which returns `{ responseId? }` and has
-no `ok` flag — **failure is a thrown error**, including `Unsupported channel
+no `ok` flag, **failure is a thrown error**, including `Unsupported channel
 delivery target` when no strategy matches. So a bare `deliver()` is not enough to
 answer "was this delivered", and the decision order depends on that answer.
 
@@ -669,7 +667,7 @@ event**, and that is the condition step 1 of the decision order branches on.
 One nuance that matters for a headless daemon: **the TUI is not a delivery
 strategy.** It renders in-process; there is no routed channel for it. So a daemon
 running with no surface attached and only Telegram configured is undeliverable
-the moment Telegram fails — which is exactly the case the owner's ruling is
+the moment Telegram fails, which is exactly the case the owner's ruling is
 about.
 
 ### 8.3 The window always runs, and presence is not attention
@@ -700,7 +698,7 @@ step 1 with the new total. An approval is for an amount, not for a cart.
 
 One word cancels. On cancellation the daemon stops before payment, releases the
 reservation, deterministically abandons the checkout rather than leaving it half
-driven, and **reports what it stopped** — merchant, total, item, and the state it
+driven, and **reports what it stopped**, merchant, total, item, and the state it
 left the cart in. It never silently abandons a cart.
 
 ### 8.6 What each window is built on, and what happens across a restart
@@ -715,7 +713,7 @@ already resolve one from Telegram.
 
 **There is a restart gap in `ApprovalBroker` that this capability must not
 inherit.** `start()` reloads persisted records but does **not** re-arm the
-`setTimeout` for restored `pending`/`claimed` approvals — `pendingResolvers` is
+`setTimeout` for restored `pending`/`claimed` approvals, `pendingResolvers` is
 in-memory and is rebuilt empty. A pending approval whose timer was mid-flight
 across a daemon restart sits `'pending'` forever. For a payment that is not a
 stale UI row, it is money in limbo. So:
@@ -728,9 +726,9 @@ stale UI row, it is money in limbo. So:
 
 **The veto window is built new**, not on `ApprovalBroker`'s timer, because a
 deadline that decides "proceed" must survive a crash. It uses a one-shot
-automation job — `AutomationAtSchedule` (`{ kind: 'at', at }`) with
+automation job, `AutomationAtSchedule` (`{ kind: 'at', at }`) with
 `deleteAfterRun: true` via `AutomationManager.createJob()`
-(`platform/automation/schedules.ts`, `manager-runtime.ts`) — which is persisted
+(`platform/automation/schedules.ts`, `manager-runtime.ts`), which is persisted
 and reloaded.
 
 ### 8.6.1 A window interrupted by downtime is keyed on DELIVERY, not on uptime
@@ -738,7 +736,7 @@ and reloaded.
 **Silence means "he had the chance to object and did not."** Whether our process
 was alive is irrelevant to whether he had that chance. An earlier draft of this
 design keyed the restart rule on daemon uptime; that was wrong, and re-opening a
-window unconditionally is wrong for a specific reason — it re-pings him about
+window unconditionally is wrong for a specific reason, it re-pings him about
 something he deliberately ignored, and a system that repeats itself is one he
 stops reading.
 
@@ -746,7 +744,7 @@ So the rule is keyed on whether the notification reached him:
 
 | On restart | Rule |
 |---|---|
-| Notification **was delivered**, window expired during downtime | **The expiry stands.** Before charging, **backfill each live channel** for messages received while we were down and honour any objection found there. No objection → proceed. **Do not re-notify** — he already saw it. |
+| Notification **was delivered**, window expired during downtime | **The expiry stands.** Before charging, **backfill each live channel** for messages received while we were down and honour any objection found there. No objection → proceed. **Do not re-notify**, he already saw it. |
 | Notification **was never delivered** | §6 governs unchanged: in-budget proceeds, above-budget refuses, and the shipping ladder is attempted before any overage refusal. |
 | Channel **cannot be backfilled** for the downtime span | **Re-open the window on that channel only.** For that channel we cannot distinguish silence from an objection we dropped, and only that channel is ambiguous. |
 
@@ -760,7 +758,7 @@ The same reasoning applies to the approval gate, and lands in the same place by 
 different route: an approval that expired resolves **denied** regardless, so a
 dropped objection cannot cost money there. Backfill still runs, because an
 explicit *approve* found in the backfill is worth honouring rather than making
-him ask twice — but only inside the original window, never past it.
+him ask twice, but only inside the original window, never past it.
 
 The pending state is bounded, content-validated, swept on a timer, and its
 recoveries are disclosed rather than silent.
@@ -772,7 +770,7 @@ recoveries are disclosed rather than silent.
 ### 9.1 Who may initiate a purchase, and who may choose the merchant
 
 These are two different questions, and the owner ruled them differently. This
-section used to conflate them — refusing any purchase whose merchant came from
+section used to conflate them, refusing any purchase whose merchant came from
 page content, and documenting that as a feature. He overrode that:
 
 > "the taint gate is wrong. if i tell you to buy the cheapest X you find online,
@@ -783,12 +781,12 @@ page content, and documenting that as a feature. He overrode that:
 **What did not move: who initiates.** A content-initiated purchase is refused
 outright. An email or a web page saying "buy X from Y" cannot start a purchase,
 cannot name a merchant, and cannot set an amount. No owner-address exemption, no
-disclose-instead-of-refuse fallback, **no approval path around it** — this is the
+disclose-instead-of-refuse fallback, **no approval path around it**, this is the
 one gate with no downstream branch at all, because the approval is exactly the
 step an injection is trying to reach.
 
 **What relaxed: who chooses the merchant**, on a purchase he initiated. "Buy the
-cheapest X you can find" is his instruction — the item and the intent are his,
+cheapest X you can find" is his instruction, the item and the intent are his,
 and only the storefront was found on a page. That now proceeds, with the merchant
 graded by the standard in §9.1.1 into a veto or an approval.
 
@@ -799,10 +797,10 @@ enforces rather than a rule a later edit can forget.
 
 Reuses the existing machinery unchanged:
 
-- `platform/security/content-taint.ts` — `findContentTaint(fields, sources, options)`
-- `platform/security/untrusted-content.ts` — the process ledger,
+- `platform/security/content-taint.ts`, `findContentTaint(fields, sources, options)`
+- `platform/security/untrusted-content.ts`, the process ledger,
   `getProcessUntrustedContentLedger()`, `taintSourcesThisTurn()`
-- `platform/security/turn-boundary.ts` — `startTurnForOwnerRequest()`, so "this
+- `platform/security/turn-boundary.ts`, `startTurnForOwnerRequest()`, so "this
   turn" means what it says and automated work does not reset the window
 
 **The payment path calls `findContentTaint` directly.** It does *not* call
@@ -815,7 +813,7 @@ still refused when a valid `OwnerApproval` for the same action is present.
 
 **Which fields are checked, and which deliberately are not.**
 
-**Always checked** — these come from the owner or the purchase does not exist. A
+**Always checked**, these come from the owner or the purchase does not exist. A
 page that supplies the thing to buy, or the ceiling to buy it under, is
 initiating a purchase whatever else is true:
 
@@ -824,20 +822,20 @@ initiating a purchase whatever else is true:
 | `item` | the length thresholds |
 | `requestedMaxCents` | the length thresholds, when the request states a limit |
 
-**Conditionally checked** — only when *he named the merchant*, because then it
+**Conditionally checked**, only when *he named the merchant*, because then it
 has to be his. When `merchantDiscovered` is set, the storefront came off a page
 by design, and grading it (§9.1.1) rather than refusing it is the safeguard:
 
 | Field | Test |
 |---|---|
-| `merchant` | exact containment (like a recipient address — short, high-signal) |
+| `merchant` | exact containment (like a recipient address, short, high-signal) |
 | `checkoutUrl` | exact containment |
 
-Not checked — the merchant's own quoted numbers:
+Not checked, the merchant's own quoted numbers:
 
 > The price, tax, fees and shipping costs are **read from the merchant** by
 > definition. Taint-checking them would refuse every purchase, and a check that
-> is permanently tripped gets removed — the exact failure mode
+> is permanently tripped gets removed, the exact failure mode
 > `content-taint.ts` was written to avoid. The defence for those numbers is not
 > taint, it is the **budget**: a page that inflates a price hits the daily item
 > budget or the per-purchase ceiling and needs an approval, and the approval
@@ -846,7 +844,7 @@ Not checked — the merchant's own quoted numbers:
 ### 9.1.1 The merchant standard: recourse, not recognisability
 
 When he initiates a purchase and we find the storefront, the merchant is
-**graded**, and the grade decides only one thing — **what silence means**.
+**graded**, and the grade decides only one thing, **what silence means**.
 
 > "if the place we're buying isn't what the average person would consider a major
 > retailer, silence means denial of purchase"
@@ -868,29 +866,29 @@ the real test himself when he explained why Etsy counts:
 > like jeffsgadgets.biz"
 
 A merchant qualifies when there is a real path to remedy if the purchase goes
-wrong — platform buyer protection, an established returns process, an accountable
+wrong, platform buyer protection, an established returns process, an accountable
 business with something to lose. `jeffsgadgets.biz` fails not because it is small
 or obscure but because **there is nobody to go to**. Micro Center qualifies at two
 dozen stores and Redbubble qualifies with no stores at all, because both are real
 businesses with real policies. Size and physical presence are weak evidence, not
 the test.
 
-**One notification, not two.** He collapsed the two steps himself — *"2 and 3 are
-basically the same step"* — so there is one message, sent once, when the item is
+**One notification, not two.** He collapsed the two steps himself, *"2 and 3 are
+basically the same step"*, so there is one message, sent once, when the item is
 chosen and the final total is known, before payment. Both branches carry
 identical content: what was found, the validated registrable domain, the item,
 and the total re-rendered from our own parsed integers (§9.3). The grade changes
 only what silence means, and the message states which mode it is in and what
-happens if he does nothing. `renderPurchaseNotice` is the single send site — a
+happens if he does nothing. `renderPurchaseNotice` is the single send site, a
 selection between the two existing windows, not a third message type.
 
 **The notification names the recourse, not the verdict.** "Etsy, buyer protection
 applies" is something he can evaluate; "on your approved list" sends him off to
 check a list. When it goes to approval it reads as a checkpoint, not an
-accusation about the seller — he may well want to buy there, and all we are
+accusation about the seller, he may well want to buy there, and all we are
 saying is that we ask rather than assume.
 
-**Where "use judgement" lives — and it is not at runtime.** The judgement is
+**Where "use judgement" lives, and it is not at runtime.** The judgement is
 exercised when the list is **curated**, and recorded as data in
 `payments/merchant-recourse.ts`. At runtime this is a lookup. There is deliberately
 **no runtime inference**: no heuristics on traffic, page quality, certificate age
@@ -905,26 +903,25 @@ a later reader understands the list rather than seeing arbitrary strings:
 | Qualifier | Meaning |
 |---|---|
 | `national-chain` | Large general retailer; established returns process |
-| `specialty-retailer` | Established in its category — his Micro Center case |
-| `online-only-retailer` | Established with no physical stores — his Redbubble case |
-| `marketplace-buyer-protection` | The marketplace's own protection covers it — his Etsy case; major outright |
-| `marketplace-per-seller` | Recourse depends on the seller — his eBay case; per-listing conditions |
+| `specialty-retailer` | Established in its category, his Micro Center case |
+| `online-only-retailer` | Established with no physical stores, his Redbubble case |
+| `marketplace-buyer-protection` | The marketplace's own protection covers it, his Etsy case; major outright |
+| `marketplace-per-seller` | Recourse depends on the seller, his eBay case; per-listing conditions |
 
 **Default is not-major.** A longer list does not make a more permissive one:
 everything outside it asks him. There is no benefit of the doubt, because the
-fallback is not refusal — it is asking. Treating a real retailer as unqualified
+fallback is not refusal, it is asking. Treating a real retailer as unqualified
 costs one message he answers; the reverse costs money spent somewhere with no way
 to get it back.
 
 **The list is owner-editable and nothing learns its way onto it.**
 `payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` take
-comma-separated registrable domains. No page, agent or inference adds an entry —
-a page that could argue itself onto the list could buy from itself unattended.
+comma-separated registrable domains. No page, agent or inference adds an entry, a page that could argue itself onto the list could buy from itself unattended.
 
 **Recourse must survive the checkout.** Matching is on the validated registrable
 domain **that takes the card**. If an established retailer hands off to a payment
 page on an unrelated registrable domain, the protection the qualification rested
-on may not follow it — that is not-major, and the notification says why.
+on may not follow it, that is not-major, and the notification says why.
 
 #### eBay is per-listing, not per-domain
 
@@ -937,7 +934,7 @@ ebay.com is necessary and not sufficient. Two conditions, both required, in
 **1. Fixed price only. Auctions are refused structurally, not by policy toggle.**
 The flow he designed is: know the final total → notify him → run the window →
 pay. An auction has no final total until it ends, so that flow *cannot execute at
-all* — this is a structural impossibility, not a preference that could be
+all*, this is a structural impossibility, not a preference that could be
 configured away. Bidding is also an open-ended commitment rather than a purchase.
 The same reasoning covers Best Offer and any listing whose format we could not
 confirm as fixed-price.
@@ -949,7 +946,7 @@ by default, configurable via `payments.ebayMinSellerPositivePercent` and
 `payments.ebayMinSellerFeedbackCount`.
 
 Reading a page here is acceptable only because the figures are rendered by
-**eBay**, on a domain already validated, in eBay's own feedback widget — not by
+**eBay**, on a domain already validated, in eBay's own feedback widget, not by
 the seller. It is nonetheless built as a **ratchet**:
 
 - It may only ever make the outcome **stricter**. It can move a listing to
@@ -966,8 +963,8 @@ which is where an unrecognised seller was going anyway.
 #### The config seam
 
 `merchantPolicyFromConfig(config)` is the **only** mapping from `PaymentsConfig`
-to the merchant policy. Every consumer — the daemon's checkout path, the
-control-plane handlers, a surface previewing a decision — calls it rather than
+to the merchant policy. Every consumer, the daemon's checkout path, the
+control-plane handlers, a surface previewing a decision, calls it rather than
 reading the keys itself. A second copy of that mapping is how a renamed key
 silently degrades a purchase gate to its defaults while still looking configured.
 Note that **no config value can make this decision more permissive**: the knobs
@@ -977,8 +974,7 @@ bar.
 ### 9.2 Checkout URLs from untrusted content pass full link validation
 
 Any checkout URL that arrived from untrusted content passes
-`validateLinkTarget(rawUrl, authorizedDomain)` before anything is typed —
-`platform/security/link-validation.ts`, with its generated public-suffix data
+`validateLinkTarget(rawUrl, authorizedDomain)` before anything is typed, `platform/security/link-validation.ts`, with its generated public-suffix data
 (`public-suffix.ts`). Redirect chains go through `followValidatedRedirects`, so a
 link that lands correctly and then 302s away refuses the chain.
 
@@ -989,15 +985,14 @@ cases close the loop differently:
   already established is not page-derived. The domain we validate against cannot
   itself have been chosen by an attacker.
 - **We discovered it.** The domain *was* chosen from page content, so validation
-  alone cannot vouch for it and does not pretend to. It still does its real job —
-  proving the URL we are about to open is the domain it claims to be, catching
+  alone cannot vouch for it and does not pretend to. It still does its real job, proving the URL we are about to open is the domain it claims to be, catching
   userinfo tricks, homographs and redirect chains. **Whether that domain deserves
   the card is a separate question, answered by §9.1.1**, and an unrecognised one
   goes to an approval he must answer. Link validation establishes identity; the
   merchant standard establishes recourse. Neither substitutes for the other.
 
 In both cases the registrable domain that survives validation is the one shown in
-the notification and the one the recourse test is applied to — so what he is told,
+the notification and the one the recourse test is applied to, so what he is told,
 what is graded, and what takes the card are the same string.
 
 The refusal reasons already distinguish userinfo tricks
@@ -1030,8 +1025,7 @@ interface PurchaseFacts {
 }
 ```
 
-- **Merchant** is `registrableDomain(host)` computed from the validated URL —
-  never the page's own claimed name, which is page text.
+- **Merchant** is `registrableDomain(host)` computed from the validated URL, never the page's own claimed name, which is page text.
 - **Item** is the owner's words from the requesting turn, carried in a branded
   `OwnerSuppliedText` that is only constructible from an `owner-direct` turn.
   Assigning page text to it is a compile error. (And if the item description
@@ -1069,16 +1063,16 @@ quoted back inside a refusal reason.
 |---|---|
 | Merchant identified by **validated domain**, not display name | `registrableDomain()` of the validated checkout URL. A page can call itself anything. `isPlainHostname` asserts the value really is a computed hostname; anything else renders as "(merchant identity unavailable)" rather than being printed. |
 | Amounts **re-rendered from our parsed integers** | `formatMinorUnits` throws on a non-integer rather than rendering something plausible, so a merchant string can never become the number he reads. |
-| Markup and mention syntax **neutralised at the source** | `security/notice-text.ts` — `sanitizeNoticeField` for attacker text, `sanitizeOwnerNoticeField` where underscore is worth keeping. |
+| Markup and mention syntax **neutralised at the source** | `security/notice-text.ts`, `sanitizeNoticeField` for attacker text, `sanitizeOwnerNoticeField` where underscore is worth keeping. |
 | Owner-authored text sanitized **too** | `OwnerSuppliedText` is a compile-time guarantee, and a compile-time guarantee does not survive a call site that threads provenance wrongly. |
 
 **Where per-channel escaping lives.** Two layers, deliberately split:
 
-- **Source (SDK, `notice-text.ts`)** — neutralise the *union* of trigger
+- **Source (SDK, `notice-text.ts`)**, neutralise the *union* of trigger
   characters across Telegram MarkdownV2, Slack mrkdwn, Discord markdown, ntfy and
   a bare terminal. The SDK does not know which route a notice will take, so it
   does not guess; this is the layer that has to hold regardless of destination.
-- **Delivery (channel adapter)** — whatever escaping that specific wire format
+- **Delivery (channel adapter)**, whatever escaping that specific wire format
   requires, owned by the code that knows the format.
 
 Neutralising the union at the source is not a substitute for correct per-channel
@@ -1089,14 +1083,13 @@ Tested as attacks rather than as formatting, in
 `test/payments-notice-injection.test.ts`: a merchant name carrying a markdown
 link, a mention and a fake "Approved" affordance must arrive inert. Four of the
 five production cases were confirmed to fail with the sanitisation reverted, and
-the trigger set is proved load-bearing by dropping one character at a time —
-dropping `(` lets `[Approved](https://evil.example)` survive even with `[`
+the trigger set is proved load-bearing by dropping one character at a time, dropping `(` lets `[Approved](https://evil.example)` survive even with `[`
 removed, which is why both are in the set rather than relying on one.
 
 ### 9.4 The audit ledger
 
 Append-only JSONL following the existing
-`platform/runtime/telemetry/exporters/local-ledger.ts` pattern — `appendFileSync`,
+`platform/runtime/telemetry/exporters/local-ledger.ts` pattern, `appendFileSync`,
 size-based rotation, retention through `at-rest-persistence.ts` and the
 `atRest.*` config.
 
@@ -1134,7 +1127,7 @@ asserts the serialized record does not contain any configured card material.
 
 This is not an open question and the code, the tests and this document do not
 treat it as one. What follows is the plain statement of what is kept and what
-that exposes — he is entitled to know that — not a hedge on the decision.
+that exposes, he is entitled to know that, not a hedge on the decision.
 
 Autonomous action is the entire point of the capability. The veto window rules
 that an in-budget purchase proceeds on silence, which means it completes with
@@ -1154,7 +1147,7 @@ which PCI DSS 3.2 prohibits storing after authorization for entities in its
 scope. A personal daemon holding the owner's own CVV in his own encrypted store
 is out of that scope, but not out of danger: anyone who can read
 `~/.goodvibes/daemon/secrets.enc` **and** `~/.goodvibes/secrets.key` has the card
-number, the expiry, the CVV and the billing address — everything a
+number, the expiry, the CVV and the billing address, everything a
 card-not-present transaction needs, at any merchant, with no further access to
 this machine. Filesystem permissions (0600/0700) and the encryption at rest
 defend against a different user on the same host; neither defends against a
@@ -1164,7 +1157,7 @@ process running as the owner. Backups of the home directory carry the whole kit.
 guidance about which instrument to provision, not a qualification of the ruling.
 With a virtual card the worst case is one number carrying an issuer-enforced
 ceiling, killable from an app in a minute. With the real card the worst case is
-the card the rent comes out of, and nothing in this software can cap it — the
+the card the rent comes out of, and nothing in this software can cap it, the
 cap has to live at the issuer. §2.1 is the same argument and this is why it
 matters most here.
 
@@ -1186,8 +1179,8 @@ real test over real payloads rather than a smoke test.
 **`payments.cvvHandling` still ships as a real setting**, defaulting to
 `'stored'`. The alternative value `'prompt'` stores nothing and asks on every
 purchase. Choosing it **disables unattended purchasing**, and the surface says so
-at the moment of selection — `CVV_PROMPT_TRADEOFF_WARNING` in
-`platform/payments/index.ts` is the shared string every surface renders — because
+at the moment of selection, `CVV_PROMPT_TRADEOFF_WARNING` in
+`platform/payments/index.ts` is the shared string every surface renders, because
 a trade-off that large belongs in front of whoever flips the switch, not buried
 in a document.
 
@@ -1240,7 +1233,7 @@ means "safe to call again", never "safe to submit again".
 ## 9.7 Three things this capability refuses on purpose
 
 These are refusals by design, not gaps left for later. Each is implemented as an
-explicit, named refusal with its own message — never a silent pass and never an
+explicit, named refusal with its own message, never a silent pass and never an
 unhandled case that falls through to "proceed".
 
 ### 9.7.1 A checkout quoted in another currency
@@ -1251,8 +1244,8 @@ The budget is denominated in one currency. A merchant quoting another one is
 The alternative is converting, and converting means picking a rate. Any rate we
 pick is stale by the time the card is charged, because the issuer converts at
 its own rate on its own date and adds its own fee. So a converted number shown
-in an approval would be a number he did not approve — the exact defect §9.3
-exists to prevent — and a budget check against it would be arithmetic on a
+in an approval would be a number he did not approve, the exact defect §9.3
+exists to prevent, and a budget check against it would be arithmetic on a
 guess. Refusing is honest; converting is confident and wrong.
 
 `CurrencyMismatch` carries the budget currency, the quoted currency, and the
@@ -1262,7 +1255,7 @@ a purchase he makes himself.
 ### 9.7.2 A checkout that enrols a subscription or recurring charge
 
 **Refused.** A daily budget cannot describe a charge that renews unattended next
-month. Everything in this design — the pools, the reset, the veto window — is
+month. Everything in this design, the pools, the reset, the veto window, is
 built around one purchase happening once, and there is no mechanism here that
 would notice a renewal, let alone stop one. Enrolling him in something that
 charges again later, on a capability whose entire safety story is a daily limit,
@@ -1271,7 +1264,7 @@ would be the most expensive kind of silent hole.
 Detection is deliberately conservative and errs toward refusing: recurring-billing
 language in the order summary, a subscription line item, a trial-then-charge
 term, or a stored-payment-method consent checkbox. A checkout it cannot classify
-with confidence is refused rather than attempted — a false refusal costs him a
+with confidence is refused rather than attempted, a false refusal costs him a
 manual purchase, a false accept costs him a recurring charge nobody is watching.
 
 ### 9.7.3 Money coming back does not credit a pool
@@ -1308,7 +1301,7 @@ verb.
 | `payments.cards.create` | admin, `write:payments` | Accepts card material; **returns metadata only**. | yes |
 | `payments.cards.delete` | admin, `write:payments` | Deletes config metadata and every derived secret, reporting how many were cleared. | yes |
 | `payments.purchases.list` | `read:payments` | Audit records. | yes |
-| `payments.purchase.approve` / `.deny` | command-authority principal | Answers an above-budget gate. | not yet — the gate runs on `ApprovalBroker` today |
+| `payments.purchase.approve` / `.deny` | command-authority principal | Answers an above-budget gate. | not yet, the gate runs on `ApprovalBroker` today |
 | `payments.purchase.cancel` | command-authority principal | Vetoes an in-budget purchase. | not yet |
 | `payments.purchase.status` | `read:payments` | Live state machine position. | not yet |
 
@@ -1325,7 +1318,7 @@ Plus a `payments.purchase_update` gateway event so surfaces render a live window
 rather than polling.
 
 `approve`/`deny`/`cancel` additionally require that the calling principal arrived
-over a command-authority surface — an authenticated operator session from the TUI
+over a command-authority surface, an authenticated operator session from the TUI
 or agent, or a channel binding whose chat identity is the owner's. Email
 principals do not exist for these methods.
 
@@ -1341,16 +1334,15 @@ Worth stating because it is counter-intuitive: the TUI reads and writes config
 through the **in-process `ConfigManager`**, not through `OperatorClient` or
 `DirectTransport`. `ConfigManager` routes each key by ownership
 (`config-ownership.ts`) to the client, user or **daemon** tier, and the daemon
-tier is `~/.goodvibes/daemon/settings.json` — the same file the daemon process
+tier is `~/.goodvibes/daemon/settings.json`, the same file the daemon process
 reads. That is why adding `'payments.'` to `DAEMON_OWNED_CONFIG_PREFIXES` is
 what makes a setting entered in the TUI apply to the daemon, with no RPC
-involved. The webui, having no filesystem, does go over the wire —
-`invokeOperator('config.set', { key, value })` in
+involved. The webui, having no filesystem, does go over the wire, `invokeOperator('config.set', { key, value })` in
 `goodvibes-webui/src/lib/goodvibes.ts`.
 
 Only the new `payments.*` verbs (purchases, budget status, approve/deny/cancel)
 are operator methods, and each needs a `DIRECT_TRANSPORT_COVERAGE` decision in
-`test/transport-parity.test.ts` — a real client method or an explicit
+`test/transport-parity.test.ts`, a real client method or an explicit
 `'http-only'`. The gate fails until that decision is made, which is the point.
 
 ### 10.2 Settings rows come for free; card entry does not
@@ -1363,12 +1355,12 @@ no per-field UI code, and the daemon-owned note is appended automatically by
 `daemon-owned-settings-descriptions.ts`.
 
 Card material must **not** use that path. The settings modal's inline editor
-echoes the raw edit buffer on screen — `currentSettingValue()` in
+echoes the raw edit buffer on screen, `currentSettingValue()` in
 `goodvibes-tui/src/renderer/settings-modal.ts` does not special-case a secret key
 while it is being edited, so `maskSecretValue()` only masks a value at rest.
 Card entry therefore routes through the concealed-input composer
 (`goodvibes-tui/src/input/concealed-input.ts`, `maskConcealedText`,
-`beginConcealedInputFor`), following `input/provider-key-intake.ts` — which
+`beginConcealedInputFor`), following `input/provider-key-intake.ts`, which
 already prompts "input is masked", keeps the plaintext out of input history and
 the transcript, and hands it once to `secretsManager.set(...)`. The webui
 equivalent already exists: the write-only `<input type="password">` branch in
@@ -1386,7 +1378,7 @@ added to `SECRET_CONFIG_KEYS`.
 The owner ruled that approval and veto arrive over "the TUI, the agent terminal,
 or a channel like Telegram". The TUI wires the shared `ApprovalBroker` into its
 prompt card (`goodvibes-tui/src/permissions/broker-approval-card.ts`,
-`handleBrokerApprovalChange`). **The agent has no equivalent** — its
+`handleBrokerApprovalChange`). **The agent has no equivalent**, its
 `PermissionPromptUI` (`goodvibes-agent/src/permissions/prompt.ts`) is
 local-foreground-only and imports no broker.
 
@@ -1397,8 +1389,7 @@ round.
 
 ### 10.4 Feature flag
 
-The capability registers in the SDK's flag registry —
-`platform/runtime/feature-flags/flags.ts` (`FEATURE_FLAGS`) plus a
+The capability registers in the SDK's flag registry, `platform/runtime/feature-flags/flags.ts` (`FEATURE_FLAGS`) plus a
 `FEATURE_SETTINGS_BINDINGS` entry in `feature-settings.ts` binding it to
 `payments.enabled`. The TUI and webui settings surfaces pick it up automatically
 from `FEATURE_SETTINGS`; neither repo has a separate list.
@@ -1417,7 +1408,7 @@ These are requirements on Phase 2, not suggestions:
 2. A purchase whose **amount** derives from injected content is refused.
 3. A purchase whose **item** derives from injected content is refused.
 4. A tainted purchase is still refused **with a valid `OwnerApproval` present**.
-5. An approval message **cannot be influenced by page text** — byte-identical
+5. An approval message **cannot be influenced by page text**, byte-identical
    rendering across every injected page field.
 6. An above-budget purchase with an **undeliverable notification does not
    happen**.
@@ -1426,7 +1417,7 @@ These are requirements on Phase 2, not suggestions:
    **proceeds**; and the two constants are asserted never to agree.
 9. The **shipping ladder steps down one tier at a time**, stops at the cheapest,
    and records the step-down in the audit record and the veto message.
-10. **No filler item is ever added** — cart lines match the request at payment
+10. **No filler item is ever added**, cart lines match the request at payment
     time, and no free-shipping-threshold logic exists in the module.
 11. **The day boundary behaves as ruled**, including the midnight split: $100 at
     23:59 and $100 at 00:00 both go through, in the configured zone and in UTC
@@ -1439,7 +1430,7 @@ These are requirements on Phase 2, not suggestions:
 15. A serialized audit record contains **no card material**.
 16. A challenge pause never retries payment and never completes an order.
 17. A payment approval whose deadline passes **while the daemon is down**
-    resolves denied, not pending — the `ApprovalBroker` re-arm gap in §8.6.
+    resolves denied, not pending, the `ApprovalBroker` re-arm gap in §8.6.
 18. A veto window that elapsed entirely while the daemon was down re-opens
     rather than auto-proceeding.
 19. `'email'` never parses into `CommandAuthorityChannel`, and no payment prompt
@@ -1459,7 +1450,7 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
 
 1. **The CVV is stored (§9.5).** Owner ruling, stated directly: *"we save the
    cvv, full stop. it is 100% needed for autonomous action."* Settled and closed
-   — see `docs/decisions/2026-07-27-the-cvv-is-stored.md`. `payments.cvvHandling`
+  , see `docs/decisions/2026-07-27-the-cvv-is-stored.md`. `payments.cvvHandling`
    still ships as a real setting defaulting to `'stored'`; selecting `'prompt'`
    disables unattended purchasing and the surface says so at the moment of
    selection.
@@ -1478,7 +1469,7 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
    to most safe". A freshly configured capability refuses everything until he
    sets amounts.
 6. **Another currency, a subscription, and a refund credit are refusals by
-   design (§9.7)** — each with its own named refusal and its own reasoning,
+   design (§9.7)**, each with its own named refusal and its own reasoning,
    not an unhandled case.
 7. **Any configured command-authority channel may answer; first answer wins**,
    and the audit record names which one did. `notifyChannels` orders delivery,
@@ -1495,8 +1486,7 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
    merchant*, never *who initiates*. There is still no owner-approval escape
    hatch on this gate.
 10. **The standard is recourse, not recognisability (§9.1.1).** His own reason
-    for admitting Etsy — *"mainly because they have consumer protections"* —
-    which makes recognisability evidence rather than the test. Established
+    for admitting Etsy, *"mainly because they have consumer protections"*, which makes recognisability evidence rather than the test. Established
     online-only retailers qualify with no physical stores.
 11. **eBay is per-listing, with auctions refused structurally (§9.1.1).** Not a
     policy toggle: an auction has no final total, so the notify-then-pay flow
@@ -1525,34 +1515,33 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
     a trustworthy source for the figure first.
 16. **The shipped retailer list is a starting point, not a survey.** It covers
     the classes he named and the obvious members of each. Absence is not a
-    judgement about a seller — it only means we ask. The list will need real use
+    judgement about a seller, it only means we ask. The list will need real use
     to find the retailers he actually buys from, and `majorRetailersAdditional`
     is how he adds them without a release.
 
 ## 13. Related
 
-- `docs/decisions/2026-07-27-daemon-refuses-derived-sends.md` — the taint ruling
+- `docs/decisions/2026-07-27-daemon-refuses-derived-sends.md`, the taint ruling
   this capability inherits
-- `docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md` —
-  the owner's override of the blanket merchant refusal, and the recourse standard
+- `docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md`, the owner's override of the blanket merchant refusal, and the recourse standard
   that replaced it
-- `docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md` — why
+- `docs/decisions/2026-07-27-payment-windows-are-deliberately-opposite.md`, why
   the two windows must never be unified into one primitive
-- `docs/security.md` — `SecretsManager`, storage policies, permission system
-- `docs/secrets.md` — the `goodvibes://secrets/...` reference form
-- `docs/contract-regeneration-recipe.md` — the procedure for the `payments.*`
+- `docs/security.md`, `SecretsManager`, storage policies, permission system
+- `docs/secrets.md`, the `goodvibes://secrets/...` reference form
+- `docs/contract-regeneration-recipe.md`, the procedure for the `payments.*`
   operator namespace
 - `platform/security/content-taint.ts`, `untrusted-content.ts`,
   `turn-boundary.ts`, `link-validation.ts`, `public-suffix.ts`
 - `platform/control-plane/approval-broker.ts`,
-  `platform/daemon/approval-reply.ts` — the approval primitive and its channel
+  `platform/daemon/approval-reply.ts`, the approval primitive and its channel
   resolution
 - `platform/channels/delivery-router.ts`,
-  `platform/automation/delivery-manager.ts` — delivery and undeliverable
+  `platform/automation/delivery-manager.ts`, delivery and undeliverable
   detection
-- `platform/automation/schedules.ts` — the one-shot `{ kind: 'at' }` job the veto
+- `platform/automation/schedules.ts`, the one-shot `{ kind: 'at' }` job the veto
   window runs on
-- `platform/google/{types,console-flow,setup-flow}.ts` — the pause-and-hand-over
+- `platform/google/{types,console-flow,setup-flow}.ts`, the pause-and-hand-over
   pattern §9.6 adapts
 - `platform/config/{secrets.ts,daemon-secret-keys.ts,config-ownership.ts,credential-status.ts}`
 - `platform/runtime/surface-root.ts`,

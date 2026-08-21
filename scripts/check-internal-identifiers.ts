@@ -7,13 +7,13 @@
 // (docs/decisions/** is the sanctioned home for that shorthand).
 //
 // Scanned: packages/*/src, scripts/, docs/, test/, eval/, examples/, and
-// root-level markdown — .ts/.tsx/.md files, excluding dist/, node_modules/,
+// root-level markdown, .ts/.tsx/.md files, excluding dist/, node_modules/,
 // generated/, and vendor/ (the same exclusions the line-cap check uses;
 // generated and vendored text is not hand-authored here).
 //
 // Test-harness overrides (mirrors check-line-cap.ts):
-//   INTERNAL_ID_ROOT       — override the repo root directory
-//   INTERNAL_ID_DIRS_JSON  — JSON array of dirs/files to scan, relative to
+//   INTERNAL_ID_ROOT      , override the repo root directory
+//   INTERNAL_ID_DIRS_JSON , JSON array of dirs/files to scan, relative to
 //                            INTERNAL_ID_ROOT (default: the standard set)
 //
 // Usage:
@@ -94,7 +94,7 @@ function defaultScanTargets(root: string): string[] {
     if (existsSync(join(root, dir))) targets.push(dir);
   }
   // Root-level hand-authored text: markdown (CHANGELOG.md included) and JSON
-  // (bundle budgets, configs) — both carried identifiers the old set missed.
+  // (bundle budgets, configs), both carried identifiers the old set missed.
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     if (entry.isFile() && (entry.name.endsWith('.md') || entry.name.endsWith('.json'))) targets.push(entry.name);
   }

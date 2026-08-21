@@ -23,8 +23,8 @@ const args = process.argv.slice(2);
  * Where this run's tests put their temp directories.
  *
  * The suite calls `mkdtempSync(join(tmpdir(), …))` in hundreds of places, and
- * the ones whose cleanup does not run — a test that throws before its
- * `afterEach`, a process killed mid-file — leave the directory behind in the
+ * the ones whose cleanup does not run, a test that throws before its
+ * `afterEach`, a process killed mid-file, leave the directory behind in the
  * system temp dir, where nothing ever reclaims it. On a machine where /tmp is a
  * tmpfs that is a slow inode leak, and inodes are the resource that runs out
  * first: measured on this project's own host, ~74k leaked directories from
@@ -35,7 +35,7 @@ const args = process.argv.slice(2);
  *
  * The fix is a single per-run PARENT inside the system temp dir: this run's
  * leftovers are one directory, removed with the run, and an age-based sweep
- * (scripts/stale-tmp-sweep.ts, params in scripts/test-run-tmp.ts — shared with
+ * (scripts/stale-tmp-sweep.ts, params in scripts/test-run-tmp.ts, shared with
  * scripts/leak-scan.ts, the other direct-`bun test` entry point) reclaims what
  * a signal-killed run could not remove itself. Thousands of unowned siblings
  * become one owned subtree.
@@ -45,8 +45,8 @@ const args = process.argv.slice(2);
  * at `<repo>/.test-tmp` put a tsconfig.json above every temp directory, so
  * post-edit-diagnostics.test.ts's "returns [] when no TS project context is
  * detectable" case suddenly had one and reported 14 diagnostics where it
- * expected none. Anything rooted above the temp dir — tsconfig, .git,
- * package.json, an editorconfig — is a property tests are entitled to assume
+ * expected none. Anything rooted above the temp dir, tsconfig, .git,
+ * package.json, an editorconfig, is a property tests are entitled to assume
  * absent.
  */
 const RUN_TMP_DIR_NAME = makeRunTmpDirName();
@@ -91,7 +91,7 @@ function resolveTestArgs(): readonly string[] {
 /**
  * Per-test ceiling. bun's built-in default is 5 000 ms, and that is an idle
  * machine's number: this suite boots real daemons, opens real sockets, shells
- * out to real `git`, and signs real crypto — work whose wall-clock cost is set
+ * out to real `git`, and signs real crypto, work whose wall-clock cost is set
  * by how busy the host is, not by what the test asserts. Measured on this
  * project's own machine under a realistic concurrent load, the daemon-backed
  * spine files failed outright with "this test timed out after 5000ms" while the
@@ -122,7 +122,7 @@ await withWorkspaceLock('test', async () => {
   // touched.
   await withRunTmpDir(TEST_TMP_ROOT, async (runTmpDir) => {
     const timeoutArgs = hasExplicitTimeout() ? [] : [`--timeout=${resolveTimeoutMs()}`];
-    // Owned, not merely spawned — see scripts/owned-test-child.ts for the
+    // Owned, not merely spawned, see scripts/owned-test-child.ts for the
     // orphan this replaces.
     const { exitCode, signalCode, stopped, stopReason } = await runOwnedTestChild({
       argv: [...timeoutArgs, ...testArgs],
@@ -139,7 +139,7 @@ await withWorkspaceLock('test', async () => {
     });
     // A run this script ended itself reports WHY, by name. A generic "killed by
     // SIGTERM" here would throw away the only sentence that says what the suite
-    // was doing — which is the whole point of the ceiling that ended it.
+    // was doing, which is the whole point of the ceiling that ended it.
     if (stopped !== null) {
       throw new Error(`bun test ended by the ${stopped} ceiling: ${stopReason ?? 'no reason recorded'}`);
     }

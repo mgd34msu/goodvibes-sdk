@@ -2,7 +2,7 @@
  * Tests for the OAuth loopback flow (google-oauth-loopback.ts).
  *
  * The listener tests stand up a REAL HTTP server on a real ephemeral port and
- * drive it with a real `fetch` call — this is the part that actually has to
+ * drive it with a real `fetch` call, this is the part that actually has to
  * work end to end (redirect capture, state-mismatch rejection, the
  * `?error=` path). Token exchange is proven against an injected fetch fake,
  * since it talks to Google's real token endpoint in production.

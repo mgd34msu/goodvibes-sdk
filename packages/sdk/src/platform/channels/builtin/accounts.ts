@@ -363,7 +363,7 @@ export async function resolveBuiltinAccount(
 }
 
 /**
- * Describe one credential field — both whether it is DECLARED and whether the
+ * Describe one credential field, both whether it is DECLARED and whether the
  * declaration resolves.
  *
  * It used to report only the first. A config value is present whether it is a
@@ -375,7 +375,7 @@ export async function resolveBuiltinAccount(
  * sat in the agent's and the TUI's stores. Sends failed with "Missing Telegram
  * bot token"; the reported health said fine.
  *
- * Resolution is cheap — a store read, no network, no send attempt — so there is
+ * Resolution is cheap, a store read, no network, no send attempt, so there is
  * no excuse for inferring it from presence.
  */
 async function describeBuiltinSecret(

@@ -1,20 +1,20 @@
 /**
- * conversational-diagnosis-contract.test.ts — what a turn owes when something
+ * conversational-diagnosis-contract.test.ts, what a turn owes when something
  * is broken, pinned as text.
  *
  * Two failures in one session put these lines in the contract:
  *
- *  1. A turn "fixed" a stalled agent by driving the owner's tmux pane —
+ *  1. A turn "fixed" a stalled agent by driving the owner's tmux pane,
  *     send-keys into the shell he was using, escape-sequence garbage across his
  *     prompt, and a relaunch typed into his terminal. He had asked what was
  *     wrong, not for a restart.
- *  2. A turn declared the wake word fixed ONE MESSAGE after measuring -90 dB —
- *     silence — from the same microphone.
+ *  2. A turn declared the wake word fixed ONE MESSAGE after measuring -90 dB,
+ *     silence, from the same microphone.
  *
  * The exec guard now refuses the first mechanically (owner-terminal-guard.ts).
  * The second has no mechanism and never will: it is a claim, and the only place
  * a claim can be governed is the contract. So both are stated, and the text is
- * pinned here — in the CONVERSATIONAL prompt and in a hosted session's base
+ * pinned here, in the CONVERSATIONAL prompt and in a hosted session's base
  * prompt, and NOT smuggled into the autonomous one, where a different contract
  * applies.
  */

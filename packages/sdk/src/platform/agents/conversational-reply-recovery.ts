@@ -12,7 +12,7 @@
  *   plainly that no reply was generated. Never a bare acknowledgement, never
  *   silence.
  * - A BACKGROUND run (a schedule, a trigger, agreed work) with nothing to
- *   report is silence, and that half needs no code here — it is the absence of
+ *   report is silence, and that half needs no code here, it is the absence of
  *   a notification (channels/reply-pipeline.ts).
  *
  * The retry is bounded at ONE, and the bound is derived from the conversation
@@ -32,7 +32,7 @@ import { setAgentProgress } from './progress-audience.js';
  * is a fault on this side rather than an answer.
  */
 export const CONVERSATIONAL_EMPTY_REPLY_NOTICE =
-  'No reply was generated — something went wrong on my side.';
+  'No reply was generated, something went wrong on my side.';
 
 /**
  * The re-prompt. Deliberately concrete about what went wrong and what is
@@ -45,7 +45,7 @@ export const CONVERSATIONAL_REGENERATION_REQUEST =
 /** How long a final answer may be when reused as the operator status line. */
 const MAX_PROGRESS_FROM_ANSWER = 200;
 
-/** A conversation, structurally — only what this module touches. */
+/** A conversation, structurally, only what this module touches. */
 export interface RecoveryConversation {
   addAssistantMessage(content: string, options?: { usage?: unknown }): void;
   addUserMessage(content: string): void;
@@ -80,7 +80,7 @@ function regenerationAlreadySpent(conversation: RecoveryConversation): boolean {
  *
  * `record.progress` is set from the answer ONLY when there is an answer. It
  * used to fall back to a hardcoded 'Done.', which is a status line that says
- * nothing and — once progress reached channel surfaces — could be published as
+ * nothing and, once progress reached channel surfaces, could be published as
  * though it were the reply.
  */
 export function completeOrRegenerate(
@@ -93,7 +93,7 @@ export function completeOrRegenerate(
   if (response.content.trim().length > 0) {
     // OPERATOR. This is a truncated copy of the ANSWER, kept so an operator
     // surface can show what the agent settled on. The reader gets the real
-    // thing, complete and once, as `fullOutput` in the final message — a
+    // thing, complete and once, as `fullOutput` in the final message, a
     // partial answer delivered as progress is what made every notification a
     // superset of the one before it. See agents/progress-audience.ts.
     setAgentProgress(record, response.content.slice(0, MAX_PROGRESS_FROM_ANSWER), 'operator');
@@ -112,8 +112,8 @@ export function completeOrRegenerate(
  * still has nothing to say says so.
  *
  * Applied at the single completion funnel rather than at the end of the turn
- * loop, so it also covers the runs that finish some other way — a turn budget
- * exhausted mid-answer, a loop that broke early — where the regeneration above
+ * loop, so it also covers the runs that finish some other way, a turn budget
+ * exhausted mid-answer, a loop that broke early, where the regeneration above
  * never had a chance to fire and the person would otherwise get silence.
  *
  * A no-op for every non-conversational run: work with nothing to report is

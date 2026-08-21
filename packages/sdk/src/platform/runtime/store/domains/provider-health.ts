@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Provider health domain state — tracks connectivity, error rates,
+ * Provider health domain state, tracks connectivity, error rates,
  * and latency for all configured LLM providers.
  */
 
@@ -72,7 +72,7 @@ export interface ProviderHealthRecord {
 }
 
 /**
- * ProviderHealthDomainState — health monitoring for all LLM providers.
+ * ProviderHealthDomainState, health monitoring for all LLM providers.
  */
 export interface ProviderHealthDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

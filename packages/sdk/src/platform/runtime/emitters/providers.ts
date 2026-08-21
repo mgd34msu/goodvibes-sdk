@@ -1,5 +1,5 @@
 /**
- * Provider emitters — typed emission wrappers for provider events.
+ * Provider emitters, typed emission wrappers for provider events.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

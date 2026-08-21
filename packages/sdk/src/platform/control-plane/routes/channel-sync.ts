@@ -1,20 +1,20 @@
 /**
- * routes/channel-sync.ts — the handlers behind `channels.routing.*` and
+ * routes/channel-sync.ts, the handlers behind `channels.routing.*` and
  * `channels.drafts.*`.
  *
  * These seven verbs were cataloged by an audit that found the paths advertised
  * and unserved, and were marked `invokable: false` so the contract said
  * "cataloged, not callable" instead of letting a caller discover a 404. The
  * store behind them now exists (platform/channel-sync), so the flag comes off
- * and the advertised REST paths resolve — through the same gateway REST table
+ * and the advertised REST paths resolve, through the same gateway REST table
  * `channels.profiles.*` uses, so the plain-REST path and the methodId-invoke
  * endpoint reach one handler rather than two implementations of one idea.
  *
  * `channels.inbox.list` is not here either, and for a reason that outlived the
  * other seven: its answer needs the provider credentials and the synced mirror
  * behind them, which live in the host, not in this SDK. It is no longer marked
- * `invokable: false` — the host attaches a handler over the catalog descriptor
- * and its advertised path is in the gateway REST table with these — but the
+ * `invokable: false`, the host attaches a handler over the catalog descriptor
+ * and its advertised path is in the gateway REST table with these, but the
  * handler is composed there rather than registered here. A build with no inbox
  * composition answers 501 NOT_INVOKABLE naming the missing step, which is the
  * honest answer for a process that holds no mailbox.

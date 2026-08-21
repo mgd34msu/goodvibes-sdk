@@ -113,7 +113,7 @@ export const CONFIG_SET_OUTPUT_SCHEMA = objectSchema({
 
 /**
  * Secret-FREE status metadata for a single shared-store credential. Carries NO
- * secret value / raw key bytes by construction — the plaintext never crosses the
+ * secret value / raw key bytes by construction, the plaintext never crosses the
  * wire. `usable` reflects a real in-process resolution attempt.
  */
 export const CREDENTIAL_STATUS_RECORD_SCHEMA = objectSchema({
@@ -127,14 +127,14 @@ export const CREDENTIAL_STATUS_RECORD_SCHEMA = objectSchema({
   refSource: STRING_SCHEMA,
 }, ['key', 'configured', 'usable', 'source', 'scope', 'secure', 'overriddenByEnv'], { additionalProperties: false });
 
-/** Output of `credentials.get` — a secret-free credential-status snapshot. */
+/** Output of `credentials.get`, a secret-free credential-status snapshot. */
 export const CREDENTIALS_SNAPSHOT_SCHEMA = objectSchema({
   available: BOOLEAN_SCHEMA,
   credentials: arraySchema(CREDENTIAL_STATUS_RECORD_SCHEMA),
 }, ['available', 'credentials']);
 
 /**
- * Input of `credentials.set` — the config key whose value is a credential, and
+ * Input of `credentials.set`, the config key whose value is a credential, and
  * the credential itself. `key` is a CONFIG path (`surfaces.telegram.botToken`),
  * not a secret-store name: the store name is derived from it so one derivation
  * governs, and the config key is what the operator actually knows.
@@ -144,13 +144,13 @@ export const CREDENTIAL_SET_INPUT_SCHEMA = objectSchema({
   value: STRING_SCHEMA,
 }, ['key', 'value'], { additionalProperties: false });
 
-/** Input of `credentials.delete` — the config key to remove a credential from. */
+/** Input of `credentials.delete`, the config key to remove a credential from. */
 export const CREDENTIAL_DELETE_INPUT_SCHEMA = objectSchema({
   key: STRING_SCHEMA,
 }, ['key'], { additionalProperties: false });
 
 /**
- * Output of `credentials.set`. Carries NO secret material by construction —
+ * Output of `credentials.set`. Carries NO secret material by construction,
  * not the value, and not a value-derived fingerprint (a hash of a short secret
  * is a way to confirm a guess). Everything here is a name, a scope, or a
  * sentence about where the write went.
@@ -236,7 +236,7 @@ const AUTOMATION_DELIVERY_GUARANTEE_SCHEMA = enumSchema(['best-effort', 'at-leas
 const EXECUTION_RISK_CLASS_SCHEMA = enumSchema(['safe', 'elevated', 'dangerous']);
 const EXECUTION_NETWORK_POLICY_SCHEMA = enumSchema(['inherit', 'allow', 'deny', 'scoped']);
 const EXECUTION_FILESYSTEM_POLICY_SCHEMA = enumSchema(['inherit', 'workspace-write', 'read-only', 'isolated']);
-// Full severity ladder, not a fixed 4-value list — see the matching comment
+// Full severity ladder, not a fixed 4-value list, see the matching comment
 // in operator-contract-schemas-runtime.ts.
 const AUTOMATION_REASONING_EFFORT_SCHEMA = enumSchema([...REASONING_EFFORT_SEVERITY]);
 const AUTOMATION_WAKE_MODE_SCHEMA = enumSchema(['next-heartbeat', 'now']);

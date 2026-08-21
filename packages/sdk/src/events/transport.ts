@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * TransportEvent — discriminated union covering ACP/daemon transport lifecycle events.
+ * TransportEvent, discriminated union covering ACP/daemon transport lifecycle events.
  *
  * Covers transport lifecycle events for the runtime event bus.
  */

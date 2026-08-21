@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * SessionEvent — discriminated union covering all session lifecycle events.
+ * SessionEvent, discriminated union covering all session lifecycle events.
  *
  * Covers session lifecycle events for the runtime event bus.
  */

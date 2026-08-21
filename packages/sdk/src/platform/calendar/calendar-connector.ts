@@ -1,5 +1,5 @@
 /**
- * calendar-connector.ts — the high-level connector the agent drives. It ties the
+ * calendar-connector.ts, the high-level connector the agent drives. It ties the
  * provider profiles, the OAuth flows, the secret-backed token store, and the two API
  * clients into one surface: connect (auth-code or device-code), disconnect, list
  * accounts + their honest state, list calendars, list events (normalized + source-
@@ -68,7 +68,7 @@ export interface CalendarConnectorOptions {
   /**
    * Records that a turn read untrusted event content.
    *
-   * Called from `listEvents` — a read someone asked for — and from nowhere
+   * Called from `listEvents`, a read someone asked for, and from nowhere
    * else. An event the provider says the owner organized is not recorded; an
    * invitation somebody else sent is. See untrusted-events.ts.
    */
@@ -111,13 +111,13 @@ export class CalendarConnector {
   }
 
   /**
-   * Resolve the client config from the operator's SETTINGS — the normal path.
+   * Resolve the client config from the operator's SETTINGS, the normal path.
    *
    * `resolveConfig` takes credentials a caller already holds; this reads them
    * from `calendar.<provider>.clientId` and the client-secret reference beside
    * it, which is where registering your own OAuth app puts them. A config with
    * nothing set resolves to `isConfigured: false`, so a status view can render
-   * "not set up" and a connect attempt refuses naming the key — neither of them
+   * "not set up" and a connect attempt refuses naming the key, neither of them
    * has to know the key string itself.
    */
   async resolveConfigFromSettings(
@@ -201,7 +201,7 @@ export class CalendarConnector {
   /**
    * List events across all of the provider's calendars in a window, normalized into
    * the merged model, source-labeled, and sorted chronologically (through the ONE
-   * documented cross-zone comparator, `compareMergedCalendarEventsByStart` — see
+   * documented cross-zone comparator, `compareMergedCalendarEventsByStart`, see
    * merged-calendar-model.ts for why a raw string/localeCompare sort of `start.value`
    * is wrong once utc and tzid/floating events are mixed). Callers merge this with
    * A9's ICS/local events into the unified /calendar view.
@@ -229,7 +229,7 @@ export class CalendarConnector {
       out.push(...events);
       // Recorded here, at the READ, and per calendar so the label in an origin
       // names the calendar the invitation landed on. Nothing records at fetch
-      // time on a timer — see untrusted-events.ts.
+      // time on a timer, see untrusted-events.ts.
       recordCalendarEventIngest({
         record: this.recordUntrustedIngest,
         provenance: {

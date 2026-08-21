@@ -1,5 +1,5 @@
 /**
- * daemon-session-store-boot.ts — the two things the daemon does to its session
+ * daemon-session-store-boot.ts, the two things the daemon does to its session
  * store before the broker serves: fold every legacy store forward, then sweep
  * the pre-split one aside.
  *
@@ -28,7 +28,7 @@ export interface DaemonSessionStoreBootPaths {
 }
 
 /**
- * Both steps, in the one order they may run in — the whole of what the daemon
+ * Both steps, in the one order they may run in, the whole of what the daemon
  * facade does to its session store before the broker serves.
  *
  * The live path comes FROM the broker rather than being derived here. A second
@@ -41,7 +41,7 @@ export interface DaemonSessionStoreBootPaths {
 export async function runDaemonSessionStoreBoot(input: {
   readonly sessionBroker: { readonly storePath: string | null };
   readonly shellPaths: DaemonSessionStoreBootPaths;
-  /** This daemon's surface root — the segment `resolveUserPath` never adds. */
+  /** This daemon's surface root, the segment `resolveUserPath` never adds. */
   readonly surfaceRoot: string;
   readonly recordReceipt: (text: string) => void;
 }): Promise<PreSplitControlPlaneSweepReport | null> {
@@ -63,8 +63,8 @@ export async function runDaemonSessionStoreBoot(input: {
  * `liveStorePath` is REQUIRED and has no default, and that is the fix.
  *
  * This used to compute its own target: `resolveUserPath('control-plane',
- * 'sessions.json')`. `resolveUserPath` does not add a surface segment — the
- * segment is always the caller's to pass — so the target was
+ * 'sessions.json')`. `resolveUserPath` does not add a surface segment, the
+ * segment is always the caller's to pass, so the target was
  * `~/.goodvibes/control-plane/sessions.json`, while the broker is constructed
  * on `resolveProjectPath(surfaceRoot, 'control-plane', 'sessions.json')` and
  * reads `~/.goodvibes/tui/control-plane/sessions.json`. Every boot folded every
@@ -73,7 +73,7 @@ export async function runDaemonSessionStoreBoot(input: {
  * path from the broker instead of deriving a parallel one is what stops the two
  * from drifting apart again.
  *
- * The old unscoped path becomes a SOURCE — everything that landed there over
+ * The old unscoped path becomes a SOURCE, everything that landed there over
  * however many boots is folded forward, once, by the same id-keyed merge.
  */
 export async function importLegacyDaemonSessionStores(
@@ -116,7 +116,7 @@ export async function sweepPreSplitDaemonControlPlaneStore(input: {
       legacyDirectory: input.shellPaths.resolveUserPath('control-plane'),
       // Where those stores belong: the same surface-scoped directory their
       // writers now resolve (control-plane-store-paths.ts). NOT the broker's
-      // own directory — the broker's file is project-scoped and these are
+      // own directory, the broker's file is project-scoped and these are
       // home-scoped, and on a daemon started outside the home they differ.
       scopedDirectory: input.shellPaths.resolveUserPath(input.surfaceRoot, 'control-plane'),
       sessionStorePath: input.sessionStorePath,

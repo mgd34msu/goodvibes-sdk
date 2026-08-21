@@ -13,9 +13,9 @@ import type { ExecutionPlan } from './execution-plan.js';
 /**
  * Which conversation-compaction strategy produces the handoff.
  *
- * - `structured` — the default in-place strategy: assemble a handoff from many
+ * - `structured`, the default in-place strategy: assemble a handoff from many
  *   targeted extraction calls over the existing message history.
- * - `distiller`  — the fresh-context strategy: one fresh model call distills the
+ * - `distiller` , the fresh-context strategy: one fresh model call distills the
  *   conversation into a structured continuation brief that seeds a new context.
  *   Selected via behavior.compactionStrategy (the `compaction-distiller-strategy` gate); when the
  *   flag is dark the requested `distiller` selection resolves back to
@@ -88,12 +88,12 @@ export function estimateTokens(text: string): number {
 export const IMAGE_TOKEN_ESTIMATE = 1600;
 
 // ---------------------------------------------------------------------------
-// Context data sources (read-only, passed in as plain data — no singletons)
+// Context data sources (read-only, passed in as plain data, no singletons)
 // ---------------------------------------------------------------------------
 
 /** All data sources needed for compaction. Accept as plain data; do not import singletons. */
 export interface CompactionContext {
-  /** Current conversation messages (as sent to LLM — no system messages). */
+  /** Current conversation messages (as sent to LLM, no system messages). */
   messages: ProviderMessage[];
 
   /** Pinned session memories (survive all compactions). */
@@ -178,11 +178,11 @@ export interface CompactionEvent {
 }
 
 /**
- * Post-compaction receipt — the mandatory, visible record emitted after every
+ * Post-compaction receipt, the mandatory, visible record emitted after every
  * automatic compaction path (and the manual one). Surfaces render it so a
  * compaction is never silent: it names what happened, the token counts before
  * and after, the strategy, the quality score/grade the guard computed, whether
- * the standing instruction chain was re-injected, and the outcome — `applied`
+ * the standing instruction chain was re-injected, and the outcome, `applied`
  * when the compacted context replaced the conversation, or `kept-original`
  * when the quality guard rejected a bad compaction and the full conversation
  * was retained instead.
@@ -221,9 +221,9 @@ export interface CompactionReceipt {
    */
   strategyFallbackReason?: string | undefined;
   /**
-   * Outcome: `applied` — the compacted context replaced the conversation;
-   * `kept-original` — the quality guard rejected the result and the full
-   * conversation was retained (honest fallback); `failed` — compaction threw
+   * Outcome: `applied`, the compacted context replaced the conversation;
+   * `kept-original`, the quality guard rejected the result and the full
+   * conversation was retained (honest fallback); `failed`, compaction threw
    * before producing a usable result.
    */
   outcome: 'applied' | 'kept-original' | 'failed';

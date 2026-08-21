@@ -17,7 +17,7 @@ import type {
   ResolvedMemoryConsolidationConfig,
 } from '../packages/sdk/src/platform/state/index.js';
 // MemoryReviewPatch is a real exported type (memory-store.ts) but is not
-// re-exported from the state barrel (state/index.ts) — pull it from source.
+// re-exported from the state barrel (state/index.ts), pull it from source.
 import type { MemoryReviewPatch } from '../packages/sdk/src/platform/state/memory-store.js';
 import { ConfigManager } from '../packages/sdk/src/platform/config/manager.js';
 
@@ -131,7 +131,7 @@ describe('runMemoryConsolidation — proposals reach the review machinery', () =
     const receipt = runMemoryConsolidation({ memoryRegistry: reg, config: cfg(), now: NOW, trigger: 'idle', idle: true });
     const contradiction = receipt.proposed.find((p) => p.kind === 'contradiction');
     expect(contradiction).toBeDefined();
-    // Both referenced records carry the contradicted flag — the existing
+    // Both referenced records carry the contradicted flag, the existing
     // review machinery: they enter the review queue and are excluded from
     // injection until a human resolves. Nothing is deleted.
     for (const id of contradiction!.ids) {
@@ -147,7 +147,7 @@ describe('runMemoryConsolidation — proposals reach the review machinery', () =
     const reg = new FakeRegistry([a, b]);
     const receipt = runMemoryConsolidation({ memoryRegistry: reg, config: cfg(), now: NOW, trigger: 'idle', idle: true });
     expect(receipt.proposed.some((p) => p.kind === 'cross-scope-duplicate')).toBe(true);
-    // Reviewed records flip to fresh (queue priority) — never stale/contradicted:
+    // Reviewed records flip to fresh (queue priority), never stale/contradicted:
     // they do not disagree, so they stay injectable.
     expect(reg.records.get('a')!.reviewState).toBe('fresh');
     expect(reg.records.get('b')!.reviewState).toBe('fresh');

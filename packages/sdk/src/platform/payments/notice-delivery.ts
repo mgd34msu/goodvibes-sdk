@@ -1,10 +1,10 @@
 /**
- * notice-delivery.ts — actually sending the notice, and reporting what happened.
+ * notice-delivery.ts, actually sending the notice, and reporting what happened.
  *
  * ══ The gap this closes ═══════════════════════════════════════════════════
  *
  * `message.ts` RENDERS a notice and returns a string. `windows.ts` CONSUMES a
- * delivery report — `{ channel, delivered }` per channel — and decides from it.
+ * delivery report, `{ channel, delivered }` per channel, and decides from it.
  * Between those two sits a send that nothing was performing: the capability
  * would render a notice into nothing, then evaluate a window against a report
  * nobody produced, and a purchase would proceed on a "silence" that was really
@@ -16,8 +16,8 @@
  * ══ Delivered means the router said so ════════════════════════════════════
  *
  * `delivered` is set from the router's actual outcome per channel, never
- * assumed. A strategy that throws — a missing chat id, an expired token, a
- * surface with no binding — produces `delivered: false` for that channel and
+ * assumed. A strategy that throws, a missing chat id, an expired token, a
+ * surface with no binding, produces `delivered: false` for that channel and
  * the window then applies the owner's undeliverable ruling, which is opposite
  * on the two window kinds and is the entire reason this flag has to be true.
  *
@@ -40,7 +40,7 @@
  * `sanitizeNoticeField`, whose trigger set removes backtick, asterisk,
  * underscore, tilde, pipe, angle brackets, ampersand, SQUARE BRACKETS and
  * PARENTHESES. The last two are what a Discord masked link `[text](url)` is
- * built from, and Discord renders those in bot and webhook messages — so they
+ * built from, and Discord renders those in bot and webhook messages, so they
  * are stripped at the point the field enters the notice rather than per
  * channel. A per-channel escaper applied afterwards would be a second place for
  * the rule to live and drift; the assertion instead is that nothing
@@ -113,7 +113,7 @@ export interface ChannelPaymentNotifierDeps {
  * Deliberately small and exact. A fuzzy match on a purchase answer is a way to
  * read "no thanks, not that one" as an acknowledgement; anything unrecognised
  * is treated as no answer at all, which leaves the window's own silence rule to
- * decide — the rule the owner set, rather than a guess this parser made.
+ * decide, the rule the owner set, rather than a guess this parser made.
  */
 const APPROVAL_WORDS: ReadonlyMap<string, 'approve' | 'deny'> = new Map([
   ['approve', 'approve'], ['approved', 'approve'], ['yes', 'approve'], ['y', 'approve'],
@@ -135,7 +135,7 @@ const VETO_WORDS: ReadonlyMap<string, 'acknowledge' | 'object'> = new Map([
  *
  * The two maps are separate because the same word means opposite things: "stop"
  * on an approval is a denial and on a veto is an objection, and both happen to
- * refuse — but "go" is an approval on one and an acknowledgement on the other,
+ * refuse, but "go" is an approval on one and an acknowledgement on the other,
  * and those settle differently.
  */
 export function parsePaymentReply(

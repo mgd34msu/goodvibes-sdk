@@ -1,5 +1,5 @@
 /**
- * optional-dependency-boot.test.ts — an optional package that is not there
+ * optional-dependency-boot.test.ts, an optional package that is not there
  * must not take the process with it.
  *
  * ── What this measures ────────────────────────────────────────────────────
@@ -7,7 +7,7 @@
  * `packages/sdk/package.json` declares thirty packages under
  * `optionalDependencies`. That is a promise that an install without them still
  * produces a working SDK. `knowledge/html-readability.ts` broke the promise for
- * every graph that reaches knowledge extraction — the daemon's included —
+ * every graph that reaches knowledge extraction, the daemon's included,
  * because it imported `jsdom` and `@mozilla/readability` statically.
  *
  * Measured in this repository with `packages/sdk/node_modules/jsdom` moved
@@ -31,7 +31,7 @@
  * mutate this repository's node_modules for every other test running beside
  * this one and would leave the tree broken if the process died mid-run.
  * `--external` leaves the specifier for runtime resolution and the binary is
- * then run from a directory where it does not resolve — the same condition an
+ * then run from a directory where it does not resolve, the same condition an
  * install without optional packages produces, contained entirely inside the
  * test.
  */

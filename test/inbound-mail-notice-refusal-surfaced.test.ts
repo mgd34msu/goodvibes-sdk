@@ -148,7 +148,7 @@ describe('a structural refusal is surfaced, not merely recorded', () => {
     expect(logs[0]!.fields.announcedToOwner).toBe(false);
 
     // Still recorded, with the delivery layer's own vocabulary, and still
-    // completing the pass — the retryable/permanent split is unchanged.
+    // completing the pass, the retryable/permanent split is unchanged.
     const stored = await rig.records.list();
     expect(stored).toHaveLength(3);
     expect(stored.every((record) => record.noticeStatus === 'no-route-binding')).toBe(true);

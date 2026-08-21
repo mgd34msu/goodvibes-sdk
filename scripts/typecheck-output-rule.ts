@@ -1,5 +1,5 @@
 /**
- * typecheck-output-rule.ts — treat a compiler's OUTPUT as evidence, not its exit code.
+ * typecheck-output-rule.ts, treat a compiler's OUTPUT as evidence, not its exit code.
  *
  * ## Why this exists
  *
@@ -11,7 +11,7 @@
  *
  * I could not reproduce that exit code from a minimal composite project, from a
  * solution whose `node_modules` was deleted after a successful build, or
- * through `bunx` — every one of those exited non-zero. So rather than claim a
+ * through `bunx`, every one of those exited non-zero. So rather than claim a
  * root cause I have not seen, this gate stops depending on the exit code being
  * right. It fails on either signal:
  *
@@ -41,7 +41,7 @@ export interface OutputVerdict {
  * Read a compiler's output for evidence that it found something.
  *
  * Deliberately narrow: `error TS<digits>` and a non-zero `Found N errors`
- * tally. Matching anything looser — say, any line containing `TS` or `error` —
+ * tally. Matching anything looser, say, any line containing `TS` or `error`,
  * would fire on ordinary log lines and on this file's own prose, and a gate
  * that always fails gets switched off, which is the same outcome as a gate that
  * never fails.
@@ -71,7 +71,7 @@ export interface CommandResult {
 /**
  * Every reason a typecheck run should be treated as failed.
  *
- * Returns an empty array when the run is genuinely clean — that is the case the
+ * Returns an empty array when the run is genuinely clean, that is the case the
  * accompanying test drives alongside each rejection, so this cannot quietly
  * become a function that only ever says yes.
  */
@@ -84,7 +84,7 @@ export function typecheckFailures(result: CommandResult): string[] {
   if (diagnostics.length > 0) {
     failures.push(
       `${result.label}: printed ${diagnostics.length} diagnostic line(s)`
-      + (result.exitCode === 0 ? ' while exiting 0 — the exit code was not evidence' : ''),
+      + (result.exitCode === 0 ? ' while exiting 0, the exit code was not evidence' : ''),
     );
   }
   if (reportedErrorCount !== null && reportedErrorCount > 0 && diagnostics.length === 0) {

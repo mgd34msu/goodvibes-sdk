@@ -3,7 +3,7 @@
  *
  * A cerebras reply put reasoning into an ntfy notification whose surface
  * policy is `reasoningVisibility: 'suppress'`. The suppression was never at
- * fault — the reasoning never reached the reasoning channel at all, so nothing
+ * fault, the reasoning never reached the reasoning channel at all, so nothing
  * downstream could tell it apart from the answer. It reached the transcript,
  * the session export and every channel body as plain assistant text.
  *
@@ -11,7 +11,7 @@
  *
  * 1. A structured field (`reasoning`, `reasoning_content`).
  *    openai-stream-delta.ts knows how to route these, but only when its
- *    `allowReasoning` option is set — and openai-compat derived that from the
+ *    `allowReasoning` option is set, and openai-compat derived that from the
  *    provider's `reasoningFormat`, which is a REQUEST-side setting naming
  *    which reasoning PARAMETER an endpoint accepts. Cerebras, groq and mistral
  *    are all registered `reasoningFormat: 'none'`, which told the extractor to
@@ -26,15 +26,15 @@
  *    {@link InlineReasoningStreamSplitter} below handle that shape.
  *
  * Both belong here rather than at a render site: the wire format is the
- * provider's concern, and splitting once means every consumer — TUI
- * transcript, webui, session export, channel surfaces — gets the same correct
+ * provider's concern, and splitting once means every consumer, TUI
+ * transcript, webui, session export, channel surfaces, gets the same correct
  * content/reasoning split and applies its own visibility policy to it. A
  * filter at any single render site would fix that site and leave every other
  * one reading reasoning as the answer.
  *
  * One invariant governs all of it: the split must never EMPTY a reply. A model
  * that writes nothing outside its reasoning has no answer beside it, so the
- * reasoning IS the answer — see the floor in openai-compat.ts, which is what
+ * reasoning IS the answer, see the floor in openai-compat.ts, which is what
  * the old folding behaviour was really protecting.
  */
 
@@ -194,8 +194,8 @@ export type StreamTextEmit = (delta: { content?: string; reasoning?: string }) =
 /**
  * Accumulates one streamed turn, keeping reasoning out of the answer.
  *
- * Owns both shapes reasoning arrives in — a structured `reasoning` /
- * `reasoning_content` field, and a tag inside the content stream — and keeps
+ * Owns both shapes reasoning arrives in, a structured `reasoning` /
+ * `reasoning_content` field, and a tag inside the content stream, and keeps
  * the running answer and the running reasoning apart, forwarding each fragment
  * as it is classified so a live view is never shown reasoning as answer text
  * and then made to retract it.
@@ -217,7 +217,7 @@ export class StreamTextAccumulator {
   /**
    * Release whatever the splitter still holds back and report the turn.
    *
-   * `content` is empty when the model wrote nothing outside its reasoning —
+   * `content` is empty when the model wrote nothing outside its reasoning,
    * the caller decides what that means, since an empty answer is normal on a
    * tool-call turn and a lost reply on any other.
    */

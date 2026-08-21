@@ -1,10 +1,10 @@
 /**
- * cluster-remote-daemon-target.ts — how a `cluster` subcommand reaches a
+ * cluster-remote-daemon-target.ts, how a `cluster` subcommand reaches a
  * daemon.
  *
  * Both a daemon's own CLI and a front-end's in-process `/cluster` command
  * must reach the same daemon the same way, so the resolution and request
- * convention live here rather than in either caller — neither a CLI
+ * convention live here rather than in either caller, neither a CLI
  * entrypoint nor an input-layer command imports the other's code.
  *
  * ── THE CONVENTION ────────────────────────────────────────────────────────
@@ -21,12 +21,12 @@
  *                   <daemon home>/operator-tokens.json
  *
  * Authentication is `Authorization: Bearer <operator token>` against the
- * control plane — the same credential a TUI and a web UI already use.
+ * control plane, the same credential a TUI and a web UI already use.
  *
  * The defaults are the whole point. A homelab box is headless: the operator
  * has SSHed into it and wants `cluster status` to work with no flags at all.
- * Flags exist for the other case — driving a machine in the next room from a
- * laptop — and for scripting.
+ * Flags exist for the other case, driving a machine in the next room from a
+ * laptop, and for scripting.
  *
  * What this module deliberately does NOT do: hold any knowledge of what the
  * verbs mean. It resolves a target, makes a request, and returns the parsed
@@ -66,8 +66,8 @@ export interface ResolveRemoteTargetInput {
 /**
  * Pull the token out of the operator-token file's contents.
  *
- * `readOperatorTokenFile` hands back the FILE, and the file is a JSON record —
- * `{ token, peerId, createdAt }` — not a bare token. Sending the whole document
+ * `readOperatorTokenFile` hands back the FILE, and the file is a JSON record,
+ * `{ token, peerId, createdAt }`, not a bare token. Sending the whole document
  * as a bearer credential produces a 401 that looks exactly like a stale token,
  * which is a genuinely confusing way to fail. A file that is not JSON is
  * treated as a bare token, which is what a hand-written one would be.
@@ -124,7 +124,7 @@ export function resolveRemoteDaemonTarget(input: ResolveRemoteTargetInput): Remo
  * Build the URL to CALL.
  *
  * Deliberately not `deriveControlPlaneBaseUrl`. That function answers a
- * different question — where a daemon should BIND — and it applies the
+ * different question, where a daemon should BIND, and it applies the
  * `hostMode` policy while doing so: with the default `local` mode it forces
  * 127.0.0.1 and discards the host it was given. For a client that is precisely
  * wrong, and it silently turned `--host 10.0.0.7` into a call to this machine.
@@ -194,7 +194,7 @@ export async function callDaemonVerb<T>(
       ok: false,
       error: `${where} refused the operator token`,
       fix: target.isLocal
-        ? 'the token may be stale — restart the daemon, or pass --token'
+        ? 'the token may be stale, restart the daemon, or pass --token'
         : 'pass --token with the operator token from that machine (its <daemon home>/operator-tokens.json)',
     };
   }
@@ -202,7 +202,7 @@ export async function callDaemonVerb<T>(
     return {
       ok: false,
       error: `${where} does not know this command`,
-      fix: 'that daemon is running an older build — update it, then try again',
+      fix: 'that daemon is running an older build, update it, then try again',
     };
   }
 

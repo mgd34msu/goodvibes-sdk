@@ -68,7 +68,7 @@ describe('context_accounting tool', () => {
     const budget = out.tokenBudget as Record<string, unknown>;
     expect(budget.measured).toEqual({ input: 1200, output: 300, cacheRead: 900, cacheWrite: 100 });
     expect(budget.lastInputTokens).toBe(2100);
-    // 2100 / 200000 = 1.05% — derived, flagged.
+    // 2100 / 200000 = 1.05%, derived, flagged.
     expect(budget.contextUsedPctEstimated).toBe(1.1);
     expect(out.estimates).toBeDefined();
   });

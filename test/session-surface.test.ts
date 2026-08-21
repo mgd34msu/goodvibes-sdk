@@ -1,9 +1,9 @@
 /**
- * session-surface.test.ts — the declare-once `SessionSurface` handle.
+ * session-surface.test.ts, the declare-once `SessionSurface` handle.
  *
  * Defect class this replaces: session persistence took an optional per-call
  * `surfaceRoot` whose omission silently fell back to a shared, unscoped
- * directory (surface-root.ts `resolveScopedDirectory`) — so a writer and a
+ * directory (surface-root.ts `resolveScopedDirectory`), so a writer and a
  * reader that disagreed about `surfaceRoot` (or a caller that forgot it)
  * silently looked in different places instead of erroring. `createSessionSurface`
  * makes `surfaceRoot` mandatory and validated exactly once, and every path a
@@ -62,13 +62,13 @@ describe('createSessionSurface', () => {
     const path = surface.recoveryFile('has/slash');
     expect(path.startsWith(join(surface.recoveryDir, 'recovery-has_slash-'))).toBe(true);
     expect(path.endsWith('.jsonl')).toBe(true);
-    // No separator survives into the filename — that is the whole point.
+    // No separator survives into the filename, that is the whole point.
     expect(path.slice(surface.recoveryDir.length + 1).includes('/')).toBe(false);
   });
 
   test('machine-minted session ids pass through sanitization byte-for-byte (no filename moves)', () => {
     const surface = createSessionSurface(identity());
-    // generateUserSessionId(): randomBytes(4).toString('hex') — 8 lowercase hex.
+    // generateUserSessionId(): randomBytes(4).toString('hex'), 8 lowercase hex.
     expect(surface.recoveryFile('a1b2c3d4')).toBe(join(surface.recoveryDir, 'recovery-a1b2c3d4.jsonl'));
     // Agent ids: `agent-<8 hex>`.
     expect(surface.recoveryFile('agent-deadbeef')).toBe(join(surface.recoveryDir, 'recovery-agent-deadbeef.jsonl'));
@@ -117,7 +117,7 @@ describe('createSessionSurface', () => {
 
   test('the returned handle is a plain value usable across the module boundary', () => {
     const surface: SessionSurface = createSessionSurface(identity());
-    // Every field is a string (or a callable), never undefined — no optional
+    // Every field is a string (or a callable), never undefined, no optional
     // scope argument was left to silently resolve later.
     expect(typeof surface.sessionsDir).toBe('string');
     expect(typeof surface.recoveryDir).toBe('string');

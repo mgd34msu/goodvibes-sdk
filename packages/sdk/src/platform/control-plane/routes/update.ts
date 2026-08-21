@@ -1,5 +1,5 @@
 /**
- * routes/update.ts — the handlers behind `update.status` and `update.check`.
+ * routes/update.ts, the handlers behind `update.status` and `update.check`.
  *
  * Thin on purpose. Everything these report is state the self-update loop
  * already keeps (platform/daemon/facade-lifecycle.ts + auto-updater.ts); this

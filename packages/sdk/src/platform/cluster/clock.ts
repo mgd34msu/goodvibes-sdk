@@ -1,5 +1,5 @@
 /**
- * clock.ts — the real clock, and a deterministic one for tests.
+ * clock.ts, the real clock, and a deterministic one for tests.
  *
  * The two sources are kept separate on purpose. `now()` is the wall clock,
  * which is what a replay cursor has to be expressed in because that is what a
@@ -92,7 +92,7 @@ export class FakeClusterClock implements ClusterClock {
     this.wall += ms;
   }
 
-  /** Pending timer count — a test's check that nothing was left armed. */
+  /** Pending timer count, a test's check that nothing was left armed. */
   get pendingTimers(): number {
     return this.tasks.length;
   }

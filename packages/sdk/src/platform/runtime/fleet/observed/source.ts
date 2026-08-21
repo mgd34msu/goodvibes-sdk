@@ -1,20 +1,20 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * observed/source.ts — the ObservedAgentSource: the fleet's read-only view of
+ * observed/source.ts, the ObservedAgentSource: the fleet's read-only view of
  * externally-launched coding-agent sessions on this host, plus the one genuine
  * steer channel (tmux send-keys) where a foreign session exposes it.
  *
  * Responsibility boundary (owner ruling): these rows are OBSERVED, not owned.
  * The source is composed as an OPTIONAL registry dep and is deliberately NOT a
- * source in fleet-count.ts — so an observed row can never count against
+ * source in fleet-count.ts, so an observed row can never count against
  * fleet.maxSize (proven structurally, not by a filter). Stop is never offered.
  * Steering rides whatever channel the foreign session genuinely exposes and
  * honestly says when there is none.
  *
  * Cost: detection runs at most once per `refreshIntervalMs` (a lazy TTL over the
  * injected clock), so folding observed rows into every fleet snapshot/tick stays
- * cheap — a cached read between refreshes. The CPU-delta that drives liveness is
+ * cheap, a cached read between refreshes. The CPU-delta that drives liveness is
  * measured across those refresh boundaries, so `active`/`quiet` reflects CPU
  * burned in the last refresh interval, not per-query noise.
  */
@@ -34,7 +34,7 @@ export interface ObservedAgentRow {
   readonly externalKind: ObservedAgentKind;
   readonly pid: number;
   readonly ppid: number;
-  /** Full command line — the adapter derives the row label from it. */
+  /** Full command line, the adapter derives the row label from it. */
   readonly args: string;
   readonly cwd?: string | undefined;
   readonly startedAt?: number | undefined;
@@ -42,7 +42,7 @@ export interface ObservedAgentRow {
   readonly steer: ObservedSteerChannel;
 }
 
-/** Injectable tmux command runner for the steer send-keys — read/write to the pane only, never a shell. */
+/** Injectable tmux command runner for the steer send-keys, read/write to the pane only, never a shell. */
 export interface TmuxCommandRunner {
   run(args: readonly string[]): { readonly status: number | null; readonly stderr: string };
 }
@@ -68,17 +68,17 @@ export interface ObservedAgentSourceDeps {
   readonly paneReader?: TmuxPaneReader | undefined;
   readonly steerRunner?: TmuxCommandRunner | undefined;
   readonly now?: (() => number) | undefined;
-  /** Detection cadence — at most one scan per this many ms (default 2500). */
+  /** Detection cadence, at most one scan per this many ms (default 2500). */
   readonly refreshIntervalMs?: number | undefined;
 }
 
 const DEFAULT_REFRESH_INTERVAL_MS = 2_500;
 
 function livenessDetail(state: 'active' | 'quiet', firstSighting: boolean): string {
-  if (firstSighting) return 'first observation — no prior CPU sample to compare yet';
+  if (firstSighting) return 'first observation, no prior CPU sample to compare yet';
   return state === 'active'
-    ? 'CPU advanced since the last sample — the session is doing work'
-    : 'no CPU burned since the last sample — quiet, but this is not proof it is idle (it may be waiting on the network or on a human)';
+    ? 'CPU advanced since the last sample, the session is doing work'
+    : 'no CPU burned since the last sample, quiet, but this is not proof it is idle (it may be waiting on the network or on a human)';
 }
 
 /**
@@ -159,7 +159,7 @@ export class ObservedAgentSource {
    * Steer a tmux-hosted foreign session with the exact three-send recipe: one
    * send carries the literal message text, then two separate Enter sends. An
    * honest refusal (queued:false) when the row exposes no tmux channel, or when
-   * a send-keys call fails. STOP is never offered here — this is steer only.
+   * a send-keys call fails. STOP is never offered here, this is steer only.
    */
   steer(row: ObservedAgentRow, text: string): SteerResult {
     if (row.steer.kind !== 'tmux') {

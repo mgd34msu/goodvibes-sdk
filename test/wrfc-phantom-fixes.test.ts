@@ -2,11 +2,11 @@
  * Tests for WRFC phantom-pass, phantom-work, durable chains, and watchdog fixes.
  *
  * Items covered:
- * - Item 1: extractPassedFromText — score < threshold always returns false
- * - Item 2: verifyEngineerClaims — disk verification, git fallback
+ * - Item 1: extractPassedFromText, score < threshold always returns false
+ * - Item 2: verifyEngineerClaims, disk verification, git fallback
  * - Item 3: serializeChain/deserializeChain/importChain + resumeChain for interrupts
- * - Item 4a: watchdog timer — silent agent causes chain failure
- * - Item 4b: extractScoreFromText — null/malformed → null; null score → fail verdict
+ * - Item 4a: watchdog timer, silent agent causes chain failure
+ * - Item 4b: extractScoreFromText, null/malformed → null; null score → fail verdict
  */
 import { describe, expect, test, beforeEach } from 'bun:test';
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
@@ -31,8 +31,8 @@ import type { WrfcChain } from '../packages/sdk/src/platform/agents/wrfc-types.j
 import { trackDisposables } from './_helpers/disposables.ts';
 
 // Every WrfcController starts a watchdog setInterval at construction (see
-// resetWatchdog() in wrfc-controller.ts); registering here — inside
-// createHarness() — disposes it after each test regardless of whether the
+// resetWatchdog() in wrfc-controller.ts); registering here, inside
+// createHarness(), disposes it after each test regardless of whether the
 // test body remembers to call controller.dispose() itself.
 const disposables = trackDisposables();
 
@@ -50,7 +50,7 @@ async function flushMicrotasks(rounds = 10): Promise<void> {
  * Ceiling for a condition wait. Deliberately far above how long the watchdog
  * takes to fire even on a badly loaded machine: the wait returns the instant the
  * predicate holds, so headroom costs a fast host nothing, while a watchdog that
- * genuinely never fires still fails the test — just later, and with a message
+ * genuinely never fires still fails the test, just later, and with a message
  * that says what it was waiting for.
  */
 const WAIT_CEILING_MS = 60_000;
@@ -59,7 +59,7 @@ const WAIT_INTERVAL_MS = 10;
 /**
  * Per-test budget for the watchdog tests, kept above WAIT_CEILING_MS so a
  * watchdog that never fires fails with waitUntil's labelled diagnostic instead
- * of bun's opaque "test timed out" — and so a merely SLOW runner never trips it.
+ * of bun's opaque "test timed out", and so a merely SLOW runner never trips it.
  */
 const WAIT_TEST_TIMEOUT_MS = 90_000;
 
@@ -67,7 +67,7 @@ const WAIT_TEST_TIMEOUT_MS = 90_000;
  * Real-clock polling for the watchdog tests.
  *
  * The watchdog is a `setInterval` at a quarter of the heartbeat timeout, so
- * whether it has fired yet is only observable across macrotask boundaries — no
+ * whether it has fired yet is only observable across macrotask boundaries, no
  * number of microtask drains will advance it.
  *
  * Load tolerance: these tests used to sleep a fixed margin over the timeout
@@ -91,7 +91,7 @@ async function waitUntil(
     const elapsedMs = Date.now() - startedAt;
     if (elapsedMs > ceilingMs) {
       throw new Error(
-        `waitUntil: condition never became true — ${opts.label ?? 'unlabelled predicate'}; ` +
+        `waitUntil: condition never became true, ${opts.label ?? 'unlabelled predicate'}; ` +
           `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms`,
       );
     }
@@ -103,7 +103,7 @@ async function waitUntil(
 
 /**
  * Best-effort settle wait: polls until the predicate holds or `ceilingMs`
- * elapses, and reports which happened. Never throws — for the two call sites
+ * elapses, and reports which happened. Never throws, for the two call sites
  * whose predicate must NOT become true, where the real assertion comes
  * afterwards. Strictly stronger than the blind sleep it replaced, because it
  * checks throughout the window instead of only at the end of it.
@@ -233,7 +233,7 @@ function createHarness(overrides?: {
   const projectRoot = overrides?.projectRoot ?? '/tmp/test-project';
 
   // ConfigManager.get/getCategory are generic over `ConfigKey`/`keyof GoodVibesConfig`
-  // with a per-key conditional return type — a by-string-key stub can't be typed
+  // with a per-key conditional return type, a by-string-key stub can't be typed
   // against that generic signature directly (TypeScript hits its own recursion
   // limit, "Excessive stack depth", comparing two such generic conditional
   // signatures). Casting the whole mock once at the boundary sidesteps that
@@ -300,7 +300,7 @@ function createHarness(overrides?: {
 }
 
 // ---------------------------------------------------------------------------
-// Item 1: extractPassedFromText — phantom-pass fix
+// Item 1: extractPassedFromText, phantom-pass fix
 // ---------------------------------------------------------------------------
 
 describe('Item 1: extractPassedFromText — phantom-pass fix', () => {
@@ -345,7 +345,7 @@ describe('Item 1: extractPassedFromText — phantom-pass fix', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Item 4b: extractScoreFromText — fail-closed on malformed/absent scores
+// Item 4b: extractScoreFromText, fail-closed on malformed/absent scores
 // ---------------------------------------------------------------------------
 
 describe('Item 4b: extractScoreFromText — fail-closed', () => {
@@ -379,7 +379,7 @@ describe('Item 4b: extractScoreFromText — fail-closed', () => {
   });
 
   test('null score in parseReviewerCompletionReport → passed: false (fail-closed)', () => {
-    // Plain prose with no numeric score — extractScoreFromText returns null → score defaults to 0
+    // Plain prose with no numeric score, extractScoreFromText returns null → score defaults to 0
     const report = parseReviewerCompletionReport(
       'chain-1',
       'The code looks approved! Great work overall.',
@@ -400,7 +400,7 @@ describe('Item 4b: extractScoreFromText — fail-closed', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Item 2: verifyEngineerClaims — disk verification
+// Item 2: verifyEngineerClaims, disk verification
 // ---------------------------------------------------------------------------
 
 describe('Item 2: verifyEngineerClaims — disk verification', () => {
@@ -731,7 +731,7 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
       ownerDecisions: [],
     };
     controller.importChain(passedChain);
-    // Overwrite terminal chain without force flag — should succeed
+    // Overwrite terminal chain without force flag, should succeed
     const newChain = { ...passedChain, task: 'Replayed task' };
     expect(controller.importChain(newChain)).toBe(true);
     expect(controller.getChain('terminal-chain')!.task).toBe('Replayed task');
@@ -765,7 +765,7 @@ describe('Item 3: serializeChain / deserializeChain / importChain', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Item 3: resumeChain — interrupt recovery
+// Item 3: resumeChain, interrupt recovery
 // ---------------------------------------------------------------------------
 
 describe('Item 3: resumeChain — interrupt recovery from reviewing state', () => {
@@ -784,7 +784,7 @@ describe('Item 3: resumeChain — interrupt recovery from reviewing state', () =
     emitAgentCompleted(bus, engineerRecord!.id, agentStore, engineerReportOutput('Done', [], []));
     await flushMicrotasks();
 
-    // Chain should now be in reviewing state — simulate interrupt by removing reviewer
+    // Chain should now be in reviewing state, simulate interrupt by removing reviewer
     const chainId = chain.id;
     const chainRecord = controller.getChain(chainId);
     expect(chainRecord?.state).toBe('reviewing');
@@ -867,7 +867,7 @@ describe('Item 2: phantom-work detection (controller integration)', () => {
 
   test('MAJ-1: empty claims in non-git dir → claimsVerified=undefined (not false), synthetic issue injected into reviewer task, chain proceeds to reviewing', async () => {
     // 'unverifiable_no_claims' should NOT set claimsVerified=false because we can't
-    // confirm work WASN'T done — the synthetic issue is the enforcement mechanism.
+    // confirm work WASN'T done, the synthetic issue is the enforcement mechanism.
     // The MIN-4 mechanical block only fires on claimsVerified===false (kind=unverified).
     const tmpDir = mkdtempSync(join(tmpdir(), 'wrfc-no-claims-'));
     const { bus, controller, agentStore, spawnedRecords } = createHarness({ projectRoot: tmpDir });
@@ -886,7 +886,7 @@ describe('Item 2: phantom-work detection (controller integration)', () => {
     await flushMicrotasks();
 
     const chainRecord = controller.getChain(chain.id);
-    // claimsVerified must NOT be false — it should be undefined (unresolved, not confirmed false)
+    // claimsVerified must NOT be false, it should be undefined (unresolved, not confirmed false)
     expect(chainRecord?.claimsVerified).not.toBe(false);
     expect(chainRecord?.claimsVerified).toBeUndefined();
     // Chain should proceed to reviewing (the synthetic issue is the enforcement path)
@@ -910,7 +910,7 @@ describe('Item 4a: silent-agent watchdog', () => {
   /**
    * Window over which a chain that must NOT fail is watched. The watchdog clamps
    * its tick to a 50ms floor, so this holds several ticks of the fastest one the
-   * implementation can produce — long enough for the absence to mean something,
+   * implementation can produce, long enough for the absence to mean something,
    * short enough that a negative test does not dominate the file's runtime.
    */
   const NEGATIVE_WINDOW_MS = 300;
@@ -968,7 +968,7 @@ describe('Item 4a: silent-agent watchdog', () => {
     agentEntry.startedAt = Date.now() - 10_000; // 10 seconds ago
     agentEntry.status = 'running';
 
-    // The watchdog is private, so we wait for its timer to fire naturally — on
+    // The watchdog is private, so we wait for its timer to fire naturally, on
     // the condition, not on a clock. Every tick sees a 10-second-old lastSeen
     // against a 100ms timeout, so the FIRST tick that runs fails the chain
     // however late the runtime gets around to it.
@@ -995,7 +995,7 @@ describe('Item 4a: silent-agent watchdog', () => {
     await flushMicrotasks();
 
     // A timeout of 0 means resetWatchdog() starts no timer at all, so there is
-    // no event to wait FOR here — only the absence of one. Poll for the failure
+    // no event to wait FOR here, only the absence of one. Poll for the failure
     // across a window that would hold several ticks of the shortest watchdog the
     // clamp allows (50ms), and require that it never arrives.
     const failed = await waitUpTo(
@@ -1017,11 +1017,11 @@ describe('Item 4a: silent-agent watchdog', () => {
     // and the chain dies once streaming stops.
     //
     // The RATIO is what changed. This used to run a 150ms watchdog against a 40ms
-    // delta cadence — a margin of under four cadences, which a contended runner
+    // delta cadence, a margin of under four cadences, which a contended runner
     // eats without being in any way broken, and the chain then died mid-test for
     // want of a heartbeat that was merely late. At 1000ms against 50ms, a delta
     // has to arrive twenty cadences late before the watchdog can win, which is a
-    // genuinely pathological host rather than a busy one — and the assertion
+    // genuinely pathological host rather than a busy one, and the assertion
     // below reports the worst gap it saw, so that case says so instead of
     // looking like a broken reset.
     const { bus, controller, agentStore, spawnedRecords } = createHarness({
@@ -1059,8 +1059,8 @@ describe('Item 4a: silent-agent watchdog', () => {
       );
     }, STREAM_DELTA_INTERVAL_MS);
 
-    // Stream until the run has outlasted the watchdog window — the condition the
-    // test is actually about — rather than until a fixed clock reading.
+    // Stream until the run has outlasted the watchdog window, the condition the
+    // test is actually about, rather than until a fixed clock reading.
     await waitUntil(() => Date.now() - streamStartedAt >= STREAM_SPAN_MS, {
       label: 'streamed continuously past the watchdog window',
     });
@@ -1075,7 +1075,7 @@ describe('Item 4a: silent-agent watchdog', () => {
         `worst gap between deltas ${worstDeltaGapMs}ms against a ${STREAM_WATCHDOG_TIMEOUT_MS}ms watchdog`,
     ).toBe('engineering');
 
-    // Now stop streaming — the chain must time out. Waited on the condition, so
+    // Now stop streaming, the chain must time out. Waited on the condition, so
     // the watchdog's tick cadence and any scheduler lag are both immaterial.
     agentStore.get(agentId)!.status = 'running';
     await waitUntil(() => controller.getChain(chain.id)?.state === 'failed', {
@@ -1112,7 +1112,7 @@ describe('MIN-4: claimsVerified=false blocks review pass mechanically', () => {
     // Engineer claims a file that does NOT exist and tmpDir is not a git repo
     // → kind=unverified (claims present but file missing, no git) → claimsVerified=false
     // NOTE: kind=unverifiable_no_claims (zero claims + no git) is a different path; it leaves
-    // claimsVerified=undefined and relies on the synthetic issue alone — see test below.
+    // claimsVerified=undefined and relies on the synthetic issue alone, see test below.
     const fakeOutput = engineerReportOutput('Done', ['src/nonexistent-file.ts'], []);
     emitAgentCompleted(bus, engineerRecord!.id, agentStore, fakeOutput);
     await flushMicrotasks();
@@ -1128,7 +1128,7 @@ describe('MIN-4: claimsVerified=false blocks review pass mechanically', () => {
     emitAgentCompleted(bus, reviewerRecord!.id, agentStore, reviewerReportOutput(10, true));
     await flushMicrotasks();
 
-    // MIN-4: must NOT pass — claimsVerified=false overrides the score gate
+    // MIN-4: must NOT pass, claimsVerified=false overrides the score gate
     const chainAfterReview = controller.getChain(chain.id);
     expect(chainAfterReview?.state).toBe('fixing');
   });
@@ -1168,7 +1168,7 @@ describe('MIN-6: resume re-injects synthetic issue when claimsVerified=false', (
       }
     }
     chainRecord.reviewerAgentId = undefined;
-    // startReview would have cleared syntheticIssues — simulate that
+    // startReview would have cleared syntheticIssues, simulate that
     chainRecord.syntheticIssues = [];
 
     controller.resumeChain(chainId);
@@ -1186,7 +1186,7 @@ describe('MIN-6: resume re-injects synthetic issue when claimsVerified=false', (
 });
 
 // ---------------------------------------------------------------------------
-// MIN-11: Fixer claim verification (MAJ-9 fix — fixer class no longer exempted)
+// MIN-11: Fixer claim verification (MAJ-9 fix, fixer class no longer exempted)
 // ---------------------------------------------------------------------------
 
 describe('MIN-11 (planned-fix rework): the fixer agent class no longer exists', () => {
@@ -1212,7 +1212,7 @@ describe('MIN-11 (planned-fix rework): the fixer agent class no longer exists', 
     await flushMicrotasks(40);
 
     // The planned-fix workstream ran (elastic tasks in isolated worktrees,
-    // slice reviews inside the engine — where per-task claim verification
+    // slice reviews inside the engine, where per-task claim verification
     // lives, see phase-runner). NO fixer agent exists to lie:
     expect(fixRuns).toHaveLength(1);
     expect(spawnedRecords.filter((r) => r.wrfcRole === 'fixer')).toHaveLength(0);

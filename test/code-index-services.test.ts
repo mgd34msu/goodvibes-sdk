@@ -1,13 +1,13 @@
 // ---------------------------------------------------------------------------
-// code-index-services.test.ts — repo source-tree code index
+// code-index-services.test.ts, repo source-tree code index
 //
 // Integration test against a REAL CodeIndexStore (not a fake) on a scratch
 // fixture tree, proving the TUI's OWN wiring (createCodeIndexServices)
 // produces a working store rooted at the right path, honors the config-gated
 // default-OFF auto-start contract, and that an explicit build indexes real
-// files — degraded/lexical mode is expected and fine (no embedding provider
+// files, degraded/lexical mode is expected and fine (no embedding provider
 // is configured; the HASHED_MEMORY_EMBEDDING_PROVIDER default is a weak
-// lexical-ish signal, not "no provider" — see the SDK's own degradation
+// lexical-ish signal, not "no provider", see the SDK's own degradation
 // doc). Mirrors workstream-services.test.ts's scratch-project-root harness
 // and memory-store.test.ts's ConfigManager construction.
 // ---------------------------------------------------------------------------

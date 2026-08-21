@@ -13,10 +13,10 @@
  *   - On success, persists the new path to <daemonHomeDir>/daemon-settings.json.
  *
  * Events emitted on runtimeBus (domain: 'workspace'):
- *   WORKSPACE_SWAP_STARTED   — before swap begins
- *   WORKSPACE_SWAP_REFUSED   — when swap is rejected
- *   WORKSPACE_SWAP_COMPLETED — after all stores re-rooted
- *   WORKSPACE_SWAP_FAILED    — when mkdir or rerootStores fails
+ *   WORKSPACE_SWAP_STARTED  , before swap begins
+ *   WORKSPACE_SWAP_REFUSED  , when swap is rejected
+ *   WORKSPACE_SWAP_COMPLETED, after all stores re-rooted
+ *   WORKSPACE_SWAP_FAILED   , when mkdir or rerootStores fails
  */
 
 import { mkdirSync, existsSync } from 'node:fs';
@@ -98,7 +98,7 @@ export class WorkspaceSwapManager {
     const from = this.currentWorkingDir;
     const to = resolved;
 
-    // Check busy sessions BEFORE emitting STARTED — don't emit STARTED if we'll immediately refuse.
+    // Check busy sessions BEFORE emitting STARTED. Don't emit STARTED if we'll immediately refuse.
     const busyCount = this.deps.getBusySessionCount();
     if (busyCount > 0) {
       const reason = `${busyCount} session(s) have pending input. Retry after active inputs complete.`;
@@ -106,7 +106,7 @@ export class WorkspaceSwapManager {
       return { ok: false, code: 'WORKSPACE_BUSY', reason, retryAfter: 5 };
     }
 
-    // Swap is proceeding — emit STARTED now that busy check passed.
+    // Swap is proceeding, emit STARTED now that busy check passed.
     this._emit({ type: 'WORKSPACE_SWAP_STARTED', from, to });
 
     // Validate and create directory
@@ -144,7 +144,7 @@ export class WorkspaceSwapManager {
       persistedInDaemonSettings = true;
     } catch (err: unknown) {
       // Swap succeeded but persistence failed. Log so ops can diagnose.
-      logger.warn('[WorkspaceSwap] daemon settings persistence failed — workingDir will not survive restart', {
+      logger.warn('[WorkspaceSwap] daemon settings persistence failed, workingDir will not survive restart', {
         error: summarizeError(err),
         daemonHomeDir: this.deps.daemonHomeDir,
         resolvedPath: resolved,

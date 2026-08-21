@@ -22,13 +22,13 @@ export type PermissionDecisionReasonCode =
   | 'safety_guardrail'
   | 'mode_allow_all'
   | 'mode_denied'
-  // Mode — plan mode refused a mutating/exec tool (structured plan-mode denial)
+  // Mode, plan mode refused a mutating/exec tool (structured plan-mode denial)
   | 'plan_mode'
-  // Mode — accept-edits mode auto-approved a file write/edit tool
+  // Mode, accept-edits mode auto-approved a file write/edit tool
   | 'mode_accept_edits'
   | 'session_cached_allow'
   | 'session_cached_deny'
-  // Durable user rule matched (allow/deny) — the persistent form of a remembered decision
+  // Durable user rule matched (allow/deny), the persistent form of a remembered decision
   | 'user_rule_allow'
   | 'user_rule_deny'
   | 'user_approved'
@@ -65,7 +65,7 @@ export interface PermissionCheckResult {
   readonly modifiedArgs?: Record<string, unknown> | undefined;
   /**
    * The user's free-text note from the prompt decision (most useful on a
-   * denial — it rides the structured "user declined" tool result so the model
+   * denial, it rides the structured "user declined" tool result so the model
    * can adapt). Only ever populated via the user-prompt approval path.
    */
   readonly userReason?: string | undefined;

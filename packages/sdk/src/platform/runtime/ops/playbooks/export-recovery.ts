@@ -13,7 +13,7 @@ export const exportRecoveryPlaybook: Playbook = {
   name: 'Export Recovery',
   description:
     'Diagnoses and resolves telemetry / OTLP export pipeline failures. ' +
-    'The runtime continues operating during export failures — this playbook ' +
+    'The runtime continues operating during export failures, this playbook ' +
     'focuses on restoring span delivery without interrupting agent work.',
   symptoms: [
     'Console logs show "[ExportQueue] Export failed" or "[OtlpExporter] Export failed permanently"',

@@ -7,7 +7,7 @@
  * The defect: the fold was guarded by `if (existsSync(markerPath)) return`. A
  * crash between creating that file and finishing its write leaves a zero-byte or
  * truncated marker that `existsSync` happily accepts, and the surface's legacy
- * `sessions.json` is then never folded into the daemon again — the user's old
+ * `sessions.json` is then never folded into the daemon again, the user's old
  * sessions are stranded permanently, silently.
  *
  * These tests pin the replacement contract: empty / torn / non-object / bare-true
@@ -84,7 +84,7 @@ function foldOnce(fx: ReturnType<typeof fixture>) {
 }
 
 /**
- * A marker whose inode a filesystem recovered but whose data it did not — the
+ * A marker whose inode a filesystem recovered but whose data it did not, the
  * classic post-crash carcass that `existsSync` reports as a finished migration.
  * Built from char codes rather than written literally so this source file stays
  * plain text.
@@ -121,7 +121,7 @@ describe('session spine legacy fold marker — validated by content, not existen
       expect(client.folded).toHaveLength(1);
       expect(client.folded[0]?.map((r) => r.sessionId).sort()).toEqual(['s-one', 's-two']);
 
-      // The re-run reason is disclosed at warn level — a silently repeated
+      // The re-run reason is disclosed at warn level, a silently repeated
       // migration is as opaque as a silently skipped one.
       const warned = log.entries.filter((e) => e.level === 'warn');
       expect(warned).toHaveLength(1);

@@ -1,16 +1,16 @@
 /**
- * client-seam-spine-adoption.test.ts — the reconcile policy behind "the adopted
+ * client-seam-spine-adoption.test.ts, the reconcile policy behind "the adopted
  * daemon changed".
  *
- * The two surface products drive this from different signals — one has a boot
+ * The two surface products drive this from different signals, one has a boot
  * discovery probe and gates on its verdict, the other treats its own connection
- * resolution as the signal and comes up immediately — and the reconcile rules
+ * resolution as the signal and comes up immediately, and the reconcile rules
  * underneath are identical. That is why the timing is an OPTION here rather than
  * a second implementation, and it is what these tests pin: the same
  * idempotency, the same teardown, the same one-time fold, under both timings.
  *
  * The failure being guarded is a mirror that is torn down and put back up on
- * every probe tick. It is not visible as an error — it shows up as sessions
+ * every probe tick. It is not visible as an error, it shows up as sessions
  * flickering out of the cross-surface list and inbound steers landing twice.
  */
 import { describe, expect, test } from 'bun:test';

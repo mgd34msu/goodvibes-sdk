@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — console formatting helpers.
+ * Evaluation Harness, console formatting helpers.
  *
  * Provides formatSuiteResult() and formatGateResult() for console and
  * panel output. Kept separate from scorecard.ts to avoid circular imports.
@@ -78,7 +78,7 @@ export function formatGateResult(gate: EvalGateResult): string {
     lines.push('No regressions detected.');
     lines.push(HR);
   } else if (!gate.baseline) {
-    lines.push('No baseline to compare against — this run will be saved as the new baseline.');
+    lines.push('No baseline to compare against, this run will be saved as the new baseline.');
     lines.push(HR);
   }
 

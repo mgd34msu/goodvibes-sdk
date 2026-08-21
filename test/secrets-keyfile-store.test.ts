@@ -201,7 +201,7 @@ describe('SecretsManager keyfile-encrypted store', () => {
  * The daemon tier: a third scope with a third directory behind it.
  *
  * The property under test is that the scope is a real storage location and not
- * a label — a daemon-scoped write must be readable by a manager rooted in a
+ * a label, a daemon-scoped write must be readable by a manager rooted in a
  * different project directory and a different surface, because that is exactly
  * what "the daemon has one home whichever product launched it" means.
  */

@@ -19,7 +19,7 @@
  * What these handlers do NOT do
  * ─────────────────────────────
  * Validate. The window ceiling, the open-expectation cap, the address and
- * domain normalisation, the refusal when email holds command authority — all
+ * domain normalisation, the refusal when email holds command authority, all
  * of it belongs to `VerificationExpectationBook` and is reached through
  * `InboundExpectationRegistry`. These read arguments, refuse the ones that are
  * missing or the wrong shape with an honest status, and hand the rest over. A
@@ -47,7 +47,7 @@ import type {
  * What a backend must be able to do to serve these verbs.
  *
  * Structurally satisfied by `InboundExpectationRegistry`, so the daemon wiring
- * passes the registry itself rather than an adapter — one implementation of
+ * passes the registry itself rather than an adapter, one implementation of
  * these three operations, not two.
  */
 export type EmailExpectationService = Pick<
@@ -68,7 +68,7 @@ function readRequired(value: unknown, field: string, hint: string): string {
  * Refused rather than coerced when it is present and not a positive finite
  * number: a caller that sent `"soon"` has a bug, and silently substituting the
  * default would hide it behind an expectation that expires at a time nobody
- * chose. Absent is fine — the registry's default applies, and the book clamps
+ * chose. Absent is fine, the registry's default applies, and the book clamps
  * whatever arrives to the hard maximum regardless.
  */
 function readOptionalWindowMs(value: unknown): number | undefined {
@@ -111,8 +111,8 @@ export function createEmailExpectationOpenHandler(
         ...(kind === undefined ? {} : { kind }),
       });
     } catch (error) {
-      // The book refuses for reasons that are the CALLER's to fix — too many
-      // open expectations, an unusable domain or address — so they are 400s
+      // The book refuses for reasons that are the CALLER's to fix, too many
+      // open expectations, an unusable domain or address, so they are 400s
       // carrying its wording, not 500s. Two refusals are NOT about the request
       // and must not be reported as though the caller sent something wrong:
       // the command-authority refusal is a statement about the platform's
@@ -150,7 +150,7 @@ export function createEmailExpectationCancelHandler(
       'the id returned when the expectation was opened',
     );
     const cancelled = await service.cancel(id);
-    // An id that is not open is an ordinary answer to an ordinary question —
+    // An id that is not open is an ordinary answer to an ordinary question,
     // the workstream asked for it to be gone and it is gone. Reporting a 404
     // would make a caller retrying after a crash treat success as failure.
     return cancelled === null

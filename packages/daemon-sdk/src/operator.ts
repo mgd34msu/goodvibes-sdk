@@ -31,11 +31,11 @@ const INVALID_ENCODING_RESPONSE = Response.json(
  * dispatcher level. Handler auth requirements by category:
  *
  * - READ-ONLY routes (status, providers, settings, continuity, intelligence,
- *   worktrees, watchers, approvals, telemetry snapshot) — require admin or
+ *   worktrees, watchers, approvals, telemetry snapshot), require admin or
  *   authenticated session per handler implementation.
  * - STATE-CHANGING routes (service install/start/stop, route bindings,
- *   automation jobs, knowledge ingest) — always `withAdmin(context, req, ...)`.
- * - SCHEDULER routes (getSchedulerCapacity) — require admin per handler
+ *   automation jobs, knowledge ingest), always `withAdmin(context, req, ...)`.
+ * - SCHEDULER routes (getSchedulerCapacity), require admin per handler
  *   implementation.
  *
  * Dispatcher does not short-circuit unauthenticated requests; all auth

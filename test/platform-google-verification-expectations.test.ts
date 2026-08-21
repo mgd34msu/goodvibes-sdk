@@ -19,8 +19,8 @@ import { UNTRUSTED_CONTENT_RULE } from '../packages/sdk/src/platform/security/un
 // PERMANENT REGRESSION GUARDS.
 //
 // Every test in this file pins a rule that keeps email an input-only surface.
-// The single exception carved out here — a verification email the agent itself
-// provoked — is evidence that the agent controls an address, never a directive.
+// The single exception carved out here, a verification email the agent itself
+// provoked, is evidence that the agent controls an address, never a directive.
 // Do not relax, skip, or "temporarily" delete these. If one starts failing, the
 // hole has widened and the change is wrong, not the test.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -361,7 +361,7 @@ describe('extractVerification', () => {
   test('does not fall back to a code when the only links point somewhere else', () => {
     const { expectation } = openedBook();
     const result = extractVerification(
-      email({ body: 'Code 483920 — or confirm at https://github.com.evil.com/verify' }),
+      email({ body: 'Code 483920, or confirm at https://github.com.evil.com/verify' }),
       expectation,
     );
     expect(result.artifact.kind).toBe('refused');

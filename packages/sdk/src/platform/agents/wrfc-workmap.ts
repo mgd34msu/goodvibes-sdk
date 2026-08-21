@@ -30,7 +30,7 @@ export class WrfcWorkmap {
   private filePath: string;
 
   constructor(projectRoot: string, sessionId: string, options?: { readonly surfaceRoot?: string | undefined; readonly sessionsDir?: string | undefined }) {
-    // Workmaps are agent journals, not user conversations — they live under
+    // Workmaps are agent journals, not user conversations, they live under
     // sessions/agents/, a sibling of the user conversation files in sessions/
     // (see agents/session.ts and append-only-registry.ts's session-journals
     // store, which sweeps this directory).

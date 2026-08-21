@@ -1,7 +1,7 @@
 /**
  * push-completion-source.test.ts
  *
- * PushService.attachCompletionSource — completion push with no setup: a
+ * PushService.attachCompletionSource, completion push with no setup: a
  * tracked run reaching a terminal state (FLEET_NODE_FINISHED) fans out to
  * every paired push target BY DEFAULT; the notifications.pushCompletion class
  * toggle exists only to silence it. Mirrors push-needs-input-source.test.ts:

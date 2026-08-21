@@ -1,5 +1,5 @@
 /**
- * SessionManager — Focused responsibility: session lifecycle.
+ * SessionManager, Focused responsibility: session lifecycle.
  *
  * Manages the login/logout lifecycle and ties token persistence to login
  * results. Decoupled from transport and token storage implementations.

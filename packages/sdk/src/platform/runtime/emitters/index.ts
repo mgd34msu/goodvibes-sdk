@@ -1,5 +1,5 @@
 /**
- * Emitters barrel — re-exports all typed emission wrappers and the EmitterContext.
+ * Emitters barrel, re-exports all typed emission wrappers and the EmitterContext.
  *
  * The EmitterContext is the minimal context required by all emitter functions.
  * Construct one from the current session/turn/agent context and pass it through.
@@ -27,7 +27,7 @@ import type { EnvelopeContext } from '../events/envelope.js';
  * a pre-existing trace.
  */
 export interface EmitterContext extends EnvelopeContext {
-  /** Required trace identifier — must be supplied by the caller at emission time. */
+  /** Required trace identifier, must be supplied by the caller at emission time. */
   readonly traceId: string;
 }
 

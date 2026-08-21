@@ -375,7 +375,7 @@ describe('feature flag safe-default gates', () => {
     const originalFetch = globalThis.fetch;
     // Count only THIS test's request. `globalThis.fetch` is process-wide and
     // this suite runs every file in one process, so a counter that counts every
-    // call also counts the background work other files leave running — one such
+    // call also counts the background work other files leave running, one such
     // counter elsewhere in this suite reported 4962 where 2 were expected.
     // Anything aimed elsewhere gets a 404 rather than this test's redirect, so
     // a stray caller fails immediately instead of being pointed at a link-local
@@ -507,7 +507,7 @@ describe('feature flag safe-default gates', () => {
   /**
    * The property under test is that AST mode catches command substitution the
    * flat baseline segmentation misses. The command used to be `echo $(whoami)`,
-   * which is a substitution supplying a VALUE — the same everyday shape as
+   * which is a substitution supplying a VALUE, the same everyday shape as
    * `curl -H "Bearer $(cat token)"`, which was refused during real debugging.
    * The classifier now separates reading a value from assembling a command, so
    * this pins the property with a substitution that decodes rather than reads.
@@ -1570,7 +1570,7 @@ describe('feature flag safe-default gates', () => {
   // manager wired, so the recorded default (false/disabled) never matched
   // shipped behaviour: task tracking (including /tasks and operator
   // interventions) was always effectively on. The default is corrected here
-  // to record the truth rather than be silently overridden by a bug — see
+  // to record the truth rather than be silently overridden by a bug, see
   // CHANGELOG.md [Unreleased] for the history.
   test('runtime.unifiedTasks defaults true, and unified-runtime-task defaults enabled to match', async () => {
     const { CONFIG_SCHEMA } = await import('../packages/sdk/src/platform/config/schema.js');
@@ -1583,7 +1583,7 @@ describe('feature flag safe-default gates', () => {
     expect(flag?.defaultState).toBe('enabled');
 
     // With nothing configured, a task manager built from a real (default)
-    // config resolves enabled — the fix that closed this gap in TUI/agent
+    // config resolves enabled, the fix that closed this gap in TUI/agent
     // composition roots changes nothing for an existing install.
     const configManager = new ConfigManager({ configDir: mkdtempSync(join(tmpdir(), 'gv-unified-tasks-default-')) });
     expect(configManager.get('runtime.unifiedTasks')).toBe(true);

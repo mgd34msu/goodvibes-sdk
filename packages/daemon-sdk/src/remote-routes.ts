@@ -393,7 +393,7 @@ export function estimateJsonByteLengthWithinLimit(
   // the full encoded string. The replacer throws a sentinel when the running
   // byte total exceeds maxBytes, preventing peak allocation before the cap.
   // switched from `val.length * 6` worst-case to exact
-  // jsonStringByteLength() count — same allocation profile, much tighter near the cap.
+  // jsonStringByteLength() count, same allocation profile, much tighter near the cap.
   let byteCount = 0;
   const OVER_LIMIT = Symbol('over-limit');
   try {
@@ -401,7 +401,7 @@ export function estimateJsonByteLengthWithinLimit(
       if (typeof val === 'string') {
         byteCount += jsonStringByteLength(val);
       } else {
-        // null/number/boolean/object-open/array-open — add a small fixed cost per node.
+        // null/number/boolean/object-open/array-open, add a small fixed cost per node.
         byteCount += 16;
       }
       if (byteCount > maxBytes) {

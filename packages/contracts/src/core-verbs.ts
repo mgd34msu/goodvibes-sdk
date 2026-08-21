@@ -1,9 +1,9 @@
 /**
- * core-verbs.ts — the canonical operator-method verb vocabulary (see CHANGELOG 1.0.0).
+ * core-verbs.ts, the canonical operator-method verb vocabulary (see CHANGELOG 1.0.0).
  *
  * WHY THIS EXISTS: OPERATOR_METHOD_IDS (generated/operator-method-ids.ts) is a
  * flat list of dotted ids (`<namespace...>.<verb>`). Before this file, nothing
- * enumerated or constrained the verb vocabulary — every method-catalog author
+ * enumerated or constrained the verb vocabulary, every method-catalog author
  * picked whatever word felt right, which is how an audit found three
  * worst-class collisions on the word "schedule", a redundant lifecycle pair
  * (`enable`/`disable` duplicated by `pause`/`resume`), and an update-verb split
@@ -11,27 +11,27 @@
  * from recurring: CORE_VERBS is the closed vocabulary for generic lifecycle
  * operations, BANNED_VERBS are verbs that were retired and must never
  * reappear, and EXEMPT_VERB_CATEGORIES documents the (large, expected) set of
- * domain-specific verbs that aren't generic CRUD/lifecycle words — things like
+ * domain-specific verbs that aren't generic CRUD/lifecycle words, things like
  * `voice.stt`, `homeassistant.homeGraph.askHomeGraph`, or `telemetry.otlp.logs`
  * are real, single-purpose operations, not a coherence bug.
  *
  * NAMESPACE RULE: a resource family name is the plural noun the family
  * manages (`tasks`, `sessions`, `schedules`, `watchers`); verbs attach
  * directly to it (`tasks.list`, `tasks.get`). The ONE exception is a
- * documented, reusable pattern — not ad hoc: when a family already has both a
+ * documented, reusable pattern, not ad hoc: when a family already has both a
  * per-item action surface AND a collection surface, and giving both the same
  * plural name would be ambiguous about which one an action targets, the
  * per-item family takes the SINGULAR form and the collection keeps the
- * PLURAL. `knowledge.schedule.get/save/delete/enable` (singular — acts on one
- * schedule) alongside `knowledge.schedules.list` (plural — the collection) is
+ * PLURAL. `knowledge.schedule.get/save/delete/enable` (singular, acts on one
+ * schedule) alongside `knowledge.schedules.list` (plural, the collection) is
  * the canonical example. Do not introduce this split defensively "for
- * symmetry" on a family that only ever has one shape — `automation.schedules.*`
+ * symmetry" on a family that only ever has one shape, `automation.schedules.*`
  * has no singular sibling because nothing needs one yet.
  *
  * CONFORMANCE: see test/core-verbs-conformance.test.ts, which lints every id
  * in OPERATOR_METHOD_IDS against this file: each verb tail must be in
  * CORE_VERBS, in one of EXEMPT_VERB_CATEGORIES, or the test fails and names
- * the offending id — a new ad hoc verb cannot land silently. BANNED_VERBS are
+ * the offending id, a new ad hoc verb cannot land silently. BANNED_VERBS are
  * asserted absent outright, so a retired verb can never come back under the
  * same tail.
  */
@@ -78,14 +78,14 @@ export type CoreVerb = typeof CORE_VERBS[number];
  * keeps banning it even if someone re-adds it later without knowing why it
  * was removed.
  *
- * - `patch` — retired in favor of `update` (automation.jobs.patch ->
+ * - `patch`, retired in favor of `update` (automation.jobs.patch ->
  *   automation.jobs.update, routes.bindings.patch -> routes.bindings.update,
  *   watchers.patch -> watchers.update). `update` is the one
  *   canonical partial-mutation verb; `patch` mirrored the HTTP-verb name
- *   (PATCH) instead of the operator-method vocabulary in these three places —
+ *   (PATCH) instead of the operator-method vocabulary in these three places,
  *   the HTTP method on the descriptor is unaffected, only the id's verb tail
  *   changed.
- * - `pause` / `resume` — retired as a byte-identical redundant lifecycle pair
+ * - `pause` / `resume`, retired as a byte-identical redundant lifecycle pair
  *   with `enable`/`disable` (automation.jobs.pause/resume -> deleted;
  *   same `{id, enabled}` output shape, same semantics). A caller-facing
  *   "pause"/"resume" user verb should map onto `disable`/`enable` at the wire.
@@ -96,14 +96,14 @@ export type BannedVerb = typeof BANNED_VERBS[number];
 
 /**
  * Domain-specific verbs that are NOT part of the generic lifecycle vocabulary
- * but are legitimate, real operations — not a coherence bug. Grouped by
+ * but are legitimate, real operations, not a coherence bug. Grouped by
  * category with a one-line reason each, rather than one entry per id, because
  * the catalog has ~300 methods across a dozen unrelated domains (calendar,
  * channels, home automation, knowledge, media, telemetry, voice, ...) and
  * requiring an individual justification per verb would make the exemption
  * list an unmaintainable copy of the catalog itself. The categorization is
  * still a real constraint: a verb tail that matches none of CORE_VERBS and
- * none of these categories' listed verbs fails the conformance test — a
+ * none of these categories' listed verbs fails the conformance test, a
  * genuinely new ad hoc verb has to either fit an existing category, join
  * CORE_VERBS with a decision record, or get its own category here.
  */
@@ -129,8 +129,8 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // owns and may therefore close, `attach` connects to one it did not start
     // and may never close, and `release` lets go of an attached browser while
     // leaving it running. Collapsing `release` into `close` would name two
-    // different acts the same word, and `close` — the one that really does end
-    // a process — is already a CORE_VERB.
+    // different acts the same word, and `close`, the one that really does end
+    // a process, is already a CORE_VERB.
     //
     // `browser.tabs.create` is deliberately NOT here: opening a tab is
     // creating one, and it uses the core verb.
@@ -145,7 +145,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   ],
   'maintenance-and-indexing': [
     // Index/derived-state maintenance actions (knowledge and home-graph
-    // reindexing, memory vector rebuilds) — a maintenance operation on
+    // reindexing, memory vector rebuilds), a maintenance operation on
     // derived state, not a CRUD action on the record itself.
     'reindex', 'rebuild',
   ],
@@ -156,7 +156,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   ],
   'relay-step-up-ceremony': [
     // The relay WebAuthn step-up ceremony: `mint` issues a single-use challenge a
-    // surface signs with a passkey before a mutating relay call — named for the
+    // surface signs with a passkey before a mutating relay call, named for the
     // cryptographic act, not a generic CRUD lifecycle. (Credential `register` is
     // already a CORE_VERB.)
     'mint',
@@ -179,7 +179,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //
     // `kill` (sessions.hosted.kill) is deliberately not `close`. A hosted
     // session's loop runs in the daemon, so ending it interrupts a turn in
-    // flight, takes the loop apart and releases the workspace floor — while
+    // flight, takes the loop apart and releases the workspace floor, while
     // `close` on a shared session record means the record is no longer active
     // and is reopenable. Naming both `close` would give one word two outcomes,
     // one of which cannot be undone.
@@ -189,11 +189,11 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   'reporting-and-diagnostics': [
     // Read-shaped diagnostic/reporting endpoints named for their specific
     // report, not a generic "get"/"list". `report` is the feature-flag
-    // graduation report (flags.graduation.report) — a whole-report read whose
+    // graduation report (flags.graduation.report), a whole-report read whose
     // shape (per-flag state + evidence + release-blocker list) is a named
     // report, not a generic get of one record.
     'doctor', 'stats', 'capacity', 'settings', 'catalog', 'reject', 'review-queue', 'report',
-    // memory.consolidation.receipts — the retained consolidation run receipts +
+    // memory.consolidation.receipts, the retained consolidation run receipts +
     // pending proposals: a whole-report read named for what it serves.
     'receipts',
   ],
@@ -214,7 +214,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //  - `acknowledge` is not a fourth `answer`, and the difference is the
     //    whole reason it has its own verb: yes, no and later all RESOLVE the
     //    open item and remove it, while this one leaves it standing. It means
-    //    "heard you" — the occasion stays open, stays enumerable and still
+    //    "heard you", the occasion stays open, stays enumerable and still
     //    answers when he asks what is coming up; only the push stops. "Stop
     //    telling me about this" and "forget about this" are different
     //    instructions, and the feature had no way to hear the first one.
@@ -223,19 +223,19 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //  - `pending` is not `list`: it returns what is UNRESOLVED, composed as it
     //    would be delivered, rather than the records.
     //  - `gifts` is the history of what he landed on, named for what it holds.
-    //  - `state` is the persisted-state disclosure — counts and reasons, never
-    //    a date or an answer — distinct from a generic `status`.
+    //  - `state` is the persisted-state disclosure, counts and reasons, never
+    //    a date or an answer, distinct from a generic `status`.
     'propose', 'confirm', 'answer', 'acknowledge', 'sweep', 'pending', 'gifts', 'state',
   ],
   'memory-record-store': [
     // The daemon-owned canonical memory store mirrors the MemoryStore engine's
     // own long-standing API verbs rather than the generic CRUD words.
-    // `update-review` mutates ONLY a record's review signal —
-    // reviewState/confidence/reviewer/staleReason — a narrower, honesty-load-
+    // `update-review` mutates ONLY a record's review signal,
+    // reviewState/confidence/reviewer/staleReason, a narrower, honesty-load-
     // bearing operation than a generic `update` that would also touch content.
     // `search-semantic` is the store's scored semantic-ranking read (returns
     // distance/similarity/score), a distinct engine verb from the literal `search`
-    // (a CORE verb) it sits beside — the MemoryStore engine has always exposed
+    // (a CORE verb) it sits beside, the MemoryStore engine has always exposed
     // searchSemantic separately, so the wire mirrors that name rather than folding
     // it into a flag on `search` whose output shape differs.
     // `add` is NOT here: it is a word any family could plausibly use, so it is
@@ -246,13 +246,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // Browser-push delivery action: `verify` sends a live test notification to
     // a stored subscription and returns an honest delivery receipt (proving the
     // encryption + endpoint round trip). It is a single-purpose delivery probe,
-    // not a generic read/lifecycle word — the subscription lifecycle itself uses
+    // not a generic read/lifecycle word, the subscription lifecycle itself uses
     // core verbs (push.subscriptions.create/list/delete, push.vapid.get).
     'verify',
     // `reconcile` is the self-heal-on-open action: the client presents its
     // device identity + current endpoint and the daemon heals a stale record in
     // place, reporting what drifted. It is a state-reconciliation verb (like a
-    // terraform apply), not a plain create/update — a new subscription still
+    // terraform apply), not a plain create/update, a new subscription still
     // uses the core `create` verb.
     'reconcile',
   ],
@@ -270,11 +270,11 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // The pairing hand-off bundle (pairing.handoff.create / .complete): one
     // exchange carries the notifications/relay/passkey offer set. `create` is a
     // core verb; `complete` applies the surface's per-offer decisions in a
-    // single pass — a multi-offer apply action, not a generic CRUD word.
+    // single pass, a multi-offer apply action, not a generic CRUD word.
     'complete',
   ],
   'worktree-lifecycle': [
-    // worktrees.discard — the eviction-preserving removal (dirty state
+    // worktrees.discard, the eviction-preserving removal (dirty state
     // committed onto the KEPT branch, directory removed, branch kept, honest
     // receipt). Deliberately NOT `delete`: delete implies the branch and the
     // work go away; discard keeps both recoverable.
@@ -286,7 +286,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // stores. `plan` computes exactly what a rewind to a turn anchor would
     // change and mints a single-use confirm token (read-only); `apply` consumes
     // it to restore files and/or conversation, recording an undo point so the
-    // rewind is reversible. Not generic CRUD/lifecycle words — a safety-gated
+    // rewind is reversible. Not generic CRUD/lifecycle words, a safety-gated
     // whole-session rewind surface, sibling to checkpoint-restore-safety.
     'plan', 'apply',
   ],
@@ -306,7 +306,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     'take',
   ],
   'paired-device-capability': [
-    // devices.capability.request — asking a paired phone for its camera,
+    // devices.capability.request, asking a paired phone for its camera,
     // screen, location, clipboard, or a device command. Not `run` and not
     // `invoke`: neither of those words carries the thing that makes this verb
     // what it is, which is that the daemon ASKS and the person holding the
@@ -321,7 +321,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // unified-diff hunk and ask for exactly it to be undone. `revertHunkPreview`
     // validates the hunk still reverse-applies cleanly and mints a single-use
     // confirm token (read-only); `revertHunk` consumes it to snapshot-then-reverse-
-    // apply that one hunk, emitting a receipt. Not generic CRUD/lifecycle words —
+    // apply that one hunk, emitting a receipt. Not generic CRUD/lifecycle words,
     // a safety-gated per-hunk workspace mutation, sibling to checkpoint-restore-safety.
     'revertHunk', 'revertHunkPreview',
   ],
@@ -329,7 +329,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // Server-side confirmation preview for the destructive checkpoints.restore:
     // checkpoints.restorePreview computes what a restore would change and mints
     // a short-lived, single-use confirmToken authorizing the matching restore.
-    // Read-only (no workspace rewrite) — a distinct verb from `restore` so the
+    // Read-only (no workspace rewrite), a distinct verb from `restore` so the
     // preview can hold read scope while restore keeps write scope. Not a generic
     // CRUD/lifecycle word: it is a safety-gate operation specific to the
     // whole-workspace rewind surface.
@@ -341,13 +341,13 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // accepts one attempt as the winner (merging it, cleaning the losers);
     // `judge` runs a model to PROPOSE a winner with reasons (clearly model
     // judgment, never an auto-pick unless opted in). Not generic CRUD/lifecycle
-    // words — a best-of-N resolution surface over held-merge candidate groups.
+    // words, a best-of-N resolution surface over held-merge candidate groups.
     'pick', 'judge',
   ],
   'fleet-archive': [
     // Session-scoped fleet archive transitions (runtime/fleet/archive.ts):
     // moving a FINISHED process subtree out of the live fleet view and back.
-    // Not generic record CRUD — archive/unarchive gate on all-terminal
+    // Not generic record CRUD, archive/unarchive gate on all-terminal
     // subtrees and never delete anything; archiveFinished is the bulk form
     // over every fully-finished root. The archived-collection read uses the
     // core verb (fleet.archived.list).
@@ -356,7 +356,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
   'process-control': [
     // OS/service process lifecycle verbs (distinct domain from
     // enable/disable, which toggle a *record's* activation state) plus
-    // reload (re-read a live config from disk — a process action, not a
+    // reload (re-read a live config from disk, a process action, not a
     // record lifecycle transition).
     'install', 'restart', 'start', 'stop', 'uninstall', 'open', 'reload',
   ],
@@ -371,7 +371,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // back, which is neither a create nor an update of anything the caller
     // supplied; `provenance` answers "where did you get that", a read of the
     // record's history rather than of the record; and `person` is a lookup BY
-    // NAME with deliberately no plural counterpart — `people.list` does not
+    // NAME with deliberately no plural counterpart, `people.list` does not
     // exist, and must not, because an enumerate-all call is the exact hole the
     // third-party-data rule closes. See docs/owner-profile.md §10 and §11.1.
     'append', 'forget', 'undo', 'provenance', 'person',
@@ -381,7 +381,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // VALUES included, where `mcp.config.get` returns the redacted view every
     // other caller should use. It is not `get`: the two answer the same
     // question at different exposure, and giving them the same verb would make
-    // the admin-only one look like an ordinary read at the call site — which
+    // the admin-only one look like an ordinary read at the call site, which
     // is exactly the confusion the redaction exists to prevent. Admin-gated.
     'reveal',
   ],
@@ -389,7 +389,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     // Driving a real checkout on a real merchant's page. Neither word is a CRUD
     // operation on a resource this catalog owns.
     //
-    // `begin` opens a checkout ATTEMPT — cross-process, resumable, journalled,
+    // `begin` opens a checkout ATTEMPT, cross-process, resumable, journalled,
     // and answerable after a crash about whether money moved. It is not
     // `create`: nothing is created that a later `delete` could remove, and the
     // thing it starts can end in a state no CRUD word describes. `fillCard`
@@ -412,7 +412,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
  *
  * It is wrong for a word any family could plausibly reach for. `remove` was
  * exempted with a rationale written entirely about `mcp.servers.remove`, and
- * two later ids — `occasions.remove` and `workspaces.registrations.remove` —
+ * two later ids, `occasions.remove` and `workspaces.registrations.remove`,
  * landed on the strength of that entry without anyone deciding they should.
  * `add` did the same on a rationale about the MemoryStore engine's API. The
  * exemption is supposed to be a decision about a named operation; a bare tail
@@ -444,7 +444,7 @@ export const SCOPED_EXEMPT_VERB_CATEGORIES: Readonly<Record<string, ScopedVerbEx
     namespaces: ['occasions'],
     verbs: ['remove'],
     // `occasions.remove` takes out one occasion AND every record the machine
-    // kept against it — answers, gift history, open items, interviews, calendar
+    // kept against it, answers, gift history, open items, interviews, calendar
     // mirrors. `delete` is the catalog's word for retiring a record, and most
     // of the ids using it leave a tombstone; this one is the erasure a person
     // asks for when someone has died or a marriage has ended, and naming it
@@ -456,7 +456,7 @@ export const SCOPED_EXEMPT_VERB_CATEGORIES: Readonly<Record<string, ScopedVerbEx
     // A registration is not a record with a lifecycle; it is a root whose whole
     // subtree becomes covered by it. `add` is idempotent and answers
     // alreadyRegistered rather than creating a second anything, and `remove`
-    // answers removed:false for a root that was never there — neither has the
+    // answers removed:false for a root that was never there, neither has the
     // create/delete shape of an id-bearing resource, and giving them those
     // words would promise a registration record that a caller could then fetch.
   },
@@ -464,7 +464,7 @@ export const SCOPED_EXEMPT_VERB_CATEGORIES: Readonly<Record<string, ScopedVerbEx
     namespaces: ['update'],
     verbs: ['check'],
     // `update.check` runs one self-update check now instead of waiting for the
-    // next interval. It is not `get` or `status` — those read what is already
+    // next interval. It is not `get` or `status`, those read what is already
     // known, and this reaches the network and can change what is known. It is
     // not `run` either: running the update is a separate thing that still waits
     // for a moment when no work is in flight, and naming this `run` would

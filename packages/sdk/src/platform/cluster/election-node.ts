@@ -1,5 +1,5 @@
 /**
- * election-node.ts — this node's seat in the group, and one election per
+ * election-node.ts, this node's seat in the group, and one election per
  * surface underneath it.
  *
  * Everything that is genuinely per-NODE lives here: the single socket, the
@@ -11,8 +11,8 @@
  * The datagram path is: decode -> authenticate -> drop our own loopback ->
  * deduplicate by sequence -> record the peer and its holdings -> route by
  * surfaceId to the one election that cares. A datagram for a surface this node
- * does not serve is still RECORDED — that is how the holdings ledger learns
- * what the rest of the network is carrying without anyone announcing it — but
+ * does not serve is still RECORDED, that is how the holdings ledger learns
+ * what the rest of the network is carrying without anyone announcing it, but
  * it is not dispatched anywhere, because this node has no business in that
  * election.
  *
@@ -81,8 +81,8 @@ export class ClusterElection {
    * a monotonic clock legitimately reads 0, and treating that as "not started"
    * pins this node's uptime at zero for its whole life.
    *
-   * Uptime is no longer a ranking tier — the spread ranking dropped it because
-   * it concentrated every surface on the longest-lived node — but it is still
+   * Uptime is no longer a ranking tier, the spread ranking dropped it because
+   * it concentrated every surface on the longest-lived node, but it is still
    * reported, because "how long has this node been up" is the first thing
    * anyone reads a `/status` for.
    */
@@ -217,7 +217,7 @@ export class ClusterElection {
   /**
    * A provider reported that something else is already consuming.
    *
-   * Routed to ONE surface when the caller knows which — a Telegram 409 is
+   * Routed to ONE surface when the caller knows which, a Telegram 409 is
    * about one bot token and says nothing about ntfy. Without a surface it
    * reaches every surface this node currently holds, which is the conservative
    * reading of an unattributed conflict.
@@ -236,7 +236,7 @@ export class ClusterElection {
    * Bring the running elections into line with what this node can serve.
    *
    * A surface that appears gets an election and a boot probe. A surface that
-   * disappears — the credential was removed, the consumer was unregistered —
+   * disappears, the credential was removed, the consumer was unregistered,
    * gets stopped through the ordered path, so if this node was holding it, it
    * stops consuming and says goodbye rather than going quiet and making the
    * rest of the network wait out the crash timeout.
@@ -334,13 +334,13 @@ export class ClusterElection {
    * Update the holdings ledger from observed traffic.
    *
    * Only a HEARTBEAT counts as holding. A CLAIM is a node saying it WANTS the
-   * surface, and most claims lose — counting them would briefly credit every
+   * surface, and most claims lose, counting them would briefly credit every
    * losing candidate in an election with a surface it never got, and the
    * spread ranking would rank against numbers that were never true. A holder
    * sends its first HEARTBEAT in the same breath as the CLAIM that took the
    * surface, so nothing is lost by waiting for it. RESIGN is letting go.
    *
-   * Any datagram at all — a PROBE from a standby included — proves the sender
+   * Any datagram at all, a PROBE from a standby included, proves the sender
    * can serve that surface, which is what makes it a rebalancing candidate.
    */
   private recordHoldings(message: ClusterMessage): void {
@@ -371,8 +371,8 @@ export class ClusterElection {
    * One tick does two jobs: notice that this host was asleep, and let every
    * surface notice a holder that stopped breathing.
    *
-   * Suspend is node-level — the whole process was frozen, so every surface's
-   * consumer was frozen with it — while holder timeout is per surface.
+   * Suspend is node-level, the whole process was frozen, so every surface's
+   * consumer was frozen with it, while holder timeout is per surface.
    */
   private onWatchdogTick(): void {
     if (!this.running) return;

@@ -1,11 +1,11 @@
 /**
- * at-rest-persistence.ts — the redaction + retention policy layer for the two
+ * at-rest-persistence.ts, the redaction + retention policy layer for the two
  * raw-content on-disk writers: the per-agent transcript journal
  * (agents/session.ts, `<agentId>.jsonl`) and the local execution ledger
  * (runtime/telemetry/exporters/local-ledger.ts, spans + `<file>.ledger.jsonl`).
  *
- * Both historically appended raw serialized records — a prompt, a tool stdout,
- * an event payload — straight to disk, so an API key or bearer token that
+ * Both historically appended raw serialized records, a prompt, a tool stdout,
+ * an event payload, straight to disk, so an API key or bearer token that
  * flowed through a turn was persisted in the clear. The redaction helper
  * (utils/redaction.ts) existed but was wired only to the telemetry query egress,
  * so nothing masked the at-rest copy.
@@ -15,12 +15,12 @@
  *     (redactCredentialsOnly) over a serialized JSON line before it is appended.
  *     The patterns replace only the matched secret substrings with
  *     JSON-safe `[REDACTED_*]` markers, so the line stays valid JSON and its
- *     non-secret content stays readable — a redacted record never pretends the
+ *     non-secret content stays readable, a redacted record never pretends the
  *     content was not there, it shows the marker.
  *
  *     Credentials ONLY, deliberately. utils/redaction.ts also carries
  *     home-path anonymisation, and the egress helper (redactSensitiveData)
- *     applies both — correctly, because a session export goes to someone who
+ *     applies both, correctly, because a session export goes to someone who
  *     is not the owner. These files do not go anywhere: they sit on his disk,
  *     inside the very directory those patterns rewrite. Anonymising him from
  *     himself turned `/home/mike/Projects/x` into `/home/[REDACTED]/Projects/x`
@@ -72,7 +72,7 @@ export const AT_REST_CONFIG_KEYS = {
 
 /**
  * Build a resolved policy from a config getter (ConfigManager.get shape). A
- * missing/invalid value falls back to the honest default rather than throwing —
+ * missing/invalid value falls back to the honest default rather than throwing,
  * a config problem must never take the write path down.
  */
 export function resolveAtRestPolicy(get?: (key: string) => unknown): AtRestPolicy {
@@ -122,7 +122,7 @@ export function enforceFileRetention(files: readonly string[], policy: AtRestPol
       if (!stat.isFile()) continue;
       stats.push({ path, size: stat.size, mtimeMs: stat.mtimeMs });
     } catch {
-      // Missing / unreadable file — nothing to retain.
+      // Missing / unreadable file, nothing to retain.
     }
   }
 

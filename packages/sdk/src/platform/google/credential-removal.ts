@@ -1,10 +1,10 @@
 /**
- * Removing or replacing a stored Google credential — which never happens
+ * Removing or replacing a stored Google credential, which never happens
  * without the owner saying yes first.
  *
  * The defect this exists to fix: mid-flow, with nothing asked and nothing
  * announced, the stored refresh token was deleted. The owner found out because
- * the connection stopped working. A refresh token is not a cache entry — it is
+ * the connection stopped working. A refresh token is not a cache entry, it is
  * the thing that took a person through a consent screen to obtain, and on a
  * published app it is the only durable half of the credential. Deleting one
  * unprompted destroys work the machine cannot recreate on its own.
@@ -124,7 +124,7 @@ function buildPrompt(labels: readonly string[], reason: string | undefined): str
 }
 
 /**
- * Remove stored Google credentials — but only with an explicit yes.
+ * Remove stored Google credentials, but only with an explicit yes.
  *
  * Called without `confirmed`, this changes nothing and hands back the sentence
  * to put in front of the owner. Called with `confirmed: true`, it removes the
@@ -144,7 +144,7 @@ export async function removeGoogleCredentials(
       confirmed: true,
       removed: [],
       wouldRemove: [],
-      detail: 'Nothing was removed — none of those credentials are stored on this machine.',
+      detail: 'Nothing was removed, none of those credentials are stored on this machine.',
     };
   }
 
@@ -175,7 +175,7 @@ export async function removeGoogleCredentials(
     await secrets.delete(ITEM_SECRET_KEYS[item]);
     removed.push(ITEM_LABELS[item]);
     // The config reference is cleared alongside the value it points at, or the
-    // machine is left claiming a credential that is no longer there — which is
+    // machine is left claiming a credential that is no longer there, which is
     // the half-landed state connection-repair.ts exists to clean up after.
     if (item === 'refresh-token') deps.config.set(GOOGLE_CONFIG_KEYS.oauthRefreshToken, '');
     if (item === 'client-secret') deps.config.set(GOOGLE_CONFIG_KEYS.oauthClientSecretRef, '');

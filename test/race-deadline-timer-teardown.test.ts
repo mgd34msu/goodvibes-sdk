@@ -4,15 +4,15 @@
  * Two timers that were created and then forgotten.
  *
  * The losing side of a `Promise.race` is never settled, so a `setTimeout` used
- * as a deadline keeps its handle — and the closure it holds — until the delay
+ * as a deadline keeps its handle, and the closure it holds, until the delay
  * finally elapses, even though the result was decided long before. And a
  * one-shot timer held only in a local variable cannot be cancelled by the
  * owner's `dispose()`, because nothing outside that function ever had a
  * reference to it.
  *
  * Both were measured across a full suite run: 65 uncleared 15s lock deadlines,
- * 38 uncancellable WRFC chain-cleanup timers. Neither pins the event loop —
- * they are unref'd — but both retain their closures and both still fire.
+ * 38 uncancellable WRFC chain-cleanup timers. Neither pins the event loop,
+ * they are unref'd, but both retain their closures and both still fire.
  */
 
 import { afterEach, beforeEach, expect, test } from 'bun:test';
@@ -86,7 +86,7 @@ test('WrfcController.dispose() cancels a pending chain-cleanup timer', () => {
     createWorktree: () => ({ merge: async () => true, cleanup: async () => {} }),
   });
 
-  // scheduleChainCleanup is private by design — it is an internal reaction to a
+  // scheduleChainCleanup is private by design, it is an internal reaction to a
   // chain reaching a terminal state. What is under test is purely who owns the
   // handle it creates, so the test reaches it directly rather than driving a
   // whole chain to completion to provoke one setTimeout.

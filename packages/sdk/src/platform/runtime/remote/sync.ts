@@ -1,12 +1,12 @@
 /**
- * Remote Substrate — State Sync
+ * Remote Substrate, State Sync
  *
  * Mirrors remote task and health state into
  * local runtime store domains (AcpDomainState, TaskDomainState).
  *
  * The sync layer is a one-way bridge: remote data flows into local store
  * domains via the provided mutation callbacks. The store remains the
- * single source of truth for local rendering — remote state is a projection.
+ * single source of truth for local rendering, remote state is a projection.
  */
 
 import type { RemoteTask, RemoteHealth, RemoteSession } from './types.js';
@@ -19,7 +19,7 @@ import { logger } from '../../utils/logger.js';
 /**
  * Callbacks supplied by the runtime store to apply state mutations.
  *
- * The sync layer never touches the store directly — it calls these
+ * The sync layer never touches the store directly, it calls these
  * callbacks and lets the store manage its own invariants.
  */
 export interface SyncStoreCallbacks {
@@ -58,7 +58,7 @@ export interface SyncStoreCallbacks {
 // ── RemoteStateSyncer ─────────────────────────────────────────────────────────
 
 /**
- * RemoteStateSyncer — applies incoming remote state snapshots into local domains.
+ * RemoteStateSyncer, applies incoming remote state snapshots into local domains.
  *
  * Owns the translation from `RemoteTask`/`RemoteHealth` types (remote-facing)
  * into `RuntimeTask` / ACP domain types (local store-facing).

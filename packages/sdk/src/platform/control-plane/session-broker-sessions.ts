@@ -17,8 +17,8 @@ import { isChannelSurfaceKind } from '../../events/surfaces.js';
  * The origin `kind` a freshly-created session gets when the caller does not
  * name one explicitly (e.g. every channel adapter's `submitMessage` call, and
  * the rollover create-path in session-broker-intent.ts). Derived from the
- * surface that is actually creating it — the participant's surfaceKind, or
- * failing that the route binding's — so a genuine third-party channel
+ * surface that is actually creating it, the participant's surfaceKind, or
+ * failing that the route binding's, so a genuine third-party channel
  * (Telegram, Slack, ntfy, ...) is stamped 'channel', never 'tui'. A session
  * with no surface information at all (a bare `createSession({})`) falls back
  * to 'tui', the documented default for legacy/ungrounded records.
@@ -43,7 +43,7 @@ export function readSessionCloseReason(session: SharedSessionRecord): SharedSess
 }
 
 /**
- * True when the SYSTEM closed this session rather than a user or a surface —
+ * True when the SYSTEM closed this session rather than a user or a surface,
  * the reaper ('idle-reaped') or the boot orphan sweep ('boot-orphaned').
  *
  * Both mean "nobody asked for this to close, we inferred it", so both reopen
@@ -79,7 +79,7 @@ export function withoutSessionCloseReason(metadata: Record<string, unknown>): Re
  * (via `sessions.register`) owns turn execution and input collection for it. Set
  * on every register/heartbeat. Steer/follow-up inputs to such a session (when no
  * daemon agent is live) route to the surface as a queued input the surface
- * collects — NOT a daemon executor spawn. Kept in metadata (open record) so it
+ * collects, NOT a daemon executor spawn. Kept in metadata (open record) so it
  * needs no schema change. Daemon-run origins (companion-task/automation, or a
  * plain /task session) never call register and stay executor-routed.
  */
@@ -211,8 +211,8 @@ export async function registerSharedSession(
   }
   const attach = participantToAttachInput(input.participant, input.title);
   if (existing.status === 'closed') {
-    // Reopen honesty: a session the SYSTEM closed — the idle reaper
-    // ('idle-reaped') or the boot orphan sweep ('boot-orphaned') — reopens
+    // Reopen honesty: a session the SYSTEM closed, the idle reaper
+    // ('idle-reaped') or the boot orphan sweep ('boot-orphaned'), reopens
     // automatically on the next participant heartbeat. The surface never
     // deliberately closed it, so re-registering is not a conflict. An explicit
     // 'user'/'surface' close stays closed (honest conflict) unless reopen:true.
@@ -242,7 +242,7 @@ export function participantToAttachInput(
   };
 }
 
-/** Close a session, recording WHY. Defaults to 'user' — the explicit close verb
+/** Close a session, recording WHY. Defaults to 'user', the explicit close verb
  * (daemon `sessions.close`) is a deliberate user/surface action, which does NOT
  * auto-reopen on heartbeat. The reaper passes 'idle-reaped'. */
 export function closeSharedSessionRecord(
@@ -295,7 +295,7 @@ export function isPlaceholderSessionTitle(title: string, id: string): boolean {
 
 /**
  * Merge a participant + optional route onto a session. This is the HEARTBEAT
- * path — it records the participant and advances lastSeenAt, but it must NOT by
+ * path, it records the participant and advances lastSeenAt, but it must NOT by
  * itself change lifecycle status (a closed session stays closed; reopening is an
  * explicit verb) and must NOT overwrite a real title (only names a placeholder).
  */
@@ -345,7 +345,7 @@ export function attachSharedSessionParticipantAndRoute(input: {
 /**
  * The inverse of {@link attachSharedSessionParticipantAndRoute}: remove EVERY
  * participant bound to `surfaceId` and unbind the route bindings those
- * participants alone held. This is "detach != close != kill" — the session and
+ * participants alone held. This is "detach != close != kill", the session and
  * all other participants keep running; the detached surface simply stops being a
  * routing target (and, filtered by domain, stops receiving session updates).
  *
@@ -355,7 +355,7 @@ export function attachSharedSessionParticipantAndRoute(input: {
  *
  * Returns `{ session, changed }`. `changed` is false when no participant matched
  * `surfaceId` (the caller can treat a no-match detach as an idempotent no-op and
- * skip persistence/emit). Status, title, and closedAt are preserved untouched —
+ * skip persistence/emit). Status, title, and closedAt are preserved untouched,
  * detach is never a lifecycle transition.
  */
 export function detachSharedSessionParticipant(

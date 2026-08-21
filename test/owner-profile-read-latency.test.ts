@@ -1,17 +1,17 @@
 /**
- * owner-profile-read-latency.test.ts — docs/owner-profile.md §5.2, test plan #21.
+ * owner-profile-read-latency.test.ts, docs/owner-profile.md §5.2, test plan #21.
  *
  * The owner's ruling was "it needs to be extremely fast and probably faster than
  * the knowledge system will allow", and the design turned that into an
  * acceptance criterion with a number attached: a mechanical-field read must be
  * effectively free, target sub-microsecond, measured against a realistic
- * document of ~200 lines. Not an assertion that it is fast — a number, printed,
+ * document of ~200 lines. Not an assertion that it is fast, a number, printed,
  * that goes in the round report.
  *
  * This is a test rather than only a bench file so the criterion is enforced by
  * the same gate everything else is. The assertion is set at 1000 ns, which is
  * roughly two orders of magnitude above what a `Map.get` costs, so it fails only
- * if someone puts a `stat`, a parse or a lock back on the read path — which is
+ * if someone puts a `stat`, a parse or a lock back on the read path, which is
  * the regression it exists to catch, not a stopwatch contest with the host.
  */
 import { afterEach, describe, expect, test } from 'bun:test';

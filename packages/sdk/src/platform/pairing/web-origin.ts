@@ -1,5 +1,5 @@
 /**
- * web-origin.ts — the web-app origin a pairing deep link points at, and the
+ * web-origin.ts, the web-app origin a pairing deep link points at, and the
  * one-time write of `web.publicBaseUrl` from the stable-name resolution.
  *
  * The origin is the WEB endpoint's public URL (the surface a `#pair=<token>`
@@ -11,7 +11,7 @@
  *
  * The web endpoint's host is resolved from the three stored `web.*` keys and its
  * port through {@link resolveWebPort}, which is what actually binds the
- * listener — so a printed origin can never name a port the daemon is not on.
+ * listener, so a printed origin can never name a port the daemon is not on.
  */
 import type { ConfigManager } from '../config/manager.js';
 import { resolveWebPort } from '../daemon/host-resolver.js';
@@ -20,7 +20,7 @@ import { stableUrlHostForBindHost, type ResolvedStableHost, type StableHostInput
 export interface PairingWebOrigin {
   readonly origin: string;
   readonly resolvedHost: ResolvedStableHost;
-  /** True when the origin is http:// on a non-loopback host — the honest LAN-posture case. */
+  /** True when the origin is http:// on a non-loopback host, the honest LAN-posture case. */
   readonly httpOnLan: boolean;
   /** True when the origin came verbatim from a user-set web.publicBaseUrl. */
   readonly fromPublicBaseUrl: boolean;

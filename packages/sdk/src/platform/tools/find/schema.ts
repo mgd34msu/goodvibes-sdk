@@ -54,15 +54,15 @@ export const findSchema: ToolDefinition = {
             },
             modified_after: {
               type: 'string',
-              description: 'ISO date string — include only files modified after this date (mode: files).',
+              description: 'ISO date string, include only files modified after this date (mode: files).',
             },
             modified_before: {
               type: 'string',
-              description: 'ISO date string — include only files modified before this date (mode: files).',
+              description: 'ISO date string, include only files modified before this date (mode: files).',
             },
             respect_gitignore: {
               type: 'boolean',
-              description: 'Exclude files matched by .gitignore patterns (mode: files). Default: true. Note: only reads the project root .gitignore — nested .gitignore files are not applied.',
+              description: 'Exclude files matched by .gitignore patterns (mode: files). Default: true. Note: only reads the project root .gitignore, nested .gitignore files are not applied.',
             },
             sort_by: {
               type: 'string',
@@ -76,7 +76,7 @@ export const findSchema: ToolDefinition = {
             },
             has_content: {
               type: 'string',
-              description: 'Regex pattern — include only files whose content matches (mode: files).',
+              description: 'Regex pattern, include only files whose content matches (mode: files).',
             },
             is_empty: {
               type: 'boolean',

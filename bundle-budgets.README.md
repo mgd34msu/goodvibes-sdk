@@ -6,7 +6,7 @@ This document explains the structure of `bundle-budgets.json` so that file can s
 
 `gzip_bytes = max(ceil(actual_gzipped_bytes * 1.2), actual_gzipped_bytes + 50)` for the last accepted dist/ baseline.
 
-- For entries below ~250 B, the **+50 B floor** dominates the 1.2x multiplier. This is intentional — tiny facades get a flat +50 B headroom regardless of size.
+- For entries below ~250 B, the **+50 B floor** dominates the 1.2x multiplier. This is intentional. Tiny facades get a flat +50 B headroom regardless of size.
 - The **1.2x multiplier** only matters for entries larger than ~250 B.
 - This keeps tiny facade entries from failing over a handful of bytes while retaining tight proportional budgets for larger entry points.
 
@@ -21,7 +21,7 @@ Entry keys must match the `exports` map keys in `packages/sdk/package.json` exac
 
 ## Tracked aggregates (budgeted here, deliberately)
 
-- **`./events` barrel and domain entries** — `package.json` declares the root
+- **`./events` barrel and domain entries.** `package.json` declares the root
   `./events` entry and explicit `./events/<domain>` entries. `bundle-budgets.json`
   tracks the root barrel because it is the public aggregate entry consumers
   import when they want the event type/guard facade, and it also tracks each
@@ -32,8 +32,8 @@ Entry keys must match the `exports` map keys in `packages/sdk/package.json` exac
 
 ## Intentional exclusions (not budgeted here)
 
-- **`./contracts/operator-contract.json` and `./contracts/peer-contract.json`** — static JSON artifacts; their size is governed by the contract refresh process at `scripts/refresh-contract-artifacts.ts`.
-- **`./package.json`** — metadata only, not a runtime bundle.
+- **`./contracts/operator-contract.json` and `./contracts/peer-contract.json`.** Static JSON artifacts. Their size is governed by the contract refresh process at `scripts/refresh-contract-artifacts.ts`.
+- **`./package.json`.** Metadata only, not a runtime bundle.
 - **Generated JSON/static assets** that do not resolve to JavaScript from the
   package export map. Every explicit JavaScript export, including platform
   subsystem entries such as `./platform/knowledge` and `./platform/runtime/ui`,

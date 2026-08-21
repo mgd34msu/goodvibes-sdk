@@ -81,7 +81,7 @@ export function browserProfileRoot(homeDirectory: string, surfaceRoot: string): 
 
 /**
  * Where screenshots go: the platform's surface-scoped storage root, alongside
- * profiles. Not a visible folder in someone's project — a surface's own files
+ * profiles. Not a visible folder in someone's project, a surface's own files
  * belong in that surface's own place, and session write provenance is what lets
  * it read them back.
  */
@@ -91,14 +91,14 @@ export function browserScreenshotRoot(homeDirectory: string, surfaceRoot: string
 
 /**
  * Turns a caller-supplied profile name into the one path segment under
- * `profileRoot` it is allowed to land in — never anywhere else, and never a
+ * `profileRoot` it is allowed to land in, never anywhere else, and never a
  * real browser's own profile directory, which is a completely different part
  * of the filesystem this function never touches.
  *
  * Every character outside `[A-Za-z0-9._-]` is replaced, which already removes
  * every `/` and `\`, so no multi-segment path can survive. That alone still
- * leaves one escape: a name that sanitizes down to nothing but dots — `"."`
- * or `".."` — is a single segment with no separator in it, but `path.join`
+ * leaves one escape: a name that sanitizes down to nothing but dots, `"."`
+ * or `".."`, is a single segment with no separator in it, but `path.join`
  * still reads it as "this directory" or "the parent directory" rather than
  * as a literal folder name. Collapsing a dots-only result to `'default'`
  * closes that, so the returned path is always `profileRoot/<segment>`, never
@@ -183,7 +183,7 @@ export class BrowserSessionManager {
   private launchInFlight: Promise<BrowserLaunchResult> | null = null;
   /**
    * Consecutive launch failures, reset to 0 on any success. Capped at
-   * `MAX_CONSECUTIVE_LAUNCH_FAILURES` — after that many failures in a row,
+   * `MAX_CONSECUTIVE_LAUNCH_FAILURES`, after that many failures in a row,
    * `launch()` refuses to try again on its own rather than opening another
    * window that will fail the same way. One value 2 means one real retry
    * after the first failure, not open-ended retrying.
@@ -248,7 +248,7 @@ export class BrowserSessionManager {
    * does not implement it (every existing test fixture) is treated as alive
    * rather than dead, because the failure mode of wrongly calling a live
    * session dead is a second browser process fighting the first one over the
-   * same profile directory — the exact bug this method exists to prevent.
+   * same profile directory, the exact bug this method exists to prevent.
    * Only an explicit `true` counts as dead.
    */
   private isSessionAlive(session: TrackedSession): boolean {
@@ -279,7 +279,7 @@ export class BrowserSessionManager {
    * Opens a managed browser, or hands back the one already open.
    *
    * Three rules live here, in order:
-   *   1. One live launched session at a time — a second call reuses it
+   *   1. One live launched session at a time, a second call reuses it
    *      instead of opening another window on the same profile directory.
    *   2. A launch already in flight is awaited rather than duplicated, so
    *      concurrent calls cannot start two browser processes at once.
@@ -300,7 +300,7 @@ export class BrowserSessionManager {
     if (this.consecutiveLaunchFailures >= BrowserSessionManager.MAX_CONSECUTIVE_LAUNCH_FAILURES) {
       throw new BrowserSessionError(
         `The browser failed to launch ${String(this.consecutiveLaunchFailures)} times in a row, so this agent stopped retrying automatically.`,
-        'Call action:"status" to see what went wrong, fix it, then call action:"launch" once more — automatic retries are capped at one.',
+        'Call action:"status" to see what went wrong, fix it, then call action:"launch" once more, automatic retries are capped at one.',
       );
     }
 
@@ -745,7 +745,7 @@ async function firstReachableCdpEndpoint(candidates: readonly string[]): Promise
 /**
  * Whether a plain WebSocket can complete the debugger handshake this runtime's
  * HTTP client could not. When this succeeds and the driver still failed, the
- * browser is fine and the limitation is ours — which is what the caller is
+ * browser is fine and the limitation is ours, which is what the caller is
  * told, instead of a message implying they set something up wrong.
  */
 async function cdpWebSocketHandshakeWorks(webSocketDebuggerUrl: string | null): Promise<boolean> {

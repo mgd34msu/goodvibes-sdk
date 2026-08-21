@@ -9,7 +9,7 @@ import { createLocalVoiceProvider, type LocalVoiceConfigReader } from './provide
 import { resolveManagedEngine } from './provisioning/provisioner.js';
 
 export interface BuiltinVoiceProviderOptions {
-  /** voice.local.* config reader — registers the free local-engine provider when present. */
+  /** voice.local.* config reader, registers the free local-engine provider when present. */
   readonly readConfig?: LocalVoiceConfigReader | undefined;
   /**
    * The managed voice-runtime root. When set, a provisioned host resolves engine
@@ -26,7 +26,7 @@ export function ensureBuiltinVoiceProviders(registry: VoiceProviderRegistry, opt
   registry.register(createElevenLabsProvider(), { replace: true });
   registry.register(createMicrosoftProvider(), { replace: true });
   registry.register(createVydraProvider(), { replace: true });
-  // The free local peer beside the cloud routes — same seams, honest
+  // The free local peer beside the cloud routes, same seams, honest
   // 'unconfigured' until the user completes the one explicit setup action.
   if (options.readConfig) {
     const managedRoot = options.managedVoiceRoot;

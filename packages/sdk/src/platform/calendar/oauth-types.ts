@@ -1,10 +1,10 @@
 /**
- * oauth-types.ts — the shared type surface for the calendar OAuth + API connector
+ * oauth-types.ts, the shared type surface for the calendar OAuth + API connector
  * layer (see CHANGELOG 1.0.0, A10). Sits alongside A9's .ics reader/subscription
  * store in the same module: A9 owns file/feed reading; this half owns authenticated
  * provider connectivity (Google Calendar API v3, Microsoft Graph) over OAuth 2.0.
  *
- * Pure data shapes only — no fs, no network, no process globals. The network is an
+ * Pure data shapes only, no fs, no network, no process globals. The network is an
  * INJECTED boundary (HttpFetch); the loopback redirect capture is an INJECTED
  * boundary (LoopbackWaiter); token persistence is an INJECTED secret store slice.
  * Tests supply fakes for all three, so nothing here ever reaches a real network,
@@ -41,8 +41,8 @@ export type CalendarSource = 'google-api' | 'microsoft-graph' | 'ics-feed' | 'lo
  * A provider profile: the fixed OAuth + API endpoints and defaults for one provider.
  * Everything an operator does NOT supply (endpoints, default scopes, the names of
  * the config keys their credentials live under) lives here; what the operator MUST
- * supply — the client id of the OAuth app they registered, and a client secret if
- * they registered a confidential one — arrives as OAuthClientOverrides and is merged
+ * supply, the client id of the OAuth app they registered, and a client secret if
+ * they registered a confidential one, arrives as OAuthClientOverrides and is merged
  * in at resolve time.
  */
 export interface OAuthProviderProfile {
@@ -65,7 +65,7 @@ export interface OAuthProviderProfile {
    *
    * No client id ships with the product. Native-app client ids are not secrets
    * (RFC 8252) and could technically be bundled, but whoever sets up a GoodVibes
-   * environment registers their own provider app — so this names WHERE their id
+   * environment registers their own provider app, so this names WHERE their id
    * goes rather than carrying one. It is data on the profile, not a string built
    * at the call site, so the refusal message, the setup steps and the docs all
    * quote the same key and cannot drift apart.
@@ -75,7 +75,7 @@ export interface OAuthProviderProfile {
    * The config key holding a reference to the operator's client secret, e.g.
    * `calendar.google.clientSecretRef`. The secret itself lives in the secret
    * store; config holds only the reference. Only a confidential-client
-   * registration needs one — a desktop/public client with PKCE does not.
+   * registration needs one, a desktop/public client with PKCE does not.
    */
   readonly clientSecretRefConfigKey: string;
   /** Extra fixed authorization-request params (e.g. Google's access_type=offline). */
@@ -85,7 +85,7 @@ export interface OAuthProviderProfile {
 /**
  * The operator's own OAuth app credentials, plus the optional knobs around them.
  *
- * `clientId` is REQUIRED for any flow to run — nothing is bundled to fall back on.
+ * `clientId` is REQUIRED for any flow to run, nothing is bundled to fall back on.
  * It is optional at the type level because this shape is also what a caller passes
  * when it only wants to override scopes or the redirect port, and because the
  * not-configured state has to be representable: `resolveClientConfig` returns a
@@ -127,7 +127,7 @@ export interface ResolvedClientConfig {
   readonly redirectPort?: number;
   /**
    * True when a real client id was supplied. False means nobody has registered a
-   * provider app for this environment yet and `clientId` is the empty string — a
+   * provider app for this environment yet and `clientId` is the empty string, a
    * flow must refuse with `client-not-configured` in that state rather than
    * attempting a round-trip that can only fail.
    */
@@ -209,8 +209,8 @@ export interface StoredTokenSet {
   readonly tokenType: string;
   /**
    * Epoch ms the access token expires. `parseTokenResponse` (oauth-flow.ts) always
-   * sets this — coercing a numeric-string `expires_in`, or falling back to a
-   * conservative default when the provider omits it or sends something unparsable —
+   * sets this, coercing a numeric-string `expires_in`, or falling back to a
+   * conservative default when the provider omits it or sends something unparsable,
    * so a token set produced by this build's flows never reads as "never expires".
    * Still optional at the type level for token sets constructed directly (e.g. tests,
    * or a caller building one by hand) rather than through `parseTokenResponse`.
@@ -226,7 +226,7 @@ export interface StoredTokenSet {
 export type ConnectionState =
   /** Access token present and not past expiry (minus leeway). */
   | 'connected'
-  /** Access token expired but a refresh token is present — a refresh will be tried. */
+  /** Access token expired but a refresh token is present, a refresh will be tried. */
   | 'refresh-due'
   /** Refresh was attempted and failed; the user must reconnect. */
   | 'reconnect-needed'
@@ -296,7 +296,7 @@ export interface MergedCalendarEvent extends CalendarEvent {
   /** A display label for the owning calendar/account, for source-labeled views. */
   readonly calendarLabel?: string;
   /**
-   * True only when the PROVIDER states the owner organized this event —
+   * True only when the PROVIDER states the owner organized this event,
    * Google's `organizer.self`, Microsoft Graph's `isOrganizer`. Both are
    * read-only and both mean "the organizer corresponds to the calendar this
    * copy appears on".

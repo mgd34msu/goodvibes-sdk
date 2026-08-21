@@ -88,7 +88,7 @@ describe('HookDispatcher', () => {
         type: 'command',
         command: 'exit 1',  // would fail if run
       });
-      // Fire a Pre event — should not match Post pattern
+      // Fire a Pre event, should not match Post pattern
       const result = await dispatcher.fire(makeEvent({ phase: 'Pre', path: 'Pre:tool:read' }));
       expect(result.ok).toBe(true);
     });
@@ -207,11 +207,11 @@ describe('HookDispatcher', () => {
         type: 'command',
         command: 'echo \'{"ok":true,"additionalContext":"read-hook"}\'',
       });
-      // Fire with specific=read — should match
+      // Fire with specific=read, should match
       const r1 = await dispatcher.fire(makeEvent({ specific: 'read' }));
       expect(r1.additionalContext).toBe('read-hook');
 
-      // Fire with specific=write — should not match
+      // Fire with specific=write, should not match
       const r2 = await dispatcher.fire(makeEvent({ path: 'Pre:tool:write', specific: 'write' }));
       expect(r2.additionalContext).toBeUndefined();
     });

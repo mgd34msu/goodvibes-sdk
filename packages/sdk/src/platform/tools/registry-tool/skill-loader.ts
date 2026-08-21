@@ -1,5 +1,5 @@
 /**
- * Skill loader — finds and loads skills by trigger match.
+ * Skill loader, finds and loads skills by trigger match.
  *
  * Scans skill directories for SKILL.md files with trigger frontmatter.
  * Returns the skill body (system prompt) if a matching trigger is found.
@@ -73,7 +73,6 @@ export function loadSkillByTrigger(input: string, roots: SkillLoaderRoots): stri
       const name = typeof frontmatter.name === 'string' ? frontmatter.name : undefined;
       const triggers = normalizeFrontmatterList(frontmatter.triggers);
 
-      // Check triggers
       for (const trigger of triggers) {
         if (trigger.toLowerCase().trim() === normalizedInput) {
           return materializeMarkdownBody(filePath, body);

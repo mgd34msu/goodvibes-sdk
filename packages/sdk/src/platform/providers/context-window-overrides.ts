@@ -10,7 +10,7 @@
  *   authoritative. Clearing returns the model to automatic resolution.
  * - **Observed limit**: when a provider rejects a request as too long
  *   (context_length_exceeded and friends), the size of the rejected request
- *   is recorded as the model's practical ceiling — catalogs routinely
+ *   is recorded as the model's practical ceiling, catalogs routinely
  *   over-state what a given endpoint actually accepts (e.g. a catalog says
  *   1M while the subscriber endpoint enforces ~250k). Applied with
  *   provenance 'observed_limit' whenever it is SMALLER than the automatic
@@ -68,7 +68,7 @@ interface LoadedContextWindowState {
 
 /**
  * Load persisted state (v1 files have no observed section). Malformed files
- * and invalid entries are dropped with a warning — never poison downstream
+ * and invalid entries are dropped with a warning, never poison downstream
  * window math with a bad value.
  */
 export function loadContextWindowOverrides(filePath: string): LoadedContextWindowState {
@@ -99,7 +99,7 @@ export function loadContextWindowOverrides(filePath: string): LoadedContextWindo
   }
 }
 
-/** Persist state. Write failures are logged, not thrown — the in-memory values still apply this session. */
+/** Persist state. Write failures are logged, not thrown, the in-memory values still apply this session. */
 export function saveContextWindowOverrides(filePath: string, state: LoadedContextWindowState): void {
   const sorted = (map: ReadonlyMap<string, number>): Record<string, number> =>
     Object.fromEntries([...map.entries()].sort(([a], [b]) => a.localeCompare(b)));
@@ -171,7 +171,7 @@ export class ContextWindowOverrideStore {
   /**
    * A provider rejected a request of ~`rejectedAtTokens` as too long: record
    * that size as the model's practical ceiling. Only lowers (or sets) the
-   * learned limit — a larger rejection than a known-smaller limit teaches
+   * learned limit, a larger rejection than a known-smaller limit teaches
    * nothing new.
    */
   recordRejection(registryKey: string, rejectedAtTokens: number): void {
@@ -191,7 +191,7 @@ export class ContextWindowOverrideStore {
   /**
    * A request with real billed input of `successfulInputTokens` succeeded:
    * if that exceeds the learned limit, the limit was too pessimistic (token
-   * estimates overshoot) — raise it to what the provider demonstrably
+   * estimates overshoot), raise it to what the provider demonstrably
    * accepted.
    */
   reconcileSuccess(registryKey: string, successfulInputTokens: number): void {
@@ -208,7 +208,7 @@ export class ContextWindowOverrideStore {
    * Overlay window knowledge onto a model definition. A user override wins
    * ('configured_cap', authoritative downstream); otherwise a learned limit
    * applies when it is smaller than the automatic window ('observed_limit',
-   * equally authoritative — the provider proved the catalog wrong).
+   * equally authoritative, the provider proved the catalog wrong).
    */
   apply(model: ModelDefinition): ModelDefinition {
     const state = this.load();

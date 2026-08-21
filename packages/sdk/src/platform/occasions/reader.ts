@@ -1,5 +1,5 @@
 /**
- * reader.ts — the profile, read as occasions and plans.
+ * reader.ts, the profile, read as occasions and plans.
  *
  * One direction only. This module reads the owner's file and types what it
  * finds; nothing here writes, and nothing here takes a date from anywhere other
@@ -50,7 +50,7 @@ export interface OccasionProfileSource {
    *
    * OPTIONAL, and absent means "no names known" rather than "no match". A
    * narrow embed that does not supply it gets `unattributed` for everything,
-   * which is the ordinary cadence — the failure direction that costs him a
+   * which is the ordinary cadence, the failure direction that costs him a
    * nudge he did not need rather than one he did.
    */
   ownerNames?(): readonly string[];

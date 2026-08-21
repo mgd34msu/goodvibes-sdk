@@ -4,7 +4,7 @@
  * The expiry comparisons in AutoRefreshCoordinator read a clock. With that
  * clock hard-wired to `Date.now`, exercising the leeway window and the
  * definitely-expired branch meant minting tokens whose real wall-clock
- * timestamps happened to straddle the boundary — a test that is slow, or
+ * timestamps happened to straddle the boundary, a test that is slow, or
  * timing-dependent, or both.
  *
  * `AutoRefreshOptions.now` makes those branches addressable directly. It is a
@@ -60,7 +60,7 @@ test('a token past its expiry is refreshed', async () => {
 });
 
 test('the seam defaults to the real clock when no override is given', () => {
-  // Absent `now`, construction must still work and use Date.now — the option is
+  // Absent `now`, construction must still work and use Date.now, the option is
   // additive, and every existing caller passes nothing.
   expect(() => new AutoRefreshCoordinator({
     tokenStore: { getToken: async () => null, setToken: async () => undefined } as never,

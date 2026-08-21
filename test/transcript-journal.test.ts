@@ -169,7 +169,7 @@ describe('transcript-journal', () => {
     journal.appendRecord('user_message', msgs);
     journal.appendRecord('assistant_turn', msgs);
 
-    // Replay with a future timestamp — no records should be returned.
+    // Replay with a future timestamp, no records should be returned.
     const result = replayJournal(journalPath, Date.now() + 100_000);
     expect(result.records).toHaveLength(0);
     expect(result.hadCorruptTail).toBe(false);
@@ -338,7 +338,7 @@ describe('transcript-journal', () => {
     journal.appendRecord('user_message', makeMessages(1) as never);
 
     // Simulate snapshot written successfully. The snapshotTs value doesn't
-    // matter here since the journal file is deleted — replay returns empty
+    // matter here since the journal file is deleted, replay returns empty
     // regardless of the timestamp filter.
     journal.rotate(); // called by turn-event-wiring after persistConversation
 

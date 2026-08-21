@@ -5,7 +5,7 @@
  * example suite (test/fixtures/eval/task-suite). Proves the adapter contract:
  * discover tasks from a directory, run each through the injected session
  * executor (the "real session" seam), run its verification script, and report
- * pass/fail per task — a task passes only when the session completed AND its
+ * pass/fail per task, a task passes only when the session completed AND its
  * verifier passed.
  *
  * The suite is copied to a scratch directory per test so the session executor

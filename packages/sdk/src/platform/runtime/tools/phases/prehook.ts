@@ -5,7 +5,7 @@ import { summarizeError } from '../../../utils/error-display.js';
 import { logger } from '../../../utils/logger.js';
 
 /**
- * prehook — Phase 2 of the tool execution pipeline.
+ * prehook, Phase 2 of the tool execution pipeline.
  *
  * Fires `Pre:tool:<toolName>` hook via the HookDispatcher.
  * If the hook returns a `deny` decision, execution is aborted.
@@ -60,7 +60,7 @@ export async function prehookPhase(
       durationMs: performance.now() - start,
     };
   } catch (err) {
-    // Hook infrastructure failure — allow execution to proceed
+    // Hook infrastructure failure, allow execution to proceed
     const message = summarizeError(err);
     logger.warn('prehook infrastructure failure; allowing tool execution', { error: message });
     return {

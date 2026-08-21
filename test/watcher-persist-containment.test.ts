@@ -1,18 +1,18 @@
 /**
- * watcher-persist-containment.test.ts — a watcher-store write that fails must
+ * watcher-persist-containment.test.ts, a watcher-store write that fails must
  * not be able to kill the process that attempted it.
  *
  * The live crash: `WatcherRegistry.list()` refreshes every record and persists
  * the refreshed snapshot, and the fleet registry's coalesced tick calls that
- * list on a `setInterval`. When the snapshot write threw — a concurrent writer
- * had swept its temp file, so `chmod` came back ENOENT — the exception left a
+ * list on a `setInterval`. When the snapshot write threw, a concurrent writer
+ * had swept its temp file, so `chmod` came back ENOENT, the exception left a
  * timer callback with no caller above it to catch anything, reached the top as
  * an uncaught exception, and the agent process died.
  *
  * The store the write was for rebuilds from live registrations on the next
  * load, so nothing was even being protected by the crash. These tests hold the
  * containment: the failure is logged at error level with the store path and the
- * errno, `list()` still answers from memory, and it can be called again — which
+ * errno, `list()` still answers from memory, and it can be called again, which
  * is exactly what the next tick does.
  */
 import { afterEach, describe, expect, test, spyOn } from 'bun:test';
@@ -53,7 +53,7 @@ function automationSource(): AutomationSourceRecord {
 /**
  * A store path with a regular file partway down it, so creating the store's
  * parent directory has to traverse through a file and every write fails with
- * ENOTDIR — the same class of unwritable store as the ENOENT that crashed the
+ * ENOTDIR, the same class of unwritable store as the ENOENT that crashed the
  * agent, and deterministic rather than timing-dependent.
  */
 function unwritableStorePath(): string {

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Fleet emit-bridge — turns the ProcessRegistry's in-process coalesced snapshot
+ * Fleet emit-bridge, turns the ProcessRegistry's in-process coalesced snapshot
  * tick into poll-free lifecycle events on the runtime event bus `fleet` domain.
  *
  * The registry's `subscribe()` hands out whole snapshots on material change; it
@@ -17,7 +17,7 @@
  *   bridge that attaches to an already-populated fleet does not fabricate a burst
  *   of STARTED events for nodes that did not just start.
  * - A node that simply disappears from the snapshot (archived / gc'd) emits no
- *   FINISHED — finish is claimed only on an observed transition INTO a terminal
+ *   FINISHED, finish is claimed only on an observed transition INTO a terminal
  *   state, never inferred from absence.
  * - Every emitted field is copied straight from the authoritative snapshot; the
  *   bridge owns no state beyond the small prior-state diff table.
@@ -56,7 +56,7 @@ interface PriorNodeState {
 }
 
 export interface FleetEmitBridgeDeps {
-  /** The live registry — only its snapshot subscription is used. */
+  /** The live registry, only its snapshot subscription is used. */
   readonly registry: Pick<ProcessRegistry, 'subscribe'>;
   /** The runtime event bus the fleet events are emitted onto. */
   readonly bus: RuntimeEventBus;
@@ -71,7 +71,7 @@ export interface FleetEmitBridgeDeps {
 /**
  * Attach the bridge. Returns an unsubscribe function that detaches the registry
  * subscription. Safe to call once at composition time; the subscription lives
- * for the registry's lifetime (there is no daemon-wide shutdown seam — mirrors
+ * for the registry's lifetime (there is no daemon-wide shutdown seam, mirrors
  * the fleet/push verb registrations).
  */
 export function attachFleetEmitBridge(deps: FleetEmitBridgeDeps): () => void {
@@ -170,7 +170,7 @@ export function attachFleetEmitBridge(deps: FleetEmitBridgeDeps): () => void {
       }
 
       // Drop prior entries for nodes that left the snapshot (archived / gc'd).
-      // No FINISHED is claimed from absence — see the module honesty invariants.
+      // No FINISHED is claimed from absence, see the module honesty invariants.
       for (const id of [...prior.keys()]) {
         if (!seenIds.has(id)) prior.delete(id);
       }

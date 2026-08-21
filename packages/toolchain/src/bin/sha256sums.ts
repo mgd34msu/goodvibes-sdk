@@ -31,7 +31,7 @@ const assets = process.argv.slice(2).filter((a) => !a.startsWith('--') && a !== 
 const entries = assets.map((path) => ({ name: basename(path), path }));
 const result = generateSha256Sums(entries, readBytes, hashBytes);
 if (!result.ok) {
-  consoleLogger.error(`sha256sums: refusing to write — missing asset(s): ${result.missing.join(', ')}`);
+  consoleLogger.error(`sha256sums: refusing to write, missing asset(s): ${result.missing.join(', ')}`);
   process.exit(1);
 }
 writeFileSync(resolve(root, outPath), result.manifest);

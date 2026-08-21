@@ -88,7 +88,7 @@ describe('atomicWriteFileSync', () => {
     atomicWriteFileSync(path, 'original content');
 
     // Trigger a write failure on a different target via ENOTDIR (parent is a
-    // file) — uid-independent, unlike chmod which root bypasses.
+    // file), uid-independent, unlike chmod which root bypasses.
     const blocker = join(tmpDir, 'blocker2');
     writeFileSync(blocker, 'x');
 

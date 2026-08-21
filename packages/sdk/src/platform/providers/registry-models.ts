@@ -52,8 +52,8 @@ export function buildModelRegistry(input: {
    * Models sourced directly from a provider's own live/dated-static model
    * source (see `live-model-discovery.ts`) rather than the shared
    * third-party catalog. Takes priority over `catalogModels` for the same
-   * registryKey — the provider's own truth beats a third-party snapshot
-   * that may lag behind — but only fills gaps: an entry already present in
+   * registryKey, the provider's own truth beats a third-party snapshot
+   * that may lag behind, but only fills gaps: an entry already present in
    * `catalogModels` keeps the richer catalog-sourced definition (pricing,
    * measured context window, etc).
    */

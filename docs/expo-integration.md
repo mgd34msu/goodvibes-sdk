@@ -1,8 +1,8 @@
-# Expo Integration
+# Expo integration
 
 This is the **companion surface** for Expo (Hermes runtime). See [Published Surface Matrix](./surfaces.md).
 
-Expo apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP) — those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
+Expo apps cannot run the full agentic surface (tool execution, LSP, MCP, workflows, daemon HTTP). Those require Bun. This guide covers auth, transport, realtime events, and error handling for the companion surface.
 
 Use `@pellux/goodvibes-sdk/expo` for Expo-managed React Native apps.
 
@@ -27,7 +27,7 @@ See [Getting started](./getting-started.md#install) for the canonical install co
 
 - prefer bearer tokens for Expo apps
 - persist tokens with a secure `tokenStore` (see [Token storage](#token-storage)) rather than rolling a custom adapter
-- use `sdk.realtime.viaWebSocket()` for realtime — the Expo surface is WebSocket-only (no `viaSse()`), so the inherited `sseReconnect` option is a no-op
+- use `sdk.realtime.viaWebSocket()` for realtime: the Expo surface is WebSocket-only (no `viaSse()`), so the inherited `sseReconnect` option is a no-op
 - reconnect on foreground/resume transitions
 - wrap token access in a `tokenStore` or `getAuthToken` so reconnects do not keep stale tokens
 
@@ -35,9 +35,9 @@ See [Getting started](./getting-started.md#install) for the canonical install co
 
 The Expo entrypoint wraps the React Native factory, so realtime is WebSocket-only: `sdk.realtime` exposes `runtime()` and `viaWebSocket()` (there is no `viaSse()`). The factory applies the same defaults, which you can override through `GoodVibesSdkOptions`:
 
-- `realtime.webSocketReconnect` — `{ enabled: true, baseDelayMs: 500, maxDelayMs: 5000 }`
-- `retry` (HTTP) — `{ maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2000 }`
-- `realtime.onError` — called when the realtime transport hits an unrecoverable error
+- `realtime.webSocketReconnect`: `{ enabled: true, baseDelayMs: 500, maxDelayMs: 5000 }`
+- `retry` (HTTP): `{ maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2000 }`
+- `realtime.onError`: called when the realtime transport hits an unrecoverable error
 
 Scope a feed to a single session with `forSession` (re-exported from `@pellux/goodvibes-sdk/expo`):
 
@@ -50,7 +50,7 @@ sessionEvents.agents.on('AGENT_COMPLETED', (event) => console.log(event));
 
 ## Token storage
 
-Pass a `tokenStore` to persist and rotate the bearer token. `tokenStore` is the highest-precedence auth option — it overrides both `getAuthToken` and the static `authToken`. Use `createExpoSecureTokenStore` (backed by `expo-secure-store`), exported from `@pellux/goodvibes-sdk/expo`:
+Pass a `tokenStore` to persist and rotate the bearer token. `tokenStore` is the highest-precedence auth option. It overrides both `getAuthToken` and the static `authToken`. Use `createExpoSecureTokenStore` (backed by `expo-secure-store`), exported from `@pellux/goodvibes-sdk/expo`:
 
 ```ts
 import {
@@ -74,7 +74,7 @@ const sdk = createExpoGoodVibesSdk({
 
 ## Error handling and observability
 
-Error handling (the `GoodVibesSdkError` taxonomy) and observability (`SDKObserver` / `createConsoleObserver`) are identical to the React Native surface — the Expo factory wraps `createReactNativeGoodVibesSdk`. See [Error handling](./react-native-integration.md#error-handling) and [Observability](./react-native-integration.md#observability) in the React Native guide.
+Error handling (the `GoodVibesSdkError` taxonomy) and observability (`SDKObserver` and `createConsoleObserver`) are identical to the React Native surface. The Expo factory wraps `createReactNativeGoodVibesSdk`. See [Error handling](./react-native-integration.md#error-handling) and [Observability](./react-native-integration.md#observability) in the React Native guide.
 
 ## Example
 

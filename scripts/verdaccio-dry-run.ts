@@ -43,8 +43,8 @@ const PUBLIC_PACKAGE_NAME = requirePackageName(PUBLIC_PACKAGE_DIR);
 
 /**
  * This script's own `mkdtempSync(join(tmpdir(), …))` calls (verdaccio storage,
- * verdaccio config, the install scratch project) are not test directories —
- * no `afterAll`, not part of the automated suite — but they leak the exact
+ * verdaccio config, the install scratch project) are not test directories,
+ * no `afterAll`, not part of the automated suite, but they leak the exact
  * same way on a signal kill (a CI job timeout, someone Ctrl-C'ing a stuck
  * `npm install`): the `try/finally`/top-level `.catch()` cleanup below never
  * runs, and the directory is orphaned under the real `os.tmpdir()` forever.
@@ -295,7 +295,7 @@ async function check(label, fn) {
     console.log('[smoke] OK: ' + label);
     return mod;
   } catch (err) {
-    console.error('[smoke] FAIL: ' + label + ' — ' + err.message);
+    console.error('[smoke] FAIL: ' + label + ': ' + err.message);
     throw err;
   }
 }
@@ -353,7 +353,7 @@ if (existsSync(nestedInternal)) {
 //
 // The entry points above are hand-listed, which is why they stayed green while
 // the platform/* subpaths had never been resolved from a published package even
-// once. A source tree — or a \`file:\` overlay — resolves more leniently than a
+// once. A source tree, or a \`file:\` overlay, resolves more leniently than a
 // real install: deep paths the \`exports\` map blocks still work locally, so a
 // consumer suite can pass on an import that fails the moment it consumes the
 // published artifact. This sweep reads the subpath list out of the installed
@@ -375,7 +375,7 @@ for (const key of subpaths) {
     if (!mod || typeof mod !== 'object') throw new Error('module is not an object');
     resolvedCount += 1;
   } catch (err) {
-    unresolved.push(specifier + ' — ' + err.message);
+    unresolved.push(specifier + ': ' + err.message);
   }
 }
 if (unresolved.length > 0)
@@ -384,7 +384,7 @@ console.log('[smoke] OK: all ' + resolvedCount + ' declared subpaths resolve fro
 
 // ── The two capability subpaths this round adds ───────────────────────────
 //
-// Asserted BY IMPORT, not by reading the manifest — reading the manifest is
+// Asserted BY IMPORT, not by reading the manifest, reading the manifest is
 // what the source-tree gates already do, and it is what missed this.
 // \`platform/profiles\` is a pre-existing, unrelated config-profile module that
 // resolves perfectly against the published 1.18.1, so "is profiles published?"
@@ -397,7 +397,7 @@ const payments     = await check(PKG + '/platform/payments',      () => import(P
 //
 // A subpath can be declared correctly and still lack the symbol that makes it
 // usable. PaymentsGatewayServiceImpl binds the verbs to the checkout flow, so
-// without it a consumer cannot construct the capability at all — it was
+// without it a consumer cannot construct the capability at all, it was
 // reachable from source and absent from the published surface, and no gate
 // caught it.
 for (const name of ['PaymentsGatewayServiceImpl', 'runCheckout', 'classifyMerchant'])
@@ -408,13 +408,13 @@ if (ownerProfile.OwnerProfileStore === undefined)
 
 // ── The owner-profile control-plane verbs ─────────────────────────────────
 //
-// No consumer imports platform/owner-profile at all — all three reach the
-// capability through control-plane verbs — so the subpath sweep above would
+// No consumer imports platform/owner-profile at all, all three reach the
+// capability through control-plane verbs, so the subpath sweep above would
 // pass with the owner-profile verb surface entirely broken. The real consumer
 // contract is the method catalog, and it is asserted separately.
 // Both lists below are the FULL shipped family, not a representative sample.
 // They were a 4-of-9 and a 2-of-7 subset, which left ten verbs asserted by
-// nothing but the "did any profile.* survive at all" count on the next line —
+// nothing but the "did any profile.* survive at all" count on the next line,
 // a count that stays happy while a specific verb vanishes. Renaming or
 // retiring a verb is now supposed to fail here and be updated deliberately;
 // that is the check doing its job, not the check being brittle.

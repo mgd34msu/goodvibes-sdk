@@ -116,7 +116,7 @@ function makeHarness(projectRoot: string): Harness {
   // `get`/`getCategory` on the real ConfigManager are generic over `ConfigKey`
   // with a per-key conditional return type (`ConfigValue<K>` / `GoodVibesConfig[C]`,
   // a ~500-branch conditional). A by-string-key stub can't be typed against that
-  // generic signature directly — TypeScript hits its own recursion limit
+  // generic signature directly, TypeScript hits its own recursion limit
   // ("Excessive stack depth") comparing two such generic conditional signatures
   // structurally. Casting the whole mock once at the boundary (rather than
   // per-return-value) sidesteps that compiler limitation; ConfigManager's own
@@ -192,7 +192,7 @@ function makeHarness(projectRoot: string): Harness {
       persist: false,
       maxPhaseVisits: 3,
       // Scheduling/budget/cancellation tests use bare fixture reports with no
-      // real files and no git repo in `projectRoot` — verifyEngineerClaims
+      // real files and no git repo in `projectRoot`, verifyEngineerClaims
       // would honestly flag those as phantom work (no claims, no git diff).
       // Tests that specifically exercise the phantom-work guard (the
       // "primitive reuse" describe block) override this back to false.
@@ -269,7 +269,7 @@ describe('scheduler — pipeline flow, no pairwise binding', () => {
     await flushMicrotasks();
 
     // Both engineer slots (capacity 2 would be needed for true concurrency,
-    // but capacity 1 here proves sequencing instead) — bump capacity to 2
+    // but capacity 1 here proves sequencing instead), bump capacity to 2
     // via a second workstream is unnecessary: assert independent progress
     // using explicit engineer capacity 2.
     const engine2 = h.makeEngine();
@@ -288,7 +288,7 @@ describe('scheduler — pipeline flow, no pairwise binding', () => {
     expect(itemA.agentId).toBeDefined();
     expect(itemB.agentId).toBeDefined();
 
-    // Complete B FIRST even though A was listed first — B must claim the
+    // Complete B FIRST even though A was listed first, B must claim the
     // single reviewer slot without waiting on A (the hard departure from
     // WrfcController's pairwise engineer<->reviewer binding).
     h.completeAgent(itemB.agentId!, engineerReportOutput('did B'));
@@ -296,11 +296,11 @@ describe('scheduler — pipeline flow, no pairwise binding', () => {
 
     expect(itemB.state).toBe('in-phase');
     expect(itemB.currentPhaseId).toBe(ws2.phases[1]!.id);
-    // A is untouched — still in its own engineer phase, not blocked by B.
+    // A is untouched, still in its own engineer phase, not blocked by B.
     expect(itemA.state).toBe('in-phase');
     expect(itemA.currentPhaseId).toBe(ws2.phases[0]!.id);
 
-    // A finishes next — the reviewer slot is occupied by B, so A must wait
+    // A finishes next, the reviewer slot is occupied by B, so A must wait
     // (proves capacity is enforced, not bypassed).
     h.completeAgent(itemA.agentId!, engineerReportOutput('did A'));
     await flushMicrotasks();
@@ -340,7 +340,7 @@ describe('dynamic phase insertion', () => {
 
     // A fix phase was inserted AFTER review (design (b): "inserts a fix
     // phase after review and re-routes that item back"), and the item was
-    // re-routed into it — a float ordinal strictly after review's, existing
+    // re-routed into it, a float ordinal strictly after review's, existing
     // phase ids (engineer, review) untouched.
     expect(ws.phases.length).toBe(3);
     const fixPhase = ws.phases.find((p) => p.kind === 'fix')!;
@@ -351,7 +351,7 @@ describe('dynamic phase insertion', () => {
     expect(item.visits.get(revPhase!.id)).toBe(1);
 
     // Fix completes cleanly -> routes back to the SAME review phase (not
-    // forward past it) — and since review's single capacity slot is free
+    // forward past it), and since review's single capacity slot is free
     // again, the reactive scheduler reclaims it immediately (the same
     // "instant advancement" semantics as the main pipeline-flow test), so a
     // second review agent is already spawned by the time this settles.
@@ -381,7 +381,7 @@ describe('dynamic phase insertion', () => {
     h.completeAgent(item.agentId!, engineerReportOutput('v1'));
     await flushMicrotasks();
 
-    // Fail review repeatedly — each cycle: review fails -> fix -> review again.
+    // Fail review repeatedly, each cycle: review fails -> fix -> review again.
     for (let cycle = 0; cycle < 3; cycle++) {
       h.completeAgent(item.agentId!, reviewerReportOutput(3, false, [{ constraintId: 'c1', satisfied: false, evidence: 'still broken' }]));
       await flushMicrotasks();
@@ -415,7 +415,7 @@ describe('budget refusal', () => {
     expect(h.spawnedTasks.length).toBe(1);
 
     // A completes with usage that pushes the workstream over its 15-token
-    // ceiling (10 in + 10 out = 20 >= 15) — in-flight, so it finishes
+    // ceiling (10 in + 10 out = 20 >= 15), in-flight, so it finishes
     // normally; no mid-item cancel call for A.
     h.completeAgent(itemA.agentId!, engineerReportOutput('did A'));
     await flushMicrotasks();
@@ -423,7 +423,7 @@ describe('budget refusal', () => {
     expect(itemA.state).toBe('passed');
     expect(h.cancelCalls.find((c) => c.id === itemA.agentId)).toBeUndefined();
 
-    // B's claim is now refused — never spawned.
+    // B's claim is now refused, never spawned.
     expect(itemB.state).toBe('blocked-budget');
     expect(h.spawnedTasks.length).toBe(1);
   });
@@ -515,7 +515,7 @@ describe('cancellation', () => {
     expect(h.cancelCalls).toContainEqual({ id: agentAId, kind: 'kill' });
     expect(itemA.state).toBe('failed');
 
-    // The turn-boundary poll eventually fires AGENT_CANCELLED for A — the
+    // The turn-boundary poll eventually fires AGENT_CANCELLED for A, the
     // engine must not clobber the already-terminal state.
     h.cancelAgentEvent(agentAId);
     await flushMicrotasks();
@@ -597,7 +597,7 @@ describe('primitive reuse', () => {
 });
 
 describe('dual-outcome: post-gate bookkeeping never contradicts a passed phase', () => {
-  /** A worktree whose commit always throws with the given error — exercises the post-gate commit-failure paths. */
+  /** A worktree whose commit always throws with the given error, exercises the post-gate commit-failure paths. */
   function throwingWorktree(error: Error): () => WrfcWorktreeOps {
     return () => ({
       merge: async () => true,
@@ -622,7 +622,7 @@ describe('dual-outcome: post-gate bookkeeping never contradicts a passed phase',
     h.completeAgent(item.agentId!, engineerReportOutput('did work', { filesCreated: ['f.ts'] }));
     await flushMicrotasks();
 
-    // The phase passed; the item is passed — NOT failed — with the commit miss surfaced as a warning.
+    // The phase passed; the item is passed, NOT failed, with the commit miss surfaced as a warning.
     expect(item.state).toBe('passed');
     expect(item.failureReason).toBeUndefined();
     expect(item.warnings?.some((w) => w.includes('commit did not complete'))).toBe(true);
@@ -632,7 +632,7 @@ describe('dual-outcome: post-gate bookkeeping never contradicts a passed phase',
     expect(passed.warnings?.length).toBeGreaterThan(0);
     expect(events.some((e) => e.type === 'item-failed')).toBe(false);
 
-    // The recorded PhaseResult shows a PASSED gate AND an explicit failed (non-negating) commit —
+    // The recorded PhaseResult shows a PASSED gate AND an explicit failed (non-negating) commit,
     // the contradictory "failed item, all phases passed" state is unrepresentable.
     const result = engine.getPhaseResults(ws.id)[0]!;
     expect(result.gate.passed).toBe(true);
@@ -699,13 +699,13 @@ describe('dual-outcome: post-gate bookkeeping never contradicts a passed phase',
 
     expect(item.state).toBe('failed');
     const results = engine.getPhaseResults(ws.id);
-    // The failing phase records gate.passed === false — so "all phases passed" never holds for a failed item.
+    // The failing phase records gate.passed === false, so "all phases passed" never holds for a failed item.
     expect(results.some((r) => r.gate.passed === false)).toBe(true);
   });
 
   test('usage rollup is MONOTONE in presence across a usage event stream WITH GAPS (engine fold)', () => {
     // Model the engine folding each completed phase's usage into item.usage
-    // (mergeWorkItemUsage). Some phases report empty usage (a gap — no usage
+    // (mergeWorkItemUsage). Some phases report empty usage (a gap, no usage
     // event landed); assert presence, once real, never regresses to n/a.
     const gap = emptyWorkItemUsage();
     const real = (cost: number): ReturnType<typeof emptyWorkItemUsage> => ({
@@ -746,7 +746,7 @@ describe('resume prefix replay', () => {
     const snapshotJson = engine.serializeWorkstream(seed.id);
     expect(snapshotJson).not.toBeNull();
 
-    // Fresh engine/AgentManager instance — the "restart" — imports and
+    // Fresh engine/AgentManager instance, the "restart", imports and
     // resumes purely from the snapshot JSON.
     const freshHarness = makeHarness(projectRoot);
     const freshEngine = freshHarness.makeEngine();
@@ -755,7 +755,7 @@ describe('resume prefix replay', () => {
     freshEngine.start(seed.id);
     await flushMicrotasks();
 
-    // Only ONE spawn — for phase 2 (review). Phase 1 is never re-spawned.
+    // Only ONE spawn, for phase 2 (review). Phase 1 is never re-spawned.
     expect(freshHarness.spawnedTasks.length).toBe(1);
     const resumed = freshEngine.getWorkstream(seed.id)!;
     const resumedItem = resumed.items[0]!;
@@ -808,14 +808,14 @@ describe('resume reconciliation — the exact restart-mid-phase blocker', () => 
 
     // Simulate a crash: A's agent never completes. Snapshot the workstream
     // exactly as the debounced persistence writer (persistence.ts,
-    // attachDebouncedWriter) would have captured it mid-claim — A still
+    // attachDebouncedWriter) would have captured it mid-claim, A still
     // 'in-phase'.
     const snapshotJson = engine.serializeWorkstream(ws.id);
     expect(snapshotJson).not.toBeNull();
     const rawSnapshot = JSON.parse(snapshotJson!) as { workstream: { items: Array<{ id: string; state: string }> } };
     expect(rawSnapshot.workstream.items.find((i) => i.id === 'item-a')!.state).toBe('in-phase');
 
-    // Fresh engine/AgentManager instance — the "restart" — imports purely
+    // Fresh engine/AgentManager instance, the "restart", imports purely
     // from the crash snapshot. Attach a listener BEFORE import to observe
     // the requeue being stamped as an event (not just a silent state flip).
     const freshHarness = makeHarness(projectRoot);
@@ -838,17 +838,17 @@ describe('resume reconciliation — the exact restart-mid-phase blocker', () => 
     const resumedA = resumed.items.find((i) => i.id === 'item-a')!;
     const resumedB = resumed.items.find((i) => i.id === 'item-b')!;
 
-    // THE BLOCKER: without reconciliation, A stays 'in-phase' forever — a
+    // THE BLOCKER: without reconciliation, A stays 'in-phase' forever, a
     // phantom OCCUPIED capacity-1 slot with no live agent behind it (the old
     // agent belonged to a harness/AgentManager instance that no longer
-    // exists) — so nothing ever spawns on the fresh engine and neither item
+    // exists), so nothing ever spawns on the fresh engine and neither item
     // can ever complete. This assertion is the one that fails against
     // unfixed code (0 spawns instead of 1).
     expect(freshHarness.spawnedTasks.length).toBe(1);
     expect(resumedA.state).toBe('in-phase');
     expect(resumedA.agentId).toBeDefined();
     // A genuinely NEW agent record, not a phantom carried over from the dead
-    // process — it lives in the FRESH harness's own agent store (a stale
+    // process, it lives in the FRESH harness's own agent store (a stale
     // agentId string surviving deserialization verbatim, as the unfixed code
     // does, would not resolve here at all).
     expect(freshHarness.agentStore.get(resumedA.agentId!)?.status).toBe('running');
@@ -867,7 +867,7 @@ describe('resume reconciliation — the exact restart-mid-phase blocker', () => 
     await flushMicrotasks();
     expect(resumedB.state).toBe('passed');
 
-    // The workstream reaches terminal — the entire point of the fix.
+    // The workstream reaches terminal, the entire point of the fix.
     expect(resumed.items.every((i) => i.state === 'passed' || i.state === 'failed')).toBe(true);
   });
 

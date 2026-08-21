@@ -34,7 +34,7 @@ function ingress(overrides: Partial<ChannelIngressPolicyInput> = {}): ChannelIng
  *
  * listPending only returns delivery-confirmed proposals, so a fixture that
  * skips markDelivered models a proposal whose notice never reached the
- * channel — which is deliberately unanswerable. See the dedicated test for
+ * channel, which is deliberately unanswerable. See the dedicated test for
  * that case; every other fixture here goes through this helper.
  */
 function propose(

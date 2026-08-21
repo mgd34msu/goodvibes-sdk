@@ -1,11 +1,11 @@
 /**
- * udp-transport.ts — one UDP multicast socket, with loopback deliberately ON.
+ * udp-transport.ts, one UDP multicast socket, with loopback deliberately ON.
  *
  * Loopback matters more than it looks. Two goodvibes processes on the SAME
  * host are the most common way an install ends up double-subscribed (a daemon
  * left over from an update, a second checkout, a service plus a hand-started
  * copy). With `setMulticastLoopback(true)` those processes coordinate through
- * the identical mechanism as two machines on the LAN — one protocol, one code
+ * the identical mechanism as two machines on the LAN, one protocol, one code
  * path, one set of tests, and same-host duplication is fixed as a side effect
  * rather than as a special case.
  *
@@ -32,7 +32,7 @@ import type { ClusterLogger, ClusterTransport, ClusterTransportDescription } fro
  * Loopback is not an optimization, it is the same-host case working at all.
  * Measured on a Linux host with one ethernet interface: a datagram sent on the
  * LAN interface with IP_MULTICAST_LOOP set was not delivered to ANY local
- * socket — not even the sender's own — while the identical exchange over
+ * socket, not even the sender's own, while the identical exchange over
  * 127.0.0.1 delivered to every process that had joined there. Two goodvibes
  * processes on one machine is the most common way an install ends up
  * double-consuming, so relying on the kernel's default interface choice would
@@ -120,7 +120,7 @@ export class UdpClusterTransport implements ClusterTransport {
     });
 
     // Loopback ON so processes on THIS host coordinate through the identical
-    // mechanism as processes on other hosts — one protocol, one code path.
+    // mechanism as processes on other hosts, one protocol, one code path.
     socket.setMulticastLoopback(true);
     // TTL 1 keeps traffic on the local link, which is the whole scope of this
     // protocol. It must never be routed off the LAN.
@@ -140,7 +140,7 @@ export class UdpClusterTransport implements ClusterTransport {
     if (this.joined.length === 0) {
       // Multicast is unavailable here. With static peers this is survivable;
       // without them the node runs alone, which is the same behavior as before
-      // the election existed — never a reason to stop receiving messages.
+      // the election existed, never a reason to stop receiving messages.
       this.options.logger.warn('cluster: could not join the multicast group on any interface', {
         group: this.options.multicastGroup,
         failures,
@@ -164,7 +164,7 @@ export class UdpClusterTransport implements ClusterTransport {
    * each static unicast peer.
    *
    * Sends are chained rather than run in parallel because switching the
-   * outgoing multicast interface mutates socket state — see `sendChain`.
+   * outgoing multicast interface mutates socket state, see `sendChain`.
    */
   async send(raw: string): Promise<void> {
     const socket = this.socket;
@@ -212,7 +212,7 @@ export class UdpClusterTransport implements ClusterTransport {
       try {
         socket.dropMembership(this.options.multicastGroup, address);
       } catch {
-        // Already gone (interface down, socket closing) — nothing to undo.
+        // Already gone (interface down, socket closing), nothing to undo.
       }
     }
     this.joined = [];

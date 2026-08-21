@@ -1,5 +1,5 @@
 /**
- * Adapter behavioral coverage — Signal adapter.
+ * Adapter behavioral coverage, Signal adapter.
  */
 import { describe, expect, test } from 'bun:test';
 import { handleSignalSurfaceWebhook } from '../packages/sdk/src/platform/adapters/signal/index.js';

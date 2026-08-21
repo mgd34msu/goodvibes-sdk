@@ -1,5 +1,5 @@
 /**
- * secret-bearing-config-keys.ts — the config keys whose VALUE is a credential.
+ * secret-bearing-config-keys.ts, the config keys whose VALUE is a credential.
  *
  * Distinct from `credential-scope-registry.ts`, and the two answer different
  * questions. That one asks "does the daemon need this SECRET", and routes it to
@@ -18,19 +18,19 @@
  * hand-maintained `SECRET_CONFIG_KEYS`, the web UI carried a third list for
  * masking only, and the three had already drifted from each other and from the
  * schema. `surfaces.email.password` and `surfaces.calendar.caldavPassword` were
- * missing from the set that routes a write — so their own schema descriptions,
+ * missing from the set that routes a write, so their own schema descriptions,
  * which read "Stored in the daemon secret tier, never in config", were
  * aspirational: the settings modal wrote both as plain strings into a config
  * JSON file, and the generic `/config set` had no detection at all.
  *
- * A product can still add to this — a surface may have a credential the SDK
- * knows nothing about — but the platform's own set lives in one place, next to
+ * A product can still add to this, a surface may have a credential the SDK
+ * knows nothing about, but the platform's own set lives in one place, next to
  * the ownership rules that decide where the value it points at is filed.
  *
  * ── Why it is a list rather than a name pattern ─────────────────────────────
  *
  * Because a name pattern is a habit, not a rule. Every redactor in this
- * platform matched by trailing word — `…password`, `…token`, `…secret` — and
+ * platform matched by trailing word, `…password`, `…token`, `…secret`, and
  * every one of them was blind to a key that did not fit the habit:
  * `surfaces.msteams.appPassword` ends in `Password` and matched;
  * `cardNumber`, `cardExpiry` and `cardholderName` end in none of them and
@@ -105,8 +105,8 @@ const SECRET_BEARING_SET = new Set<string>(SECRET_BEARING_CONFIG_PATHS);
 /**
  * A last-resort name pattern, kept ALONGSIDE the list and never instead of it.
  *
- * The list is the rule. This catches a key nobody has declared yet — a new
- * surface's token, a field added in a hurry — so an undeclared credential is
+ * The list is the rule. This catches a key nobody has declared yet, a new
+ * surface's token, a field added in a hurry, so an undeclared credential is
  * masked rather than printed while someone gets around to declaring it. It is
  * additive only: it can never un-mask something the list covers.
  */

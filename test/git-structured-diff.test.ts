@@ -1,9 +1,9 @@
 /**
- * git-structured-diff.test.ts — /git diff routes to real diff machinery.
+ * git-structured-diff.test.ts, /git diff routes to real diff machinery.
  *
  * Defect class: the consumer's /git diff sliced raw text at 4,000 chars and
  * printed the stub. The SDK now serves the diff STRUCTURALLY (per-file,
- * per-hunk, per-line — no size cap anywhere), so surfaces render it with their
+ * per-hunk, per-line, no size cap anywhere), so surfaces render it with their
  * diff-view machinery and the truncation branch is deleted. The completeness
  * proof: a diff far larger than 4,000 chars parses and reconstructs
  * byte-for-byte.
@@ -56,7 +56,7 @@ describe('structured git diff — complete, never truncated', () => {
     expect(structured.deletions).toBe(300);
 
     // The completeness proof: reconstructing the unified diff from the
-    // structure reproduces the raw text byte-for-byte — nothing was dropped.
+    // structure reproduces the raw text byte-for-byte, nothing was dropped.
     expect(reconstructUnifiedDiff(structured)).toBe(raw);
     // And every rewritten line survived (spot-check far past 4,000 chars).
     const addedTexts = file.hunks.flatMap((hunk) => hunk.lines.filter((l) => l.kind === 'add').map((l) => l.text));

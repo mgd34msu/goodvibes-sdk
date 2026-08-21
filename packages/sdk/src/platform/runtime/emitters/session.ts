@@ -1,5 +1,5 @@
 /**
- * Session emitters — typed emission wrappers for SessionEvent domain.
+ * Session emitters, typed emission wrappers for SessionEvent domain.
  *
  * Import and call these instead of emitting raw strings.
  */

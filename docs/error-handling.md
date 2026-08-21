@@ -1,4 +1,4 @@
-# Error Handling
+# Error handling
 
 > Consumer guidance. For internal error architecture see [Error Architecture](./errors.md).
 
@@ -50,7 +50,7 @@ try {
 
 See [error-kinds.md](./error-kinds.md) for the full reference on each kind.
 
-## TUI / consumer example
+## TUI and consumer example
 
 ```ts
 import type { GoodVibesSdk } from '@pellux/goodvibes-sdk';

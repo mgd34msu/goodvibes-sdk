@@ -1,7 +1,7 @@
 /**
  * operator-contract-schemas-fleet.ts
  *
- * (see CHANGELOG 1.0.0) — contract schemas for fleet.*, checkpoints.*, and sessions.search.
+ * (see CHANGELOG 1.0.0), contract schemas for fleet.*, checkpoints.*, and sessions.search.
  * Split out of operator-contract-schemas-runtime.ts (which was already at
  * the 800-line source-file cap) rather than grown into it; re-exported
  * through operator-contract-schemas.ts alongside the other schema modules.
@@ -52,7 +52,7 @@ const PROCESS_STATE_SCHEMA = enumSchema([
   'paused',
 ]);
 const PROCESS_COST_STATE_SCHEMA = enumSchema(['priced', 'unpriced', 'estimated']);
-// Where priced dollars came from: 'user' (manual/registration — "your price"),
+// Where priced dollars came from: 'user' (manual/registration, "your price"),
 // 'provider' (provider-served rates), 'catalog' (dated catalog), 'mixed'
 // (aggregate whose priced contributors disagree). Absent when nothing priced.
 // pricingAsOf is the oldest ISO date among the dated snapshots that contributed.
@@ -98,14 +98,14 @@ const PROCESS_ATTENTION_SCHEMA = objectSchema({
 
 // Observed foreign-agent facts, present ONLY on an 'observed-external' node.
 const OBSERVED_LIVENESS_SCHEMA = objectSchema({
-  // 'active' — CPU advanced since the last sample; 'quiet' — it did not (NOT
+  // 'active', CPU advanced since the last sample; 'quiet', it did not (NOT
   // proof of idle; the detail says so).
   state: enumSchema(['active', 'quiet']),
   cpuSeconds: NUMBER_SCHEMA,
   detail: STRING_SCHEMA,
 }, ['state', 'cpuSeconds', 'detail']);
 const OBSERVED_STEER_CHANNEL_SCHEMA = objectSchema({
-  // 'tmux' — steerable via tmux send-keys (paneId/tty present); 'none' — no
+  // 'tmux', steerable via tmux send-keys (paneId/tty present); 'none', no
   // channel exists (reason present). Stop is never represented here.
   kind: enumSchema(['tmux', 'none']),
   paneId: STRING_SCHEMA,
@@ -125,7 +125,7 @@ const PROCESS_OBSERVED_SCHEMA = objectSchema({
 // The latest review on a wrfc-chain / wrfc-subtask node: the CONTROLLER
 // verdict (gate-inclusive), the score, the cycle count, and the acceptance
 // checklist so a consumer renders what was ACTUALLY verified. Present only
-// once a review has completed — absent before (never an empty shell).
+// once a review has completed, absent before (never an empty shell).
 const PROCESS_REVIEW_CHECKLIST_ITEM_SCHEMA = objectSchema({
   item: STRING_SCHEMA,
   verified: BOOLEAN_SCHEMA,
@@ -208,7 +208,7 @@ export const FLEET_ARCHIVED_LIST_OUTPUT_SCHEMA = objectSchema({
   nodes: arraySchema(PROCESS_NODE_SCHEMA),
 }, ['capturedAt', 'nodes']);
 
-// ── fleet.observed.steer — drill-in steer of an observed foreign agent ──────
+// ── fleet.observed.steer, drill-in steer of an observed foreign agent ──────
 // Rides the foreign session's own control channel (tmux send-keys). STOP is
 // never offered on an observed row; this is steer only. ws-only invoke verb.
 export const FLEET_OBSERVED_STEER_INPUT_SCHEMA = objectSchema({
@@ -218,7 +218,7 @@ export const FLEET_OBSERVED_STEER_INPUT_SCHEMA = objectSchema({
 }, ['id', 'text']);
 
 export const FLEET_OBSERVED_STEER_OUTPUT_SCHEMA = objectSchema({
-  // queued:true — the three-send recipe reached the pane; queued:false carries
+  // queued:true, the three-send recipe reached the pane; queued:false carries
   // the honest reason (no channel, or a send-keys failure).
   queued: BOOLEAN_SCHEMA,
   messageId: STRING_SCHEMA,
@@ -295,7 +295,7 @@ export const CHECKPOINT_RESTORE_RESULT_SCHEMA = objectSchema({
 /**
  * The structured, non-error body returned when `checkpoints.restore` is called
  * WITHOUT confirmation (`result` is null, `refused` is true). It names both
- * acknowledgment paths so a caller can act without guessing — this is an
+ * acknowledgment paths so a caller can act without guessing, this is an
  * honest "here is how to proceed", not a failure.
  */
 export const CHECKPOINT_RESTORE_REFUSAL_SCHEMA = objectSchema({
@@ -381,7 +381,7 @@ export const CHECKPOINTS_REVERT_HUNK_UNDO_SCHEMA = objectSchema({
   restoreCheckpointId: STRING_SCHEMA,
 }, ['restoreCheckpointId']);
 
-/** The receipt of a single applied hunk revert — reversible via `undo`. */
+/** The receipt of a single applied hunk revert, reversible via `undo`. */
 export const CHECKPOINTS_REVERT_HUNK_RECEIPT_SCHEMA = objectSchema({
   reverted: BOOLEAN_SCHEMA,
   path: STRING_SCHEMA,
@@ -395,7 +395,7 @@ export const CHECKPOINTS_REVERT_HUNK_RECEIPT_SCHEMA = objectSchema({
 /**
  * The non-error body returned when checkpoints.revertHunk is called WITHOUT
  * confirmation (`receipt` null, `refused` true), naming both acknowledgment
- * paths — the same honest-refusal shape checkpoints.restore / rewind.apply use.
+ * paths, the same honest-refusal shape checkpoints.restore / rewind.apply use.
  */
 export const CHECKPOINTS_REVERT_HUNK_REFUSAL_SCHEMA = objectSchema({
   reason: STRING_SCHEMA,
@@ -433,7 +433,7 @@ const ATTEMPT_USAGE_SCHEMA = objectSchema({
   costUsd: nullableSchema(NUMBER_SCHEMA),
   costState: enumSchema(['priced', 'unpriced', 'estimated']),
   // Provenance stamped at pricing time (absent on records committed before
-  // provenance stamping existed — honest absence, never back-filled).
+  // provenance stamping existed, honest absence, never back-filled).
   costSource: PROCESS_COST_SOURCE_SCHEMA,
   pricingAsOf: STRING_SCHEMA,
 }, ['inputTokens', 'outputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'llmCallCount', 'turnCount', 'toolCallCount', 'costUsd', 'costState']);
@@ -450,7 +450,7 @@ const ATTEMPT_CANDIDATE_SCHEMA = objectSchema({
   diff: nullableSchema(ATTEMPT_CANDIDATE_DIFF_SCHEMA),
 }, ['itemId', 'attemptIndex', 'state', 'title', 'worktreePath', 'branch', 'usage', 'failureReason', 'diff']);
 
-/** A model judge's verdict — CLEARLY a model judgment (scoredBy:'model'), always a PROPOSAL. */
+/** A model judge's verdict, CLEARLY a model judgment (scoredBy:'model'), always a PROPOSAL. */
 export const ATTEMPT_JUDGMENT_SCHEMA = objectSchema({
   proposedWinnerItemId: nullableSchema(STRING_SCHEMA),
   reasons: STRING_LIST_SCHEMA,

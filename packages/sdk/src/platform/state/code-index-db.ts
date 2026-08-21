@@ -1,19 +1,19 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Code-index SQL layer — schema plus every direct table operation for
+ * Code-index SQL layer, schema plus every direct table operation for
  * CodeIndexStore's bun:sqlite database (Stage A, see CHANGELOG 0.38.0; extracted from
  * code-index-store.ts to keep that file within the 800-line source discipline).
  *
  * Three tables:
  *  - `code_chunks`    chunk metadata (path/lang/symbol/kind/lines/hashes)
  *  - `code_vectors`   vec0 virtual table keyed by rowid
- *  - `code_index_meta` key/value build provenance — currently the embedding
+ *  - `code_index_meta` key/value build provenance, currently the embedding
  *    provider id the index was last fully built with, so search() can refuse
  *    to compare query vectors from a different provider's space against the
  *    stored vectors (see CodeIndexStore.getProviderMismatch).
  *
- * Every function takes the Database handle explicitly — this module holds no
+ * Every function takes the Database handle explicitly, this module holds no
  * state and never opens/closes connections; CodeIndexStore owns the lifecycle.
  */
 

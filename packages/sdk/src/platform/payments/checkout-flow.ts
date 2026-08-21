@@ -1,5 +1,5 @@
 /**
- * checkout-flow.ts — the purchase, start to finish, with nothing merchant-
+ * checkout-flow.ts, the purchase, start to finish, with nothing merchant-
  * specific in it.
  *
  * ══ The order, and why it is exactly this order ═══════════════════════════
@@ -7,7 +7,7 @@
  *   0  GATES              enabled, card, address, owner-direct, leader
  *   0b TAINT              the purchase must be owner-initiated; the item and any
  *                        stated limit must be his. The MERCHANT may be one he
- *                        found while browsing — see below.
+ *                        found while browsing, see below.
  *   0c LINK               the checkout url must resolve to a registrable domain
  *   0d RECOURSE           who takes the card, and what silence will mean
  *   1  EXTRACT            page strings → integers WE parsed
@@ -51,7 +51,7 @@
  *   recourse established, within budget  ⇒ VETO.     Silence PROCEEDS.
  *   anything else                        ⇒ APPROVAL. Silence DENIES.
  *
- * They compose in the strict direction only — `windowForPurchase` escalates and
+ * They compose in the strict direction only, `windowForPurchase` escalates and
  * never downgrades, so a recognised retailer buys no leniency on an over-budget
  * purchase. The two window state machines in windows.ts stay separate, because
  * their silence rules are opposite and must never be unified; this module calls
@@ -125,7 +125,7 @@ export interface PurchaseRequest {
   /**
    * Whether the owner NAMED this storefront or we found it while browsing.
    *
-   * `false` puts the merchant and the checkout url through the taint check — he
+   * `false` puts the merchant and the checkout url through the taint check, he
    * named them, so they have to be his. `true` skips that check by design and
    * hands the domain to the judge instead, which is the safeguard he asked for:
    * "alert me prior to purchasing if it is not a major retailer".
@@ -149,7 +149,7 @@ export interface PurchaseRequest {
    * The specific listing, on marketplaces where recourse is per-seller.
    *
    * eBay is the ruled case: Buy It Now only, and a seller-side selling record.
-   * An auction is refused structurally — there is no final total before it ends,
+   * An auction is refused structurally, there is no final total before it ends,
    * so the "show him the total, then wait" flow cannot run at all.
    */
   readonly listing?: MarketplaceListing | undefined;
@@ -190,7 +190,7 @@ export interface CheckoutFlowDeps {
   /**
    * The stored shipping and billing addresses.
    *
-   * The address on the order comes from here — never from the model's memory of
+   * The address on the order comes from here, never from the model's memory of
    * what he said and never from anything on the page.
    */
   readonly addresses: AddressStore;
@@ -213,7 +213,7 @@ export interface CheckoutFlowDeps {
    *
    * Curated data, read at decision time. The judgement about what counts as
    * recourse is exercised when the list is EDITED, never by a model looking at
-   * a page — a storefront built to look trustworthy is the easiest thing in the
+   * a page, a storefront built to look trustworthy is the easiest thing in the
    * world to produce.
    */
   /** Judges the merchant's recourse from its validated domain alone. */
@@ -234,7 +234,7 @@ export interface CheckoutControls {
   /**
    * Where each address field goes on this checkout.
    *
-   * Empty when the checkout asks for no address — a digital order, or a page
+   * Empty when the checkout asks for no address, a digital order, or a page
    * that already has one on file. Every KIND named here must be stored in full
    * or the purchase refuses.
    */
@@ -301,11 +301,11 @@ export async function runCheckout(
   //
   // The merchant, the checkout url, the item and any stated limit are checked
   // against everything untrusted this turn has read. The merchant's own quoted
-  // NUMBERS are deliberately not checked — they are read from the merchant by
+  // NUMBERS are deliberately not checked, they are read from the merchant by
   // definition, and their defence is the budget. See taint-gate.ts.
   const intent: OwnerOriginIntent = {
-    // `runCheckout` is only ever reached from an owner-direct turn — gate 0
-    // above refuses anything else — so the origin is 'owner' by construction.
+    // `runCheckout` is only ever reached from an owner-direct turn, gate 0
+    // above refuses anything else, so the origin is 'owner' by construction.
     // A content-initiated purchase cannot build this value at all:
     // ContentOriginIntent has no merchantDiscovered and is refused with no
     // approval path. See taint-gate.ts.
@@ -331,9 +331,9 @@ export async function runCheckout(
   // ── 0d. Who takes the card, and what silence will therefore mean ────────
   //
   // Run on the VALIDATED host, before any money math, so a listing we will not
-  // buy at all — an auction, a Best Offer — stops here rather than after a
+  // buy at all, an auction, a Best Offer, stops here rather than after a
   // budget question that could never have applied to it.
-  // Judged on the validated registrable domain ALONE, by an injected judge —
+  // Judged on the validated registrable domain ALONE, by an injected judge,
   // never a curated list. Everything else a page says about a merchant is
   // written by that merchant, so a judgement over it is one the attacker
   // writes. See merchant-recourse.ts.
@@ -391,8 +391,8 @@ export async function runCheckout(
 
   // ── 5. Hold the money before any window opens ───────────────────────────
   //
-  // An over-budget purchase does not fit the item pool — that is what makes it
-  // over budget — so reserving it against the ordinary limits returns null and
+  // An over-budget purchase does not fit the item pool, that is what makes it
+  // over budget, so reserving it against the ordinary limits returns null and
   // the purchase dies before he is ever asked. That would make the approval
   // window unreachable for the one case it exists for, so the reservation for a
   // needs-approval purchase is taken against a limit raised by exactly this
@@ -745,7 +745,7 @@ export async function runCheckout(
   //
   // At charge time, not when the store gets round to emailing. He would
   // otherwise get a veto notice, ten minutes of silence, a charge, and nothing
-  // — with the store's receipt later landing as mail he has to place himself.
+  //, with the store's receipt later landing as mail he has to place himself.
   //
   // Sent through the same router as the notice. A delivery failure here is
   // reported and does NOT unwind the purchase: the card has been charged, and
@@ -774,7 +774,7 @@ export async function runCheckout(
  * the same daily limit it always was.
  *
  * Returns the limits object unchanged when nothing needs raising, so the common
- * path — over the per-purchase CEILING but still inside the daily pool — takes
+ * path, over the per-purchase CEILING but still inside the daily pool, takes
  * a perfectly ordinary reservation.
  */
 function admitApprovedItemOverdraw(

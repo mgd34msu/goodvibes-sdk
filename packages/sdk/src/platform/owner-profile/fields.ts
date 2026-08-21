@@ -1,9 +1,9 @@
 /**
- * fields.ts — the mechanical field registry.
+ * fields.ts, the mechanical field registry.
  *
  * These are the ONLY lines parsed into typed values (docs/owner-profile.md §4.3).
  * Everything else in the document is prose: preserved verbatim, served as prose.
- * `People` and `Places` have no mechanical fields at all — the owner asked for
+ * `People` and `Places` have no mechanical fields at all, the owner asked for
  * notes, and notes are what they are.
  *
  * A validator NEVER rejects a line. It answers "does this value look like what
@@ -40,7 +40,7 @@ export type ProfileSectionName = (typeof PROFILE_SECTIONS)[number];
  * `Important dates` and `Plans` are here for a reason worth stating, because at
  * a glance they look like the most record-shaped sections in the document. A
  * birthday is a REPEATED record and the field registry maps one section-plus-
- * label to one value — it can hold `commerce.shippingAddress` and cannot hold
+ * label to one value, it can hold `commerce.shippingAddress` and cannot hold
  * twenty birthdays. So each occasion is a prose line, preserved verbatim by
  * this parser exactly like any other bullet, and typed by a reader layered on
  * top of it (`platform/occasions/grammar.ts`). The profile's guarantee that a
@@ -240,7 +240,7 @@ export function profileFieldById(fieldId: string): ProfileFieldDef | undefined {
  * The refusal text for an unrecognised field id.
  *
  * Names every valid id compactly instead of pointing at docs/owner-profile.md
- * §4.3 — a doc citation reads fine to a person but is useless to a model at
+ * §4.3, a doc citation reads fine to a person but is useless to a model at
  * runtime, which cannot open the file and retry. One formatter, used by every
  * "not a profile field" refusal in the gateway route and the writer, so the
  * enumerated list can never drift between call sites.
@@ -278,7 +278,7 @@ export function openTierFieldIds(): readonly string[] {
   return PROFILE_FIELDS.filter((field) => field.tier === 'open').map((field) => field.id);
 }
 
-/** Closed-tier field ids — reachable only by an explicit named call. */
+/** Closed-tier field ids, reachable only by an explicit named call. */
 export function closedTierFieldIds(): readonly string[] {
   return PROFILE_FIELDS.filter((field) => field.tier === 'closed').map((field) => field.id);
 }

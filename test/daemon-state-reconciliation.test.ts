@@ -4,14 +4,14 @@
  * Daemon state reconciliation invariants.
  * Covers three invariants:
  *
- * SharedSessionBroker — AGENT_COMPLETED / AGENT_FAILED / AGENT_CANCELLED
+ * SharedSessionBroker, AGENT_COMPLETED / AGENT_FAILED / AGENT_CANCELLED
  * events on the RuntimeEventBus correctly transition spawned input records
  * to terminal states.
  *
- * AgentTaskAdapter — same bus events drive task records from 'running' to
+ * AgentTaskAdapter, same bus events drive task records from 'running' to
  * terminal.
  *
- * SharedSessionBroker idle-session GC — gcSweep() closes empty ghost sessions
+ * SharedSessionBroker idle-session GC, gcSweep() closes empty ghost sessions
  * (messageCount=0, idle >= idleEmptyMs) and long-idle content sessions
  * (idle >= idleLongMs) while leaving sessions with live agents alone.
  */
@@ -29,7 +29,7 @@ import { trackDisposables } from './_helpers/disposables.ts';
 const disposables = trackDisposables();
 
 // ---------------------------------------------------------------------------
-// Real Zustand store for AgentTaskAdapter (required — createDomainDispatch uses store.setState)
+// Real Zustand store for AgentTaskAdapter (required, createDomainDispatch uses store.setState)
 // ---------------------------------------------------------------------------
 
 function makeStore(): RuntimeStore {
@@ -37,7 +37,7 @@ function makeStore(): RuntimeStore {
 }
 
 // ---------------------------------------------------------------------------
-// AgentTaskAdapter — task registry sync on agent terminal events
+// AgentTaskAdapter, task registry sync on agent terminal events
 // ---------------------------------------------------------------------------
 
 describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
@@ -101,7 +101,7 @@ describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
     const taskId = adapter.wrapAgent('ag-known', 'Known', { sessionId: 'sess-1' });
     adapter.handleAgentStateChange('ag-known', 'running');
 
-    // Fire for an untracked agent — must not affect ag-known or throw
+    // Fire for an untracked agent, must not affect ag-known or throw
     expect(() => {
       emitAgent('AGENT_COMPLETED', 'ag-unknown');
     }).not.toThrow();
@@ -117,14 +117,14 @@ describe('AgentTaskAdapter.attachRuntimeBus — task registry sync', () => {
 
     unsub();
 
-    // Fire — the second subscription was torn down; first still works but
+    // Fire, the second subscription was torn down; first still works but
     // the point is no crash and state is correct regardless
     expect(() => emitAgent('AGENT_COMPLETED', 'ag-unsub')).not.toThrow();
   });
 });
 
 // ---------------------------------------------------------------------------
-// SharedSessionBroker — input record reconciliation via RuntimeEventBus
+// SharedSessionBroker, input record reconciliation via RuntimeEventBus
 // ---------------------------------------------------------------------------
 
 import type { SharedSessionRecord, SharedSessionMessage } from '../packages/sdk/src/platform/control-plane/session-types.js';
@@ -208,7 +208,7 @@ describe('SharedSessionBroker.attachRuntimeBus — input record reconciliation',
     const claimed = inputsBefore.find((i) => i.id === sub.input.id);
     expect(claimed?.state).toBe('spawned');
 
-    // Emit AGENT_COMPLETED — should finalize the input to 'completed'
+    // Emit AGENT_COMPLETED, should finalize the input to 'completed'
     emitAgentOnBus(bus, 'AGENT_COMPLETED', agentId, { output: 'Done!', durationMs: 300 });
 
     // Give the async handler a tick to settle
@@ -281,13 +281,13 @@ describe('SharedSessionBroker.attachRuntimeBus — input record reconciliation',
     });
     await broker.bindAgent(session.id, agentId); // claims queued -> spawned
 
-    // Fire for a completely different agent — resolver returns null for 'ag-ghost'
+    // Fire for a completely different agent, resolver returns null for 'ag-ghost'
     expect(() => emitAgentOnBus(bus, 'AGENT_COMPLETED', 'ag-ghost')).not.toThrow();
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     const inputs = broker.getInputs(session.id, 100);
     const unchanged = inputs.find((i) => i.id === sub.input.id);
-    // Still 'spawned' — the ghost event must not have touched it
+    // Still 'spawned', the ghost event must not have touched it
     expect(unchanged?.state).toBe('spawned');
   });
 });
@@ -558,7 +558,7 @@ describe('lastActivityAt is bumped at touch sites', () => {
     const before = broker.getSession(sess.id)!.lastActivityAt;
     await settleEvents(2);
     // Call finalizeAgentSessionInputs directly against the broker's internal
-    // input store (bypasses completeAgent) — proves the touch side effect
+    // input store (bypasses completeAgent), proves the touch side effect
     // fires from the finalize path itself, not just completeAgent's other
     // writes. sessionInputStore() is a private accessor on the broker; the
     // underlying finalize/touch behavior itself is the same pure function
@@ -638,7 +638,7 @@ describe('SharedSessionBroker idle-session GC sweep', () => {
     (broker as unknown as { gcSweep(): void }).gcSweep();
 
     const afterSweep = broker.getSession(session.id);
-    // Has messages — should NOT be closed by the empty-ghost policy
+    // Has messages, should NOT be closed by the empty-ghost policy
     expect(afterSweep?.status).toBe('active');
   });
 

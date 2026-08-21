@@ -1,5 +1,5 @@
 /**
- * probes.ts — executing one declarative probe.
+ * probes.ts, executing one declarative probe.
  *
  * Four kinds, all data-driven: http, file, command (argv, never a shell) and
  * sdk-tool. Each returns a TriggerValue the extractor then narrows. Nothing
@@ -8,7 +8,7 @@
  * become part of the next request or command line.
  *
  * All I/O is injectable so the whole probe layer is testable without a network,
- * a filesystem or a subprocess — the policy lives here, the host supplies the
+ * a filesystem or a subprocess, the policy lives here, the host supplies the
  * effects.
  */
 
@@ -24,7 +24,7 @@ export interface ProbeCommandResult {
 
 /**
  * The effects a probe needs. A host wires the real ones; a test wires fakes.
- * `runCommand` takes argv, not a command string — there is no shell anywhere in
+ * `runCommand` takes argv, not a command string, there is no shell anywhere in
  * this path, so no extracted value can ever be interpreted as a metacharacter.
  */
 export interface ProbeIo {

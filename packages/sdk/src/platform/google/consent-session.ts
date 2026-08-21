@@ -23,7 +23,7 @@
  * last few characters and nothing else, which is enough for a person to confirm
  * the right client was registered and useless to anyone reading the transcript
  * later. Google shows the full secret exactly once, at creation, so the value
- * arriving here is often the only copy — losing it means making a new client,
+ * arriving here is often the only copy, losing it means making a new client,
  * and echoing it means it lives in a log.
  */
 
@@ -115,7 +115,7 @@ export interface GoogleConsentSession {
   /** The link to hand the person. This is the one action the flow asks of them. */
   readonly consentUrl: string;
   /**
-   * Resolves when the person approves — or when the wait ends without them.
+   * Resolves when the person approves, or when the wait ends without them.
    *
    * Never rejects: a consent nobody completed is an ordinary outcome, not a
    * fault, and a rejected promise nobody awaited would surface as an unhandled
@@ -152,8 +152,8 @@ function randomState(): string {
  * Start a consent and return its link straight away.
  *
  * The caller gets the URL synchronously and can answer with it in the same
- * reply. Everything after the person clicks — the redirect, the state check,
- * the code exchange, storing the refresh token — happens on `completed`.
+ * reply. Everything after the person clicks, the redirect, the state check,
+ * the code exchange, storing the refresh token, happens on `completed`.
  */
 export function beginGoogleConsent(deps: BeginGoogleConsentDeps): GoogleConsentSession {
   const pkce = generatePkcePair();
@@ -164,7 +164,7 @@ export function beginGoogleConsent(deps: BeginGoogleConsentDeps): GoogleConsentS
   const consentUrl = buildAuthorizationUrl({
     clientId: deps.clientId,
     redirectUri: listener.redirectUri,
-    // Every scope the platform's Google features need, in ONE consent — the
+    // Every scope the platform's Google features need, in ONE consent, the
     // same list the setup flow uses, for the same reason.
     scopes: OAUTH_SCOPES,
     codeChallenge: pkce.codeChallenge,

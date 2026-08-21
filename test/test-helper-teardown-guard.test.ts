@@ -7,7 +7,7 @@
  *
  * These helpers are load-bearing: ~40 test files depend on them to stop the
  * pollers and restore the process-wide globals they touch. If either quietly
- * stopped tearing down, nothing else in the suite would fail — the damage
+ * stopped tearing down, nothing else in the suite would fail, the damage
  * lands in *other* files as phantom timer callbacks and a frozen clock. So the
  * teardown behaviour itself is asserted here.
  *
@@ -36,7 +36,7 @@ function withPreconnect(
 }
 
 // --------------------------------------------------------------------------
-// trackDisposables — method detection
+// trackDisposables, method detection
 // --------------------------------------------------------------------------
 describe('trackDisposables — disposes what a test registers', () => {
   const log: string[] = [];
@@ -56,7 +56,7 @@ describe('trackDisposables — disposes what a test registers', () => {
   test('everything registered by the previous test was disposed after it', () => {
     // The real assertion: the afterEach hook fired and drained the registry.
     expect(disposables.size).toBe(0);
-    // LIFO — later registrations unwind first.
+    // LIFO, later registrations unwind first.
     expect(log).toEqual(['close', 'stop', 'dispose']);
   });
 });
@@ -105,7 +105,7 @@ describe('trackDisposables — refuses to silently leak', () => {
 });
 
 // --------------------------------------------------------------------------
-// trackGlobalStubs — unconditional restore
+// trackGlobalStubs, unconditional restore
 // --------------------------------------------------------------------------
 describe('trackGlobalStubs — restores process-wide globals after each test', () => {
   const realFetch = globalThis.fetch;

@@ -57,7 +57,7 @@ export type {
 } from './registry-types.js';
 
 /**
- * ProviderRegistry — manages LLM provider instances and model selection.
+ * ProviderRegistry, manages LLM provider instances and model selection.
  * Lazily instantiates providers on first use.
  */
 export class ProviderRegistry {
@@ -71,7 +71,7 @@ export class ProviderRegistry {
   private customModels: ModelDefinition[] = [];
   private runtimeModels: ModelDefinition[] = [];
   private discoveredModels: ModelDefinition[] = [];
-  /** Provider-sourced models — see registry-live-model-discovery.ts. */
+  /** Provider-sourced models, see registry-live-model-discovery.ts. */
   private providerNativeModels: ModelDefinition[] = [];
   private readonly runtimeCatalogSuppressedRegistryKeys = new Map<string, readonly string[]>();
   private _watcher: { close: () => void } | undefined;
@@ -237,7 +237,7 @@ export class ProviderRegistry {
       throw new Error(`Provider '${provider.name}' is already registered.`);
     }
     // A plugin's model source may be the explicit `models` list below (this.runtimeModels)
-    // rather than the LLMProvider's own fields — only contract-check when both are empty.
+    // rather than the LLMProvider's own fields, only contract-check when both are empty.
     if (models.length === 0) assertProviderModelSource(provider);
     this.providers.set(provider.name, provider);
     this.providerNativeModels = applyProviderNativeModelBaseline(this.providerNativeModels, provider);
@@ -269,7 +269,7 @@ export class ProviderRegistry {
    * The locally discovered servers this registry currently holds.
    *
    * Exposed because a process may build a SECOND registry that has to see the
-   * same local models — the daemon composes one per hosted-session workspace,
+   * same local models, the daemon composes one per hosted-session workspace,
    * and without this the machine's own Ollama or LM Studio would be routable
    * for the daemon's agents and invisible to a hosted session on the same box.
    * Returns what was registered, so a caller re-registers the same servers
@@ -299,7 +299,7 @@ export class ProviderRegistry {
     for (const server of servers) {
       // Skip if a non-discovered provider already holds this name
       if (this.providers.has(server.name)) continue;
-      // Skip servers with no models — defaultModel would be undefined
+      // Skip servers with no models, defaultModel would be undefined
       if (server.models.length === 0) continue;
 
       const reasoningFormat = getDiscoveredReasoningFormat(server.serverType);
@@ -378,7 +378,7 @@ export class ProviderRegistry {
     }
     const p = this.providers.get(name);
     if (p) return p;
-    // Check alias map — catalog may use a different name than the registered provider
+    // Check alias map. The catalog may use a different name than the registered provider
     const aliased = CATALOG_PROVIDER_NAME_ALIASES[name]!;
     if (aliased) {
       const pa = this.providers.get(aliased);
@@ -401,7 +401,7 @@ export class ProviderRegistry {
   getRegistered(name: string): LLMProvider {
     const p = this.providers.get(name);
     if (p) return p;
-    // Check alias map — catalog may use a different name than the registered provider
+    // Check alias map. The catalog may use a different name than the registered provider
     const aliased = CATALOG_PROVIDER_NAME_ALIASES[name]!;
     if (aliased) {
       const pa = this.providers.get(aliased);
@@ -416,7 +416,7 @@ export class ProviderRegistry {
     return await provider.describeRuntime(this.runtimeMetadataDeps);
   }
 
-  /** Return the provider responsible for a model — a registryKey, or a bare id resolved via the shared resolver. */
+  /** Return the provider responsible for a model, a registryKey, or a bare id resolved via the shared resolver. */
   getForModel(modelId: string, provider?: string): LLMProvider {
     const registry = this.getModelRegistry();
     // findModelDefinitionForProvider already resolves bare ids when a provider is given.
@@ -436,7 +436,7 @@ export class ProviderRegistry {
     return this.getModelRegistry();
   }
 
-  /** Legacy string-keyed catalog lookup — null when unpriced. Prefer resolveModelPricing. */
+  /** Legacy string-keyed catalog lookup, null when unpriced. Prefer resolveModelPricing. */
   getCostFromCatalog(modelId: string): CatalogModelPricing | null {
     return getCostFromPricingCatalog(modelId, this.pricingCatalog ?? { fetchedAt: Date.now(), models: this.catalogModels }, this.modelLimitsService);
   }
@@ -445,7 +445,7 @@ export class ProviderRegistry {
    * ONE pricing resolution per (provider, model): manual config price ('user')
    * -> registration price ('user') -> provider-served ('provider', dated) ->
    * catalog ('catalog', dated) -> subscription -> honest unknown (never $0).
-   * Manual prices are read live on every call — no restart.
+   * Manual prices are read live on every call, no restart.
    */
   resolveModelPricing(modelRef: string, providerId?: string): ResolvedModelPricing {
     return resolveModelPricingFromDeps(buildRegistryModelPricingDeps({
@@ -541,7 +541,7 @@ export class ProviderRegistry {
 
   /**
    * Synthesize a minimal model definition for the configured registryKey when
-   * the catalog-backed registry hasn't materialized it yet — e.g. a fresh
+   * the catalog-backed registry hasn't materialized it yet, e.g. a fresh
    * daemon home before the models.dev catalog fetch has completed (or while
    * offline, where it never will). `buildModelRegistry()` only draws from
    * custom/runtime/synthetic/catalog/discovered models, none of which are
@@ -572,7 +572,7 @@ export class ProviderRegistry {
       provider: providerId,
       registryKey: `${providerId}:${resolvedModelId}`,
       displayName: resolvedModelId,
-      description: `${resolvedModelId} — builtin provider default; model catalog has not hydrated yet.`,
+      description: `${resolvedModelId}, builtin provider default; model catalog has not hydrated yet.`,
       capabilities: { toolCalling: true, codeEditing: true, reasoning: false, multimodal: false },
       contextWindow: inferFallbackContextWindow(providerId, resolvedModelId),
       contextWindowProvenance: 'fallback',
@@ -582,11 +582,11 @@ export class ProviderRegistry {
   }
 
   /**
-   * Set a user-configured context window (tokens) for any model — custom,
+   * Set a user-configured context window (tokens) for any model, custom,
    * discovered, or catalog. Applied as a 'configured_cap' overlay and
    * persisted to the control-plane config dir, so it survives restarts and
    * reaches every consumer of the same home. Keys for models not yet
-   * registered are allowed — discovered models pick the override up when
+   * registered are allowed, discovered models pick the override up when
    * they materialize.
    */
   setModelContextCap(registryKey: string, cap: number): void {
@@ -619,7 +619,7 @@ export class ProviderRegistry {
   }
 
   /**
-   * A provider rejected a request of ~`rejectedAtTokens` as too long — learn
+   * A provider rejected a request of ~`rejectedAtTokens` as too long, learn
    * that ceiling so window math, compaction thresholds, and meters use the
    * endpoint's REAL limit instead of an over-stated catalog value.
    */
@@ -628,7 +628,7 @@ export class ProviderRegistry {
     this._invalidateModelRegistry();
   }
 
-  /** A request with real billed input succeeded — raise a too-pessimistic learned ceiling. */
+  /** A request with real billed input succeeded, raise a too-pessimistic learned ceiling. */
   reconcileObservedContextWindow(registryKey: string, successfulInputTokens: number): void {
     const before = this.contextWindowOverrideStore().getObserved(registryKey);
     if (before === null || successfulInputTokens <= before) return;
@@ -690,7 +690,7 @@ export class ProviderRegistry {
   /**
    * Start watching the configured providers directory for file changes.
    * On change, reloads custom providers and emits typed provider runtime events.
-   * Safe to call multiple times — stops the previous watcher first.
+   * Safe to call multiple times, stops the previous watcher first.
    */
   startWatching(runtimeBus: RuntimeEventBus | null = null): void {
     this.stopWatching();
@@ -742,7 +742,6 @@ export class ProviderRegistry {
   findAlternativeModel(currentRegistryKey: string): ModelDefinition | null {
     const current = findModelDefinition(currentRegistryKey, this.getModelRegistry());
     if (!current || current.provider === 'synthetic') return null;
-    // Check if synthetic wrapper exists
     const baseName = current.id.split('/').pop() ?? '';
     const syntheticMatch = this.getModelRegistry().find((model) => model.provider === 'synthetic' && (model.id === baseName || model.id.endsWith('/' + baseName)));
     if (syntheticMatch) return syntheticMatch;
@@ -763,7 +762,7 @@ export class ProviderRegistry {
 
   /**
    * Check whether a model can handle a request described by `profile`.
-   * Fails early with a typed explanation when unsupported — avoids mid-stream errors.
+   * Fails early with a typed explanation when unsupported, avoids mid-stream errors.
    *
    * @param modelReference - A provider-qualified registryKey or a bare model id (resolved via the shared resolver).
    * @param profile - The capability requirements for this request.
@@ -798,7 +797,7 @@ export class ProviderRegistry {
   initCustomProviders(): void {
     this._readyPromise = this.loadCustomProviders()
       .then((result) => {
-        // Warnings captured in result.warnings — don't console.warn (corrupts TUI)
+        // Warnings captured in result.warnings, don't console.warn (corrupts TUI)
         // Invalidate the capability cache so custom providers' self-declared
         // capabilities are reflected in subsequent getCapabilityForModel calls.
         this.capabilityRegistry.invalidate();

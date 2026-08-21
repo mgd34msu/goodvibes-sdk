@@ -101,7 +101,7 @@ function makeHarness(options: {
   /** Consecutive failed checks before the owner is told. */
   alertAfterFailedChecks?: number;
   alertWindowMs?: number;
-  /** Replaces the release fetch entirely — used to make checks throw. */
+  /** Replaces the release fetch entirely, used to make checks throw. */
   fetchOverride?: UpdateFetchLike;
   /** A movable clock, so the alert quiet window is provable without real time. */
   clock?: () => number;
@@ -149,7 +149,7 @@ function makeHarness(options: {
   return { updater, files, receipts, actions, exits, timers, requests, sequence, scratch, alerts };
 }
 
-/** A fetch that always throws — a check that cannot complete at all. */
+/** A fetch that always throws, a check that cannot complete at all. */
 const unreachableFetch: UpdateFetchLike = async () => {
   throw new Error('getaddrinfo ENOTFOUND github.com');
 };
@@ -160,7 +160,7 @@ describe('DaemonAutoUpdater', () => {
     try {
       h.updater.start();
       expect(h.timers).toHaveLength(1);
-      // The first check runs shortly after start — a daemon that was down
+      // The first check runs shortly after start, a daemon that was down
       // while releases shipped must not stay stale for another whole hour.
       expect(h.timers[0]!.ms).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
       expect(h.updater.firstCheckDelayMs).toBe(BOOT_SETTLE_CHECK_DELAY_MS);
@@ -188,7 +188,7 @@ describe('DaemonAutoUpdater', () => {
       expect(h.exits).toEqual([]);
       const receipts = h.receipts.list();
       expect(receipts).toHaveLength(1);
-      // One update, one receipt — and it names the client restart, because a
+      // One update, one receipt, and it names the client restart, because a
       // swap replaces the daemon binary only: every client already attached
       // keeps its old build until it is restarted.
       expect(receipts[0]!.text).toStartWith('updated from 1.0.0 to 2.0.0 at 14:30');
@@ -269,7 +269,7 @@ describe('DaemonAutoUpdater', () => {
 
 /**
  * The lived failure: the daemon updated itself, the new build would not start,
- * the boot rollback restored the old one — and one check interval later the
+ * the boot rollback restored the old one, and one check interval later the
  * loop downloaded and installed the identical release again. Install, fail,
  * roll back, reinstall, hourly, for days, while three releases shipped and the
  * installed daemon stayed where it was. Nothing on the machine said so.
@@ -457,7 +457,7 @@ describe('repeated update-check failures reach the owner', () => {
       for (let i = 0; i < 6; i++) {
         await h.updater.tick();
         // Settled, not deferred: the next check is a full interval away, and
-        // there IS a next check — holding a release is not giving up.
+        // there IS a next check, holding a release is not giving up.
         expect(h.timers[h.timers.length - 1]!.ms).toBe(60 * 60 * 1000);
       }
       expect(h.timers).toHaveLength(7);

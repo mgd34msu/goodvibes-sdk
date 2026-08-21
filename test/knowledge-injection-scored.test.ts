@@ -1,5 +1,5 @@
 /**
- * Passive knowledge injection (per-turn budgeted retrieval) — knowledge-injection.ts regression: extracting
+ * Passive knowledge injection (per-turn budgeted retrieval), knowledge-injection.ts regression: extracting
  * `selectKnowledgeForTaskScored` out of `selectKnowledgeForTask` must not change
  * `selectKnowledgeForTask`'s observable output for any existing caller (spawn-time
  * injection in orchestrator-prompts.ts). This suite pins that contract and exercises
@@ -47,7 +47,7 @@ describe('knowledge-injection.ts — selectKnowledgeForTaskScored sibling', () =
 
     // limit=2: mem_a (70 confidence +40 reviewed +20 "auth" +20 "module" = 150) beats
     // mem_c (65 +20 fresh +20 +20 = 125) beats mem_b (60 +20 fresh, no task-token match
-    // = 80 — still score>0, since confidence+reviewState alone clears that gate, but it
+    // = 80, still score>0, since confidence+reviewState alone clears that gate, but it
     // is what the LIMIT slice excludes here, not the score>0 filter).
     const result = selectKnowledgeForTask(registry, 'fix the auth module', [], 2);
 

@@ -4,7 +4,7 @@
  * `GOODVIBES_HOME` names the tree ROOT and `GOODVIBES_DAEMON_HOME` names only
  * the daemon's identity directory. Every surface resolves both through this
  * one module, so a process told to run out of a throwaway tree cannot reach
- * the real one — the incident that produced the module was a client entry
+ * the real one, the incident that produced the module was a client entry
  * point that ignored the redirect and wrote two throwaway credentials into the
  * owner's live daemon-tier secret store.
  *

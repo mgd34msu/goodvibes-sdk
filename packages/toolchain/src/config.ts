@@ -75,13 +75,13 @@ export interface SmokeConfig {
   readonly forbiddenStrings: readonly string[];
   /**
    * Default binary path when `--binary` is not passed. Serves LOCAL CLI runs
-   * only — CI matrix legs each build a different suffixed artifact, so the
+   * only, CI matrix legs each build a different suffixed artifact, so the
    * reusable binary-matrix workflow always passes the leg's own `--binary`.
    */
   readonly binaryDefault: string;
 }
 
-/** release-cut parameters (prepare/bump/changelog/tag only — never re-runs gates). */
+/** release-cut parameters (prepare/bump/changelog/tag only, never re-runs gates). */
 export interface ReleaseCutConfig {
   /** Branch a cut is allowed from, e.g. `main`. */
   readonly branch: string;

@@ -110,8 +110,8 @@ export interface VoiceProvider {
   readonly label: string;
   readonly capabilities: readonly VoiceProviderCapability[];
   /**
-   * Billing dimension: 'metered' (cloud APIs — usage flows through cost
-   * attribution) or 'none' (local engines — honest absence of a billing
+   * Billing dimension: 'metered' (cloud APIs, usage flows through cost
+   * attribution) or 'none' (local engines, honest absence of a billing
    * dimension, never a fake $0.00). Undefined reads as 'metered', the safe
    * default for every cloud provider.
    */

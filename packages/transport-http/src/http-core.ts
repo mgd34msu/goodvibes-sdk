@@ -25,7 +25,7 @@ import {
 export type { HttpRetryPolicy, PerMethodRetryPolicy } from './retry.js';
 export type { TransportContext, TransportMiddleware } from '@pellux/goodvibes-transport-core';
 
-// Re-export canonical JsonValue from contracts root index — single identity across all bundled packages.
+// Re-export canonical JsonValue from contracts root index, single identity across all bundled packages.
 // Using the root import ensures the same JsonValue identity as inline uses in foundation-client-types.
 export type { JsonValue } from '@pellux/goodvibes-contracts';
 import type { JsonValue } from '@pellux/goodvibes-contracts';
@@ -286,7 +286,7 @@ const MAX_RETRY_AFTER_MS = 10 * 60 * 1000; // 10 minutes
 function parseRetryAfterMs(headers: Headers): number | undefined {
   const retryAfter = headers.get('retry-after');
   if (!retryAfter) return undefined;
-  // Numeric seconds — cap to prevent hostile/buggy huge values.
+  // Numeric seconds, cap to prevent hostile/buggy huge values.
   const seconds = Number(retryAfter);
   if (!Number.isNaN(seconds) && seconds > 0) {
     return Math.min(Math.ceil(seconds * 1000), MAX_RETRY_AFTER_MS);
@@ -348,7 +348,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
   const observer = options.observer;
   const onRetryScheduled = options.onRetryScheduled;
   const onRetryExecuted = options.onRetryExecuted;
-  // Persistent middleware chain — mutated via use().
+  // Persistent middleware chain, mutated via use().
   const middlewareChain: TransportMiddleware[] = [...(options.middleware ?? [])];
 
   const requestJsonForTransport = async <T>(pathOrUrl: string, requestOptions: HttpJsonRequestOptions = {}): Promise<T> => {
@@ -459,7 +459,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
 
       try {
         if (middlewareChain.length > 0) {
-          // Middleware path — compose chain around innerFetch.
+          // Middleware path, compose chain around innerFetch.
           const composed = composeMiddleware(middlewareChain, innerFetch);
           await composed(ctx);
           if (ctx.error) throw ctx.error;
@@ -483,7 +483,7 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
           return result;
         }
 
-        // No-middleware fast path — directly invoke innerFetch with ctx.
+        // No-middleware fast path, directly invoke innerFetch with ctx.
         await innerFetch(ctx);
         // use the cached parsed body (set by innerFetch) to avoid JSON round-trip.
         const result = _parsedBodyCache as T;
@@ -497,10 +497,10 @@ export function createHttpJsonTransport(options: HttpJsonTransportOptions): Http
         return result;
       } catch (error) {
         // Wrap middleware errors as SDKError{kind:'unknown'} with middleware identity in cause.
-        // ALL errors originating from the middleware chain are wrapped — including HttpStatusError.
+        // ALL errors originating from the middleware chain are wrapped, including HttpStatusError.
         const wrappedError = (() => {
           if (ctx.middlewareError) {
-            // Error came from within the middleware chain — wrap regardless of error type.
+            // Error came from within the middleware chain, wrap regardless of error type.
             const msg = transportErrorFromUnknown(error, 'transport middleware error').message;
             const middlewareName = ctx.activeMiddlewareName ?? 'unknown';
             const wrapped = new GoodVibesSdkError(`Transport middleware error: ${msg}`, {

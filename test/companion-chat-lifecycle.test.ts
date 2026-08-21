@@ -2,7 +2,7 @@
  * companion-chat-lifecycle.test.ts
  *
  * Verifies the session lifecycle:
- * L1: create → message → close — happy path
+ * L1: create → message → close, happy path
  * L2: closed sessions reject further messages with 409
  * L3: sessions that were never found return 404
  * L4: idle GC closes empty sessions after idleEmptyMs

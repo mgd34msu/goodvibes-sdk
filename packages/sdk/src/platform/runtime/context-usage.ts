@@ -8,7 +8,7 @@
  *
  * HONESTY: `usedTokens` is an ESTIMATE (the token estimator's figure), not a
  * measured provider prompt-token count. Callers that surface these values must
- * label them as estimates — this helper only does the arithmetic.
+ * label them as estimates, this helper only does the arithmetic.
  */
 export interface ContextUsageDerived {
   /** Context usage as a 0–100 percentage (0 when the window is unknown). */

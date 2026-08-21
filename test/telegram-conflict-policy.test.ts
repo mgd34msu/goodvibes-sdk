@@ -7,13 +7,13 @@
  * 409 was terminal down a branch it should never have been on. Telegram uses
  * 409 for a registered webhook AND for another process polling the same token,
  * and they were told apart by matching the description against "terminated by
- * other getUpdates" — with webhook as the fallback for everything else. Any
+ * other getUpdates", with webhook as the fallback for everything else. Any
  * description that did not match that exact phrase was read as a webhook
  * conflict, and the webhook branch gave up after three tries.
  *
  * The two properties asserted throughout:
  *   1. `getWebhookInfo` decides, not the description string.
- *   2. Nothing is ever terminal — there is no give-up action to return.
+ *   2. Nothing is ever terminal, there is no give-up action to return.
  */
 
 import { describe, expect, test } from 'bun:test';
@@ -44,7 +44,7 @@ describe('getWebhookInfo is the authority, not the description', () => {
   });
 
   test('no registered webhook plus a webhook-blaming description: cleared first, then ruled out', () => {
-    // First attempts clear the (possibly stale) webhook — deleteWebhook is
+    // First attempts clear the (possibly stale) webhook, deleteWebhook is
     // idempotent, so trying costs nothing.
     const early = classify({ webhookUrl: null, description: WEBHOOK_DESCRIPTION, attempt: 1 });
     expect(early.kind).toBe('clear-webhook');
@@ -129,7 +129,7 @@ describe('what a person is told', () => {
     const loud = classify({ attempt: BEYOND });
     expect(quiet.escalate).toBe(false);
     expect(loud.escalate).toBe(true);
-    // Same action either way — only the loudness changed.
+    // Same action either way, only the loudness changed.
     expect(quiet.kind).toBe(loud.kind);
   });
 });

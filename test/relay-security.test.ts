@@ -2,7 +2,7 @@
  * relay-security.test.ts
  *
  * Unit coverage for the relay security posture: the WebAuthn step-up policy
- * decision, the mutating-verb signal, the via-relay request predicate — and
+ * decision, the mutating-verb signal, the via-relay request predicate, and
  * the certificate-minting PROHIBITION guard: the daemon never mints
  * certificates (no self-provisioned CA, ever), so no cert-minting symbol may
  * exist on the public relay/daemon surface or in the relay source tree.
@@ -53,7 +53,7 @@ describe('via-relay request predicate', () => {
 
 describe('certificate-minting prohibition (the daemon never mints certificates)', () => {
   test('no cert-minting symbol exists on the public relay surface', () => {
-    // The runtime export names of the relay barrel — the exact surface a
+    // The runtime export names of the relay barrel, the exact surface a
     // consumer composes from (and what ./daemon re-exports).
     const names = Object.keys(relaySurface);
     const offenders = names.filter((name) => /cert|mint|x509|openssl/i.test(name));

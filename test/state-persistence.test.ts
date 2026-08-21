@@ -200,7 +200,7 @@ describe('state persistence failures', () => {
     // parsing this one at daemon boot / on a periodic tick took the whole
     // daemon down twice in production (a host freeze zero-tailed the file).
     // The deliberate fix is the opposite of every other test in this
-    // describe block — a corrupt file is quarantined (renamed aside with a
+    // describe block, a corrupt file is quarantined (renamed aside with a
     // `.why` receipt, never deleted, never re-parsed) and treated exactly
     // like "no snapshot yet" so the caller rebuilds from live registrations,
     // instead of throwing and crash-looping the process. See

@@ -1,5 +1,5 @@
 /**
- * Coverage-gap smoke test — platform/discovery
+ * Coverage-gap smoke test, platform/discovery
  * Verifies that the scanner and mcp-scanner modules load, export their
  * primary symbols, and execute observable behavior via await.
  * Closes coverage gap: platform/discovery
@@ -41,7 +41,7 @@ describe('platform/discovery — behavior smoke', () => {
       scan().then((r) => r),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
     ]).catch(() => null);
-    // Either the scan resolved with a ScanResult, or we got null from the timeout — both are valid
+    // Either the scan resolved with a ScanResult, or we got null from the timeout, both are valid
     if (result !== null) {
       expect(result.servers).toBeInstanceOf(Array);
       expect(typeof result.scannedHosts).toBe('number');
@@ -54,7 +54,7 @@ describe('platform/discovery — behavior smoke', () => {
   }, { timeout: 12000 });
 
   test('scanHosts([]) resolves with empty DiscoveredServer array for empty host list', async () => {
-    // Empty host list — no probes, immediate resolution
+    // Empty host list, no probes, immediate resolution
     const result = await scanHosts([]);
     expect(result).toBeInstanceOf(Array);
     expect(result.length).toBe(0);

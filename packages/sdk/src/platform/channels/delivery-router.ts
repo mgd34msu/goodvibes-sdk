@@ -69,7 +69,7 @@ export { resolveChannelDeliverySurfaceKind } from './delivery/shared.js';
  * reference, which only resolves when a local secret resolver is supplied.
  * While this parameter was optional, a composition root that forgot it still
  * type-checked, still constructed, still delivered on every surface whose
- * credential happens to live in config or the environment — and failed ONLY on
+ * credential happens to live in config or the environment, and failed ONLY on
  * the surfaces that use a secret reference, at send time, as
  * "Missing Telegram bot token". Two shipped composition roots (goodvibes-tui
  * and goodvibes-agent) drifted into exactly that state while the SDK's own
@@ -184,7 +184,7 @@ export class ChannelDeliveryRouter {
       // Silence is the worst failure mode a reply can have: the owner sends a
       // message, the agent answers, and nothing arrives with no trace anywhere.
       // Every unroutable delivery says which surface, which binding, and why.
-      logger.error('Channel delivery could not resolve a strategy — the reply was dropped', {
+      logger.error('Channel delivery could not resolve a strategy, the reply was dropped', {
         surface: surfaceKind ?? 'unknown',
         targetKind: request.target.kind,
         bindingId: request.binding?.id ?? null,
@@ -198,9 +198,9 @@ export class ChannelDeliveryRouter {
       return result.responseId;
     } catch (error) {
       // A strategy throwing "Missing <surface> chat id" is the same silence
-      // wearing a different hat — it is normally caught and dropped upstream.
+      // wearing a different hat, it is normally caught and dropped upstream.
       // Name it here, where the binding is still in hand, then rethrow.
-      logger.error('Channel delivery failed — the reply did not reach its conversation', {
+      logger.error('Channel delivery failed, the reply did not reach its conversation', {
         surface: surfaceKind ?? 'unknown',
         strategy: strategy.id,
         bindingId: request.binding?.id ?? null,

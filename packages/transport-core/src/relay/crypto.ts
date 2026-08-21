@@ -2,7 +2,7 @@
 //
 // Runtime-neutral cryptographic primitives for the zero-knowledge relay
 // end-to-end (E2E) channel. Every primitive here is a thin, honest wrapper over
-// the Web Crypto API (`globalThis.crypto.subtle`) — the same interface exposed
+// the Web Crypto API (`globalThis.crypto.subtle`), the same interface exposed
 // by browsers, Bun, and Node 22+. Nothing is hand-rolled: key agreement is
 // ECDH over the NIST P-256 curve, key derivation is HKDF-SHA-256, and the AEAD
 // is AES-256-GCM. P-256 is chosen over X25519 because it is universally
@@ -10,7 +10,7 @@
 // (browser PWA, Bun daemon, Node), and it matches the curve the codebase
 // already relies on for push-message encryption.
 //
-// This module intentionally holds ZERO relay-protocol knowledge — it only knows
+// This module intentionally holds ZERO relay-protocol knowledge, it only knows
 // bytes and keys. Higher layers (handshake.ts, secure-channel.ts) compose these.
 
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
@@ -140,15 +140,30 @@ export function concatBytes(...parts: readonly Uint8Array<ArrayBuffer>[]): Uint8
 
 // ─── asymmetric key agreement (ECDH P-256) ───────────────────────────────────
 
-/** A relay identity/ephemeral key pair. Private key is non-extractable. */
+/**
+ * A relay ECDH key pair.
+ *
+ * Ephemeral pairs from {@link generateEcdhKeyPair} have a non-extractable
+ * private key. The daemon's persistent identity pair (relay/identity.ts) is the
+ * sole exception: it is generated extractable because it must be serialized
+ * into the secret store to survive a restart.
+ */
 export interface RelayKeyPair {
   readonly publicKey: CryptoKey;
   readonly privateKey: CryptoKey;
 }
 
-/** Generate a fresh ECDH P-256 key pair for key agreement. */
+/**
+ * Generate a fresh ephemeral ECDH P-256 key pair for key agreement.
+ *
+ * The private half is non-extractable: nothing in the handshake ever exports
+ * it (only `deriveBits` is used), so `exportKey` on it throws instead of
+ * handing back the raw scalar of a forward-secret session. The one key that
+ * genuinely must be exported, the daemon's persistent relay identity, is
+ * generated separately in relay/identity.ts.
+ */
 export async function generateEcdhKeyPair(): Promise<RelayKeyPair> {
-  const pair = (await subtle().generateKey({ name: 'ECDH', namedCurve: RELAY_CURVE }, true, ['deriveBits'])) as CryptoKeyPair;
+  const pair = (await subtle().generateKey({ name: 'ECDH', namedCurve: RELAY_CURVE }, false, ['deriveBits'])) as CryptoKeyPair;
   return { publicKey: pair.publicKey, privateKey: pair.privateKey };
 }
 

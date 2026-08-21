@@ -64,7 +64,7 @@ describe('ProfileManager', () => {
       pm.save('beta', {});
       const list = pm.list();
       expect(list.length).toBe(2);
-      // Most recent first — beta was saved after alpha
+      // Most recent first, beta was saved after alpha
       expect(list[0]!.name).toBe('beta');
       expect(list[1]!.name).toBe('alpha');
     });

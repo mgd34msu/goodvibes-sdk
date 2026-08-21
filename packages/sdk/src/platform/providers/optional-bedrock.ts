@@ -1,9 +1,9 @@
 /**
- * optional-bedrock.ts — the one place `@anthropic-ai/bedrock-sdk` is reached.
+ * optional-bedrock.ts, the one place `@anthropic-ai/bedrock-sdk` is reached.
  *
  * The package is declared under `optionalDependencies` in
  * packages/sdk/package.json, and providers/amazon-bedrock.ts and
- * providers/amazon-bedrock-mantle.ts imported it statically — the package
+ * providers/amazon-bedrock-mantle.ts imported it statically, the package
  * itself for the two client classes, and its `core/auth.js` subpath for the
  * SigV4 signer the control-plane model listing reuses. Both modules are on the
  * daemon's graph through the provider registry, so an install without the

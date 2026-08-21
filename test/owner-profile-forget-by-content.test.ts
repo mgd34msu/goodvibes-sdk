@@ -1,5 +1,5 @@
 /**
- * owner-profile-forget-by-content.test.ts — docs/owner-profile.md §9.2.
+ * owner-profile-forget-by-content.test.ts, docs/owner-profile.md §9.2.
  *
  * A prose line is addressed by its content, never by its position.
  *
@@ -7,7 +7,7 @@
  * valid against the exact file state that produced it, so between his
  * `profile.read` and his `profile.forget` he can insert a line in his editor
  * and shift everything below it. A positional delete then removes the wrong
- * line and reports success — a false receipt on a delete, which is the class
+ * line and reports success, a false receipt on a delete, which is the class
  * §9.2 exists to prevent, arriving through the front door.
  *
  * No validation closes this. The malformed-index cases (NaN, fractional,
@@ -117,7 +117,7 @@ describe('§9.2 — the concurrent-edit hazard a positional delete cannot surviv
     expect(result.ok).toBe(true);
     const after = readFileSync(path, 'utf-8');
     expect(after).not.toContain('Prefers aisle seats');
-    // His inserted line survived — a positional delete would have eaten it.
+    // His inserted line survived, a positional delete would have eaten it.
     expect(after).toContain('- Keeps a spare key with the neighbour');
     expect(after).toContain('- Allergic to shellfish');
   });
@@ -218,7 +218,7 @@ describe('content addressing across the closed sections it has to serve', () => 
   });
 
   test('People stays reachable for deletion even though section() refuses it', async () => {
-    // `store.section('People')` returns undefined by design — no enumerate-all
+    // `store.section('People')` returns undefined by design, no enumerate-all
     // call exists. Deleting one named line must still work.
     const { store } = await harness();
     expect(store.section('People')).toBeUndefined();

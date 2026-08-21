@@ -41,24 +41,24 @@ export interface SharedApprovalRecord {
    * PERSISTED deliberately. The expiry timer lives in `pendingResolvers`, which
    * is in-memory and rebuilt empty on start, so before this field existed a
    * restart left a pending approval with no timer, no deadline and no way to
-   * ever resolve — it sat 'pending' forever. Recording the deadline on the
+   * ever resolve, it sat 'pending' forever. Recording the deadline on the
    * record is what lets `start()` re-arm it, or expire it immediately when the
    * deadline passed while the process was down. See `rearmRestoredTimers`.
    */
   readonly expiresAt?: number | undefined;
   /**
    * The REAL session an ACCEPTED ask spawned, when acceptance starts one
-   * (e.g. the CI fix-session a "fix this?" offer starts) — always an id
+   * (e.g. the CI fix-session a "fix this?" offer starts), always an id
    * session attach/resume resolves, never a scheduling handle. Stamped at
    * the moment the session exists via {@link ApprovalBroker.stampFixSession}
-   * and published as a record update, so the surface that accepted —
-   * attached right now — gets an in-process handle to jump to the session.
+   * and published as a record update, so the surface that accepted,
+   * attached right now, gets an in-process handle to jump to the session.
    * Never present on denied records; mutually exclusive with fixSessionError.
    */
   readonly fixSessionId?: string | undefined;
   /**
    * The honest failure when an accepted ask's spawn did NOT produce an
-   * attachable session — recorded instead of a dead id. Mutually exclusive
+   * attachable session, recorded instead of a dead id. Mutually exclusive
    * with fixSessionId; never present on denied records.
    */
   readonly fixSessionError?: string | undefined;
@@ -81,8 +81,8 @@ export interface RequestSharedApprovalInput {
    * Which surface the local prompt belongs to, for the audit trail.
    *
    * Was hardcoded to 'tui'/'tui-local' regardless of caller, so every product
-   * that answers at its own terminal — the agent, and now the payment
-   * capability's approval prompts — recorded a decision made somewhere it was
+   * that answers at its own terminal, the agent, and now the payment
+   * capability's approval prompts, recorded a decision made somewhere it was
    * not. That is a lie in exactly the record you consult to find out who
    * approved a purchase. Defaults preserve the old values for callers that do
    * not say, because the TUI was the only caller when they were written.
@@ -105,7 +105,7 @@ function sortApprovals(records: Iterable<SharedApprovalRecord>): SharedApprovalR
  * Maximum number of terminal (resolved) approval records retained in memory and
  * on disk. Mirrors ChannelPolicyManager's MAX_AUDIT_RECORDS so a long-running
  * control-plane daemon does not grow the snapshot without bound. Pending and
- * claimed approvals are never counted or evicted — they have a live awaited
+ * claimed approvals are never counted or evicted, they have a live awaited
  * promise + resolver and must survive until resolved.
  */
 const MAX_APPROVAL_RECORDS = 500;
@@ -239,7 +239,7 @@ function buildAudit(action: SharedApprovalAuditRecord['action'], actor: string, 
   };
 }
 
-/** Deterministic JSON for coalescing — object keys sorted at every level. */
+/** Deterministic JSON for coalescing, object keys sorted at every level. */
 function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
   if (value && typeof value === 'object') {
@@ -316,7 +316,7 @@ export class ApprovalBroker {
    *
    * A deadline that passed while the process was down expires IMMEDIATELY rather
    * than being extended. Silence for the full window is silence whether or not
-   * we were running to hear it, and for an approval silence means denied — the
+   * we were running to hear it, and for an approval silence means denied, the
    * direction that cannot spend money nobody agreed to.
    *
    * There are no local resolvers to call for a restored record (the awaiting
@@ -371,7 +371,7 @@ export class ApprovalBroker {
    * Two callers want different halves of the same act. The in-process
    * permission path (`requestApproval`, just below) wants the decision:
    * it is awaiting a person. The wire path (`approvals.raise`,
-   * routes/approvals-raise.ts) wants the RECORD, immediately — an HTTP request
+   * routes/approvals-raise.ts) wants the RECORD, immediately, an HTTP request
    * must not stay open across someone's attention span, and the id returned
    * here is what ties that caller to the `approval-update` stream where the
    * decision actually lands. The body lives in approval-broker-raise.ts.
@@ -411,7 +411,7 @@ export class ApprovalBroker {
     return raised;
   }
 
-  /** Raise an ask and wait for the answer — the in-process permission path. */
+  /** Raise an ask and wait for the answer, the in-process permission path. */
   async requestApproval(input: RequestSharedApprovalInput): Promise<PermissionPromptDecision> {
     return (await this.raiseApproval(input)).decision;
   }
@@ -444,9 +444,9 @@ export class ApprovalBroker {
    * attached right now and needs an in-process handle to open the session.
    *
    * The success outcome carries the REAL spawned session id (attach/resume-
-   * resolvable — never a scheduling handle); the failure outcome records the
+   * resolvable, never a scheduling handle); the failure outcome records the
    * honest error instead of a dead id. Returns the updated record, or null
-   * when no APPROVED record with that callId exists — a denied offer is
+   * when no APPROVED record with that callId exists, a denied offer is
    * never stamped.
    */
   async stampFixSession(
@@ -493,7 +493,7 @@ export class ApprovalBroker {
       /**
        * How far this decision reaches (see PermissionPromptDecision). A
        * generalizing tier also SWEEPS queued asks the remembered decision
-       * covers — one answer resolves them all.
+       * covers, one answer resolves them all.
        */
       readonly rememberTier?: RememberTier | undefined;
       /** Optional user free-text; on deny it rides the structured result. */
@@ -703,8 +703,8 @@ export class ApprovalBroker {
    * each snapshot is at least as new as the one queued before it and the last
    * one to land is the most recent state. Deferring the snapshot to write time
    * would also work, but it would let a write serialise records belonging to
-   * callers that had not finished yet — including a create still deciding
-   * whether it can commit — and that is a wider door than this defect needs.
+   * callers that had not finished yet, including a create still deciding
+   * whether it can commit, and that is a wider door than this defect needs.
    */
   private async persist(): Promise<void> {
     this.pruneTerminalApprovals();

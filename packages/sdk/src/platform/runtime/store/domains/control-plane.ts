@@ -1,5 +1,5 @@
 /**
- * Control-plane domain state — connected clients and live subscription posture.
+ * Control-plane domain state, connected clients and live subscription posture.
  */
 
 import type { AutomationSurfaceKind } from '../../../automation/types.js';

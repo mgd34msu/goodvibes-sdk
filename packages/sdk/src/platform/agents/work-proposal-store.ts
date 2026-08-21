@@ -1,5 +1,5 @@
 /**
- * Pending work proposals — the state half of the conversation-first gate.
+ * Pending work proposals, the state half of the conversation-first gate.
  *
  * A proposal outlives the turn that created it (the owner may answer minutes
  * later from a phone), so it gets the standing housekeeping treatment:
@@ -32,7 +32,7 @@ export interface WorkProposalRecord {
   readonly createdAt: number;
   readonly expiresAt: number;
   readonly status: WorkProposalStatus;
-  /** The channel the proposal was sent over — agreement must arrive here. */
+  /** The channel the proposal was sent over, agreement must arrive here. */
   readonly surfaceKind: string;
   readonly surfaceId?: string | undefined;
   readonly routeId?: string | undefined;
@@ -53,7 +53,7 @@ export interface WorkProposalRecord {
    * transport threw). Until delivery is confirmed the owner has not SEEN this
    * proposal, so it must not be answerable: {@link WorkProposalStore.listPending}
    * excludes it, which is what stops an unrelated message from being read as
-   * "yes" to a proposal that was never shown. Fails closed — a record
+   * "yes" to a proposal that was never shown. Fails closed, a record
    * persisted without the field loads as undelivered.
    */
   readonly delivered: boolean;
@@ -177,7 +177,7 @@ export class WorkProposalStore {
 
   /**
    * Load, validate, and reap. Fail-safe: an unreadable or corrupt store means
-   * no pending proposals, never a crash — the worst case is that the owner
+   * no pending proposals, never a crash, the worst case is that the owner
    * has to ask again, which is strictly better than answering a bad record.
    */
   async init(): Promise<WorkProposalReapSummary> {
@@ -217,7 +217,7 @@ export class WorkProposalStore {
 
   /**
    * Begin the periodic expiry sweep. Idempotent, and only ever running while
-   * something is actually pending — a daemon with no open proposals carries no
+   * something is actually pending, a daemon with no open proposals carries no
    * timer at all, and the sweep stops itself once the last one is resolved or
    * expires. That is what lets the store need no external disposal hook.
    */
@@ -258,7 +258,7 @@ export class WorkProposalStore {
       surfaceKind: input.surfaceKind,
       task: input.task.slice(0, MAX_TASK_LENGTH),
       summary: input.summary.slice(0, MAX_SUMMARY_LENGTH),
-      // Not answerable until the send is confirmed — see markDelivered.
+      // Not answerable until the send is confirmed, see markDelivered.
       delivered: false,
       ...(input.surfaceId ? { surfaceId: input.surfaceId } : {}),
       ...(input.routeId ? { routeId: input.routeId } : {}),
@@ -304,7 +304,7 @@ export class WorkProposalStore {
 
   /**
    * The proposal never reached the owner. Drop it rather than leaving a
-   * proposal pending that nobody can answer — and, more importantly, that a
+   * proposal pending that nobody can answer, and, more importantly, that a
    * later unrelated message could be matched against.
    */
   markUndeliverable(id: string, reason: string): void {
@@ -344,7 +344,7 @@ export class WorkProposalStore {
 
   /**
    * Resolve a proposal. Returns null when the id is unknown or the proposal is
-   * no longer pending — an already-answered or expired proposal cannot be
+   * no longer pending, an already-answered or expired proposal cannot be
    * answered a second time.
    */
   resolve(id: string, outcome: 'accepted' | 'declined'): WorkProposalRecord | null {
@@ -358,7 +358,7 @@ export class WorkProposalStore {
   }
 
   /**
-   * Drop expired, resolved, and over-cap records. Pure with respect to I/O —
+   * Drop expired, resolved, and over-cap records. Pure with respect to I/O,
    * the caller persists. Safe to call on every read path.
    */
   reap(): WorkProposalReapSummary {
@@ -406,7 +406,7 @@ export class WorkProposalStore {
     return summary;
   }
 
-  /** Cumulative housekeeping disclosure — what was dropped and why. */
+  /** Cumulative housekeeping disclosure, what was dropped and why. */
   disclose(): {
     readonly pending: number;
     readonly awaitingDelivery: number;

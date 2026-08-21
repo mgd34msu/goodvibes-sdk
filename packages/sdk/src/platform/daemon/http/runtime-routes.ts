@@ -47,7 +47,7 @@ const surfaceKinds = new Set([
   'matrix',
   'service',
 ]);
-// Full severity ladder, not a fixed 4-value list — see providers/reasoning-effort.ts.
+// Full severity ladder, not a fixed 4-value list, see providers/reasoning-effort.ts.
 const reasoningEfforts = new Set(REASONING_EFFORT_SEVERITY);
 const wakeModes = new Set(['next-heartbeat', 'now']);
 const externalContentKinds = new Set([

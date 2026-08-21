@@ -1,5 +1,5 @@
 /**
- * interview.ts — a few questions that guide HIM to a good idea.
+ * interview.ts, a few questions that guide HIM to a good idea.
  *
  * *"if yes, ask me a few questions to guide me into a good gift idea. i feel
  * like a short interview section would be very useful here."*
@@ -20,7 +20,7 @@
  *
  * A thread he walks away from is a DROPPED thread, not a completion. The steps
  * and the answers so far persist, so resuming picks up at the next unanswered
- * question rather than starting again — that is what makes the open-item loop's
+ * question rather than starting again, that is what makes the open-item loop's
  * third case work.
  */
 import type { ProfileLine } from '../owner-profile/types.js';
@@ -30,8 +30,8 @@ import type { GiftRecord, Interview, InterviewStep, Occasion } from './types.js'
 /**
  * Words that turn a line about a person into a line about what she LIKES.
  *
- * A People section holds both — "Sarah — sister, lives in Leeds" and "Sarah has
- * been doing pottery all year" — and only the second one opens a useful
+ * A People section holds both, "Sarah, sister, lives in Leeds" and "Sarah has
+ * been doing pottery all year", and only the second one opens a useful
  * question. Preferring it is a small heuristic with an honest fallback rather
  * than a classifier: when nothing matches, the question is asked plainly instead
  * of being asked about the wrong line.

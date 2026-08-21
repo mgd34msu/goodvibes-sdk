@@ -7,14 +7,14 @@
  * "checkpoint" bare. "checkpoint" is already used for two unrelated concepts
  * in this codebase:
  *   - compaction boundary commits (`cpt_` ids, ../../runtime/compaction/strategies/boundary-commit.ts)
- *     — a CONVERSATION snapshot (messages/tokens), not a filesystem snapshot.
+ *    , a CONVERSATION snapshot (messages/tokens), not a filesystem snapshot.
  *   - the generic retention `CheckpointRecord` (../../runtime/retention/types.ts)
- *     — a size/age/count bookkeeping record reused by both the boundary-commit
+ *    , a size/age/count bookkeeping record reused by both the boundary-commit
  *     GC path and this module's GC path, but tracked in independent
  *     `RetentionPolicy` instances so pruning one never touches the other.
  *
  * A WorkspaceCheckpoint is a whole-workspace filesystem snapshot stored as a
- * commit object in a hidden side git repository (see side-git.ts) — never a
+ * commit object in a hidden side git repository (see side-git.ts), never a
  * conversation snapshot, never mixed with the user's real git history.
  */
 
@@ -25,11 +25,11 @@ export type { RetentionClass };
 /**
  * What triggered a checkpoint to be created.
  *
- * - `turn`      — automatic snapshot taken at a conversation turn boundary
+ * - `turn`     , automatic snapshot taken at a conversation turn boundary
  *                 (TURN_COMPLETED / TURN_ERROR / TURN_CANCEL).
- * - `agent-run` — automatic snapshot taken after a spawned agent's changes
+ * - `agent-run`, automatic snapshot taken after a spawned agent's changes
  *                 have been merged into the main workspace (AGENT_COMPLETED).
- * - `manual`    — explicit user-requested checkpoint (e.g. TUI `/checkpoint`).
+ * - `manual`   , explicit user-requested checkpoint (e.g. TUI `/checkpoint`).
  */
 export type CheckpointKind = 'turn' | 'agent-run' | 'manual';
 
@@ -61,7 +61,7 @@ export interface WorkspaceCheckpoint {
    * Session id this checkpoint belongs to, when the snapshot path could
    * resolve one (an explicit `create({ sessionId })`, or an automatic snapshot
    * whose turn/agent resolved to a session via the manager's `resolveSessionId`
-   * hook). Absent when no session was in scope — never fabricated. This is the
+   * hook). Absent when no session was in scope, never fabricated. This is the
    * linkage that lets a remote surface ask "what changed in THIS session"
    * (`sessions.changes.get`) and filter `list({ sessionId })`; it is also the
    * join key a future unified message-anchored rewind will use to line
@@ -96,7 +96,7 @@ export interface CheckpointDiff {
 }
 
 /**
- * Result of `WorkspaceCheckpointManager.sessionChanges()` — the aggregate file
+ * Result of `WorkspaceCheckpointManager.sessionChanges()`, the aggregate file
  * changes a single session made, computed by diffing the state BEFORE the
  * session's earliest checkpoint (its parent, or the empty tree when the
  * session's first checkpoint was the first one ever taken) against the

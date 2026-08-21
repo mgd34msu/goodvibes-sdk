@@ -293,8 +293,8 @@ describe('daily snapshots with bounded retention', () => {
     // the SAME real calendar day (the consumer's failing scenario): the
     // snapshot's mtime is stamped with the LOGICAL creation time, so the
     // day-boundary comparison sees the injected clock, never the real
-    // filesystem time. (Kept near today so the default retention policy —
-    // which runs on the real clock — never prunes the fresh snapshot.)
+    // filesystem time. (Kept near today so the default retention policy,
+    // which runs on the real clock, never prunes the fresh snapshot.)
     const startOfToday = new Date();
     startOfToday.setUTCHours(0, 30, 0, 0);
     let logicalNow = startOfToday.getTime();

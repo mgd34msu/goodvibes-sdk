@@ -26,11 +26,11 @@ import {
 /**
  * The five supported execution strategies.
  *
- * - `auto`       — planner selects the best strategy each turn
- * - `single`     — one LLM call, no parallelism or agents
- * - `cohort`     — fan-out to a coordinated agent cohort
- * - `background` — defer execution to a background task
- * - `remote`     — delegate to a remote provider/agent endpoint
+ * - `auto`      , planner selects the best strategy each turn
+ * - `single`    , one LLM call, no parallelism or agents
+ * - `cohort`    , fan-out to a coordinated agent cohort
+ * - `background`, defer execution to a background task
+ * - `remote`    , delegate to a remote provider/agent endpoint
  */
 export type ExecutionStrategy = 'auto' | 'single' | 'cohort' | 'background' | 'remote';
 
@@ -91,8 +91,8 @@ export interface StrategyCandidate {
 
 /**
  * The outcome of the deterministic "does this task warrant decomposition?"
- * gate. This is a semantic projection of the existing strategy selection —
- * `decompose` is simply `selected !== 'single'` — so every existing reason
+ * gate. This is a semantic projection of the existing strategy selection,
+ * `decompose` is simply `selected !== 'single'`, so every existing reason
  * code and the `/plan explain` output stay authoritative. No new scoring
  * logic lives here.
  */
@@ -216,7 +216,7 @@ function scoreStrategy(
     }
 
     case 'auto':
-      // 'auto' itself is not scored as a candidate — it triggers evaluation of others
+      // 'auto' itself is not scored as a candidate, it triggers evaluation of others
       return { score: -1, reasonCode: 'AUTO_FALLBACK_SINGLE' };
   }
 }
@@ -318,7 +318,7 @@ export class AdaptivePlanner {
    * multi-phase workstream, or is a single-item workstream the honest
    * answer?
    *
-   * This calls the existing `select()` pipeline — no new scoring logic — and
+   * This calls the existing `select()` pipeline, no new scoring logic, and
    * projects the result: `decompose` is `selected !== 'single'`. Because it
    * goes through `select()`, the decision is appended to the same audit
    * history as every other planner call, and `/plan explain` / `/plan
@@ -337,14 +337,14 @@ export class AdaptivePlanner {
    * Produce a typed `PlanProposal` for the given inputs.
    *
    * `AdaptivePlanner` never spawns a planning agent and never performs LLM
-   * decomposition itself — it only gates (via `shouldDecompose`) and
+   * decomposition itself, it only gates (via `shouldDecompose`) and
    * validates/assembles (via `assemblePlanProposal`, in `plan-proposal.ts`).
    * The raw decomposition, if any, is expected to come from a planning
    * agent that the ORCHESTRATION ENGINE spawns and hands back here.
    *
    * - If the gate says decomposition is not warranted, or no raw
    *   decomposition is available yet, this returns the honest single-item
-   *   fallback (`singleItemProposal`) — never a partially-assembled guess.
+   *   fallback (`singleItemProposal`), never a partially-assembled guess.
    * - Otherwise it validates `raw` via `assemblePlanProposal`, which never
    *   throws: malformed decompositions degrade to an honest partial result
    *   plus a list of `issues`.
@@ -370,7 +370,7 @@ export class AdaptivePlanner {
    * Set the operating mode for future calls to `select()`.
    *
    * Setting to `'auto'` clears any pinned mode (but does NOT clear a user
-   * override — use `clearOverride()` for that).
+   * override, use `clearOverride()` for that).
    */
   setMode(mode: ExecutionStrategy): void {
     this.mode = mode;

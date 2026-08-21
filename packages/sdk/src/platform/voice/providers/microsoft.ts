@@ -100,7 +100,7 @@ export function createMicrosoftProvider(): VoiceProvider {
       try {
         // `node-edge-tts` is an optionalDependency: reached here, at the one
         // call that needs it, rather than at module init. A static import made
-        // every graph containing this provider — the daemon's included —
+        // every graph containing this provider, the daemon's included,
         // unloadable when the package was absent; see
         // utils/optional-dependency.ts for the measured failure.
         const loaded = await loadOptionalDependency('node-edge-tts', () => import('node-edge-tts'));

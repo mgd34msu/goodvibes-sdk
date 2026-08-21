@@ -1,5 +1,5 @@
 /**
- * atomic-json-store — the two file mechanics every on-disk JSON store in this
+ * atomic-json-store, the two file mechanics every on-disk JSON store in this
  * platform shares, in one place.
  *
  * This module lives under `utils/` deliberately: `utils/` is the documented
@@ -11,13 +11,13 @@
  *
  * The two mechanics:
  *
- *   1. {@link writeFileAtomic} / {@link writeJsonFileAtomic} — write to a
+ *   1. {@link writeFileAtomic} / {@link writeJsonFileAtomic}, write to a
  *      sibling temp file in the same directory as the target (so the later
  *      rename stays on one filesystem), fsync the descriptor before closing
  *      it, chmod it to the exact requested mode (so the result does not depend
  *      on the process umask), then `renameSync` it over the target.
- *      `rename(2)` is atomic on POSIX: a concurrent reader — and a process
- *      that dies mid-write — can only ever observe the previous complete file
+ *      `rename(2)` is atomic on POSIX: a concurrent reader, and a process
+ *      that dies mid-write, can only ever observe the previous complete file
  *      or the new complete one, never a torn write.
  *
  *      The temp name is unique per WRITE, not per process
@@ -27,37 +27,37 @@
  *      module used to name the temp file `<name>.tmp-<pid>` and sweep every
  *      `<name>.tmp-*` it found, on the reasoning that a temp file for this
  *      store could only be a dead process's leftover. It could also be a
- *      SECOND LIVE WRITER's file — another process writing the same shared
+ *      SECOND LIVE WRITER's file, another process writing the same shared
  *      store, or the same process writing the same store from a worker
  *      thread. Writer B's sweep (or, with a shared name, writer B's rename)
  *      then deleted writer A's temp file out from under it, and writer A's
  *      next `chmodSync` died with
  *      `ENOENT: no such file or directory, chmod '…/watchers.json.tmp-905081'`
- *      — a real crash that killed a running agent. With a per-write name,
+ *     , a real crash that killed a running agent. With a per-write name,
  *      writer A and writer B never share a path; with an age-gated sweep, a
  *      temp file young enough to belong to a write still in progress is left
  *      alone and only genuine crash leftovers are reclaimed.
  *
  *      There is deliberately NO in-process write lock. Every step above is a
  *      synchronous `node:fs` call with no await between them, so two writes of
- *      one store cannot interleave on one thread — and a JavaScript lock
+ *      one store cannot interleave on one thread, and a JavaScript lock
  *      cannot span worker threads or separate processes, which is where the
  *      real concurrency lives. Ordering is settled by `rename(2)` instead:
  *      whichever writer renames last wins, whole.
  *
  *      A write that fails still throws, because most stores must not report a
  *      save that did not happen. Callers whose failure policy is genuinely
- *      log-and-continue — periodic snapshots that rebuild themselves — use
+ *      log-and-continue, periodic snapshots that rebuild themselves, use
  *      {@link writeJsonFileAtomicSafe}, which logs the path and errno loudly
  *      and returns an {@link AtomicWriteOutcome} instead of throwing.
  *
- *   2. {@link readJsonFileOrQuarantine} — a file this reader cannot trust
+ *   2. {@link readJsonFileOrQuarantine}, a file this reader cannot trust
  *      (unparseable JSON, a torn or zero-tailed write, the wrong shape) is
  *      moved aside to `<name>.corrupt-<ISO>-<8char>` with a sibling `.why`
  *      receipt, logged loudly at error level, and reported to the caller as
  *      the ordinary "absent" answer (`null`) so the caller rebuilds instead of
- *      crashing. The original file is never deleted and never overwritten —
- *      only renamed — so the evidence survives for inspection. Quarantine
+ *      crashing. The original file is never deleted and never overwritten,
+ *      only renamed, so the evidence survives for inspection. Quarantine
  *      files are bounded at {@link CORRUPT_QUARANTINE_MAX_FILES} per store,
  *      oldest reaped first, and the reap is disclosed in the newest receipt.
  */
@@ -83,7 +83,7 @@ import { logger } from './logger.js';
 /**
  * Hard ceiling on `.corrupt-*` files kept per store directory, oldest reaped
  * first. A flapping writer that corrupts its file on every boot must not be
- * allowed to fill the disk with forensic copies — "a handful" is enough to
+ * allowed to fill the disk with forensic copies, "a handful" is enough to
  * look at what went wrong without becoming a leak.
  */
 export const CORRUPT_QUARANTINE_MAX_FILES = 5;
@@ -96,8 +96,8 @@ export const CORRUPT_QUARANTINE_MAX_FILES = 5;
  * progress by name alone, so it uses age: a temp file written within the last
  * minute may still belong to a live write (another process, or this one on a
  * worker thread) and is left strictly alone. One minute is far longer than any
- * store here takes to serialize, open, write, fsync, chmod and rename — a few
- * hundred kilobytes of JSON at most — so a leftover from a process that really
+ * store here takes to serialize, open, write, fsync, chmod and rename, a few
+ * hundred kilobytes of JSON at most, so a leftover from a process that really
  * did die becomes eligible on the next write a minute later, while a live
  * writer is never robbed of its temp file.
  */
@@ -176,7 +176,7 @@ export function writeFileAtomic(filePath: string, contents: string, options: Ato
     try {
       unlinkSync(tmpPath);
     } catch {
-      // Best-effort cleanup — the original error takes priority, and the
+      // Best-effort cleanup, the original error takes priority, and the
       // stale-temp sweep above will catch this next time regardless.
     }
     throw error;
@@ -232,7 +232,7 @@ function describeWriteFailure(error: unknown): { code?: string; syscall?: string
  * This exists because a periodic snapshot must never be able to kill its host.
  * A watcher-store write that failed inside a fleet tick propagated out of a
  * timer callback with nothing above it to catch it, and the whole agent
- * process died — from a store whose entire recovery story is "it rebuilds from
+ * process died, from a store whose entire recovery story is "it rebuilds from
  * live registrations on the next load". Stores where a silent failure would be
  * a lie (settings, secrets, pairing tokens, anything a user just asked to
  * save) keep using {@link writeJsonFileAtomic} and keep throwing.
@@ -273,13 +273,13 @@ export interface QuarantineLoadOptions<T> {
   readonly label: string;
   /**
    * Narrow the parsed JSON to the store's shape. Throw with a human-readable
-   * reason when the content cannot be trusted — that reason is what lands in
+   * reason when the content cannot be trusted, that reason is what lands in
    * the `.why` receipt and the error log.
    */
   readonly validate: (parsed: unknown) => T;
   /**
    * One sentence for the `.why` receipt describing what happens now that the
-   * file is gone — i.e. how this store rebuilds. Written for a human reading
+   * file is gone, i.e. how this store rebuilds. Written for a human reading
    * the receipt months later with no other context.
    */
   readonly recovery: string;
@@ -289,7 +289,7 @@ export interface QuarantineLoadOptions<T> {
  * Read and parse a JSON store file, never throwing on corrupt content.
  *
  * Returns `null` both when the file does not exist and when it existed but
- * could not be trusted — in the latter case the file is quarantined first (see
+ * could not be trusted, in the latter case the file is quarantined first (see
  * the module docstring). Callers treat `null` as "no store yet" and rebuild.
  *
  * A read failure (permissions, the file vanishing between the exists check and
@@ -354,7 +354,7 @@ export function quarantineCorruptFile(filePath: string, options: QuarantineOptio
   // The just-quarantined file is excluded from reaping by name: its .why is
   // written only after the reap, so on a filesystem with coarse mtimes an
   // all-tie sort could otherwise pick it as the "oldest" victim and leave the
-  // receipt written below orphaned — the exact failure a matrix runner caught.
+  // receipt written below orphaned, the exact failure a matrix runner caught.
   const reapResult = moved
     ? reapCorruptQuarantineFiles(dir, base, basename(quarantinePath))
     : { scanned: 0, reaped: 0 };
@@ -378,7 +378,7 @@ export function quarantineCorruptFile(filePath: string, options: QuarantineOptio
     }
   }
 
-  logger.error(`[${label}] store file was corrupt and has been quarantined; ${recovery} — ${reason}`, {
+  logger.error(`[${label}] store file was corrupt and has been quarantined; ${recovery}, ${reason}`, {
     filePath,
     quarantinePath: moved ? quarantinePath : undefined,
     reaped: reapResult.reaped,
@@ -392,7 +392,7 @@ export function quarantineCorruptFile(filePath: string, options: QuarantineOptio
  * Age is the only signal available: the name says which process and which
  * write produced a temp file, but not whether that write is still running. A
  * temp file modified within {@link STALE_TEMP_FILE_MIN_AGE_MS} may belong to a
- * write in progress in another process — or in this one, on a worker thread —
+ * write in progress in another process, or in this one, on a worker thread,
  * and deleting it makes that writer's own `chmod` or `rename` fail with
  * ENOENT. That is exactly how a live agent process died, so the young ones are
  * left strictly alone here; the next write a minute later reclaims anything
@@ -429,7 +429,7 @@ function cleanupStaleTempFiles(dir: string, filePath: string): void {
         ageMs: Math.max(0, Date.now() - modifiedAtMs),
       });
     } catch {
-      // Best-effort — a concurrent writer or a permissions issue must not
+      // Best-effort, a concurrent writer or a permissions issue must not
       // block this save.
     }
   }
@@ -444,7 +444,7 @@ function cleanupStaleTempFiles(dir: string, filePath: string): void {
 function reapCorruptQuarantineFiles(
   dir: string,
   base: string,
-  /** The quarantine file created by the caller in this same pass — never a victim. */
+  /** The quarantine file created by the caller in this same pass, never a victim. */
   currentName?: string,
 ): { scanned: number; reaped: number } {
   const prefix = `${base}.corrupt-`;
@@ -458,7 +458,7 @@ function reapCorruptQuarantineFiles(
   const quarantineNames = new Set(names.filter((name) => name.startsWith(prefix) && !name.endsWith('.why')));
 
   // Self-heal: a .why with no surviving quarantine file discloses nothing and
-  // keeps nothing — delete it, whatever past interruption produced it.
+  // keeps nothing, delete it, whatever past interruption produced it.
   for (const name of names) {
     if (!name.startsWith(prefix) || !name.endsWith('.why')) continue;
     if (!quarantineNames.has(name.slice(0, -'.why'.length))) {
@@ -501,12 +501,12 @@ function reapCorruptQuarantineFiles(
         unlinkSync(victim.full);
         reaped += 1;
       } catch {
-        // Best-effort — a file another sweeper already removed counts as reclaimed.
+        // Best-effort, a file another sweeper already removed counts as reclaimed.
       }
       try {
         unlinkSync(`${victim.full}.why`);
       } catch {
-        // The receipt may not exist (an earlier write failure) — not an error.
+        // The receipt may not exist (an earlier write failure), not an error.
       }
     }
   }

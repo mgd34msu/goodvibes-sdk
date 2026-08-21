@@ -1,5 +1,5 @@
 /**
- * spine-adoption.ts — wiring a surface's session and memory spines to the
+ * spine-adoption.ts, wiring a surface's session and memory spines to the
  * daemon it adopted.
  *
  * ── The one branch here ────────────────────────────────────────────────────
@@ -7,10 +7,10 @@
  * Adopted, or not. A surface does not host a daemon: it adopts one running
  * separately, and the wire mirror comes up for exactly that case. Every other
  * mode (`disabled`, `blocked`, `incompatible`, `unavailable`) means the same
- * honest thing — no daemon, local only, nothing mirrored.
+ * honest thing, no daemon, local only, nothing mirrored.
  *
  * `HostServiceMode` still carries an `embedded` member, and it means one real
- * thing: the in-process HTTP listener reports it. No daemon does — a host never
+ * thing: the in-process HTTP listener reports it. No daemon does, a host never
  * hosts a daemon, it adopts one running separately or spawns the standalone
  * `goodvibes-daemon` binary as a detached process and adopts that. So this file
  * branches on "is there a daemon to mirror to", never on "who is hosting it":
@@ -19,16 +19,16 @@
  * ── What crosses the wire ──────────────────────────────────────────────────
  *
  * Session IDENTITY, not session execution. The conversation itself still runs
- * in the surface; what the daemon holds is the register — which sessions exist,
+ * in the surface; what the daemon holds is the register, which sessions exist,
  * which surface is live on each, and the inputs queued against them. Concretely,
  * on adoption this wires:
  *
- *   - `sessions.register` / `sessions.close` — the identity mirror, deliberately
+ *   - `sessions.register` / `sessions.close`, the identity mirror, deliberately
  *     fire-and-forget so a slow daemon never shows up in a keystroke.
- *   - `sessions.inputs.list` / `sessions.inputs.deliver` — the inbound steer
+ *   - `sessions.inputs.list` / `sessions.inputs.deliver`, the inbound steer
  *     path, so a message another surface queued for THIS session lands in the
  *     turn machinery here and is acknowledged on the wire.
- *   - `sessions.list` — the cross-surface union the views read, interval-
+ *   - `sessions.list`, the cross-surface union the views read, interval-
  *     refreshed and served synchronously.
  *   - the memory spine's wire transport, on the same adoption signal.
  *
@@ -47,8 +47,8 @@
  *   IS the signal) wires as soon as it is handed a base URL and lets the spine
  *   client's own reachability handling deal with a daemon that is not there.
  *
- * The reconcile policy below — idempotent per base URL, tear down on a change,
- * fold once — is identical either way, which is why the timing is an OPTION and
+ * The reconcile policy below, idempotent per base URL, tear down on a change,
+ * fold once, is identical either way, which is why the timing is an OPTION and
  * not a second implementation.
  */
 import { foldLegacySpineStore, type SessionSpineClient, type SpineTransport } from '../session-spine/index.js';
@@ -167,7 +167,7 @@ export function createSpineAdoptionSync(
       } else {
         options.sessionUnionCache.deactivate(`daemon mode '${signal.mode}'`);
       }
-      log.info(`[bootstrap] session spine: daemon mode '${signal.mode}' — local-only (no spine mirror)`);
+      log.info(`[bootstrap] session spine: daemon mode '${signal.mode}', local-only (no spine mirror)`);
       return;
     }
 
@@ -179,14 +179,14 @@ export function createSpineAdoptionSync(
     if (options.memorySpine && wire.memoryTransport) {
       options.memorySpine.activate(wire.memoryTransport);
       memoryActiveForBaseUrl = baseUrl;
-      log.info(`[bootstrap] memory spine: adopted daemon at ${baseUrl} — routing memory ops over the wire`);
+      log.info(`[bootstrap] memory spine: adopted daemon at ${baseUrl}, routing memory ops over the wire`);
     }
     options.sessionSpine.activate(wire.sessionTransport);
     options.sessionInboundInputs.activate(wire.inboundInputs);
     options.onAdopted?.(wire.inboundInputs);
     options.sessionUnionCache.activate(wire.sessionList);
     activeForBaseUrl = baseUrl;
-    log.info(`[bootstrap] session spine: adopted daemon at ${baseUrl} — mirroring session identity`);
+    log.info(`[bootstrap] session spine: adopted daemon at ${baseUrl}, mirroring session identity`);
 
     // One-time, marker-guarded import of this project's own pre-spine sessions.
     const fold = foldLegacySpineStore(options.sessionSpine, {

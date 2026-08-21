@@ -23,7 +23,7 @@ import type { InboundMailSupervisor } from '../../email/inbound/supervisor.js';
  *
  * `status` is deliberately gone. `BuiltinChannelRuntime.inboundMailStatus()`
  * was its only reader and had no readers of its own, and every field it
- * returned — `mode`, `reason`, `running` — is already on the health entry that
+ * returned, `mode`, `reason`, `running`, is already on the health entry that
  * `/api/channels/status` serves (`health.ts`: `mode` and `reason` are named
  * fields, `running` is `metadata.running`). Keeping the member so a second
  * accessor could answer the same question from the same object is how the two
@@ -88,13 +88,13 @@ export interface BuiltinChannelRuntimeDeps {
    * Owned here for the same reason the Telegram ingress supervisor is
    * (docs/inbound-email.md §3.5): inbound mail is a poll/socket lifecycle that
    * must be armed at boot and torn down with the daemon, not a webhook that
-   * arrives on its own. Absent in embedders that watch no mailbox — the
+   * arrives on its own. Absent in embedders that watch no mailbox, the
    * cluster registration then reports why nothing is watched rather than
    * electing a node for a surface it cannot serve.
    *
    * Note what this is NOT: email does not join `ManagedSurface`. That union
-   * means a channel the daemon talks TO — accounts, delivery, ingress
-   * authorization, conversation routing — and §2.1 removes those from inbound
+   * means a channel the daemon talks TO, accounts, delivery, ingress
+   * authorization, conversation routing, and §2.1 removes those from inbound
    * mail structurally. Widening it to fit email in would hand every one of
    * them back by inheritance.
    */
@@ -116,8 +116,8 @@ export interface BuiltinChannelRuntimeDeps {
  * The `surfaces.*` sections that are CHANNEL ADAPTERS.
  *
  * Not every section under `surfaces.` is one. `surfaces.email` and
- * `surfaces.calendar` are the daemon's own mailbox and calendar — the account
- * it acts AS rather than a service it talks TO — and they live under the same
+ * `surfaces.calendar` are the daemon's own mailbox and calendar, the account
+ * it acts AS rather than a service it talks TO, and they live under the same
  * prefix because they share its daemon-ownership rule, not because they are
  * adapters. Plain `keyof SurfacesConfig` swept them in, and the first thing
  * that broke was `getConfiguredSetupVersion` reading `.setupVersion` off a

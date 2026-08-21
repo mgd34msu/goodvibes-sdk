@@ -1,5 +1,5 @@
 /**
- * cache-registry.ts — the single owner of every in-memory cache / pool the
+ * cache-registry.ts, the single owner of every in-memory cache / pool the
  * daemon retains, so the MemoryGovernor can see and shrink them under pressure.
  *
  * The daemon OOM'd because retained-context growth was invisible: no component
@@ -8,7 +8,7 @@
  * cache the daemon keeps registers here with an id, a live entry count, an
  * optional byte estimate, and a `trim(level)` the governor can drive. A
  * fail-closed membership check (assertMemoryCacheRegistered) throws on an
- * unregistered id, so a new cache cannot ship invisible to the governor — the
+ * unregistered id, so a new cache cannot ship invisible to the governor, the
  * same discipline as the append-only-store and feature-gate-id checks.
  *
  * Even bounded caches (ring buffers, capped catalogs) register: visibility is
@@ -19,9 +19,9 @@ import { logger } from '../../utils/logger.js';
 
 /** How hard the governor is asking a cache to shrink. */
 export type CacheTrimLevel =
-  /** Shrink to a small working floor — keep only what an active request needs. */
+  /** Shrink to a small working floor, keep only what an active request needs. */
   | 'floor'
-  /** Drop everything reclaimable — the daemon is under real pressure. */
+  /** Drop everything reclaimable, the daemon is under real pressure. */
   | 'flush';
 
 /** A cache/pool the governor can observe and shrink. */
@@ -38,7 +38,7 @@ export interface RegisteredCache {
 
 /**
  * Every cache class the daemon retains AND can genuinely observe + shrink.
- * Extend this when adding one — the membership check fails loudly on an id not
+ * Extend this when adding one, the membership check fails loudly on an id not
  * listed here, and a registration whose trim is a no-op is a defect (it makes
  * the governor's shed tiers theater): every entry here must come with a real
  * entryCount and a trim that actually reclaims.
@@ -64,7 +64,7 @@ export function isMemoryCacheRegistered(id: string): boolean {
 
 /**
  * Fail-closed membership check: throw when `id` is not a known cache class.
- * Mirrors assertAppendOnlyStoreRegistered — an unregistered cache would be
+ * Mirrors assertAppendOnlyStoreRegistered, an unregistered cache would be
  * invisible to the governor and could grow unowned, so it fails loudly.
  */
 export function assertMemoryCacheRegistered(id: string, context: string): void {
@@ -113,7 +113,7 @@ export class CacheRegistry {
     return this.caches.has(id);
   }
 
-  /** Snapshot every registered cache's footprint (never throws — a bad cache is logged and skipped). */
+  /** Snapshot every registered cache's footprint (never throws, a bad cache is logged and skipped). */
   footprints(): CacheFootprint[] {
     const out: CacheFootprint[] = [];
     for (const [id, cache] of this.caches) {

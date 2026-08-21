@@ -1,5 +1,5 @@
 /**
- * durability-services.ts — the data-safety and remembered-decision stores a
+ * durability-services.ts, the data-safety and remembered-decision stores a
  * host composition wires, alongside createRuntimeServices:
  *
  *  - StoreSnapshotScheduler: a daily snapshot of every SQLite store this
@@ -8,24 +8,24 @@
  *    scheduler cannot pin the event loop; hosts that tear down a runtime
  *    stop() it themselves.
  *  - UserPermissionRuleStore: durable user-origin permission rules
- *    (remembered approvals) — one store per project, shared by every
+ *    (remembered approvals), one store per project, shared by every
  *    PermissionManager built on this runtime; permissions.rules.*
  *    lists/deletes. Background init is fail-safe (asks just prompt).
  *  - One credential chain (env -> secrets -> subscription): boot applies
  *    secrets-backed keys; every secrets write/delete re-registers builtins
- *    LIVE (no restart) — badges/picker/chat read the same instances.
+ *    LIVE (no restart), badges/picker/chat read the same instances.
  *  - Start-time retention janitor: one best-effort append-only sweep over
  *    EVERY root the composition knows (working dir, surface root, home,
- *    logDir, telemetryDir) — omitting logDir/telemetryDir/home would silently
+ *    logDir, telemetryDir), omitting logDir/telemetryDir/home would silently
  *    skip the activity-log, telemetry-ledger, and recovery-snapshot stores.
  *  - Durability housekeeping: the crash-residue reclaim the retention janitor
- *    above does NOT cover — stale liveness markers, orphaned transcript
+ *    above does NOT cover, stale liveness markers, orphaned transcript
  *    journals, `.unrecognized` quarantine files, and anchor sidecars whose
  *    session is gone (see durability-housekeeping.ts). It runs at startup AND
  *    on a repeating unref'd timer, because a long-lived process that only
  *    sweeps at boot never sweeps; the returned disposer stops that timer.
  *  - Live config-file watch: external edits to the settings file apply through
- *    the same subscribe() pipeline an in-process set() uses — no restart. The
+ *    the same subscribe() pipeline an in-process set() uses, no restart. The
  *    underlying watchers are unref'd, so this never pins the event loop.
  */
 import { join } from 'node:path';
@@ -59,7 +59,7 @@ export interface DurabilityServicesInput {
   /**
    * The session id this process is currently using, read at each sweep. When
    * omitted the crash-residue reap still protects live artefacts through its
-   * age and liveness rules — this is the explicit belt-and-braces guard.
+   * age and liveness rules, this is the explicit belt-and-braces guard.
    */
   /**
    * Resolves the live session id, read fresh on every crash-residue sweep so
@@ -70,7 +70,7 @@ export interface DurabilityServicesInput {
    * snapshot is accepted, and this sweep repeats for the life of the process.
    *
    * Omitting it is not merely untidy. The journal reaper's other guard is the
-   * liveness marker, and that marker goes stale after 150 seconds — so a host
+   * liveness marker, and that marker goes stale after 150 seconds, so a host
    * that passes nothing here is trusting a heartbeat that a single long
    * blocking turn can outrun, and an in-process sweep landing in that window
    * would delete the journal of the session currently writing it. Passing this
@@ -114,7 +114,7 @@ export function createDurabilityServices(input: DurabilityServicesInput): Durabi
 
   // Start-time retention janitor: pass EVERY root the composition knows so the
   // activity-log, telemetry-ledger, and recovery-snapshot stores are all swept.
-  // Best-effort — a retention failure never takes startup down (the sweep
+  // Best-effort, a retention failure never takes startup down (the sweep
   // swallows its own errors).
   const appendOnlyRetentionRoots = {
     workingDirectory: input.surface.workingDirectory,
@@ -145,7 +145,7 @@ export function createDurabilityServices(input: DurabilityServicesInput): Durabi
   });
   // External config edits apply LIVE through the same subscribe() pipeline an
   // in-process set() uses; the underlying watchers are unref'd. The returned
-  // handle is the only way to stop them — dropping it left a 250ms poll running
+  // handle is the only way to stop them, dropping it left a 250ms poll running
   // for the life of the process after the graph that started it was gone.
   const stopConfigWatch = configManager.watchConfigFiles();
 

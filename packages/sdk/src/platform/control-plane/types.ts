@@ -31,8 +31,8 @@ export type ControlPlaneClientSurface =
  * Identical to {@link ControlPlaneClientSurface} but for the last member: a
  * stream opened by the daemon itself declares `daemon`, which the gateway maps
  * onto the `service` surface when it records the client. The union is named
- * here because gateway.ts spelled all nineteen members out twice — once for the
- * stream options and once for the live-client record — and two copies of one
+ * here because gateway.ts spelled all nineteen members out twice, once for the
+ * stream options and once for the live-client record, and two copies of one
  * list is how a kind ends up accepted on one path and rejected on the other.
  */
 export type ControlPlaneStreamClientKind =

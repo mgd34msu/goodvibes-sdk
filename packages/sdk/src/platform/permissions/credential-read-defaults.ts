@@ -1,5 +1,5 @@
 /**
- * credential-read-defaults.ts — SHIPPED default protection for reads of
+ * credential-read-defaults.ts, SHIPPED default protection for reads of
  * well-known credential files/directories.
  *
  * These are ORDINARY permission-settings defaults the user can override, NOT
@@ -11,7 +11,7 @@
  *
  * Two shipped surfaces, both overridable:
  *   1. Default posture (any mode that auto-allows reads): a read whose path
- *      matches a credential store is NOT silently auto-allowed — it falls
+ *      matches a credential store is NOT silently auto-allowed, it falls
  *      through to the ask/prompt path. Approving once (session cache), switching
  *      to allow-all, or a user policy allow-rule all override it.
  *   2. Policy engine (when enabled): SHIPPED_CREDENTIAL_READ_RULES are managed
@@ -28,7 +28,7 @@ import { globBodyToRegexSource } from '../utils/glob-to-regex.js';
  * `/` with a leading `/**​/` so they match the store wherever the user's home is
  * (`/home/<u>/.ssh/id_rsa`, `/Users/<u>/.ssh/id_rsa`, …) without hardcoding a
  * home directory. `.env` outside the workspace is handled separately (it needs
- * the project root) — see {@link matchesShippedCredentialReadPath}.
+ * the project root), see {@link matchesShippedCredentialReadPath}.
  */
 export const CREDENTIAL_READ_PATH_PATTERNS: readonly string[] = [
   '/**/.ssh/**',
@@ -81,7 +81,7 @@ export interface CredentialReadMatch {
  * Whether `rawPath` names a well-known credential store that the shipped default
  * protects. Absolute paths match directly; relative paths resolve against
  * `projectRoot` (or cwd). A `.env`/`.env.*` file matches ONLY when it resolves
- * OUTSIDE the workspace — a workspace-local `.env` is left alone.
+ * OUTSIDE the workspace, a workspace-local `.env` is left alone.
  */
 export function matchesShippedCredentialReadPath(
   rawPath: string,

@@ -1,5 +1,5 @@
 /**
- * oauth-client-config.ts — reading the operator's own OAuth app credentials out
+ * oauth-client-config.ts, reading the operator's own OAuth app credentials out
  * of config, so a flow runs on what THEY registered.
  *
  * No client id ships with the product. Whoever sets up a GoodVibes environment
@@ -17,7 +17,7 @@
  *    `ConfigManager.resolvePath` throws `Invalid config path` for a section that
  *    is not on the live config object. On a machine where nobody has run setup
  *    the section is simply absent, and "no calendar account is connected" is the
- *    honest answer to that — not a 500. Same reasoning as
+ *    honest answer to that, not a 500. Same reasoning as
  *    `google/config-access.ts`, which this mirrors.
  *  - The client SECRET is never in config. Config holds a reference under
  *    `clientSecretRefConfigKey`; the value lives in the secret store under the
@@ -37,7 +37,7 @@ import type { OAuthClientOverrides, OAuthProviderProfile } from './oauth-types.j
 /**
  * The narrow config read this module needs: one `get(key)` that may throw for an
  * absent section. Structural rather than a nominal ConfigManager import, so the
- * calendar module stays free of the manager's dependency graph — the same shape
+ * calendar module stays free of the manager's dependency graph, the same shape
  * the connector's other injected boundaries use.
  */
 export interface CalendarConfigReader {
@@ -109,7 +109,7 @@ export async function readCalendarClientOverrides(
     } catch {
       // A secret store that cannot be read leaves the secret absent. The flow
       // then either succeeds (a public client never needed one) or fails at the
-      // provider with that provider's own reason — both of which are honest,
+      // provider with that provider's own reason, both of which are honest,
       // and neither of which should take out a status read.
       clientSecret = null;
     }

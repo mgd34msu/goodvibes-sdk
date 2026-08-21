@@ -8,7 +8,7 @@
  *
  * The defect this closes: the daemon really stores a Google client id, a
  * Gmail app-password reference and a calendar OAuth refresh token under
- * these paths, but nothing declared them to `CONFIG_SCHEMA` — so the
+ * these paths, but nothing declared them to `CONFIG_SCHEMA`, so the
  * settings surface's authority (`isValidConfigKey` / `configManager.getSchema()`,
  * both reading `CONFIG_SCHEMA`) answered "Unknown setting
  * calendar.google.clientId" for a key the daemon genuinely reads and writes,
@@ -40,7 +40,7 @@ afterEach(() => {
   for (const root of tmpRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-/** A hermetic ConfigManager over a throwaway temp directory — never ~/.goodvibes. */
+/** A hermetic ConfigManager over a throwaway temp directory, never ~/.goodvibes. */
 function freshManager(): ConfigManager {
   const root = mkdtempSync(join(tmpdir(), 'gv-connector-schema-'));
   tmpRoots.push(root);

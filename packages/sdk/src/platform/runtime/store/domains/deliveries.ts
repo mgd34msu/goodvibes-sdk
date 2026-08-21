@@ -1,5 +1,5 @@
 /**
- * Delivery domain state — outbound delivery attempts and their outcomes.
+ * Delivery domain state, outbound delivery attempts and their outcomes.
  */
 
 import type { AutomationDeliveryAttempt } from '../../../automation/delivery.js';

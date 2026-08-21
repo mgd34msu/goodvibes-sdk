@@ -1,12 +1,12 @@
 /**
- * mcp/server — a local-first Model Context Protocol server that exposes the
+ * mcp/server, a local-first Model Context Protocol server that exposes the
  * GoodVibes daemon's operator surface as MCP tools, generated from the operator
  * catalog rather than hand-written, so an external agent tool can drive
  * GoodVibes sessions.
  *
- * - tool-definitions.ts — generate MCP tools from an operator contract manifest.
- * - session-tools.ts     — the first-class session lifecycle tool set.
- * - stdio-server.ts       — the JSON-RPC 2.0 protocol core + a newline-delimited
+ * - tool-definitions.ts, generate MCP tools from an operator contract manifest.
+ * - session-tools.ts    , the first-class session lifecycle tool set.
+ * - stdio-server.ts      , the JSON-RPC 2.0 protocol core + a newline-delimited
  *                           (stdio) transport.
  *
  * The transport that reaches the daemon is injected (`OperatorMcpInvoker`), so
@@ -71,7 +71,7 @@ export interface CreateOperatorMcpServerOptions {
 /**
  * Build a ready-to-serve MCP server from an operator contract and an invoker.
  * The contract is passed in (not imported here) so this module never pulls in
- * the large generated contract artifact — a caller supplies `getOperatorContract()`.
+ * the large generated contract artifact, a caller supplies `getOperatorContract()`.
  */
 export function createOperatorMcpServer(options: CreateOperatorMcpServerOptions): OperatorMcpServer {
   const toolSet = buildOperatorMcpTools(options.contract, options.tools);

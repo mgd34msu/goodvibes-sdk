@@ -27,7 +27,7 @@ const DISCOVERED_ACP_AGENT_SCHEMA = objectSchema({
   args: arraySchema(STRING_SCHEMA),
 }, ['id', 'title', 'binaryPath', 'args']);
 
-/** The structured, user-renderable handshake failure — which binary, which stage, what happened. */
+/** The structured, user-renderable handshake failure, which binary, which stage, what happened. */
 const ACP_HOST_ERROR_SCHEMA = objectSchema({
   binary: STRING_SCHEMA,
   stage: STRING_SCHEMA,
@@ -54,7 +54,7 @@ export const builtinGatewayAcpMethodDescriptors: readonly GatewayMethodDescripto
   methodDescriptor({
     id: 'acp.agents.list',
     title: 'List Installed Third-Party Coding Agents',
-    description: 'READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories — no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.',
+    description: 'READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories, no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.',
     category: 'acp',
     scopes: ['read:fleet'],
     transport: ['ws'],
@@ -65,7 +65,7 @@ export const builtinGatewayAcpMethodDescriptors: readonly GatewayMethodDescripto
   methodDescriptor({
     id: 'acp.sessions.create',
     title: 'Spawn a Third-Party Coding Agent Session',
-    description: 'Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record — which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state "failed" and a structured error (which binary, which stage, what happened) — an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.',
+    description: 'Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record, which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state "failed" and a structured error (which binary, which stage, what happened), an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.',
     category: 'acp',
     scopes: ['write:fleet'],
     transport: ['ws'],

@@ -1,5 +1,5 @@
 /**
- * approval-broker-raise.ts — raising an ask, as a free function.
+ * approval-broker-raise.ts, raising an ask, as a free function.
  *
  * ── Why this is not a method ───────────────────────────────────────────────
  *
@@ -12,7 +12,7 @@
  *    on the class.
  *
  * 2. Raising an ask now has TWO callers that want different things from it. The
- *    in-process one (`requestApproval`) wants the decision and nothing else —
+ *    in-process one (`requestApproval`) wants the decision and nothing else,
  *    it is awaiting a human. The wire one (`approvals.raise`, routes/
  *    approvals-raise.ts) wants the RECORD, immediately, and must not hold an
  *    HTTP request open across a person's attention span. Both are the same act,
@@ -24,7 +24,7 @@
  * A second identical in-flight ask (same session, tool and args) does not
  * create a second record or a second prompt: it attaches to the first record's
  * pending promise, so one decision resolves both. The returned `approval` is
- * then the EXISTING record — which is exactly what a wire caller needs, because
+ * then the EXISTING record, which is exactly what a wire caller needs, because
  * the id it gets back is the id whose updates it will see on the stream.
  * `coalesced` says which happened, so a caller that raised an ask and got back
  * a record older than its call can tell that from a fresh one.
@@ -47,7 +47,7 @@ export interface PendingApprovalEntry {
 
 /** Everything raising an ask needs from the broker that owns the state. */
 export interface RaiseApprovalDeps {
-  /** Load persisted state before touching it — the broker's own `start()`. */
+  /** Load persisted state before touching it, the broker's own `start()`. */
   start(): Promise<void>;
   /** The live record map, keyed by approval id. */
   readonly approvals: Map<string, SharedApprovalRecord>;
@@ -59,14 +59,14 @@ export interface RaiseApprovalDeps {
   publish(approval: SharedApprovalRecord): void;
   /** Expire an ask whose deadline passed. */
   expire(approvalId: string, note: string): Promise<void>;
-  /** Audit-entry factory — the broker's own, so entries stay identical. */
+  /** Audit-entry factory, the broker's own, so entries stay identical. */
   buildAudit(
     action: SharedApprovalAuditRecord['action'],
     actor: string,
     actorSurface?: string,
     note?: string,
   ): SharedApprovalAuditRecord;
-  /** The (session, tool, args) coalescing key — the broker's own. */
+  /** The (session, tool, args) coalescing key, the broker's own. */
   coalesceKey(sessionId: string | undefined, tool: string, args: Record<string, unknown>): string;
 }
 
@@ -95,7 +95,7 @@ export async function raiseSharedApproval(
   const now = Date.now();
 
   // Duplicate in-flight asks coalesce on (session, tool, args): the second
-  // identical ask attaches to the first's pending record — ONE prompt, and
+  // identical ask attaches to the first's pending record, ONE prompt, and
   // one decision resolves both. No second record, no second local prompt.
   const coalesceKey = deps.coalesceKey(input.sessionId, input.request.tool, input.request.args);
   for (const existing of deps.approvals.values()) {
@@ -159,7 +159,7 @@ export async function raiseSharedApproval(
     // question about microtask ordering, which is not a thing a payment
     // record's durability should rest on. Writing the corrected map settles
     // it. If this write fails too the store is simply unavailable, and the
-    // caller is already being told that by the error below — so its own
+    // caller is already being told that by the error below, so its own
     // failure is swallowed rather than replacing the real one.
     await deps.persist().catch(() => undefined);
     throw error;

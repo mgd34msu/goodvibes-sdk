@@ -46,7 +46,7 @@ export function adaptHostedAcpAgent(hosted: HostedAcpAgent, now: number): Proces
     startedAt: hosted.startedAt,
     completedAt: hosted.completedAt,
     elapsedMs: Math.max(0, (hosted.completedAt ?? now) - hosted.startedAt),
-    // Third-party agents do not report token usage over ACP session updates —
+    // Third-party agents do not report token usage over ACP session updates,
     // honest absence, never fabricated numbers.
     usage: undefined,
     costUsd: null,
@@ -61,7 +61,7 @@ export function adaptHostedAcpAgent(hosted: HostedAcpAgent, now: number): Proces
       killable: live,
       pausable: false,
       resumable: false,
-      // A live hosted session takes its next prompt as a steer — no message
+      // A live hosted session takes its next prompt as a steer, no message
       // bus involved; the host service delivers it over the ACP connection.
       steerable: live,
     },

@@ -1,11 +1,11 @@
 /**
- * BIG-3 item 2 — inter-item dependency gating end-to-end through the engine.
+ * BIG-3 item 2, inter-item dependency gating end-to-end through the engine.
  *
  * A 3-item plan (B dependsOn A, C independent) assembled via fromPlanProposal:
  *  - C and A run concurrently while B sits in 'blocked-dependency' with an
  *    honest 'waiting on: A' reason;
  *  - B claims only after A reaches 'passed'; all three pass.
- *  - A FAILS ⇒ B is blocked with 'dependency failed: A' (refuse-not-kill — B is
+ *  - A FAILS ⇒ B is blocked with 'dependency failed: A' (refuse-not-kill, B is
  *    NOT terminally failed), and retryItem(A) recovers: A re-runs, passes, B
  *    unblocks and passes.
  *  - Resume mid-flow preserves the dependency wait.
@@ -109,7 +109,7 @@ describe('dependency gating — concurrency, waiting, release', () => {
     expect(item('b').blockedReason).toBeUndefined();
     expect(events.some((e) => e.type === 'item-dependency-cleared' && e.itemId === 'b')).toBe(true);
 
-    // Finish B and C — all three pass.
+    // Finish B and C, all three pass.
     await passItem(h, 'c');
     await passItem(h, 'b');
     expect(ws.items.map((i) => i.state).sort()).toEqual(['passed', 'passed', 'passed']);
@@ -188,7 +188,7 @@ describe('dependency gating — resume preserves the wait', () => {
 
     const ws2 = engine2.getWorkstream(ws.id)!;
     const b2 = ws2.items.find((i) => i.id === 'b')!;
-    // The dependency wait survived the resume — B is still gated on A, which was
+    // The dependency wait survived the resume, B is still gated on A, which was
     // re-queued (its in-phase snapshot reconciled) and is running again.
     expect(b2.state).toBe('blocked-dependency');
     expect(b2.blockedReason).toBe('waiting on: A');

@@ -35,7 +35,7 @@ run('bun', ['run', 'api:check'], 'api:check');
 // api:check iterates FROM the exports map and compares what each DECLARED
 // subpath exposes, so a module the map omits is never examined. This asks
 // whether every module with a public face is reachable from a published package
-// at all — the check that would have caught platform/owner-profile shipping
+// at all, the check that would have caught platform/owner-profile shipping
 // unreachable while every other gate stayed green.
 run('bun', ['run', 'exports:check'], 'exports:check');
 // examples typecheck also runs locally so `bun run validate` catches type

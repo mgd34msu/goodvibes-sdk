@@ -6,7 +6,7 @@ import { sleep } from '../../utils/concurrency.js';
 import { resolveCredentialEnvScrub, scrubCredentialEnv, type ResolvedCredentialEnvScrub } from '../exec/credential-env.js';
 
 /**
- * ProcessManager — tracks background processes for a single GoodVibes runtime.
+ * ProcessManager, tracks background processes for a single GoodVibes runtime.
  *
  * Extracted from tools/exec/index.ts so that other modules (UI, agent system,
  * live-tail) can query running processes without importing the exec tool.
@@ -46,8 +46,8 @@ const MAX_PROCESS_OUTPUT_BYTES = 256 * 1024;
  * How long to keep draining stdout/stderr AFTER the spawned process has exited.
  *
  * The pipe's write end is inherited by every descendant, so it reaches EOF only
- * once the LAST holder closes it. A command that leaves a child behind — which
- * is any `/bin/sh -c` whose shell did not exec-optimize into a single command —
+ * once the LAST holder closes it. A command that leaves a child behind, which
+ * is any `/bin/sh -c` whose shell did not exec-optimize into a single command,
  * keeps that write end open after the process we spawned is gone, and after a
  * timeout kill that reached only the shell. Waiting for EOF in that case means
  * waiting for the survivor, so the process is never reported finished at all.
@@ -55,7 +55,7 @@ const MAX_PROCESS_OUTPUT_BYTES = 256 * 1024;
  * Exit is therefore what completes a process; this is only the window in which
  * output already in flight is still collected. Normal exits close their pipes
  * at once and never approach it, and output a process wrote before exiting is
- * already in the pipe buffer, so draining it costs microseconds — this bound
+ * already in the pipe buffer, so draining it costs microseconds, this bound
  * only decides how long a process whose pipe a survivor holds is delayed
  * before it is reported finished.
  */
@@ -73,7 +73,7 @@ export interface SpawnOptions {
   /**
    * Whether the timeout watchdog may terminate the process. Default: true.
    *
-   * Set false for a process whose lifetime is not the caller's to end — a
+   * Set false for a process whose lifetime is not the caller's to end, a
    * browser, an editor, a long-running server. `timeout_ms` then bounds only
    * how long a caller waits, and the process keeps running until it is stopped
    * explicitly. Killing such a process on a routine timeout destroys a
@@ -144,7 +144,7 @@ export class ProcessManager {
    * Spawn a background process from argv, with NO shell in between.
    *
    * Same tracking, credential-env scrub, live output collection and timeout
-   * watchdog as `spawn` — the only difference is that nothing is handed to
+   * watchdog as `spawn`, the only difference is that nothing is handed to
    * /bin/sh, so no argument can be reinterpreted as a shell metacharacter.
    * On-exit triggers use this: their command is pre-registered and
    * digest-pinned, and keeping it argv-shaped means the pin covers exactly
@@ -208,7 +208,7 @@ export class ProcessManager {
         stderr: 'pipe',
       } as Parameters<typeof Bun.spawn>[1]);
     } catch (spawnErr: unknown) {
-      // Surface ENOENT / EACCES immediately — callers should not retry these
+      // Surface ENOENT / EACCES immediately, callers should not retry these
       this._processes.delete(id);
       throw spawnErr;
     }
@@ -216,8 +216,8 @@ export class ProcessManager {
     entry.pid = proc.pid;
     this._procs.set(id, proc);
 
-    // Async collection with timeout escalation — SIGTERM then SIGKILL
-    // Cast stdout/stderr to ReadableStream — Bun guarantees these are ReadableStream
+    // Async collection with timeout escalation, SIGTERM then SIGKILL
+    // Cast stdout/stderr to ReadableStream, Bun guarantees these are ReadableStream
     // when stdout/stderr is set to 'pipe', but the return type is a union.
     const drain = new AbortController();
     const streams = Promise.all([
@@ -269,7 +269,7 @@ export class ProcessManager {
         });
         return;
       }
-      logger.warn('Background process timed out — terminating', {
+      logger.warn('Background process timed out, terminating', {
         processId: id,
         pid: entry.pid,
         cmd,
@@ -281,7 +281,7 @@ export class ProcessManager {
       entry.killDeadline = Date.now() + sigtermGraceMs;
       await sleep(sigtermGraceMs);
       if (!entry.done) {
-        logger.warn('Background process did not exit after SIGTERM — killing', {
+        logger.warn('Background process did not exit after SIGTERM, killing', {
           processId: id,
           pid: entry.pid,
           cmd,
@@ -294,7 +294,7 @@ export class ProcessManager {
     timeoutHandle.unref?.();
 
     // Reject the spawn promise if the process errors immediately (ENOENT/EACCES
-    // on the child process level) — the outer try/catch handles Bun.spawn throws;
+    // on the child process level), the outer try/catch handles Bun.spawn throws;
     // this handles async failures surfaced via proc.exited rejecting.
     void collectionPromise.catch((error) => {
       logger.warn('Background process output collection failed', { processId: id, error: summarizeError(error) });
@@ -492,7 +492,7 @@ function killTrackedProcess(proc: ReturnType<typeof Bun.spawn>, signal: Paramete
  * The defect this replaces: the previous implementation accumulated the whole
  * stream into a local string and returned it only when the stream closed, and
  * the caller pushed that single string into `entry.stdout` after `proc.exited`
- * resolved. Until the process ended, `entry.stdout` was empty — so `bg_output`
+ * resolved. Until the process ended, `entry.stdout` was empty, so `bg_output`
  * on a running process reported nothing, which is exactly the case a person
  * runs it in. Pushing each decoded chunk into the live array as it is read
  * makes `bg_output` reflect the process's output up to that moment, and gives

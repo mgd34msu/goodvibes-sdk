@@ -90,7 +90,7 @@ function parseSubshellContent(raw: string): ShellNode | undefined {
 // ── Recursive descent parser ──────────────────────────────────────────────────
 
 /**
- * parseAtom — Parses a single atomic unit: a subshell or a simple command.
+ * parseAtom, Parses a single atomic unit: a subshell or a simple command.
  *
  * When a subshell token appears as the FIRST token, returns a SubshellNode.
  * When a subshell token appears after other tokens (e.g. `rm \`echo /tmp\``),
@@ -119,7 +119,7 @@ function parseAtom(cur: TokenCursor): ShellNode {
         // A subshell in command-NAME position is only a standalone subshell
         // expression when nothing follows it in this atom. When arguments do
         // follow (`` `which rm` -rf /tmp/x ``), the substitution is supplying
-        // the command NAME and the rest are its arguments — that is command
+        // the command NAME and the rest are its arguments, that is command
         // assembly, the shape the classifier already denies for $().
         //
         // Returning a SubshellNode here dropped every remaining token: the atom
@@ -166,7 +166,7 @@ function buildCommandNode(tokens: CommandToken[]): CommandNode {
 }
 
 /**
- * parsePipe — Parses one or more atoms connected by pipe operators.
+ * parsePipe, Parses one or more atoms connected by pipe operators.
  */
 function parsePipe(cur: TokenCursor): ShellNode {
   let left = parseAtom(cur);
@@ -182,7 +182,7 @@ function parsePipe(cur: TokenCursor): ShellNode {
 }
 
 /**
- * parseSequence — Parses one or more pipe expressions connected by &&, || or ;.
+ * parseSequence, Parses one or more pipe expressions connected by &&, || or ;.
  */
 function parseSequence(cur: TokenCursor): ShellNode {
   let left = parsePipe(cur);

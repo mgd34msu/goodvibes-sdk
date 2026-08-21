@@ -17,9 +17,9 @@
 /**
  * Classification of a checkpoint's retention profile.
  *
- * - `short`    — ephemeral checkpoints; pruned aggressively (default for microcompact)
- * - `standard` — normal session checkpoints; 24 h window (default for autocompact/collapse)
- * - `forensic` — long-lived audit snapshots; 7-day window (crash reports, manual pins)
+ * - `short`   , ephemeral checkpoints; pruned aggressively (default for microcompact)
+ * - `standard`, normal session checkpoints; 24 h window (default for autocompact/collapse)
+ * - `forensic`, long-lived audit snapshots; 7-day window (crash reports, manual pins)
  */
 export type RetentionClass = 'short' | 'standard' | 'forensic';
 
@@ -105,7 +105,7 @@ export interface PruneResult {
   reclaimedBytes: number;
   /**
    * IDs of checkpoints that were actually deleted.
-   * Empty when `dryRun` is true — see `candidateIds` instead.
+   * Empty when `dryRun` is true, see `candidateIds` instead.
    */
   deletedIds: readonly string[];
   /**

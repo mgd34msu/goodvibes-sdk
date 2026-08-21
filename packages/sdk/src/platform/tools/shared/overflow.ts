@@ -13,7 +13,7 @@ const OVERFLOW_DIR = '.goodvibes/.overflow';
 // ─── Retention Policy ───────────────────────────────────────────────────────
 
 /**
- * RetentionPolicyConfig — limits enforced during cleanup for a spill backend.
+ * RetentionPolicyConfig, limits enforced during cleanup for a spill backend.
  *
  * All three limits are applied independently; whichever is most restrictive
  * wins. Prune candidates are deleted oldest-first.
@@ -36,7 +36,7 @@ const DEFAULT_RETENTION: Required<RetentionPolicyConfig> = {
 // ─── Spill Backend Interface ─────────────────────────────────────────────────
 
 /**
- * SpillEntry — a single overflow/spill record as seen by the backend.
+ * SpillEntry, a single overflow/spill record as seen by the backend.
  */
 export interface SpillEntry {
   /** Stable identifier for this entry (used in refs and cleanup). */
@@ -57,7 +57,7 @@ export interface SpillEntry {
 export type SpillBackendType = 'file' | 'ledger' | 'diagnostics';
 
 /**
- * SpillBackend — pluggable interface for persisting overflow content.
+ * SpillBackend, pluggable interface for persisting overflow content.
  *
  * Implementations must be synchronous so they can be called from
  * `OverflowHandler.handle()` without async overhead in the hot path.
@@ -89,7 +89,7 @@ export interface OverflowOptions {
 // ─── File Backend ────────────────────────────────────────────────────────────
 
 /**
- * FileBackend — spills overflow content to `.goodvibes/.overflow/` on disk.
+ * FileBackend, spills overflow content to `.goodvibes/.overflow/` on disk.
  */
 export class FileBackend implements SpillBackend {
   readonly type: SpillBackendType = 'file';
@@ -111,7 +111,7 @@ export class FileBackend implements SpillBackend {
   private _safePath(id: string): string | null {
     if (id.includes('/') || id.includes('\\') || id.includes('\0') || id.includes('..')) return null;
     const resolved = join(this.overflowDir, id);
-    // Prevent path traversal — id must not escape overflowDir
+    // Prevent path traversal, id must not escape overflowDir
     return resolved.startsWith(this.overflowDir + '/') ? resolved : null;
   }
 
@@ -207,7 +207,7 @@ export class FileBackend implements SpillBackend {
     }
   }
 
-  /** Lists all overflow entries. Reads file content eagerly — acceptable for small overflow directories. */
+  /** Lists all overflow entries. Reads file content eagerly, acceptable for small overflow directories. */
   list(): SpillEntry[] {
     let files: string[];
     try {
@@ -248,7 +248,7 @@ export class FileBackend implements SpillBackend {
 // ─── Ledger Backend ──────────────────────────────────────────────────────────
 
 /**
- * LedgerBackend — stores overflow entries in-process (Map).
+ * LedgerBackend, stores overflow entries in-process (Map).
  * Ephemeral: entries are lost on process exit.
  */
 export class LedgerBackend implements SpillBackend {
@@ -293,7 +293,7 @@ export class LedgerBackend implements SpillBackend {
 // ─── Diagnostics Backend ─────────────────────────────────────────────────────
 
 /**
- * DiagnosticsBackend — records overflow events as structured log entries.
+ * DiagnosticsBackend, records overflow events as structured log entries.
  * Does NOT store content; `read()` always returns null.
  */
 export class DiagnosticsBackend implements SpillBackend {
@@ -372,7 +372,7 @@ export interface OverflowHandlerConfig {
 }
 
 /**
- * headAndTail — keeps the first 20% and last 80% of `budget` characters from
+ * headAndTail, keeps the first 20% and last 80% of `budget` characters from
  * `content`, joined by a marker, instead of a head-only slice. The tail is
  * weighted heavier because the most useful part of a long tool output (e.g.
  * a failing test run's summary) is almost always at the end.
@@ -397,7 +397,7 @@ function headAndTail(content: string, budget: number): string {
  *   `ledger:{filename}`
  *   `diagnostics:{filename}`
  *
- * Never throws — on write failure, returns truncated content without ref.
+ * Never throws, on write failure, returns truncated content without ref.
  */
 export class OverflowHandler {
   private readonly backend: SpillBackend;
@@ -500,7 +500,7 @@ export class OverflowHandler {
 // ─── Operator Cleanup Command ────────────────────────────────────────────────
 
 /**
- * overflowCleanup — operator-facing cleanup command.
+ * overflowCleanup, operator-facing cleanup command.
  *
  * Prunes overflow entries from the provided overflow handler.
  * Suitable for scripted operator invocations (e.g. CLI, cron).

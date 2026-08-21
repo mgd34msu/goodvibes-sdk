@@ -5,7 +5,7 @@
  * SDK's ./web entry point against mock HTTP responses to prove the bundle
  * loads, initialises, and operates correctly under the Workers V8 runtime.
  *
- * Entry selection: ./web (dist/web.js) — the same entry used by browser
+ * Entry selection: ./web (dist/web.js), the same entry used by browser
  * consumers. It contains no node: imports and no Bun.* API calls, making it
  * a direct fit for Workers.
  *
@@ -33,23 +33,23 @@ function json(data: unknown): Response {
 }
 
 /**
- * /smoke — SDK import + factory call succeeds in isolate.
+ * /smoke, SDK import + factory call succeeds in isolate.
  *
  * Workers concern: globalThis.location.origin is undefined in Workers
  * (no browser location object). The SDK's browser.ts resolver throws
  * ConfigurationError when baseUrl is omitted and location.origin is
- * unavailable. We always pass an explicit baseUrl — this is the correct
+ * unavailable. We always pass an explicit baseUrl, this is the correct
  * Workers usage pattern.
  */
 function handleSmoke(): Response {
   const sdk = createWebGoodVibesSdk({
-    // Use localhost URL — normalizeBaseUrl requires https:// or a local
+    // Use localhost URL, normalizeBaseUrl requires https:// or a local
     // (127.x / localhost) host for http://. 'mock-daemon.internal' is neither.
     baseUrl: 'http://127.0.0.1:9999',
     authToken: 'test-token',
   });
 
-  // n-1 guard: typeof x === 'object' returns true for null — check x != null first
+  // n-1 guard: typeof x === 'object' returns true for null, check x != null first
   const hasOperator = sdk.operator != null && typeof sdk.operator === 'object';
   const hasAuth = sdk.auth != null && typeof sdk.auth === 'object';
   const hasRealtime = sdk.realtime != null && typeof sdk.realtime === 'object';
@@ -64,9 +64,9 @@ function handleSmoke(): Response {
 }
 
 /**
- * /auth — auth token flow works in Workers isolate.
+ * /auth, auth token flow works in Workers isolate.
  *
- * Workers concern: none. Auth is synchronous token storage — no node: or
+ * Workers concern: none. Auth is synchronous token storage, no node: or
  * Bun.* surface. crypto.randomUUID() and crypto.subtle are available.
  */
 async function handleAuth(): Promise<Response> {
@@ -83,14 +83,14 @@ async function handleAuth(): Promise<Response> {
 }
 
 /**
- * /transport-success — HTTP transport round-trip with mocked fetch (success path).
+ * /transport-success, HTTP transport round-trip with mocked fetch (success path).
  *
  * Workers concern: setTimeout used in backoff retry is request-scoped.
  * For this test we do NOT retry (maxAttempts: 1) to avoid any
  * cross-request timer issues. Long-running retries with persistent
  * timers across request boundaries would break; see NOTES.md.
  *
- * fetch is native in Workers — no polyfill needed.
+ * fetch is native in Workers, no polyfill needed.
  *
  * Route: sdk.operator.sessions.list() sends GET /api/sessions.
  * The mock returns a real-shape JSON response so result is populated.
@@ -102,7 +102,7 @@ async function handleTransportSuccess(): Promise<Response> {
     sessions: [{
       id: 'session-001',
       kind: 'tui',
-      // S1 spine: project-as-data — required on the wire since the identity
+      // S1 spine: project-as-data, required on the wire since the identity
       // spine landed; a mock missing it fails output-schema validation.
       project: '/tmp/mock-project',
       title: 'Test Session',
@@ -138,7 +138,7 @@ async function handleTransportSuccess(): Promise<Response> {
     retry: { maxAttempts: 1 }, // no retries: avoid cross-request timer issues
   });
 
-  // sdk.operator.sessions.list() — GET /api/sessions
+  // sdk.operator.sessions.list(), GET /api/sessions
   let result: unknown = null;
   let kind: string | null = null;
   let ctor: string | null = null;
@@ -160,7 +160,7 @@ async function handleTransportSuccess(): Promise<Response> {
 }
 
 /**
- * /transport-error — HTTP transport with 5xx response (error path).
+ * /transport-error, HTTP transport with 5xx response (error path).
  *
  * Mock returns a 500 to verify the SDK's error taxonomy surfaces
  * a typed 'service' error kind rather than a raw runtime crash.
@@ -207,13 +207,13 @@ async function handleTransportError(): Promise<Response> {
 }
 
 /**
- * /errors — error taxonomy is present and typed in Workers isolate.
+ * /errors, error taxonomy is present and typed in Workers isolate.
  *
  * Workers concern: none for pure error class instantiation.
  * The SDK error classes use no node: or Bun.* APIs.
  */
 function handleErrors(): Response {
-  // Only include actual Error subclasses — not plain functions or non-Error exports.
+  // Only include actual Error subclasses, not plain functions or non-Error exports.
   const errorClassNames = Object.keys(SdkErrors).filter((k) => {
     const v = (SdkErrors as Record<string, unknown>)[k];
     return typeof v === 'function' && (v as { prototype?: unknown }).prototype instanceof Error;
@@ -237,7 +237,7 @@ function handleErrors(): Response {
 }
 
 /**
- * /crypto — verify Workers crypto.subtle and crypto.randomUUID availability.
+ * /crypto, verify Workers crypto.subtle and crypto.randomUUID availability.
  *
  * Workers concern: crypto.subtle IS available (no polyfill needed).
  * crypto.randomUUID IS available. This verifies future token-crypto paths
@@ -267,7 +267,7 @@ async function handleCrypto(): Promise<Response> {
 }
 
 /**
- * /globals — audit Workers global availability.
+ * /globals, audit Workers global availability.
  *
  * Reports the globals that define the Workers runtime boundary.
  */
@@ -290,7 +290,7 @@ function handleGlobals(): Response {
       EventSource: typeof EventSource !== 'undefined',
       // NOT available in Workers (no DOM)
       location: typeof (globalThis as Record<string, unknown>).location !== 'undefined',
-      // Timers — available but request-scoped
+      // Timers, available but request-scoped
       setTimeout: typeof setTimeout === 'function',
       setInterval: typeof setInterval === 'function',
       clearTimeout: typeof clearTimeout === 'function',

@@ -96,8 +96,8 @@ function redactServer(server: McpServerConfig): Record<string, unknown> {
  *
  * It exists because `envKeys` alone made env values readable by nothing at
  * all. An admin who had set them could not see what was set, could not check a
- * value against the server it authenticates to, and — since the write path is
- * a whole-object replace — had no way to resend them when editing an
+ * value against the server it authenticates to, and, since the write path is
+ * a whole-object replace, had no way to resend them when editing an
  * unrelated field.
  */
 function revealServer(server: McpServerConfig): Record<string, unknown> {

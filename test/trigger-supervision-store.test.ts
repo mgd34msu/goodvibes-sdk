@@ -1,10 +1,10 @@
 /**
- * trigger-supervision-store.test.ts — the supervision spine and the persisted
+ * trigger-supervision-store.test.ts, the supervision spine and the persisted
  * store's recovery housekeeping.
  *
  * The store half is the one that has bitten this project before: persistence
  * without recovery-time housekeeping does not fail loudly, it silently serves
- * corrupt or stale state forever. So these tests check all five obligations —
+ * corrupt or stale state forever. So these tests check all five obligations,
  * reap, bound, validate by CONTENT (not existence), sweep repeatedly, and
  * disclose what was removed.
  */
@@ -224,7 +224,7 @@ describe('persisted state is content-validated, never existence-validated', () =
       eventLog: [],
     };
     // body deliberately carries a TriggerRecord missing state/observations/runs/etc
-    // — proving the shape check refuses it even once the checksum matches.
+    //, proving the shape check refuses it even once the checksum matches.
     const result = validateSnapshot({ ...body, checksum: checksumOf(body as unknown as Parameters<typeof checksumOf>[0]) });
     expect('invalid' in result && result.invalid).toContain('shape validation');
   });

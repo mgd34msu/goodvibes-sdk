@@ -187,7 +187,7 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
     if (header.kind === 'stream-overflow') {
       const stream = streams.get(header.id);
       if (stream && !stream.closed) {
-        // Surface the gap as a visible SSE event — never a silent drop.
+        // Surface the gap as a visible SSE event, never a silent drop.
         const notice = encodeUtf8(`event: relay-overflow\ndata: {"dropped":${header.dropped}}\n\n`);
         try { stream.controller.enqueue(notice); } catch { /* consumer cancelled */ }
       }
@@ -278,7 +278,7 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
     const body = new ReadableStream<Uint8Array>({
       start(controller) { streamController = controller; },
       cancel() {
-        // The consumer stopped reading — tell the daemon to unsubscribe.
+        // The consumer stopped reading, tell the daemon to unsubscribe.
         const stream = streams.get(id);
         if (stream) stream.closed = true;
         streams.delete(id);
@@ -304,8 +304,8 @@ export function createRelayClient(options: RelayClientOptions): RelayClient {
     const headers: Array<[string, string]> = [];
     request.headers.forEach((value, key) => headers.push([key, value]));
     // A Server-Sent-Events request is opened as a tunneled stream rather than a
-    // unary call (its body never ends). The existing SSE connector — which just
-    // calls fetch and reads the streaming body — then works over the relay.
+    // unary call (its body never ends). The existing SSE connector, which just
+    // calls fetch and reads the streaming body, then works over the relay.
     const accept = request.headers.get('accept') ?? '';
     if (request.method === 'GET' && accept.includes('text/event-stream')) {
       return openStream(`${url.pathname}${url.search}`, headers, channel, socket);

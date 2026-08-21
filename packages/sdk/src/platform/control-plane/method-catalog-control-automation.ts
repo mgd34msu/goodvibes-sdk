@@ -47,14 +47,14 @@ import { METADATA_SCHEMA } from './operator-contract-schemas-shared.js';
  * (daemon-sdk/runtime-automation-routes.ts), after which the handler calls
  * `normalizeCronSchedule(input.cron ?? '')` and
  * `platform/automation/schedules.ts` throws `schedule.expression must not be
- * empty` — returned as a 400. So `{ prompt }` alone, which the declared
+ * empty`, returned as a 400. So `{ prompt }` alone, which the declared
  * contract called a complete call, has never worked; the same holds for
  * `kind: 'every'` without `every` and `kind: 'at'` without `at`.
  *
  * A flat `required` array cannot express this: `cron` is genuinely not
  * required for an interval schedule. The union below is discriminated on
  * `kind`, with the cron branch appearing twice because the handler also
- * accepts the expression nested as `schedule.expression` — that path works
+ * accepts the expression nested as `schedule.expression`, that path works
  * today and stays valid.
  */
 function automationScheduleInputSchema(
@@ -157,7 +157,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.jobs.update',
     title: 'Update Automation Job',
-    description: 'Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
+    description: 'Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)',
     category: 'automation',
     scopes: ['write:automation'],
     http: { method: 'PATCH', path: '/api/automation/jobs/{jobId}' },
@@ -228,7 +228,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   // automation.jobs.pause / automation.jobs.resume were RETIRED in the 1.0.0
   // core-verb rename (see CHANGELOG 1.0.0): they were a byte-identical redundant lifecycle
   // pair with automation.jobs.disable/enable (same {id,enabled} output shape,
-  // same semantics — pause==disable, resume==enable). The canonical verbs are
+  // same semantics, pause==disable, resume==enable). The canonical verbs are
   // enable/disable; consumers that exposed a "pause"/"resume" user-facing verb
   // now map it onto automation.jobs.disable/automation.jobs.enable. See
   // packages/contracts/src/core-verbs.ts and docs/decisions/2026-07-06-core-verb-spec.md.
@@ -246,7 +246,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'automation.runs.list',
     title: 'List Automation Runs',
-    description: 'Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set) — the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.',
+    description: 'Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set), the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.',
     category: 'automation',
     scopes: ['read:automation'],
     http: { method: 'GET', path: '/api/automation/runs' },
@@ -480,7 +480,7 @@ export const builtinGatewayControlAutomationMethodDescriptors: readonly GatewayM
   methodDescriptor({
     id: 'routes.bindings.update',
     title: 'Update Route Binding',
-    description: 'Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)',
+    description: 'Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)',
     category: 'routes',
     scopes: ['write:routes'],
     access: 'admin',

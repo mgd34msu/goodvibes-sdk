@@ -1,5 +1,5 @@
 /**
- * Permissions domain state — tracks the permission mode, session approvals,
+ * Permissions domain state, tracks the permission mode, session approvals,
  * and the most recent permission decision with full audit trail.
  */
 
@@ -84,7 +84,7 @@ export interface PermissionDecision {
 }
 
 /**
- * PermissionDomainState — permission configuration and decision state.
+ * PermissionDomainState, permission configuration and decision state.
  */
 export interface PermissionDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

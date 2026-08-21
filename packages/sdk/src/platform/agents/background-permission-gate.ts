@@ -37,7 +37,7 @@ export async function gateBackgroundToolCall(
   /**
    * `template` is OPTIONAL here, unlike on AgentRecord.
    *
-   * The body has always treated it as optional — it emits the attribution's
+   * The body has always treated it as optional, it emits the attribution's
    * `template` only when the record carries a truthy one, because
    * PermissionAttribution.template is itself optional. Requiring it came from
    * `Pick<AgentRecord, 'id' | 'template'>`, not from anything this function

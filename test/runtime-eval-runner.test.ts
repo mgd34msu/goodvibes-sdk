@@ -90,7 +90,7 @@ describe('scoreScenario', () => {
     const sc = scoreScenario('test:recovery-fail', 'Recovery Fail', raw);
     const recDim = sc.dimensions.find((d) => d.dimension === 'recovery')!;
     expect(recDim.score).toBe(20);
-    // recovery floor is 60 — should fail
+    // recovery floor is 60, should fail
     expect(sc.passed).toBe(false);
   });
 

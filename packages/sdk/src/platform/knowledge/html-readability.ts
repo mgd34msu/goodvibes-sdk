@@ -1,22 +1,22 @@
 /**
- * html-readability.ts — readable article text out of an HTML document, when
+ * html-readability.ts, readable article text out of an HTML document, when
  * the optional parser is installed to produce it.
  *
  * `jsdom` and `@mozilla/readability` are both declared under
  * `optionalDependencies`. This file used to import both statically, which made
- * that declaration untrue for every surface that reaches knowledge extraction —
+ * that declaration untrue for every surface that reaches knowledge extraction,
  * and the daemon reaches it, through knowledge/extractors.ts. With
  * `packages/sdk/node_modules/jsdom` removed, measured here:
  * `bun build packages/sdk/src/platform/daemon/cli.ts --compile` failed with
  * `Could not resolve: "jsdom"` and produced no binary at all, and the same
  * graph run from source died at MODULE INIT with `Cannot find package 'jsdom'`
- * — before main(), before the activity logger had a destination, and before
+ *, before main(), before the activity logger had a destination, and before
  * daemon/cli.ts's fatal-boot handler existed to say anything about it.
  *
  * Both are now reached through utils/optional-dependency.ts at the moment an
  * extraction actually needs them. When they are absent the extraction returns
  * `null` with a stated reason, and knowledge/extractors.ts falls back to its
- * lightweight HTML path carrying that reason as a warning — which is what the
+ * lightweight HTML path carrying that reason as a warning, which is what the
  * `optionalDependencies` declaration promised in the first place.
  */
 
@@ -116,7 +116,7 @@ function truncateHtml(html: string): string {
 }
 
 /**
- * Extract readable article text, or `null` when there is nothing readable —
+ * Extract readable article text, or `null` when there is nothing readable,
  * and also `null` when the optional parser is not installed. The two cases are
  * told apart by `describeHtmlReadabilityAvailability()`; extractors.ts reports
  * the second as a warning on its fallback result, so a missing package never

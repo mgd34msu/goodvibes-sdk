@@ -3,7 +3,7 @@
  *
  * The key had zero writers: every site that configured the daemon set
  * hostMode/host/port and left the string alone, so it drifted from the real
- * bind on three axes at once — the port, the scheme, and a host typed in once
+ * bind on three axes at once, the port, the scheme, and a host typed in once
  * and passed through verbatim. The owner's own machine ended up with
  * `hostMode: network, host: 0.0.0.0` and a stored loopback URL, which is how one
  * daemon handed out two different click hosts.

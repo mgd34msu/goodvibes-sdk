@@ -4,7 +4,7 @@
  * Managed local-voice provisioning: atomic + checksum-verified downloads (pass,
  * checksum-fail keeps nothing, size-mismatch, resumable skip on re-run), managed
  * path resolution precedence, config pre-configuration that preserves user-set
- * keys, and honest provision states. NO real network — all fetch is mocked.
+ * keys, and honest provision states. NO real network, all fetch is mocked.
  */
 import { describe, expect, test } from 'bun:test';
 import { createHash } from 'node:crypto';
@@ -101,7 +101,7 @@ describe('managed path resolution + status', () => {
     const dir = scratch();
     const paths = resolveManagedVoicePaths(dir);
     expect(localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' }).state).toBe('not-provisioned');
-    // Binary present (and executable — a truncated/non-exec binary is honestly
+    // Binary present (and executable, a truncated/non-exec binary is honestly
     // NOT 'present') but voice absent ⇒ partial.
     mkdirSync(join(paths.enginesDir, 'piper'), { recursive: true });
     writeFileSync(paths.piperBinary, 'binary', { mode: 0o755 });
@@ -123,7 +123,7 @@ describe('a managed install supersedes a manual one, and says which path it repl
   //   run of this installer. The engine row follows its family's paths, so the
   //   pair can never describe two different installs. A user-CLEARED key is
   //   still never rewritten. Without a managed root nothing is superseded at
-  //   all — the installer cannot tell its own paths from anyone else's.
+  //   all, the installer cannot tell its own paths from anyone else's.
   test('a user path pointing at another install is repointed, with the replaced path named', () => {
     // The owner's machine: setup installed a complete managed runtime and left
     // config pointing at a hand-built ~/.local/opt install it had just replaced,
@@ -141,7 +141,7 @@ describe('a managed install supersedes a manual one, and says which path it repl
     expect(store['voice.local.ttsBinary']).toBe('/managed/piper');
     // Repointed at the runtime that was just installed and verified.
     expect(store['voice.local.ttsModelPath']).toBe('/managed/voice.onnx');
-    // And the receipt NAMES what it replaced — the old implementation had no
+    // And the receipt NAMES what it replaced, the old implementation had no
     // `superseded` channel at all, so this cannot pass against it.
     const replaced = receipt.superseded.find((entry) => entry.key === 'voice.local.ttsModelPath');
     expect(replaced?.previousValue).toBe('/home/mike/.local/opt/piper/voice.onnx');
@@ -219,7 +219,7 @@ describe('provision honest states (mock fetch)', () => {
 
   test('a size-mismatched download fails honestly and keeps nothing', async () => {
     const dir = scratch();
-    // The mock returns tiny bytes for every URL — the pinned size guard rejects them.
+    // The mock returns tiny bytes for every URL, the pinned size guard rejects them.
     const result = await provisionLocalVoiceRuntime({
       managedRoot: dir,
       platform: 'linux-x64',
@@ -286,7 +286,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
     const again = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: async () => { throw new Error('must not re-extract at the same version with a verified archive'); } });
     expect(again.tts.state).toBe('provisioned');
     expect(readFileSync(paths.piperBinary, 'utf-8')).toBe('binary-v1');
-    // Bump the pinned engine to v2 (the exact case the incident needed — a newer
+    // Bump the pinned engine to v2 (the exact case the incident needed, a newer
     // piper to fix the onnxruntime IR incompatibility): the OLD binary exists,
     // but the install must download AND extract the new one, replacing it.
     const v2 = fixtureManifests('binary-v2', 'v2');
@@ -311,7 +311,7 @@ describe('fix-round hardening (reviewer scenarios)', () => {
     };
     const result = await provision({ managedRoot: dir, platform: 'linux-x64', engineOverride: v1.engine, voiceOverride: v1.voice, fetchImpl: v1.fetchImpl, extractArchive: killedMidTar });
     expect(result.tts.state).toBe('download-failed');
-    // NOTHING at the final binary path — the partial tree stayed in temp and was cleaned.
+    // NOTHING at the final binary path, the partial tree stayed in temp and was cleaned.
     expect(existsSync(paths.piperBinary)).toBe(false);
     expect(localVoiceRuntimeStatus({ managedRoot: dir, platform: 'linux-x64' }).tts.binaryPresent).toBe(false);
     // Even an extractor that "succeeds" but produced a truncated binary is refused.
@@ -389,7 +389,7 @@ describe('ownership-stamped preconfigure (reviewer scenario)', () => {
     expect(store['voice.local.ttsModelPath']).toBe('/managed/models/voice-b.onnx');
     const replaced = second.superseded.find((entry) => entry.key === 'voice.local.ttsModelPath');
     expect(replaced?.previousValue).toBe('/my/voice.onnx');
-    // User-cleared engine key is STILL respected — clearing is a deliberate
+    // User-cleared engine key is STILL respected, clearing is a deliberate
     // disable, and superseding never resurrects one.
     expect(store['voice.local.ttsEngine']).toBe('');
     expect(second.skipped.some((entry) => entry.reason.includes('cleared by the user'))).toBe(true);
@@ -429,7 +429,7 @@ describe('breaker classification + reset (reviewer scenario)', () => {
       runner: async () => {
         calls += 1;
         // execFile folds stderr into error.message; piper prints this on
-        // perfectly healthy runs — an exit-1 here is TRANSIENT (disk full etc).
+        // perfectly healthy runs, an exit-1 here is TRANSIENT (disk full etc).
         throw new Error("Command failed: piper\n[W:onnxruntime:, graph.cc] Removing initializer 'w_1'. It is not used by any node.\nwrite failed: No space left on device");
       },
     });
@@ -463,7 +463,7 @@ describe('breaker classification + reset (reviewer scenario)', () => {
     await provider.synthesize!({ text: 'x', metadata: {} } as never).catch((e: unknown) => {
       // The recovery acts the message names, in the words it actually uses.
       // Every one of them is something the PLATFORM does or a config row that
-      // clears the state — it hands the user no command to type.
+      // clears the state, it hands the user no command to type.
       expect(String(e)).toMatch(/Reinstalling the managed voice runtime/);
       expect(String(e)).toMatch(/daemon restart/);
       expect(String(e)).toMatch(/voice\.local\.ttsBinary/);
@@ -494,7 +494,7 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     writeFileSync(join(destDir, 'whisper', 'whisper-cli'), payload.binary, { mode: 0o755 });
   };
   const bothExtractor = async (archivePath: string, destDir: string): Promise<void> => {
-    // piper archives extract piper/, whisper archives extract whisper/ — pick by content.
+    // piper archives extract piper/, whisper archives extract whisper/, pick by content.
     const payload = JSON.parse(new TextDecoder().decode(readFileSync(archivePath)).trim()) as { binary: string };
     const top = payload.binary.startsWith('whisper') ? 'whisper' : 'piper';
     mkdirSync(join(destDir, top), { recursive: true });
@@ -594,7 +594,7 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
       fetchImpl, extractArchive: bothExtractor,
     });
     // Present-but-mismatched with no usable binary is reported EXPLICITLY as a
-    // sideload mismatch (got X, want Y) — not the generic bundle-unavailable.
+    // sideload mismatch (got X, want Y), not the generic bundle-unavailable.
     expect(result2.stt.state).toBe('sideload-mismatch');
     expect(result2.stt.reason).toMatch(/does not match the pinned sha256.*got.*want/is);
     rmSync(dir, { recursive: true, force: true });
@@ -641,7 +641,7 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     expect(status.stt.supported).toBe(true); // linux-x64 HAS a pinned goodvibes build
     expect(status.stt.state).toBe('not-provisioned');
     // linux-x64 is now HOSTED (voice-runtimes-v1), so there is no pending-hosting
-    // note — the user just runs voice.local.install to download it.
+    // note, the user just runs voice.local.install to download it.
     expect(status.stt.reason).toBeUndefined();
     const none = localVoiceRuntimeStatus({ managedRoot: dir, platform: 'darwin-arm64' });
     expect(none.stt.supported).toBe(false);
@@ -729,7 +729,7 @@ describe('managed STT (goodvibes-built whisper.cpp)', () => {
     // The load-bearing fix: sttEngineVersion is PRESERVED, not erased.
     expect(readVoiceInstallStamp(dir)?.sttEngineVersion).toBe('w1');
     // 3) The manifest bumps to w2; the user sideloads the NEW bundle correctly and
-    //    the model is available again — the update now APPLIES precisely because
+    //    the model is available again, the update now APPLIES precisely because
     //    the preserved w1 stamp makes the version change detectable.
     const w2 = whisperFixture('whisper-binary-2', 'w2');
     const w2Unhosted = { ...w2.whisper, bundle: { ...w2.whisper.bundle, url: null } };

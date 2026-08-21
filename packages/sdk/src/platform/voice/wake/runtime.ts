@@ -1,5 +1,5 @@
 /**
- * runtime.ts — the wake-word detector, minus everything that needs a filesystem.
+ * runtime.ts, the wake-word detector, minus everything that needs a filesystem.
  *
  * `./index.ts` is the full module and includes provisioning and the recovery
  * sweeper, both of which read and write files and therefore import `node:fs`.
@@ -7,8 +7,8 @@
  * anywhere in the graph is enough to break a web bundle, so a tab that wants the
  * detector cannot import the barrel that also downloads it.
  *
- * So this is the runtime-neutral half — the front end, the engine, the detection
- * rules, the restart policy, the settings resolution and the listener — exported
+ * So this is the runtime-neutral half, the front end, the engine, the detection
+ * rules, the restart policy, the settings resolution and the listener, exported
  * as `@pellux/goodvibes-sdk/platform/voice/wake/runtime`. A browser host provides
  * the model bytes and the inference session; a terminal or daemon host can import
  * either this or the full barrel.

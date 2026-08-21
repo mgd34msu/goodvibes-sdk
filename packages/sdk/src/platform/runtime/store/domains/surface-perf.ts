@@ -1,5 +1,5 @@
 /**
- * Surface performance domain state — tracks render performance,
+ * Surface performance domain state, tracks render performance,
  * frame rates, and input responsiveness metrics across host UIs.
  */
 
@@ -31,7 +31,7 @@ export interface InputLatencySample {
 }
 
 /**
- * SurfacePerfDomainState — host-surface render and input performance metrics.
+ * SurfacePerfDomainState, host-surface render and input performance metrics.
  */
 export interface SurfacePerfDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

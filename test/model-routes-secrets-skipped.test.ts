@@ -134,7 +134,7 @@ describe('DaemonHttpRouter GET /api/models secretsResolutionSkipped integration'
     // The guard used for all non-model services: accessing them means the route under
     // test reached a service outside the /api/models boundary.
     function unexpectedAccess(field: string): never {
-      throw new Error(`[model-routes test] Unexpected access to '${field}' — the /api/models path should not need this`);
+      throw new Error(`[model-routes test] Unexpected access to '${field}', the /api/models path should not need this`);
     }
     const makeUnexpectedService = (name: string) =>
       new Proxy({} as never, {

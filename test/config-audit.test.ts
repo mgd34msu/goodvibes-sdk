@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Config audit — verifies that the telemetry configuration surface
+ * Config audit, verifies that the telemetry configuration surface
  * (SERVICE_NAME, limits) is correctly exposed for audit.
  */
 describe('config audit', () => {

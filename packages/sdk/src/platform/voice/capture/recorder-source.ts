@@ -1,17 +1,17 @@
 /**
- * recorder-source.ts — a host capture stream built from a recorder subprocess.
+ * recorder-source.ts, a host capture stream built from a recorder subprocess.
  *
  * This is the capture opener for every surface that has a shell: the terminal UI
  * and the daemon child process that hosts the detector. It is the same shape the
- * TUI's audio PLAYBACK already uses in reverse — resolve a command, spawn it,
- * treat "no tool installed" as a real reported state rather than an exception —
+ * TUI's audio PLAYBACK already uses in reverse, resolve a command, spawn it,
+ * treat "no tool installed" as a real reported state rather than an exception,
  * so a host that already spawns a player has nothing new to learn.
  *
  * `spawn` is INJECTED rather than imported. Two reasons, both load-bearing:
  * this module is part of a bundle a browser tab loads (importing
  * `node:child_process` here would break that bundle outright), and a test must
- * be able to drive the byte path — a partial chunk, a mid-frame exit, a
- * non-zero code — without a real microphone or a real recorder installed.
+ * be able to drive the byte path, a partial chunk, a mid-frame exit, a
+ * non-zero code, without a real microphone or a real recorder installed.
  */
 import { AudioFrameSlicer, pcm16ToFloatSamples } from './frames.js';
 import {
@@ -56,7 +56,7 @@ export interface RecorderCaptureOptions {
    * A recorder subprocess produces raw audio and this module does not filter it.
    * The platform's suppression stage does, one layer up:
    * `createNoiseSuppressingOpener` wraps an opener like this one, and both
-   * consumers — {@link WakeListener} and {@link PushToTalkSession} — already
+   * consumers, {@link WakeListener} and {@link PushToTalkSession}, already
    * wrap the opener a host hands them, which is why a host passes nothing here
    * and still gets `voice.wake.noiseSuppression: "speex"` applied.
    *
@@ -74,7 +74,7 @@ const RECORDER_TERM_GRACE_MS = 750;
 
 /**
  * Recorder stderr worth surfacing. A recorder writes progress and warnings to
- * stderr in normal operation, so it is not treated as failure — but it IS the
+ * stderr in normal operation, so it is not treated as failure, but it IS the
  * only place the reason a device did not open is written, so it is kept for the
  * error message rather than discarded.
  */
@@ -102,7 +102,7 @@ function classifyRecorderFailure(stderrText: string): AudioCaptureError | null {
  *
  * The returned opener rejects with an {@link AudioCaptureError} when nothing can
  * be opened, and reports a stream that dies later through
- * {@link AudioCaptureHandlers.onStopped} — the distinction matters because the
+ * {@link AudioCaptureHandlers.onStopped}, the distinction matters because the
  * first is "this will never work as configured" and the second is what the
  * detector's restart policy exists to handle.
  */
@@ -196,7 +196,7 @@ function startRecorderStream(
       return;
     }
     // A clean exit nobody asked for is still the stream ending underneath the
-    // detector — the restart policy, not a silent stop, is what handles it.
+    // detector, the restart policy, not a silent stop, is what handles it.
     finish('failed', new AudioCaptureError('stream-ended', `the recorder ${resolved.command} exited on its own`));
   });
 

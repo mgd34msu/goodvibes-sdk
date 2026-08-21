@@ -7,7 +7,7 @@
  *
  * What is actually asserted here, rather than "it returned success":
  *   - the value lands in the SECRET store and the config key holds only a
- *     goodvibes://secrets/ reference — the two-value check, since a write that
+ *     goodvibes://secrets/ reference, the two-value check, since a write that
  *     did one and not the other is the failure this verb exists to prevent;
  *   - a store that does not read back what was just written leaves the config
  *     value EXACTLY as it was and fails the call;

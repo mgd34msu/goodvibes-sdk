@@ -1,9 +1,9 @@
 /**
- * cli-parser.ts — parses a terminal-shaped front-end's argv into a command
+ * cli-parser.ts, parses a terminal-shaped front-end's argv into a command
  * word and the flags its vocabulary shares.
  *
  * `parseGoodVibesCli` is a thin wrapper: cli-parser-engine.ts is the argument
- * engine, and cli-command-catalog.ts is the data — every command name,
+ * engine, and cli-command-catalog.ts is the data, every command name,
  * alias, and flag this parses. This file exists so a consumer keeps its
  * existing single call, with its existing single result shape.
  */

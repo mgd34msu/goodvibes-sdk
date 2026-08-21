@@ -8,7 +8,7 @@
  * A sibling file, `google-adoption-reaches-the-daemon.test.ts`, already adopts
  * in the agent and asks a daemon-shaped reader afterwards. This file exists
  * because of two things that one cannot see, both of which are the shape of the
- * bug it was written for — a component that passes its own test while the seam
+ * bug it was written for, a component that passes its own test while the seam
  * around it is broken.
  *
  *  1. IT BUILDS THE DAEMON BY HAND. Its `surface(home, 'daemon')` helper calls
@@ -17,14 +17,14 @@
  *     them. The real daemon seeds them in `runDaemonBootGuarantees`. If that
  *     call were dropped tomorrow, the sibling test would stay green and the
  *     owner's Telegram reply would go back to "no email integration available".
- *     So every daemon here is booted through `runDaemonBootGuarantees` — the
+ *     So every daemon here is booted through `runDaemonBootGuarantees`, the
  *     one call `DaemonFacade` makes (facade.ts:352) and the only construction
- *     every host goes through — and nothing in this file seeds a section on the
+ *     every host goes through, and nothing in this file seeds a section on the
  *     daemon's behalf.
  *
  *  2. IT MOCKS THE STORE WHERE THE SAFETY PROPERTY LIVES. Every migration test
  *     that exercises the ordering that stands between a migration and losing a
- *     credential — write fails, read-back fails, rotated copy kept — runs
+ *     credential, write fails, read-back fails, rotated copy kept, runs
  *     against `fakeStore()`, an in-memory object whose tiers are plain records.
  *     Its one "over the real SecretsManager, not a fake" case asserts
  *     `report.noop === true`, because it could not reproduce a stranded
@@ -92,7 +92,7 @@ const createdRoots: string[] = [];
  * `ensureDaemonActivityLog` points the PROCESS-GLOBAL logger at whatever working
  * directory the first daemon boot hands it, and `ensureActivityLoggerConfigured`
  * refuses to re-point it afterwards. So every later boot in this file logs into
- * the first boot's directory — and if that directory is a per-test root, the
+ * the first boot's directory, and if that directory is a per-test root, the
  * logger recreates it after `afterEach` deletes it, leaking one scratch tree per
  * run. (Fourteen of them, before this was pinned down.) Giving the logger one
  * stable home for the file makes the leak a single directory, and `afterAll`
@@ -130,7 +130,7 @@ function workdirFor(home: string): string {
  * The working directory is a SIBLING of the home, not a child of it. That is
  * not cosmetic: `secretReadOrder` walks the project root's ancestors, so a
  * project root nested under the home makes `<home>/.goodvibes/<surface>.secrets
- * .json` enumerate as BOTH a project-tier and a user-tier store — one physical
+ * .json` enumerate as BOTH a project-tier and a user-tier store, one physical
  * file counted twice. That is a real property of the real layout and it has its
  * own test at the end of this file; it is kept out of the way here so the other
  * assertions are about the thing they claim to be about.
@@ -201,7 +201,7 @@ function managers(home: string, surfaceRoot: string): Side {
  * A surface: the agent, the TUI, the web UI.
  *
  * A product seeds the connector's config sections itself, in one call, before
- * the connector touches anything — that is what `ensureConnectorConfigSections`
+ * the connector touches anything, that is what `ensureConnectorConfigSections`
  * is for and what every surface is expected to do.
  */
 function openSurface(home: string, surfaceRoot: string): Side {
@@ -259,7 +259,7 @@ function readStore(path: string): Record<string, string> {
 /**
  * Strand a credential the way a pre-fix build stranded it.
  *
- * `SecretsManager.set` now relocates a daemon-needed key, which is the fix — so
+ * `SecretsManager.set` now relocates a daemon-needed key, which is the fix, so
  * the only honest way to reproduce the state the owner's disk was already in is
  * to write the surface tier's store file directly. This is not a mock of the
  * store: it is the store, in its real format, at the real path the product
@@ -320,13 +320,13 @@ describe('configured on a surface, used by the daemon after that surface has clo
     // manager the agent happened to mutate.
     const daemon = await bootDaemon(home);
     // `calendar.google.*` is app-layer connector config and is deliberately NOT
-    // in the base schema's ConfigKey union — see platform/google/config-access.ts,
+    // in the base schema's ConfigKey union, see platform/google/config-access.ts,
     // which exists precisely because these sections are absent until setup seeds
     // them. The connector reads them through GoogleConfigPort's loose
     // `get(key: string)`, so this reads through the same widening. The assertion
     // is about ConfigManager not throwing `Invalid config path` once boot has
     // seeded the section, which is why it calls `get` directly rather than going
-    // through safeConfigString — that helper swallows the throw being tested for.
+    // through safeConfigString, that helper swallows the throw being tested for.
     const appLayerConfig = daemon.configManager as unknown as { get(key: string): unknown };
     expect(() => appLayerConfig.get(GOOGLE_CONFIG_KEYS.oauthClientId)).not.toThrow();
     expect(appLayerConfig.get(GOOGLE_CONFIG_KEYS.oauthClientId)).toBe(FAKE_CLIENT_ID);
@@ -413,17 +413,17 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   });
 
   // -------------------------------------------------------------------------
-  // OPEN DEFECT — the daemon cannot reach another surface's silo.
+  // OPEN DEFECT, the daemon cannot reach another surface's silo.
   //
-  // `daemon-credential-migration.ts` says in its own header: "on start — daemon
-  // or surface, whichever comes first — every daemon-needed credential found in
+  // `daemon-credential-migration.ts` says in its own header: "on start, daemon
+  // or surface, whichever comes first, every daemon-needed credential found in
   // a surface, project or user store is copied up."
   //
   // It does not do that, and this is where running it end to end says something
   // reading it did not. Two facts compose into the gap:
   //
   //   * `migrateDaemonNeededCredentials` enumerates through
-  //     `SecretsManager.listDetailed()`, which walks `getReadOrder()` — and that
+  //     `SecretsManager.listDetailed()`, which walks `getReadOrder()`, and that
   //     read order is built from ONE `surfaceRoot` (secrets.ts:458-479,
   //     secrets-store-paths.ts:157-170).
   //   * The only caller is `runDaemonBootGuarantees`
@@ -433,9 +433,9 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   // So a daemon constructed with `surfaceRoot: 'daemon'` enumerates the daemon
   // tier and `~/.goodvibes/daemon.secrets.json`, and never
   // `~/.goodvibes/agent.secrets.json`. The owner ran `/google adopt` in the
-  // AGENT. Every credential a pre-fix agent build wrote into the agent silo —
+  // AGENT. Every credential a pre-fix agent build wrote into the agent silo,
   // the Slack, Discord and ntfy tokens, the Cloudflare tokens, the provider API
-  // keys, exactly the list the registry commit enumerates as the wider defect —
+  // keys, exactly the list the registry commit enumerates as the wider defect,
   // is invisible to the daemon's migration and stays stranded for good.
   //
   // Routing NEW writes is fixed. Lifting what is ALREADY stranded is not, for
@@ -443,7 +443,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   //
   // These three are `test.failing`: they assert the documented contract and the
   // owner's rule, they currently fail, and bun will turn them RED the moment the
-  // defect is fixed — which is the signal to delete this comment. They are not
+  // defect is fixed, which is the signal to delete this comment. They are not
   // skipped and they are not rewritten to bless the current behaviour. The
   // mechanism they trip over is pinned as a passing test immediately below.
   // -------------------------------------------------------------------------
@@ -530,7 +530,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   });
 
   // -------------------------------------------------------------------------
-  // OPEN DEFECT, DATA LOSS — a successful migration destroys the credential.
+  // OPEN DEFECT, DATA LOSS, a successful migration destroys the credential.
   //
   // This is the one the whole ordering exists to prevent, and it is live.
   //
@@ -539,13 +539,13 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   //
   //     const scopeFilter = isDaemonNeededSecretKey(key) ? undefined : options.scope;
   //
-  // and then sweeps every candidate store. That is right for a revoke — an
+  // and then sweeps every candidate store. That is right for a revoke, an
   // operator revoking a token must not leave a live copy in another tier.
   //
   // But the migration's final step is `delete(key, { scope: <source tier> })`,
   // meaning "remove the surface copy now that the daemon copy is verified". The
-  // key is daemon-needed BY DEFINITION — that is the only reason it is being
-  // migrated — so the filter is dropped, the sweep runs, and it deletes the
+  // key is daemon-needed BY DEFINITION, that is the only reason it is being
+  // migrated, so the filter is dropped, the sweep runs, and it deletes the
   // freshly written, freshly verified DAEMON copy along with the source.
   //
   // The write happens. The read-back genuinely succeeds. The report says
@@ -558,7 +558,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   //
   // Every existing ordering test misses it because they run against
   // `fakeStore()`, whose `delete` honours the scope filter literally
-  // (daemon-credential-scope-and-migration.test.ts) — so the fake and the real
+  // (daemon-credential-scope-and-migration.test.ts), so the fake and the real
   // store disagree on exactly the operation the safety property depends on.
   //
   // The mechanism is pinned as a passing test immediately below; this asserts
@@ -592,7 +592,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
    * The mechanism, stated as the truth it currently is. This one PASSES.
    *
    * A delete narrowed to one tier removes a daemon-needed credential from EVERY
-   * tier — which is correct for a revoke and catastrophic for the migration's
+   * tier, which is correct for a revoke and catastrophic for the migration's
    * final step, because they call the same method with the same arguments.
    */
   test('a scope-narrowed delete of a daemon-needed key sweeps every tier, including the daemon\'s', async () => {
@@ -616,7 +616,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
 
   /**
    * The consequence, end to end, on the real store: the migration reports
-   * success and the credential is gone from every tier. PASSES — it documents
+   * success and the credential is gone from every tier. PASSES, it documents
    * live behaviour, and it is the regression lock that must flip when the
    * delete is fixed.
    */
@@ -633,7 +633,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
 
     // The assertions that used to read `toBeNull()`. The report said exactly
     // what it says now, and the credential was in NEITHER tier: the final step
-    // was `delete(key, { scope: source })`, and `delete` is the revoke verb —
+    // was `delete(key, { scope: source })`, and `delete` is the revoke verb,
     // for a daemon-needed key it discards the scope filter and sweeps every
     // tier, destroying the daemon copy it had just written and verified.
     // Migration now uses `deleteFromScope`, which removes one copy and no other.
@@ -659,7 +659,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
    * The safety property, on a real filesystem rather than a boolean on a fake.
    *
    * This is the one that matters: it is the difference between a migration and
-   * an incident. An unwritable daemon directory is not a hypothetical — a root
+   * an incident. An unwritable daemon directory is not a hypothetical, a root
    * -owned `~/.goodvibes/daemon` from a `sudo` run of a daemon binary produces
    * exactly this, and the credential in the surface store is the owner's only
    * copy.
@@ -691,7 +691,7 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
   test('a daemon that cannot migrate still boots', async () => {
     const home = throwawayHome();
     // Stranded in the daemon's OWN silo, so the migration genuinely reaches it
-    // and genuinely fails on the unwritable destination — rather than passing
+    // and genuinely fails on the unwritable destination, rather than passing
     // because it never looked.
     strandInSurfaceStore(home, 'daemon', STRANDED_KEY, STRANDED_VALUE);
     const daemonDir = join(home, '.goodvibes', 'daemon');
@@ -729,8 +729,8 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
    * One physical file, counted twice, on the owner's own layout.
    *
    * `secretReadOrder` walks the project root's ancestors looking for project
-   * stores. When the project root lives under the home — `~/Projects/goodvibes-
-   * tui` under `~`, which is the owner's actual checkout — the ancestor walk
+   * stores. When the project root lives under the home, `~/Projects/goodvibes-
+   * tui` under `~`, which is the owner's actual checkout, the ancestor walk
    * reaches `~` itself, and `~/.goodvibes/<surface>.secrets.json` is enumerated
    * as a PROJECT store as well as the USER store it also is.
    *
@@ -755,8 +755,8 @@ describe('a credential an older build stranded is lifted, on a real disk', () =>
       policy: 'plaintext_allowed',
     });
 
-    // One physical file, enumerated once. It used to appear twice — as a
-    // project store from the ancestor walk and again as the user store — because
+    // One physical file, enumerated once. It used to appear twice, as a
+    // project store from the ancestor walk and again as the user store, because
     // the deduplication keyed on `source:path` and the sources differ. Reading
     // twice is harmless; ENUMERATING twice is not, because migration walks this.
     const records = (await nested.listDetailed()).filter((record) => record.key === STRANDED_KEY);
@@ -922,8 +922,8 @@ describe("a mail account configured on a surface is the daemon's to send with", 
  * that agree, and the owner's rule holds for it there.
  *
  * What these tests pin is the seam BETWEEN the branches, which is where the
- * three defects tonight all lived. On this branch — the one that introduced the
- * registry and the gate — nothing about a payment card is classified, and the
+ * three defects tonight all lived. On this branch, the one that introduced the
+ * registry and the gate, nothing about a payment card is classified, and the
  * card keys are app-local synthetic names the SDK's config-path derivation
  * cannot reach. Neither of those is a defect in isolation. Together they are a
  * merge hazard with a silent failure mode, and it is cheaper to hold it here
@@ -940,7 +940,7 @@ describe('the payment card across the branch seam', () => {
   test('no card field is declared secret-bearing on this branch', () => {
     // `secret-bearing-config-keys.ts` names `cardNumber`, `cardExpiry` and
     // `cardholderName` in its own header, as the worked example of keys every
-    // trailing-word pattern misses — and then declares none of them. The
+    // trailing-word pattern misses, and then declares none of them. The
     // plaintext sweep is driven by that declaration, so a card number written
     // into a settings file by any path the payments round did not close would
     // be swept by nothing and stay in the clear.
@@ -966,14 +966,14 @@ describe('the payment card across the branch seam', () => {
     const surface = managers(home, 'agent');
 
     // The payments round always passes `{ scope: 'daemon' }`, so this is not
-    // today's behaviour on that branch — it is what the safety net underneath
+    // today's behaviour on that branch, it is what the safety net underneath
     // it does if that argument is ever dropped, defaulted, or refactored away.
     // For every key the registry DOES classify, the net catches it. For a card,
     // it does not.
     await surface.secretsManager.set('GOODVIBES_PAYMENTS_CARD_NUMBER', '4242424242424242', { scope: 'user' });
     expect(await storedScope(surface.secretsManager, 'GOODVIBES_PAYMENTS_CARD_NUMBER')).toBe('user');
 
-    // Which means the daemon — the process that runs a purchase — cannot read it.
+    // Which means the daemon, the process that runs a purchase, cannot read it.
     const daemon = managers(home, 'daemon');
     expect(await daemon.secretsManager.get('GOODVIBES_PAYMENTS_CARD_NUMBER')).toBeNull();
 
@@ -991,7 +991,7 @@ describe('the payment card across the branch seam', () => {
 /**
  * The shape of a live stacked failure, reconstructed in a throwaway home.
  *
- * The scenario under test — a Telegram bot token where the daemon's own store
+ * The scenario under test, a Telegram bot token where the daemon's own store
  * is empty, the agent holds the value under one key name, the TUI holds it
  * under a DIFFERENT key name, and the daemon's config reference names the TUI's
  * spelling. Nothing in this file reads, decrypts or touches any real store;
@@ -999,7 +999,7 @@ describe('the payment card across the branch seam', () => {
  *
  * Three failures stack in one credential, and they are independent:
  *
- *   1. The daemon's tier is empty while the CONFIG half is present — the
+ *   1. The daemon's tier is empty while the CONFIG half is present, the
  *      reference arrived and the value never did.
  *   2. The two surfaces disagree on the KEY NAME for the same secret.
  *   3. The reference therefore resolves in no store the daemon can reach: its
@@ -1008,14 +1008,14 @@ describe('the payment card across the branch seam', () => {
  *      not read.
  *
  * (2) is the one the migration cannot survive, and it is not a gap in the
- * migration's implementation — it is a gap in the REGISTRY, which is what
+ * migration's implementation, it is a gap in the REGISTRY, which is what
  * decides what the migration is allowed to move:
  *
  *   - `GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN` derives from the daemon-owned
  *     config path `surfaces.telegram.botToken`, so it is daemon-needed and it
  *     migrates.
- *   - `TELEGRAM_BOT_TOKEN` — the bare operator-style name the reference points
- *     at — derives from nothing and is declared nowhere. The registry answers
+ *   - `TELEGRAM_BOT_TOKEN`, the bare operator-style name the reference points
+ *     at, derives from nothing and is declared nowhere. The registry answers
  *     "not a declared platform credential, so it keeps the scope its caller
  *     asked for", and the migration will never lift it, from any surface, ever.
  *
@@ -1036,7 +1036,7 @@ describe('one credential under two names is not one credential', () => {
     strandInSurfaceStore(home, 'agent', AGENT_KEY, TOKEN);
     strandInSurfaceStore(home, 'tui', TUI_KEY, TOKEN);
     // The daemon's own store is left empty. The daemon's CONFIG, however, holds
-    // the reference — the half that did arrive.
+    // the reference, the half that did arrive.
     const daemon = openSurface(home, 'daemon');
     daemon.configManager.setDynamic(CONFIG_KEY as never, REFERENCE);
     return home;
@@ -1070,7 +1070,7 @@ describe('one credential under two names is not one credential', () => {
 
     await bootDaemon(home);
 
-    // The TUI's copy — the one the reference names — has been lifted out of the
+    // The TUI's copy, the one the reference names, has been lifted out of the
     // TUI's silo. Before, it sat there indefinitely: nothing classified the
     // bare name and nothing read another surface's silo, so both halves of the
     // failure had to be fixed for this to move at all.
@@ -1084,7 +1084,7 @@ describe('one credential under two names is not one credential', () => {
 
     // From the agent's own manager. It used to see and classify only its own
     // spelling, so it reported success having moved a key the reference does
-    // not use — the value arrived somewhere real and the daemon still could not
+    // not use, the value arrived somewhere real and the daemon still could not
     // resolve what its config pointed at.
     const agent = managers(home, 'agent');
     const report = await migrateDaemonNeededCredentials(agent.secretsManager);
@@ -1100,7 +1100,7 @@ describe('one credential under two names is not one credential', () => {
    * The property the platform owes the owner, stated plainly.
    *
    * Currently fails. A credential whose config reference the daemon holds must
-   * be resolvable by the daemon after every surface has closed — whichever
+   * be resolvable by the daemon after every surface has closed, whichever
    * surface captured it and whatever that surface chose to call it.
    */
   test('the daemon resolves the credential its own config points at', async () => {
@@ -1126,7 +1126,7 @@ describe('one credential under two names is not one credential', () => {
  * tripped over. What had actually happened was a newer component migrating
  * shared state under an older reader, and nothing on disk said so.
  *
- * So the rewrite now leaves the floor behind it, through the real boot — not a
+ * So the rewrite now leaves the floor behind it, through the real boot, not a
  * hand-written marker. See config/settings-reader-floor.ts.
  */
 describe('a boot migration that rewrites the shared settings file records the reader it needs', () => {
@@ -1144,8 +1144,8 @@ describe('a boot migration that rewrites the shared settings file records the re
     const stored = JSON.parse(readFileSync(settingsPath, 'utf-8')) as Record<string, unknown>;
     const floor = readSettingsReaderFloor(stored);
     expect(floor?.minReaderVersion).toBe(SWEPT_CREDENTIAL_READER_FLOOR);
-    // Two boot migrations rewrite this same shared file — the daemon-owned
-    // config move and the credential sweep — and both record the floor. The
+    // Two boot migrations rewrite this same shared file, the daemon-owned
+    // config move and the credential sweep, and both record the floor. The
     // first to run wins the attribution and the second does not lower it, which
     // is the property that matters: whichever ran, the file says what a reader
     // now needs.

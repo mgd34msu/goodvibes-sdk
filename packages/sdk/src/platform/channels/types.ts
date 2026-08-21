@@ -156,16 +156,16 @@ export interface ChannelResolvedTarget {
  * These answer "can this channel send and receive right now", which is a
  * different question from "are its credentials present". The two were the same
  * value until a Telegram bot whose ingress had died kept reporting `healthy`
- * because its token was still in config — the owner sent a message, got
+ * because its token was still in config, the owner sent a message, got
  * nothing back, and every surface agreed everything was fine.
  *
- * - `healthy`      — something observed the live path and it is working.
- * - `degraded`     — observed and partially working; delivery is at risk.
- * - `dead`         — observed and NOT working, while configured and switched
+ * - `healthy`     , something observed the live path and it is working.
+ * - `degraded`    , observed and partially working; delivery is at risk.
+ * - `dead`        , observed and NOT working, while configured and switched
  *                    on. The state the old shape could not express at all.
- * - `unknown`      — configured and switched on, but nothing on this node can
+ * - `unknown`     , configured and switched on, but nothing on this node can
  *                    see whether it works. An honest unknown, never a green.
- * - `unresolved`   — a credential is DECLARED but does not resolve in the store
+ * - `unresolved`  , a credential is DECLARED but does not resolve in the store
  *                    this process reads. The channel cannot send, and that is
  *                    knowable without attempting one. Measured on this project's
  *                    own machine: the daemon's `surfaces.telegram.botToken` held
@@ -173,9 +173,9 @@ export interface ChannelResolvedTarget {
  *                    daemon's own store was `{}` and the token lived in the
  *                    agent's and the TUI's stores instead. Every send failed with
  *                    "Missing Telegram bot token"; every surface said healthy.
- * - `unconfigured` — nothing is declared at all, so it was never going to work.
+ * - `unconfigured`, nothing is declared at all, so it was never going to work.
  *                    Distinct from `unresolved`: nobody believes it is set up.
- * - `disabled`     — switched off on purpose; not a fault.
+ * - `disabled`    , switched off on purpose; not a fault.
  */
 export type ChannelHealthState =
   | 'healthy'
@@ -199,7 +199,7 @@ export interface ChannelRuntimeObservation {
   /** Live state when `observable`; null when nothing here can tell. */
   readonly running: boolean | null;
   /**
-   * Plain-language account of the state above, and — when it is not working —
+   * Plain-language account of the state above, and, when it is not working,
    * the specific thing to change. Never empty.
    */
   readonly reason: string;
@@ -519,7 +519,7 @@ export interface ChannelDoctorReport {
   readonly accountId?: string | undefined;
   /**
    * The same health question the status snapshot answers, resolved by the same
-   * rule. It used to be the ACCOUNT state — credential presence — so `doctor`
+   * rule. It used to be the ACCOUNT state, credential presence, so `doctor`
    * on a Telegram bot whose ingress had died reported `healthy`, which is the
    * one answer a doctor must never give a broken thing.
    */
@@ -578,7 +578,7 @@ export interface ChannelRenderEvent {
   readonly kind: ChannelRenderEventKind;
   /**
    * Who this line is written for. Absent falls back to the kind's default,
-   * which denies for every diagnostic kind — see channels/render-audience.ts.
+   * which denies for every diagnostic kind, see channels/render-audience.ts.
    * `eventLine()` renders nothing that is not the owner's.
    */
   readonly audience?: ChannelRenderAudience | undefined;

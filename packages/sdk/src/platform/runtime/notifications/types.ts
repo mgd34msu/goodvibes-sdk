@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Notification system types — core interfaces for the conversation noise
+ * Notification system types, core interfaces for the conversation noise
  * routing model. Operational noise is routed to dedicated
  * panels; the main conversation receives only critical failures, milestones,
  * and condensed summaries.
@@ -12,17 +12,17 @@ export type NotificationLevel = 'critical' | 'warning' | 'info' | 'debug';
 
 /**
  * Surface target for a routed notification.
- * - `conversation` — inline in the main conversation (high-signal only)
- * - `status_bar`   — ephemeral status bar display
- * - `panel_only`   — routed only to a dedicated panel
+ * - `conversation`, inline in the main conversation (high-signal only)
+ * - `status_bar`  , ephemeral status bar display
+ * - `panel_only`  , routed only to a dedicated panel
  */
 export type NotificationTarget = 'conversation' | 'status_bar' | 'panel_only';
 
 /**
  * Per-domain verbosity setting.
- * - `minimal` — only critical notifications surface above panel_only
- * - `normal`  — warnings surface to conversation/status_bar
- * - `verbose` — info notifications also surface above panel_only
+ * - `minimal`, only critical notifications surface above panel_only
+ * - `normal` , warnings surface to conversation/status_bar
+ * - `verbose`, info notifications also surface above panel_only
  */
 export type DomainVerbosity = 'minimal' | 'normal' | 'verbose';
 
@@ -32,13 +32,13 @@ export type DomainVerbosity = 'minimal' | 'normal' | 'verbose';
  * These codes appear in RoutingDecision.reasonCode and provide a machine-
  * readable explanation of why a notification was suppressed or redirected.
  *
- * - `allowed`                — notification was not suppressed (delivered normally)
- * - `quiet_while_typing`     — suppressed because the user is actively typing
- * - `mode_context_minimal`   — suppressed by the mode-context policy (quiet/minimal mode)
- * - `mode_context_normal`    — suppressed by the mode-context policy (normal mode, operational info)
- * - `burst_collapsed`        — collapsed into an existing burst batch group
- * - `batch_window_collapsed` — collapsed by the rolling batch-window policy
- * - `domain_verbosity_low`   — domain verbosity set below the notification level
+ * - `allowed`               , notification was not suppressed (delivered normally)
+ * - `quiet_while_typing`    , suppressed because the user is actively typing
+ * - `mode_context_minimal`  , suppressed by the mode-context policy (quiet/minimal mode)
+ * - `mode_context_normal`   , suppressed by the mode-context policy (normal mode, operational info)
+ * - `burst_collapsed`       , collapsed into an existing burst batch group
+ * - `batch_window_collapsed`, collapsed by the rolling batch-window policy
+ * - `domain_verbosity_low`  , domain verbosity set below the notification level
  */
 export type RoutingReasonCode =
   | 'allowed'
@@ -54,9 +54,9 @@ export type RoutingReasonCode =
  *
  * Used by the burst and mode-context policies to distinguish high-signal
  * events from operational churn:
- * - `operational` — routine progress / heartbeat events (most suppressible)
- * - `milestone`   — meaningful completion or state-change events
- * - `alert`       — user-attention-required events (least suppressible)
+ * - `operational`, routine progress / heartbeat events (most suppressible)
+ * - `milestone`  , meaningful completion or state-change events
+ * - `alert`      , user-attention-required events (least suppressible)
  */
 export type NotificationTag = 'operational' | 'milestone' | 'alert';
 
@@ -81,7 +81,7 @@ export interface Notification {
    * 'session', 'git'). Used for per-domain verbosity and routing policy.
    */
   domain: string;
-  /** Severity level — determines base routing target. */
+  /** Severity level, determines base routing target. */
   level: NotificationLevel;
   /** Short human-readable title. */
   title: string;

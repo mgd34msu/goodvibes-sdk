@@ -6,7 +6,7 @@ import { editSchema } from '../packages/sdk/src/platform/tools/edit/schema.ts';
 /**
  * Strict OpenAI-compatible request validators (RouteLLM among them) forbid the
  * `oneOf` keyword inside tool parameter schemas and 400 the WHOLE chat request
- * — one tool with a `oneOf` made every turn through such a provider fail with
+ *, one tool with a `oneOf` made every turn through such a provider fail with
  * "Extra inputs are not permitted". `anyOf` validates identically for disjoint
  * branches and is the keyword OpenAI's own function-calling schemas use, so
  * tool schemas use `anyOf` and this pin keeps `oneOf` from coming back.

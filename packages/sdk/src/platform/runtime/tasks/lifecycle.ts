@@ -1,5 +1,5 @@
 /**
- * Task lifecycle state machine — pure transition logic with no side effects.
+ * Task lifecycle state machine, pure transition logic with no side effects.
  *
  * Implements the task lifecycle state machine:
  *
@@ -16,7 +16,7 @@ import type { TaskLifecycleState } from '../store/domains/tasks.js';
 
 /**
  * Adjacency list for valid task state transitions.
- * Terminal states map to empty arrays — no outbound transitions.
+ * Terminal states map to empty arrays, no outbound transitions.
  */
 const VALID_TRANSITIONS: Record<TaskLifecycleState, TaskLifecycleState[]> = {
   queued: ['running', 'cancelled'],

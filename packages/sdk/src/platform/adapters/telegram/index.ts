@@ -64,7 +64,7 @@ function telegramConversationKind(chatType?: string, threadId?: string): import(
  *
  * Everything here is webhook-SPECIFIC: the shared-secret header check and the
  * request body read. Telegram sends the secret token only on webhook POSTs, so
- * this check must not sit in the shared path — a polled update carries no
+ * this check must not sit in the shared path, a polled update carries no
  * headers and would be rejected by it.
  */
 export async function handleTelegramSurfaceWebhook(
@@ -99,7 +99,7 @@ export async function handleTelegramSurfaceWebhook(
 }
 
 /**
- * Handle one Telegram Update object — policy, route binding, standard bot
+ * Handle one Telegram Update object, policy, route binding, standard bot
  * commands, control commands, and task dispatch.
  *
  * Shared verbatim by webhook mode and getUpdates polling so the two can never
@@ -197,7 +197,7 @@ export async function processTelegramUpdate(
 
   // Standard Telegram bot commands are onboarding, not work. This runs AFTER
   // the route binding above (so the reply has a bound conversation to land in)
-  // and BEFORE task dispatch — otherwise `/start`, which every new user sends
+  // and BEFORE task dispatch, otherwise `/start`, which every new user sends
   // first, spawns an agent whose task is the literal string "/start".
   const botCommand = parseTelegramBotCommand(text, botUsername);
   if (botCommand) {

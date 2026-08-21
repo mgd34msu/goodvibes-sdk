@@ -1,5 +1,5 @@
 /**
- * ForensicsClassifier — auto-classifies failures from event context.
+ * ForensicsClassifier, auto-classifies failures from event context.
  *
  * Maps combinations of stop reasons, error messages, event sequences,
  * and cascade presence to a FailureClass without requiring manual log
@@ -27,7 +27,7 @@ interface ClassifierInput {
 
 /**
  * Classify a failure based on available event context.
- * Rules are evaluated in priority order — first match wins.
+ * Rules are evaluated in priority order, first match wins.
  *
  * @returns The classified FailureClass.
  */
@@ -133,6 +133,6 @@ export function summariseFailure(
     case 'unknown':
       return errorMessage
         ? `Failure (unclassified): ${errorMessage.slice(0, 120)}`
-        : 'Failure (unclassified — inspect causal chain)';
+        : 'Failure (unclassified, inspect causal chain)';
   }
 }

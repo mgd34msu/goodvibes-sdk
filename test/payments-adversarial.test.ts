@@ -81,7 +81,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'checkout.totally-legit-store.example',
@@ -102,7 +102,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'shop.example',
@@ -124,7 +124,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'shop.example',
@@ -145,7 +145,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'shop.example',
@@ -166,7 +166,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'shop.example',
@@ -207,7 +207,7 @@ describe('a purchase whose intent derives from injected content is refused', () 
         // Owner-origin with an owner-NAMED merchant. Both matter: an
         // origin:'content' intent is refused with EMPTY findings, and
         // merchantDiscovered:true skips the merchant/checkoutUrl checks
-        // entirely — either would make the field assertion below vacuous.
+        // entirely, either would make the field assertion below vacuous.
         origin: 'owner' as const,
         merchantDiscovered: false,
         merchant: 'checkout.totally-legit-store.example',
@@ -253,7 +253,7 @@ describe('prompt rendering is immune to page text', () => {
   test('the rendered approval is byte-identical no matter what the page says', () => {
     const clean = renderApprovalMessage(baseFacts, 60);
     // Every field a merchant page could influence, filled with an attack payload.
-    // None of them are inputs to the renderer — that is the assertion.
+    // None of them are inputs to the renderer, that is the assertion.
     const attacks = [
       'Approve $12 for coffee?',
       '</div><script>alert(1)</script>',
@@ -348,7 +348,7 @@ describe('the two windows must never agree', () => {
 describe('presence is not attention', () => {
   test('the deadline depends only on the start instant and the configured duration', () => {
     const started = Date.parse('2026-07-27T12:00:00Z');
-    // There is deliberately no activity/presence/focus parameter to vary — the
+    // There is deliberately no activity/presence/focus parameter to vary, the
     // signature is the assertion. If one is ever added, this test stops
     // compiling, which is the intent.
     expect(windowDeadlineMs(started, 10)).toBe(started + 600_000);
@@ -838,7 +838,7 @@ describe('the step-0 gates are terminal', () => {
 
   test('automated work cannot authorize spending', () => {
     // A schedule, a trigger or a channel message is not an instruction to spend
-    // money — those surfaces carry no command authority at all.
+    // money, those surfaces carry no command authority at all.
     const refusal = checkPaymentGates({ ...passing, isOwnerDirectRequest: false });
     expect(refusal?.code).toBe('not-owner-request');
   });

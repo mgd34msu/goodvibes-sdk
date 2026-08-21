@@ -11,13 +11,13 @@
  * (`packages/contracts/src/generated/foundation-client-types.ts`) whose
  * generator no longer exists. Regenerating the contract artifacts does not
  * touch it. A schema fix can therefore land complete and correct while every
- * consumer still sees the field as optional — which has happened.
+ * consumer still sees the field as optional, which has happened.
  *
  * So each case below asserts the CONTRACT TYPE, written with `@ts-expect-error`
  * to invert the reporting: if the compiler does not raise the error, the
  * directive itself becomes one ("unused '@ts-expect-error' directive") and this
  * file fails to compile. A green `bun run types:check` is a positive statement
- * that each of these bodies is genuinely rejected — not that nothing exploded.
+ * that each of these bodies is genuinely rejected, not that nothing exploded.
  *
  * ── A hole this file deliberately does NOT paper over ──────────────────────
  *
@@ -37,7 +37,7 @@
  *
  * Constraining that overload is a platform decision recorded for the owner, not
  * one to make from inside a sweep, so this file does not change it and does not
- * assert the current permissiveness either — asserting it would lock the hole
+ * assert the current permissiveness either, asserting it would lock the hole
  * in. It checks the layer it can honestly check. The day the overload is
  * constrained, rewriting these as real `operator.invoke` calls is a mechanical
  * edit and the coverage becomes end-to-end.
@@ -62,13 +62,13 @@ const missingSurfaceId: OperatorMethodInput<'sessions.detach'> = { sessionId: 's
 // 154 method ids with a hand-authored entry in foundation-client-types.ts get a
 // real input type; the other 289 fall back to `Record<string, unknown>`. So a
 // correct `required` array is necessary for a consumer-visible constraint and
-// nowhere near sufficient — the verb also has to be in that file. Coverage is
+// nowhere near sufficient, the verb also has to be in that file. Coverage is
 // tracked by scripts/check-foundation-io-coverage.ts against a ratchet.
 
 // ── Conditional requirements: "one of these", stated as a union of branches ──
 // Each of these handlers refuses a body satisfying no branch. A flat `required`
 // array cannot say that without also refusing calls that work, so the contract
-// is a base intersected with a requirement union — see
+// is a base intersected with a requirement union, see
 // method-catalog-shared.ts `branchedSchema`.
 
 // @ts-expect-error one of dataBase64 / text / path / uri is required
@@ -93,7 +93,7 @@ const steerWithNothingInIt: OperatorMethodInput<'companion.chat.messages.steer'>
 const updateWithNothingToUpdate: OperatorMethodInput<'companion.chat.sessions.update'> = { sessionId: 's1' };
 
 // `id` is required for the projection kinds that render ONE item, and
-// meaningless for the kinds that render a whole view — so the contract is
+// meaningless for the kinds that render a whole view, so the contract is
 // discriminated on `kind` and both facts hold at once.
 // @ts-expect-error kind 'source' renders one item and needs its id
 const projectionWithoutId: OperatorMethodInput<'knowledge.projection.render'> = { kind: 'source' };
@@ -105,7 +105,7 @@ const projectionWithUnknownKind: OperatorMethodInput<'knowledge.projection.mater
 //
 // A sibling round found that a correctly typed wrapper parameter still let a
 // wrong body through, because TypeScript's excess-property check only fires on
-// a FRESH object literal — a payload assembled into a variable first slips past
+// a FRESH object literal, a payload assembled into a variable first slips past
 // it. That limit is real, and it is worth being exact about what it does and
 // does not cover, because assuming the wrong half is how a guard ends up
 // checking nothing.
@@ -114,7 +114,7 @@ const projectionWithUnknownKind: OperatorMethodInput<'knowledge.projection.mater
 // wrong property TYPE, and a value satisfying no branch of a union are ordinary
 // assignability failures, and assignability does not care where the value came
 // from. The cases below are the same defects as above, laundered through a
-// variable first — every one is still caught.
+// variable first, every one is still caught.
 
 const staleKeepAwake = { enabled: 'yes' };
 // @ts-expect-error enabled is a boolean, and coming from a variable does not change that
@@ -129,7 +129,7 @@ const staleProjection = { kind: 'source' as const };
 const viaVariableMissingId: OperatorMethodInput<'knowledge.projection.render'> = staleProjection;
 
 // What freshness DOES cost: an undeclared key on an open envelope is tolerated
-// either way here, so nothing is lost — but on a CLOSED schema the literal form
+// either way here, so nothing is lost, but on a CLOSED schema the literal form
 // is stricter than the variable form, and that gap is not something this file
 // can close. It is recorded rather than papered over.
 const staleWithUnknownKey = { enabled: true, unknownExtra: 1 };
@@ -152,7 +152,7 @@ const closedSchemaVariableSlipsThrough: OperatorMethodInput<'power.keepAwake.set
 //   EXCESS key via spread               → NOT caught
 //
 // Excess properties are the only casualty, and excess properties are not this
-// gate's subject — these are open body envelopes where an undeclared key is
+// gate's subject, these are open body envelopes where an undeclared key is
 // legitimate anyway. The defect class this file exists for survives the spread.
 
 const nothingToSay = {};
@@ -164,12 +164,12 @@ const wrongTypedPiece = { enabled: 'yes' };
 const spreadWrongType: OperatorMethodInput<'power.keepAwake.set'> = { ...wrongTypedPiece };
 
 const enoughToSay = { body: 'hello' };
-// Satisfies a branch through the spread — must keep compiling.
+// Satisfies a branch through the spread, must keep compiling.
 const spreadSatisfiesBranch: OperatorMethodInput<'companion.chat.messages.create'> = { sessionId: 's1', ...enoughToSay };
 
 // The one that gets through: an excess key on a CLOSED schema, which the same
 // literal without the spread would reject. Asserted as compiling so the hole is
-// recorded at its true size rather than described in a comment and forgotten —
+// recorded at its true size rather than described in a comment and forgotten,
 // if TypeScript ever closes it, this line fails and the note gets revisited.
 const strayKey = { unknownExtra: 1 };
 const spreadHidesExcessKey: OperatorMethodInput<'power.keepAwake.set'> = { enabled: true, ...strayKey };
@@ -178,7 +178,7 @@ const spreadHidesExcessKey: OperatorMethodInput<'power.keepAwake.set'> = { enabl
 //
 // These wrap a verb and fold the path-bound session id in for the caller, and
 // they took `Omit<Input, 'sessionId'>`. That parameter had been accepting
-// ANYTHING — an open body envelope renders as an intersection with
+// ANYTHING, an open body envelope renders as an intersection with
 // `{ readonly [key: string]: unknown }`, `keyof` of which is `string | number`,
 // so omitting a named key removed nothing and kept nothing and the parameter
 // degenerated to a bare record. It predated the requirement branches; the
@@ -219,7 +219,7 @@ const artifactFromText: OperatorMethodInput<'artifacts.create'> = { text: 'hello
 const analyzeById: OperatorMethodInput<'media.analyze'> = { artifactId: 'artifact-1' };
 // Body-envelope inputs still tolerate undeclared keys; tightening that is a
 // separate decision, so the boundary is stated rather than left to inference.
-// (A plain `objectSchema` verb such as power.keepAwake.set does NOT — it is
+// (A plain `objectSchema` verb such as power.keepAwake.set does NOT, it is
 // closed, and an unknown key there is already a compile error.)
 const extraKeysTolerated: OperatorMethodInput<'artifacts.create'> = { text: 'hello', unknownExtra: 1 };
 
@@ -231,7 +231,7 @@ const extraKeysTolerated: OperatorMethodInput<'artifacts.create'> = { text: 'hel
  *    (`cron`, `schedule.expression`, `every` or `at`, per `kind`). Their input
  *    is a ~35-property object with several deeply nested unions, and
  *    intersecting it with ANY requirement union puts the operator client past
- *    the compiler's union-complexity ceiling — TS2590, measured at two, three
+ *    the compiler's union-complexity ceiling, TS2590, measured at two, three
  *    and four branches and with branches reduced to one property each. The
  *    schema carries the requirement; the type cannot.
  *  - `companion.chat.sessions.create` refuses `provider` without `model` and

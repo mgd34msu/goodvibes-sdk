@@ -1,5 +1,5 @@
 /**
- * order-correlation.ts — recognising the store's confirmation when it arrives.
+ * order-correlation.ts, recognising the store's confirmation when it arrives.
  *
  * ══ This CORRELATES. It does not gate ═════════════════════════════════════
  *
@@ -8,7 +8,7 @@
  * and it is worth saying why, because the two look alike.
  *
  * An expectation exists to AUTHORIZE. A verification link lets an agent do
- * something — click through and complete a signup — so it must have been asked
+ * something, click through and complete a signup, so it must have been asked
  * for in advance, correlated to an address minted for that one service, and
  * expired aggressively. `google/verification-expectations.ts` is built entirely
  * around that, and its own header names the excluded cases: a password reset
@@ -31,13 +31,13 @@
  * The mail proposes a sender domain and an arrival time. Everything else in the
  * match comes from the purchase ledger. A message claiming to be from a
  * merchant we never bought from correlates to nothing, and a message from a
- * merchant we DID buy from still cannot alter what we recorded — it can only be
+ * merchant we DID buy from still cannot alter what we recorded, it can only be
  * recognised as relating to it.
  *
  * The sender domain is compared as a REGISTRABLE DOMAIN computed by us from the
  * envelope, against the registrable domain we computed from the validated
  * checkout url. Stores routinely send from a different subdomain than they sell
- * from — `order-update.example.com` for a purchase at `www.example.com` — so
+ * from, `order-update.example.com` for a purchase at `www.example.com`, so
  * subdomains of the same registrable domain match, and a different registrable
  * domain does not, however similar it looks.
  */
@@ -52,7 +52,7 @@ import type { PurchaseRecord } from './checkout-flow.js';
  * Generous on purpose. Stores are not instant: some send within seconds, some
  * batch overnight, and a warehouse cut-off can put hours between the charge and
  * the mail. Six hours covers the realistic span without being so wide that two
- * separate purchases at the same merchant on the same day become ambiguous —
+ * separate purchases at the same merchant on the same day become ambiguous,
  * and when they ARE ambiguous this refuses to guess rather than picking one.
  */
 export const CONFIRMATION_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -133,7 +133,7 @@ export function correlatePurchaseMail(
  * So three narrow patterns run over the text, each yielding a short token, and
  * each token is neutralised before it can be rendered. Nothing else survives.
  * A body this cannot find a pattern in produces nulls, and the report simply
- * carries no order number — which is a strictly better outcome than quoting a
+ * carries no order number, which is a strictly better outcome than quoting a
  * line to be helpful.
  *
  * Note what is deliberately NOT extracted: the total. We have our own, computed

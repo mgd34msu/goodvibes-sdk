@@ -1,4 +1,4 @@
-# Knowledge System
+# Knowledge system
 
 The knowledge system is a persistent, structured memory layer for GoodVibes
 agents and clients. The SQLite store is the source of truth; markdown/wiki
@@ -6,7 +6,7 @@ output is a projection generated from structured records.
 
 Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Consumer apps interact through operator methods documented below.
 
-## Data Model
+## Data model
 
 | Record | Purpose |
 |---|---|
@@ -20,7 +20,7 @@ Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Co
 | Job/run/schedule | Background maintenance, refresh, reindex, and consolidation execution records |
 | Consolidation candidate/report | Reviewable proposal to promote, refresh, reject, or supersede high-signal knowledge |
 
-## Knowledge Spaces
+## Knowledge spaces
 
 Knowledge records can carry `metadata.knowledgeSpaceId` to isolate a feature or
 client domain from the default GoodVibes knowledge space. Records without this
@@ -60,7 +60,7 @@ The bullets above are operator method ids, not SDK method names. The SDK ingest
 helpers on `createKnowledgeApi().ingest.*` use their own camelCase names: `url()`,
 `artifact()`, `browserHistory()`, `bookmarksFile()`, `urlsFile()`,
 `bookmarkSeeds()`, `withConnector()`, and `connectorInput()`. So a valid operator
-id such as `knowledge.ingest.bookmarks` is not a callable SDK method — call
+id such as `knowledge.ingest.bookmarks` is not a callable SDK method. Call
 `knowledge.ingest.bookmarksFile()` instead. These helpers wrap the
 `KnowledgeService` methods `ingestUrl()`, `ingestArtifact()`,
 `syncBrowserHistory()`, `importBookmarksFromFile()`, `importUrlsFromFile()`,
@@ -103,7 +103,7 @@ extraction record for later queries. The general knowledge reindex path also
 re-extracts stored artifacts whose extraction is missing or placeholder-only,
 so non-Home-Graph PDFs can be repaired without reuploading.
 
-## Semantic Wiki Loop
+## Semantic wiki loop
 
 The knowledge/wiki system has a source-grounded semantic layer on top of raw
 extraction. Extraction remains the immutable evidence layer; semantic enrichment
@@ -331,7 +331,7 @@ Foreground repair attempts use bounded web search and URL-ingest waits, accept
 two repair sources by default, yield between gap attempts, and mark interrupted
 active tasks as blocked-and-retriable on the next run for that space.
 
-## Review Pathways
+## Review pathways
 
 The knowledge/wiki feature is designed for frequent LLM and user review. There
 are two durable review lanes:
@@ -352,7 +352,7 @@ status and review metadata instead of recreating it as an open issue. When a
 generator provides `metadata.subjectFingerprint` and that fingerprint changes,
 the issue can reopen because the underlying subject materially changed.
 
-## Browser-Local Knowledge
+## Browser-local knowledge
 
 Browser history and bookmarks add behavioral signal to the graph. The SDK reads
 local profile files, folds entries by canonical URL, records profile/source-kind
@@ -509,7 +509,7 @@ See [Home Graph extension](./home-graph.md) for an orientation to the extension
 model, and [Home Assistant integration](./homeassistant-integration.md) for
 daemon routes and operator method ids.
 
-## Project Planning
+## Project planning
 
 Project Planning is a passive SDK-backed knowledge feature for the TUI's
 conversational planning loop. The TUI owns intent detection, repo/doc
@@ -551,7 +551,7 @@ and `projectPlanning.workPlan.task.delete`.
 See [Project Planning](./project-planning.md) for route details and TUI
 integration guidance.
 
-## Retrieval And Packets
+## Retrieval and packets
 
 Knowledge retrieval uses current store state, lexical scoring, graph relations,
 freshness, extraction availability, and usage history. Packet APIs build
@@ -566,7 +566,7 @@ token-bounded context bundles for agents:
 Packet items include source/node identity, summary, URI, related labels,
 evidence snippets, score, estimated tokens, and metadata.
 
-## Projections And Wiki Output
+## Projections and wiki output
 
 The projection service renders structured knowledge as markdown:
 
@@ -594,7 +594,7 @@ from feeding back into later projections or competing with original evidence.
 See [Generated knowledge pages](./knowledge-pages.md) for the generated-page
 input, metadata, and quality model.
 
-## Visual Map
+## Visual map
 
 `GET /api/knowledge/map` and `knowledge.map` return a deterministic visual map
 of the base structured knowledge graph. The response includes:
@@ -647,7 +647,7 @@ The GraphQL service exposes query access over the knowledge store:
 The schema is backed by the same sources, nodes, edges, issues, extractions,
 usage records, candidates, reports, jobs, runs, and schedules.
 
-## Maintenance Jobs
+## Maintenance jobs
 
 Built-in job kinds:
 
@@ -672,7 +672,7 @@ created, enabled, disabled, listed, and deleted through the knowledge API. New
 stores get bootstrap schedules for daily light consolidation, weekly deep
 consolidation, and hourly semantic self-improvement.
 
-## Consolidation And Reviewed Memory
+## Consolidation and reviewed memory
 
 Consolidation reviews usage-heavy or highly connected knowledge and creates
 candidates for:
@@ -686,7 +686,7 @@ Accepted memory-promotion candidates are written into the reviewed memory
 registry with provenance. Deep consolidation can auto-promote high-confidence
 candidates; manual decisions remain available for review flows.
 
-## Operator Methods
+## Operator methods
 
 The operator contract exposes knowledge status, listing, item lookup,
 connector discovery, ingest, search, packets, usage, consolidation, jobs,

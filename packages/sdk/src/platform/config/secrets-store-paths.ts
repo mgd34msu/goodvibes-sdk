@@ -1,20 +1,20 @@
 /**
- * secrets-store-paths.ts — where a secret physically lives, per scope.
+ * secrets-store-paths.ts, where a secret physically lives, per scope.
  *
  * Three tiers, and the difference between them is a real directory rather than
  * a label:
  *
- *   project — `<root>/.goodvibes/<surface>/secrets.enc`, walked up the ancestor
+ *   project, `<root>/.goodvibes/<surface>/secrets.enc`, walked up the ancestor
  *             chain nearest-first. A credential that belongs to one checkout.
  *
- *   user    — `<home>/.goodvibes/<surface>/secrets.enc`. This operator's own
+ *   user   , `<home>/.goodvibes/<surface>/secrets.enc`. This operator's own
  *             credential, on this machine, for this surface.
  *
- *   daemon  — `<daemonHome>/secrets.enc`, defaulting to
+ *   daemon , `<daemonHome>/secrets.enc`, defaulting to
  *             `~/.goodvibes/daemon/secrets.enc`: the same directory that already
  *             holds `settings.json`, `operator-tokens.json` and the rest of the
  *             daemon's own state (see daemon-config-tier.ts). Deliberately NOT
- *             surface-scoped — the daemon is one process whichever product
+ *             surface-scoped, the daemon is one process whichever product
  *             launched it, so a credential it executes with has exactly one
  *             home, and the TUI, the agent and the web UI all read that one.
  *
@@ -80,13 +80,13 @@ export function defaultDaemonSecretHome(globalHome: string): string {
 /**
  * Deduplicate by FILE, not by (tier, file).
  *
- * A project root inside the home directory — `~/Projects/thing` under `~` — has
+ * A project root inside the home directory, `~/Projects/thing` under `~`, has
  * the home among its ancestors, so `<home>/.goodvibes/<surface>/secrets.enc`
  * is produced once as a project store (from the ancestor walk) and again as the
  * user store. One physical file, two entries.
  *
  * Keying on `source:path` kept both, because the sources differ. Reading twice
- * is harmless; ENUMERATING twice is not — the credential migration walks these
+ * is harmless; ENUMERATING twice is not, the credential migration walks these
  * stores, so one credential was processed and receipted as two, in two tiers,
  * one of which does not exist. Whichever entry comes first wins, which
  * preserves the existing precedence exactly.
@@ -166,7 +166,7 @@ function projectStore(layout: SecretStoreLayout, root: string, medium: SecretSto
 /**
  * Every OTHER surface's user-tier store under this home.
  *
- * `secretReadOrder` walks one surface root — this manager's own — which is
+ * `secretReadOrder` walks one surface root, this manager's own, which is
  * right for resolution: the agent has no business resolving a credential out of
  * the TUI's silo at read time, and a daemon that did would be reading a value
  * nobody asked it to.
@@ -175,7 +175,7 @@ function projectStore(layout: SecretStoreLayout, root: string, medium: SecretSto
  * token sat in `~/.goodvibes/agent/secrets.enc` while the daemon booted rooted
  * at `daemon` and enumerated only its own store. The credential was one
  * directory away, readable, and invisible to the only code that could have
- * lifted it — so it was never lifted by anything, ever.
+ * lifted it, so it was never lifted by anything, ever.
  *
  * Discovered by listing `<home>/.goodvibes/` rather than from a list of known
  * surface names: a product the SDK has never heard of still leaves its store

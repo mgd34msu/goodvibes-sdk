@@ -1,5 +1,5 @@
 /**
- * Telemetry instrumentation — barrel and factory.
+ * Telemetry instrumentation, barrel and factory.
  *
  * Provides `createInstrumentation()` which wires the DomainBridge to
  * a RuntimeEventBus and returns a handle for detaching and cascade recording.

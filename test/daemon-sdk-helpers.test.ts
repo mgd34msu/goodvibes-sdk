@@ -286,7 +286,7 @@ describe('http-policy — resolvePrivateHostFetchOptions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// error-response.ts — buildErrorResponseBody
+// error-response.ts, buildErrorResponseBody
 // ---------------------------------------------------------------------------
 
 describe('error-response — buildErrorResponseBody — string error', () => {
@@ -420,7 +420,7 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
       phase: 'request',
     });
     const body = buildErrorResponseBody(err);
-    // phase already in message — should not appear twice
+    // phase already in message, should not appear twice
     const phaseMatches = (body.error.match(/phase=request/g) ?? []).length;
     expect(phaseMatches).toBe(1);
   });
@@ -428,7 +428,7 @@ describe('error-response — buildErrorResponseBody — GoodVibesSdkError', () =
 
 describe('error-response — buildErrorResponseBody — structured body passthrough', () => {
   test('StructuredDaemonErrorBody unprivileged: returns safe copy (not original reference)', () => {
-    // non-privileged callers get a stripped copy — internal fields like
+    // non-privileged callers get a stripped copy, internal fields like
     // provider/operation/phase are not exposed. Source and category are safe.
     const structured = {
       error: 'already structured',
@@ -537,8 +537,8 @@ describe('error-response — summarizeErrorForRecord', () => {
 });
 
 // ---------------------------------------------------------------------------
-// remote-routes — estimateJsonByteLengthWithinLimit
-// Verifies the cap is enforced via counting replacer — the full encoded string
+// remote-routes, estimateJsonByteLengthWithinLimit
+// Verifies the cap is enforced via counting replacer, the full encoded string
 // is NEVER allocated for over-limit payloads (sentinel path exits early).
 // ---------------------------------------------------------------------------
 
@@ -583,7 +583,7 @@ describe('remote-routes — estimateJsonByteLengthWithinLimit cap-before-allocat
   test('exactly-at-limit string: does not trip the sentinel', () => {
     // A string of 'a' repeated so that the over-estimate stays within maxBytes.
     // 1 char * 6 bytes (worst-case estimate per char) + 2 (quotes) = 8 bytes.
-    // Use maxBytes = 1000 — a 3-char string should comfortably stay under cap.
+    // Use maxBytes = 1000, a 3-char string should comfortably stay under cap.
     const result = estimateJsonByteLengthWithinLimit('abc', 1000);
     expect(result.kind).toBe('ok');
     if (result.kind === 'ok') {

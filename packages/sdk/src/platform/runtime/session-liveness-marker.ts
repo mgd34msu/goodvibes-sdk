@@ -1,5 +1,5 @@
 /**
- * session-liveness-marker.ts — best-effort "this session is open in another
+ * session-liveness-marker.ts, best-effort "this session is open in another
  * terminal" signal for multi-instance safety.
  *
  * Two independent instances of a surface resuming or writing recovery snapshots for
@@ -15,13 +15,13 @@
  * from under its owner.
  *
  * Every check here is best-effort by design: a missing or stale marker never
- * blocks anything — it just means "we can't tell, proceed as before". This is
+ * blocks anything, it just means "we can't tell, proceed as before". This is
  * a convenience signal, not a lock.
  *
  * Location: <homeDirectory>/.goodvibes/<surfaceRoot>/liveness/<sessionId>.json.
  * Both halves come off the caller's SessionSurface rather than being spelled
  * out here, so the markers land under the same scope as the sessions and
- * recovery snapshots they describe — mirrors the transcript-journal.ts
+ * recovery snapshots they describe, mirrors the transcript-journal.ts
  * convention (homeDirectory-scoped, under the surface's own directory).
  */
 import { existsSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
@@ -37,7 +37,7 @@ export interface LivenessMarker {
 
 /**
  * A marker older than this is treated as stale even if its pid happens to
- * still resolve to a running process (pid reuse after a crash) — the marker
+ * still resolve to a running process (pid reuse after a crash), the marker
  * is refreshed on the host's recovery cadence (60s), so anything past
  * ~2.5x that cadence means the writer stopped refreshing it.
  */
@@ -53,7 +53,7 @@ export function livenessMarkerPathFor(surface: SessionSurface, sessionId: string
   return join(livenessMarkerDirFor(surface), `${sessionId}.json`);
 }
 
-/** Refresh (creating if needed) the liveness marker for this session/pid. Best-effort — never throws. */
+/** Refresh (creating if needed) the liveness marker for this session/pid. Best-effort, never throws. */
 export function writeLivenessMarker(surface: SessionSurface, sessionId: string, pid: number = process.pid): void {
   try {
     const path = livenessMarkerPathFor(surface, sessionId);
@@ -63,7 +63,7 @@ export function writeLivenessMarker(surface: SessionSurface, sessionId: string, 
     // temp file plus rename removes that window at the source.
     writeJsonFileAtomic(path, marker, { mode: 0o600, indent: null, trailingNewline: false });
   } catch {
-    // Best-effort — a missed liveness refresh never blocks anything.
+    // Best-effort, a missed liveness refresh never blocks anything.
   }
 }
 
@@ -104,8 +104,8 @@ export function isPidAlive(pid: number, kill: (pid: number, signal: 0) => void =
     kill(pid, 0);
     return true;
   } catch (err) {
-    // ESRCH = no such process. Any other error (e.g. EPERM — exists but this
-    // process lacks permission to signal it) is treated as "still alive" —
+    // ESRCH = no such process. Any other error (e.g. EPERM, exists but this
+    // process lacks permission to signal it) is treated as "still alive",
     // best-effort here means erring toward not silently dropping a real warning.
     return (err as NodeJS.ErrnoException | undefined)?.code === 'EPERM';
   }
@@ -119,7 +119,7 @@ export interface SessionLivenessCheck {
 /**
  * Best-effort: is `sessionId` apparently open in another still-running
  * process right now? A missing, stale (older than LIVENESS_STALE_AFTER_MS),
- * or unreadable marker all resolve to `{ live: false, pid: null }` — never a
+ * or unreadable marker all resolve to `{ live: false, pid: null }`, never a
  * throw, never a block on the caller.
  */
 export function checkSessionLiveness(
@@ -141,7 +141,7 @@ export function checkSessionLiveness(
 // `removeLivenessMarker` only runs on a CLEAN exit. A
 // SIGKILL, a panic, or a pulled power cord leaves the marker behind forever,
 // and `checkSessionLiveness` treating it as not-live does not remove the file
-// — so the liveness directory grows one file per session id ever opened. The
+//, so the liveness directory grows one file per session id ever opened. The
 // sweep below is the reclaim half of that lifecycle.
 
 /**
@@ -167,7 +167,7 @@ export interface LivenessReapOptions {
   readonly isPidAliveFn?: typeof isPidAlive;
   /**
    * Session ids that must never be reaped regardless of what the marker says
-   * — normally just the current session's id. Belt-and-braces: the current
+   *, normally just the current session's id. Belt-and-braces: the current
    * session refreshes its own marker every 60s, so the liveness rule already
    * keeps it.
    */
@@ -181,7 +181,7 @@ export interface LivenessReapOptions {
  *
  * A marker is reaped when it is either:
  *   - unreadable, empty, or not shaped like a marker (crash residue that can
- *     never resolve to a live session again — validated by parsing the
+ *     never resolve to a live session again, validated by parsing the
  *     content, not by the file merely existing); or
  *   - definitively not live: older than `LIVENESS_STALE_AFTER_MS` AND its pid
  *     no longer resolves to a running process.
@@ -204,7 +204,7 @@ export function reapStaleLivenessMarkers(surface: SessionSurface, opts: Liveness
   try {
     names = readdirSync(dir).filter((name) => name.endsWith('.json'));
   } catch {
-    // No liveness directory yet, or it is unreadable — nothing to reclaim.
+    // No liveness directory yet, or it is unreadable, nothing to reclaim.
     return { scanned: 0, reaped: 0 };
   }
 

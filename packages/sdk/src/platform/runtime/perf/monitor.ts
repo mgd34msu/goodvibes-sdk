@@ -1,5 +1,5 @@
 /**
- * PerfMonitor — collects metrics from the runtime store and evaluates
+ * PerfMonitor, collects metrics from the runtime store and evaluates
  * them against registered performance budgets.
  *
  * The monitor maintains a violation streak counter per budget so that
@@ -68,8 +68,8 @@ export class PerfMonitor {
    * Extracts PerfMetrics from a PerfSnapshot.
    *
    * Metrics derived from SurfacePerfDomainState:
-   * - frame.render.p95 — p95 of recentCycles.durationMs
-   * - memory.growth.bytes_per_hour — heap growth rate since previous evaluate()
+   * - frame.render.p95, p95 of recentCycles.durationMs
+   * - memory.growth.bytes_per_hour, heap growth rate since previous evaluate()
    *
    * Metrics from extraMetrics (pass-through):
    * - event.queue.depth
@@ -135,7 +135,7 @@ export class PerfMonitor {
     for (const budget of this.budgets) {
       const metric = metrics.find((m) => m.name === budget.metric);
       if (!metric) {
-        // Metric not found — add a warning entry to make the missing input visible.
+        // Metric not found, add a warning entry to make the missing input visible.
         violations.push({
           budget,
           actual: NaN,

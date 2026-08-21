@@ -29,7 +29,7 @@ export type PeerSdkOptions = HttpTransportOptions & PeerSdkBehaviorOptions;
 /**
  * Per-call options for `sdk.peer.invoke()`.
  *
- * Extends the underlying transport invoke options — see `ContractInvokeOptions`
+ * Extends the underlying transport invoke options, see `ContractInvokeOptions`
  * for available fields (e.g. `signal`, `responseSchema`).
  */
 export interface PeerInvokeOptions extends PeerRemoteClientInvokeOptions {}

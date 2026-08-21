@@ -1,4 +1,4 @@
-# Home Assistant Integration
+# Home Assistant integration
 
 Home Assistant support is an SDK-owned daemon surface. The Home Assistant
 custom integration lives in a separate project, but it should treat the daemon
@@ -39,7 +39,7 @@ References:
 off by default and must be enabled (with an instance URL and access token)
 by hosts that expose Home Assistant.
 
-### Config Keys
+### Config keys
 
 | Key | Default | Purpose |
 |---|---:|---|
@@ -60,7 +60,7 @@ Supported environment fallbacks:
 - `HOMEASSISTANT_WEBHOOK_SECRET`, `HOME_ASSISTANT_WEBHOOK_SECRET`,
   `HA_GOODVIBES_WEBHOOK_SECRET`
 
-### Manifest and Setup Discovery
+### Manifest and setup discovery
 
 The Home Assistant integration should call daemon channel endpoints during
 config flow setup. The most useful endpoints are:
@@ -657,7 +657,7 @@ same daemon chat manager used by companion-app remote chat. It does not use a
 shared TUI session, `SharedSessionBroker`, `AgentManager`, or WRFC
 review/fix chains.
 
-### Home Assistant Assist Conversations
+### Home Assistant Assist conversations
 
 Home Assistant conversation agents should use:
 
@@ -750,7 +750,7 @@ POST /api/homeassistant/conversation/cancel
 The cancel endpoint also accepts a `messageId` while the daemon still has the
 message-to-session correlation in memory.
 
-### Home Assistant to GoodVibes Webhook
+### Home Assistant to GoodVibes webhook
 
 The webhook route remains available for Home Assistant service actions and
 automations that cannot call authenticated daemon API routes directly:
@@ -852,7 +852,7 @@ entities, diagnostics, notifications, or repairs from the event data. The
 stable SDK-owned correlation fields for matching a Home Assistant service call
 or webhook prompt to the final GoodVibes event.
 
-## SDK Home Assistant Tools
+## SDK Home Assistant tools
 
 The SDK exposes Home Assistant tools to operators and isolated remote-chat
 turns. Side-effecting tools are intentionally explicit.
@@ -875,7 +875,7 @@ message event to the configured Home Assistant event type. It is not exposed as
 a chat tool because normal daemon replies already use the Home Assistant reply
 path.
 
-## Home Assistant Project Handoff
+## Home Assistant project handoff
 
 The Home Assistant integration should implement:
 
@@ -919,8 +919,8 @@ resolution in the Home Assistant project. The HA integration should consume the
 SDK/daemon endpoints above and keep Home Assistant-specific UI/entity/service
 logic on the HA side.
 
-## Next Reads
+## Next reads
 
 - [Runtime Surfaces](./surfaces.md)
 - [Public Surface Reference](./public-surface.md)
-- [Voice and Streaming TTS](./voice.md) — Home Assistant Assist replies carry `speechText` for voice surfaces.
+- [Voice and Streaming TTS](./voice.md): Home Assistant Assist replies carry `speechText` for voice surfaces.

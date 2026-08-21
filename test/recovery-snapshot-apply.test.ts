@@ -54,7 +54,7 @@ class TestConversation {
   resets = 0;
   rebuilds = 0;
   title = '';
-  /** When true, fromJSON throws — the "the conversation refused the restore" case. */
+  /** When true, fromJSON throws, the "the conversation refused the restore" case. */
   rejectRestore = false;
 
   resetAll(): void {
@@ -215,7 +215,7 @@ describe('refusals say what happened', () => {
 
   test('a truncated snapshot is refused rather than applied as an empty conversation', () => {
     const surface = tempSurface();
-    // A meta line and nothing else — what a snapshot looks like when the
+    // A meta line and nothing else, what a snapshot looks like when the
     // process died mid-write. The parser yields zero messages for it.
     mkdirSync(surface.recoveryDir, { recursive: true });
     writeFileSync(
@@ -260,7 +260,7 @@ describe('refusals say what happened', () => {
 
     expect(result.applied).toBe(false);
     expect(result.refusal).toBe('apply-failed');
-    // The load already retired it — reported honestly rather than claimed otherwise.
+    // The load already retired it, reported honestly rather than claimed otherwise.
     expect(result.retired).toBe(true);
   });
 });

@@ -1,10 +1,10 @@
 /**
- * identity.ts — the stable name this install answers to on the LAN.
+ * identity.ts, the stable name this install answers to on the LAN.
  *
  * The nodeId has to survive restarts: it is the last ranking tiebreak, and a
  * value that changed every boot would make the tiebreak a coin toss and let a
  * restart loop repeatedly change who is responsible. It also has to be
- * meaningless — it is broadcast in the clear on a LAN, so it carries no
+ * meaningless, it is broadcast in the clear on a LAN, so it carries no
  * hostname, no username, and no path.
  *
  * The file is content-validated on read. A truncated or hand-edited id is not

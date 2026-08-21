@@ -1,5 +1,5 @@
 /**
- * safe-serve.ts — a port-conflict-honest `Bun.serve` wrapper.
+ * safe-serve.ts, a port-conflict-honest `Bun.serve` wrapper.
  *
  * Wraps ONLY the request-handler (`fetch`) callback in a try/catch that turns
  * a thrown handler failure into a bounded, stack-free JSON 500 instead of an
@@ -10,10 +10,10 @@
  * `requirePortAvailable` in `./port-check.ts`) sees the real error rather than
  * a wrapper's synthesized one. "Safe" here means "a request handler bug can
  * never take the whole server down"; it does not mean "swallows bind
- * failures" — those stay honest.
+ * failures", those stay honest.
  *
- * Lives in the SDK so every daemon host — the standalone daemon binary, its
- * embedded-runtime callers, and the SDK's own `platform/daemon` CLI — shares
+ * Lives in the SDK so every daemon host, the standalone daemon binary, its
+ * embedded-runtime callers, and the SDK's own `platform/daemon` CLI, shares
  * one implementation instead of each maintaining its own copy of the same
  * wrapper.
  */
@@ -38,7 +38,7 @@ function requestPath(request: Request): string {
 }
 
 /**
- * Build the bounded, stack-free 500 response for a request handler failure —
+ * Build the bounded, stack-free 500 response for a request handler failure,
  * a real message (for operator diagnosis) with no source snippets or stack
  * frames leaked onto the wire, and the failure logged with method/path.
  */

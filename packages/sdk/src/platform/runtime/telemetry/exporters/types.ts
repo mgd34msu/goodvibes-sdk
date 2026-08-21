@@ -113,7 +113,7 @@ export const DEFAULT_OTLP_CONFIG = {
 
 /**
  * A function that performs the actual export of a span batch.
- * Must not throw — all errors must be caught internally.
+ * Must not throw, all errors must be caught internally.
  */
 export type ExportFn<T> = (batch: T[]) => Promise<void>;
 

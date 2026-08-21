@@ -16,7 +16,7 @@
  * Also covered: a refusal is RECORDED. `InboundNoticeStatus` used to be a
  * hand-written mirror of `SurfaceNoticeRefusal` that omitted `empty-text` and
  * `unsupported-delivery-surface`, so a record carrying either would have been
- * discarded by its own validator on the next load — the one case the owner
+ * discarded by its own validator on the next load, the one case the owner
  * most needs ("mail arrived and could not be announced") was the case that
  * vanished at restart.
  */
@@ -81,12 +81,12 @@ function rig(options: {
   readonly binding?: { readonly surfaceKind: 'telegram' } | null;
 }) {
   // The notice port sends a StructuredNotice (literal/untrusted spans), not a
-  // pre-rendered string — that is the whole point of the structured shape, so
+  // pre-rendered string, that is the whole point of the structured shape, so
   // recording it as `string[]` was recording something the port never emits.
   const sent: StructuredNotice[] = [];
   const records = new InboundMailStore(join(dir, 'records.json'));
   const intake = createInboundMailIntake({
-    // The real registry-backed matcher — the same object production wires —
+    // The real registry-backed matcher, the same object production wires,
     // with no expectation open: the honest `no-expectation` verdict, which is
     // what most arriving mail produces. Deliberately not a hand-built double:
     // the port carries a write-through obligation on both of its verbs, and a
@@ -115,8 +115,8 @@ describe('which failures put the message back', () => {
       delivery: { delivered: false, reason: 'delivery-failed', error: 'socket hang up' },
     });
     await expect(intake(message())).rejects.toBeInstanceOf(InboundNoticeTransportError);
-    // The record IS written — it goes in before the notice is attempted, which
-    // is what stops a failing store write from re-announcing — and it sits at
+    // The record IS written, it goes in before the notice is attempted, which
+    // is what stops a failing store write from re-announcing, and it sits at
     // `pending`, which is the true statement about a notice that never
     // resolved. It used to assert zero records here, back when the notice went
     // first and the record after it.
@@ -172,7 +172,7 @@ function gmailMessage(overrides: Partial<GmailInboundMessage> = {}): GmailInboun
     historyId: '9876543210',
     body: 'Receipt attached.',
     // Stated rather than defaulted. `GmailInboundMessage.bodyAvailability` is a
-    // required field, and this rig had to be corrected when it became one —
+    // required field, and this rig had to be corrected when it became one,
     // `bunx tsc -b` does not typecheck `test/`, so the omission compiled and
     // was caught only by `intake.ts`'s run-time guard. The guard is the reason
     // that omission surfaced instead of being read as `undefined` and treated
@@ -185,7 +185,7 @@ function gmailMessage(overrides: Partial<GmailInboundMessage> = {}): GmailInboun
 
 describe('a Gmail message is recorded, not announced-and-forgotten', () => {
   test('it reaches the store with its own identity', async () => {
-    // The intake used to return early for Gmail — announced, never recorded —
+    // The intake used to return early for Gmail, announced, never recorded,
     // because the store keyed every record on a positive UIDVALIDITY and UID.
     // On the path automatic selection makes the default, that meant §9.3 had
     // nothing to retain and email.inbound.status truthfully reported zero.
@@ -204,7 +204,7 @@ describe('a Gmail message is recorded, not announced-and-forgotten', () => {
   test('its body is retained and card-redacted, unlike the IMAP envelope pass', async () => {
     // Gmail's history delta carries the body; IMAP's envelope pass does not.
     // §11.0 redaction runs before persisting, and this is the path that gives
-    // it something to redact — it had never executed.
+    // it something to redact, it had never executed.
     const { intake, records } = rig({ delivery: { delivered: true } });
     await intake(gmailMessage({
       body: 'Charged card 4111111111111111 today. Thanks.',

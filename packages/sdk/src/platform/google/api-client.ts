@@ -40,12 +40,12 @@ const CALENDAR_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
  * `METADATA`, only include headers specified", so naming them narrows what
  * crosses this boundary to exactly the fields the notice and the delivery
  * evidence are built from. Omitting the parameter would return every header on
- * the message — `Received` chains, `Authentication-Results`, `List-Unsubscribe`,
- * anything a sender chose to add — none of which anything downstream reads, all
+ * the message, `Received` chains, `Authentication-Results`, `List-Unsubscribe`,
+ * anything a sender chose to add, none of which anything downstream reads, all
  * of which would then be in memory and in whatever a caller logged.
  *
  * `Delivered-To` and `X-Original-To` are the two `deliveryHeaderValues` reads,
- * and they are the receiver-written ones — the correlation evidence. `From`,
+ * and they are the receiver-written ones, the correlation evidence. `From`,
  * `To`, `Subject` and `Date` are what the owner's notice shows. Nothing else is
  * requested, so nothing else can arrive.
  */
@@ -102,7 +102,7 @@ export interface GmailMessageSummary {
  *   - Authorization scopes for the method, verbatim and in full:
  *     `https://mail.google.com/`, `.../auth/gmail.modify`,
  *     `.../auth/gmail.readonly`, `.../auth/gmail.metadata`. A `gmail.metadata`
- *     token is therefore authorized to make this call — which is the entire
+ *     token is therefore authorized to make this call, which is the entire
  *     reason this type exists.
  *   - `Message.historyId` is declared **string**, and `internalDate` is a
  *     string in int64 format. Neither is ever parsed to a `Number` here: a
@@ -115,7 +115,7 @@ export interface GmailMessageSummary {
  * `GmailMessageBody` extends this and adds `body`, so the assignability runs
  * one way only: a body-bearing message satisfies a metadata-shaped parameter,
  * and a metadata-only message does NOT satisfy a body-bearing one. Anything
- * that needs a body — matching a verification link, redacting a body excerpt —
+ * that needs a body, matching a verification link, redacting a body excerpt,
  * takes `GmailMessageBody` and cannot be handed one of these by accident.
  *
  * `snippet` is deliberately EMPTY on this path, and that is not cosmetic. A
@@ -149,10 +149,10 @@ export interface GmailMessageBody extends GmailMessageMetadata {
  *
  *   - `GET https://gmail.googleapis.com/gmail/v1/users/{userId}/profile`, where
  *     `userId` takes "The user's email address. The special value `me` can be
- *     used to indicate the authenticated user." — verbatim.
+ *     used to indicate the authenticated user.", verbatim.
  *   - Response body: `emailAddress` (string), `messagesTotal` (integer),
  *     `threadsTotal` (integer), and `historyId` (string), whose description
- *     reads **"The ID of the mailbox's current history record"** — verbatim.
+ *     reads **"The ID of the mailbox's current history record"**, verbatim.
  *   - Authorization scopes, verbatim and in full: `https://mail.google.com/`,
  *     `.../auth/gmail.modify`, `.../auth/gmail.compose`,
  *     `.../auth/gmail.readonly`, `.../auth/gmail.metadata`. Every scope that
@@ -168,7 +168,7 @@ export interface GmailProfile {
   readonly emailAddress: string;
   readonly messagesTotal: number;
   readonly threadsTotal: number;
-  /** Decimal uint64 as a STRING. Never parsed to a number — it does not fit one. */
+  /** Decimal uint64 as a STRING. Never parsed to a number, it does not fit one. */
   readonly historyId: string;
 }
 
@@ -185,7 +185,7 @@ export interface CalendarEventRecord {
    * The organizer's address as Google reported it, absent when Google named
    * none.
    *
-   * Claimed, never verified — the same standing as a `From:` header. Carried so
+   * Claimed, never verified, the same standing as a `From:` header. Carried so
    * a read of this event can be recorded against the party who wrote its text
    * rather than against "the calendar"; it is not part of any gateway response.
    *
@@ -202,8 +202,8 @@ export interface CalendarEventRecord {
    * appears. Read-only. The default is False."
    *
    * `true` means the owner organized it, so it is not externally sourced.
-   * Anything else — `false`, or absent because Google or an implementer said
-   * nothing — reads as somebody else's, which is the direction that fails
+   * Anything else, `false`, or absent because Google or an implementer said
+   * nothing, reads as somebody else's, which is the direction that fails
    * towards recording rather than towards silence.
    */
   readonly organizerIsSelf?: boolean;
@@ -332,7 +332,7 @@ export class GoogleApiClient {
   ) {}
 
   /**
-   * Authorized request. Refreshes once on a 401 — a token can expire between
+   * Authorized request. Refreshes once on a 401, a token can expire between
    * the expiry check and the call landing, and one silent retry is the
    * difference between a working tool and a flaky one.
    */
@@ -455,7 +455,7 @@ export class GoogleApiClient {
    * to which address, and when it landed.
    *
    * Deliberately NOT a `format` parameter on `getMessage`. The two calls return
-   * different guarantees and the return TYPE is what carries the difference —
+   * different guarantees and the return TYPE is what carries the difference,
    * a caller that needs a body gets a compile error rather than a `body` field
    * that is empty for a reason it cannot see. That is also why this does not
    * reuse `fetchMessage`: that method's `metadata` overload feeds
@@ -488,8 +488,8 @@ export class GoogleApiClient {
         // text; Google should not send one to a metadata-only grant, but this
         // path's whole promise is "no body reached us", and a promise that
         // depends on the provider keeping its own is not a promise this daemon
-        // can make. Dropping it costs nothing — no consumer of this method reads
-        // a snippet — and it makes the property hold whatever arrives.
+        // can make. Dropping it costs nothing, no consumer of this method reads
+        // a snippet, and it makes the property hold whatever arrives.
         snippet: '',
         unread: labelIds.some((label) => label === 'UNREAD'),
         provenance: MAIL_CONTENT_PROVENANCE,
@@ -527,7 +527,7 @@ export class GoogleApiClient {
   }
 
   /**
-   * Incremental sync via `users.history.list` — what changed since
+   * Incremental sync via `users.history.list`, what changed since
    * `options.startHistoryId`, without re-listing the mailbox.
    *
    * Gated on the token's actual granted scopes, checked at call time via
@@ -546,7 +546,7 @@ export class GoogleApiClient {
   /**
    * The narrow I/O slice `collectHistoryDelta` takes, over this client.
    *
-   * Exposed because a long-lived caller — `GmailMailSource` — drives the delta
+   * Exposed because a long-lived caller, `GmailMailSource`, drives the delta
    * itself rather than through `historyListDelta`: it has to inspect
    * `unreadable` before it may move its cursor, and it re-enters on its own
    * poll interval. Handing it THIS object rather than letting it build a second
@@ -723,7 +723,7 @@ function toCalendarEvent(value: unknown): CalendarEventRecord | null {
 
 /**
  * The organizer half of a Google event, omitted entirely when Google named
- * nobody — so "absent" stays distinguishable from "named, but not the owner".
+ * nobody, so "absent" stays distinguishable from "named, but not the owner".
  */
 function organizerOf(value: unknown): { organizer?: string; organizerIsSelf?: boolean } {
   if (!isRecord(value)) return {};

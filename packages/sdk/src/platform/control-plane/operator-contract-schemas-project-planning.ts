@@ -248,7 +248,7 @@ export const PROJECT_PLANNING_LANGUAGE_OUTPUT_SCHEMA = objectSchema({
  * It used to be declared as an untyped record, which hid the only two fields
  * the service will not proceed without: recordDecision reads
  * `input.decision.title.trim()` and `input.decision.decision.trim()` and throws
- * on either being absent. Open (`additionalProperties: true`) on purpose — this
+ * on either being absent. Open (`additionalProperties: true`) on purpose, this
  * states what is REQUIRED, it does not claim to enumerate the record.
  */
 export const PROJECT_PLANNING_DECISION_INPUT_SCHEMA = objectSchema({

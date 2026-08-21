@@ -1,5 +1,5 @@
 /**
- * subscription-store.ts — named external-calendar feed subscriptions with honest,
+ * subscription-store.ts, named external-calendar feed subscriptions with honest,
  * per-subscription status. The engine that agent-side `/calendar subscribe` and the
  * connect wizard drive.
  *
@@ -10,18 +10,18 @@
  * feed URL via its secret manager and the rest of the metadata in its config);
  * `snapshot()` / `restore()` move that metadata across restarts, events re-fetched.
  *
- * UX shape (per Mike's least-friction rule): `add({ url })` is paste-URL-and-done —
+ * UX shape (per Mike's least-friction rule): `add({ url })` is paste-URL-and-done,
  * it validates by fetching, auto-derives the subscription name from the feed's
  * X-WR-CALNAME (falling back to the URL host) when the caller gives no name, and
  * applies a sensible default refresh interval with no mandatory knobs. Every status
  * it reports is honest: stale carries its age, unreachable/parse-error carry the
  * stage and detail.
  *
- * PURE of ambient IO — no direct fs/network/process; all IO is injected.
+ * PURE of ambient IO, no direct fs/network/process; all IO is injected.
  *
  * A feed is externally-controlled input, so reading its event content records an
  * untrusted ingest through the injected `recordUntrustedIngest`. That recording
- * hangs off two EXPLICIT readers — `readEvents()` and `readAllEvents()` — and
+ * hangs off two EXPLICIT readers, `readEvents()` and `readAllEvents()`, and
  * never off the plain accessors `events()` / `allEvents()`, which record
  * nothing. The refresh path likewise records NOTHING: arrival is not ingest
  * (see untrusted-events.ts and docs/decisions/2026-07-27-arrival-is-not-ingest.md).
@@ -64,8 +64,8 @@ export interface SubscriptionStoreOptions {
    * write to the calendar behind the URL writes the summaries, descriptions,
    * locations and attendee names this store hands out.
    *
-   * **Called from `readEvents()` and `readAllEvents()` — the two EXPLICIT
-   * reads — and from nowhere else.** `refresh()`, `refreshDue()` and
+   * **Called from `readEvents()` and `readAllEvents()`, the two EXPLICIT
+   * reads, and from nowhere else.** `refresh()`, `refreshDue()` and
    * `applyFetch()` are arrival: they run because a timer said so, with nobody
    * watching. Recording there would write into whatever turn happened to be
    * open and refuse that turn's outward action over an event nothing asked
@@ -78,7 +78,7 @@ export interface SubscriptionStoreOptions {
    * `calendar-subscription-registry.ts` calls `store.events(name)` inside
    * `refresh()`, purely to count and persist after a timer fired. Had recording
    * been a side effect of `events()`, the moment that consumer wired this
-   * recorder its timer-driven refresh would have started recording ingests —
+   * recorder its timer-driven refresh would have started recording ingests,
    * arrival becoming ingest through a name that promised otherwise. The
    * recorder being optional would only have made the trap dormant, not absent.
    */
@@ -92,7 +92,7 @@ export interface AddSubscriptionInput {
   readonly refreshIntervalMs?: number;
 }
 
-/** The outcome of validate-by-fetch — what the wizard shows before saving. */
+/** The outcome of validate-by-fetch, what the wizard shows before saving. */
 export type ValidationResult =
   | {
       readonly ok: true;
@@ -146,7 +146,7 @@ function urlHost(url: string): string {
 
 /**
  * Mask a feed URL for display. Google/Outlook "secret address" URLs grant read
- * access, so a subscription's URL is secrets-adjacent — surfaces should show this,
+ * access, so a subscription's URL is secrets-adjacent, surfaces should show this,
  * never the raw URL. Keeps the scheme+host and the last few chars, masks the middle.
  */
 export function maskFeedUrl(url: string): string {
@@ -202,11 +202,11 @@ export class SubscriptionStore {
     }
     if (res.kind === 'not-modified') {
       // A cold validate should never see 304 (no validators sent); treat as fetch failure.
-      return { ok: false, stage: 'fetch', detail: 'Server returned 304 Not Modified to an unconditional request — no calendar body to validate.' };
+      return { ok: false, stage: 'fetch', detail: 'Server returned 304 Not Modified to an unconditional request, no calendar body to validate.' };
     }
     const parsed = parseIcs(res.body);
     if (parsed.events.length === 0 && parsed.skipped.length === 0 && !parsed.calendarName) {
-      return { ok: false, stage: 'parse', detail: 'Fetched, but no VEVENTs or calendar name were found — this does not look like an iCalendar feed.' };
+      return { ok: false, stage: 'parse', detail: 'Fetched, but no VEVENTs or calendar name were found, this does not look like an iCalendar feed.' };
     }
     const derivedName = this.deriveName(requestedName, parsed.calendarName, url);
     return {
@@ -223,7 +223,7 @@ export class SubscriptionStore {
    * saving) on a fetch/parse failure or a duplicate name, always with an honest reason.
    */
   async add(input: AddSubscriptionInput): Promise<AddResult> {
-    // Single unconditional fetch — no separate validate round trip. We fetch once,
+    // Single unconditional fetch, no separate validate round trip. We fetch once,
     // derive the name from the body, then apply that SAME result into the record.
     const now = this.clock();
     const res = await this.fetcher({ url: input.url });
@@ -231,11 +231,11 @@ export class SubscriptionStore {
       return { ok: false, stage: 'fetch', detail: res.status ? `HTTP ${res.status}: ${res.message}` : res.message };
     }
     if (res.kind === 'not-modified') {
-      return { ok: false, stage: 'fetch', detail: 'Server returned 304 Not Modified to an unconditional request — no calendar body to add.' };
+      return { ok: false, stage: 'fetch', detail: 'Server returned 304 Not Modified to an unconditional request, no calendar body to add.' };
     }
     const parsed = parseIcs(res.body);
     if (parsed.events.length === 0 && parsed.skipped.length === 0 && !parsed.calendarName) {
-      return { ok: false, stage: 'parse', detail: 'Fetched, but no VEVENTs or calendar name were found — this does not look like an iCalendar feed.' };
+      return { ok: false, stage: 'parse', detail: 'Fetched, but no VEVENTs or calendar name were found, this does not look like an iCalendar feed.' };
     }
 
     const name = this.deriveName(input.name, parsed.calendarName, input.url);
@@ -274,7 +274,7 @@ export class SubscriptionStore {
    * Events from the most recent successful parse of the named subscription.
    *
    * A PURE accessor: it records nothing. Callers that are looking at the
-   * content because a turn asked for it want `readEvents()` instead — see the
+   * content because a turn asked for it want `readEvents()` instead, see the
    * note on `recordUntrustedIngest` for why the recording is a separate,
    * explicitly-named call rather than a side effect of this one.
    */
@@ -295,7 +295,7 @@ export class SubscriptionStore {
    * `events()`, plus the record that a turn read this subscription's untrusted
    * event content.
    *
-   * Call this from a path that runs because SOMEONE ASKED — a tool call, a
+   * Call this from a path that runs because SOMEONE ASKED, a tool call, a
    * command, a rendered agenda. Never from a poll or a refresh: those are
    * arrival, and `events()` is the accessor they want.
    */

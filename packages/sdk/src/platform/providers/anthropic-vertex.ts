@@ -1,18 +1,18 @@
 /**
- * anthropic-vertex.ts — Claude on Google Cloud Vertex AI.
+ * anthropic-vertex.ts, Claude on Google Cloud Vertex AI.
  *
  * `@anthropic-ai/sdk` and `google-auth-library` are both declared under
  * `optionalDependencies` in packages/sdk/package.json, and this file used to
  * import both as VALUES at module init: `AnthropicVertexClient extends
  * BaseAnthropic`, `new Resources.Messages(...)`, `new GoogleAuth(...)`. The
  * provider registry puts this module on the daemon's graph, so an install
- * without either package did not lose Vertex — it lost the daemon, at module
+ * without either package did not lose Vertex, it lost the daemon, at module
  * init, before anything could report why (see utils/optional-dependency.ts).
  *
  * A class cannot extend a dynamically imported base directly, because the
  * `extends` expression is evaluated when the class declaration is evaluated.
  * So the class is DECLARED INSIDE an async factory that is called once and
- * memoised: the declaration — and with it the `extends` expression — runs
+ * memoised: the declaration, and with it the `extends` expression, runs
  * after the import resolves, and every later `new` gets the same class object.
  * The type-only imports below stay type-only and are erased, so no specifier
  * for either package survives on the module graph.
@@ -92,7 +92,7 @@ const VERTEX_LIVE_FETCH_TIMEOUT_MS = 15_000;
 const VERTEX_MODEL_SCOPE = 'https://www.googleapis.com/auth/cloud-platform';
 
 /**
- * Dated fallback model list — used when no Google Cloud credentials are
+ * Dated fallback model list, used when no Google Cloud credentials are
  * configured (so a live publisher-model listing call isn't possible) and as
  * the offline baseline when a live call fails with no prior cache. Re-dated
  * 2026-07-13 when live discovery (below) was wired up; the entries
@@ -355,7 +355,7 @@ interface VertexListPublisherModelsResponse {
  * to. Auth reuses the exact same mechanism `AnthropicVertexClient.
  * prepareOptions` uses for every chat request: a fresh `GoogleAuth` client
  * with the same cloud-platform scope, `getRequestHeaders()` for the
- * Authorization header — no new credential source, no new env vars. Each
+ * Authorization header, no new credential source, no new env vars. Each
  * publisher model's resource name looks like
  * `publishers/anthropic/models/claude-sonnet-4-6` (sometimes with an
  * `@<version>` suffix for a pinned version); only the bare model id after
@@ -456,7 +456,7 @@ export class AnthropicVertexProvider extends AnthropicSdkProvider {
    * Re-check Vertex's live Anthropic publisher-model list. Called at boot
    * (background, respects the on-disk TTL cache) and on-demand for a
    * picker-open re-check or an explicit user refresh (`force: true`,
-   * bypasses the TTL cache). Always resolves — falls back to the on-disk
+   * bypasses the TTL cache). Always resolves, falls back to the on-disk
    * cache, then to the dated-static list, and reports the honest reason
    * when live discovery fails rather than silently keeping stale data with
    * no explanation.

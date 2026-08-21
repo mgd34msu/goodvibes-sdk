@@ -1,8 +1,8 @@
-# SDK Embedding API 1.0
+# SDK embedding API 1.0
 
 `@pellux/goodvibes-sdk/embed` is the supported, stability-marked surface for
 embedding a GoodVibes session in another application. It is a curation of
-existing runtime machinery — it adds no new engine; it names the minimal stable
+existing runtime machinery. It adds no new engine. It names the minimal stable
 contract: **create a session against a workspace, send input, receive typed
 events, inject a permission callback, and shut down.**
 
@@ -38,7 +38,7 @@ returns an `EmbeddedSession`:
 | ------------- | ------------------------------------------------------------- |
 | `workspace`   | the project root the session operates against                 |
 | `url`         | base URL of the daemon's HTTP surface                          |
-| `events`      | the `RuntimeEventBus` — `.on(type, cb)` / `.onDomain(dom, cb)` |
+| `events`      | the `RuntimeEventBus`: `.on(type, cb)` or `.onDomain(dom, cb)` |
 | `approvals`   | the `ApprovalBroker` permission asks flow through             |
 | `sessions`    | the `SharedSessionBroker` backing the session                 |
 | `submit(in)`  | send input; resolves with the broker's submission record      |
@@ -46,7 +46,7 @@ returns an `EmbeddedSession`:
 
 **Permission callback injection.** When `requestPermission` is provided, every
 pending approval on the session's broker is routed to it and resolved with its
-decision — an embedder answers permission asks with a callback instead of driving
+decision. An embedder answers permission asks with a callback instead of driving
 the HTTP approvals routes.
 
 **Receiving events.** Subscribe to the typed `RuntimeEventBus`. Each envelope

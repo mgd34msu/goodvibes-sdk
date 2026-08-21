@@ -1,5 +1,5 @@
 /**
- * checkout-extraction.ts — the boundary between what a page says and what we
+ * checkout-extraction.ts, the boundary between what a page says and what we
  * are willing to act on.
  *
  * ══ Everything on the left of this module is attacker-chosen ══════════════
@@ -15,7 +15,7 @@
  *  1. **Every amount becomes an integer we parsed, or the purchase stops.**
  *     `parseMinorUnits` refuses anything ambiguous and this module turns a
  *     refusal into a failed extraction rather than a zero. Nothing downstream
- *     ever sees the merchant's own numeral — `decidePurchase` gets integers,
+ *     ever sees the merchant's own numeral, `decidePurchase` gets integers,
  *     `message.ts` re-renders from integers, and the ledger stores integers.
  *
  *  2. **Every string that survives is neutralised before it can be rendered.**
@@ -194,7 +194,7 @@ export function extractCheckout(
   const subtotalMinorUnits = itemMinorUnits + taxMinorUnits + feesMinorUnits;
 
   // The stated total is checked against ours only when the page states one AND
-  // the comparison is meaningful — which it is only for a single delivery
+  // the comparison is meaningful, which it is only for a single delivery
   // option, because with several we cannot know which one the page's total
   // assumed. With several, the ladder picks one and the flow re-verifies the
   // total on the page after the choice is applied.

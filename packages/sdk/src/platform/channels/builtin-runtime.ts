@@ -100,7 +100,7 @@ export class BuiltinChannelRuntime {
    */
   /**
    * The Telegram bot this node can actually read, or null when it cannot read
-   * any — no token resolves, or the host gave no cursor storage to persist a
+   * any, no token resolves, or the host gave no cursor storage to persist a
    * poll offset in.
    *
    * Read before the node contests the Telegram surface in the LAN election: a
@@ -148,7 +148,7 @@ export class BuiltinChannelRuntime {
 
   /**
    * Re-decide ingress when the surface is reconfigured, so edits apply without
-   * a restart — the same live-reload path an external settings edit takes.
+   * a restart, the same live-reload path an external settings edit takes.
    * start() stops any running loop first, so a mode change swaps cleanly rather
    * than leaving both a poll loop and a webhook armed.
    */
@@ -196,7 +196,7 @@ export class BuiltinChannelRuntime {
    * Read by `observeSurfaceRuntime`, which is what every Telegram status
    * snapshot is now derived from. It previously had no caller at all while the
    * reported state was computed from the token's presence, so a bot whose poll
-   * loop had stopped reported healthy — this function knew, and nobody asked.
+   * loop had stopped reported healthy, this function knew, and nobody asked.
    */
   telegramIngressStatus(): TelegramIngressStatus | null {
     return this.telegramIngress?.status ?? null;
@@ -233,7 +233,7 @@ export class BuiltinChannelRuntime {
    * Re-probe the mailbox when a setting the running source re-reads changes.
    *
    * These five keys and no others, because the list is not "everything about
-   * email" — it is exactly what `source-factory.ts`'s connection port resolves
+   * email", it is exactly what `source-factory.ts`'s connection port resolves
    * again inside every `open()`. A corrected host, port or account is therefore
    * picked up by the reconnect this triggers, and an owner is told within
    * seconds whether the correction worked instead of waiting out
@@ -243,14 +243,14 @@ export class BuiltinChannelRuntime {
    *
    * What is deliberately NOT here: `surfaces.email.inbound.accounts`, `.mode`,
    * `.source` and the mailbox. Those decide which source is BUILT and which
-   * mailbox it opens, so acting on them means a restart, not a re-probe —
+   * mailbox it opens, so acting on them means a restart, not a re-probe,
    * `recheckNow()` on a running source cannot change what that source is. Wiring
    * them here would look like they took effect and they would not, which is the
    * failure this whole item is about, reproduced one level up.
    *
    * The password is not here either, and cannot be: it lives in the secrets
    * store, which has no change subscription. The reconnect still re-resolves it,
-   * so a rotated password is picked up by any recheck — it just does not cause
+   * so a rotated password is picked up by any recheck, it just does not cause
    * one.
    *
    * Coalesced the same way the Telegram watcher coalesces its restart: saving a
@@ -321,7 +321,7 @@ export class BuiltinChannelRuntime {
   /**
    * What this node can see of a surface's live path.
    *
-   * Public because health is worth asking about outside a status sweep — the
+   * Public because health is worth asking about outside a status sweep, the
    * health watcher and the doctor report both want the same answer, and two
    * answers to one question is how the reported state drifted from reality in
    * the first place.

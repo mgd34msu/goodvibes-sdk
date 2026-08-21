@@ -1,11 +1,11 @@
 /**
- * provider-stack.ts — the model side of a runtime composition, built once.
+ * provider-stack.ts, the model side of a runtime composition, built once.
  *
  * A surface that runs its own conversation loop needs exactly what a daemon
  * needs to talk to a model: the capability/limits/benchmark/favorites stores the
  * registry reads, the registry itself, the ONE credential chain that keeps it
  * live across secret writes, the tool-call LLM, and the optimizer bound to its
- * flag and config mode. None of it is daemon-grade — a client owns all of it —
+ * flag and config mode. None of it is daemon-grade, a client owns all of it,
  * so `createRuntimeServices` and `createClientRuntimeServices` share this one
  * implementation rather than each spelling the chain out.
  *
@@ -47,7 +47,7 @@ export type ProviderRegistryConstructionOptions = ConstructorParameters<typeof P
  *
  * The default is `new ProviderRegistry(...)`. A product that must survive a boot
  * with broken or absent provider credentials passes
- * `createLaunchTolerantProviderRegistry` here instead — it constructs under
+ * `createLaunchTolerantProviderRegistry` here instead, it constructs under
  * placeholder env vars so a misconfigured key is a degraded provider rather than
  * a crash before the first frame. That is a real product posture, not a
  * preference, so it is an injection point rather than a second composition.
@@ -59,8 +59,8 @@ export type ProviderRegistryFactory = (options: ProviderRegistryConstructionOpti
  *
  * `run` (the default, and what every composition did before this option existed)
  * kicks off the provider model-discovery pass. `skip` exists because that pass
- * writes asynchronously and unawaited: a short-lived composition — a test
- * against a temp workspace, a one-shot CLI subcommand — can be torn down before
+ * writes asynchronously and unawaited: a short-lived composition, a test
+ * against a temp workspace, a one-shot CLI subcommand, can be torn down before
  * the write lands, which surfaces as a write into a directory that no longer
  * exists. Skipping is a statement that this composition will not outlive the
  * write, never a claim that discovery is unwanted.

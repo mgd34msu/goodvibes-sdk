@@ -6,8 +6,8 @@
  * so a listener that was constructed for a constructor-behaviour assertion and
  * never started still has two sweeps running.
  *
- * `stop()` now releases those whether or not a socket was ever bound — it is
- * gated on "already torn down", not on `server === null` — so `disposeListener`
+ * `stop()` now releases those whether or not a socket was ever bound, it is
+ * gated on "already torn down", not on `server === null`, so `disposeListener`
  * below is the complete answer and this helper is no longer the only one. It
  * stays because it is SYNCHRONOUS: a `trackDisposables()` registration that
  * cannot await still needs a way to put those two sweeps down.

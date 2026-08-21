@@ -2,8 +2,8 @@
 // Verifies all workspace package.json files share the same version as the root.
 //
 // Test-harness overrides (default behavior unchanged when env vars not set):
-//   WORKSPACE_ROOT        — override the repo root directory (default: dirname of this script)
-//   WORKSPACE_PACKAGES_JSON — JSON array of relative package paths to check
+//   WORKSPACE_ROOT       , override the repo root directory (default: dirname of this script)
+//   WORKSPACE_PACKAGES_JSON, JSON array of relative package paths to check
 //                             (default: the canonical WORKSPACE_PACKAGES list below)
 
 import { readFileSync } from 'node:fs';
@@ -70,7 +70,7 @@ for (const pkg of WORKSPACE_PACKAGES) {
 const diverged = results.filter((r) => !r.ok);
 const allOk = diverged.length === 0;
 
-console.log(`version-consistency-check — root version: ${rootVersion}`);
+console.log(`version-consistency-check, root version: ${rootVersion}`);
 console.log('');
 
 const col = (s: string, w: number) => s.padEnd(w);
@@ -102,4 +102,4 @@ if (!allOk) {
   process.exit(1);
 }
 
-console.log(`version-consistency-check PASSED — all ${results.length} packages at ${rootVersion}.`);
+console.log(`version-consistency-check PASSED, all ${results.length} packages at ${rootVersion}.`);

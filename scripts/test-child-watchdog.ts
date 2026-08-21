@@ -1,5 +1,5 @@
 /**
- * test-child-watchdog.ts — preloaded into the `bun test` child by
+ * test-child-watchdog.ts, preloaded into the `bun test` child by
  * scripts/owned-test-child.ts. Two jobs, both about a run that stops being
  * watched by anyone.
  *
@@ -11,7 +11,7 @@
  * so the `bun scripts/test.ts` parent never receives anything it could relay,
  * and this process is simply reparented and left running. The job that this
  * file was written for ended with the runner's post-job step reporting
- * `Terminate orphan process: pid (2403) (bun)` and `pid (2414) (bun)` — the
+ * `Terminate orphan process: pid (2403) (bun)` and `pid (2414) (bun)`, the
  * runner script and its test child, both still alive after the step that
  * started them was gone, and both still holding whatever they had open.
  *
@@ -28,8 +28,8 @@
  * The wedge this round was diagnosed from was fifteen minutes of complete
  * silence: bun's module loader deadlocked BETWEEN two test files, where no
  * per-test timeout applies, and nothing in the process was in a position to
- * notice. Output is not a usable liveness signal — a fully green local run
- * prints almost nothing for three minutes — so the signal is "a test started",
+ * notice. Output is not a usable liveness signal, a fully green local run
+ * prints almost nothing for three minutes, so the signal is "a test started",
  * written here and read by the parent.
  *
  * Throttled to one write a second, because 9 722 tests do not need 9 722

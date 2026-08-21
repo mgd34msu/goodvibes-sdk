@@ -173,7 +173,7 @@ describe('/login rate limiter — tight budget enforced', () => {
     }));
     expect(healthRes.status).toBe(429);
 
-    // But login budget is completely independent — should still get 401 (wrong creds)
+    // But login budget is completely independent, should still get 401 (wrong creds)
     const loginRes = await dispatch(loginRequest('10.2.0.1'));
     expect(loginRes.status).toBe(401);
 

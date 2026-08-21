@@ -12,7 +12,7 @@ npm install @pellux/goodvibes-errors
 
 ## The error model
 
-Every error thrown from the SDK's public surface is a `GoodVibesSdkError`. The `kind` field is the primary discriminant — switch on it instead of `instanceof` chains or message parsing:
+Every error thrown from the SDK's public surface is a `GoodVibesSdkError`. The `kind` field is the primary discriminant. Switch on it instead of `instanceof` chains or message parsing:
 
 ```ts
 import { GoodVibesSdkError } from '@pellux/goodvibes-errors';
@@ -62,7 +62,7 @@ Use the structured fields instead of fragile message parsing:
 - error category (`category`) and source (`source`)
 - recovery hints (`recoverable`, `hint`, `retryAfterMs`)
 - request correlation (`requestId`)
-- typed code (`code`) — match it with `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)`
+- typed code (`code`): match it with `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)`
 
 ## Daemon wire contract
 
@@ -82,6 +82,6 @@ The exported fields are intended to replace fragile message parsing in client an
 
 ## Documentation
 
-- [SDK Error Kinds](../../docs/error-kinds.md) — per-kind consumer reference
-- [Error Handling](../../docs/error-handling.md) — handling patterns
-- [Error Architecture](../../docs/errors.md) — internal source map
+- [SDK Error Kinds](../../docs/error-kinds.md): per-kind consumer reference
+- [Error Handling](../../docs/error-handling.md): handling patterns
+- [Error Architecture](../../docs/errors.md): internal source map

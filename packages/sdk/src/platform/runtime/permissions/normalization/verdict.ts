@@ -108,9 +108,9 @@ export interface CompoundVerdict {
  * printf/strftime specifier (`%4d`, `%02d`, `%2f`, `date +%ad`) and in a URL
  * escape (`%2F`, `%20`). Testing every argument against `/%[0-9a-fA-F]{2}/`
  * therefore reported ordinary formatting commands as obfuscation. Percent
- * encoding now only counts when the argument carries it the way a URI does —
+ * encoding now only counts when the argument carries it the way a URI does,
  * an explicit `scheme://`, or an encoded path separator (`%2F`, `%5C`), which
- * is the evasion this check exists to catch — and the printf family, which
+ * is the evasion this check exists to catch, and the printf family, which
  * legitimately emits `%2f` (float, width 2), is exempt.
  *
  * This narrows an existing detector; it adds no new denial class. An encoded
@@ -118,7 +118,7 @@ export interface CompoundVerdict {
  */
 const PERCENT_ESCAPE = /%[0-9a-fA-F]{2}/;
 const URI_SCHEME = /[A-Za-z][A-Za-z0-9+.-]*:\/\//;
-/** Encoded `/` and `\` — separators that change path meaning once decoded. */
+/** Encoded `/` and `\`, separators that change path meaning once decoded. */
 const ENCODED_PATH_SEPARATOR = /%(?:2[fF]|5[cC])/;
 const FORMAT_SPECIFIER_COMMANDS = new Set(['printf', 'awk', 'gawk', 'mawk', 'nawk', 'seq']);
 
@@ -132,7 +132,7 @@ function isPercentEncoded(arg: string, command: string): boolean {
 
 /**
  * Tools with a documented NUL-delimited data mode. Feeding them `\0` is how
- * null-separated records are read and written on Unix — `tr '\0' '\n'` over
+ * null-separated records are read and written on Unix, `tr '\0' '\n'` over
  * /proc/<pid>/environ, `tr -d '\0'`, `xargs -0`, `sort -z`, `grep -z`,
  * `find -print0`. The check below used to match the two-character text `\0`
  * anywhere in the command, so all of those read as an injection attempt and
@@ -154,13 +154,13 @@ function unquote(arg: string): string {
  * Any textual spelling of a NUL escape: `\0`, `\00`, `\000`, `\x0`, `\x00`.
  *
  * Each form refuses to match when the escape actually continues into a
- * different character — `\012` is a newline, not a NUL followed by `12` — but
+ * different character, `\012` is a newline, not a NUL followed by `12`, but
  * the octal form only excludes further OCTAL digits, so `\0evil` is still
  * recognised as a NUL escape carrying a payload.
  */
 const NUL_ESCAPE_TEXT = /\\(?:0{1,3}(?![0-7])|[xX]0{1,2}(?![0-9a-fA-F]))/;
 
-/** An argument that is nothing but NUL escapes — a delimiter, not a payload. */
+/** An argument that is nothing but NUL escapes, a delimiter, not a payload. */
 function isNulDelimiterArg(arg: string): boolean {
   return /^(?:\\(?:0{1,3}|[xX]0{1,2}))+$/.test(unquote(arg));
 }
@@ -170,13 +170,13 @@ function isNulDelimiterArg(arg: string): boolean {
  *
  * Denied unconditionally: an actual NUL byte in the command text, and `%00`
  * (an encoded NUL, which is the path-truncation trick this check exists for).
- * Neither can appear benignly — `execve` cannot even carry an embedded NUL.
+ * Neither can appear benignly, `execve` cannot even carry an embedded NUL.
  *
  * The textual escape `\0` is different: the shell does not turn it into a NUL
  * byte, it is just two characters handed to a program that understands them. It
  * is treated as obfuscation only when the receiving command has no
  * null-delimited mode, and even for a null-aware tool only when every NUL-
- * bearing argument is a bare delimiter — `tr 'x' 'y\0evil'` smuggles the escape
+ * bearing argument is a bare delimiter, `tr 'x' 'y\0evil'` smuggles the escape
  * into a larger payload and stays denied.
  */
 function nullByteObfuscation(raw: string, args: string[], command: string): boolean {
@@ -210,7 +210,7 @@ const ARGUMENT_INTERPRETERS = new Set([
 ]);
 
 /**
- * Inner-substitution content that produces bytes rather than reading a value —
+ * Inner-substitution content that produces bytes rather than reading a value,
  * the decode-then-run shape. `$(echo cm0gLXJm | base64 -d)` is not a value.
  */
 const SUBSTITUTION_DECODERS =
@@ -256,7 +256,7 @@ function extractSubstitutions(raw: string): Substitution[] {
 }
 
 /**
- * Whether a substitution supplies the command NAME — the shape where the thing
+ * Whether a substitution supplies the command NAME, the shape where the thing
  * being run is itself assembled at runtime. Leading wrapper words, their flags
  * and a numeric wrapper argument (`timeout 300 …`) are skipped first, so
  * `sudo $(cat payload)` is caught while `timeout 300 git log $(cat ref)` is not.
@@ -285,7 +285,7 @@ function substitutionInCommandNamePosition(raw: string, subs: Substitution[]): b
  * `curl -H "Bearer $(cat token)"` is everyday shell: the substitution sits in
  * an argument, the inner command is a plain reader, and the result is a header
  * value. The previous check matched any `$(…)` or backtick anywhere in the
- * command, so that — and every other read-a-file-into-an-argument idiom — was
+ * command, so that, and every other read-a-file-into-an-argument idiom, was
  * refused as obfuscation.
  *
  * Still obfuscation, and still denied:
@@ -301,7 +301,7 @@ function commandSubstitutionObfuscation(
   firstTokenIsSubshell: boolean,
 ): boolean {
   // Structural signal, checked before any text scanning: when the node's FIRST
-  // token is a subshell there is no command name to resolve — the name is
+  // token is a subshell there is no command name to resolve, the name is
   // whatever the substitution prints. Such a node carries `command: ''`, so
   // relying on the name alone would classify it as nothing at all. This does
   // not depend on the raw text parsing back the way we expect.
@@ -358,7 +358,7 @@ const OBFUSCATION_CHECKS: Array<{
   {
     description: 'octal or unicode escape in path argument',
     // A bare NUL escape handed to a null-delimited tool is that tool's
-    // delimiter argument, not an encoded path — `tr '\000' '\n'` is the same
+    // delimiter argument, not an encoded path, `tr '\000' '\n'` is the same
     // ordinary command as `tr '\0' '\n'` and is exempted the same way. Every
     // other octal/hex/unicode escape still counts.
     test: (_raw, args, _flags, command) =>
@@ -436,8 +436,8 @@ type PolicyPredicate = (node: CommandNode, classification: CommandClassification
  */
 const DEFAULT_POLICIES: PolicyPredicate[] = [
   // Catastrophic commands (root deletion, raw disk destruction, fork bombs)
-  // are blocked unconditionally. Everything else — including destructive- and
-  // escalation-CLASS commands like kill/rm/docker/sudo — is gated by the
+  // are blocked unconditionally. Everything else, including destructive- and
+  // escalation-CLASS commands like kill/rm/docker/sudo, is gated by the
   // allowedClasses check below, so the caller (ultimately the user's
   // permission settings) decides.
   (node, _cls) => {
@@ -448,7 +448,7 @@ const DEFAULT_POLICIES: PolicyPredicate[] = [
       args: node.args,
       flags: node.flags,
     });
-    return reason === null ? null : `unconditionally blocked destructive command — ${reason}`;
+    return reason === null ? null : `unconditionally blocked destructive command, ${reason}`;
   },
 ];
 
@@ -489,7 +489,6 @@ export function evaluateSegmentNode(
     };
   }
 
-  // Check default policies
   for (const policy of DEFAULT_POLICIES) {
     const denial = policy(node, classification);
     if (denial !== null) {
@@ -505,7 +504,6 @@ export function evaluateSegmentNode(
     }
   }
 
-  // Check against caller-provided allowed classes
   if (!allowedClasses.has(classification)) {
     return {
       raw: node.raw,
@@ -544,8 +542,8 @@ const MAX_ECHOED_COMMAND_LENGTH = 500;
 /**
  * Collapses whitespace runs so an echoed command occupies exactly one line.
  *
- * The header used to interpolate `original` verbatim. A multi-line command — a
- * heredoc above all — therefore put its own newline inside what reads as line
+ * The header used to interpolate `original` verbatim. A multi-line command, a
+ * heredoc above all, therefore put its own newline inside what reads as line
  * one, so every consumer that summarizes a denial by its first line (for
  * example exec's `minimal` verbosity, which does `stderr.split('\n')[0]`)
  * showed `Command denied: "… <<'EOF'` and silently dropped the segment

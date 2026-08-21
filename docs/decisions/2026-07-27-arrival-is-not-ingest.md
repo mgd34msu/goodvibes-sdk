@@ -21,7 +21,7 @@ on the basis of a message no turn read, no model saw, and nobody asked for.
 
 The consequence is not friction. It is that anyone who knows the owner's email
 address could disable his agent's outward actions on demand, by sending him
-mail — and could do it repeatedly, at will, from anywhere, with no access to
+mail, and could do it repeatedly, at will, from anywhere, with no access to
 anything. A defense against injected instructions would have become a remote
 off switch operated by strangers.
 
@@ -37,9 +37,7 @@ Concretely:
 
 - Arriving mail is written to a durable **inbound record store**, which is not
   the turn ledger and has no watermark. Arrival is a fact about the mailbox.
-- `ledger.record()` is called only from where it is called today —
-  `EmailService.listInbox` / `readMessage`, inside a turn that asked for mail —
-  and from no new place.
+- `ledger.record()` is called only from where it is called today, `EmailService.listInbox` / `readMessage`, inside a turn that asked for mail, and from no new place.
 - Owner notices are rendered from structured fields (sender, subject, delivery
   evidence, link verdicts), so telling the owner mail arrived never ingests a
   body into a turn.
@@ -54,8 +52,7 @@ switch described above.
 
 **Give the watcher its own ledger instance.** Rejected as insufficient rather
 than wrong. It removes the cross-talk, but a second ledger invites a later
-"unification" that reintroduces exactly this, and it answers the wrong question
-— the issue is not *which* ledger, it is that arrival is not the event that
+"unification" that reintroduces exactly this, and it answers the wrong question, the issue is not *which* ledger, it is that arrival is not the event that
 should be recorded at all.
 
 **Advance the turn watermark after each arrival.** Rejected outright, and it is
@@ -71,11 +68,11 @@ watermark exists to stop.
   semantic boundary between them.
 - Inbound mail must never be treated as owner-direct.
   `inputOriginIsOwnerDirect(origin)` returns `true` when `origin === undefined`
-  — "nothing routed it in, that is the keyboard". Inbound mail *is* routed in,
+ , "nothing routed it in, that is the keyboard". Inbound mail *is* routed in,
   so every inbound-originated invocation must supply an origin carrying
   `ownerDirect: false` **explicitly**, never omit it and never rely on its
   source name being absent from a list.
 - The rule generalizes beyond email, and should be applied to any future
-  background reader — a calendar sync, a feed poller, a webhook receiver. The
+  background reader, a calendar sync, a feed poller, a webhook receiver. The
   question to ask is not "is this content untrusted" (it always is) but "did a
   turn ask for it". If nothing asked, nothing is ingested.

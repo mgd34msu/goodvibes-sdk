@@ -3,7 +3,7 @@
  *
  * This tokenizer is consumed downstream by goodvibes-tui's input pipeline
  * (src/input/handler-feed.ts). It previously had no dedicated test file in
- * this repo even though the TUI depends on its exact token shapes — most
+ * this repo even though the TUI depends on its exact token shapes, most
  * importantly the terminal focus-reporting sequences (DECSET ?1004h):
  * `\x1b[I` (focus-in) and `\x1b[O` (focus-out). Those tokens were parsed
  * here long before anything downstream consumed them; this file pins the

@@ -29,7 +29,7 @@ bun install
 
 Miniflare 4 ships workerd binaries. On first install it downloads the platform binary. Expect ~50–100 MB added to `node_modules`.
 
-**CI caching**: Cache the `node_modules` directory in CI (standard `actions/cache` step on `node_modules`). This caches the workerd binary alongside npm packages. No separate binary cache is needed — `node_modules` alone is sufficient.
+**CI caching**: Cache the `node_modules` directory in CI (standard `actions/cache` step on `node_modules`). This caches the workerd binary alongside npm packages. No separate binary cache is needed, `node_modules` alone is sufficient.
 
 ---
 
@@ -45,7 +45,7 @@ Add to root `package.json` `scripts`:
 
 ## 3. CI matrix dimension to add
 
-Proposed diff for `.github/workflows/ci.yml` — add `workers` to the `platform-matrix` job:
+Proposed diff for `.github/workflows/ci.yml`, add `workers` to the `platform-matrix` job:
 
 ```yaml
 # Inside jobs.platform-matrix.strategy.matrix:
@@ -80,7 +80,7 @@ Full proposed diff context:
             test-cmd: bun run test:workers
 ```
 
-**Note**: Miniflare downloads workerd binaries during `bun install`. CI needs internet access during the install step (already the case). Cache `node_modules` in CI — this is sufficient to avoid re-downloading the workerd binary on every run.
+**Note**: Miniflare downloads workerd binaries during `bun install`. CI needs internet access during the install step (already the case). Cache `node_modules` in CI, this is sufficient to avoid re-downloading the workerd binary on every run.
 
 ---
 
@@ -123,11 +123,11 @@ The `./workers` entry is included in `test/rn-bundle-node-imports.test.ts`:
 Miniflare 4 is programmatic-only. The CLI was removed in Miniflare 3.
 
 Key constructor options used:
-- `modules: true` — enable ES module Worker format (boolean, not array)
-- `scriptPath` — path to the Worker entry. **Must be inside `modulesRoot`** for static imports to resolve correctly. The test runner: (1) stages `worker.ts` as `_workers-test-entry.ts` into `packages/sdk/dist/` so esbuild can resolve relative imports against the built dist; (2) bundles the result via esbuild to `.test-tmp/workers-harness/_workers-test-bundled.mjs`; (3) removes the staged source from `dist/` so concurrent builds are not affected.
-- `modulesRoot` — base directory for module resolution (set to `packages/sdk/dist`). Static imports in the worker resolve relative to `scriptPath`, which must live under `modulesRoot`.
-- `modulesRules` — **required** to treat `.js` files as ESModule. Without this, Miniflare defaults to CommonJS parsing for `.js` files, which fails on `import`/`export` syntax. Add: `[{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }]`
-- `compatibilityDate` — Workers runtime compatibility date. **Policy**: bump quarterly; pick a date within the last calendar quarter (e.g. `'2026-04-01'` for Q1 2026).
+- `modules: true`, enable ES module Worker format (boolean, not array)
+- `scriptPath`, path to the Worker entry. **Must be inside `modulesRoot`** for static imports to resolve correctly. The test runner: (1) stages `worker.ts` as `_workers-test-entry.ts` into `packages/sdk/dist/` so esbuild can resolve relative imports against the built dist; (2) bundles the result via esbuild to `.test-tmp/workers-harness/_workers-test-bundled.mjs`; (3) removes the staged source from `dist/` so concurrent builds are not affected.
+- `modulesRoot`, base directory for module resolution (set to `packages/sdk/dist`). Static imports in the worker resolve relative to `scriptPath`, which must live under `modulesRoot`.
+- `modulesRules`, **required** to treat `.js` files as ESModule. Without this, Miniflare defaults to CommonJS parsing for `.js` files, which fails on `import`/`export` syntax. Add: `[{ type: 'ESModule', include: ['**/*.js', '**/*.mjs'] }]`
+- `compatibilityDate`, Workers runtime compatibility date. **Policy**: bump quarterly; pick a date within the last calendar quarter (e.g. `'2026-04-01'` for Q1 2026).
 
 **Module staging pattern** (required due to Miniflare resolution):
 
@@ -163,8 +163,8 @@ The Worker script uses ES module format (`export default { async fetch() {} }`).
 |-------|--------|
 | `/smoke` | SDK import + factory call |
 | `/auth` | Auth token storage round-trip |
-| `/transport-success` | HTTP transport — success path (mock returns real-shape JSON for `GET /api/sessions`) |
-| `/transport-error` | HTTP transport — error path (mock returns 5xx, asserts typed `'service'` kind) |
+| `/transport-success` | HTTP transport, success path (mock returns real-shape JSON for `GET /api/sessions`) |
+| `/transport-error` | HTTP transport, error path (mock returns 5xx, asserts typed `'service'` kind) |
 | `/errors` | Error taxonomy import + instantiation |
 | `/crypto` | `crypto.subtle` + `crypto.randomUUID` |
 | `/globals` | Audit of Workers global availability |

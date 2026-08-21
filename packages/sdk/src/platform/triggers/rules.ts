@@ -1,10 +1,10 @@
 /**
- * rules.ts — the v1 predicate set, evaluated as pure functions over the state
+ * rules.ts, the v1 predicate set, evaluated as pure functions over the state
  * ring buffer each trigger already persists.
  *
  * Every rule takes (observations, ruleState, now) and returns a decision plus
  * the next rule state. Nothing here does I/O, nothing here holds a timer, and
- * nothing here mutates its input — which is what makes the whole set testable
+ * nothing here mutates its input, which is what makes the whole set testable
  * without a running daemon and safe to re-evaluate after a restart.
  *
  * The nine rules:
@@ -38,7 +38,7 @@ export interface RuleEvaluationContext {
   readonly observations: readonly TriggerObservation[];
   readonly ruleState: TriggerRuleState;
   readonly now: number;
-  /** Bounded shared event log — the only channel correlation can read. */
+  /** Bounded shared event log, the only channel correlation can read. */
   readonly eventLog: readonly TriggerEventLogEntry[];
   /** Excluded from its own correlation window. */
   readonly selfTriggerId: string;
@@ -162,7 +162,7 @@ function evaluateCorrelation(rule: CorrelationRule, context: RuleEvaluationConte
     };
   }
 
-  // sequence — the named triggers must have fired in the listed order.
+  // sequence, the named triggers must have fired in the listed order.
   let cursor = 0;
   for (const entry of fires) {
     if (entry.triggerId === rule.triggerIds[cursor]) cursor += 1;

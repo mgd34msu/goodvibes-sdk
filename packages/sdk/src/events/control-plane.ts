@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * ControlPlaneEvent — discriminated union covering gateway/control-plane client lifecycle events.
+ * ControlPlaneEvent, discriminated union covering gateway/control-plane client lifecycle events.
  */
 
 export const CONTROL_PLANE_CLIENT_KINDS = [

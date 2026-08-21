@@ -120,7 +120,7 @@ function compareTools(a: McpToolDefinition, b: McpToolDefinition, prioritizeLife
 
 /**
  * Build the MCP tool set from an operator contract manifest. Pure over its
- * input — pass `getOperatorContract()` (or any manifest) to generate the tools.
+ * input, pass `getOperatorContract()` (or any manifest) to generate the tools.
  * Throws when two method ids collapse to the same MCP tool name, so a catalog
  * change that would silently shadow a tool fails loudly instead.
  */

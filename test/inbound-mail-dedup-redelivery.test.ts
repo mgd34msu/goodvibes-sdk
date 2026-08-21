@@ -4,7 +4,7 @@
  * The watcher advances its cursor only after a message is fully processed, so
  * a failure between fetch and completion leaves the cursor below the message
  * and the next pass fetches it again. That is the right trade only if
- * something suppresses the duplicate — otherwise the recovery mechanism is
+ * something suppresses the duplicate, otherwise the recovery mechanism is
  * itself a defect, and a reconnect loop becomes a stream of repeated
  * notifications on the owner's phone. This platform has shipped that class of
  * defect once already, on ntfy, where one message produced two agents.
@@ -113,7 +113,7 @@ async function build(): Promise<Harness> {
       handled.push(msg.uid);
       if (failOnce.has(msg.uid)) {
         failOnce.delete(msg.uid);
-        // A notice that could not be delivered — the exact failure between
+        // A notice that could not be delivered, the exact failure between
         // fetch and completion the cursor rule is built around.
         throw new Error(`could not deliver the notice for UID ${String(msg.uid)}`);
       }
@@ -157,7 +157,7 @@ describe('identity is per-source and server-assigned', () => {
   });
 
   test('an unusable id yields no key, so the message is delivered rather than collapsed', () => {
-    // '' makes claim() return true. The alternative — a shared empty key —
+    // '' makes claim() return true. The alternative, a shared empty key,
     // would suppress every id-less message after the first one.
     expect(inboundMailSourceIdentity({ source: 'gmail', messageId: '  ' })).toBe('');
     expect(inboundMailSourceIdentity({ source: 'imap', uidValidity: 0, uid: 5 })).toBe('');
@@ -175,7 +175,7 @@ describe('identity is per-source and server-assigned', () => {
   });
 
   test('the email cache outlives a restart cycle, unlike the shared ntfy default', () => {
-    // Ten minutes — the module default — is shorter than a crash-restart, and
+    // Ten minutes, the module default, is shorter than a crash-restart, and
     // the daemon restarts itself hourly at idle. A message fetched just before
     // a restart would come back after it with its claim already expired.
     expect(DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS).toBe(60 * 60_000);
@@ -187,7 +187,7 @@ describe('a redelivered message produces exactly one notice', () => {
     // The cursor is the FIRST line of defence and dedup is the second, and it
     // matters which is doing the work here. Once UID 102 is processed the
     // cursor sits at 102, so the next wake searches `UID SEARCH UID 103:*` and
-    // the only thing that comes back is UID 102 — via the inverted-range quirk
+    // the only thing that comes back is UID 102, via the inverted-range quirk
     // where a range whose start exceeds the mailbox's highest UID matches that
     // highest UID. It is filtered out above the cursor, so the message is
     // never offered a second time and dedup is never consulted.
@@ -209,7 +209,7 @@ describe('a redelivered message produces exactly one notice', () => {
     // The wake is driven until it takes, rather than pushed once and hoped
     // for. Waiting on `commands` to show a second IDLE proves the SERVER saw
     // it, which is strictly earlier than the client arming the waiter that
-    // ends the round — see `nudgeUntil`.
+    // ends the round, see `nudgeUntil`.
     const searchesBefore = harness.mailbox.commands.filter((l) => /UID SEARCH/.test(l)).length;
     await nudgeUntil(
       harness.mailbox,
@@ -226,7 +226,7 @@ describe('a redelivered message produces exactly one notice', () => {
   test('a failure between fetch and completion redelivers AND still notices once', async () => {
     // The interaction the whole design rests on. The first attempt fails after
     // the message was claimed, so the claim has to be given back or the retry
-    // is suppressed as a duplicate of an attempt that never finished — and the
+    // is suppressed as a duplicate of an attempt that never finished, and the
     // owner is told nothing at all, which is worse than being told twice.
     const harness = await build();
     harness.failOnce.add(102);
@@ -249,7 +249,7 @@ describe('a redelivered message produces exactly one notice', () => {
     // The cursor moves strictly AFTER the notice goes out, so the notice is the
     // wrong edge to wait on for a cursor assertion. On a loaded runner the two
     // steps stopped landing in the same tick and the assertion below read 101
-    // while the watcher was behaving perfectly — a failure of the wait, not of
+    // while the watcher was behaving perfectly, a failure of the wait, not of
     // the code. Wait for the step actually being asserted.
     await waitFor(
       () => harness.cursors.advances.includes(102),
@@ -265,8 +265,8 @@ describe('a redelivered message produces exactly one notice', () => {
     // below a message that is suppressed again on every pass, and the watcher
     // would re-fetch it forever while making no progress.
     //
-    // This half is about the SINK. The cursor half — that a real drain then
-    // advances past the suppressed message — is asserted in the test below,
+    // This half is about the SINK. The cursor half, that a real drain then
+    // advances past the suppressed message, is asserted in the test below,
     // because it is a property of the drain and cannot be seen from here. The
     // two used to be one test carrying the cursor claim in its name and no
     // cursor in its body.
@@ -289,7 +289,7 @@ describe('a redelivered message produces exactly one notice', () => {
     // The claim the name above used to make and never checked. A drain whose
     // sink suppresses must still move the cursor past the message: if it did
     // not, every later pass would re-search from the same point, re-fetch the
-    // same UID, suppress it again, and the mailbox would never drain — the
+    // same UID, suppress it again, and the mailbox would never drain, the
     // suppression would have become the stall it exists to prevent.
     const { store: cursors } = await makeCursorStore({
       account: ACCOUNT, mailbox: MAILBOX, uidValidity: UID_VALIDITY, lastSeenUid: 101,
@@ -332,7 +332,7 @@ describe('a redelivered message produces exactly one notice', () => {
       signal: new AbortController().signal,
     });
 
-    // Suppressed — the handler did not run a second time...
+    // Suppressed, the handler did not run a second time...
     expect(handled).toEqual([102]);
     // ...and the cursor moved past it anyway.
     expect(report.outcome).toBe('complete');

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * acp-agent.ts — run GoodVibes as an ACP agent over stdio.
+ * acp-agent.ts, run GoodVibes as an ACP agent over stdio.
  *
  * ACP-capable editors (Zed and others) spawn this entry point and drive
  * GoodVibes through the Agent Client Protocol: initialize → session/new
@@ -12,7 +12,7 @@
  *   bun scripts/acp-agent.ts
  *
  * Environment:
- *   GOODVIBES_HOME — home directory for the embedded daemon (default: $HOME).
+ *   GOODVIBES_HOME, home directory for the embedded daemon (default: $HOME).
  */
 
 import { serveAcpAgent } from '../packages/sdk/src/platform/acp/agent.ts';

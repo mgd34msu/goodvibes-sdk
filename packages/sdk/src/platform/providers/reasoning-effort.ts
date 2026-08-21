@@ -7,9 +7,9 @@
  * effort", and which request field the adapter must put it on. Four sources,
  * highest precedence first:
  *
- *   1. the live models.dev catalog entry for the exact model id — its
+ *   1. the live models.dev catalog entry for the exact model id, its
  *      `reasoning_options` array, parsed by {@link parseReasoningOptions};
- *   2. a declaration attached to this exact model by whoever configured it —
+ *   2. a declaration attached to this exact model by whoever configured it,
  *      a plugin manifest, a custom-model file, or the traits of the local
  *      server actually holding the weights;
  *   3. a curated per-family-generation table for models the live catalog does
@@ -22,7 +22,7 @@
  * ordering: silently spending more reasoning tokens than the caller asked for
  * is a cost and latency change they did not consent to. When nothing at or
  * below the request exists, the level is dropped entirely and the provider's
- * own default applies — still never a promotion.
+ * own default applies, still never a promotion.
  */
 
 /** Where a resolved spec's information came from. */
@@ -116,7 +116,7 @@ export interface ReasoningEffortToggleSpec extends ReasoningEffortSpecBase {
   readonly kind: 'toggle';
 }
 
-/** The model reasons at a fixed depth, or does not reason at all — nothing to send. */
+/** The model reasons at a fixed depth, or does not reason at all, nothing to send. */
 export interface ReasoningEffortUnavailableSpec extends ReasoningEffortSpecBase {
   readonly kind: 'unavailable';
   readonly values: readonly [];
@@ -141,7 +141,7 @@ export interface ModelsDevReasoningOption {
 const TOGGLE_ON_LEVEL = 'high';
 
 const TOGGLE_NOTE =
-  'This model only exposes reasoning on or off — any level above \'none\' turns reasoning on at the model\'s own depth.';
+  'This model only exposes reasoning on or off, any level above \'none\' turns reasoning on at the model\'s own depth.';
 
 const FALLBACK_NOTE =
   'Best-guess levels: this model is not in the live model catalog and matches no known family, so the provider may reject some of them.';
@@ -162,8 +162,8 @@ export function reasoningEffortLevels(spec: ReasoningEffortSpec | undefined): re
 /**
  * Build a spec from a hand-declared level list.
  *
- * The boundary for author-supplied declarations — plugin manifests, custom
- * model files — which name levels rather than a wire shape. Marked `declared`
+ * The boundary for author-supplied declarations, plugin manifests, custom
+ * model files, which name levels rather than a wire shape. Marked `declared`
  * because the author is naming the levels of the exact endpoint they
  * configured: better than both the best-guess ladder and the prefix-matched
  * family table, and still outranked by the live catalog.
@@ -190,9 +190,9 @@ export function reasoningEffortRank(level: string): number {
  * is not one.
  *
  * The single gate for job and request payloads arriving over HTTP. Hand-written
- * value lists at those boundaries drift behind the ladder as new levels ship —
+ * value lists at those boundaries drift behind the ladder as new levels ship,
  * a job whose contract-valid policy asked for `xhigh` silently ran at the
- * model's default — so every such boundary reads through here instead. Which of
+ * model's default, so every such boundary reads through here instead. Which of
  * these levels a given MODEL accepts is a separate question, settled per model
  * by {@link resolveEffortForModel} once the job reaches a provider.
  */
@@ -238,7 +238,7 @@ export function budgetTokensForLevel(level: string, spec: ReasoningEffortBudgetS
 /**
  * Parse a models.dev `reasoning_options` array into a spec.
  *
- * Returns undefined when the field is absent — that is "the catalog says
+ * Returns undefined when the field is absent, that is "the catalog says
  * nothing", which must fall through to the curated family table, and is a
  * different statement from an empty array, which says "this model reasons but
  * exposes no configurable levels" (models.dev publishes exactly that for
@@ -358,7 +358,7 @@ export function resolveEffortForModel(
     return {
       value: undefined,
       spec,
-      note: `Reasoning effort isn't configurable on ${name}${spec.note ? ` — ${spec.note}` : '.'}`,
+      note: `Reasoning effort isn't configurable on ${name}${spec.note ? `, ${spec.note}` : '.'}`,
     };
   }
 
@@ -418,7 +418,7 @@ export function resolveEffortForModel(
  * A sentence naming the reasoning level as the likely cause of a rejection,
  * or undefined when the provider's own text does not point that way.
  *
- * A 400 already surfaces to the user — it is not in the retryable set — so the
+ * A 400 already surfaces to the user, it is not in the retryable set, so the
  * only gap this closes is that the message never named the setting responsible.
  * Deliberately conservative: it fires only on a 400 whose body mentions a
  * reasoning field, so an unrelated validation error is not blamed on effort.
@@ -430,7 +430,7 @@ export function describeReasoningRejection(
 ): string | undefined {
   if (status !== 400 || effort === undefined) return undefined;
   if (!/effort|reasoning|thinking|budget_tokens/i.test(providerText)) return undefined;
-  return ` Reasoning effort '${effort}' is the likely cause — this model may not accept that level.`
+  return ` Reasoning effort '${effort}' is the likely cause, this model may not accept that level.`
     + ' Choose another with /effort, or clear provider.reasoningEffort to use the model default.';
 }
 
@@ -501,8 +501,8 @@ export function getActiveReasoningEffortOptions(sessionId?: string): readonly st
  * Whether a `provider.reasoningEffort` value is acceptable right now.
  *
  * Given a session id, the answer is that session's own resolved levels. Without
- * one — the config schema's validator has no session in hand, because the
- * setting itself is not per session — a level is acceptable when ANY session
+ * one, the config schema's validator has no session in hand, because the
+ * setting itself is not per session, a level is acceptable when ANY session
  * that has published offers it. Rejecting a level valid on the session the user
  * is actually looking at, because a different session ran a turn more recently,
  * would be the multi-session bleed this scoping exists to prevent. A level no
@@ -549,6 +549,6 @@ export function describeReasoningWire(spec: ReasoningEffortSpec, providerId?: st
     case 'toggle':
       return 'reasoning on/off';
     case 'unavailable':
-      return 'not sent — this model has no configurable reasoning level';
+      return 'not sent, this model has no configurable reasoning level';
   }
 }

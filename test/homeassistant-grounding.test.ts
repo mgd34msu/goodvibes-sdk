@@ -46,7 +46,7 @@ function makeHarness(reader?: HomeGraphGroundingReader): Harness {
     updateSession: (_id: string, input: { systemPrompt: string }) => session(input.systemPrompt),
   } as unknown as CompanionChatManager;
   // A real binding. Behind the cast this was `{ id, metadata }`, missing all
-  // seven required fields — including the surface it routes to, which is the
+  // seven required fields, including the surface it routes to, which is the
   // thing the grounding under test keys off.
   const binding: AutomationRouteBinding = {
     id: 'bind-1',

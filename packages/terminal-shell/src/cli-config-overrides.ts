@@ -1,5 +1,5 @@
 /**
- * cli-config-overrides.ts — applying `--config key=value`, `--enable`/
+ * cli-config-overrides.ts, applying `--config key=value`, `--enable`/
  * `--disable`, `--hostname`/`--port`, and a front-end's own launch-time
  * settings defaults onto a live ConfigManager.
  */
@@ -140,11 +140,11 @@ export function applyRuntimeConfigDefault(configManager: ConfigManager, key: Con
     try {
       const raw = JSON.parse(readFileSync(filePath, 'utf-8')) as Record<string, unknown>;
       if (isKeyPresentInRaw(raw, key)) {
-        // Key is explicitly set in this persisted config — respect the user's value.
+        // Key is explicitly set in this persisted config, respect the user's value.
         return;
       }
     } catch {
-      // Unreadable or malformed JSON — this file contributes nothing; continue to next.
+      // Unreadable or malformed JSON, this file contributes nothing; continue to next.
     }
   }
   applyRuntimeConfigValue(configManager, key, defaultValue);

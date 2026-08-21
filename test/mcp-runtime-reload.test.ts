@@ -1,5 +1,5 @@
 /**
- * mcp-runtime-reload.test.ts — startMcpConfigAutoReload.
+ * mcp-runtime-reload.test.ts, startMcpConfigAutoReload.
  *
  * The watcher polls the stat signature (existence, mtime, size) of every
  * candidate MCP config path and reloads the registry when one changes. Three
@@ -8,10 +8,10 @@
  *  - a poll tick that sees no change must NOT reload (otherwise the registry
  *    is torn down and rebuilt every couple of seconds forever);
  *  - a reload already in flight must not be re-entered by the next tick;
- *  - stop() must be final — a reload must not land after the handle is closed.
+ *  - stop() must be final, a reload must not land after the handle is closed.
  *
  * The poll interval floors at 500ms, so each test waits just past one tick
- * rather than trying to force the timer — the floor itself is one of the
+ * rather than trying to force the timer, the floor itself is one of the
  * behaviours under test, and a mocked clock would step straight over it.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -145,10 +145,49 @@ describe('startMcpConfigAutoReload', () => {
     expect(registry.reloadCalls).toBe(1);
     expect(errors).toHaveLength(1);
 
-    // A later change still reaches the registry — one failure is not terminal.
+    // A later change still reaches the registry, one failure is not terminal.
     writeProjectConfig('{"mcpServers":{"a":{}}}\n\n');
     await Bun.sleep(700);
     expect(registry.reloadCalls).toBe(2);
+    handle.stop();
+  });
+
+  /**
+   * A reload can fail for a reason the config file knows nothing about (the
+   * reload path opens connections to MCP servers and one attempt times out).
+   * The poller used to record the new signature before the reload resolved, so
+   * that failure was treated as handled: the registry stayed on stale state
+   * until a human edited the config again to produce a new mtime.
+   */
+  test('a failed reload is retried on the next tick without a further file edit', async () => {
+    const errors: unknown[] = [];
+    const registry = fakeRegistry([securityRow('alpha', true)]);
+    let attempts = 0;
+    registry.reload = async (): Promise<McpReloadResult> => {
+      attempts += 1;
+      registry.reloadCalls++;
+      if (attempts === 1) throw new Error('transient connect timeout');
+      return EMPTY_RELOAD;
+    };
+    let summary: { connected: number; total: number } | undefined;
+    const handle = startMcpConfigAutoReload({
+      roots,
+      registry,
+      intervalMs: 500,
+      onError: (error) => { errors.push(error); },
+      onReload: (next) => { summary = next; },
+    });
+
+    writeProjectConfig('{"mcpServers":{"a":{}}}');
+    await Bun.sleep(1300);
+
+    expect(errors).toHaveLength(1);
+    expect(attempts).toBe(2);
+    expect(summary).toEqual({ connected: 1, total: 1 });
+
+    // The successful retry commits the signature, so the poller settles again.
+    await Bun.sleep(700);
+    expect(attempts).toBe(2);
     handle.stop();
   });
 

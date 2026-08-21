@@ -1,5 +1,5 @@
 /**
- * fill-card.ts — the daemon does the typing.
+ * fill-card.ts, the daemon does the typing.
  *
  * ══ The correction this module IS ═════════════════════════════════════════
  *
@@ -35,7 +35,7 @@
  *  2. **Wrong merchant ⇒ refuse.** The purchase was decided against one
  *     registrable domain. The page must still be on it. This uses
  *     `validateLinkTarget`, the same check the rest of the platform uses,
- *     rather than a fresh host comparison — a second implementation of "is this
+ *     rather than a fresh host comparison, a second implementation of "is this
  *     the right site" is a second chance to get punycode, userinfo, ports or
  *     the public-suffix boundary wrong.
  *
@@ -52,7 +52,7 @@
  * ══ What a failure is allowed to say ══════════════════════════════════════
  *
  * The field name and nothing else. Not the value, not a length, not a prefix,
- * not a masked form, not the underlying driver error — a driver error from a
+ * not a masked form, not the underlying driver error, a driver error from a
  * fill can contain the string it was asked to type, and an error message is a
  * read path exactly like a response field is. Every throw from the driver is
  * caught here and replaced with a sentence this module wrote.

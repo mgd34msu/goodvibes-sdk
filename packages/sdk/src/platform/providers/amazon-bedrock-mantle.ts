@@ -9,7 +9,7 @@ import type { ProviderModelSource } from './interface.js';
 import { runLiveModelRefresh, type LiveModelDiscoveryResult } from './live-model-discovery.js';
 
 /**
- * Dated fallback model list — used when no AWS credentials are configured
+ * Dated fallback model list, used when no AWS credentials are configured
  * (so a live ListFoundationModels call isn't possible) and as the offline
  * baseline when a live call fails with no prior cache. Re-dated 2026-07-13
  * when live discovery (below) was wired up, reusing the same
@@ -19,7 +19,7 @@ import { runLiveModelRefresh, type LiveModelDiscoveryResult } from './live-model
  * as direct Bedrock, so one live fetcher covers both. The entries below are
  * still only cross-checked against the direct Anthropic API's /v1/models
  * response, not exercised against a live Bedrock Mantle account's actual
- * ListFoundationModels output — no AWS credentials were available in this
+ * ListFoundationModels output, no AWS credentials were available in this
  * environment to verify against, and Bedrock Mantle's model rollout
  * typically trails the direct Anthropic API by weeks, so even a verified
  * direct-Bedrock list is not a guarantee every entry here is already live on
@@ -91,7 +91,7 @@ export class AmazonBedrockMantleProvider extends AnthropicSdkProvider {
    * Re-check Bedrock's live foundation-model list via the same
    * ListFoundationModels control-plane call `AmazonBedrockProvider` uses
    * (`fetchBedrockModelIds`, imported from `amazon-bedrock.ts` rather than
-   * duplicated here). Always resolves — falls back to the on-disk cache,
+   * duplicated here). Always resolves, falls back to the on-disk cache,
    * then to the dated-static list, and reports the honest reason when live
    * discovery fails rather than silently keeping stale data with no
    * explanation.

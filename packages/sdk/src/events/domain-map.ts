@@ -1,5 +1,5 @@
 /**
- * RuntimeEventMap — master mapping of all typed runtime event types to their payloads.
+ * RuntimeEventMap, master mapping of all typed runtime event types to their payloads.
  *
  * Used by RuntimeEventBus for type-safe subscriptions. Combine all domain
  * discriminated union members into a single flat map keyed by the type string.

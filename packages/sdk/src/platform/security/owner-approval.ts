@@ -1,5 +1,5 @@
 /**
- * owner-approval.ts — the one thing that clears an outward-effect refusal, and
+ * owner-approval.ts, the one thing that clears an outward-effect refusal, and
  * why untrusted content cannot produce one.
  *
  * ── The failure this replaces ─────────────────────────────────────────────
@@ -14,7 +14,7 @@
  *    it spends the owner's trust and teaches him the boundary is broken.
  *  - Had a typed phrase minted one, that would have been the WORSE outcome. A
  *    security boundary cleared by three words of chat text is cleared by
- *    anything that can get those words into the chat — and steering the
+ *    anything that can get those words into the chat, and steering the
  *    conversation toward producing a particular sentence is exactly what the
  *    content this boundary guards against is good at. The gate would have been
  *    theatre.
@@ -31,7 +31,7 @@
  *  2. **Bound to the content.** An approval carries a fingerprint of the exact
  *     fields it approved. Without this, an approval is a standing permit for an
  *     action id: the owner approves one benign `email.send`, and the next
- *     `email.send` — whose body the injected content wrote — rides it. Matching
+ *     `email.send`, whose body the injected content wrote, rides it. Matching
  *     on the action id alone is matching on the verb, not on the deed.
  *  3. **Short-lived.** An approval that never expires is a key left in a lock.
  *     The window is minutes, because the gesture and the send are adjacent in
@@ -49,7 +49,7 @@
  *  - Anything derived from message or page content, including a sender address
  *    or a header.
  *
- * The gesture that mints one is a prompt the human answers — see the surface's
+ * The gesture that mints one is a prompt the human answers, see the surface's
  * approval broker. That is why `grantOwnerApproval` takes `surface` from the
  * CODE PATH rather than from any argument a tool call can carry.
  */
@@ -97,7 +97,7 @@ export interface OwnerApproval {
  * Field names are included and the record is sorted, so moving a body into the
  * subject changes the fingerprint. Values are compared after the same
  * whitespace normalization the taint check uses, so a reflowed line does not
- * invalidate an approval the owner has just given for the same message — but
+ * invalidate an approval the owner has just given for the same message, but
  * any change to the words does.
  */
 export function fingerprintOutwardContent(
@@ -141,7 +141,7 @@ export function grantOwnerApproval(input: {
   };
 }
 
-/** Why an approval did not clear a refusal — so a message can say which. */
+/** Why an approval did not clear a refusal, so a message can say which. */
 export type ApprovalMismatch =
   | 'none'
   | 'different-action'
@@ -153,7 +153,7 @@ export type ApprovalMismatch =
  * Does this approval authorize THIS action with THIS payload?
  *
  * `contentInQuestion` is the field record the caller is about to send. When it
- * is present, the approval must be bound to the same payload — an approval for
+ * is present, the approval must be bound to the same payload, an approval for
  * a different message is not an approval for this one, and that is the whole
  * point of the binding.
  */
@@ -205,7 +205,7 @@ export class OwnerApprovalStore {
   /**
    * Record an approval the owner has just given.
    *
-   * Returns null — and stores nothing — for any surface without command
+   * Returns null, and stores nothing, for any surface without command
    * authority, so a caller that threads the wrong surface fails closed.
    */
   grant(input: {

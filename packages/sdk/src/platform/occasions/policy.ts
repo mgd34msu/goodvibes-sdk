@@ -1,5 +1,5 @@
 /**
- * policy.ts — the effective settings, read live.
+ * policy.ts, the effective settings, read live.
  *
  * Every value is read through a predicate at the moment it is used rather than
  * snapshotted at construction, so each one is a real toggle instead of a
@@ -9,7 +9,7 @@
  *
  * The accessor is string-keyed. The `occasions.*` keys live in the config
  * defaults tree and the flat settings surface, and the daemon adapts its
- * ConfigManager to this narrow interface — the same adaptation the check-in
+ * ConfigManager to this narrow interface, the same adaptation the check-in
  * uses, and for the same reason: the grandfathered ConfigKey union is
  * shrink-only.
  */

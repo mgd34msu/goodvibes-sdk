@@ -31,7 +31,7 @@ export interface KnowledgeNodeRevisionRecord {
 
 /**
  * The review provenance stamped on a node whenever it becomes (or stays) active.
- * Makes activation honest: a node is never silently active — it is either
+ * Makes activation honest: a node is never silently active, it is either
  * auto-accepted above the configured confidence threshold, held pending review,
  * explicitly reviewed, or (for nodes that predate the gate) marked 'pre-gate'.
  */

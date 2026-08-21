@@ -8,7 +8,7 @@
 // This module ships the POLICY and the verb-metadata signal (mutating vs read).
 // It deliberately does NOT implement WebAuthn assertion verification: a real
 // verification needs a consumer-side ceremony (a credential store, a challenge
-// issued and checked per call). That is an honest deferral — the verifier is an
+// issued and checked per call). That is an honest deferral, the verifier is an
 // injected dependency, and when the policy requires step-up but no verifier is
 // wired, the decision FAILS CLOSED (deny) rather than silently allowing or
 // faking a pass. Nothing here ever reports an unverified assertion as verified.
@@ -31,7 +31,7 @@ export type StepUpDecision =
   | { readonly allow: true }
   | { readonly allow: false; readonly code: 'step-up-required' | 'step-up-verifier-unavailable'; readonly message: string };
 
-/** Inputs to a step-up evaluation — all already-resolved facts, so this is pure. */
+/** Inputs to a step-up evaluation, all already-resolved facts, so this is pure. */
 export interface StepUpEvaluationInput {
   /** Did the request arrive over the relay (vs the trusted LAN)? */
   readonly viaRelay: boolean;

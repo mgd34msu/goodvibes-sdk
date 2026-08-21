@@ -1,10 +1,10 @@
 /**
- * config-replication.ts — the master's settings, on every machine that might
+ * config-replication.ts, the master's settings, on every machine that might
  * have to serve them.
  *
  * Leader election decides which machine reads an inbox. That is only half an
  * answer: a machine that wins a surface and does not hold the surface's
- * configuration — or its credential — cannot serve it, and the handover is
+ * configuration, or its credential, cannot serve it, and the handover is
  * theatre. This closes that.
  *
  * ── shape ──────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@
  *   never issues a revision of its own, so there is exactly one writer and no
  *   merge to argue about in the normal case.
  *
- * Everything rides the group transport and the group keyring — the same signed,
+ * Everything rides the group transport and the group keyring, the same signed,
  * group-scoped channel every other cluster datagram uses. There is no second
  * channel and no second trust boundary.
  *
@@ -29,7 +29,7 @@
  * ciphertext. It is sealed to each recipient's agreement key for the journey,
  * and the receiver hands the plaintext to its OWN secret store, which encrypts
  * it under its OWN keyfile at rest. Nothing here logs a value, and nothing here
- * puts one in `/status` — a replicated secret is reported as a path and a
+ * puts one in `/status`, a replicated secret is reported as a path and a
  * revision, never as a value.
  */
 import { openSealedEnvelope, sealForMember, type NodeKeyMaterial } from './group-crypto.js';
@@ -162,8 +162,8 @@ export class ConfigReplicationService {
     const deleted = new Set(document.tombstones.map((entry) => entry.path));
     for (const path of listReplicatedConfigPaths()) {
       // A path the group DELETED is never picked back up by a reconcile. A
-      // local value can outlive the deletion — a store with no reset, or a
-      // value written back by something else — and folding it in again would
+      // local value can outlive the deletion, a store with no reset, or a
+      // value written back by something else, and folding it in again would
       // undo the operator's deletion on the next housekeeping tick, which is
       // exactly what this loop did before the rule existed. Re-adding is an
       // explicit act: `announceLocalChange` clears the tombstone.
@@ -379,7 +379,7 @@ export class ConfigReplicationService {
    * A proposal from a machine that is not the master.
    *
    * Only the master acts on one, and it re-derives the value from its own
-   * policy check before issuing a revision — a peer does not get to name a path
+   * policy check before issuing a revision, a peer does not get to name a path
    * this machine would not have replicated itself.
    */
   private async onPropose(envelope: ClusterEnvelope): Promise<void> {
@@ -423,7 +423,7 @@ export class ConfigReplicationService {
    *
    * The plaintext goes straight into this machine's OWN secret store, which
    * encrypts it under this machine's OWN keyfile. Another node's ciphertext is
-   * never written verbatim — it could not be read back here anyway, and storing
+   * never written verbatim, it could not be read back here anyway, and storing
    * it would quietly make the group's secrets undecryptable after a keyfile
    * rotation on one machine.
    */
@@ -519,7 +519,7 @@ export class ConfigReplicationService {
 
   /**
    * True while this machine still has nothing and is not the one issuing
-   * revisions — the condition under which it should keep asking.
+   * revisions, the condition under which it should keep asking.
    *
    * Asking again is how a snapshot that was missed because the master was busy,
    * or was sent while this machine was still starting, is recovered. It costs
@@ -536,7 +536,7 @@ export class ConfigReplicationService {
    * A machine that was partitioned when a change went out never receives that
    * delta, and nothing else would ever tell it. Every roster gossip carries the
    * sender's revision, so a machine that is behind notices on the next one and
-   * asks for a snapshot — which carries the DELETIONS as well as the values,
+   * asks for a snapshot, which carries the DELETIONS as well as the values,
    * and is therefore what stops a healed partition from running settings the
    * operator removed while it was away.
    */

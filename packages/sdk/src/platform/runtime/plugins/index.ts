@@ -1,5 +1,5 @@
 /**
- * Plugin lifecycle system — barrel export and factory.
+ * Plugin lifecycle system, barrel export and factory.
  *
  * Gated by the `plugin-lifecycle` capability gate (runtime.pluginLifecycle). Import and call
  * `createPluginLifecycleManager()` at startup after the gate
@@ -69,10 +69,10 @@ export type { HotReloadOptions, HotReloadResult } from './hot-reload.js';
 export { runHotReload } from './hot-reload.js';
 
 /**
- * createPluginLifecycleManager — Factory function for the PluginLifecycleManager.
+ * createPluginLifecycleManager, Factory function for the PluginLifecycleManager.
  *
  * Intended as the primary entry point for consumers. Respects the
- * `plugin-lifecycle` capability gate — callers should check the gate before
+ * `plugin-lifecycle` capability gate, callers should check the gate before
  * invoking if they want to gate the entire system.
  *
  * @param options - Optional manager configuration.

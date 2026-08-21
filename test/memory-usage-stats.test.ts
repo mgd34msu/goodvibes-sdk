@@ -6,7 +6,7 @@ import { MemoryUsageStatsStore } from '../packages/sdk/src/platform/state/index.
 
 /**
  * Per-memory usage counters (hoisted from the agent surface). Answers "was
- * injected context actually used?" — durable JSON sidecar, feeds decay ordering
+ * injected context actually used?", durable JSON sidecar, feeds decay ordering
  * via lookup(). Semantics must match the agent original.
  */
 const roots: string[] = [];

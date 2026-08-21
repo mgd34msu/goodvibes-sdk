@@ -7,7 +7,7 @@
  *     divergence rate exceeds the configured threshold.
  *   - Aggregated dashboard data queryable by the diagnostics layer.
  *
- * The dashboard is passive — it reads from the simulator, does not own
+ * The dashboard is passive, it reads from the simulator, does not own
  * the simulator's lifecycle, and never calls evaluate() itself.
  *
  * @remarks
@@ -48,9 +48,9 @@ export interface DivergenceTrendEntry {
 /**
  * Gate check result returned by `DivergenceDashboard.checkEnforceGate()`.
  *
- * - `allowed`  — divergence is within threshold; enforce mode may be enabled.
- * - `blocked`  — divergence exceeds threshold; enforce mode is blocked.
- * - `no_data`  — not enough evaluations have been recorded to make a
+ * - `allowed` , divergence is within threshold; enforce mode may be enabled.
+ * - `blocked` , divergence exceeds threshold; enforce mode is blocked.
+ * - `no_data` , not enough evaluations have been recorded to make a
  *                determination; gate passes by default.
  */
 export type EnforceGateStatus = 'allowed' | 'blocked' | 'no_data';
@@ -116,12 +116,12 @@ export interface DivergenceDashboardConfig {
 // ── DivergenceDashboard ───────────────────────────────────────────────────────
 
 /**
- * DivergenceDashboard — divergence monitoring and enforce-mode gate.
+ * DivergenceDashboard, divergence monitoring and enforce-mode gate.
  *
  * Attach to a running `PermissionSimulator` to gain:
- *   - `checkEnforceGate()` — real-time gate check before mode transitions.
- *   - `recordTrendEntry()` — capture a snapshot for trend history.
- *   - `getSnapshot()` — full dashboard state for diagnostics rendering.
+ *   - `checkEnforceGate()`, real-time gate check before mode transitions.
+ *   - `recordTrendEntry()`, capture a snapshot for trend history.
+ *   - `getSnapshot()`, full dashboard state for diagnostics rendering.
  *
  * @example
  * ```ts
@@ -129,7 +129,7 @@ export interface DivergenceDashboardConfig {
  * const dashboard = new DivergenceDashboard(simulator, 'warn-on-divergence');
  *
  * // The setInterval and console.error below are caller-side integration
- * // examples only — the class itself does not use timers or console output.
+ * // examples only, the class itself does not use timers or console output.
  * // Periodically capture trend entries (e.g. every 30 seconds):
  * setInterval(() => dashboard.recordTrendEntry(), 30_000);
  *
@@ -146,7 +146,7 @@ export class DivergenceDashboard {
   /**
    * @remarks
    * Dashboard-layer mode for UI display only. Independent of the immutable
-   * simulator mode — the underlying `PermissionSimulator` mode is fixed at
+   * simulator mode, the underlying `PermissionSimulator` mode is fixed at
    * construction and cannot be changed. `_mode` tracks the caller's intended
    * operational state so the diagnostics view can render it accurately.
    */
@@ -173,7 +173,7 @@ export class DivergenceDashboard {
   }
 
   /**
-   * checkEnforceGate — Checks whether transitioning to `enforce` mode is safe.
+   * checkEnforceGate, Checks whether transitioning to `enforce` mode is safe.
    *
    * Returns `no_data` when fewer than `minEvaluationsForGate` evaluations have
    * been recorded (gate passes by default in this case).
@@ -223,7 +223,7 @@ export class DivergenceDashboard {
   }
 
   /**
-   * recordTrendEntry — Captures a snapshot of the current divergence state.
+   * recordTrendEntry, Captures a snapshot of the current divergence state.
    *
    * Call periodically (e.g. on a timer) to build trend history.
    * Oldest entries are evicted when the buffer exceeds `maxTrendEntries`.
@@ -250,14 +250,14 @@ export class DivergenceDashboard {
   }
 
   /**
-   * getTrend — Returns the full trend history (oldest first).
+   * getTrend, Returns the full trend history (oldest first).
    */
   getTrend(): readonly DivergenceTrendEntry[] {
     return [...this._trend];
   }
 
   /**
-   * getSnapshot — Returns a full dashboard snapshot for diagnostics rendering.
+   * getSnapshot, Returns a full dashboard snapshot for diagnostics rendering.
    */
   getSnapshot(): DivergenceDashboardSnapshot {
     const report = this._simulator.getDivergenceReport();
@@ -271,7 +271,7 @@ export class DivergenceDashboard {
   }
 
   /**
-   * setMode — Updates the tracked simulation mode.
+   * setMode, Updates the tracked simulation mode.
    *
    * Does NOT modify the underlying simulator (which has an immutable mode).
    * This is for dashboard display purposes when the caller manages mode
@@ -294,21 +294,21 @@ export class DivergenceDashboard {
   }
 
   /**
-   * getMode — Returns the currently tracked simulation mode.
+   * getMode, Returns the currently tracked simulation mode.
    */
   getMode(): SimulationMode {
     return this._mode;
   }
 
   /**
-   * getThreshold — Returns the configured divergence threshold.
+   * getThreshold, Returns the configured divergence threshold.
    */
   getThreshold(): number {
     return this._threshold;
   }
 
   /**
-   * isGatePassing — Convenience accessor; true unless gate is `blocked`.
+   * isGatePassing, Convenience accessor; true unless gate is `blocked`.
    */
   isGatePassing(): boolean {
     return this.checkEnforceGate().status !== 'blocked';

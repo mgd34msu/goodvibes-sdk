@@ -4,7 +4,7 @@
  * The bug class these tests exist for has already cost this project a training
  * run: a cache pre-allocated a file, a crash left it full-size and zero-filled,
  * and an existence-only check treated it as complete. So nothing here is
- * allowed to accept a file because it is present — every acceptance is by
+ * allowed to accept a file because it is present, every acceptance is by
  * content, and a truncated or mismatched artifact must be refused and refetched
  * rather than used.
  */
@@ -47,7 +47,7 @@ import {
 
 // Resolved eagerly via an IIFE (rather than a bare `const` + throw-guard) so
 // MODEL's static type is non-null everywhere it's read, including inside
-// nested function bodies defined below — a throw-guard on a separate
+// nested function bodies defined below, a throw-guard on a separate
 // statement narrows only the enclosing scope's own control flow, not closures
 // that read the variable later.
 const MODEL = (() => {
@@ -134,7 +134,7 @@ describe('wake artifact verification is by content, never by existence', () => {
     expect(status.reason).toBe('not-provisioned');
     expect(status.modelVersion).toBe(MODEL.version);
     // Both classifier formats, the front end, the speech gate, and all three
-    // attribution NOTICEs — counted through the manifest's own helpers, which is
+    // attribution NOTICEs, counted through the manifest's own helpers, which is
     // what keeps a NOTICE from going uncounted the way the front end's did.
     expect(status.downloadBytes).toBe(
       wakeWordProvisionBytes(MODEL) + wakeWordFrontEndProvisionBytes() + wakeVadProvisionBytes(),
@@ -187,7 +187,7 @@ describe('provisioning refuses bad downloads', () => {
 
   test('a right-sized body with the wrong checksum is refused', async () => {
     const bodies = pinnedBodies();
-    // Correct length, wrong content — a swapped asset or a corrupted transfer
+    // Correct length, wrong content, a swapped asset or a corrupted transfer
     // that a size check alone would wave through.
     bodies[MODEL.onnx.url] = new Uint8Array(MODEL.onnx.bytes).fill(7);
     bodies[MODEL.tflite.url] = new Uint8Array(MODEL.tflite.bytes).fill(7);
@@ -294,7 +294,7 @@ describe('provisioning succeeds and is resumable', () => {
     const second = await downloadVerifiedFile({ spec: specs.classifier, destPath: dest, fetchImpl: impl });
     expect(second.ok).toBe(true);
     if (second.ok) expect(second.skipped).toBe(true);
-    // Exactly one network request across both runs — that is what resumable means.
+    // Exactly one network request across both runs, that is what resumable means.
     expect(requests.filter((u) => u === specs.classifier.url).length).toBe(1);
     expect(specs.notice.bytes).toBe(noticeBody.length);
     expect(specs.embedding.bytes).toBe(embeddingBody.length);
@@ -519,7 +519,7 @@ describe('both runtime formats of the classifier are provisioned, and only one g
     writeFileSync(paths.mobileClassifierPath, Buffer.alloc(MODEL.tflite.bytes));
     const status = wakeProvisionStatus({ managedRoot: root });
     expect(status.mobileClassifier.corrupt).toBe(true);
-    // The three the detector loads are simply absent, and that — not the twin —
+    // The three the detector loads are simply absent, and that, not the twin,
     // is what the reason has to describe.
     expect(status.reason).toBe('not-provisioned');
     expect(status.ready).toBe(false);
@@ -553,7 +553,7 @@ describe('both runtime formats of the classifier are provisioned, and only one g
     const paths = resolveManagedWakePaths(root);
     mkdirSync(paths.modelsDir, { recursive: true });
     // A pinned-version filename with content that does not match is reaped for
-    // FAILING VERIFICATION, not for being an unpinned version — the distinction
+    // FAILING VERIFICATION, not for being an unpinned version, the distinction
     // matters because an unpinned-version reap would delete every provisioned
     // tflite on the next sweep, forever.
     writeFileSync(paths.mobileClassifierPath, Buffer.alloc(MODEL.tflite.bytes));
@@ -765,7 +765,7 @@ describe('the boot half: sweep, then fetch what the install could not', () => {
       setTimeoutImpl: (handler) => { pending.push(handler); return 1; },
       clearTimeoutImpl: () => {},
     });
-    // The sweep already ran — the sweeper sweeps at start, which is what makes a
+    // The sweep already ran, the sweeper sweeps at start, which is what makes a
     // torn artifact from a killed install recoverable without a user act.
     expect(existsSync(join(resolveManagedWakePaths(root).wakeRoot))).toBe(false);
     expect(attempts).toBe(0);
@@ -878,7 +878,7 @@ describe('both redistributable artifacts carry their attribution NOTICE, on iden
     const paths = resolveManagedWakePaths(root);
     expect(paths.embeddingNoticePath).toBe(paths.embeddingPath.replace(/\.onnx$/, '.NOTICE.txt'));
     expect(paths.embeddingNoticePath.startsWith(paths.frontEndDir)).toBe(true);
-    // Two different NOTICEs for two different artifacts — not one file doing both jobs.
+    // Two different NOTICEs for two different artifacts, not one file doing both jobs.
     expect(paths.embeddingNoticePath).not.toBe(paths.noticePath);
   });
 
@@ -901,7 +901,7 @@ describe('both redistributable artifacts carry their attribution NOTICE, on iden
     expect(result.ready).toBe(false);
     expect(result.embeddingNoticePath).toBeNull();
     expect(result.outcomes.find((o) => o.component === 'embedding-notice')?.state).toBe('failed');
-    // And symmetrically, dropping the CLASSIFIER's notice does the same thing — the
+    // And symmetrically, dropping the CLASSIFIER's notice does the same thing, the
     // point being that neither is the privileged one.
     const other = pinnedBodies();
     delete other[MODEL.notice.url];
@@ -915,7 +915,7 @@ describe('both redistributable artifacts carry their attribution NOTICE, on iden
     // from the run's overall result, so one failing cannot erase the other's record.
     // These fixtures cannot make either one VERIFY (the served bodies are empty, and
     // the pins are the real published checksums), so what is pinned here is that the
-    // two are tracked separately and each carries its own honest reason — the live
+    // two are tracked separately and each carries its own honest reason, the live
     // install is what proves the success side.
     const bodies = pinnedBodies();
     delete bodies[EMBEDDING_NOTICE.url];
@@ -982,7 +982,7 @@ describe('both redistributable artifacts carry their attribution NOTICE, on iden
   test('an install that lands everything reports both NOTICE paths and is ready', async () => {
     const { impl } = servingFetch(pinnedBodies());
     const result = await provisionWakeWordModels({ managedRoot: root, fetchImpl: impl });
-    // pinnedBodies serves zero-length bodies, so nothing verifies — what is asserted
+    // pinnedBodies serves zero-length bodies, so nothing verifies, what is asserted
     // here is the SHAPE of a complete plan, which the live install proves for real.
     expect(result.outcomes.map((o) => o.component).sort()).toEqual(
       ['classifier', 'embedding', 'embedding-notice', 'mobile-classifier', 'notice', 'vad', 'vad-notice'],

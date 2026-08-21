@@ -1,14 +1,14 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Fleet types — the normalized process-tree contract for the live process
+ * Fleet types, the normalized process-tree contract for the live process
  * registry. One queryable + subscribable aggregation surface that
  * enumerates every live/completed runtime process (agents incl. WRFC roles,
  * WRFC chains + subtasks, workflow-tool FSMs/triggers/schedules, watchers,
  * background processes) as flat `ProcessNode` records with parentId edges.
  *
  * Consumers (the TUI fleet tree, session tabs, orchestration
- * nesting) build the tree from the flat list — this keeps the registry cheap
+ * nesting) build the tree from the flat list, this keeps the registry cheap
  * and lets each surface reorder/filter independently.
  */
 
@@ -28,7 +28,7 @@ export type ProcessKind =
   | 'phase'
   | 'work-item'
   // A HOSTED third-party coding agent (Claude Code / Codex CLI / opencode)
-  // running as a long-lived daemon session over the Agent Client Protocol —
+  // running as a long-lived daemon session over the Agent Client Protocol,
   // see platform/acp/host.ts and adapters/acp-host.ts.
   | 'acp-agent'
   // An externally-launched coding-agent session goodvibes did NOT spawn or host
@@ -55,13 +55,13 @@ export type ProcessKind =
  * `interrupted` is a distinct TERMINAL outcome
  * from `killed`: both come from AgentManager.cancel(), but a graceful
  * interrupt request and a hard kill are display-distinguishable via
- * AgentRecord.terminationKind. There is no resume path — `cancel()` is
+ * AgentRecord.terminationKind. There is no resume path, `cancel()` is
  * terminal in the current SDK, so 'interrupted' does NOT mean "process still
  * alive"; it means "the operator asked nicely" vs. "the operator killed it".
  *
  * `paused` is NOT terminal and NOT the same as
  * `killed`: a disabled trigger/schedule/automation-job still exists and can
- * be re-armed via `ProcessRegistry.resume()` — collapsing it into `killed`
+ * be re-armed via `ProcessRegistry.resume()`, collapsing it into `killed`
  * (the previous behavior) was dishonest, since `killed` implies the
  * process is gone for good. See ProcessCapabilities.resumable.
  */
@@ -110,7 +110,7 @@ export interface ProcessCapabilities {
    * Whether `ProcessRegistry.resume()` can re-arm
    * this node. True only for a node currently in the `paused` state whose
    * source manager exposes an `enable` control (trigger, schedule,
-   * automation job) — false for every other kind/state, including a
+   * automation job), false for every other kind/state, including a
    * `killed` node (kill is one-way; there is no un-kill).
    */
   readonly resumable: boolean;
@@ -118,7 +118,7 @@ export interface ProcessCapabilities {
    * Whether `ProcessRegistry.steer()` can queue a message for this
    * node. True only for a live in-process agent (or a wrfc-subtask with a
    * live member agent) AND only when the registry was constructed with a
-   * `messageBus` dep — false everywhere when that dep is absent (graceful
+   * `messageBus` dep, false everywhere when that dep is absent (graceful
    * degrade, no crash). Terminal nodes and non-conversational kinds
    * (wrfc-chain, workflow, trigger, schedule, watcher, background-process)
    * are never steerable.
@@ -134,14 +134,14 @@ export interface ProcessSessionRef {
 
 /**
  * Whether `costUsd` is a real reading.
- * - 'priced'    — every contributing usage record resolved to catalog pricing.
- * - 'unpriced'  — no pricing available; `costUsd` is null, never a fabricated zero.
- * - 'estimated' — partial: some contributors priced, some not (aggregate nodes only).
+ * - 'priced'   , every contributing usage record resolved to catalog pricing.
+ * - 'unpriced' , no pricing available; `costUsd` is null, never a fabricated zero.
+ * - 'estimated', partial: some contributors priced, some not (aggregate nodes only).
  */
 export type ProcessCostState = 'priced' | 'unpriced' | 'estimated';
 
 /**
- * Where a node's priced dollars came from: 'user' (manual/registration price —
+ * Where a node's priced dollars came from: 'user' (manual/registration price,
  * "your price"), 'provider' (provider-served rates), 'catalog' (the dated
  * pricing catalog), or 'mixed' when priced contributors disagree (aggregate
  * nodes). Absent when nothing was priced.
@@ -152,12 +152,12 @@ export type ProcessCostSource = 'user' | 'provider' | 'catalog' | 'mixed';
  * Why a node needs a human's attention. ONE state class: every way a node can
  * be waiting on a human is a first-class reason here, so every surface
  * inherits glyph, count, jump key, and push from the same classification.
- * - 'approval' — a tool call on this node is blocked waiting for an
+ * - 'approval', a tool call on this node is blocked waiting for an
  *   approve/deny decision (derived from a pending shared approval).
- * - 'input'    — the node is otherwise blocked waiting for operator input.
- * - 'pick'     — a best-of-N attempt group is READY: every attempt settled,
+ * - 'input'   , the node is otherwise blocked waiting for operator input.
+ * - 'pick'    , a best-of-N attempt group is READY: every attempt settled,
  *   held candidates parked, and only a human's winner pick advances it.
- * - 'conflict' — a merge conflict needs a human resolution before the work
+ * - 'conflict', a merge conflict needs a human resolution before the work
  *   can land.
  */
 export type ProcessAttentionReason = 'approval' | 'input' | 'pick' | 'conflict';
@@ -166,7 +166,7 @@ export type ProcessAttentionReason = 'approval' | 'input' | 'pick' | 'conflict';
  * Derived attention marker for a node that is blocked on a human.
  *
  * This is a DERIVED view over the same authoritative signals the coarse
- * `state` is derived from (a pending shared approval) — it is recomputed on
+ * `state` is derived from (a pending shared approval), it is recomputed on
  * every `query()`/tick and never persisted. It mirrors the registry's own
  * recorded contract: "the registry is a view, not a second source of truth"
  * (CHANGELOG 0.38.0). `needsAttention` therefore adds NO new store state; it is
@@ -203,7 +203,7 @@ export interface ProcessNode {
   readonly currentActivity?: ProcessActivity | undefined;
   readonly capabilities: ProcessCapabilities;
   /**
-   * Derived attention marker — present only while this node is blocked on a
+   * Derived attention marker, present only while this node is blocked on a
    * human (approve/deny or input). Absent otherwise. Purely a projection of
    * `state`; see {@link ProcessAttention}.
    */
@@ -212,32 +212,32 @@ export interface ProcessNode {
   /**
    * One-line headline for this node, derived from its task/phase identity at
    * the read-model (see headlines.ts). Regenerated ONLY on task/phase
-   * transitions and replaced in place — while the identity is unchanged the
+   * transitions and replaced in place, while the identity is unchanged the
    * same object (same `updatedAt`) is returned, so it can never behave as a
    * streaming feed. Length-capped at the read-model (HEADLINE_MAX_CHARS).
    */
   readonly headline?: ProcessHeadline | undefined;
   /**
-   * Quiet marker — present only on a live node whose last observed activity
+   * Quiet marker, present only on a live node whose last observed activity
    * is older than the stall-tell threshold. Pure timestamp comparison, no
    * generated text; see headlines.ts deriveStallTell.
    */
   readonly stall?: ProcessStallTell | undefined;
   /**
-   * Best-of-N grouping — present only on a work-item node that is one sibling
+   * Best-of-N grouping, present only on a work-item node that is one sibling
    * attempt of a group (see attempts.ts). Lets the fleet surface render the N
    * siblings as one group and know which are candidates for a winner pick.
    * Absent on every ordinary (single-attempt) node.
    */
   readonly attemptGroup?: ProcessAttemptGroup | undefined;
   /**
-   * The latest review's verdict, score, and acceptance checklist — present
+   * The latest review's verdict, score, and acceptance checklist, present
    * ONLY on a wrfc-chain / wrfc-subtask node whose review has completed.
    * Absent before any review (never an empty shell). See {@link ProcessReviewSummary}.
    */
   readonly review?: ProcessReviewSummary | undefined;
   /**
-   * Observed foreign-agent facts — present ONLY on an `observed-external` node
+   * Observed foreign-agent facts, present ONLY on an `observed-external` node
    * (a coding-agent session goodvibes did not spawn or host). Absent on every
    * owned/hosted node. See {@link ProcessObserved}.
    */
@@ -248,7 +248,7 @@ export interface ProcessNode {
 
 /**
  * A node's one-line headline. `updatedAt` moves only when the headline text
- * is regenerated (a task/phase transition) — a stable headline keeps its
+ * is regenerated (a task/phase transition), a stable headline keeps its
  * original timestamp across snapshots.
  */
 export interface ProcessHeadline {
@@ -275,7 +275,7 @@ export type ObservedAgentKind = 'claude-code' | 'codex' | 'opencode' | 'unknown'
  * How (or whether) an observed foreign row can be steered. A genuine channel
  * carries what a surface needs to dispatch through it; `none` carries the plain
  * reason there is no channel so a surface renders the reason, never a dead
- * action. STOP is NEVER represented here — observing and steering a foreign
+ * action. STOP is NEVER represented here, observing and steering a foreign
  * session is not owning its lifecycle.
  */
 export type ObservedSteerChannel =
@@ -295,7 +295,7 @@ export type ObservedSteerChannel =
 /**
  * Recent-activity liveness for an observed process, from cheap read-only OS
  * signals only. `active` means the process's cumulative CPU time ADVANCED since
- * the previous detection snapshot; `quiet` means it did not — which is NOT proof
+ * the previous detection snapshot; `quiet` means it did not, which is NOT proof
  * the agent is idle (it may be blocked on the network or on a human), only that
  * no CPU was burned in the interval. The detail states exactly that.
  */
@@ -303,7 +303,7 @@ export interface ObservedLiveness {
   readonly state: 'active' | 'quiet';
   /** Cumulative CPU seconds the OS reports for the process (monotonic per pid). */
   readonly cpuSeconds: number;
-  /** Plain-language meaning — honest about what `quiet` can and cannot tell you. */
+  /** Plain-language meaning, honest about what `quiet` can and cannot tell you. */
   readonly detail: string;
 }
 
@@ -323,7 +323,7 @@ export interface ProcessObserved {
   readonly steer: ObservedSteerChannel;
   /**
    * UX weight (owner ruling): steering a foreign agent is a DRILL-IN capability,
-   * available only once the row is opened in the visibility pane — never a
+   * available only once the row is opened in the visibility pane, never a
    * primary or bulk affordance. Always `true` on observed rows; a surface reads
    * it to keep the steer verb off the list and behind the row's detail view.
    */
@@ -333,7 +333,7 @@ export interface ProcessObserved {
 /**
  * One acceptance-checklist item from the latest review, as served on the wire:
  * the requirement the reviewer derived from the original task, whether it was
- * independently verified, and the evidence — so a consumer renders what was
+ * independently verified, and the evidence, so a consumer renders what was
  * ACTUALLY verified, not just a score. Long evidence is summarised
  * (length-capped) at the read-model.
  */
@@ -347,7 +347,7 @@ export interface ProcessReviewChecklistItem {
 /**
  * The latest review on a WRFC chain / compound sub-deliverable, served on the
  * wire. `passed` is the CONTROLLER verdict (gate-inclusive: checklist,
- * constraints, claims verification) — the reviewer's own claim cannot
+ * constraints, claims verification), the reviewer's own claim cannot
  * overstate it. Present only once a review has completed; a chain that has
  * not been reviewed carries NO review field (absent, never an empty shell).
  */
@@ -370,7 +370,7 @@ export interface ProcessAttemptGroup {
   /**
    * True once the WHOLE group is ready for the winner pick: every sibling
    * settled (held or failed) with at least one held candidate. The flagged
-   * pick a panel acts on — candidates and diffs come from fleet.attempts.list
+   * pick a panel acts on, candidates and diffs come from fleet.attempts.list
    * with this node's groupId, and fleet.attempts.pick completes it.
    */
   readonly ready: boolean;
@@ -397,7 +397,7 @@ export interface ProcessKillOptions {
 /**
  * Result of `ProcessRegistry.steer()`.
  *
- * `queued: true` means the message was accepted onto the target's inbox —
+ * `queued: true` means the message was accepted onto the target's inbox,
  * NOT that the agent has seen it yet. Consumption (drained at the target's
  * next turn boundary) is a separate, later, honest signal: a
  * `COMMUNICATION_CONSUMED` runtime-bus event on the `communication` domain
@@ -412,7 +412,7 @@ export type SteerResult =
  *
  * `query()` is a cheap idempotent aggregate-on-read over the already-composed
  * managers (no owned store state). `subscribe()` is an in-registry callback
- * fed by a coalesced tick — it is NOT a runtime-bus event contract.
+ * fed by a coalesced tick, it is NOT a runtime-bus event contract.
  */
 export interface ProcessRegistry {
   /** Snapshot the fleet now. Cheap O(n) in-memory scans; safe to call per render tick. */
@@ -432,11 +432,11 @@ export interface ProcessRegistry {
    */
   interrupt(id: string): boolean;
   /**
-   * Re-arm a `paused` node — triggers/schedules via
+   * Re-arm a `paused` node, triggers/schedules via
    * their manager's `enable()`, the inverse of `interrupt()`'s disable.
    * Honest refusal (returns false, no throw) for a node that is not
    * resumable: not found, not currently `paused`, or a kind whose source
-   * manager exposes no `enable` control (e.g. an agent — there is no
+   * manager exposes no `enable` control (e.g. an agent, there is no
    * resume path once cancelled, see ProcessState's `paused` doc).
    */
   resume(id: string): boolean;
@@ -451,7 +451,7 @@ export interface ProcessRegistry {
   /**
    * Queue a human message for a live in-process agent (or the current live
    * member agent of a wrfc-subtask), delivered at the target's next turn
-   * boundary (next tool round / turn top) — never mid-token. Honest refusal
+   * boundary (next tool round / turn top), never mid-token. Honest refusal
    * (`queued: false`) for anything that cannot take mid-run input: terminal
    * nodes, non-agent kinds, the wrfc-chain coordinator itself (steer its
    * member subtask instead), and any target when the registry has no

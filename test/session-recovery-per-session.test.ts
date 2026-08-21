@@ -1,5 +1,5 @@
 /**
- * session-recovery-per-session.test.ts — crash snapshots are per-session.
+ * session-recovery-per-session.test.ts, crash snapshots are per-session.
  *
  * Defect class: a single shared `recovery.jsonl` meant two concurrent sessions
  * crashing (or snapshotting) at once clobbered each other, which is exactly why
@@ -173,7 +173,7 @@ describe('no .preserved collision machinery in SDK code', () => {
     // the shared recovery file colliding. A `.preserved` used as a path suffix
     // (a string literal boundary follows it) must never exist in SDK code.
     // (`.preservedCommit`, a worktree property name, is deliberately not a
-    // match — a letter, not a string boundary, follows it.)
+    // match, a letter, not a string boundary, follows it.)
     // grep exits 1 (no matches) → clean; exits 0 with a file list → matches found.
     let matched = '';
     try {

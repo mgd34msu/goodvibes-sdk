@@ -84,7 +84,7 @@ function makeTelemetryHandlers(
   const api = opts.telemetryApiPresent ? makeTelemetryApi() : null;
 
   // Provide a stub principal with read:telemetry scope so the auth guard passes.
-  // The telemetry routes always require an authenticated principal — null returns 401.
+  // The telemetry routes always require an authenticated principal, null returns 401.
   const stubPrincipal = {
     principalId: 'test-principal',
     principalKind: 'token' as const,
@@ -106,7 +106,7 @@ function makeTelemetryHandlers(
 }
 
 // ---------------------------------------------------------------------------
-// describe: telemetry routes — happy paths
+// describe: telemetry routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
@@ -201,7 +201,7 @@ describe('router-e2e telemetry — GET /api/v1/telemetry (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: telemetry routes — failure paths (telemetryApi absent)
+// describe: telemetry routes, failure paths (telemetryApi absent)
 // ---------------------------------------------------------------------------
 
 describe('router-e2e telemetry — failure paths (telemetryApi null)', () => {

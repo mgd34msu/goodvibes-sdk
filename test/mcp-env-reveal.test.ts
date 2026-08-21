@@ -2,7 +2,7 @@
  * mcp-env-reveal.test.ts
  *
  * The read half of the MCP env fix. `envKeys` alone made env values readable
- * by nothing at all — an admin who had set them could not see what was set,
+ * by nothing at all, an admin who had set them could not see what was set,
  * and could not resend them when the whole-object write path asked for them.
  *
  * The narrowing is that the values become readable to an ADMIN, on a route
@@ -82,7 +82,7 @@ describe('MCP env values are readable by an admin and nobody else', () => {
     const res = await dispatchMcpRoutes(get('/api/mcp/config'), makeContext({ admin: true }));
     const raw = await res!.text();
     // The redacted view must not quietly gain values because a reveal route
-    // now exists — a surface that wants envKeys should not be able to acquire
+    // now exists, a surface that wants envKeys should not be able to acquire
     // secrets by accident.
     expect(raw).not.toContain('secret-value');
     expect(raw).toContain('envKeys');

@@ -11,8 +11,8 @@
  * two-character text `\0` anywhere in the command, the other matched any `$(…)`
  * anywhere in the command.
  *
- * Every case below is a PAIR — the benign shape that must now pass, and the
- * genuinely malicious neighbour that must still be denied — so the narrowing is
+ * Every case below is a PAIR, the benign shape that must now pass, and the
+ * genuinely malicious neighbour that must still be denied, so the narrowing is
  * demonstrably a narrowing and not a hole. The frozen unconditional
  * catastrophic block is untouched by this file and by the change it covers.
  */
@@ -55,7 +55,7 @@ const PAIRS: Array<[string, string, string]> = [
   [
     'deleting NUL bytes from a file with tr -d',
     `tr -d '\\0' < file`,
-    // A command with no null-delimited mode carrying a NUL escape in a path —
+    // A command with no null-delimited mode carrying a NUL escape in a path,
     // the truncation trick the check exists for.
     `curl "http://host/secret\\0.png"`,
   ],
@@ -81,7 +81,7 @@ const PAIRS: Array<[string, string, string]> = [
   [
     'a substitution reading a git ref through a wrapper',
     `timeout 300 git log $(cat ref)`,
-    // Inner text that decodes rather than reads — the decode-then-run shape.
+    // Inner text that decodes rather than reads, the decode-then-run shape.
     `curl -H "X: $(echo aGk= | base64 -d)" https://x/y`,
   ],
   [
@@ -95,7 +95,7 @@ const PAIRS: Array<[string, string, string]> = [
     'a backtick substitution supplying a value',
     'echo `date`',
     // The backtick form of command-name assembly. This one used to escape the
-    // classifier entirely — see the describe block below.
+    // classifier entirely, see the describe block below.
     '`which rm` -rf /tmp/x',
   ],
   [
@@ -171,7 +171,7 @@ describe('obfuscation classifier — the malicious neighbour is still denied', (
  * `parseAtom` returned a bare SubshellNode for a subshell in first position and
  * stopped, so every token after it was dropped. For `` `which rm` -rf /tmp/x ``
  * the only node the classifier ever saw was the benign INNER command
- * (`which rm`, a read) — the assembled command and its `-rf /tmp/x` arguments
+ * (`which rm`, a read), the assembled command and its `-rf /tmp/x` arguments
  * had vanished. The identical `$()` shape was caught, so the protection existed
  * and only the backtick spelling walked past it.
  */
@@ -200,7 +200,7 @@ describe('backtick command-name assembly reaches the classifier', () => {
 
   test('the first token being a subshell is itself the signal', () => {
     // The node carries no resolvable command name, so the denial must not
-    // depend on the name — it comes from the structure.
+    // depend on the name, it comes from the structure.
     const node = expectFirst(collectCommandNodes(parseCommandAST(NAME_ASSEMBLY)));
 
     expect(node.command).toBe('');

@@ -153,7 +153,7 @@ describe('web surface URL announcement', () => {
     expect(first[0]?.text).toContain('http://127.0.0.1:3423');
     expect(first[0]?.text).toContain('this machine only');
 
-    // The next start announces nothing — once means once.
+    // The next start announces nothing, once means once.
     const second = collectStartupAnnouncements({ configManager: fakeConfig(), store });
     expect(second).toEqual([]);
   });
@@ -185,7 +185,7 @@ describe('web surface URL announcement', () => {
   test('an UNRECOGNIZED hostMode announces the honest fallback, not a bare loopback URL implying network mode', () => {
     // The operator typed 'LAN' expecting network exposure; the daemon safely
     // serves loopback. The announcement must SAY the value was unrecognized and
-    // the safe local default applied — never imply the network mode is live.
+    // the safe local default applied, never imply the network mode is live.
     const store = new FeatureAnnouncementStore(storePath());
     const lines = collectStartupAnnouncements({ configManager: fakeConfig({ 'web.hostMode': 'LAN' }), store });
     expect(lines[0]?.text).toContain('http://127.0.0.1:3423');

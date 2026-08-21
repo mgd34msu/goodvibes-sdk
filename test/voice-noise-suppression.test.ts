@@ -1,5 +1,5 @@
 /**
- * voice-noise-suppression.test.ts — `voice.wake.noiseSuppression: "speex"`, proven
+ * voice-noise-suppression.test.ts, `voice.wake.noiseSuppression: "speex"`, proven
  * on signal rather than on a smoke call.
  *
  * The row shipped with a value that refused, because nothing applied the filter it
@@ -146,7 +146,7 @@ describe('the embedded speexdsp module is the artifact it says it is', () => {
     }
     const notice = readFileSync(`${REPO_ROOT}${SPEEXDSP_PREPROCESS.noticePath}`, 'utf8');
     // BSD-3 requires the copyright notice, the conditions and the disclaimer to
-    // travel with a binary redistribution — which the base64 above is.
+    // travel with a binary redistribution, which the base64 above is.
     expect(notice).toContain('Xiph.org Foundation');
     expect(notice).toContain('Redistributions in binary form must reproduce the above copyright');
     expect(notice).toContain('THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS');
@@ -302,7 +302,7 @@ describe('the stage sits between the device and every consumer', () => {
     expect(created.count).toBe(1);
     expect(seen[0]?.[0]).toBe(1500);
     // The inner opener is asked for unfiltered audio, which is exactly what it
-    // produces — and is what makes wrapping an already-wrapped opener harmless.
+    // produces, and is what makes wrapping an already-wrapped opener harmless.
     expect(requests[0]?.noiseSuppression).toBe('none');
   });
 

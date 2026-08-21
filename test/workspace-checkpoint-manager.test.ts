@@ -82,7 +82,7 @@ describe('WorkspaceCheckpointManager', () => {
     expect(noop).toBeNull();
 
     // Only the newly-added/changed file's bytes should count toward sizeBytes,
-    // not the whole tree — proves the accounting (and by extension git's own
+    // not the whole tree, proves the accounting (and by extension git's own
     // object dedup underneath) scales with the diff, not with total size.
     writeFileSync(join(root, 'b.txt'), 'b'.repeat(37));
     const cp2 = await manager.create({ kind: 'manual', label: 'cp2' });
@@ -188,11 +188,11 @@ describe('WorkspaceCheckpointManager', () => {
     writeFileSync(join(root, 'extra.txt'), 'added after checkpoint\n');
 
     // Widen the window between the side index being reset to the target
-    // tree and the working tree actually being checked out from it — exactly
+    // tree and the working tree actually being checked out from it, exactly
     // the window a same-tick auto-snapshot create() could land its
     // `git add -A` inside if operations weren't serialized (FINDING 1). We
     // only patch this one manager instance's runner, not the class, and we
-    // restore the real behavior first thing inside the wrapper — this is a
+    // restore the real behavior first thing inside the wrapper, this is a
     // timing probe, not a stub.
     const sideGit = (manager as unknown as { sideGit: { readTreeReset: (commit: string) => Promise<void> } }).sideGit;
     const originalReadTreeReset = sideGit.readTreeReset.bind(sideGit);
@@ -202,14 +202,14 @@ describe('WorkspaceCheckpointManager', () => {
     };
 
     // Fire restore() and a "concurrent auto-snapshot" create() back-to-back,
-    // uncoordinated by the caller — exactly how a bus-driven auto-snapshot
+    // uncoordinated by the caller, exactly how a bus-driven auto-snapshot
     // (TURN_COMPLETED etc.) would land mid-restore in the field.
     const restorePromise = manager.restore(cp1!.id);
     const createPromise = manager.create({ kind: 'turn', turnId: 'racing-turn', label: 'racing auto-snapshot' });
 
     const [restoreResult, racingCheckpoint] = await Promise.all([restorePromise, createPromise]);
 
-    // The restore itself must be exactly correct — not corrupted by the
+    // The restore itself must be exactly correct, not corrupted by the
     // racing create()'s `git add -A` re-staging the pre-restore disk state
     // into the index in between reset and checkout.
     expect(readFileSync(join(root, 'a.txt'), 'utf-8')).toBe('v1\n');
@@ -219,7 +219,7 @@ describe('WorkspaceCheckpointManager', () => {
 
     // The racing create() must have observed the fully-restored workspace,
     // never some torn hybrid of pre- and post-restore state: diffing it
-    // against cp1 (the restore target) must show zero file differences —
+    // against cp1 (the restore target) must show zero file differences,
     // the only way that's possible is if create()'s own `git add -A` ran
     // strictly after restore()'s read-tree-reset AND checkout-index-all had
     // both completed.
@@ -228,7 +228,7 @@ describe('WorkspaceCheckpointManager', () => {
     expect(diffAgainstTarget.files).toEqual([]);
 
     // The checkpoint set as a whole is coherent: cp1, the safety checkpoint
-    // restore() took automatically, and the racing create() — three
+    // restore() took automatically, and the racing create(), three
     // distinct ids, no corruption, no lost/duplicated entries.
     const all = await manager.list();
     const allIds = all.map((c) => c.id);

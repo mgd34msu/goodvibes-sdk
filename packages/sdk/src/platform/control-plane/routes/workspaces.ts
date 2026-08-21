@@ -95,7 +95,7 @@ function createResolveHandler(service: WorkspacesGatewayService): GatewayMethodH
 /**
  * Attach the workspaces.* handlers to the descriptors already cataloged (without
  * a handler) from ../method-catalog-workspaces.ts. A missing descriptor is a
- * silent no-op — construction must never fail because a wire verb failed to
+ * silent no-op, construction must never fail because a wire verb failed to
  * register; the operator-contract gates catch a real drift.
  */
 export function registerWorkspacesGatewayMethods(

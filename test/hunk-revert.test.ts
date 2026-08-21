@@ -72,7 +72,7 @@ describe('reverseApplyHunk (pure)', () => {
 
   test('ambiguous match (new side occurs twice, not at header line) is a conflict', () => {
     // Header says line 1, but line 1 does not match, and the new-side block
-    // occurs at two other locations — genuinely ambiguous.
+    // occurs at two other locations, genuinely ambiguous.
     const block = NEW_CONTENT.split('\n').filter((l) => l !== '');
     const twice = ['// unrelated', ...block, '// gap', ...block, ''].join('\n');
     const result = reverseApplyHunk(twice, FORWARD_HUNK);

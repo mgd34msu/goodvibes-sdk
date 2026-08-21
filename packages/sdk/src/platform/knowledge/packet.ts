@@ -79,7 +79,7 @@ export function searchKnowledge(
   });
   // Serve only active nodes: stale (forgotten/superseded) and draft (pending
   // review) nodes are not current knowledge, so search must not present them as
-  // hits — the same honesty bar `ask`/semantic already apply. (Defects 2 & 4.)
+  // hits, the same honesty bar `ask`/semantic already apply. (Defects 2 & 4.)
   const nodeResults = context.store.listNodes(Number.MAX_SAFE_INTEGER).filter((node) => node.status === 'active' && knowledgeNodeMatchesScope(node, scope, scopeLookup)).map((node) => {
     const haystack = [
       node.title,
@@ -257,7 +257,7 @@ function buildKnowledgePacketFromCurrentState(
   // Count candidates skipped SPECIFICALLY because adding them would exceed the
   // token budget, separately from those never reached because the item cap
   // (limit) bound first. Conflating the two lets a generous-budget rank-cap drop
-  // read as "omitted to fit the budget" — see the honesty breakdown below.
+  // read as "omitted to fit the budget", see the honesty breakdown below.
   let droppedForBudget = 0;
   for (const candidate of candidates
     .sort((a, b) => b.score - a.score || a.item.id.localeCompare(b.item.id))
@@ -270,11 +270,11 @@ function buildKnowledgePacketFromCurrentState(
     items.push(candidate.item);
     estimatedTokens += candidate.item.estimatedTokens;
   }
-  // Honest truncation disclosure — a partial packet must never read as complete.
+  // Honest truncation disclosure, a partial packet must never read as complete.
   // `droppedCount` is the honest TOTAL dropped; `droppedForBudget` is the subset
   // the token budget actually forced out (so a surface can say "N omitted to fit
   // the budget" truthfully), and `budgetExhausted` states whether the budget was
-  // the binding constraint at all — the rest of `droppedCount` is the rank/item
+  // the binding constraint at all, the rest of `droppedCount` is the rank/item
   // cap, not the budget.
   const droppedCount = Math.max(0, totalCandidates - items.length);
   const budgetExhausted = droppedForBudget > 0;

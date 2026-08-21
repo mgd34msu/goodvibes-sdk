@@ -1,5 +1,5 @@
 /**
- * daemon-handover.ts — moving an installed daemon binary onto the daemon
+ * daemon-handover.ts, moving an installed daemon binary onto the daemon
  * product's own release line, once, at a surface's launch.
  *
  * ── The state this exists for ──────────────────────────────────────────────
@@ -9,12 +9,12 @@
  * default names. That default lives in the binary: no settings file carries it
  * and no settings migration rewrites it. A daemon carrying the wrong one asks
  * for an asset its release line does not publish, takes a 404, and applies
- * nothing — hourly, forever.
+ * nothing, hourly, forever.
  *
  * A persisted `update.releasesUrl` override does not repair it either. The
  * updater those binaries ship claims every GoodVibes executable sitting beside
  * the daemon as an update target, and `applyVerifiedUpdate` verifies EVERY
- * target before it writes anything — so a binary pointed at the daemon
+ * target before it writes anything, so a binary pointed at the daemon
  * repository asks for a terminal asset that repository does not publish and
  * takes the same 404. There is no remote write path to reach it with either:
  * the control plane's `config.set` verb is a catalog descriptor with no
@@ -70,7 +70,7 @@ import {
 import { detectInstallKind } from '../install-kind.js';
 import { MANAGED_DAEMON_SERVICE_NAME } from './daemon-autostart.js';
 
-/** The daemon's own repository — the only place daemon binaries are published. */
+/** The daemon's own repository, the only place daemon binaries are published. */
 export const DAEMON_REPO_RELEASES_LATEST_URL = 'https://github.com/mgd34msu/goodvibes-daemon/releases/latest';
 
 /** `https://github.com/o/r/releases/download/<tag>` for the daemon repository. */
@@ -236,7 +236,7 @@ function trackHandoverProgress(io: UpdateFileIo, progress: DaemonHandoverProgres
   };
 }
 
-/** The failure an aborted handover ends with — raised only while nothing has been written. */
+/** The failure an aborted handover ends with, raised only while nothing has been written. */
 export const HANDOVER_ABORTED_MESSAGE = 'daemon handover cancelled before any file was replaced';
 
 type AbortableFetchInit = NonNullable<Parameters<UpdateFetchLike>[1]> & { signal?: AbortSignal };
@@ -287,7 +287,7 @@ export async function performDaemonHandover(
   const tag = await resolveLatestReleaseTag(fetchImpl, releasesLatestUrl);
   if (compareVersions(tag, floorVersion) < 0) {
     throw new Error(
-      `the daemon repository's current release is ${tag}, below the ${floorVersion} split floor — refusing to hand over to it`,
+      `the daemon repository's current release is ${tag}, below the ${floorVersion} split floor, refusing to hand over to it`,
     );
   }
   progress.tag = tag;
@@ -364,7 +364,7 @@ export function restartHandedOverDaemon(
     return {
       restarted: false,
       unitName,
-      detail: `the swap is on disk but restarting ${unitName}.service failed — run: systemctl --user restart ${unitName}.service`,
+      detail: `the swap is on disk but restarting ${unitName}.service failed, run: systemctl --user restart ${unitName}.service`,
     };
   }
   return {
@@ -408,7 +408,7 @@ export interface RunDaemonHandoverOptions {
   readonly timeoutMs?: number;
 }
 
-/** Default budget for the whole handover — generous (a daemon binary is large) but bounded. */
+/** Default budget for the whole handover, generous (a daemon binary is large) but bounded. */
 export const DAEMON_HANDOVER_TIMEOUT_MS = 90_000;
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'timeout'> {
@@ -427,7 +427,7 @@ async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'tim
 }
 
 /**
- * The complete handover: probe, decide, swap, restart, report. Never throws — a
+ * The complete handover: probe, decide, swap, restart, report. Never throws, a
  * surface's launch is never held hostage by the state of the daemon beside it.
  */
 export async function runDaemonHandover(options: RunDaemonHandoverOptions): Promise<DaemonHandoverOutcome> {
@@ -448,7 +448,7 @@ export async function runDaemonHandover(options: RunDaemonHandoverOptions): Prom
 
   const from = normalizeVersion(decision.fromVersion);
   options.print(
-    `daemon handover: the installed daemon is v${from}, from before the daemon became its own product — fetching the current one…`,
+    `daemon handover: the installed daemon is v${from}, from before the daemon became its own product, fetching the current one…`,
   );
 
   const controller = new AbortController();
@@ -473,7 +473,7 @@ export async function runDaemonHandover(options: RunDaemonHandoverOptions): Prom
     if (result === 'timeout') {
       if (!progress.begun) {
         controller.abort();
-        options.print('daemon handover deferred — will retry next launch');
+        options.print('daemon handover deferred, will retry next launch');
         return { action: 'deferred' };
       }
       const tag = normalizeVersion(progress.tag ?? '');
@@ -489,7 +489,7 @@ export async function runDaemonHandover(options: RunDaemonHandoverOptions): Prom
       runCommand,
     );
     options.print(
-      `daemon handover: replaced the daemon v${from} with v${normalizeVersion(result.tag)} from its own repository — ${restart.detail}.`
+      `daemon handover: replaced the daemon v${from} with v${normalizeVersion(result.tag)} from its own repository, ${restart.detail}.`
         + ` The build it replaced is kept beside it for one-command rollback.`,
     );
     return {
@@ -502,7 +502,7 @@ export async function runDaemonHandover(options: RunDaemonHandoverOptions): Prom
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
     options.print(
-      `daemon handover failed: ${detail} — the installed daemon v${from} is unchanged and will be retried next launch`,
+      `daemon handover failed: ${detail}, the installed daemon v${from} is unchanged and will be retried next launch`,
     );
     return { action: 'failed', detail };
   }

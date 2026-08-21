@@ -3,8 +3,8 @@
  * that bound its retrying.
  *
  * Split out of `watcher.ts`, which had reached the 800-line cap. The dividing
- * line is deliberate: this file is the watcher's SHAPE — the arguments in, the
- * status out, and the constants those depend on — while `watcher.ts` keeps the
+ * line is deliberate: this file is the watcher's SHAPE, the arguments in, the
+ * status out, and the constants those depend on, while `watcher.ts` keeps the
  * connection lifecycle that acts on them. A reader asking "what does the
  * supervisor see" is answered here without reading a protocol loop.
  *
@@ -59,7 +59,7 @@ export interface InboundMailboxWatcherStatus {
    * watcher that connects, fails its drain, disconnects and connects again is
    * making no progress at all, and resetting the count on the connect turned
    * an escalating backoff into a flat one that hammered the provider forever.
-   * The count clears when a drain completes — when the connection has done the
+   * The count clears when a drain completes, when the connection has done the
    * thing it exists to do.
    */
   readonly reconnectAttempts: number;
@@ -71,7 +71,7 @@ export interface InboundMailboxWatcherStatus {
    *
    * Kept distinct from `verdict` on purpose: `unproven` (an empty mailbox at
    * connect time) and `readable` are different facts about this account, and
-   * both have to stay visible as such — reading either as "fine, same as the
+   * both have to stay visible as such, reading either as "fine, same as the
    * other" is the exact silent-degradation mistake `ImapBodyProbe` exists to
    * make impossible to write by accident.
    */
@@ -82,7 +82,7 @@ export interface InboundMailboxWatcherStatus {
  * How many passes may end in an unexpected throw before it stops being treated
  * as a condition that will clear.
  *
- * Not one — a full disk during a log rotation, or a state directory being
+ * Not one, a full disk during a log rotation, or a state directory being
  * replaced by an installer, recovers within seconds and a watcher that gave up
  * on the first one would need a restart it should not need. Not unbounded
  * either: retrying forever is how a permanently unwritable cursor becomes a
@@ -96,7 +96,7 @@ export const MAX_CONSECUTIVE_LOCAL_FAILURES = 10;
  * How many drains may end in an unreadable FETCH answer before the mailbox is
  * called unreadable rather than retried.
  *
- * The same ceiling, for the same reason, as the throw path above — and it was
+ * The same ceiling, for the same reason, as the throw path above, and it was
  * missing, which is the whole of the defect this constant closes. A drain that
  * ends in `read-failed` because the server's answer could not be parsed is
  * correct to retry: the message is still in the mailbox, the cursor has not
@@ -109,7 +109,7 @@ export const MAX_CONSECUTIVE_LOCAL_FAILURES = 10;
  *
  * The cost of not having this is not merely a stuck mailbox. The retry rides
  * the reconnect backoff, and the backoff only escalates if it is not being
- * reset — see `drainOnce`, which is now the only place that resets it. Before
+ * reset, see `drainOnce`, which is now the only place that resets it. Before
  * that, a successful TCP connect reset the schedule and every reconnect
  * restarted from attempt zero: a flat 500 ms of sleep between logins,
  * indefinitely, against a provider that permits fifteen concurrent

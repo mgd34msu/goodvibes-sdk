@@ -1,5 +1,5 @@
 /**
- * check-exports-coverage.ts — every platform module is either exported or
+ * check-exports-coverage.ts, every platform module is either exported or
  * declared internal, on purpose.
  *
  * ── The gap this closes ───────────────────────────────────────────────────
@@ -12,8 +12,8 @@
  * never examined.
  *
  * That blind spot is not theoretical. `platform/owner-profile` shipped with no
- * exports entry — a consumer could not import it from a published package at
- * all — and every gate stayed green through it. The `file:` overlay tarballs the
+ * exports entry, a consumer could not import it from a published package at
+ * all, and every gate stayed green through it. The `file:` overlay tarballs the
  * surfaces build against compound it, because a directory install resolves more
  * leniently than a published package does: deep paths that the exports map
  * blocks still resolve locally, so a consumer's own suite goes green on an
@@ -23,7 +23,7 @@
  *
  * A directory under `src/platform/` with an `index.ts` is a module with a public
  * face. It must either appear in the `exports` map, or be named here with a
- * reason. Silence is the failure — "we forgot" and "it is deliberately internal"
+ * reason. Silence is the failure, "we forgot" and "it is deliberately internal"
  * look identical from outside, and this makes them different.
  *
  * Adding a module and forgetting the export is the common case, so the default
@@ -42,7 +42,7 @@ const PLATFORM_DIR = join(ROOT, 'packages/sdk/src/platform');
  * surface, each with the reason it is unreachable by design.
  *
  * A module belongs here when consumers reach its behaviour through the control
- * plane rather than by importing it — the daemon owns the instance, and handing
+ * plane rather than by importing it, the daemon owns the instance, and handing
  * out the class would invite a second one.
  */
 const INTENTIONALLY_INTERNAL: Readonly<Record<string, string>> = {
@@ -100,7 +100,7 @@ function main(): void {
   // this round produced confident wrong answers from a drifted matcher, and a
   // check whose only failure mode is "found no problems" cannot tell "clean"
   // from "looked in the wrong place". The floor is deliberately far below the
-  // real count — it is a tripwire for a broken scan, not a ratchet on module
+  // real count, it is a tripwire for a broken scan, not a ratchet on module
   // count.
   const MIN_PLAUSIBLE_MODULES = 20;
   if (modules.length < MIN_PLAUSIBLE_MODULES || declared.size < MIN_PLAUSIBLE_MODULES) {
@@ -161,7 +161,7 @@ function main(): void {
   if (staleAllowlist.length > 0) {
     problems.push(
       'These modules are listed as intentionally internal but ARE exported, so the',
-      'allowlist entry is now misleading — remove it:',
+      'allowlist entry is now misleading, remove it:',
       ...staleAllowlist.map((name) => `  - platform/${name}`),
     );
   }
@@ -174,7 +174,7 @@ function main(): void {
 
   const internal = Object.keys(INTENTIONALLY_INTERNAL).length;
   console.log(
-    `exports-coverage: OK — ${declared.size} platform module(s) exported, ${internal} declared internal.`,
+    `exports-coverage: OK, ${declared.size} platform module(s) exported, ${internal} declared internal.`,
   );
 }
 

@@ -3,14 +3,14 @@
  *
  * Storage seam for the skill model. The store is an injectable interface so the
  * `SkillService` (service.ts) has no direct filesystem or transport dependency
- * — a consumer can back it with a directory of Markdown files (the bundled
+ *, a consumer can back it with a directory of Markdown files (the bundled
  * `FileSystemSkillStore` below), an in-memory map for tests, or a remote store,
  * without the service or the gateway verbs changing. This is the same
  * injectable-I/O shape the push and subscription stores follow.
  *
  * The filesystem store is the canonical on-disk form: one `<name>.md` document
  * per skill in a single directory, which is exactly the Markdown-plus-
- * frontmatter shape `model.ts` reads and writes. `delete` means delete — the
+ * frontmatter shape `model.ts` reads and writes. `delete` means delete, the
  * file is removed, not tombstoned.
  */
 
@@ -26,7 +26,7 @@ import {
 
 /** The storage operations the `SkillService` needs. All async, all honest about absence. */
 export interface SkillStore {
-  /** Cheap index-line read for every skill — never materializes bodies. */
+  /** Cheap index-line read for every skill, never materializes bodies. */
   listIndex(): Promise<SkillIndexEntry[]>;
   /** Full read of one skill (body included), or null when it does not exist. */
   get(name: string): Promise<Skill | null>;
@@ -121,7 +121,7 @@ export class FileSystemSkillStore implements SkillStore {
   }
 }
 
-/** An in-memory skill store — the reference implementation for tests. */
+/** An in-memory skill store, the reference implementation for tests. */
 export class InMemorySkillStore implements SkillStore {
   private readonly skills = new Map<string, Skill>();
 

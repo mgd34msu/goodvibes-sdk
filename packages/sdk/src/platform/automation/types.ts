@@ -21,7 +21,7 @@ export type AutomationRunTrigger =
  * The transport surface axis for routes, channels, and delivery. Collapsed onto
  * the canonical {@link TransportSurfaceKind} (= the strict route-binding list in
  * events/routes.ts) so there is no longer a parallel literal union to drift.
- * This is the STRICT set — product surfaces (agent/webui/companion) live only on
+ * This is the STRICT set, product surfaces (agent/webui/companion) live only on
  * the wider {@link SurfaceKind} used by the participant/message identity axis.
  */
 export type AutomationSurfaceKind = TransportSurfaceKind;

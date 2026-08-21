@@ -1,5 +1,5 @@
 /**
- * Segmenter — splits a list of CommandTokens into discrete CommandSegments
+ * Segmenter, splits a list of CommandTokens into discrete CommandSegments
  * at compound command boundaries (&&, ||, ;, |).
  *
  * Each segment carries its own token list, resolved command name, positional

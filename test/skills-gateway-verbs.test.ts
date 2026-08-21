@@ -4,7 +4,7 @@
  * The skills.* CRUD gateway verbs, proven over a real GatewayMethodCatalog with
  * the handlers attached the same way the daemon attaches them
  * (registerSkillsGatewayMethods). This proves the descriptor and handler
- * register TOGETHER — a cataloged-but-unhandled verb would be an honest
+ * register TOGETHER, a cataloged-but-unhandled verb would be an honest
  * NOT_INVOKABLE/501, which these invocations would surface.
  */
 import { describe, expect, test } from 'bun:test';

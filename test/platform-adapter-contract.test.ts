@@ -14,7 +14,7 @@
  *   - Body-size limit guard returns 413
  *
  * These tests run against src/ (not dist/) so they execute under bun:test with
- * TypeScript transpilation — no build step required.
+ * TypeScript transpilation, no build step required.
  */
 
 import { createHmac } from 'node:crypto';
@@ -30,7 +30,7 @@ import type { SurfaceAdapterContext } from '../packages/sdk/src/platform/adapter
 import type { ChannelPolicyDecision } from '../packages/sdk/src/platform/channels/types.js';
 
 // ---------------------------------------------------------------------------
-// Minimal SurfaceAdapterContext stub — only the fields used by the paths under
+// Minimal SurfaceAdapterContext stub, only the fields used by the paths under
 // test. Real adapters receive a full context wired by the daemon; these stubs
 // exercise only the helper-level code paths.
 // ---------------------------------------------------------------------------
@@ -201,7 +201,7 @@ describe('parseJsonRecord', () => {
   test('returns array as-is for JSON array (object truthy check passes)', () => {
     const result = parseJsonRecord('[1,2,3]');
     expect(result).not.toBeInstanceOf(Response);
-    // Arrays satisfy `typeof x === 'object' && x !== null` — the implementation
+    // Arrays satisfy `typeof x === 'object' && x !== null`, the implementation
     // returns them as-is without coercion to {}. This documents that behaviour.
     expect(result).toBeInstanceOf(Array);
   });
@@ -254,14 +254,14 @@ describe('constantTimeEquals', () => {
   });
 
   test('returns false for two empty strings (falsy guard fires)', () => {
-    // Both args are falsy — the implementation's `!expected || !provided`
+    // Both args are falsy, the implementation's `!expected || !provided`
     // guard returns false before reaching timingSafeEqual.
     expect(constantTimeEquals('', '')).toBe(false);
   });
 });
 
 // ---------------------------------------------------------------------------
-// handleNtfySurfacePayload — delivery-echo short-circuit
+// handleNtfySurfacePayload, delivery-echo short-circuit
 // ---------------------------------------------------------------------------
 
 describe('handleNtfySurfacePayload — delivery echo', () => {
@@ -286,7 +286,7 @@ describe('handleNtfySurfacePayload — delivery echo', () => {
 
 
 // ---------------------------------------------------------------------------
-// handleNtfySurfacePayload — missing topic guard
+// handleNtfySurfacePayload, missing topic guard
 // ---------------------------------------------------------------------------
 
 describe('handleNtfySurfacePayload — topic validation', () => {
@@ -315,13 +315,13 @@ describe('handleNtfySurfacePayload — topic validation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// handleNtfySurfacePayload — authorization guard
+// handleNtfySurfacePayload, authorization guard
 // ---------------------------------------------------------------------------
 
 describe('handleNtfySurfacePayload — authorization', () => {
   test('returns 403 when authorizeSurfaceIngress blocks the request', async () => {
     const ctx = makeBlockingContext();
-    // topic must match the configured agentTopic — but since configManager
+    // topic must match the configured agentTopic, but since configManager
     // returns undefined for topics, resolveGoodVibesNtfyTopics will produce
     // the default agent topic. We use a matching topic to get past the
     // unknown-topic gate and hit the authorizeSurfaceIngress check.

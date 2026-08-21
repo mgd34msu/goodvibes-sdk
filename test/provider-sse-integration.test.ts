@@ -106,7 +106,7 @@ describe('ControlPlaneGateway SSE — real end-to-end', () => {
             }
           }
         } catch (err) {
-          // Stream aborted after we found what we needed — that's fine
+          // Stream aborted after we found what we needed, that's fine
           if ((err as Error).name === 'AbortError') {
             clearTimeout(timeout);
             resolve();

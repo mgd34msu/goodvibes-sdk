@@ -1,12 +1,12 @@
 /**
- * approval-raiser.ts — how a permission ask leaves a surface that is a client.
+ * approval-raiser.ts, how a permission ask leaves a surface that is a client.
  *
  * ── What changed ───────────────────────────────────────────────────────────
  *
  * A surface product used to construct its OWN `ApprovalBroker`, and every ask
  * went into it: raised in-process, prompted at that surface, decided there,
  * stored there. When the surface also hosted the daemon that was coherent. Once
- * the daemon is a separate process it is not — an ask raised there was invisible
+ * the daemon is a separate process it is not, an ask raised there was invisible
  * to every other surface, to the daemon's attention machinery, and to the phone
  * that was supposed to be able to answer it.
  *
@@ -17,12 +17,12 @@
  * ── The shape, precisely ───────────────────────────────────────────────────
  *
  * 1. Raise the ask on the daemon. The verb returns the pending record
- *    immediately — it deliberately does not park an HTTP request across a
+ *    immediately, it deliberately does not park an HTTP request across a
  *    person's attention span.
  * 2. Prompt locally at the same time.
  * 3. Watch the raised id for a decision made elsewhere. The channel for that is
  *    `control.approval_update`, which carries every transition of the record the
- *    moment the broker records it — so a decision made on a phone reaches this
+ *    moment the broker records it, so a decision made on a phone reaches this
  *    surface in the time one SSE frame takes, not in the time one poll interval
  *    takes. A product wires the stream in through `subscribeApprovalUpdates`.
  *
@@ -33,8 +33,8 @@
  *    subscription and a push channel cannot deliver what happened before it
  *    opened.
  * 4. Whichever answers first is the decision. If the local prompt answered, the
- *    daemon is TOLD (`approvals.approve`/`approvals.deny`) so its record — the
- *    one every other surface reads — matches what happened here.
+ *    daemon is TOLD (`approvals.approve`/`approvals.deny`) so its record, the
+ *    one every other surface reads, matches what happened here.
  *
  * ── When the daemon is not reachable ───────────────────────────────────────
  *
@@ -49,7 +49,7 @@
  * A remote decision resolves the ask; the prompt this surface already drew stays
  * on screen until the user dismisses it, and its answer is ignored (the decision
  * has been taken). This mirrors what the in-process broker did with a
- * `localPrompt` racing a wire decision — there is no cancel channel into a drawn
+ * `localPrompt` racing a wire decision, there is no cancel channel into a drawn
  * prompt, and inventing one is a renderer change, not a client-seam change.
  */
 import { logger, summarizeError } from '../../utils/index.js';
@@ -61,7 +61,7 @@ import type { ApprovalUpdateNotice, ApprovalUpdateSubscription } from './approva
 /**
  * How this surface opens the approval-update stream. A product supplies it
  * because resolving a base URL and proving this surface may subscribe are
- * trust-boundary concerns the SDK core deliberately never reaches into — the
+ * trust-boundary concerns the SDK core deliberately never reaches into, the
  * same carve-out `DaemonVerbCaller` records.
  *
  * Returning null means "no stream right now", which is a supported answer:
@@ -187,7 +187,7 @@ export function createClientApprovalRaiser(options: ClientApprovalRaiserOptions)
    * and the subscription, then wait for the frame that decides this id.
    *
    * Resolves null when the local prompt won, when the stream ended without a
-   * decision, or when no stream could be opened — the caller falls back.
+   * decision, or when no stream could be opened, the caller falls back.
    */
   const watchRemoteOverStream = async (
     subscribe: ApprovalUpdateSubscriber,

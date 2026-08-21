@@ -1,4 +1,4 @@
-# Entry Point Guide
+# Entry point guide
 
 This SDK publishes `@pellux/goodvibes-sdk` plus source-of-truth sibling
 packages such as `@pellux/goodvibes-contracts`, `@pellux/goodvibes-errors`,
@@ -8,7 +8,7 @@ source-of-truth facades, not separate setup steps for most consumers.
 
 See the [Published Surface Matrix](./surfaces.md) for the two-tier model: full surface (Bun) vs. companion surface (Hermes / browser / Workers). For the internal runtime-boundary model, see [Runtime Surfaces](./runtime-surfaces.md).
 
-## Consumer Decision Matrix
+## Consumer decision matrix
 
 | Consumer | Entry point (import path) | Install | Read |
 |---|---|---|---|
@@ -29,7 +29,7 @@ See the [Published Surface Matrix](./surfaces.md) for the two-tier model: full s
 `/browser` and `/web` are both companion-safe browser runtime entrypoints. Use
 `/browser` for generic browser applications and `/web` for web UI hosts.
 
-## Advanced Platform Entry Points
+## Advanced platform entry points
 
 | Entry point | Use it when |
 |---|---|
@@ -54,7 +54,7 @@ helpers without aggregating the full platform. Do not
 bypass the package export map from applications; repository file layout is not
 the consumer contract.
 
-## Companion-Safe Entry Points
+## Companion-safe entry points
 
 These entry points contain no Bun globals and bundle cleanly with Metro, Vite, webpack, and esbuild:
 
@@ -83,7 +83,7 @@ These entry points contain no Bun globals and bundle cleanly with Metro, Vite, w
 CI job `platform-matrix` (`rn-bundle` dimension) enforces that companion dist bundles contain no `Bun.*` identifiers and no `node:*` imports.
 
 
-## Transport Middleware
+## Transport middleware
 
 The SDK supports Koa-style transport middleware via `sdk.use()`. Middleware wraps every HTTP request/response cycle through the operator and peer transports.
 
@@ -112,9 +112,9 @@ sdk.use(async (ctx, next) => {
 ```
 
 Middleware runs in order. Each middleware receives a mutable `TransportContext` and a `next()` function. Calling `next()` executes the remainder of the chain (including the real fetch). After `await next()` returns:
-- `ctx.response` — the `Response` object (on success)
-- `ctx.durationMs` — round-trip time in milliseconds
-- `ctx.error` — the thrown error (on failure)
+- `ctx.response`: the `Response` object (on success)
+- `ctx.durationMs`: round-trip time in milliseconds
+- `ctx.error`: the thrown error (on failure)
 
 Middleware can:
 - inspect or mutate request headers (`ctx.headers`) before the fetch
@@ -140,7 +140,7 @@ The `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral. Raw JSON artifac
 
 `@pellux/goodvibes-sdk/contracts/node` exports filesystem path helpers for locating JSON contract artifacts on disk. It is a build/tooling convenience, not a runtime surface.
 
-## Entry Point Relationships
+## Entry point relationships
 
 - `@pellux/goodvibes-sdk/auth` adds token storage and login/current-auth helpers.
 - `@pellux/goodvibes-sdk/contracts` is the typed vocabulary layer (method IDs, endpoint IDs, event maps).
@@ -150,11 +150,11 @@ The `@pellux/goodvibes-sdk/contracts` entry is runtime-neutral. Raw JSON artifac
 - `@pellux/goodvibes-sdk` (root) composes those pieces into a Bun-optimized full-surface SDK.
 - `@pellux/goodvibes-sdk/daemon` is the reusable server/daemon route layer for Bun hosts.
 
-## Sibling-Package Deep Subpaths
+## Sibling-package deep subpaths
 
 The source-of-truth sibling packages (`@pellux/goodvibes-contracts`, `@pellux/goodvibes-daemon-sdk`,
 `@pellux/goodvibes-transport-core`, `@pellux/goodvibes-transport-http`, `@pellux/goodvibes-operator-sdk`,
-`@pellux/goodvibes-peer-sdk`, and `@pellux/goodvibes-errors`) each publish additional deep subpaths —
+`@pellux/goodvibes-peer-sdk`, and `@pellux/goodvibes-errors`) each publish additional deep subpaths,
 for example `contracts/generated/*`, `contracts/zod-schemas/*`, `daemon-sdk/*` route helpers,
 `transport-core/*`, `transport-http/*`, the operator/peer `client*` entries, and
 `errors/daemon-error-contract`. These back the `@pellux/goodvibes-sdk` facade and are not part of the

@@ -1,9 +1,9 @@
 /**
- * speech-markdown — strips markdown formatting out of assistant text before it
+ * speech-markdown, strips markdown formatting out of assistant text before it
  * reaches a speech synthesizer. Assistant responses are markdown; a TTS engine
  * has no renderer, so without this a synthesizer reads formatting characters
  * aloud verbatim ("asterisk asterisk bold asterisk asterisk", "hash", "pipe").
- * Everything here is plain-text policy — no I/O — so it is shared verbatim by
+ * Everything here is plain-text policy, no I/O, so it is shared verbatim by
  * every voice consumer through {@link TtsTextChunker}.
  */
 
@@ -30,10 +30,10 @@ const BOLD_STAR = /\*\*(.+?)\*\*/g;
 const BOLD_UNDERSCORE = /(?<![\w])__(.+?)__(?![\w])/g;
 // Single-asterisk emphasis: content must not start/end with whitespace, which
 // keeps spaced math ("a * b") from pairing up as emphasis. Plain "2*3" never
-// matches at all — it only has one asterisk, so there is no pair to strip.
+// matches at all, it only has one asterisk, so there is no pair to strip.
 const ITALIC_STAR = /\*([^\s*](?:[^*]*[^\s*])?)\*/g;
 // Single-underscore emphasis: the (?<![\w_]) / (?![\w_]) guards are what keep
-// snake_case_word intact — an underscore preceded or followed by a word
+// snake_case_word intact, an underscore preceded or followed by a word
 // character is intraword, not an emphasis marker.
 const ITALIC_UNDERSCORE = /(?<![\w_])_([^\s_](?:[^_]*[^\s_])?)_(?![\w_])/g;
 
@@ -64,7 +64,7 @@ export function stripMarkdownForSpeech(text: string): string {
   return out.join('\n');
 }
 
-/** A table data row reads as its cells joined by ", " — pipes carry no spoken meaning. */
+/** A table data row reads as its cells joined by ", ", pipes carry no spoken meaning. */
 function stripTableRow(line: string): string {
   if (!line.includes('|')) return line;
   let body = line.trim();
@@ -104,13 +104,13 @@ function autolinkSpokenForm(url: string): string {
 type FenceChar = '`' | '~';
 
 /**
- * StreamingCodeFenceFilter — swallows fenced code blocks (```) out of a
+ * StreamingCodeFenceFilter, swallows fenced code blocks (```) out of a
  * streamed delta sequence, replacing each whole block with one spoken phrase.
  * Code is unreadable aloud, and a stream never hands us a fence in one piece
  * (the delta boundary can land mid-backtick), so this carries the small
  * amount of state needed to recognize a fence marker that arrives split
  * across `push()` calls: the fence-relevant prefix of the CURRENT line only
- * (up to 3 spaces of indent, then a run of backtick/tilde chars) — everything
+ * (up to 3 spaces of indent, then a run of backtick/tilde chars), everything
  * else streams straight through the moment it is no longer part of that
  * prefix, so latency-sensitive prose never waits on a line's `\n`.
  *
@@ -138,7 +138,7 @@ export class StreamingCodeFenceFilter {
     return out;
   }
 
-  /** Whatever undecided line-start text never resolved (no more input coming) passes through as plain text; a dangling open fence stays swallowed — its placeholder already went out when it opened. */
+  /** Whatever undecided line-start text never resolved (no more input coming) passes through as plain text; a dangling open fence stays swallowed, its placeholder already went out when it opened. */
   flush(): string {
     const leftover = this.prefixBuf;
     const wasInFence = this.inFence;
@@ -165,7 +165,7 @@ export class StreamingCodeFenceFilter {
       if (ch === '\n') {
         this.inSwallowLine = false;
         // The closing fence line's own newline is the one piece of it that
-        // survives — it is what lets prose resume on its own line. Every
+        // survives, it is what lets prose resume on its own line. Every
         // other swallowed line (the opener, or actual code content) stays
         // fully silent, newline included.
         return this.swallowLineIsCloser ? '\n' : '';
@@ -205,7 +205,7 @@ export class StreamingCodeFenceFilter {
     this.resetLineState();
 
     if (this.inFence) {
-      // Not a fence marker at all — plain code content, swallow it (and its
+      // Not a fence marker at all, plain code content, swallow it (and its
       // newline; only a real closing fence line's newline survives).
       if (!lineComplete) {
         this.inSwallowLine = true;
@@ -226,7 +226,7 @@ export class StreamingCodeFenceFilter {
 
     const isOpener = !wasInFence;
     // A same-ish marker that is the wrong fence char, or shorter than the
-    // opener, is not a valid closer — the fence stays open and this line is
+    // opener, is not a valid closer, the fence stays open and this line is
     // still code content, not a marker line.
     const isValidCloser = wasInFence && runChar === this.openFenceChar && runLen >= this.openFenceLen;
 

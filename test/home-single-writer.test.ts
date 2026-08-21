@@ -1,5 +1,5 @@
 /**
- * home-single-writer.test.ts — one live process per surface home.
+ * home-single-writer.test.ts, one live process per surface home.
  *
  * The defect: a turn forked a SECOND agent onto the home a live agent was
  * already running out of, and two writers over one `.goodvibes/agent/` tree
@@ -7,7 +7,7 @@
  * by a writer that no longer existed. Nothing refused, because a home had no
  * notion of an owner.
  *
- * The guard has to refuse the real case and — just as load-bearing — must NOT
+ * The guard has to refuse the real case and, just as load-bearing, must NOT
  * refuse on a stale record, because a boot guard that stops a product from
  * starting for a reason that is not true is worse than the defect. Both
  * directions are pinned here, and every seam (pid, identity, clock) is injected

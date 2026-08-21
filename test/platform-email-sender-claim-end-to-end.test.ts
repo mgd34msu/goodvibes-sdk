@@ -6,14 +6,14 @@
  * its verdict attached, and reading the mailbox records the untrusted ingest
  * that arms a surface's outward-effect guard.
  *
- * Before this, the sender-claim module was reachable only from its own test —
+ * Before this, the sender-claim module was reachable only from its own test,
  * the display showed a bare `from=` as if it were fact, and reading mail left
  * the trust ledger empty so the guard saw a clean turn.
  *
  * What this file does NOT cover, deliberately: the guard decision itself.
  * `evaluateOutwardEffect` and the ledger live in the surface that owns the
  * trust boundary, and that surface keeps the test composing them with a read.
- * Asserted here is everything on the SDK's side of the port — that the ingest
+ * Asserted here is everything on the SDK's side of the port, that the ingest
  * is recorded, for every message, with the claimed origin, before checkInbox
  * returns, and that the describer is handed the top-most verdict and no other.
  */

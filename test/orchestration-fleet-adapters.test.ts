@@ -208,7 +208,7 @@ describe('registry integration — nesting + kill/steer dispatch', () => {
     };
     const registry = createProcessRegistry({
       // adaptWorkItem's `steerable` requires the active agent to actually be
-      // present (and non-terminal) in this snapshot — mirrors how a
+      // present (and non-terminal) in this snapshot, mirrors how a
       // wrfc-subtask's steerable is gated on its live member agent.
       agentManager: { list: () => [liveAgent], cancel: () => true },
       wrfcController: { listChains: () => [] },

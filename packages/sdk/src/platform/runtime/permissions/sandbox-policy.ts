@@ -1,10 +1,10 @@
 /**
- * sandbox-policy.ts — the sandbox-aware INPUT to the exec permission decision.
+ * sandbox-policy.ts, the sandbox-aware INPUT to the exec permission decision.
  *
  * This is ordinary permission-layer policy, not a new enforcement path: given a
  * command and whether the per-command exec sandbox is active, it decides whether
  * a command that would otherwise prompt ("ask") under prompt mode can auto-allow
- * because it runs entirely inside the OS boundary with no host-access need — or
+ * because it runs entirely inside the OS boundary with no host-access need, or
  * must still surface as an explicit escalation ask that NAMES what it wants
  * (network, host-privilege escalation, a package install that reaches the
  * network). A consumer composes this with its existing decision machinery: when
@@ -14,7 +14,7 @@
  * FROZEN CATASTROPHIC BLOCK IS UNTOUCHED. This module never inspects, relaxes,
  * or re-implements the unconditional catastrophic block (rm -rf /, dd to a
  * device, mkfs, fork bomb …). That block is enforced independently, at exec
- * time, and stays in force identically inside the sandbox — a boundary never
+ * time, and stays in force identically inside the sandbox, a boundary never
  * buys a catastrophic command an allow. Doctrine: "permission settings are the
  * sole authority for command-class risk; the exec-layer unconditional block is a
  * frozen catastrophic-only list … that must NEVER expand without Mike's explicit
@@ -126,8 +126,8 @@ export function decideSandboxedExec(input: SandboxPolicyInput): SandboxPolicyDec
   if (wantsNetwork) {
     escalations.push(
       isOnEgressAllowlist(facts, input.egressAllowlist)
-        ? 'wants network (on egress allowlist — granted inside the boundary once approved)'
-        : 'wants network (not on egress allowlist — denied inside the boundary unless approved)',
+        ? 'wants network (on egress allowlist, granted inside the boundary once approved)'
+        : 'wants network (not on egress allowlist, denied inside the boundary unless approved)',
     );
   } else if (detectsPackageInstall(facts)) {
     escalations.push('wants network (package install)');
@@ -150,6 +150,6 @@ export function decideSandboxedExec(input: SandboxPolicyInput): SandboxPolicyDec
     effect: 'allow',
     sandboxed: true,
     escalations: [],
-    reason: 'runs inside the sandbox boundary with no host-access need — auto-allowed',
+    reason: 'runs inside the sandbox boundary with no host-access need, auto-allowed',
   };
 }

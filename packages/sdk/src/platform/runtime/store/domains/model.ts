@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Model domain state — tracks the active LLM provider and model,
+ * Model domain state, tracks the active LLM provider and model,
  * fallback chain, token limits, and reasoning configuration.
  */
 
@@ -41,7 +41,7 @@ export interface FallbackChainEntry {
   /** Model ID on that provider. */
   modelId: string;
   /**
-   * Registry key used for config lookup — the same stored key the active model
+   * Registry key used for config lookup, the same stored key the active model
    * carries, not a key recomposed from providerId and modelId.
    *
    * The chain's own entries are what a fallover switches the session to, so the
@@ -58,7 +58,7 @@ export interface FallbackChainEntry {
 }
 
 /**
- * ModelDomainState — all information about the active model configuration.
+ * ModelDomainState, all information about the active model configuration.
  */
 export interface ModelDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

@@ -25,7 +25,7 @@ describe('classifyToolFormatOutcome', () => {
     })).toEqual(['edit_fallback_whitespace']);
     expect(classifyToolFormatOutcome('edit', {
       success: true,
-      warnings: ['Exact match failed; used fuzzy line match (content may differ slightly — verify the edit).'],
+      warnings: ['Exact match failed; used fuzzy line match (content may differ slightly, verify the edit).'],
     })).toEqual(['edit_fallback_fuzzy']);
     // A clean success with no fallback records nothing.
     expect(classifyToolFormatOutcome('edit', { success: true, warnings: [] })).toEqual([]);

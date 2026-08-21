@@ -55,7 +55,7 @@ function ledgerWith(text: string): UntrustedContentLedger {
 
 describe('owner-initiated versus content-initiated', () => {
   test('a discovered merchant is allowed when the OWNER initiated', () => {
-    // "buy the cheapest X you find online" — the storefront came off a page by
+    // "buy the cheapest X you find online", the storefront came off a page by
     // design, and that is now graded rather than refused.
     const decision = evaluatePaymentTaint({
       intent: {
@@ -133,7 +133,7 @@ describe('owner-initiated versus content-initiated', () => {
     // The ledger content deliberately does NOT overlap any intent field, so the
     // only thing that can refuse this is the ORIGIN rule. If the refusal came
     // from a text match instead, this test would still pass while the structural
-    // rule had been deleted — which is exactly the regression it exists to catch.
+    // rule had been deleted, which is exactly the regression it exists to catch.
     const decision = evaluatePaymentTaint({
       intent: {
         origin: 'content',
@@ -154,7 +154,7 @@ describe('owner-initiated versus content-initiated', () => {
 // ───────────────────────────────────────────────────────────────────────────
 
 // ───────────────────────────────────────────────────────────────────────────
-// Judgement against a profile — NOT a list
+// Judgement against a profile, NOT a list
 // ───────────────────────────────────────────────────────────────────────────
 
 /** Records what the judge was asked, so the input surface can be asserted. */

@@ -10,7 +10,7 @@ import { workstreamLabel } from '../channels/workstream-labels.js';
 // ---------------------------------------------------------------------------
 
 /**
- * WebhookNotifier — sends HTTP POST notifications to configured webhook URLs.
+ * WebhookNotifier, sends HTTP POST notifications to configured webhook URLs.
  *
  * Defaults to ntfy.sh-compatible format: plain text body, no auth required.
  * Works with any service that accepts a plain POST with a text/plain body,
@@ -98,7 +98,7 @@ export class WebhookNotifier {
    *
    * Uses ntfy.sh format by default: POST with text/plain body.
    * URLs are delivered with bounded concurrency; individual failures are
-   * logged and returned but do not throw — remaining URLs still receive the notification.
+   * logged and returned but do not throw, remaining URLs still receive the notification.
    */
   async send(text: string): Promise<WebhookNotifierSendResult> {
     if (this.urls.length === 0) {
@@ -162,7 +162,7 @@ export class WebhookNotifier {
 
     this.unsubscribers.push(
       bus.on<Extract<AgentEvent, { type: 'AGENT_FAILED' }>>('AGENT_FAILED', ({ payload }) => {
-        this.sendRuntimeNotification(`Agent failed: ${payload.agentId} — ${payload.error}`);
+        this.sendRuntimeNotification(`Agent failed: ${payload.agentId}, ${payload.error}`);
       }),
     );
 
@@ -196,7 +196,7 @@ export class WebhookNotifier {
   // -------------------------------------------------------------------------
 
   private async postOne(url: string, text: string): Promise<void> {
-    // SSRF tier filter — block requests to internal/private hosts.
+    // SSRF tier filter, block requests to internal/private hosts.
     const hostname = extractHostname(url);
     if (hostname !== null) {
       const trustResult = classifyHostTrustTier(hostname);
@@ -204,11 +204,11 @@ export class WebhookNotifier {
       // targets stay refused here alongside the absolute SSRF block.
       if (trustResult.tier === 'blocked' || trustResult.tier === 'localhost') {
         emitSsrfDeny(hostname, url, trustResult.reason);
-        throw new Error(`WebhookNotifier: blocked URL — ${trustResult.reason}`);
+        throw new Error(`WebhookNotifier: blocked URL, ${trustResult.reason}`);
       }
     }
 
-    // Real webhook delivery must never fire from an automated test run —
+    // Real webhook delivery must never fire from an automated test run,
     // suppressed the same way as desktop notifications (NODE_ENV==='test' or
     // GOODVIBES_SUPPRESS_NOTIFY), with `force` as the sanctioned opt-back-in
     // for tests that exercise this delivery layer itself.
@@ -265,7 +265,7 @@ export interface WebhookNotifierOptions {
   /**
    * Bypass test suppression for every delivery from this instance. Only
    * tests that exercise the real HTTP delivery layer itself should set this
-   * — everything else should be left unset so `bun test` never sends a real
+   *, everything else should be left unset so `bun test` never sends a real
    * webhook request.
    */
   force?: boolean | undefined;

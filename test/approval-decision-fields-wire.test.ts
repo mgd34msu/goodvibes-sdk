@@ -1,7 +1,7 @@
 /**
  * Approval decision fields over REAL HTTP: rememberTier, deny reason, and
  * modifiedArgs (the exec terminal-prompt answer) must reach the same broker
- * resolution the in-process path uses — and the response's `recorded` block
+ * resolution the in-process path uses, and the response's `recorded` block
  * must report what the broker actually recorded, never echo the request.
  *
  * Follows the boot-daemon-factory pattern: a live daemon on an ephemeral
@@ -99,11 +99,11 @@ describe('approval decision fields round-trip over HTTP', () => {
     const res = await fetch(`${daemon.url}/api/approvals/${id}/deny`, {
       method: 'POST',
       headers: auth(),
-      body: JSON.stringify({ reason: 'wrong directory — build output lives in out/', rememberTier: 'session' }),
+      body: JSON.stringify({ reason: 'wrong directory, build output lives in out/', rememberTier: 'session' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json() as ActionResponse;
-    expect(body.approval.decision?.reason).toBe('wrong directory — build output lives in out/');
+    expect(body.approval.decision?.reason).toBe('wrong directory, build output lives in out/');
     expect(body.approval.decision?.rememberTier).toBe('session');
     expect(body.recorded.approved).toBe(false);
     expect(body.recorded.reasonStored).toBe(true);
@@ -111,7 +111,7 @@ describe('approval decision fields round-trip over HTTP', () => {
     // The blocked tool-call path receives the same reason (deny-is-feedback).
     const decision = await decided;
     expect(decision.approved).toBe(false);
-    expect(decision.reason).toBe('wrong directory — build output lives in out/');
+    expect(decision.reason).toBe('wrong directory, build output lives in out/');
   });
 
   test('approve with modifiedArgs delivers the exec terminal-prompt answer to the waiting call', async () => {

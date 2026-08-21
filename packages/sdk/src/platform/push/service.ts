@@ -1,7 +1,7 @@
 /**
  * push/service.ts
  *
- * PushService — the seam the gateway verbs and the daemon event sources both
+ * PushService, the seam the gateway verbs and the daemon event sources both
  * talk to. It owns the subscription store, the VAPID key custody, and the
  * delivery path, and it turns a real daemon event (an approval that needs a
  * decision) into a fan-out of encrypted pushes.
@@ -51,7 +51,7 @@ export interface ApprovalNotice {
 }
 
 /**
- * A fleet lifecycle notice — the structural slice of a FleetEvent payload the
+ * A fleet lifecycle notice, the structural slice of a FleetEvent payload the
  * needs-input push source reacts to. Kept structural (not an import of the fleet
  * event union) so the push module stays decoupled from the runtime bus; the
  * composition root adapts `bus.onDomain('fleet', …)` into this source.
@@ -62,7 +62,7 @@ export interface FleetNotice {
   readonly label?: string | undefined;
   readonly reason?: 'approval' | 'input' | 'pick' | 'conflict' | undefined;
   readonly sessionId?: string | undefined;
-  /** Node kind (agent, chain, workstream, …) — the completion source's scope filter. */
+  /** Node kind (agent, chain, workstream, …), the completion source's scope filter. */
   readonly kind?: string | undefined;
   /** Terminal state on a FLEET_NODE_FINISHED notice (done/failed/killed). */
   readonly state?: string | undefined;
@@ -82,7 +82,7 @@ export interface NeedsInputPresence {
  * How long a block may wait on a HUMAN before a device push is sent regardless
  * of attachment, and the bounded reminder cadence after that first escalation.
  * A process merely being attached (heartbeat / an open TUI) is presence, not a
- * response — only a real interaction with the ask (which clears the block:
+ * response, only a real interaction with the ask (which clears the block:
  * FLEET_NODE_UNBLOCKED / FLEET_NODE_FINISHED) counts as a response and cancels
  * the escalation.
  */
@@ -145,7 +145,7 @@ export interface PushServiceDeps {
   /**
    * Per-class silencing toggle, read LIVE at each event (the composition root
    * wires it to the notifications.push* config keys). Absent ⇒ every class is
-   * on — the toggles exist to turn classes OFF, never as a prerequisite for
+   * on, the toggles exist to turn classes OFF, never as a prerequisite for
    * the fan-out to work.
    */
   readonly isCategoryEnabled?: ((category: PushNotificationCategory) => boolean) | undefined;
@@ -158,7 +158,7 @@ export interface PushServiceDeps {
   /**
    * Consecutive refused deliveries after which an endpoint is treated as dead,
    * read LIVE per delivery (the composition root wires it to
-   * `push.subscriptions.failureThreshold` — the same key the subscription sweep
+   * `push.subscriptions.failureThreshold`, the same key the subscription sweep
    * reads). Absent ⇒ the delivery module's own bound.
    */
   readonly failureThreshold?: (() => number) | undefined;
@@ -191,7 +191,7 @@ export class PushService {
   private readonly notifiedApprovals = new Set<string>();
   /** Fleet node ids already pushed as needs-input, cleared when they unblock/finish. */
   private readonly notifiedNeedsInput = new Set<string>();
-  /** Fleet node ids already pushed as completed — a terminal state fires once. */
+  /** Fleet node ids already pushed as completed, a terminal state fires once. */
   private readonly notifiedCompletions = new Set<string>();
   /** Blocks under escalation tracking, keyed by node id; cleared on response. */
   private readonly trackedBlocks = new Map<string, TrackedBlock>();
@@ -271,7 +271,7 @@ export class PushService {
    * escalation arms the next reminder, so at any moment the service holds one
    * live timer per outstanding block. The only way to cancel one was to answer
    * the ask or to inject a scheduler seam, which meant a daemon shutting down
-   * with blocked asks outstanding had no way at all to put them down — the
+   * with blocked asks outstanding had no way at all to put them down, the
    * production scheduler's `unref()` keeps them off the event loop but does
    * nothing about a graph that is meant to be finished with.
    *
@@ -331,7 +331,7 @@ export class PushService {
    * notification carrying the session/node deep-link reference.
    *
    * The FIRST push is SUPPRESSED when an operator surface is already attached to
-   * that node's session (presence) — someone is looking, so an immediate device
+   * that node's session (presence), someone is looking, so an immediate device
    * push would be noise. But presence is process-liveness, not a human answer:
    * an attached-but-idle desk (an open TUI, a heartbeat) never counts as a
    * response. So every block is also TRACKED, and if it is still outstanding
@@ -339,7 +339,7 @@ export class PushService {
    * escalation push fires REGARDLESS of attachment, followed by a bounded,
    * configurable set of reminders. A real interaction with the ask clears the
    * block (FLEET_NODE_UNBLOCKED / FLEET_NODE_FINISHED), which cancels the
-   * escalation — an answered ask never escalates.
+   * escalation, an answered ask never escalates.
    *
    * A node's notice is de-duped by node id until it unblocks or finishes, so a
    * later re-block re-notifies. Returns an unsubscribe handle.
@@ -420,7 +420,7 @@ export class PushService {
   /** Compose and fire one needs-input push (immediate or escalated). */
   private sendNeedsInput(notice: FleetNotice, escalated: boolean, waitedMs?: number): void {
     const label = notice.label ?? 'A background task';
-    // One waiting-on-human class, four honest phrasings — a ready best-of-N
+    // One waiting-on-human class, four honest phrasings, a ready best-of-N
     // pick and a merge conflict push through the SAME source as approvals.
     const reason = notice.reason === 'approval'
       ? 'needs your approval'
@@ -453,7 +453,7 @@ export class PushService {
   /**
    * Wire the completion source: a tracked run reaching a terminal state (a
    * FLEET_NODE_FINISHED notice) pushes a 'completion' notification to every
-   * paired target — by DEFAULT, with zero configuration; the
+   * paired target, by DEFAULT, with zero configuration; the
    * notifications.pushCompletion toggle exists only to silence the class.
    * Scoped to run-level kinds (agent/chain/workstream/workflow/automation-job)
    * so a chain finishing does not also fan out one push per subtask/work-item

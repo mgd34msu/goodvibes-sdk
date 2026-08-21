@@ -1,5 +1,5 @@
 /**
- * Remote Substrate — Reconnect Engine
+ * Remote Substrate, Reconnect Engine
  *
  * Implements reconnect with handshake tokens, epoch tracking,
  * replay from last acknowledged offset, and idempotent command submission.
@@ -70,7 +70,7 @@ export type ConnectOutcome =
     };
 
 /**
- * Adapter interface — callers implement the actual transport operations.
+ * Adapter interface, callers implement the actual transport operations.
  *
  * The reconnect engine delegates real I/O to this adapter, keeping itself
  * transport-agnostic (WebSocket, HTTP, stdio all implement the same adapter).
@@ -86,12 +86,12 @@ export interface TransportAdapter {
    * 3. Wait for HANDSHAKE_ACCEPT or HANDSHAKE_REJECT
    * 4. On HANDSHAKE_ACCEPT, extract `negotiatedProtocol` and return it in the outcome
    * 5. On HANDSHAKE_REJECT with an `unsupportedCode`, return success=false with
-   *    that code — the engine will treat it as a terminal (non-retryable) failure
+   *    that code, the engine will treat it as a terminal (non-retryable) failure
    *
    * @param identity - Stable durable identity to present.
    * @param lastAckedOffset - Offset to replay from.
    * @param authToken - Bearer token from the AuthProvider.
-   * @returns ConnectOutcome — success with token+negotiatedProtocol or failure with category.
+   * @returns ConnectOutcome, success with token+negotiatedProtocol or failure with category.
    */
   connect(
     identity: DurableIdentity,
@@ -125,12 +125,12 @@ export interface ReconnectEngineCallbacks {
   onReconnecting?(attempt: number, maxAttempts: number, delayMs: number): void;
   /** Called when the transport is disconnected (willRetry indicates intent). */
   onDisconnected?(reason?: string, willRetry?: boolean): void;
-  /** Called when all retries are exhausted — terminal failure. */
+  /** Called when all retries are exhausted, terminal failure. */
   onTerminalFailure(error: string): void;
 }
 
 /**
- * ReconnectEngine — manages the full reconnect lifecycle with backoff and replay.
+ * ReconnectEngine, manages the full reconnect lifecycle with backoff and replay.
  *
  * Usage:
  * ```ts
@@ -293,9 +293,9 @@ export class ReconnectEngine {
     );
 
     if (!outcome.success) {
-      // Version unsupported is always terminal — never retry
+      // Version unsupported is always terminal, never retry
       if (outcome.unsupportedCode) {
-        logger.error('ReconnectEngine: unsupported peer version — terminal failure', {
+        logger.error('ReconnectEngine: unsupported peer version, terminal failure', {
           error: outcome.error,
           unsupportedCode: outcome.unsupportedCode,
         });

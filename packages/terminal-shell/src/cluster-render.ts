@@ -1,5 +1,5 @@
 /**
- * cluster-render.ts — turning a daemon's `cluster` answers into lines a
+ * cluster-render.ts, turning a daemon's `cluster` answers into lines a
  * person reads.
  *
  * Every function here is pure: structured data in, strings out. The verb
@@ -20,7 +20,7 @@ import type {
   NodesResult,
 } from '@pellux/goodvibes-sdk/platform/cluster';
 
-/** How long ago, in words. Never a raw timestamp — nobody reads epoch millis. */
+/** How long ago, in words. Never a raw timestamp, nobody reads epoch millis. */
 export function describeAge(at: number, now: number): string {
   const seconds = Math.max(0, Math.round((now - at) / 1_000));
   if (seconds < 60) return `${seconds}s ago`;
@@ -38,8 +38,8 @@ function pad(value: string, width: number): string {
 /**
  * `cluster status`.
  *
- * Leads with the thing the operator came for — the role of THIS machine and
- * which surfaces it holds — and finishes with the one sentence of advice, if
+ * Leads with the thing the operator came for, the role of THIS machine and
+ * which surfaces it holds, and finishes with the one sentence of advice, if
  * there is anything to do.
  */
 export function renderStatus(report: GroupStatusReport, now: number): string[] {
@@ -67,7 +67,7 @@ export function renderStatus(report: GroupStatusReport, now: number): string[] {
   } else {
     lines.push('surfaces held by this machine:');
     for (const holding of report.surfaces) {
-      lines.push(`  ${holding.surfaceId}  — ${holding.reason}`);
+      lines.push(`  ${holding.surfaceId}: ${holding.reason}`);
     }
   }
 
@@ -150,7 +150,7 @@ export function renderCreated(result: CreateGroupResult): string[] {
     result.generatedKey
       ? 'a join key was generated for you. Run `cluster key` on this machine at any'
       : 'your join phrase is in use. Run `cluster key` on this machine at any',
-    'time to see it again — it is not a one-time reveal.',
+    'time to see it again, it is not a one-time reveal.',
     '',
     'to add another machine: run `cluster join` on it and give it this key.',
     '',
@@ -204,12 +204,12 @@ export function renderDiscovered(groups: readonly DiscoveredGroup[], now: number
  * OSC 52 is the only clipboard mechanism that works through SSH, which is the
  * case that matters: the operator is on a headless box in a cupboard. It is
  * also not universally supported and gives no acknowledgement, so this NEVER
- * claims success — it says what it attempted, and the key is printed either
+ * claims success, it says what it attempted, and the key is printed either
  * way. Silently doing nothing would be the worst of the three options.
  *
  * The introducer and the terminator are written as `\x1b` and `\x07` rather
  * than as the bytes themselves: a literal control character in source survives
- * nothing — not a copy between files, not an editor, not a diff — and without
+ * nothing, not a copy between files, not an editor, not a diff, and without
  * them this returns a printable string a terminal shows to the operator
  * instead of an escape sequence it acts on.
  */
@@ -217,7 +217,7 @@ export function clipboardEscapeSequence(value: string): string {
   // The introducer and terminator are spelled as escapes, not written as raw
   // control bytes: a literal ESC/BEL in source survives nothing that treats the
   // file as text, and a sequence missing either one is not an escape sequence
-  // at all — it is the payload printed to the screen.
+  // at all, it is the payload printed to the screen.
   return `\u001b]52;c;${Buffer.from(value, 'utf8').toString('base64')}\u0007`;
 }
 
@@ -265,8 +265,8 @@ export function renderRotated(result: RotateKeyResult): string[] {
 /**
  * The join key as a QR code, for typing it into a phone or a second terminal.
  *
- * This reuses the SDK's own QR renderer verbatim — the same one a pairing
- * flow already prints to a terminal — rather than introducing any new
+ * This reuses the SDK's own QR renderer verbatim, the same one a pairing
+ * flow already prints to a terminal, rather than introducing any new
  * machinery for it. Opt-in behind `--qr`, because a QR block is tall and most
  * of the time the operator is copying the key with the mouse or the clipboard.
  */

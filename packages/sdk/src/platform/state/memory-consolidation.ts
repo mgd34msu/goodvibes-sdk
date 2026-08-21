@@ -1,10 +1,10 @@
 /**
- * memory-consolidation.ts — idle-time memory consolidation policy (HOISTED to the SDK).
+ * memory-consolidation.ts, idle-time memory consolidation policy (HOISTED to the SDK).
  *
  * PROVENANCE. Promoted verbatim (semantics-preserving) from the agent surface
  * (`src/agent/memory-consolidation.ts`) so every consumer shares ONE
  * consolidation contract with injectable I/O, rather than each re-deriving it.
- * The only surface-coupled part — the record writes — is expressed as an
+ * The only surface-coupled part, the record writes, is expressed as an
  * injected `MemoryConsolidationRegistry` seam; `MemoryRegistry` satisfies it
  * structurally.
  *
@@ -13,7 +13,7 @@
  * and it decays never-referenced, aged records (lowering confidence, then marking
  * stale once the confidence floor is crossed). Anything that would require a NEW
  * standing memory or a destructive delete is emitted as a PROPOSAL routed to the
- * existing confirmation-gated path — this pass never silently writes a new memory
+ * existing confirmation-gated path, this pass never silently writes a new memory
  * or deletes a record. Every run returns a RECEIPT describing exactly what it
  * merged, archived, decayed, and proposed.
  */
@@ -177,7 +177,7 @@ function planAndApplyMerges(input: MemoryConsolidationInput, active: readonly Me
         reason: 'Same-summary records span multiple scopes; merging across scope needs review.',
       });
       // Enter the review queue WITHOUT blocking injection: these records do
-      // not disagree (unlike a contradiction), so they stay usable — marking
+      // not disagree (unlike a contradiction), so they stay usable, marking
       // them fresh re-prioritises them for the human review queue, which is
       // reviewState-derived. Touched so the receipt lists them honestly.
       for (const record of bucket) {
@@ -253,7 +253,7 @@ function planAndApplyMerges(input: MemoryConsolidationInput, active: readonly Me
 }
 
 /**
- * Decay never-referenced, aged records — never-referenced first (that is what the
+ * Decay never-referenced, aged records, never-referenced first (that is what the
  * usage instrumentation feeds). A record's confidence drops by decayConfidenceStep;
  * once it would fall to/below archiveConfidenceFloor it is marked stale (archived).
  */

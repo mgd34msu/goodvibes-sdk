@@ -2,9 +2,9 @@
  * Tests for driving `EmailService` from the daemon's own `surfaces.email.*`
  * keys, and for the property that no raw mail address reaches a log field.
  *
- * Both config spellings are exercised — the nested one the settings surface
+ * Both config spellings are exercised, the nested one the settings surface
  * writes (`surfaces.email.imap.host`) and the flat one the inbound poller reads
- * (`surfaces.email.imapHost`) — because both are live in the field and a
+ * (`surfaces.email.imapHost`), because both are live in the field and a
  * machine configured either way has to keep working.
  *
  * Nothing here opens a socket: the config port is a map, the secret store is a
@@ -386,7 +386,7 @@ describe('addresses in log fields', () => {
     for (const address of ['jane@example.com', 'sam@example.com', 'Jane Doe', '@example.com']) {
       expect(serialised).not.toContain(address);
     }
-    // The digest is present and IS the digest — the field is populated, not
+    // The digest is present and IS the digest, the field is populated, not
     // simply omitted, so "no raw address" is not passing by saying nothing.
     expect(logged[1]?.fields['from']).toBe(addressDigest('Jane Doe <jane@example.com>'));
     expect(logged[3]?.fields['recipient']).toBe(addressDigest('jane@example.com, sam@example.com'));
@@ -417,8 +417,8 @@ describe('addresses in log fields', () => {
 
 describe('a caller that declares this is not a user request', () => {
   // These handlers take the PROCESS ledger by default, which is right in
-  // production — one process, one ledger, so a page read and a send are one
-  // composition — and is shared state here. Since the fetch tool began
+  // production, one process, one ledger, so a page read and a send are one
+  // composition, and is shared state here. Since the fetch tool began
   // recording its reads, any earlier test in the same bun process can leave
   // exposure behind and these sends would be refused for something another
   // file did. Reset rather than pass a private ledger, so what is exercised

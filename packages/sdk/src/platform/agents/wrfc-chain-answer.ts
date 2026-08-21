@@ -6,7 +6,7 @@
  * the other two.
  *
  * The owner agent runs no turn of its own, so before this existed its
- * `fullOutput` was the chain status line — and that line is what every reader of
+ * `fullOutput` was the chain status line, and that line is what every reader of
  * a finished agent gets, including a person on a chat surface. Somebody who
  * asked about their flights was answered with "WRFC chain wrfc-490aee53 passed
  * (review 10/10); commit skipped: not a git repository".
@@ -14,7 +14,7 @@
  * The answer belongs to the last agent that actually did the work: the
  * integrator for a compound chain, otherwise the fixer that produced the final
  * revision, otherwise the engineer. A structured completion report is stripped
- * down to its prose summary — the JSON envelope is written for the reviewer, not
+ * down to its prose summary, the JSON envelope is written for the reviewer, not
  * for a person.
  */
 import { parseCompletionReport } from './completion-report.js';
@@ -45,7 +45,7 @@ export function renderWrfcChainAnswer(
 }
 
 /**
- * The review outcome for the chain status line — the last recorded review score
+ * The review outcome for the chain status line, the last recorded review score
  * out of 10, or a plain "review passed" for a chain with no numeric score on
  * record.
  */

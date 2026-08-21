@@ -1,5 +1,5 @@
 /**
- * ForensicsCollector — subscribes to the RuntimeEventBus and automatically
+ * ForensicsCollector, subscribes to the RuntimeEventBus and automatically
  * generates FailureReport objects when tasks or turns reach terminal failure
  * states.
  *

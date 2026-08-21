@@ -28,7 +28,7 @@ export interface DiagnosticCheckResult {
 /**
  * A single diagnostic check.
  *
- * The `run` function must not throw — it should catch all internal errors
+ * The `run` function must not throw, it should catch all internal errors
  * and return them as a failing check result.
  */
 export interface DiagnosticCheck {

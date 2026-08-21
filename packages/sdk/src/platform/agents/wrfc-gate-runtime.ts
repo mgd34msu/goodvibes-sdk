@@ -20,7 +20,7 @@ export async function runWrfcGateChecks(options: {
    * Working directory to RUN the gate commands (and detect skip conditions) in
    * (BIG-3 item 5). Defaults to `projectRoot`. In worktree-isolation mode the
    * orchestration phase-runner passes the item's worktree path here, so gates
-   * execute against the item's isolated tree rather than the shared root —
+   * execute against the item's isolated tree rather than the shared root,
    * threaded exactly like the phantom-work guard's worktree path. Omitted ⇒
    * projectRoot, i.e. shared-mode behavior unchanged.
    */

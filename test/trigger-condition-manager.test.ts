@@ -1,11 +1,11 @@
 /**
- * trigger-condition-manager.test.ts — model-free condition checks driven
+ * trigger-condition-manager.test.ts, model-free condition checks driven
  * through the TriggerManager, and the supervision spine as the manager
  * actually applies it.
  *
  * "Model-free" is the claim being tested: a condition check runs a declarative
  * probe, narrows it with a declarative extractor, and decides with a pure rule.
- * No LLM is consulted anywhere in that path — the agent executor is only
+ * No LLM is consulted anywhere in that path, the agent executor is only
  * reached once a rule has already returned fire=true.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -45,7 +45,7 @@ class RecordingExecutor implements TriggerActionExecutor {
   }
 }
 
-/** Scripted probe I/O — a queue of bodies, or an error to throw. */
+/** Scripted probe I/O, a queue of bodies, or an error to throw. */
 function scriptedIo(script: { bodies?: string[]; throwWith?: string }): ProbeIo & { calls: number } {
   const io = {
     calls: 0,

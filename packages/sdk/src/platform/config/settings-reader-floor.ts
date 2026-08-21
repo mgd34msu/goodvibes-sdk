@@ -1,5 +1,5 @@
 /**
- * settings-reader-floor.ts — the minimum reader version a settings file needs.
+ * settings-reader-floor.ts, the minimum reader version a settings file needs.
  *
  * ── The failure this closes ────────────────────────────────────────────────
  *
@@ -66,7 +66,7 @@ export const SWEPT_CREDENTIAL_READER_FLOOR = '1.20.0';
  * 2.0.5 is the first release whose reader knows `payments.budget.dailyItem`,
  * `dailyOverage`, `perPurchaseCeiling` and `overageToleranceDailyAllowance`.
  * An older reader knows only the `…Cents` names, so once the rename is on disk
- * it finds four keys it cannot place and skips them — and a skipped spending
+ * it finds four keys it cannot place and skips them, and a skipped spending
  * limit is a limit that stops being enforced.
  *
  * That is not a hypothetical: a client on this runtime renamed the keys under a
@@ -97,7 +97,7 @@ function versionParts(version: string): readonly [number, number, number] {
 /**
  * Compare two `major.minor.patch` versions: negative when `a` is older.
  *
- * Prerelease and build metadata are ignored — a floor is a release-line
+ * Prerelease and build metadata are ignored, a floor is a release-line
  * statement, and `1.21.0-rc.1` is treated as 1.21.0 rather than refused for
  * being unparseable. Ignoring a suffix can only ever make a reader MORE
  * willing to read a file, never less, which is the safe direction for a check
@@ -144,7 +144,7 @@ export function readerIsBelowFloor(readerVersion: string, floor: SettingsReaderF
 
 /**
  * The sentence an under-floor reader says. Names the file, both versions, and
- * the one action that fixes it — never the key it happened to trip over,
+ * the one action that fixes it, never the key it happened to trip over,
  * because the key is the symptom and the version is the cause.
  */
 export function describeFloorRefusal(
@@ -155,7 +155,7 @@ export function describeFloorRefusal(
   const when = floor.at ? ` on ${floor.at}` : '';
   return (
     `${file} was migrated by a newer component (${floor.setBy}${when}); ` +
-    `this daemon (${readerVersion}) is older than the floor (${floor.minReaderVersion}) — update it`
+    `this daemon (${readerVersion}) is older than the floor (${floor.minReaderVersion}), update it`
   );
 }
 
@@ -164,7 +164,7 @@ export function describeFloorRefusal(
  *
  * Never LOWERS a floor: two migrations can rewrite the same file, and the
  * highest requirement is the one that governs. Never creates a file that does
- * not exist — a floor describes a rewrite that happened, so there is nothing to
+ * not exist, a floor describes a rewrite that happened, so there is nothing to
  * record where nothing was written.
  */
 export function raiseSettingsReaderFloor(

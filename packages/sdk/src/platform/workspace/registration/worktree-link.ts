@@ -5,8 +5,8 @@
  * main repository in its own `.git` file, and `git rev-parse --git-common-dir`
  * resolves to that main repo's shared `.git` directory regardless of where the
  * worktree lives on disk. This is exactly the link registration inheritance must
- * follow — an orchestration-spawned worktree can sit outside the registered
- * project's subtree yet still belong to it — so we derive the MAIN worktree root
+ * follow, an orchestration-spawned worktree can sit outside the registered
+ * project's subtree yet still belong to it, so we derive the MAIN worktree root
  * from the common dir rather than from path ancestry.
  *
  * Kept isolated (and behind an injectable runner) so the resolver and store stay
@@ -48,7 +48,7 @@ export function probeWorktreeLink(path: string, runGit: GitRunner = defaultGitRu
 
   // The main worktree root is the parent of the shared `.git` directory. A bare
   // repo's common dir is not a `.git` directory, so there is no main worktree to
-  // inherit from — report nothing rather than guessing.
+  // inherit from, report nothing rather than guessing.
   if (basename(commonDir) !== '.git') return {};
   const mainRoot = normalizeWorkspaceRoot(dirname(commonDir));
 

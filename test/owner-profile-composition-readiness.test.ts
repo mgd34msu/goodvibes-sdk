@@ -1,12 +1,12 @@
 /**
- * owner-profile-composition-readiness.test.ts — docs/owner-profile.md §4.4.
+ * owner-profile-composition-readiness.test.ts, docs/owner-profile.md §4.4.
  *
  * "Your profile has not been loaded yet" is not one of the three states.
  *
  * `composeOwnerProfile` is called from a synchronous composition root, and it
  * used to start the load and return: `void store.load().then(() => watch())`.
  * For the first milliseconds of daemon life every verb answered with a pre-load
- * sentinel that §4.4 does not sanction — a fourth state, and the empty-profile
+ * sentinel that §4.4 does not sanction, a fourth state, and the empty-profile
  * dishonesty wearing a different sentence.
  *
  * Below the verb layer it was worse, because nothing logged it.
@@ -160,7 +160,7 @@ describe('§13 — the consumer half, which no readiness promise could have fixe
   test('daemon.timezone resolves too, on the same first read', () => {
     const { config, dispose } = compose();
     try {
-      // `daemon.timezone` is not in ConfigKey on this tree — the payments lane
+      // `daemon.timezone` is not in ConfigKey on this tree, the payments lane
       // is what declares it (as a daemon-owned prefix in config-ownership.ts).
       // `as never` made the call match no `get` overload at all rather than
       // widening the key, so it is widened at the manager instead.

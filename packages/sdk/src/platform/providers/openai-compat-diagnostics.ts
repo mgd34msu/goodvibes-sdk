@@ -5,8 +5,8 @@
  * chat request LOOKED like, and what a failed one actually SAID.
  *
  * Split out of openai-compat.ts, which had grown past the 800-line cap. These
- * helpers are pure and provider-agnostic — they read a request or an error and
- * return a description — so they carry no client, no retry state and no
+ * helpers are pure and provider-agnostic, they read a request or an error and
+ * return a description, so they carry no client, no retry state and no
  * streaming state, and the provider file is left holding only the client
  * lifecycle and the chat/stream loop.
  *
@@ -18,9 +18,9 @@
  *    log.
  *  - `extractOpenAICompatErrorDiagnostic` / `buildOpenAICompatErrorMessage`
  *    turn a vendor error into one honest line. OpenAI-compatible backends
- *    disagree about where the reason lives — a top-level `code`/`type`, a
+ *    disagree about where the reason lives, a top-level `code`/`type`, a
  *    nested `error` object, a bare string body, a request id on a header under
- *    either spelling — so the reason is pulled from wherever that backend put
+ *    either spelling, so the reason is pulled from wherever that backend put
  *    it rather than reported as a bare status code.
  */
 import type { ChatRequest } from './interface.js';

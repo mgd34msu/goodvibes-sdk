@@ -1,12 +1,12 @@
 /**
- * LAN leader election — spreading surfaces across machines, and staying put.
+ * LAN leader election, spreading surfaces across machines, and staying put.
  *
  * Two properties are under test, and the second is the harder one.
  *
  * SPREAD: three surfaces and two machines must not end up three-and-nothing.
  * The ranking's job is to distribute, and where the ranking alone lands
- * unevenly — because nodes booted at different times, or a machine came back
- * after the others had divided everything — a holder gives one up.
+ * unevenly, because nodes booted at different times, or a machine came back
+ * after the others had divided everything, a holder gives one up.
  *
  * STABILITY: having spread, it must STOP. A rebalancer that moves a surface
  * whenever it sees any imbalance trades the same surface back and forth
@@ -39,7 +39,7 @@ function totalStarts(world: World): number {
   );
 }
 
-/** Every surface is consumed by exactly one node — the invariant, always. */
+/** Every surface is consumed by exactly one node, the invariant, always. */
 function expectExactlyOneReaderEach(world: World, names: readonly string[]): void {
   for (const name of names) {
     expect(holders(world, name)).toHaveLength(1);
@@ -170,8 +170,8 @@ describe('cluster spread — three surfaces across two machines', () => {
     await startNode(world, second);
     await advance(world, 60_000);
 
-    // The newcomer cannot preempt a working holder — nothing about being idle
-    // entitles it to interrupt one — so the holder must volunteer, and does.
+    // The newcomer cannot preempt a working holder, nothing about being idle
+    // entitles it to interrupt one, so the holder must volunteer, and does.
     expect(heldCount(second)).toBeGreaterThanOrEqual(1);
     expect(heldCount(first) + heldCount(second)).toBe(3);
     expectExactlyOneReaderEach(world, THREE);
@@ -239,7 +239,7 @@ describe('cluster spread — three surfaces across two machines', () => {
     await advance(world, 60_000);
 
     // The survivor picks up everything, and does NOT keep yielding surfaces to
-    // a node that has not been heard from — which would take each one offline
+    // a node that has not been heard from, which would take each one offline
     // for a full timeout before the survivor took it back.
     expect(heldCount(staying)).toBe(3);
     const startsAfterTakeover = totalStarts(world);
@@ -254,7 +254,7 @@ describe('cluster spread — three surfaces across two machines', () => {
     //
     // Two liveness questions disagreed. A holder is declared gone after
     // masterTimeoutMs of silence; a yield TARGET was believed alive for twice
-    // candidacyAnnounceMs, and candidacyAnnounceMs is masterTimeoutMs — so for
+    // candidacyAnnounceMs, and candidacyAnnounceMs is masterTimeoutMs, so for
     // one further timeout the survivor still counted the dead machine as
     // somebody it could hand work to. It completed the failover, then
     // immediately yielded one of the rescued surfaces back to the corpse, and
@@ -319,7 +319,7 @@ describe('cluster spread — partial overlap still spreads', () => {
     await startNode(world, desktop);
     await advance(world, 60_000);
 
-    // Only one surface is contestable, so that is the one that moves — and it
+    // Only one surface is contestable, so that is the one that moves, and it
     // moves, because the laptop is three ahead of a machine holding nothing.
     expect(surfaceState(desktop, 'ntfy-shared').running).toBe(true);
     expect(surfaceState(laptop, 'ntfy-shared').running).toBe(false);

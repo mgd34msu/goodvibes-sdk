@@ -1,10 +1,10 @@
-// Post-edit diagnostics — a pluggable provider that surfaces cheap, in-process
+// Post-edit diagnostics, a pluggable provider that surfaces cheap, in-process
 // diagnostics on a file the model just wrote or edited, appended to the tool
 // result so the model sees a broken edit immediately.
 //
 // The first (and only bundled) provider is tree-sitter-backed SYNTAX diagnostics
 // for TypeScript/JavaScript: in-process, no process spawn, no type checking.
-// It is deliberately NOT an LSP/tsc provider — those spawn a language server,
+// It is deliberately NOT an LSP/tsc provider, those spawn a language server,
 // which this layer must never do per edit. The DiagnosticsProvider interface is
 // the seam a host can later implement with a full type-checking provider.
 import { existsSync } from 'node:fs';
@@ -31,7 +31,7 @@ export interface PostEditFileDiagnostic extends PostEditDiagnostic {
 
 /**
  * A source of cheap, in-process, error-level diagnostics for a single file.
- * Implementations MUST NOT spawn processes and MUST never throw — return [] on
+ * Implementations MUST NOT spawn processes and MUST never throw, return [] on
  * any failure or when they cannot produce diagnostics (honest absence).
  */
 export interface DiagnosticsProvider {
@@ -59,7 +59,7 @@ function hasTsProjectContext(filePath: string): boolean {
 /**
  * Syntax-level TypeScript/JavaScript diagnostics from the in-process tree-sitter
  * parser. Cheap and never spawns a process; surfaces parse errors (unbalanced
- * braces, broken syntax) — NOT type errors. Only runs when a TS/JS project
+ * braces, broken syntax), NOT type errors. Only runs when a TS/JS project
  * context (tsconfig.json / jsconfig.json) is detectable; otherwise returns []
  * (honest absence rather than a fabricated "no errors").
  */
@@ -81,7 +81,7 @@ export class TypeScriptSyntaxDiagnosticsProvider implements DiagnosticsProvider 
     try {
       // Lazy one-time init. On a non-Bun runtime (or if the WASM grammar is
       // unavailable) this leaves tree-sitter uninitialized and getSyntaxDiagnostics
-      // returns [] — honest absence, never a fake clean bill.
+      // returns [], honest absence, never a fake clean bill.
       this.initPromise ??= this.intel.initialize();
       await this.initPromise;
       const diagnostics = await this.intel.getSyntaxDiagnostics(filePath, content);

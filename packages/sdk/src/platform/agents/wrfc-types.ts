@@ -55,7 +55,7 @@ export type WrfcOwnerDecisionAction =
  * ordinary review/gate rejection and from an operator-initiated cancellation, so a
  * consumer (e.g. the TUI) can render the three differently instead of showing every
  * terminal-'failed' identically. 'cancelled' is an operator kill/interrupt of the
- * chain — an intended stop, not a failure — and must read as cancelled at every
+ * chain, an intended stop, not a failure, and must read as cancelled at every
  * surface (chain row, owner row, cohort tally, completion narration).
  */
 export type WrfcChainFailureKind = 'transport' | 'other' | 'cancelled' | 'max_turns';
@@ -101,7 +101,7 @@ export interface WrfcSubtask {
   fixerAgentId?: string | undefined;
   engineerReport?: CompletionReport | undefined;
   reviewerReport?: ReviewerReport | undefined;
-  /** The CONTROLLER verdict on the latest review (gate-inclusive) — the reviewer's own passed claim can be overridden by the deterministic gates. */
+  /** The CONTROLLER verdict on the latest review (gate-inclusive), the reviewer's own passed claim can be overridden by the deterministic gates. */
   lastReviewVerdict?: { passed: boolean; score: number; at: number } | undefined;
   fixAttempts: number;
   reviewCycles: number;
@@ -132,7 +132,7 @@ export interface WrfcChain {
   allAgentIds: string[];
   engineerReport?: CompletionReport | undefined;
   reviewerReport?: ReviewerReport | undefined;
-  /** The CONTROLLER verdict on the latest review (gate-inclusive) — the reviewer's own passed claim can be overridden by the deterministic gates. */
+  /** The CONTROLLER verdict on the latest review (gate-inclusive), the reviewer's own passed claim can be overridden by the deterministic gates. */
   lastReviewVerdict?: { passed: boolean; score: number; at: number } | undefined;
   integratorReport?: CompletionReport | undefined;
   subtasks?: WrfcSubtask[] | undefined;
@@ -143,13 +143,13 @@ export interface WrfcChain {
   completedAt?: number | undefined;
   /** Whether quality gates passed. Only meaningful when state is 'passed'. */
   gatesPassed?: boolean | undefined;
-  /** Review scores history — used to detect regression (2 consecutive below initial). */
+  /** Review scores history, used to detect regression (2 consecutive below initial). */
   reviewScores: number[];
   /** Durable audit of owner orchestration choices. */
   ownerDecisions: WrfcOwnerDecision[];
   error?: string | undefined;
   /**
-   * Why the chain failed. Only meaningful when state is 'failed'. Optional field —
+   * Why the chain failed. Only meaningful when state is 'failed'. Optional field,
    * absent on chains persisted before this field was introduced (deserializeChain
    * treats it as undefined rather than requiring a schema-version bump).
    */
@@ -158,7 +158,7 @@ export interface WrfcChain {
    * Number of times this chain has auto-retried a transport-classified child-agent
    * failure by respawning the same role (bounded by wrfc.transportRetryLimit).
    * Kept separate from fixAttempts/reviewCycles: a transport retry is not a fix
-   * cycle and must not count against maxFixAttempts. Optional/defaults to 0 —
+   * cycle and must not count against maxFixAttempts. Optional/defaults to 0,
    * absent on chains persisted before this field was introduced.
    */
   transportRetryCount?: number | undefined;
@@ -178,7 +178,7 @@ export interface WrfcChain {
     dangerouslyDisableWrfc: boolean;
     subtaskId?: string | undefined;
   } | undefined;
-  /** Buffered agent completion — set when agent finishes while chain is still queued/pending. */
+  /** Buffered agent completion, set when agent finishes while chain is still queued/pending. */
   bufferedCompletion?: { agentId: string; fullOutput?: string | undefined } | undefined;
   /** True once the durable owner agent terminal event has been emitted. */
   ownerTerminalEmitted: boolean;
@@ -189,7 +189,7 @@ export interface WrfcChain {
   /**
    * Set when this chain was created by collapsing a requested multi-agent fan-out
    * into one owner chain (schema.ts FanoutCollapseInfo). Its presence is what makes
-   * a parallelism/spawn-count constraint SYSTEM-UNSATISFIABLE — the collapse removed
+   * a parallelism/spawn-count constraint SYSTEM-UNSATISFIABLE, the collapse removed
    * the precondition, so no fix agent can ever satisfy it.
    */
   fanoutCollapse?: FanoutCollapseInfo | undefined;
@@ -198,7 +198,7 @@ export interface WrfcChain {
    * their precondition (e.g. the fan-out collapse invalidated a "separate agent per
    * file / in parallel" constraint). Derived mechanically from fanoutCollapse at
    * enumeration time. These are excluded from the review rubric, never counted as
-   * unsatisfied, and never entered into the fix-loop target set — an un-loopable
+   * unsatisfied, and never entered into the fix-loop target set, an un-loopable
    * constraint can never fail the review.
    */
   systemUnsatisfiableConstraintIds?: string[] | undefined;
@@ -215,12 +215,12 @@ export interface WrfcChain {
   claimsVerified?: boolean | undefined;
   /**
    * Running ledger of paths (filesCreated/filesModified/filesDeleted) self-reported by every
-   * engineer/fixer/integrator completion across the chain's lifetime — including subtask
+   * engineer/fixer/integrator completion across the chain's lifetime, including subtask
    * completions on compound chains. Appended to incrementally (not derived from a single
    * "latest report" field) so it still reflects fixer/re-fix passes after resume, and so a
    * pre-interruption pass is never lost. Consumed by collectChainTouchedPaths() to scope
    * the auto-commit `git add` when wrfc.commitScope is 'scoped'. Self-reported, not ground
-   * truth — see verifyEngineerClaims for the same accuracy caveat.
+   * truth, see verifyEngineerClaims for the same accuracy caveat.
    */
   touchedPaths?: string[] | undefined;
 }

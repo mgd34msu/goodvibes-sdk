@@ -775,8 +775,8 @@ export const KNOWLEDGE_USAGE_LIST_OUTPUT_SCHEMA = KNOWLEDGE_USAGE_OUTPUT_SCHEMA;
  * (daemon-sdk/knowledge-routes.ts, `readKnowledgeProjectionRequest`): an
  * unlisted kind is refused with INVALID_PROJECTION_KIND, and a per-item kind
  * with no `id` with `Projection kind <kind> requires id.`. A flat `required`
- * array cannot say that — listing `id` would refuse `{ kind: 'overview' }`,
- * which works — so the contract is a union discriminated on `kind`, which is
+ * array cannot say that, listing `id` would refuse `{ kind: 'overview' }`,
+ * which works, so the contract is a union discriminated on `kind`, which is
  * also what lets a consumer's type tell the two cases apart.
  */
 const KNOWLEDGE_PROJECTION_WHOLE_VIEW_KINDS = ['overview', 'bundle', 'dashboard'] as const;

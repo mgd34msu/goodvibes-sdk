@@ -16,7 +16,7 @@ export interface TemplateManagerRoots {
 }
 
 /**
- * TemplateManager — save, load, list, delete and expand prompt templates.
+ * TemplateManager, save, load, list, delete and expand prompt templates.
  *
  * Storage search order:
  * - project templates

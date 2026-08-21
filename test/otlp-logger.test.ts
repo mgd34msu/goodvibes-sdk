@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * OTLP logger — verifies that OTLP log/trace/metric document builders
+ * OTLP logger, verifies that OTLP log/trace/metric document builders
  * produce structurally valid output.
  */
 describe('otlp logger', () => {

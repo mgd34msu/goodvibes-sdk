@@ -1,5 +1,5 @@
 /**
- * secrets-migration-view.ts — the only view of the secret stores that reaches
+ * secrets-migration-view.ts, the only view of the secret stores that reaches
  * across surfaces.
  *
  * Resolution walks ONE surface root, and that is correct: the agent has no
@@ -11,7 +11,7 @@
  * exist. His Telegram token sat in `~/.goodvibes/agent/secrets.enc` while the
  * daemon booted rooted at `daemon` and enumerated only its own store. The
  * credential was one directory away, perfectly readable, and invisible to the
- * only code that could have lifted it — so nothing ever lifted it.
+ * only code that could have lifted it, so nothing ever lifted it.
  *
  * Kept in its own module so the widening is a thing you have to import on
  * purpose. Anything reaching for `SecretsManager` gets the narrow view by

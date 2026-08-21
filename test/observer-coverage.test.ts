@@ -21,7 +21,7 @@ import { GoodVibesSdkError } from '../packages/errors/src/index.js';
 import { captureConsole } from './_helpers/test-timeout.js';
 
 // ---------------------------------------------------------------------------
-// createConsoleObserver — debug level exercises all callbacks
+// createConsoleObserver, debug level exercises all callbacks
 // ---------------------------------------------------------------------------
 
 describe('createConsoleObserver — debug level', () => {
@@ -105,7 +105,7 @@ describe('createConsoleObserver — debug level', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createOpenTelemetryObserver — all callback paths
+// createOpenTelemetryObserver, all callback paths
 // ---------------------------------------------------------------------------
 
 function makeMockOtel(): {
@@ -229,7 +229,7 @@ describe('createOpenTelemetryObserver — onEvent', () => {
     const obs = createOpenTelemetryObserver(tracer, meter);
     const initialSpans = spans.length;
     expect(() => obs.onEvent?.({ type: 'runtime.turn.start' } as unknown as Parameters<NonNullable<typeof obs.onEvent>>[0])).not.toThrow();
-    // onEvent is intentionally a no-op — no new spans
+    // onEvent is intentionally a no-op, no new spans
     expect(spans.length).toBe(initialSpans);
   });
 });
@@ -249,7 +249,7 @@ describe('createOpenTelemetryObserver — onAuthTransition', () => {
 });
 
 // ---------------------------------------------------------------------------
-// invokeObserver — core behavior
+// invokeObserver, core behavior
 // ---------------------------------------------------------------------------
 
 describe('invokeObserver', () => {

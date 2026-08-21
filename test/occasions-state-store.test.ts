@@ -147,7 +147,7 @@ describe('the store', () => {
     const disclosure = await store.disclose();
     expect(disclosure.corruption).not.toBeNull();
     expect(disclosure.acknowledgements).toBe(0);
-    // Still writable afterwards — the disclosure verb and the next write both
+    // Still writable afterwards, the disclosure verb and the next write both
     // work, which is the whole reason this uses loadOrDiscard.
     await store.recordAnswer(ack());
     expect((await store.acknowledgements())).toHaveLength(1);

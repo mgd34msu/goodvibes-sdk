@@ -4,7 +4,7 @@ import { summarizeError } from '../utils/error-display.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Structured completion reports — per-archetype output contracts.
+ * Structured completion reports, per-archetype output contracts.
  * Agents include these in their final output. The WrfcController extracts them.
  */
 
@@ -40,7 +40,7 @@ export interface ConstraintFinding {
  * THE ORIGINAL TASK (interface, argument names/count/order, format, path,
  * cardinality, threshold, exit behavior, side effect), whether the reviewer
  * INDEPENDENTLY verified it, the evidence, and how it was exercised. Landed in
- * the review record so a consumer can render exactly what was verified — and so
+ * the review record so a consumer can render exactly what was verified, and so
  * work that is correct but not what was asked (a false interface/cardinality/
  * threshold item) cannot pass.
  */
@@ -55,9 +55,9 @@ export interface AcceptanceChecklistItem {
   howExercised?: string | undefined;
 }
 
-/** The mechanical acceptance-checklist gate result — shared by every review path. */
+/** The mechanical acceptance-checklist gate result, shared by every review path. */
 export interface AcceptanceChecklistGate {
-  /** Checklist items the reviewer recorded as NOT verified — each one blocks a pass. */
+  /** Checklist items the reviewer recorded as NOT verified, each one blocks a pass. */
   readonly unmet: readonly AcceptanceChecklistItem[];
   /**
    * True when the reviewer emitted NO checklist at all (absent or empty).
@@ -72,7 +72,7 @@ export interface AcceptanceChecklistGate {
  * Evaluate the acceptance-checklist gate for a reviewer report. Deterministic
  * and shared so the main chain review and the compound-subtask review apply
  * the IDENTICAL mechanics: any `verified:false` item blocks, and an
- * absent/empty checklist blocks (the reviewer must record what was verified —
+ * absent/empty checklist blocks (the reviewer must record what was verified,
  * the report contract already demands the field; this makes it mechanical).
  */
 export function evaluateAcceptanceChecklistGate(
@@ -304,7 +304,7 @@ export function parseCompletionReport(rawOutput: string): CompletionReport | nul
     }
   }
 
-  // Strategy 2: Brace-counting extraction — find "version": 1, walk backward for opening {,
+  // Strategy 2: Brace-counting extraction, find "version": 1, walk backward for opening {,
   // then forward counting braces to find the matching }. Avoids greedy regex over-matching.
   const versionIdx = rawOutput.indexOf('"version"');
   if (versionIdx !== -1) {

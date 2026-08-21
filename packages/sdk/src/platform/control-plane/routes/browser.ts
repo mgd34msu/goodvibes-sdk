@@ -1,18 +1,18 @@
 /**
- * routes/browser.ts — the daemon actually serving `browser.*`.
+ * routes/browser.ts, the daemon actually serving `browser.*`.
  *
  * The engine became platform capability when it was hoisted into the SDK, and
  * the daemon could link it from that moment. It still could not USE it: no
  * `browser.*` verb existed in the operator contract and no `/api/browser` path
- * was routed anywhere, so a caller with no surface process attached — a
- * schedule, a trigger, an inbound channel message — had nothing to invoke. A
+ * was routed anywhere, so a caller with no surface process attached, a
+ * schedule, a trigger, an inbound channel message, had nothing to invoke. A
  * capability the daemon can link but cannot call is a capability the operator
  * has to open a surface for.
  *
  * This module is the thin part, exactly as routes/calendar.ts and routes/email.ts
  * are: it maps the descriptors' declared input and output shapes onto a narrow
  * service slice and nothing else. It performs no I/O, opens no browser, and
- * imports nothing from `platform/browser` — the engine arrives through
+ * imports nothing from `platform/browser`, the engine arrives through
  * `BrowserGatewayService`, so a test serves every verb from a fake with no
  * driver, no display and no process, and the daemon composition
  * (routes/browser-composition.ts) is the only place that knows the engine

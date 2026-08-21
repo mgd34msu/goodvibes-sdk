@@ -171,7 +171,7 @@ export class KnowledgeService {
       semanticEnrichSource: async (sourceId: string, knowledgeSpaceId?: string) => {
         await this.semanticService.enrichSource(sourceId, { knowledgeSpaceId });
         // Self-improvement rides the governed background scheduler (floor,
-        // coalescing, zero-gap backoff, governor pause) — a per-ingest direct
+        // coalescing, zero-gap backoff, governor pause), a per-ingest direct
         // run would bypass every one of those guards.
         this.semanticService.queueBackgroundSelfImprove({
           knowledgeSpaceId,
@@ -325,7 +325,7 @@ export class KnowledgeService {
     return this.store.listNodeRevisions(nodeId);
   }
 
-  /** Honest hard delete of a single node — removes the row and its history. (Defect 6.) */
+  /** Honest hard delete of a single node, removes the row and its history. (Defect 6.) */
   async deleteNode(id: string): Promise<{ deleted: boolean }> {
     return { deleted: await this.store.deleteNode(id) };
   }
@@ -340,7 +340,7 @@ export class KnowledgeService {
     return this.store.mergeNodes(loserId, winnerId);
   }
 
-  /** Accept/reject a pending node — the decide step that governs activation. (Defect 2.) */
+  /** Accept/reject a pending node, the decide step that governs activation. (Defect 2.) */
   async reviewNode(input: KnowledgeNodeReviewDecisionInput): Promise<{ ok: boolean; node?: KnowledgeNodeRecord | undefined }> {
     return reviewKnowledgeNodeRecord(this.store, input);
   }

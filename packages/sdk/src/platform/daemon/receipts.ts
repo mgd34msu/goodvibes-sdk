@@ -101,7 +101,7 @@ export class DaemonReceiptStore {
     // user's receipt history with nothing to show for it. Say what was lost.
     const loaded = parseReceipts(this.io.read(this.path));
     if (loaded.unreadable) {
-      logger.warn('[daemon-receipt] receipt file was unreadable — starting from an empty receipt history', {
+      logger.warn('[daemon-receipt] receipt file was unreadable, starting from an empty receipt history', {
         path: this.path,
       });
     } else if (loaded.droppedEntries > 0) {
@@ -121,7 +121,7 @@ export class DaemonReceiptStore {
         keptReceipts: this.receipts.length,
       });
       // Make the reap durable, but never let a read-only/unwritable store
-      // break construction — the in-memory list is already correct.
+      // break construction, the in-memory list is already correct.
       try {
         this.persist();
       } catch (error) {
@@ -136,7 +136,7 @@ export class DaemonReceiptStore {
   /**
    * Both bounds in one place: drop receipts older than MAX_RECEIPT_AGE_MS, then
    * keep at most MAX_KEPT_RECEIPTS (newest last, so the cap drops the oldest).
-   * Idempotent — running it on an already-bounded list changes nothing.
+   * Idempotent, running it on an already-bounded list changes nothing.
    */
   private applyBounds(receipts: readonly DaemonReceipt[]): { receipts: DaemonReceipt[]; expired: number } {
     const cutoff = this.now() - MAX_RECEIPT_AGE_MS;
@@ -175,7 +175,7 @@ export class DaemonReceiptStore {
    * Undelivered receipts for a consuming /status read (`?receipts=consume`);
    * marks them delivered so a receipt is surfaced to the first CONSUMING
    * reader exactly once. Callers serving a non-consuming read must not call
-   * this — that is what keeps identity probes receipt-neutral.
+   * this, that is what keeps identity probes receipt-neutral.
    */
   consumeUndelivered(): readonly DaemonReceipt[] {
     const undelivered = this.receipts.filter((receipt) => receipt.deliveredAt === undefined);

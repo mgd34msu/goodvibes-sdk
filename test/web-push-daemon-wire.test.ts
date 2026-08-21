@@ -2,7 +2,7 @@
  * web-push-daemon-wire.test.ts
  *
  * Browser-push subscription lifecycle + delivery, proven over a REAL bootDaemon
- * (isolated home, ephemeral port, token auth) against a LOCAL fake push sink —
+ * (isolated home, ephemeral port, token auth) against a LOCAL fake push sink,
  * never a real push service, never the external network.
  *
  * What is proven end to end:
@@ -19,7 +19,7 @@
  *    from the list (delete means delete on prune too).
  *  - unsubscribe removes the record; a second delete is an honest 404.
  *  - the VAPID private key never appears in any read verb, and lives in the
- *    secrets store on disk — never in the config.
+ *    secrets store on disk, never in the config.
  */
 
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
@@ -39,7 +39,7 @@ let work: string;
 let daemon: BootedDaemon;
 
 // ---------------------------------------------------------------------------
-// The fake push sink — a local HTTP server standing in for a browser vendor's
+// The fake push sink, a local HTTP server standing in for a browser vendor's
 // push service. It records every delivery and returns whatever status the path
 // asks for (default 201 accepted; `/gone/*` returns 410).
 // ---------------------------------------------------------------------------
@@ -242,7 +242,7 @@ describe('web push — real event source (approval fan-out)', () => {
       category: 'write',
       analysis: { classification: 'edit', riskLevel: 'medium', summary: 'edit the config file', reasons: ['test'] },
     } as PermissionPromptRequest;
-    // Do not await — the approval stays pending; we only need its creation to fire.
+    // Do not await, the approval stays pending; we only need its creation to fire.
     void daemon.approvals.requestApproval({ request, sessionId: 'approval-session' });
 
     const push = await waitForPush((p) => p.path === '/push/device-approvals');
@@ -324,7 +324,7 @@ describe('web push — self-heal on open (device-identity reconcile)', () => {
     const healed = await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: rotated, keys: { p256dh, auth } });
     expect(healed.status).toBe(200);
     expect(healed.json.drift).toBe('endpoint-updated');
-    // Same record id — healed in place, not a duplicate.
+    // Same record id, healed in place, not a duplicate.
     expect((healed.json.subscription as { id: string }).id).toBe(createdId);
 
     // Exactly one record for this device (no stale duplicate left behind).
@@ -353,7 +353,7 @@ describe('web push — bounded retries then prune on a dead (non-gone) endpoint'
     const failId = (created.json.subscription as { id: string }).id;
 
     let lastReceipt: Record<string, unknown> = {};
-    // The endpoint never answers 404/410 — it just keeps 500ing. Each verify is a
+    // The endpoint never answers 404/410, it just keeps 500ing. Each verify is a
     // failed delivery until the bounded-retry counter is crossed, then a prune.
     for (let i = 0; i < 10; i++) {
       const verify = await invokeVerb('push.subscriptions.verify', { subscriptionId: failId });
@@ -380,7 +380,7 @@ describe('web push — bounded retries then prune on a dead (non-gone) endpoint'
     await invokeVerb('push.subscriptions.verify', { subscriptionId: id });
     await invokeVerb('push.subscriptions.verify', { subscriptionId: id });
 
-    // The endpoint recovers: reconcile to a healthy path — this both heals the
+    // The endpoint recovers: reconcile to a healthy path, this both heals the
     // endpoint and resets the counter; a delivery then succeeds.
     const healthy = `${sinkOrigin}/push/recovered`;
     await invokeVerb('push.subscriptions.reconcile', { deviceId, endpoint: healthy, keys: { p256dh, auth } });
@@ -400,7 +400,7 @@ describe('web push — bounded retries then prune on a dead (non-gone) endpoint'
 describe('web push — VAPID private key custody', () => {
   test('the private key is held by the secrets store, never returned by a read verb, never in config', async () => {
     // The private key is retrievable ONLY through the SecretsManager (the same
-    // secret-store posture as any credential) — proving it was stored as a
+    // secret-store posture as any credential), proving it was stored as a
     // secret, not written into the config. Earlier delivery tests already forced
     // the keypair to be minted.
     const configManager = new ConfigManager({ workingDir: work, homeDir: home, surfaceRoot: 'goodvibes' });

@@ -28,11 +28,11 @@ export function sanitizeUrlForLog(url: string | URL | Request): string {
 }
 
 /**
- * instrumentedFetch — wraps the global fetch with structured OUTBOUND_HTTP logging.
+ * instrumentedFetch, wraps the global fetch with structured OUTBOUND_HTTP logging.
  *
  * Use this in place of bare `fetch()` for non-streaming outbound HTTP calls where
  * observability is required. For streaming calls (SSE/chat completions) where the
- * caller already manages an AbortController, use fetch() directly — those streams
+ * caller already manages an AbortController, use fetch() directly, those streams
  * manage their own lifecycle and do not benefit from this wrapper.
  *
  * @param url    - The URL or Request to fetch.
@@ -62,7 +62,7 @@ export async function instrumentedFetch(
 }
 
 /**
- * createTimeoutController — creates an AbortController that fires after `timeoutMs`.
+ * createTimeoutController, creates an AbortController that fires after `timeoutMs`.
  *
  * When `parentSignal` is provided the returned signal is merged with it via
  * AbortSignal.any so whichever fires first wins.
@@ -72,7 +72,7 @@ export async function instrumentedFetch(
  *
  * @param timeoutMs    - Milliseconds before aborting.
  * @param parentSignal - Optional caller signal to merge with the timeout.
- * @returns `{ signal, dispose }` — call `dispose()` in a `finally` block to
+ * @returns `{ signal, dispose }`, call `dispose()` in a `finally` block to
  *   clear the underlying timer and avoid keeping the event loop alive.
  */
 export function createTimeoutController(
@@ -95,7 +95,7 @@ export function createTimeoutController(
 }
 
 /**
- * fetchWithTimeout — wraps a fetch implementation with an AbortController timeout.
+ * fetchWithTimeout, wraps a fetch implementation with an AbortController timeout.
  *
  * If the caller passes a signal that is already aborted, the request is
  * rejected immediately. When both a caller signal and the internal timeout
@@ -103,7 +103,7 @@ export function createTimeoutController(
  * whichever fires first wins.
  *
  * Streaming fetches (SSE, chat completions) where the caller already manages
- * an AbortController via ChatRequest.signal should NOT use this helper —
+ * an AbortController via ChatRequest.signal should NOT use this helper,
  * pass the signal directly to fetch() as they already do.
  *
  * @param url       - The URL or Request to fetch.

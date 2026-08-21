@@ -1,11 +1,11 @@
 /**
- * Cloudflare Workers test script for @pellux/goodvibes-sdk — wrangler-CLI harness.
+ * Cloudflare Workers test script for @pellux/goodvibes-sdk, wrangler-CLI harness.
  *
  * Mirrors test/workers/worker.ts exactly. This version is bundled by wrangler dev
  * (esbuild pipeline) rather than Miniflare's programmatic API.
  *
  * IMPORTANT: Despite the name, `wrangler dev --local` does NOT use the raw workerd
- * binary directly — it uses Miniflare 4 as its local runtime layer. This means
+ * binary directly, it uses Miniflare 4 as its local runtime layer. This means
  * EventSource IS available here (same as the standalone Miniflare harness). The
  * value of this harness is exercising wrangler's esbuild bundling pipeline and CLI
  * config surface, not a different runtime. To verify production-workerd behaviour
@@ -66,7 +66,7 @@ async function handleTransportSuccess(): Promise<Response> {
     sessions: [{
       id: 'session-001',
       kind: 'tui',
-      // S1 spine: project-as-data — required on the wire since the identity
+      // S1 spine: project-as-data, required on the wire since the identity
       // spine landed; a mock missing it fails output-schema validation.
       project: '/tmp/mock-project',
       title: 'Test Session',
@@ -206,7 +206,7 @@ function handleGlobals(): Response {
       WebSocket: typeof WebSocket !== 'undefined',
       // wrangler dev --local uses Miniflare 4 internally, which injects EventSource.
       // Both this harness and the standalone Miniflare harness will be true here.
-      // Production workerd does NOT inject EventSource — verifiable only via real CF deployment.
+      // Production workerd does NOT inject EventSource, verifiable only via real CF deployment.
       EventSource: typeof EventSource !== 'undefined',
       location: typeof (globalThis as Record<string, unknown>).location !== 'undefined',
       setTimeout: typeof setTimeout === 'function',
@@ -221,7 +221,7 @@ function handleGlobals(): Response {
 // The handler's `fetch` returns the global (DOM/bun) Response type, not
 // @cloudflare/workers-types' Response (which additionally requires a
 // `webSocket` property). At runtime under Miniflare/wrangler dev these are
-// interchangeable — only the type declarations collide — so the exported
+// interchangeable, only the type declarations collide, so the exported
 // object is asserted to the workers-types shape rather than typed directly.
 const handler = {
   async fetch(request: Request, _env: Env, _ctx: ExecutionContext): Promise<Response> {

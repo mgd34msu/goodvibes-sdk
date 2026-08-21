@@ -64,7 +64,7 @@ describe('knowledge extraction refresh policy', () => {
     // Current generation: usable text, no refresh.
     expect(knowledgeExtractionNeedsRefresh(useful, KNOWLEDGE_EXTRACTOR_VERSION)).toBe(false);
     // An advancing extractor generation re-extracts the retained capture even
-    // though its prior text is still usable — the lake's compounding payoff.
+    // though its prior text is still usable, the lake's compounding payoff.
     expect(knowledgeExtractionNeedsRefresh(useful, KNOWLEDGE_EXTRACTOR_VERSION + 1)).toBe(true);
     // A legacy extraction with no version stamp is the oldest generation.
     expect(knowledgeExtractionNeedsRefresh(extraction({

@@ -3,7 +3,7 @@
  *
  * A cell-grid renderer that emits content character by character tends to drop
  * escape bytes anyway, because a zero-width character claims no cell. That is
- * incidental — a property of how one renderer happens to measure, not a
+ * incidental, a property of how one renderer happens to measure, not a
  * guarantee any caller can rely on. This module is the explicit contract:
  * content that has been through `stripDangerousAnsi` cannot move the cursor,
  * switch to the alternate screen, retitle the window, or ring the bell,
@@ -12,7 +12,7 @@
  * Strategy:
  * - STRIP all non-SGR escape sequences (cursor moves, OSC, BEL, alt-screen,
  *   DECSET/private mode, and any other CSI/ESC sequences).
- * - PRESERVE SGR color/style codes (\x1b[<params>m) — colorized output is a
+ * - PRESERVE SGR color/style codes (\x1b[<params>m), colorized output is a
  *   legitimate, non-navigating use of the escape channel.
  * - STRIP bare BEL (\x07) characters.
  *
@@ -49,7 +49,7 @@ const BEL = /\x07/g;
  * @returns Sanitized string safe for grid rendering
  */
 export function stripDangerousAnsi(input: string): string {
-  // Step 1: Extract and preserve SGR sequences by replacing them with placeholders,
+  // Extract and preserve SGR sequences by replacing them with placeholders,
   // then strip all other escape sequences, then restore SGR sequences.
   // This approach avoids complex negative lookahead regexes.
 

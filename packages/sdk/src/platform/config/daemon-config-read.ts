@@ -1,5 +1,5 @@
 /**
- * daemon-config-read.ts — reading config by OWNERSHIP, the other half of the
+ * daemon-config-read.ts, reading config by OWNERSHIP, the other half of the
  * routing table in daemon-config-route.ts.
  *
  * Correct write routing with wrong read routing is still a system that lies.
@@ -37,7 +37,7 @@ export type ConfigReadRoute =
   | { readonly mode: 'local'; readonly scope: ConfigScope; readonly reason: string }
   | { readonly mode: 'daemon'; readonly scope: 'daemon'; readonly endpoint: DaemonConfigEndpoint; readonly reason: string };
 
-/** The narrow local reader this module needs — satisfied by ConfigManager. */
+/** The narrow local reader this module needs, satisfied by ConfigManager. */
 export interface LocalConfigReader {
   get(key: string): unknown;
   getConfigPath(): string;
@@ -51,8 +51,8 @@ export interface EffectiveConfigEntry {
   /** Which runtime answered. */
   readonly source: 'daemon' | 'local';
   /**
-   * `ok` — `value` is the live value from the owning runtime.
-   * `unavailable` — the owning runtime could not be reached; there is NO value,
+   * `ok`, `value` is the live value from the owning runtime.
+   * `unavailable`, the owning runtime could not be reached; there is NO value,
    * deliberately, rather than a default that would read as the current setting.
    */
   readonly status: 'ok' | 'unavailable';
@@ -78,7 +78,7 @@ export function resolveConfigReadRoute(key: string, deps: DaemonConfigRouterDeps
   }
   // A connection this process already holds IS the daemon route, and outranks
   // discovery. Without this the route said "local" while the snapshot loader
-  // was quite happy to answer from the connected host — the two halves of one
+  // was quite happy to answer from the connected host, the two halves of one
   // read disagreeing, which is the asymmetry this module exists to remove.
   if (deps.readDaemonSnapshot) {
     return {
@@ -105,7 +105,7 @@ export function resolveConfigReadRoute(key: string, deps: DaemonConfigRouterDeps
 /**
  * A one-shot cache of the daemon's resolved config, so a listing over hundreds
  * of keys costs one HTTP call. `error` is set when the daemon was expected but
- * did not answer — every daemon-owned key in that listing then reports
+ * did not answer, every daemon-owned key in that listing then reports
  * `unavailable` instead of silently degrading to a local default.
  */
 export interface DaemonConfigSnapshot {
@@ -115,7 +115,7 @@ export interface DaemonConfigSnapshot {
 }
 
 /**
- * Fetch the daemon's config once. Never throws — the error is reported per key.
+ * Fetch the daemon's config once. Never throws, the error is reported per key.
  *
  * A connection this process already holds is used FIRST when one was supplied
  * (`readDaemonSnapshot`). That is what puts reads and writes on one resolution:
@@ -153,7 +153,7 @@ export async function loadDaemonConfigSnapshot(deps: DaemonConfigRouterDeps): Pr
   // Two attempts at most, and the second only happens when the first was a
   // runtime record that did not answer. Reaping that record makes the very next
   // discovery return the DERIVED control-plane binding, which is where the live
-  // daemon usually is — falling back to the local store without looking there
+  // daemon usually is, falling back to the local store without looking there
   // is what made a running daemon look absent for days.
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const endpoint = discoverDaemonEndpoint(deps);
@@ -164,11 +164,11 @@ export async function loadDaemonConfigSnapshot(deps: DaemonConfigRouterDeps): Pr
       const detail = error instanceof Error ? error.message : String(error);
       // An endpoint merely DERIVED from configuration describes where a daemon
       // would listen. Nothing answering there means no daemon is running, so the
-      // local daemon store is the honest answer — not an error. A KNOWN daemon
+      // local daemon store is the honest answer, not an error. A KNOWN daemon
       // that does not answer is a genuine failure and stays one.
       if (endpoint.certain !== false) return { endpoint, config: null, error: detail };
       // A running-daemon record that got this far had a live pid and still did
-      // not answer — a recycled pid, or a daemon that died without cleaning up.
+      // not answer, a recycled pid, or a daemon that died without cleaning up.
       if (endpoint.source !== 'running-daemon record') break;
       reapedRecord = { endpoint, error: detail };
       reapUnansweringRuntimeRecord(deps, endpoint.baseUrl);
@@ -184,7 +184,7 @@ export async function loadDaemonConfigSnapshot(deps: DaemonConfigRouterDeps): Pr
 /**
  * Read one key from whichever runtime owns it. Throws
  * {@link DaemonConfigUnreachableError} when the daemon owns the key and cannot
- * be reached — the caller must not be handed a default it would present as the
+ * be reached, the caller must not be handed a default it would present as the
  * current setting. Use {@link readEffectiveConfig} when a per-key
  * `unavailable` is more useful than an exception (listings).
  */
@@ -206,7 +206,7 @@ export async function readConfigValue(
 /**
  * Read many keys at once, resolving each by ownership. One daemon round-trip
  * for the whole set. Every entry names the store it came from, so a listing can
- * show WHY the same key name reads differently in two places — the question
+ * show WHY the same key name reads differently in two places, the question
  * nobody could answer before.
  */
 export async function readEffectiveConfig(
@@ -225,7 +225,7 @@ export async function readEffectiveConfig(
 /**
  * A synchronous, ownership-aware view of config.
  *
- * The daemon is asked ONCE up front, then `get(key)` answers immediately —
+ * The daemon is asked ONCE up front, then `get(key)` answers immediately,
  * daemon-owned keys from the daemon's live config, everything else from the
  * local manager. That shape matters: the existing describe/list code paths take
  * a plain `{ get(key) }` reader and are synchronous all the way down, so this
@@ -234,7 +234,7 @@ export async function readEffectiveConfig(
  * When the daemon was expected and did not answer, `unavailable` lists the keys
  * whose value is genuinely unknown and `get` returns `undefined` for them. A
  * caller MUST check `unavailable` before presenting a value as "the current
- * setting" — that is the whole point.
+ * setting", that is the whole point.
  */
 export interface EffectiveConfigView {
   get(key: string): unknown;
@@ -276,7 +276,7 @@ export async function createEffectiveConfigView(
  *
  * Re-resolving the route per key was a real bug: loading the snapshot can REAP a
  * stale runtime record, so a second resolution sees a different world from the
- * one the snapshot was taken in — and a daemon that had just been proven
+ * one the snapshot was taken in, and a daemon that had just been proven
  * unreachable came back as a local value marked `ok`. The snapshot is the
  * verdict; the route only decides ownership.
  */

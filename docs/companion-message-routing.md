@@ -1,4 +1,4 @@
-# Companion Message Routing
+# Companion message routing
 
 This document describes how TUI clients must handle companion main-chat
 messages surfaced through `conversation.followup.companion` and the runtime
@@ -43,14 +43,14 @@ The `messageId` is always prefixed `companion-` (for example `companion-3f9a2c1e
   agent/WRFC continuation.
 - `kind: 'followup'` explicitly queues a session follow-up through the broker. Unlike `kind: 'task'` (which spawns a fresh WRFC continuation), a follow-up appends a structured continuation hint to the current session and is processed in the next available agent turn. Use `kind: 'followup'` when the companion wants to steer an already-running session rather than start a new task.
 
-  **Example — `kind: 'followup'`:**
+  **Example: `kind: 'followup'`:**
   ```http
   POST /api/sessions/:sessionId/messages
   Content-Type: application/json
 
   { "body": "Continue with option B", "kind": "followup" }
   ```
-  Response (`202 Accepted`) — the session-submission record returned by `respondToSessionSubmission()`:
+  Response (`202 Accepted`): the session-submission record returned by `respondToSessionSubmission()`:
   ```json
   {
     "session": { "id": "<sessionId>", "...": "shared session record" },
@@ -62,7 +62,7 @@ The `messageId` is always prefixed `companion-` (for example `companion-3f9a2c1e
   ```
 - Unknown `kind` values return `400 INVALID_KIND`.
 
-## Control-Plane Event
+## Control-plane event
 
 The daemon publishes a `conversation.followup.companion` event via the gateway. The event
 payload is a `ConversationMessageEnvelope`:
@@ -83,7 +83,7 @@ The same payload is also emitted on the runtime bus as
 `COMPANION_MESSAGE_RECEIVED`. The runtime event includes the envelope fields
 above plus `metadata` when the surface supplied it.
 
-## TUI Client Integration
+## TUI client integration
 
 The TUI client should subscribe to `COMPANION_MESSAGE_RECEIVED` on the runtime
 bus and handle it as follows:
@@ -116,7 +116,7 @@ in `OrchestratorOptions.sessionId` when the orchestrator should emit turn events
 under that same session id. If omitted, the orchestrator generates a private
 runtime session id.
 
-## ntfy Chat Replies
+## ntfy chat replies
 
 The `goodvibes-chat` ntfy route uses this same companion message path. The SDK
 queues a one-shot ntfy reply target before emitting `COMPANION_MESSAGE_RECEIVED`.
@@ -133,7 +133,7 @@ from the current Unix timestamp rather than `since=latest`, because ntfy uses
 `since=latest` to return a cached message. Reconnects resume from the last
 successfully handled ntfy message id and suppress duplicate ids.
 
-## Envelope Consistency
+## Envelope consistency
 
 The `ConversationMessageEnvelope` shape is shared between chat-mode events (`turn.started`,
 `turn.completed`) and session-message follow-up events. Chat-mode events use:
@@ -158,10 +158,10 @@ Other session routes cover adjacent use cases. Use the one that matches your int
 | `GET  /api/sessions/:id/messages` | Fetch the full conversation history for the session | n/a |
 | `PATCH /api/companion/chat/sessions/:id` | Update a true remote companion-chat session's own provider/model metadata | No immediate turn; affects subsequent remote-session turns |
 
-Callers should route structured intents through the dedicated routes —
+Callers should route structured intents through the dedicated routes:
 `POST /api/sessions/:id/steer` to steer the active turn,
 `POST /api/sessions/:id/inputs/:inputId/cancel` to cancel a pending input, and
-`POST /api/sessions/:id/follow-up` to queue a follow-up — instead of building
+`POST /api/sessions/:id/follow-up` to queue a follow-up, instead of building
 ad-hoc bodies for `/messages`.
 
 All companion-chat routes are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
@@ -177,7 +177,7 @@ All companion-chat routes are registered in the live method catalog. Fetch the c
 | `GET /api/companion/chat/sessions/:id` | Get session details |
 | `DELETE /api/companion/chat/sessions/:id` | Delete the session |
 
-## Next Reads
+## Next reads
 
-- [Runtime Orchestration](./runtime-orchestration.md) — session `kind` routing, the session broker, and how WRFC/agent continuations are spawned.
-- [Companion App Patterns](./companion-app-patterns.md) — HTTP bootstrap, realtime subscribe, and snapshot-refresh-on-resume for companion surfaces.
+- [Runtime orchestration](./runtime-orchestration.md): session `kind` routing, the session broker, and how WRFC and agent continuations are spawned.
+- [Companion app patterns](./companion-app-patterns.md): HTTP bootstrap, realtime subscribe, and snapshot-refresh-on-resume for companion surfaces.

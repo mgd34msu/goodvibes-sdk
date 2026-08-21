@@ -1,17 +1,17 @@
 /**
- * record-validation.ts — content validation and field bounds for one stored
+ * record-validation.ts, content validation and field bounds for one stored
  * inbound-mail record (docs/inbound-email.md §9.3, rule 3: validate by
  * content).
  *
  * Split out of `record-store.ts`, which owns the STORE. This file owns the
  * answer to "is this thing on disk a record, and is it a record small enough
- * to have been written by us" — the two questions a loader asks and a writer
+ * to have been written by us", the two questions a loader asks and a writer
  * has to satisfy in the same terms, which is why the write-time clamps live
  * beside the load-time checks rather than across the file from them.
  *
  * Every field bound here is a bound on the FILE. `maxRecords` bounds how many
  * records the store keeps and nothing bounded how big one could be, so a
- * count-bounded store was bounded in the axis nobody attacks — the same
+ * count-bounded store was bounded in the axis nobody attacks, the same
  * finding `verification-expectations.ts` records for the expectation book, in
  * the same words, because it is the same defect in the neighbouring store.
  *
@@ -53,7 +53,7 @@ export const MAX_DELIVERED_TO_CHARS = 320;
  *
  * This field had NO bound, and it is the one field on the record whose text a
  * REMOTE SERVER writes: `intake.ts` sets it from `delivery.error`, which is
- * whatever the notice transport handed back — a Telegram or Slack error body,
+ * whatever the notice transport handed back, a Telegram or Slack error body,
  * verbatim. A push service answering a refusal with a megabyte of HTML put a
  * megabyte on disk, per message, inside a store that believed `maxRecords`
  * bounded it. 512 characters is longer than any refusal worth reading and
@@ -66,7 +66,7 @@ export const MAX_NOTICE_FAILURE_REASON_CHARS = 512;
  *
  * Bounded for the same reason and with less excuse: `links` was capped at 64
  * entries with `registrableDomain` capped at 253, so the array LOOKED bounded
- * — and then each entry carried an unbounded `reason`. Sixty-four unbounded
+ *, and then each entry carried an unbounded `reason`. Sixty-four unbounded
  * strings is an unbounded record. No production path fills `links` yet
  * (`intake.ts` passes `[]` until the body-fetch round), so this is closed
  * before it is reachable rather than after.
@@ -82,7 +82,7 @@ export const MAX_LINK_VERDICTS = 64;
  * These two were bounded on the LOAD path and clamped nowhere on the write
  * path, which is the worst of the two arrangements: a megabyte `mailbox` was
  * written to disk in full and then failed its own validation on the very next
- * load, taking the whole record with it. Measured — a record built from
+ * load, taking the whole record with it. Measured, a record built from
  * megabyte fields was two megabytes on disk, and every other field was already
  * clamped, so this pair was the entire remainder.
  *
@@ -100,7 +100,7 @@ export const MAX_MAILBOX_CHARS = 512;
  * Applied in two places on purpose. `record()` clamps what it stores;
  * `findByMessage()` clamps the key it is asked about. Clamping only the write
  * would make a long account store as one string and look up as another, and
- * dedup — which is what `findByMessage` exists for — would miss and announce
+ * dedup, which is what `findByMessage` exists for, would miss and announce
  * the same message twice.
  */
 export function clampRecordScope(scope: { readonly account: string; readonly mailbox: string }): {
@@ -123,7 +123,7 @@ export function clampRecordScope(scope: { readonly account: string; readonly mai
  * (`[redacted:security-code]` is twenty-four characters for three), so a long
  * address carrying card shapes in its local part can grow past the bound and a
  * head-slice would cut the `@` off. The record would then fail its own
- * validation on the very next load and be discarded WHOLE — the mail would
+ * validation on the very next load and be discarded WHOLE, the mail would
  * vanish from the store entirely, which is a worse outcome than the exposure
  * this redaction exists to close.
  *
@@ -146,7 +146,7 @@ export function clampDeliveryAddress(value: string): string {
  *
  * Both bounds, not one: the entry count and each entry's `reason`. A write
  * that exceeded either produced a record the very next load would discard
- * whole — losing the message rather than the oversized field, which is the
+ * whole, losing the message rather than the oversized field, which is the
  * failure mode `clampDeliveryAddress` exists to avoid on its own field.
  */
 export function clampLinkVerdicts(links: readonly InboundLinkVerdict[]): readonly InboundLinkVerdict[] {
@@ -205,7 +205,7 @@ function isValidLinkVerdict(value: unknown): value is InboundLinkVerdict {
 /**
  * The identity half of a record, chosen by the record's OWN `source` field.
  *
- * Returns `null` for a payload that does not match the source it declares —
+ * Returns `null` for a payload that does not match the source it declares,
  * discarded, never coerced. §9's rule is that a torn record is dropped rather
  * than repaired, and coercion here is the specific repair that caused the bug
  * this replaced: reading a Gmail record against IMAP rules and rejecting it.
@@ -213,8 +213,8 @@ function isValidLinkVerdict(value: unknown): value is InboundLinkVerdict {
  * A record with NO `source` is read as IMAP. That is deliberate backward
  * compatibility, not inference: every record written before the union existed
  * is an IMAP record, and treating absence as unknown would discard the whole
- * existing store on first load. Gmail is never inferred from absence — it must
- * say so — which is the same asymmetry `validateGmailCursor` uses and for the
+ * existing store on first load. Gmail is never inferred from absence, it must
+ * say so, which is the same asymmetry `validateGmailCursor` uses and for the
  * same reason.
  */
 function validateRecordIdentity(
@@ -226,7 +226,7 @@ function validateRecordIdentity(
   if (source === 'gmail') {
     if (!isNonEmptyTrimmedString(record.resourceId, 256)) return null;
     // The same predicate the cursor validates with, imported rather than
-    // restated — a second copy of a uint64 rule is a second chance to get it
+    // restated, a second copy of a uint64 rule is a second chance to get it
     // wrong.
     if (!isHistoryId(record.historyId)) return null;
     return {
@@ -248,7 +248,7 @@ function validateRecordIdentity(
 /**
  * Validate a record by its parsed content, not by its presence in the file.
  * Returns `null` for anything torn, oversized, or out of range. Never throws,
- * never repairs — a body excerpt that somehow exceeds the hard cap is a
+ * never repairs, a body excerpt that somehow exceeds the hard cap is a
  * reason to discard the whole record, not to truncate it again on read.
  */
 export function validateInboundMailRecord(value: unknown): InboundMailRecord | null {

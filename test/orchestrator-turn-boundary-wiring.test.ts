@@ -1,12 +1,12 @@
 /**
- * orchestrator-turn-boundary-wiring.test.ts — the call site exists.
+ * orchestrator-turn-boundary-wiring.test.ts, the call site exists.
  *
  * ── Why this is a file of its own ─────────────────────────────────────────
  *
  * The defect this guards was not a wrong answer from a function. Every piece
  * worked: the ledger had a watermark, `startTurn` moved it, and
  * `startTurnForOwnerRequest` wrapped it correctly. What was missing was anyone
- * calling it on the path where a person actually speaks — so "this turn" meant
+ * calling it on the path where a person actually speaks, so "this turn" meant
  * "since the process started", one mailbox read refused every outward action
  * until restart, and the only cure the owner found was a new session.
  *
@@ -17,7 +17,7 @@
  *
  * ── Why it reaches for a private method ───────────────────────────────────
  *
- * `runTurn` is where the boundary belongs — `handleUserInput` delegates to it,
+ * `runTurn` is where the boundary belongs, `handleUserInput` delegates to it,
  * and so does the queue drain, so a message that waited while the model was
  * thinking still gets its own turn. Constructing a full Orchestrator needs six
  * or more collaborators that have nothing to do with this, so the file follows
@@ -51,7 +51,7 @@ function bareOrchestrator(): { runTurn: RunTurn } {
  *
  * The throw is expected and is not what is under test: it comes from the
  * config lookup a bare instance cannot satisfy. If the boundary ever moves back
- * behind that lookup, these assertions fail — which is the point, because a
+ * behind that lookup, these assertions fail, which is the point, because a
  * turn the owner started is his turn whether or not a model can be resolved.
  */
 async function driveTurn(origin?: { readonly source?: string; readonly ownerDirect?: boolean }): Promise<void> {
@@ -118,7 +118,7 @@ describe('driving a turn through the real Orchestrator moves the real ledger', (
   test('a transport that can attest the owner sent it does end the turn', async () => {
     recordAPageRead();
 
-    // The escape hatch for a transport that authenticated him — the webui's
+    // The escape hatch for a transport that authenticated him, the webui's
     // chat POST is the case this exists for. It is a claim made by code about
     // the caller; no message body constructs one of these.
     await driveTurn({ source: 'companion-followup', ownerDirect: true });

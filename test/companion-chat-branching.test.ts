@@ -82,7 +82,7 @@ describe('regenerate — honest lineage', () => {
     await settleEvents();
 
     const all = manager.getMessages(session.id);
-    // The prior response is NOT gone — it is retained, flagged superseded.
+    // The prior response is NOT gone, it is retained, flagged superseded.
     const retainedFirst = all.find((m) => m.id === firstAssistant!.id);
     expect(retainedFirst).toBeDefined();
     expect(retainedFirst!.content).toBe('first answer');
@@ -141,7 +141,7 @@ describe('edit-and-branch — honest lineage', () => {
     await settleEvents();
 
     const all = manager.getMessages(session.id);
-    // Original user message retained, flagged superseded — retrievable.
+    // Original user message retained, flagged superseded, retrievable.
     const retainedUser = all.find((m) => m.id === originalUser.id)!;
     expect(retainedUser.content).toBe('Tell me about red');
     expect(typeof retainedUser.supersededAt).toBe('number');

@@ -1,5 +1,5 @@
 /**
- * Mode-context policy — applies HITL-mode-aware suppression on top of the
+ * Mode-context policy, applies HITL-mode-aware suppression on top of the
  * base routing decision.
  *
  * In `quiet` mode (minimal verbosity), non-critical, non-milestone
@@ -11,7 +11,7 @@
  * suppressed but warnings are allowed through (matching the existing default
  * policy behaviour).
  *
- * In `operator` mode, no additional suppression is applied — all
+ * In `operator` mode, no additional suppression is applied, all
  * notifications surface as-is.
  */
 

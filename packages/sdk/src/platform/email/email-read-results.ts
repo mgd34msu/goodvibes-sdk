@@ -1,5 +1,5 @@
 /**
- * What a mail read actually found — including the answer that used to have
+ * What a mail read actually found, including the answer that used to have
  * nowhere to go.
  *
  * These shapes exist because two different reads were each collapsing a third
@@ -7,7 +7,7 @@
  *
  *   - `listInbox` returned `{ messages, total }`. A page of UIDs 101/102/103
  *     with 102 unreadable came back as two messages and `total: 3`, and nothing
- *     said which of two things had happened — 102 was expunged between the
+ *     said which of two things had happened, 102 was expunged between the
  *     search and the fetch (ordinary), or 102 is in the mailbox and the
  *     server's answer about it could not be read (not ordinary, and the message
  *     is missing from a list the owner is reading as complete).
@@ -24,7 +24,7 @@ import type { ImapMessageDetail } from './imap-types.js';
 /**
  * One FETCH response in a listing or a read that the client could not read.
  *
- * A reason and, where it was legible, the UID it named — never message content,
+ * A reason and, where it was legible, the UID it named, never message content,
  * since the whole point is that the content could not be read.
  */
 export interface EmailInboxUnreadableResponse {
@@ -39,7 +39,7 @@ export interface EmailInboxUnreadableResponse {
  * client's inability to read the server's answer.
  *
  * `gone` and `unreadable` used to be one answer (`null`) and are opposite
- * claims about the owner's mailbox — see `ImapMessageRead`, which this mirrors
+ * claims about the owner's mailbox, see `ImapMessageRead`, which this mirrors
  * at the service boundary.
  */
 export type EmailMessageRead =

@@ -1,5 +1,5 @@
 /**
- * credentials.ts — provider credential resolution and auth-state queries.
+ * credentials.ts, provider credential resolution and auth-state queries.
  * Pure functions that do not hold mutable state; called by ProviderRegistry.
  */
 import { getConfiguredApiKeys } from '../config/index.js';

@@ -107,7 +107,7 @@ describe('WorkspaceCheckpointManager automatic snapshots', () => {
     const manager = new WorkspaceCheckpointManager({ workspaceRoot: root, runtimeBus: bus });
     await manager.init();
 
-    // No filesystem change at all — TURN_COMPLETED should still fire the
+    // No filesystem change at all, TURN_COMPLETED should still fire the
     // subscriber, which will simply no-op (dedupe) rather than throw.
     emitTurnCompleted(bus, ctx, { turnId: 'noop-turn', response: 'ok', stopReason: 'completed' });
     await new Promise((resolve) => setTimeout(resolve, 50));

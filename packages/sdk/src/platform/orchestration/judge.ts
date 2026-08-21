@@ -1,13 +1,13 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * judge.ts — an optional, provider-backed best-of-N judge.
+ * judge.ts, an optional, provider-backed best-of-N judge.
  *
  * A model call that scores a held-merge group's candidates and PROPOSES a
  * winner with reasons. Deliberately kept behind the injectable {@link AttemptJudge}
  * seam (attempts.ts / engine.ts) so the engine stays provider-agnostic and unit-
  * testable with a fake; this is the real wiring the composition root (services.ts)
- * hands the engine. The verdict is always a PROPOSAL — the engine labels it
+ * hands the engine. The verdict is always a PROPOSAL, the engine labels it
  * scoredBy:'model' and never auto-picks unless the source item opted in.
  */
 import type { ProviderRegistry } from '../providers/registry.js';
@@ -40,7 +40,7 @@ function buildPrompt(input: AttemptJudgeInput): string {
         : c.diff.unifiedDiff;
       lines.push('  diff:', body);
     } else {
-      lines.push('  (no diff available — this candidate failed or has no worktree)');
+      lines.push('  (no diff available, this candidate failed or has no worktree)');
     }
   }
   return lines.join('\n');

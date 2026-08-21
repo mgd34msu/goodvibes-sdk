@@ -1,5 +1,5 @@
 /**
- * operator-token-cleanup.ts — where a surface's operator token lives, and the
+ * operator-token-cleanup.ts, where a surface's operator token lives, and the
  * workspace-scoped locations an older install may have left one in.
  *
  * The canonical location is `<daemonHomeDir>/operator-tokens.json`. Earlier
@@ -44,22 +44,22 @@ export function workspaceOperatorTokenCandidates(
  * Without the override, the only way to make a surface adopt an already-running
  * external daemon that used an out-of-band or explicit token (rather than one
  * derived from `getOrCreateCompanionToken` under a *shared* home directory) is
- * to hand-write `<daemonHomeDir>/operator-tokens.json` before startup — no env
+ * to hand-write `<daemonHomeDir>/operator-tokens.json` before startup, no env
  * var or flag equivalent exists.
  *
  * `GOODVIBES_DAEMON_TOKEN` is the same env var the daemon honors for its own
  * bearer token, and the same one an outside prober falls back to when reaching
  * a daemon's HTTP surface. Reusing the name means one env var configures both
- * sides of an adopted-daemon setup — start the daemon with
+ * sides of an adopted-daemon setup, start the daemon with
  * `GOODVIBES_DAEMON_TOKEN=<token>` and point the surface at it with the same
- * `GOODVIBES_DAEMON_TOKEN=<token>` plus its control-plane host/port — instead of
+ * `GOODVIBES_DAEMON_TOKEN=<token>` plus its control-plane host/port, instead of
  * a second, per-product flag.
  *
  * When the override is set and does not already match the on-disk record, the
  * file is rewritten so the override becomes durable for this home directory (an
  * existing peerId is kept when present, so companion-pairing identity does not
  * needlessly churn). Falls back to the existing `getOrCreateCompanionToken`
- * behavior — read the existing file, or mint a fresh random token — when the
+ * behavior, read the existing file, or mint a fresh random token, when the
  * override is unset.
  *
  * @param daemonHomeDir - The daemon home whose token record is read/written.
@@ -99,7 +99,7 @@ export function resolveDaemonCompanionToken(
       if (typeof record.peerId === 'string') existingPeerId = record.peerId;
       if (typeof record.createdAt === 'number') existingCreatedAt = record.createdAt;
     } catch {
-      // Malformed on-disk record — fall through and rewrite it with the override.
+      // Malformed on-disk record, fall through and rewrite it with the override.
     }
   }
 
@@ -113,7 +113,7 @@ export function resolveDaemonCompanionToken(
     writeFileSync(tokenPath, JSON.stringify(record, null, 2), { encoding: 'utf-8', mode: 0o600 });
     chmodSync(tokenPath, 0o600);
   } catch {
-    // Best-effort persistence — the override still applies for this process
+    // Best-effort persistence, the override still applies for this process
     // even if the file could not be written (e.g. a read-only home directory).
   }
   return record;

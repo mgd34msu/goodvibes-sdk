@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — Baseline persistence.
+ * Evaluation Harness, Baseline persistence.
  *
  * Provides load/save/capture utilities for EvalBaseline records.
  * Baselines are stored as JSON files on disk and loaded by the CI gate.

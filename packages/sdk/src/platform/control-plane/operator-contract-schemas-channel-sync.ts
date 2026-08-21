@@ -2,7 +2,7 @@
  * operator-contract-schemas-channel-sync.ts
  *
  * The record shapes behind the eight `channels.inbox.list` /
- * `channels.routing.*` / `channels.drafts.*` verbs — the families that spent a
+ * `channels.routing.*` / `channels.drafts.*` verbs, the families that spent a
  * release cataloged with `invokable: false` because their advertised paths were
  * served by nothing, and are all served now.
  *
@@ -35,7 +35,7 @@ export const CHANNEL_INBOX_ITEM_SCHEMA = objectSchema({
   attachmentCount: NUMBER_SCHEMA,
   // Triage overlay. A host that runs an inbound triage pass (the daemon does)
   // scores each item as it is persisted and returns the score alongside it.
-  // Declared here because it is SERVED — an item field a client receives and
+  // Declared here because it is SERVED, an item field a client receives and
   // the schema does not name is the contract lying by omission.
   triageScore: NUMBER_SCHEMA,
   triageLabel: STRING_SCHEMA,
@@ -47,19 +47,19 @@ export const CHANNEL_INBOX_ITEM_SCHEMA = objectSchema({
  *
  * This exists so a short list is never ambiguous. Zero Slack items can mean
  * "nothing arrived", "no bot token was ever configured", or "Slack refused the
- * last four polls" — three different things a client must be able to tell
+ * last four polls", three different things a client must be able to tell
  * apart, and which an items array alone cannot express. Every provider the host
  * knows about appears here on every call, including the ones that contributed
  * nothing.
  *
  * `state` is one of:
- *   `ready`        — synced, and this provider has items in the answer's window.
- *   `empty`        — synced, and it genuinely has nothing.
- *   `unconfigured` — no credential for it, so it was never asked. Not an error.
- *   `error`        — configured, asked, and the last attempt failed. `error`
+ *   `ready`       , synced, and this provider has items in the answer's window.
+ *   `empty`       , synced, and it genuinely has nothing.
+ *   `unconfigured`, no credential for it, so it was never asked. Not an error.
+ *   `error`       , configured, asked, and the last attempt failed. `error`
  *                    carries what went wrong; this provider's items are MISSING
  *                    from the list, and the top-level `partial` flag says so.
- *   `pending`      — known but not yet synced once (a host that has just
+ *   `pending`     , known but not yet synced once (a host that has just
  *                    started, or one whose fetching is another node's job).
  */
 export const CHANNEL_INBOX_PROVIDER_STATUS_SCHEMA = objectSchema({

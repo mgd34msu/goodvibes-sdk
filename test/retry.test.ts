@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * withRetry / isRetryableError — verifies the onRetry callback fires with the
+ * withRetry / isRetryableError, verifies the onRetry callback fires with the
  * (attempt, maxAttempts, delayMs, error) argument order that ChatRequest.onRetry
  * expects (providers pass it straight through with no adapter), that
  * non-retryable errors skip the callback and rethrow immediately, and that the

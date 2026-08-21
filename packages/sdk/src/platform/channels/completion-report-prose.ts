@@ -23,7 +23,7 @@
  * reintroduce the shape, and no such change should be able to put a form back
  * on someone's phone.
  *
- * Pure string work — no I/O, no clock, no surface knowledge.
+ * Pure string work, no I/O, no clock, no surface knowledge.
  */
 
 /**
@@ -41,7 +41,7 @@ const REPORT_HEADINGS: ReadonlySet<string> = new Set([
 
 /**
  * Headings that carry the answer. One of these must be present for anything to
- * be treated as a report — a message with a `Changes:` line and no summary is
+ * be treated as a report, a message with a `Changes:` line and no summary is
  * somebody talking about changes.
  */
 const ANSWER_HEADINGS: readonly string[] = ['summary', 'result'];
@@ -107,7 +107,7 @@ interface ReportShape {
  * Locate the report inside a body, as a line span plus its sections.
  *
  * The span always runs to the END of the text. Unlike the JSON form, prose has
- * no closing delimiter — there is no way to tell "the report ended and the
+ * no closing delimiter, there is no way to tell "the report ended and the
  * agent went back to talking" from "the report continues". Prose written
  * BEFORE the first heading survives, which is the case that actually occurs
  * (an agent answers, then files its paperwork).
@@ -152,7 +152,7 @@ function sectionProse(lines: readonly string[] | undefined): string {
  * Replace a prose completion report with the answer it carries.
  *
  * Returns the text unchanged when it is not a report. When it IS one, the
- * result is the prose that preceded it plus the summary — and when the summary
+ * result is the prose that preceded it plus the summary, and when the summary
  * says nothing, the result can legitimately be empty. Empty is honest; the
  * caller sends nothing rather than sending a form.
  */

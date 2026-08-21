@@ -17,7 +17,7 @@ export type ClipboardWriteFunction = (text: string) => void;
  * and OSC 52 carry text, so a pasted image has to be read from the system
  * clipboard directly. On Linux that means a helper program, and when it is
  * absent the honest answer names the package rather than reporting an empty
- * clipboard — "nothing happened" is what an uninstalled package looked like
+ * clipboard, "nothing happened" is what an uninstalled package looked like
  * before this existed.
  */
 export function missingClipboardReaderHint(
@@ -39,7 +39,7 @@ export function missingClipboardReaderHint(
     : 'xclip (this session is X11)';
   return (
     `No clipboard reader is installed, so images cannot be read from the clipboard. `
-    + `Install ${preferred} — for example "sudo pacman -S wl-clipboard" on Arch or `
+    + `Install ${preferred}, for example "sudo pacman -S wl-clipboard" on Arch or `
     + `"sudo apt install wl-clipboard" on Debian and Ubuntu. Use xclip instead if you run X11.`
   );
 }
@@ -186,7 +186,7 @@ export function pasteImageFromClipboard(): { data: string; mediaType: string } |
       }
       recordClipboardAttempt(attempts, 'pngpaste', pp);
       // Next try osascript, which reads clipboard as PNG hex data.
-      // Output format: «data PNGf<hex>» — extract hex after 'PNGf'
+      // Output format: «data PNGf<hex>», extract hex after 'PNGf'
       const osa = Bun.spawnSync(
         ['osascript', '-e', 'the clipboard as «class PNGf»'],
         {

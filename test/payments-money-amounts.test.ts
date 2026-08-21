@@ -1,5 +1,5 @@
 /**
- * payments-money-amounts.test.ts — the payment limits hold the number the owner
+ * payments-money-amounts.test.ts, the payment limits hold the number the owner
  * would say out loud, and an existing file is carried across to that form.
  *
  * The defect this pins: the four budget keys used to be named for, and stored
@@ -238,7 +238,7 @@ describe('an existing file is carried across', () => {
 
     // The DAEMON composition: the runtime that owns this file, and so the one
     // that rewrites it. A client loading the same file migrates only its own
-    // view — see daemon-tier-migration-ownership.test.ts.
+    // view, see daemon-tier-migration-ownership.test.ts.
     const manager = new ConfigManager({
       configDir,
       homeDir: home,
@@ -251,7 +251,7 @@ describe('an existing file is carried across', () => {
     expect(manager.get('payments.budget.perPurchaseCeiling')).toBe(100);
     expect(manager.get('payments.budget.dailyItem')).toBe(25);
 
-    // And the FILE itself now reads that way — this is what he opens.
+    // And the FILE itself now reads that way, this is what he opens.
     const onDisk = readFileSync(daemonTierPath, 'utf-8');
     expect(onDisk).toContain('"perPurchaseCeiling": 100');
     expect(onDisk).toContain('"dailyItem": 25');
@@ -315,7 +315,7 @@ describe('enforcement reads the new form', () => {
       { get: (key: string): unknown => manager.get(key as Parameters<typeof manager.get>[0]) },
       'USD',
     );
-    // A hundred, enforced as a hundred — not as one dollar, which is what the
+    // A hundred, enforced as a hundred, not as one dollar, which is what the
     // old keys produced when he typed what he meant.
     expect(limits.perPurchaseCeiling.minorUnits).toBe(10_000);
   });

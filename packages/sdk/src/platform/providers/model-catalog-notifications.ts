@@ -34,7 +34,7 @@ export function diffCatalogs(
       const format = (value?: number) => (value != null ? `${Math.round(value / 1024)}K` : 'unknown');
       changes.push(`context ${format(oldModel.contextWindow)} -> ${format(nextModel.contextWindow)}`);
     }
-    // Null pricing means the catalog carries no cost for the model — render
+    // Null pricing means the catalog carries no cost for the model, render
     // it as 'unpriced' in change notices, never as $0.
     const rate = (value: number | undefined): string => (value === undefined ? 'unpriced' : `$${value}`);
     if (oldModel.pricing?.input !== nextModel.pricing?.input) {

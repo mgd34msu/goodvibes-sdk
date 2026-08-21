@@ -120,7 +120,7 @@ function readSurface(value: unknown): ProfileSurface {
 /**
  * The answer, checked against the three the owner can give.
  *
- * `later` is one of them and is not a decline — a caller that sends anything
+ * `later` is one of them and is not a decline, a caller that sends anything
  * else is refused rather than folded into `no`, because reading an unknown word
  * as a refusal would silence an occasion the owner never declined.
  */
@@ -128,7 +128,7 @@ function readSurface(value: unknown): ProfileSurface {
  * Where an acknowledgement came from, defaulting to `explicit`.
  *
  * A verb call with no source IS a surface offering the action, which is what
- * `explicit` means — so this defaults rather than refusing. Refusing would make
+ * `explicit` means, so this defaults rather than refusing. Refusing would make
  * the provenance label, which only explains a mute, capable of preventing one.
  */
 function readAckSource(value: unknown): OccasionAckSource {

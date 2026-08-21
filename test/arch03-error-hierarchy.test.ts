@@ -37,12 +37,12 @@ function assertFields(err: GoodVibesSdkError, label: string, expectCode = false)
   if (expectCode) {
     expect(err.code, `${label}: .code is populated`).toEqual(expect.any(String));
   } else {
-    // code is optional on GoodVibesSdkError — just assert the field exists (string | undefined)
+    // code is optional on GoodVibesSdkError, just assert the field exists (string | undefined)
     expect('code' in err, `${label}: .code field exists`).toBe(true);
   }
   expect(err.category, `${label}: .category is populated`).toEqual(expect.any(String));
   expect(err.source, `${label}: .source is populated`).toEqual(expect.any(String));
-  // recoverable is a boolean — check it is defined (not undefined)
+  // recoverable is a boolean, check it is defined (not undefined)
   expect(typeof err.recoverable, `${label}: .recoverable is boolean`).toBe('boolean');
 }
 

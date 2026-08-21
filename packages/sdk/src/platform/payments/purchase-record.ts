@@ -1,5 +1,5 @@
 /**
- * purchase-record.ts — one row of the audit ledger.
+ * purchase-record.ts, one row of the audit ledger.
  *
  * Split out because it is read by more than the flow that writes it: the
  * control-plane view, the correlation lookup that recognises a store's
@@ -8,7 +8,7 @@
  *
  * Every amount is integer minor units this daemon parsed. Nothing on this
  * record came from merchant text unparsed, and nothing on it can carry card
- * material — `cardLast4` is the only part of the instrument that appears, which
+ * material, `cardLast4` is the only part of the instrument that appears, which
  * is what makes the row reconcilable against a statement without being a leak.
  */
 import type { MinorUnits } from './types.js';

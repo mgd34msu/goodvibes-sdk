@@ -1,5 +1,5 @@
 /**
- * "Your credit balance is too low" was being reported — and retried — as a
+ * "Your credit balance is too low" was being reported, and retried, as a
  * rate limit.
  *
  * Observed live: an Anthropic 400 carrying that message surfaced as
@@ -8,8 +8,8 @@
  *
  *  1. `inferErrorCategory` short-circuited on the status code, so a 400 became
  *     `bad_request` no matter what it said. Providers do not agree on a code
- *     for a spent account — Anthropic uses 400, OpenAI uses 429
- *     `insufficient_quota` — so the code alone cannot classify it.
+ *     for a spent account, Anthropic uses 400, OpenAI uses 429
+ *     `insufficient_quota`, so the code alone cannot classify it.
  *  2. `isRateLimitOrQuotaError` matches quota/credit wording by design (the
  *     SyntheticProvider uses it to rotate backends), and the orchestrator's
  *     retry ladder consumed that verdict directly. A spent account then got

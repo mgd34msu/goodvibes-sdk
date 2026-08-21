@@ -74,7 +74,7 @@ export interface StepUpCredentialSummary {
   readonly signCount: number;
 }
 
-/** Input to mint a challenge — bound to the session/rendezvous it is for. */
+/** Input to mint a challenge, bound to the session/rendezvous it is for. */
 export interface MintStepUpChallengeInput {
   readonly rendezvousId?: string;
   readonly sessionId?: string;
@@ -149,7 +149,7 @@ export class StepUpService {
   /**
    * Register (or replace) a credential and establish the deployment policy. The
    * COSE public key must parse as an EC2 P-256 key or the registration is
-   * refused — a broken key would only fail closed silently later.
+   * refused, a broken key would only fail closed silently later.
    */
   async registerCredential(input: RegisterStepUpCredentialInput): Promise<StepUpCredentialSummary> {
     const rpId = input.rpId.trim();
@@ -214,8 +214,8 @@ export class StepUpService {
   /**
    * The real {@link StepUpAssertionVerifier}. It parses the header envelope,
    * confirms the signed challenge is one we minted and is still live+unconsumed,
-   * runs the full WebAuthn verification against the registered credential, and —
-   * only on complete success — consumes the challenge and advances the stored
+   * runs the full WebAuthn verification against the registered credential, and,
+   * only on complete success, consumes the challenge and advances the stored
    * signature counter. Every other path returns false (fail closed).
    */
   createVerifier(): StepUpAssertionVerifier {

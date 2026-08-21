@@ -1,5 +1,5 @@
 /**
- * Runtime Tasks — barrel exports and factory.
+ * Runtime Tasks, barrel exports and factory.
  *
  * Usage:
  * ```ts

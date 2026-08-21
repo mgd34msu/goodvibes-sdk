@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// workstream-draft-store.test.ts — durable draft journal
+// workstream-draft-store.test.ts, durable draft journal
 //
 // Covers the TUI-side draft persistence (runtime/workstream-draft-store.ts):
 // save/load round-trip, remove, the never-throw guards on a missing directory /

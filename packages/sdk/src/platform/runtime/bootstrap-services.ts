@@ -37,7 +37,7 @@ interface HttpListenerService {
  * Options passed to the injectable detached-daemon spawn seam. Mirrors the subset
  * of `child_process.SpawnOptions` the detached spawn relies on. `detached: true`
  * and the caller's subsequent `unref()` are what let the daemon outlive this
- * surface — tests assert both are present.
+ * surface, tests assert both are present.
  */
 export interface DetachedDaemonSpawnOptions {
   readonly detached: boolean;
@@ -58,15 +58,15 @@ export interface DetachedDaemonChild {
  * The daemon promotes itself to a supervised service at its first idle
  * moment when a service manager is available (see the facade lifecycle's
  * boot promotion), so this mostly narrates what happens on its own; where
- * promotion is not possible, it names the one-command path — never a raw
+ * promotion is not possible, it names the one-command path, never a raw
  * HTTP instruction.
  */
 export const DETACHED_DAEMON_INSTALL_HINT =
-  'daemon started for this session — it installs itself as a system service at its first idle moment when the platform supports it; if it stays session-only, run: goodvibes-daemon --install-service';
+  'daemon started for this session, it installs itself as a system service at its first idle moment when the platform supports it; if it stays session-only, run: goodvibes-daemon --install-service';
 
 interface ServiceFactories {
   /**
-   * Injectable spawn seam for the detached standalone daemon — the only way this
+   * Injectable spawn seam for the detached standalone daemon, the only way this
    * host starts a daemon. Defaults to `child_process.spawn`. Tests stub this to
    * assert the spawn happens and that the options carry `detached: true` (the
    * caller then `unref()`s the returned child).
@@ -419,8 +419,8 @@ async function startWithTimeout(
  * This module reaches `platform/daemon` neither statically nor dynamically. The
  * daemon's composition (DaemonServer, HttpListener) belongs to the
  * `goodvibes-daemon` product, which imports those classes directly in its own
- * entrypoint. A client that could reach them — even behind an `await import()`
- * never taken at runtime — drags the whole daemon graph into its bundle, and the
+ * entrypoint. A client that could reach them, even behind an `await import()`
+ * never taken at runtime, drags the whole daemon graph into its bundle, and the
  * lazy module wrappers a bundler emits to make that possible are what left
  * shared platform constants uninitialized when hoisted functions read them.
  * So the daemon paths here are: adopt one already running, or spawn the detached
@@ -446,7 +446,7 @@ export async function startHostServices(
   const versionCompatible = factories.isDaemonVersionCompatible ?? isDaemonVersionCompatible;
 
   // A daemon whose identity probe says `goodvibes` has only proven it IS a
-  // GoodVibes daemon — not that it speaks a wire version this surface can adopt.
+  // GoodVibes daemon, not that it speaks a wire version this surface can adopt.
   // Band-check the reported version and produce an honest `incompatible` status
   // (never a second competing daemon) when it does not match this surface's band.
   const resolveVerifiedDaemonStatus = (
@@ -497,8 +497,8 @@ export async function startHostServices(
     const daemonHomeDir = factories.daemonHomeDir ?? os.homedir();
     const runtimeDir = factories.daemonRuntimeDir ?? join(daemonHomeDir, '.goodvibes', 'daemon');
     const logFilePath = join(runtimeDir, 'detached-daemon.log');
-    // `--daemon-home` names the daemon's own STATE directory — the one holding
-    // operator-tokens.json, daemon-settings.json and the daemon config tier —
+    // `--daemon-home` names the daemon's own STATE directory, the one holding
+    // operator-tokens.json, daemon-settings.json and the daemon config tier,
     // which is `runtimeDir`, not the user home above it. This passed the user
     // home, so a spawned daemon put its identity files a level up from where
     // every reader in the SDK looks for them (workspace/daemon-home.ts,
@@ -586,8 +586,8 @@ export async function startHostServices(
 
   // A host never constructs a daemon, so there is never one to hold: the daemon
   // is either already running elsewhere (adopted) or running as a detached child
-  // process (spawned). Kept as a typed constant so the handle's shape — which
-  // callers also build by hand before startup — stays one shape.
+  // process (spawned). Kept as a typed constant so the handle's shape, which
+  // callers also build by hand before startup, stays one shape.
   const hostedDaemonServer: DaemonService | null = null;
   let embeddedHttpListener: HttpListenerService | null = null;
   let daemonStartHint: string | undefined;
@@ -601,12 +601,12 @@ export async function startHostServices(
     // must NOT couple the daemon's lifetime to this process. With the port free
     // the host spawns the standalone `goodvibes-daemon` binary as a detached
     // child and adopts it as 'external'; with the port occupied by a compatible
-    // daemon it adopts that one. There is no third option here — this process
+    // daemon it adopts that one. There is no third option here, this process
     // does not construct a daemon.
 
     // ONE shared adopt-or-spawn decision (daemon-adoption-policy.ts). Probe the
     // port + identity, then map the pure ruling onto this surface's I/O. The
-    // version band-check is inside the policy, applied before any adopt — the
+    // version band-check is inside the policy, applied before any adopt, the
     // agent's stub used to skip it; the adopt-only stance is now `factories.adoptOnly`.
     const portInUse = await probeDaemonPortInUse(daemonHost, daemonPort);
     const identity = portInUse

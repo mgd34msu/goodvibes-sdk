@@ -19,7 +19,7 @@ export class SharedSessionRuntimeBusBridge {
     completeAgent: SharedSessionAgentCompletion,
   ): () => void {
     if (this.busAttached) {
-      logger.warn('[SharedSessionBroker] attachRuntimeBus called more than once — ignoring duplicate call', {});
+      logger.warn('[SharedSessionBroker] attachRuntimeBus called more than once, ignoring duplicate call', {});
       return () => {};
     }
     this.busAttached = true;

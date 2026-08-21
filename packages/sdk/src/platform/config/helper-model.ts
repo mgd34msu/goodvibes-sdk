@@ -1,5 +1,5 @@
 /**
- * Helper Model — lightweight LLM routing for grunt-work tasks.
+ * Helper Model, lightweight LLM routing for grunt-work tasks.
  *
  * Routes tasks like cache planning, compaction, commit messages, etc. to a
  * cheaper/free model so expensive main models don't waste tokens on routine work.
@@ -7,7 +7,7 @@
  * Resolution order:
  *   1. Per-provider helper (helper.providers.{currentProvider}.provider + model)
  *   2. Global helper (helper.globalProvider + helper.globalModel)
- *   3. Tool LLM (tools.llmProvider + tools.llmModel) — when enabled/configured
+ *   3. Tool LLM (tools.llmProvider + tools.llmModel), when enabled/configured
  *
  * Design constraints:
  *   - Optional helper absence is explicit: helperOnly calls return null.
@@ -85,12 +85,12 @@ function readOptionalString(value: unknown): string {
 }
 
 /**
- * HelperRouter — resolves which model to use for a given helper task.
+ * HelperRouter, resolves which model to use for a given helper task.
  *
  * Resolution order:
  *   1. Per-provider helper (helper.providers.{currentProvider}.provider + model)
  *   2. Global helper (helper.globalProvider + helper.globalModel)
- *   3. Tool LLM (tools.llmProvider + tools.llmModel) — when enabled/configured
+ *   3. Tool LLM (tools.llmProvider + tools.llmModel), when enabled/configured
  */
 export class HelperRouter {
   constructor(private readonly deps: HelperModelDeps) {}
@@ -172,7 +172,7 @@ export class HelperRouter {
 }
 
 /**
- * HelperModel — lightweight LLM interface for helper tasks.
+ * HelperModel, lightweight LLM interface for helper tasks.
  *
  * Callers own HelperModel lifetimes explicitly. Provider and configuration
  * failures throw. Explicit optional-helper calls return null when unavailable.

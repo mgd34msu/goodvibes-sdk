@@ -1,5 +1,5 @@
 /**
- * protocol-envelope.ts — the datagram every node on the group speaks.
+ * protocol-envelope.ts, the datagram every node on the group speaks.
  *
  * ONE shape, for every message type, group-level and surface-level alike:
  *
@@ -7,13 +7,13 @@
  *
  * `sig` is an HMAC under the group key of the generation named by `keyGen`,
  * over a canonical serialization of everything else. A datagram that does not
- * verify never reaches any state machine — it is dropped at the edge, counted,
+ * verify never reaches any state machine, it is dropped at the edge, counted,
  * and mentioned at debug, because on a shared LAN an unverifiable packet is
  * usually a neighbour's traffic rather than an attack.
  *
  * What is deliberately NOT on the wire, ever: the join key, the group key, any
  * channel credential, any topic or chat id, any hostname or username. Surface
- * identities appear only as `surfaceId`, which is a digest — see
+ * identities appear only as `surfaceId`, which is a digest, see
  * digestSurfaceId in group-crypto.ts.
  *
  * ── the dual-generation acceptance window ──────────────────────────────────
@@ -22,7 +22,7 @@
  * signing with generation N and some with N-1, and a node that accepted only
  * its own current generation would drop the others' heartbeats. Dropped
  * heartbeats look exactly like a dead leader: the watchdog fires, an election
- * runs, and a surface changes hands for no reason at all — every rotation,
+ * runs, and a surface changes hands for no reason at all, every rotation,
  * forever. So a node accepts BOTH the current generation and the previous one,
  * and signs with the current. This is a correctness requirement, not a
  * convenience: see the rotation-under-traffic test.
@@ -40,7 +40,7 @@ export const CLUSTER_ENVELOPE_VERSION = 1;
  * Larger than an Ethernet MTU on purpose: a roster gossip carrying every member
  * of a full group does not fit in 1500 bytes, and IP fragmentation on a local
  * network is a normal, reliable thing. Anything above this is refused rather
- * than fragmented into dozens of pieces — state that large is a bug, not a big
+ * than fragmented into dozens of pieces, state that large is a bug, not a big
  * group.
  */
 export const MAX_ENVELOPE_BYTES = 32_768;
@@ -83,7 +83,7 @@ export interface ClusterKeyring {
   /** The key for a generation, or null when this node does not hold it. */
   keyForGeneration(generation: number): string | null;
   /**
-   * Generations whose signatures are accepted right now — the current one and,
+   * Generations whose signatures are accepted right now, the current one and,
    * during the cutover window, the one before it.
    */
   acceptedGenerations(): readonly number[];
@@ -170,7 +170,7 @@ export function encodeEnvelope(draft: EnvelopeDraft, keyring: ClusterKeyring): s
  *   JOIN / JOIN_ACCEPT / JOIN_REFUSE are authenticated with the JOIN VERIFIER,
  *   because a machine that is trying to get into the group by definition does
  *   not hold a group key yet, and its admitter has no other shared secret with
- *   it. Their `keyGen` is 0 and carries no meaning — the class of the message
+ *   it. Their `keyGen` is 0 and carries no meaning, the class of the message
  *   determines the key, not the field.
  *
  *   REJOIN / REJOIN_ACCEPT are authenticated with the sender's long-lived
@@ -269,7 +269,7 @@ function readEnvelopeFields(candidate: Record<string, unknown>): ClusterEnvelope
   if (typeof nodeId !== 'string' || nodeId.length === 0 || nodeId.length > 128) return null;
   if (typeof nodeVersion !== 'string' || nodeVersion.length === 0 || nodeVersion.length > 64) return null;
   // Null is legal (a group-level message such as the beacon). A non-null value
-  // must be one of the two digest shapes — surface-id.ts's bare hex, or the
+  // must be one of the two digest shapes, surface-id.ts's bare hex, or the
   // group-scoped `s`-prefixed form. Accepting an arbitrary string here would
   // let a plaintext topic name be carried as a surface id, which is the one
   // thing the whole surface-id design exists to prevent.
@@ -298,7 +298,7 @@ function readEnvelopeFields(candidate: Record<string, unknown>): ClusterEnvelope
  *
  * Order matters here. The group is checked BEFORE the signature so that two
  * unrelated groups sharing one multicast address spend nothing on each other's
- * traffic beyond a string compare — and so `claimedGroupId` comes back for the
+ * traffic beyond a string compare, and so `claimedGroupId` comes back for the
  * beacon listener even though the datagram itself is refused.
  */
 export function decodeEnvelope(raw: string, keyring: ClusterKeyring): EnvelopeDecodeResult {
@@ -342,7 +342,7 @@ export function decodeEnvelope(raw: string, keyring: ClusterKeyring): EnvelopeDe
  * Read the group a datagram claims without holding any key at all.
  *
  * This is how a node with clustering switched on but no membership enumerates
- * the groups it can see. It authenticates NOTHING — a beacon read this way is
+ * the groups it can see. It authenticates NOTHING, a beacon read this way is
  * an advertisement, and is treated as one: it can populate a list the operator
  * chooses from, and it can never cause this node to act.
  */

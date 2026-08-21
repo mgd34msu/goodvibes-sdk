@@ -53,7 +53,7 @@ const NOOP_CACHE_HIT_TRACKER: Pick<CacheHitTracker, 'recordTurn'> = {
 type OpenAIChatCreate = OpenAI['chat']['completions']['create'];
 
 /**
- * Dated fallback model list — used when no API key is configured (so a live
+ * Dated fallback model list, used when no API key is configured (so a live
  * /v1/models call isn't possible) and as the offline baseline when a live
  * call fails with no prior cache. Docs-verified (no OPENAI_API_KEY was
  * available in the environment to live-verify against /v1/models) against
@@ -75,7 +75,7 @@ export const OPENAI_DATED_STATIC_MODELS: readonly string[] = [
 export const OPENAI_DATED_STATIC_MODELS_AS_OF = '2026-07-12';
 
 /**
- * OpenAIProvider — wraps the official `openai` npm package.
+ * OpenAIProvider, wraps the official `openai` npm package.
  * Supports GPT-5 family models with full function/tool calling.
  */
 export class OpenAIProvider implements LLMProvider {
@@ -98,7 +98,7 @@ export class OpenAIProvider implements LLMProvider {
    * The `openai` client, resolved on first use rather than at construction.
    *
    * `openai` is an optionalDependency, and this class used to build its client
-   * in the constructor from a static import — which put the specifier on the
+   * in the constructor from a static import, which put the specifier on the
    * module graph of everything that reaches the provider registry, the daemon
    * included. One memoised promise per provider instance keeps the single
    * construction this class always did; every method that needs the client
@@ -310,7 +310,7 @@ export class OpenAIProvider implements LLMProvider {
    * Re-check OpenAI's live model list. Called at boot (background, respects
    * the on-disk TTL cache) and on-demand for a picker-open re-check or an
    * explicit user refresh (`force: true`, bypasses the TTL cache). Always
-   * resolves — falls back to the on-disk cache, then to the dated-static
+   * resolves, falls back to the on-disk cache, then to the dated-static
    * list, and reports the honest reason when live discovery fails rather
    * than silently keeping stale data with no explanation.
    */

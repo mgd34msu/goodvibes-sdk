@@ -19,8 +19,8 @@ wake engine itself spends on the same frame.
 
 ## What is compiled in
 
-Four SpeexDSP files — `preprocess.c`, `filterbank.c`, `fftwrap.c` (with
-`USE_SMALLFT`) and `smallft.c` — plus `gv-speex-preprocess.c`, the entry points.
+Four SpeexDSP files are compiled in: `preprocess.c`, `filterbank.c`, `fftwrap.c` (with
+`USE_SMALLFT`), and `smallft.c`, plus `gv-speex-preprocess.c`, the entry points.
 Nothing else from the library is present: no echo canceller, no resampler, no
 jitter buffer, no codec.
 
@@ -58,7 +58,7 @@ bun scripts/build-speexdsp-wasm.ts --check    # verifies the committed artifact,
 
 The build downloads the pinned tarball, refuses to continue unless its sha256
 matches, compiles, and rewrites
-`packages/sdk/src/platform/voice/capture/vendor/speexdsp-wasm.ts` — the base64
+`packages/sdk/src/platform/voice/capture/vendor/speexdsp-wasm.ts`: the base64
 of the module, its byte count, its sha256, and the pins above. `--check`
 recomputes the sha256 of the committed base64 and compares it with the recorded
 one, which is also asserted by `test/voice-noise-suppression.test.ts` on every
@@ -72,6 +72,6 @@ in which the filter is configured, unprovisioned, and therefore not running.
 ## Attribution
 
 SpeexDSP is BSD 3-clause, which requires its copyright notice, condition list
-and disclaimer to be reproduced with any redistribution — including the base64
+and disclaimer to be reproduced with any redistribution, including the base64
 copy inside the published package. `NOTICE.txt` is that reproduction and
 `SpeexDSP-1.2.1-COPYING.txt` is the upstream license verbatim.

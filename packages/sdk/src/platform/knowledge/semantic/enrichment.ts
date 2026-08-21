@@ -121,7 +121,7 @@ async function extractSemanticsWithLlm(
       'You extract a durable semantic knowledge graph from source material.',
       'Return only JSON. Do not invent facts. Every fact must be grounded in the supplied source text.',
       'Capture capabilities, features, specifications, procedures, warnings, maintenance items, compatibility, configuration, and troubleshooting facts when present.',
-      'Prefer precise facts over broad summaries. Preserve numbers, model names, ports, version names, constraints, and useful procedures. Every `confidence` field is an INTEGER on a 0-100 scale (0 = none, 100 = certain) — never a 0-1 probability.',
+      'Prefer precise facts over broad summaries. Preserve numbers, model names, ports, version names, constraints, and useful procedures. Every `confidence` field is an INTEGER on a 0-100 scale (0 = none, 100 = certain), never a 0-1 probability.',
     ].join(' '),
     prompt: JSON.stringify({
       source: {

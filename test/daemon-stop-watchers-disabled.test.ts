@@ -4,7 +4,7 @@
  * Regression: DaemonServer.stop() used to call
  * watcherRegistry.stopWatcher('daemon-heartbeat') UNCONDITIONALLY, but start()
  * only ever registers that watcher behind `watchers.enabled`, and stopWatcher()
- * calls requireFeatureGate('watcher-framework') — which THROWS when the gate is
+ * calls requireFeatureGate('watcher-framework'), which THROWS when the gate is
  * off. A daemon that ran with watchers disabled threw from stop(), and only
  * cli.ts / boot.ts's best-effort `.catch()` wrappers hid it. Watchers now
  * default ON, so this boots with `watchers.enabled` explicitly false to keep
@@ -26,7 +26,7 @@ let daemon: BootedDaemon;
 beforeAll(async () => {
   home = mkdtempSync(join(tmpdir(), 'stop-home-'));
   work = mkdtempSync(join(tmpdir(), 'stop-work-'));
-  // Watchers default ON now — recreate the disabled case this regression guards.
+  // Watchers default ON now, recreate the disabled case this regression guards.
   // bootDaemon's ConfigManager resolves <home>/.goodvibes/goodvibes/settings.json.
   const configDir = join(home, '.goodvibes', 'goodvibes');
   mkdirSync(configDir, { recursive: true });
@@ -46,7 +46,7 @@ afterAll(async () => {
   // the path this regression guards. That leaves the rest of the booted daemon
   // (schedulers, sweeps, watch registries) running for the remainder of the
   // shared test process, so the full teardown still has to happen here. The
-  // second stop is a no-op — idempotency is what the test above asserts.
+  // second stop is a no-op, idempotency is what the test above asserts.
   await daemon?.stop();
   rmSync(home, { recursive: true, force: true });
   rmSync(work, { recursive: true, force: true });

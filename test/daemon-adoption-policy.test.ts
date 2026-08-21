@@ -61,7 +61,7 @@ describe('decideDaemonAdoption', () => {
       expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: true, identity: goodvibes('1.0.0'), adoptOnly: true }).action).toBe('adopt');
     });
     test('ALWAYS version-checks: an incompatible daemon is refused even under adopt-only', () => {
-      // This is the agent-stub gap the hoist closes — it would have adopted blindly.
+      // This is the agent-stub gap the hoist closes, it would have adopted blindly.
       expect(decideDaemonAdoption({ ...base, enabled: true, portInUse: true, identity: goodvibes('9.9.9'), adoptOnly: true }).action).toBe('incompatible');
     });
   });

@@ -17,7 +17,7 @@
  * A sender can put their own `Authentication-Results:` line in the message
  * they submit. It lands BELOW the one the receiving server prepends, exactly
  * like a forged `Delivered-To`. So only the top-most header is read, and every
- * occurrence after it is discarded rather than searched for a better answer —
+ * occurrence after it is discarded rather than searched for a better answer,
  * searching would hand the forgery back the moment a real check said `fail`.
  *
  * This is only as trustworthy as the server that stamped it. Reading Gmail
@@ -39,7 +39,7 @@ export type SenderProtocolResult = 'pass' | 'fail' | 'none';
 /**
  * DKIM/SPF/DMARC outcomes, if the receiving side computed them.
  *
- * These answer "did this message travel the path its domain publishes?" — a
+ * These answer "did this message travel the path its domain publishes?", a
  * question about routing. They do not answer "may this message direct the
  * agent?", which is a question about the surface. A perfectly DKIM-signed
  * email from a domain that passes DMARC is still an email, and email is

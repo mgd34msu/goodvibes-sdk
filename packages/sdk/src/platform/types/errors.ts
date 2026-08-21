@@ -257,7 +257,7 @@ export class RenderError extends AppError {
 
 /**
  * Returns true when the provider rejected the call because the account cannot
- * pay for it — credits exhausted, balance too low, plan quota spent.
+ * pay for it, credits exhausted, balance too low, plan quota spent.
  *
  * This is NOT a rate limit and must never be retried on one. An Anthropic 400
  * carrying "Your credit balance is too low" was being reported as
@@ -284,7 +284,7 @@ export function isBillingOrCreditError(err: unknown): boolean {
  * back-off and retry vs. escalate the error.
  *
  * Callers that decide whether to WAIT AND RETRY the same endpoint must check
- * {@link isBillingOrCreditError} first — a spent account matches the quota
+ * {@link isBillingOrCreditError} first, a spent account matches the quota
  * wording here, and waiting does not fix it. Callers that decide whether to
  * ROTATE to another backend (SyntheticProvider) are right to treat both the
  * same way, since a different account may well have credit.
@@ -353,7 +353,7 @@ const TRANSPORT_FAILURE_MESSAGE_PATTERNS = [
 /**
  * Returns true when an error message (already reduced to a plain string, e.g. after
  * having crossed an event-bus boundary) looks like a transient network/transport
- * failure. This is a best-effort, message-only heuristic — prefer
+ * failure. This is a best-effort, message-only heuristic, prefer
  * {@link isNetworkTransportError} whenever the original error object is still
  * available, since it trusts the structured classification instead of guessing
  * from text.
@@ -370,7 +370,7 @@ export function isTransportFailureMessage(message: string): boolean {
  * When the error is an `HttpStatusError` (e.g. produced by
  * `createNetworkTransportError` in `@pellux/transport-http`), its structured
  * `category`/`recoverable` fields are trusted directly rather than re-derived
- * from the message text — that classification already accounts for TypeErrors,
+ * from the message text, that classification already accounts for TypeErrors,
  * POSIX network errno codes, and undici `UND_ERR_*` codes. The `instanceof`
  * check is branded (see HttpStatusError's Symbol.hasInstance), so a plain object
  * that merely happens to carry `recoverable`/`category` properties will not be
@@ -390,7 +390,7 @@ export function isNetworkTransportError(err: unknown): boolean {
 /**
  * Returns true when the error indicates the provider is non-transient
  * (auth failures, connection refused, host not found, timeout).
- * 500/503 are deliberately excluded — server errors are transient and
+ * 500/503 are deliberately excluded, server errors are transient and
  * eligible for retry. Only permanent auth/billing failures are flagged here.
  * Used to trigger graceful degradation / alternative model suggestions.
  */

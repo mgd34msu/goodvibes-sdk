@@ -25,7 +25,7 @@ export interface ProviderRouteRecord {
 
 /**
  * One recommended repair action. `description` states what and why;
- * `command` (when present) is the machine-executable form — a surface runs
+ * `command` (when present) is the machine-executable form, a surface runs
  * it directly instead of asking the user to retype a sentence.
  */
 export interface ProviderRecommendedAction {

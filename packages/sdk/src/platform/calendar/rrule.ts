@@ -1,9 +1,9 @@
 /**
- * rrule.ts — a pure RRULE reader for an honest, deliberately-bounded subset.
+ * rrule.ts, a pure RRULE reader for an honest, deliberately-bounded subset.
  *
  * The honesty rule (see the decision record): an event's recurrence is either
  * FULLY and correctly expanded, or NOT expanded at all with an explicit reason.
- * We never emit occurrences from a rule we do not completely honor — a half-honored
+ * We never emit occurrences from a rule we do not completely honor, a half-honored
  * BYMONTHDAY would put events on wrong dates, which is worse than not expanding.
  *
  * Fully supported (expanded to real occurrences):
@@ -11,7 +11,7 @@
  *  - INTERVAL (default 1)
  *  - COUNT  (occurrence cap)
  *  - UNTIL  (inclusive end bound; DATE or date-time, 'Z' or floating)
- *  - BYDAY  — ONLY for FREQ=WEEKLY with INTERVAL=1 and weekday-only tokens
+ *  - BYDAY , ONLY for FREQ=WEEKLY with INTERVAL=1 and weekday-only tokens
  *             (MO,TU,WE,TH,FR,SA,SU with no leading ordinal). Under those
  *             conditions WKST does not change the matched set, so it is ignored
  *             safely. Any BYDAY outside that condition is treated as unsupported.
@@ -147,7 +147,7 @@ function occurrenceStart(event: CalendarEvent, ymd: string): string {
  * Expand a (possibly recurring) event into concrete occurrences inside [window.from,
  * window.to] inclusive. A non-recurring event yields at most its single seed. An
  * event whose recurrence is `unsupported` yields ONLY its seed (if in-window),
- * flagged `isSeed`, never a fabricated series — the caller reads
+ * flagged `isSeed`, never a fabricated series, the caller reads
  * `event.recurrence.expansion` to label it "recurrence not fully expanded".
  */
 export function expandEvent(event: CalendarEvent, window: DateWindow): EventOccurrence[] {
@@ -222,7 +222,7 @@ export function expandEvent(event: CalendarEvent, window: DateWindow): EventOccu
 }
 
 /** A stepper that advances a UTC-midnight ms cursor by one FREQ*INTERVAL period. DAILY/WEEKLY
- *  only — MONTHLY/YEARLY need the anchor-day-preserving/skip-invalid logic in
+ *  only, MONTHLY/YEARLY need the anchor-day-preserving/skip-invalid logic in
  *  stepMonthlyOrYearly below, since naive Date.UTC(y, m+1, day) arithmetic normalizes an
  *  out-of-range day (e.g. day 31 in a 30-day month) into the NEXT month, permanently
  *  shifting the rest of the series (the bug this file used to have). */
@@ -240,8 +240,8 @@ function freqStepper(freq: string, interval: number): (ms: number) => number {
 /**
  * MONTHLY/YEARLY stepping, RFC 5545-correct: every candidate is measured from the
  * ORIGINAL anchor day-of-month (`seedDay`), never from a previously normalized/drifted
- * cursor. A candidate (year, month, seedDay) that is not a real calendar date — Feb 31,
- * Feb 29 in a non-leap year, Apr 31, etc. — does not exist and is SKIPPED entirely: it is
+ * cursor. A candidate (year, month, seedDay) that is not a real calendar date, Feb 31,
+ * Feb 29 in a non-leap year, Apr 31, etc., does not exist and is SKIPPED entirely: it is
  * never passed to `emit`, so it never consumes COUNT and never appears in the output.
  *
  * Citation (RFC 5545 §3.3.10, "Recurrence Rule"): "Recurrence rules may generate
@@ -264,7 +264,7 @@ function stepMonthlyOrYearly(
   const seedYear = seed.getUTCFullYear();
   const seedMonth = seed.getUTCMonth();
   const seedDay = seed.getUTCDate();
-  // Generous candidate ceiling (not an occurrence ceiling — MAX_OCCURRENCES already
+  // Generous candidate ceiling (not an occurrence ceiling, MAX_OCCURRENCES already
   // bounds emitted occurrences via `emit`/COUNT): covers the worst case of a monthly
   // anchor that only lands ~7 times a year (a 31st) needing many more candidate
   // months than emitted occurrences, and a yearly Feb-29 anchor needing up to 4x the
@@ -277,7 +277,7 @@ function stepMonthlyOrYearly(
     const month = freq === 'MONTHLY'
       ? (((seedYear * 12 + seedMonth + k * interval) % 12) + 12) % 12
       : seedMonth;
-    // Bail out once even the FIRST of this candidate month is past every hard stop —
+    // Bail out once even the FIRST of this candidate month is past every hard stop,
     // further k only move further forward, so nothing later can help either. This
     // check runs before the validity check so a run of skipped (invalid) candidates
     // near the end of the window does not burn through maxCandidates.

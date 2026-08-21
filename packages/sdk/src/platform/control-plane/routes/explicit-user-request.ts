@@ -1,9 +1,9 @@
 /**
- * explicit-user-request.ts — the second half of a confirmation gate.
+ * explicit-user-request.ts, the second half of a confirmation gate.
  *
  * `confirm: true` says the CALL was reviewed. `explicitUserRequest` says a
  * person asked for it, and it travels in `context.metadata.explicitUserRequest`
- * — a field of `GatewayMethodInvocationContext`, so an SDK-registered handler
+ *, a field of `GatewayMethodInvocationContext`, so an SDK-registered handler
  * can read it, which is what the product-side wrapper this replaces did.
  *
  * The rule here is: an explicit `false` refuses, `true` and absent proceed.
@@ -13,7 +13,7 @@
  *
  *  - **No live transport sets the field.** Neither the daemon's HTTP dispatch
  *    nor its WebSocket dispatch populates `context.metadata`, so requiring
- *    `true` would refuse every real caller — the verbs would answer 403
+ *    `true` would refuse every real caller, the verbs would answer 403
  *    forever, which is not a stricter guarantee, it is a dead capability.
  *  - **The daemon's job includes callers that are honestly not a person.**
  *    Scheduled work, triggers and channel-driven work are exactly why these

@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * CommunicationEvent — typed runtime events for structured agent communication.
+ * CommunicationEvent, typed runtime events for structured agent communication.
  */
 
 export type CommunicationKind =
@@ -62,7 +62,7 @@ export type CommunicationEvent =
     }
   | {
       /**
-       * Honest "the agent actually consumed this at its turn boundary" signal —
+       * Honest "the agent actually consumed this at its turn boundary" signal,
        * distinct from COMMUNICATION_DELIVERED, which fires eagerly at send()
        * time and therefore cannot mean "seen by the agent" (see
        * AgentMessageBus.send / orchestrator-runner's per-turn inbox drain).

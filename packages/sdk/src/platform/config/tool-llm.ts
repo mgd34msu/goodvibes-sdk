@@ -1,5 +1,5 @@
 /**
- * Tool LLM — internal LLM access for tool operations.
+ * Tool LLM, internal LLM access for tool operations.
  *
  * Provides a lightweight interface for tool-internal LLM calls:
  * semantic diff, auto-heal, commit messages, prompt hooks, etc.
@@ -111,7 +111,7 @@ export interface ToolLLMChatOptions {
 }
 
 /**
- * ToolLLM — lightweight LLM interface for internal tool operations.
+ * ToolLLM, lightweight LLM interface for internal tool operations.
  *
  * Usage:
  *   const result = await toolLLM.chat('Generate a commit message for: ...');

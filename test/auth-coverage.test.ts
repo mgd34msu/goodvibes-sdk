@@ -82,7 +82,7 @@ describe('createBrowserTokenStore — storage edge cases', () => {
   test('setToken("") removes the key (falsy string)', async () => {
     const storage = makeStorage({ 'goodvibes.token': 'existing' });
     const store = createBrowserTokenStore({ storage });
-    // cast to bypass type — exercises the falsy branch
+    // cast to bypass type, exercises the falsy branch
     await store.setToken('' as unknown as string);
     expect(await store.getToken()).toBeNull();
   });
@@ -117,7 +117,7 @@ describe('createBrowserTokenStore — storage edge cases', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createMemoryTokenStore — initial token
+// createMemoryTokenStore, initial token
 // ---------------------------------------------------------------------------
 
 describe('createMemoryTokenStore — initial token', () => {
@@ -134,7 +134,7 @@ describe('createMemoryTokenStore — initial token', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createGoodVibesAuthClient — read-only resolver (getAuthToken)
+// createGoodVibesAuthClient, read-only resolver (getAuthToken)
 // ---------------------------------------------------------------------------
 
 describe('createGoodVibesAuthClient — read-only getAuthToken resolver', () => {
@@ -177,7 +177,7 @@ describe('createGoodVibesAuthClient — read-only getAuthToken resolver', () => 
 });
 
 // ---------------------------------------------------------------------------
-// createGoodVibesAuthClient — observer auth transition events
+// createGoodVibesAuthClient, observer auth transition events
 // ---------------------------------------------------------------------------
 
 describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
@@ -269,7 +269,7 @@ describe('createGoodVibesAuthClient — observer onAuthTransition', () => {
 });
 
 // ---------------------------------------------------------------------------
-// createGoodVibesAuthClient — tokenStore and sessionManager getters
+// createGoodVibesAuthClient, tokenStore and sessionManager getters
 // ---------------------------------------------------------------------------
 
 describe('createGoodVibesAuthClient — getters', () => {

@@ -1,5 +1,5 @@
 /**
- * group-admissions.ts — the JOIN and REJOIN exchange, both ends of it.
+ * group-admissions.ts, the JOIN and REJOIN exchange, both ends of it.
  *
  * Split out of the runtime because it is the part with the security property in
  * it: everything here either decides whether a machine may enter the group, or
@@ -55,23 +55,23 @@ export interface AdmissionHost {
 /**
  * Why an admission request failed, when the caller must act differently.
  *
- * - `unanswered` — nobody replied. The ordinary case for a machine that booted
+ * - `unanswered`, nobody replied. The ordinary case for a machine that booted
  *   before its peers, and it resolves itself when they come up.
  *
- * - `refused` — a member said no AND proved it was a member when it said so.
+ * - `refused`, a member said no AND proved it was a member when it said so.
  *   This is final: the machine is out, waiting changes nothing, and the
  *   operator has to put it back by hand. Only an AUTHENTICATED refusal reaches
  *   this, which is what stops anything on the network from talking a machine
  *   out of its own group by shouting at it.
  *
- * - `unverifiable-replies` — replies arrived and none of them could be
+ * - `unverifiable-replies`, replies arrived and none of them could be
  *   authenticated. Deliberately NOT final, because this machine genuinely
  *   cannot tell the two possible causes apart: it may have been away across a
  *   removal and no longer recognise any current member, or a stranger may be
  *   sending it noise. It is worth telling the operator about and it is not
  *   worth asserting a removal over.
  *
- * - `not-sent` — the request never left this machine.
+ * - `not-sent`, the request never left this machine.
  */
 export type AdmissionFailure = 'unanswered' | 'refused' | 'unverifiable-replies' | 'not-sent';
 
@@ -98,7 +98,7 @@ export class GroupAdmissionService {
 
   constructor(private readonly host: AdmissionHost) {}
 
-  /** Fail an in-flight request — on shutdown, or when its deadline passes. */
+  /** Fail an in-flight request, on shutdown, or when its deadline passes. */
   expire(now: number, reason: string): void {
     if (this.pending && this.pending.deadline <= now) this.settle({ ok: false, failure: 'unanswered', reason });
   }
@@ -155,7 +155,7 @@ export class GroupAdmissionService {
     );
     if (!decision.admit) {
       // `identity-did-not-match` on this path means the join-key signature did
-      // not verify — say THAT, because a mistyped key is the likely cause and
+      // not verify, say THAT, because a mistyped key is the likely cause and
       // the operator needs to be pointed at it rather than at a generic refusal.
       await this.refuse(
         checked.envelope.nodeId,
@@ -228,7 +228,7 @@ export class GroupAdmissionService {
         reason,
       });
       // Say no OUT LOUD. Staying silent here is what left a removed machine
-      // waiting out its full timeout and then reporting that nobody answered —
+      // waiting out its full timeout and then reporting that nobody answered,
       // a healthy-looking daemon, permanently out of the group, with nothing
       // anywhere naming the reason or the fix.
       await this.refuseRejoin(peeked.nodeId, reason);
@@ -237,7 +237,7 @@ export class GroupAdmissionService {
     const body = parseRejoinRequestBody(peeked.body);
     // The agreement key may legitimately have changed (a rebuilt machine that
     // kept its identity key). The IDENTITY key never rotates and is never taken
-    // from the datagram — accepting a new one there would let anybody rewrite
+    // from the datagram, accepting a new one there would let anybody rewrite
     // the credential they are about to be checked against.
     const agreementKey = body?.agreementKey ?? member.agreementKey;
     const refreshed = admitMember(state, {
@@ -276,8 +276,8 @@ export class GroupAdmissionService {
    * Tell a returning machine, in a way it can actually verify, that it is out.
    *
    * Signed with THIS machine's identity key rather than the group key. The
-   * recipient cannot check the group key — a removal rotated it and that is
-   * precisely why it is being refused — but it can check this machine against
+   * recipient cannot check the group key, a removal rotated it and that is
+   * precisely why it is being refused, but it can check this machine against
    * the roster it stored before it went away, and this machine was on it.
    *
    * It carries no secret and grants nothing. The worst a forged one can do is
@@ -385,7 +385,7 @@ export class GroupAdmissionService {
   }
 
   /**
-   * Broadcast a REJOIN — the zero-touch return.
+   * Broadcast a REJOIN, the zero-touch return.
    *
    * A machine that has been switched off long enough to have missed every group
    * key rotation, and a join-key change on top, sends this when it starts and
@@ -443,8 +443,8 @@ export class GroupAdmissionService {
    * The reply to a REJOIN.
    *
    * There is NO path here that accepts a reply on the strength of the seal
-   * alone. The seal gives confidentiality — only this machine can read the
-   * grant — and says nothing whatever about who sent it, so accepting on it
+   * alone. The seal gives confidentiality, only this machine can read the
+   * grant, and says nothing whatever about who sent it, so accepting on it
    * would let anything on the network hand a returning machine a group key
    * nobody accepts and keep it out of its own group indefinitely.
    *

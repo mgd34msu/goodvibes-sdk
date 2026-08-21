@@ -1,10 +1,10 @@
 /**
- * grants.ts — pre-registered, digest-pinned action grants.
+ * grants.ts, pre-registered, digest-pinned action grants.
  *
  * A firing trigger runs an agent turn or a grant registered here. It never
  * composes a new command at fire time: arbitrary shell on an unattended event
  * is the one path with no person in the loop. A grant closes that gap by moving
- * the human moment forward — the exact argv is written down and confirmed while
+ * the human moment forward, the exact argv is written down and confirmed while
  * a person is present, hashed, and the hash is what the trigger carries.
  *
  * At fire time the digest is recomputed from the stored grant and must match
@@ -19,7 +19,7 @@ import { validateArgv } from './validation.js';
 import type { TriggerActionGrant } from './types.js';
 
 /**
- * Canonical digest input. Covers everything that decides what actually runs —
+ * Canonical digest input. Covers everything that decides what actually runs,
  * the executable, its arguments and its working directory. The description and
  * timestamps are deliberately excluded so a typo fix in prose does not
  * invalidate a grant, while any change to the command does.
@@ -50,7 +50,7 @@ export interface RegisterGrantInput {
 export function createActionGrant(input: RegisterGrantInput): TriggerActionGrant {
   const { command, args } = validateArgv(input.command, input.args, 'grant');
   if (!input.confirmedBy || input.confirmedBy.trim().length === 0) {
-    throw new Error('An action grant must record who confirmed it — an unattributed grant is not a confirmation.');
+    throw new Error('An action grant must record who confirmed it, an unattributed grant is not a confirmation.');
   }
   if (!input.description || input.description.trim().length === 0) {
     throw new Error('An action grant must carry a description of what it does, so the confirmation is informed.');
@@ -84,19 +84,19 @@ export function verifyGrant(
 ): GrantVerification {
   const grant = grants.find((entry) => entry.id === grantId);
   if (!grant) {
-    return { ok: false, reason: `action grant "${grantId}" is not registered — refusing to fire` };
+    return { ok: false, reason: `action grant "${grantId}" is not registered, refusing to fire` };
   }
   const recomputed = computeGrantDigest(grant);
   if (recomputed !== grant.digest) {
     return {
       ok: false,
-      reason: `action grant "${grantId}" was modified after it was confirmed (stored digest does not match its contents) — refusing to fire`,
+      reason: `action grant "${grantId}" was modified after it was confirmed (stored digest does not match its contents), refusing to fire`,
     };
   }
   if (recomputed !== pinnedDigest) {
     return {
       ok: false,
-      reason: `action grant "${grantId}" no longer matches the digest this trigger was created against — re-confirm the grant to re-pin it`,
+      reason: `action grant "${grantId}" no longer matches the digest this trigger was created against, re-confirm the grant to re-pin it`,
     };
   }
   return { ok: true, grant };

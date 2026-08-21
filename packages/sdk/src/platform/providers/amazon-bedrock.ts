@@ -4,7 +4,7 @@
 // itself calls internally (core/auth.js's `getAuthHeaders`) to sign runtime
 // `invoke` requests against `bedrock-runtime.<region>.amazonaws.com`. The
 // signer is reused below, unmodified, to sign a GET against the control-plane
-// `bedrock.<region>.amazonaws.com` host instead — same AWS service
+// `bedrock.<region>.amazonaws.com` host instead, same AWS service
 // ('bedrock'), same credential resolution, different path.
 import { loadBedrockAuth, loadBedrockSdk } from './optional-bedrock.js';
 import { AnthropicSdkProvider } from './anthropic-sdk-provider.js';
@@ -15,7 +15,7 @@ import { fetchWithTimeout, instrumentedFetch } from '../utils/fetch-with-timeout
 const BEDROCK_LIVE_FETCH_TIMEOUT_MS = 15_000;
 
 /**
- * Dated fallback model list — used when no AWS credentials are configured
+ * Dated fallback model list, used when no AWS credentials are configured
  * (so a live ListFoundationModels call isn't possible) and as the offline
  * baseline when a live call fails with no prior cache. Re-dated 2026-07-13
  * when live discovery (below) was wired up; the entries themselves are still
@@ -70,7 +70,7 @@ interface BedrockListFoundationModelsResponse {
  * AWS_BEARER_TOKEN_BEDROCK is set (same header AnthropicBedrock sends as its
  * `authToken`), otherwise the same SigV4 signer against explicit
  * AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY or, failing those, the AWS
- * credential provider chain (profile, IAM role, etc.) — no new credential
+ * credential provider chain (profile, IAM role, etc.), no new credential
  * source, no new env vars.
  *
  * Exported so `amazon-bedrock-mantle.ts` can reuse this exact control-plane
@@ -178,7 +178,7 @@ export class AmazonBedrockProvider extends AnthropicSdkProvider {
    * Re-check Bedrock's live foundation-model list. Called at boot
    * (background, respects the on-disk TTL cache) and on-demand for a
    * picker-open re-check or an explicit user refresh (`force: true`,
-   * bypasses the TTL cache). Always resolves — falls back to the on-disk
+   * bypasses the TTL cache). Always resolves, falls back to the on-disk
    * cache, then to the dated-static list, and reports the honest reason
    * when live discovery fails rather than silently keeping stale data with
    * no explanation.

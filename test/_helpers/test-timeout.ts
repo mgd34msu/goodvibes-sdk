@@ -4,13 +4,13 @@ export const EVENT_SETTLE_MS = Number(process.env['SETTLE_MS'] ?? 50);
  * The smallest ceiling any `waitFor` is allowed to run with, and its default.
  *
  * `waitFor` is a poll-until-condition: it returns the instant the predicate
- * holds, so a LARGER ceiling costs a fast host exactly nothing — it only
+ * holds, so a LARGER ceiling costs a fast host exactly nothing, it only
  * changes how long a genuinely stuck condition takes to be reported. The small
  * numbers call sites were passing (250 ms is the common one, across 29 files
  * that use this helper) are therefore not budgets for the work; they are
  * assumptions about how promptly this process gets scheduled. Under a realistic
- * concurrent load those assumptions failed —
- * `Timed out waiting for test predicate after 250ms` — while the code under
+ * concurrent load those assumptions failed,
+ * `Timed out waiting for test predicate after 250ms`, while the code under
  * test was doing exactly what it should.
  *
  * A floor is safe here because no call site uses a `waitFor` rejection as its
@@ -51,8 +51,8 @@ export async function settleEvents(ms = EVENT_SETTLE_MS): Promise<void> {
  * Race a promise against a ceiling. Same reasoning as WAIT_FLOOR_MS: the
  * default was 1 000 ms, which is an idle machine's number for work this suite
  * routinely does against real sockets and real subprocesses. Explicit values
- * are respected as given — unlike waitFor, this one CAN legitimately be used to
- * bound something short — only the default moves.
+ * are respected as given, unlike waitFor, this one CAN legitimately be used to
+ * bound something short, only the default moves.
  */
 export async function withTestTimeout<T>(promise: Promise<T>, timeoutMs = 30_000, message?: string): Promise<T> {
   let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -84,14 +84,14 @@ type ConsoleCaptureMethod = 'debug' | 'error' | 'log' | 'warn';
  *
  * `console` is process-wide, and this suite runs every file in ONE process, so
  * an unfiltered collector collects whatever else in the process happens to log
- * while it is installed — and other files demonstrably leave background work
+ * while it is installed, and other files demonstrably leave background work
  * running (a sibling counter in this suite once recorded 4962 requests where 2
  * were expected). Every `toHaveLength` assertion over a console capture is
  * therefore a measurement of the whole process, not of the code under test.
  *
  * Pass `match` to collect only the lines this test is about. Anything else is
- * forwarded to the real console untouched — filtering must never swallow
- * someone else's output — and simply is not counted. Omitting `match` keeps the
+ * forwarded to the real console untouched, filtering must never swallow
+ * someone else's output, and simply is not counted. Omitting `match` keeps the
  * original collect-everything behaviour, which is fine for a capture whose
  * assertions do not depend on a count.
  */

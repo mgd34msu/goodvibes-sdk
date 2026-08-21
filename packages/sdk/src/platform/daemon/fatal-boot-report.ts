@@ -1,5 +1,5 @@
 /**
- * fatal-boot-report.ts — saying why, on a stream, before the process stops.
+ * fatal-boot-report.ts, saying why, on a stream, before the process stops.
  *
  * ── The failure this exists to close ──────────────────────────────────────
  *
@@ -13,7 +13,7 @@
  * The mechanism was not buffering and not a bypassed handler. It was simpler:
  * the daemon entrypoint that actually ships writes the reason to the activity
  * LOGGER and then exits, and at that point in boot the logger has no
- * destination yet — so the line goes nowhere and no stream is ever touched.
+ * destination yet, so the line goes nowhere and no stream is ever touched.
  * A `logger.error` is not a disclosure. Only a write to a file descriptor is.
  *
  * ── Why `writeSync(2, …)` and not `process.stderr.write` ──────────────────
@@ -39,7 +39,7 @@
  * exports-map entry). The agent's copy split the descriptor write into its own
  * `fatal-boot-write.ts` and looped `writeSync` until every byte was accepted,
  * because that repo also routes `--help`, `--version`, completion output and
- * the whole `status` render through these functions — a single `writeSync` of
+ * the whole `status` render through these functions, a single `writeSync` of
  * several kilobytes into a pipe can return a short count, truncating the
  * output rather than silencing it (a quieter version of the same defect this
  * module exists to close). That loop is strictly better than a bare one-shot
@@ -89,7 +89,7 @@ export function writeFatalLine(line: string): void {
 }
 
 /**
- * The stdout twin, for output that must survive an exit that follows it —
+ * The stdout twin, for output that must survive an exit that follows it,
  * `--install-service` prints the unit path and the follow-up commands and then
  * exits immediately, which is the same race.
  */
@@ -102,8 +102,8 @@ export function writeExitingStdoutLine(line: string): void {
  * to the caller.
  *
  * The stream write happens FIRST and synchronously. The activity log is
- * attempted after, because it is the part that can fail — it needs a
- * configured destination, a writable directory, and a flush — and the
+ * attempted after, because it is the part that can fail, it needs a
+ * configured destination, a writable directory, and a flush, and the
  * guarantee this function makes is the stream line, not the log line.
  */
 export function reportFatalBootFailure(error: unknown, context = 'goodvibes daemon host'): void {

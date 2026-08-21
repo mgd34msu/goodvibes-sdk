@@ -1,5 +1,5 @@
 /**
- * runtime/memory — SDK-owned memory governance layer.
+ * runtime/memory, SDK-owned memory governance layer.
  *
  * The daemon defends its own footprint: a registry of every retained cache, a
  * seam to pause deferrable background jobs, and a governor that samples RSS/heap,

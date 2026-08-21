@@ -1,12 +1,12 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Scheduler (see CHANGELOG 0.38.0) — pure capacity-matching helpers, no side
+ * Scheduler (see CHANGELOG 0.38.0), pure capacity-matching helpers, no side
  * effects. The hard departure from WrfcController's pairwise
  * engineer<->reviewer binding (startReview / the startPlannedFix planned
  * workstream): each tick, for every phase in ordinal order, free capacity
  * slots (capacity minus in-flight) are filled from whichever waiting items
- * are queued for that phase — an item advances the instant ITS gate passes,
+ * are queued for that phase, an item advances the instant ITS gate passes,
  * claimed by whatever slot happens to be free, never bound to a specific
  * sibling item.
  */
@@ -18,8 +18,8 @@ export function dependencySatisfied(workstream: Workstream, dep: WorkItem): bool
   if (dep.state !== 'passed') return false;
   if (workstream.releasePolicy !== 'reviewed-and-merged') return true;
   // Reviewed-and-merged: passed means every phase (incl. the adversarial slice
-  // review) passed; the merge must ALSO have landed. Claimed-done — an agent
-  // report, an in-flight phase, or passed-but-unmerged — releases nothing.
+  // review) passed; the merge must ALSO have landed. Claimed-done, an agent
+  // report, an in-flight phase, or passed-but-unmerged, releases nothing.
   if (workstream.isolation !== 'worktree') return true;
   return dep.mergeState === 'merged';
 }
@@ -37,7 +37,7 @@ export function firstPhase(workstream: Workstream): Phase | undefined {
  * 'fix'-kind phases: a dynamically-inserted fix phase sits at an ordinal
  * after its review (see engine.ts findOrInsertFixPhase) but is reachable
  * ONLY via the explicit review-failure re-route, never as "what comes next"
- * for an item whose review already passed — otherwise a later item that
+ * for an item whose review already passed, otherwise a later item that
  * never needed fixing would wrongly detour through it.
  */
 export function nextPhaseAfter(workstream: Workstream, ordinal: number): Phase | undefined {
@@ -48,7 +48,7 @@ export function phaseById(workstream: Workstream, phaseId: string): Phase | unde
   return workstream.phases.find((p) => p.id === phaseId);
 }
 
-/** The nearest preceding review-kind phase — the return target after a dynamically-inserted fix phase's gate passes. Purely structural (survives serialization with zero extra bookkeeping). */
+/** The nearest preceding review-kind phase, the return target after a dynamically-inserted fix phase's gate passes. Purely structural (survives serialization with zero extra bookkeeping). */
 export function reviewPhaseBefore(workstream: Workstream, phase: Phase): Phase | undefined {
   return sortedPhases(workstream).filter((p) => p.ordinal < phase.ordinal && p.kind === 'review').pop();
 }
@@ -60,11 +60,11 @@ export interface PhaseClaim {
 
 /**
  * Whether an item's inter-item dependencies (BIG-3 item 2) are all satisfied,
- * and — when not — WHY, split into dependencies still in flight vs. ones that
+ * and, when not, WHY, split into dependencies still in flight vs. ones that
  * have terminally failed. Pure (no side effects): the engine's per-tick
  * dependency pre-pass (applyDependencyGates, engine.ts) calls this and applies
  * the state/blockedReason transition. Missing dependency ids (no item in the
- * workstream matches) are ignored here — assembly (fromPlanProposal) already
+ * workstream matches) are ignored here, assembly (fromPlanProposal) already
  * asserts referential integrity, so a dangling id at runtime is treated as
  * "not blocking" rather than an eternal block.
  */
@@ -73,7 +73,7 @@ export interface DependencyStatus {
   readonly ready: boolean;
   /** Titles of dependencies still pending/in flight (neither passed nor failed). */
   readonly waiting: string[];
-  /** Titles of dependencies that have terminally FAILED — a recoverable block, not a terminal one for the dependent. */
+  /** Titles of dependencies that have terminally FAILED, a recoverable block, not a terminal one for the dependent. */
   readonly failed: string[];
 }
 
@@ -84,7 +84,7 @@ export function dependencyStatus(workstream: Workstream, item: WorkItem): Depend
     const dep = workstream.items.find((i) => i.id === depId);
     if (!dep) {
       // No item with this id. It may be a NON-LEAF best-of-N source id that was
-      // expanded into sibling attempts (attempts.ts) — resolve it to the group.
+      // expanded into sibling attempts (attempts.ts), resolve it to the group.
       // Otherwise it is a truly dangling id (assembly guarantees this can't
       // happen); ignore rather than block forever.
       const groupStatus = attemptGroupDependencyStatus(workstream, depId);
@@ -104,13 +104,13 @@ export function dependencyStatus(workstream: Workstream, item: WorkItem): Depend
 /**
  * Resolve a dependency on a best-of-N SOURCE id (an id that was expanded into
  * sibling attempts, so no live item carries it) against the group's outcome:
- *   - 'satisfied' — the winner was picked and its branch merged onto base (the
+ *   - 'satisfied', the winner was picked and its branch merged onto base (the
  *     losers are cleaned), so a dependent may build on the selected result.
- *   - 'waiting'   — attempts are still running or held for a pick, or the winner
+ *   - 'waiting'  , attempts are still running or held for a pick, or the winner
  *     is picked but its merge has not landed yet.
- *   - 'failed'    — every attempt failed, so no winner can be picked (a
+ *   - 'failed'   , every attempt failed, so no winner can be picked (a
  *     recoverable block for the dependent, mirroring a failed ordinary dep).
- *   - 'not-a-group' — no sibling references this id; it is not a best-of-N group.
+ *   - 'not-a-group', no sibling references this id; it is not a best-of-N group.
  */
 function attemptGroupDependencyStatus(
   workstream: Workstream,
@@ -134,7 +134,7 @@ function bestOfNWaitingLabel(workstream: Workstream, sourceId: string): string {
 }
 
 /**
- * Which (item, phase) pairs have free capacity to claim RIGHT NOW. Pure —
+ * Which (item, phase) pairs have free capacity to claim RIGHT NOW. Pure,
  * no side effects, no budget check (the caller applies budget.checkBudget
  * before actually claiming, since budget is a *decision*, not a capacity
  * fact this function should own).
@@ -143,7 +143,7 @@ function bestOfNWaitingLabel(workstream: Workstream, sourceId: string): string {
  * just 'pending'/'awaiting-capacity': a budget block is a recoverable
  * decision (see BudgetCeiling/WorkItemState docs, types.ts), never a
  * capacity fact, so a previously-blocked item must be reconsidered on every
- * tick the instant a slot is free — the caller's budget.checkBudget call
+ * tick the instant a slot is free, the caller's budget.checkBudget call
  * re-decides it fresh each time, honestly re-blocking it if the ceiling
  * still refuses.
  */
@@ -159,7 +159,7 @@ export function computeClaims(workstream: Workstream): PhaseClaim[] {
     );
     // Deepest-remaining-path first within the ready set, so the critical path
     // never idles; cluster is the tiebreak (adjacent same-cluster tasks run
-    // consecutively — the bounded warm-adjacency the planner's clusters buy).
+    // consecutively, the bounded warm-adjacency the planner's clusters buy).
     const depths = remainingDepths(workstream);
     waiting.sort((a, b) =>
       (depths.get(b.id) ?? 0) - (depths.get(a.id) ?? 0)

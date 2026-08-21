@@ -15,7 +15,7 @@ import {
  * This is the canonical options type for the browser entrypoint
  * (`@pellux/goodvibes-sdk/browser`). The web entrypoint
  * (`@pellux/goodvibes-sdk/web`) exposes the same shape as
- * `WebGoodVibesSdkOptions` — a named alias retained for ergonomic imports.
+ * `WebGoodVibesSdkOptions`, a named alias retained for ergonomic imports.
  */
 export interface BrowserGoodVibesSdkOptions
   extends Omit<GoodVibesSdkOptions, 'baseUrl' | 'fetch' | 'WebSocketImpl'> {

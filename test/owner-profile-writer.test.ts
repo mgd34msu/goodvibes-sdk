@@ -91,7 +91,7 @@ describe('§14.14 — odd content survives a write to another section byte-for-b
       'Notes',
       'Something I invented',
     ]);
-    // The fenced `timezone:` is NOT the timezone field — the real one is.
+    // The fenced `timezone:` is NOT the timezone field, the real one is.
     expect(projection.fields.get('location.timezone')?.value).toBe('America/Detroit');
     expect(projection.fields.get('location.timezone')?.lineIndex).toBe(6);
     // `units: metric` sits under a heading that is not a known section, so it is
@@ -133,7 +133,7 @@ describe('§14.14 — odd content survives a write to another section byte-for-b
     await store.set({ ...OWNER, fieldId: 'location.timezone', value: 'Europe/Lisbon', date: '2026-07-27' });
 
     // Via read(), because a heading he invented is closed tier and section()
-    // serves only the open tier — see the §14.19 containment suite.
+    // serves only the open tier, see the §14.19 containment suite.
     const invented = store.read().sections.find((section) => section.heading === 'Something I invented');
     expect(invented).toBeDefined();
     expect(invented?.prose.map((line) => line.text)).toEqual(['units: metric', 'some key: some value']);
@@ -206,7 +206,7 @@ describe('§14.15 — his edits are authoritative and are never restored', () =>
 
     expect(store.get('location.city')).toBeUndefined();
     expect(store.provenance('location.city').present).toBe(false);
-    // The history is still readable — it is his, and deleting it is his call —
+    // The history is still readable, it is his, and deleting it is his call,
     // but it is history, not a value.
     expect(store.provenance('location.city').superseded).toHaveLength(1);
 

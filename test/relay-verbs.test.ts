@@ -4,7 +4,7 @@
  * `relay.reachability.get` and `relay.pairing.mint`.
  *
  * The reachability controller shipped on every daemon that turns the relay on,
- * and the only way to read it was `DaemonServer.getRelayReachability()` — an
+ * and the only way to read it was `DaemonServer.getRelayReachability()`, an
  * in-process method. A surface in the same process could see the state; every
  * client over the wire could only say "unavailable", which the terminal did,
  * honestly and uselessly.

@@ -1,5 +1,5 @@
 /**
- * routes/relay.ts — the handlers behind `relay.reachability.get` and
+ * routes/relay.ts, the handlers behind `relay.reachability.get` and
  * `relay.pairing.mint`.
  *
  * Both read the SAME controller the facade's `getRelayReachability()` hands

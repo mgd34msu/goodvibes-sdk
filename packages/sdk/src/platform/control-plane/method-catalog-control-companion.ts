@@ -3,7 +3,7 @@
  *
  * Companion-chat method catalog registration, split out of
  * method-catalog-control-core.ts (see CHANGELOG 1.0.0) to stay under the repo's 800-line
- * hand-authored file cap (see scripts/check-line-cap.ts) — this block is
+ * hand-authored file cap (see scripts/check-line-cap.ts), this block is
  * self-contained (companion.chat.* descriptors only) and control.ts folds it
  * in unchanged, so this is a pure file-organization move with no API surface
  * change beyond the delete-honesty split it carries (companion.chat.sessions.close
@@ -48,7 +48,7 @@ const COMPANION_CHAT_MESSAGE_PAYLOAD_PROPERTIES: Record<string, Record<string, u
  * Companion chat refuses a message carrying no text AND no attachments
  * (companion/companion-chat-routes.ts: `content, body, or attachments are
  * required`, 400 INVALID_ARGUMENT). None of the three is required on its own, so
- * a flat `required` array cannot state this — listing any one of them would
+ * a flat `required` array cannot state this, listing any one of them would
  * refuse an attachment-only message, which is a call that works today. The
  * union says exactly what the handler does.
  */
@@ -67,7 +67,7 @@ function companionChatMessageInputSchema(
 /**
  * `provider` and `model` name one route together and the handler refuses half
  * of it (`provider and model must be supplied together`, 400
- * INVALID_MODEL_ROUTE). Neither is required alone — this is a dependency
+ * INVALID_MODEL_ROUTE). Neither is required alone, this is a dependency
  * between two optional fields, which is what `dependentRequired` is for.
  */
 const COMPANION_MODEL_ROUTE_DEPENDENCY: Readonly<Record<string, readonly string[]>> = {
@@ -160,7 +160,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
   methodDescriptor({
     id: 'companion.chat.sessions.delete',
     title: 'Delete Companion Chat Session',
-    description: 'Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store — this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.',
+    description: 'Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store, this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'DELETE', path: '/api/companion/chat/sessions/{sessionId}' },
@@ -195,7 +195,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
   methodDescriptor({
     id: 'companion.chat.messages.retry',
     title: 'Regenerate Companion Chat Response',
-    description: 'Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.',
+    description: 'Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED, kept in the message list and on disk, flagged as retained history, never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/retry' },
@@ -212,7 +212,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
   methodDescriptor({
     id: 'companion.chat.messages.edit',
     title: 'Edit Companion Chat Message And Branch',
-    description: 'Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED — retained as history, never deleted — a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.',
+    description: 'Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED, retained as history, never deleted, a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/edit' },
@@ -233,7 +233,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
   methodDescriptor({
     id: 'companion.chat.messages.steer',
     title: 'Steer Companion Chat (Interrupt And Send)',
-    description: 'Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: "cancelled"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message\'s turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: "queued"`, answered in order) — steer is the explicit jump-the-line verb.',
+    description: 'Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: "cancelled"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message\'s turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: "queued"`, answered in order), steer is the explicit jump-the-line verb.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/messages/steer' },
@@ -249,7 +249,7 @@ export const builtinGatewayControlCompanionMethodDescriptors: readonly GatewayMe
   methodDescriptor({
     id: 'companion.chat.turns.cancel',
     title: 'Cancel Companion Chat Turn',
-    description: 'Stop the in-flight turn for a companion chat session — a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: "cancelled"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note — later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.',
+    description: 'Stop the in-flight turn for a companion chat session, a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: "cancelled"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note, later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.',
     category: 'companion',
     scopes: ['write:sessions'],
     http: { method: 'POST', path: '/api/companion/chat/sessions/{sessionId}/turns/cancel' },

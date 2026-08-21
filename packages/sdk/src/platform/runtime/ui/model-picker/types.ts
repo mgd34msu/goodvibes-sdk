@@ -1,7 +1,7 @@
 /**
  * Model picker UI data types.
  *
- * Purely data-oriented — no rendering logic. These types are produced by
+ * Purely data-oriented, no rendering logic. These types are produced by
  * ModelPickerDataProvider and consumed by renderers/components.
  */
 import type { ProviderStatus } from '../../store/domains/provider-health.js';
@@ -103,17 +103,17 @@ export interface ModelPickerEntry {
   // ── Context window ─────────────────────────────────────────────────────
   /**
    * Effective context window in tokens.
-   * Use this for display and budgeting — it is the authoritative value.
+   * Use this for display and budgeting, it is the authoritative value.
    */
   readonly contextWindow: number;
   /**
    * How `contextWindow` was determined.
-   * - `provider_api`   — reported by the provider's /v1/models endpoint
-   * - `configured_cap` — set explicitly by the user (config file or /context window)
-   * - `observed_limit` — learned from a provider rejecting a longer request
-   * - `fallback`       — default constant (no config or API source)
-   * - `openrouter`     — sourced from OpenRouter model data (built-in catalog models)
-   * - `registry`       — static value in the built-in model registry
+   * - `provider_api`  , reported by the provider's /v1/models endpoint
+   * - `configured_cap`, set explicitly by the user (config file or /context window)
+   * - `observed_limit`, learned from a provider rejecting a longer request
+   * - `fallback`      , default constant (no config or API source)
+   * - `openrouter`    , sourced from OpenRouter model data (built-in catalog models)
+   * - `registry`      , static value in the built-in model registry
    */
   readonly contextWindowSource:
     | 'provider_api'

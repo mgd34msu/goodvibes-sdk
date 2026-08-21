@@ -4,11 +4,11 @@
  * Unit tests covering the 5 cache correctness invariants introduced in 0.18.38
  * and fixed/hardened in 0.18.39.
  *
- * I2(a) setModelContextCap invalidation — both customModels and discoveredModels paths
+ * I2(a) setModelContextCap invalidation, both customModels and discoveredModels paths
  * I2(b) registerRuntimeProvider unregister callback invalidates cache
- * I2(c) recentEvents ring buffer ordering — count < cap and count >= cap
+ * I2(c) recentEvents ring buffer ordering, count < cap and count >= cap
  * I2(d) _syncScheduled coalesces burst of rememberEvent calls into 1 dispatch per tick
- * I2(e) getMessagesForLLM reference identity — same ref on cache hit, fresh ref after mutation
+ * I2(e) getMessagesForLLM reference identity, same ref on cache hit, fresh ref after mutation
  */
 import { describe, expect, test, afterAll, beforeEach, mock } from 'bun:test';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -122,7 +122,7 @@ describe('I2(a): setModelContextCap invalidation reflected in listModels()', () 
     // Mutate via setModelContextCap (customModels path)
     registry.setModelContextCap('custom-test:custom-model-a', 8192);
 
-    // Must reflect the new cap — cache must be invalidated
+    // Must reflect the new cap, cache must be invalidated
     const after = registry.listModels();
     const updated = after.find((m) => m.registryKey === 'custom-test:custom-model-a');
     expect(updated?.registryKey).toBe('custom-test:custom-model-a');
@@ -182,7 +182,7 @@ describe('I2(b): registerRuntimeProvider unregister callback invalidates cache',
     // Invoke unregister callback
     unregister();
 
-    // Cache must be invalidated — model must be gone
+    // Cache must be invalidated, model must be gone
     const after = registry.listModels();
     expect(after.some((m) => m.registryKey === 'plugin-provider:plugin-model')).toBe(false);
   });
@@ -201,7 +201,7 @@ describe('I2(c): recentEvents ring buffer ordering', () => {
   // and listRecentEvents().
 
   function driveEvents(gw: ControlPlaneGateway, n: number): void {
-    // handleEvent is not public — use the public `handleControlEvent` if available,
+    // handleEvent is not public, use the public `handleControlEvent` if available,
     // or drive via the `handleRequest` path. Since ControlPlaneGateway exposes
     // `getSnapshot` which reports ring state, we drive events through
     // `trackRequest` public method if available, else call the private method
@@ -314,7 +314,7 @@ describe('I2(d): _syncScheduled coalesces burst of rememberEvent calls', () => {
     // Read first event timestamp before the second event overwrites _lastEventAt
     const firstEventAt = gw_any._lastEventAt;
     gw_any.rememberEvent('last', {});
-    // Read second event timestamp — this is what the dispatch MUST carry
+    // Read second event timestamp, this is what the dispatch MUST carry
     const secondEventAt = gw_any._lastEventAt;
 
     // Both events scheduled a single setImmediate (coalesced). The dispatch

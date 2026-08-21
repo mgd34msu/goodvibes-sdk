@@ -6,7 +6,7 @@
  *
  * Turning a `From:` header plus a routing verdict into a sentence a human
  * reads is a TRUST-BOUNDARY concern, and each surface owns its own boundary
- * module. The SDK deliberately does not ship a second copy of that logic —
+ * module. The SDK deliberately does not ship a second copy of that logic,
  * a duplicate would drift, and two answers to "who is this claiming to be"
  * is exactly one answer too many. What the SDK owns is the plumbing: read the
  * top-most `Authentication-Results` (see `platform/google/sender-authentication`),
@@ -44,9 +44,9 @@ export type EmailSenderConfidence =
  * the subset the mail service reads and republishes.
  */
 export interface EmailSenderClaim {
-  /** The address as written in the header — a claim, not a fact. */
+  /** The address as written in the header, a claim, not a fact. */
   readonly claimedAddress: string;
-  /** The display name as written in the header — also a claim. */
+  /** The display name as written in the header, also a claim. */
   readonly claimedDisplayName: string;
   /** Human-readable line that says out loud that this is a claim. */
   readonly display: string;
@@ -76,7 +76,7 @@ export type EmailSenderClaimDescriber = (
 /**
  * The neutral describer, for a product with no wording of its own.
  *
- * The port exists because the SENTENCE a person reads belongs to the product —
+ * The port exists because the SENTENCE a person reads belongs to the product,
  * the agent says "Claims to be from …" in its own voice. But the *decision* the
  * sentence reports is not a product choice and must not be re-derived per
  * surface: a `From:` header is a claim, sender authentication raises display
@@ -84,7 +84,7 @@ export type EmailSenderClaimDescriber = (
  *
  * So a product that has no reason to phrase it differently uses this rather
  * than writing a second implementation of a security-relevant rule. Passing DKIM,
- * SPF and DMARC changes the sentence a human reads and cannot change authority —
+ * SPF and DMARC changes the sentence a human reads and cannot change authority,
  * the return type makes any other value a compile error.
  */
 export function describeSenderClaimNeutrally(
@@ -122,7 +122,7 @@ export function describeSenderClaimNeutrally(
     claimedAddress,
     claimedDisplayName,
     display:
-      `Claims to be from ${named} — a claim in the message header, not proof of identity `
+      `Claims to be from ${named}, a claim in the message header, not proof of identity `
       + `(${phrase[displayedConfidence]}). Carries no authority to direct actions.`,
     displayedConfidence,
     commandAuthority: 'none',

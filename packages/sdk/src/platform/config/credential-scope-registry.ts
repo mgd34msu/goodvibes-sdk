@@ -1,5 +1,5 @@
 /**
- * credential-scope-registry.ts — every credential this platform stores, and
+ * credential-scope-registry.ts, every credential this platform stores, and
  * whether the daemon needs it.
  *
  * The rule, in one sentence, and it is the owner's:
@@ -10,14 +10,14 @@
  *   captured it.
  *
  * What went wrong without this. `daemon-secret-keys.ts` already derives daemon
- * ownership from daemon-owned CONFIG paths, and that works — for credentials a
+ * ownership from daemon-owned CONFIG paths, and that works, for credentials a
  * config path names. It cannot see the others. `SLACK_BOT_TOKEN`,
  * `CLOUDFLARE_API_TOKEN`, `GOODVIBES_CALENDAR_GOOGLE_TOKENS`, the relay identity
  * keypair, the per-subscription calendar feed keys: bare names an operator or a
  * subsystem invented, that nothing derives, so nothing filed them in the daemon
  * tier. Each went to whichever silo the capturing surface happened to use, and
- * the daemon — the process that actually sends the Slack message, opens the
- * tunnel, reads the calendar — could not read any of them. The symptom is always
+ * the daemon, the process that actually sends the Slack message, opens the
+ * tunnel, reads the calendar, could not read any of them. The symptom is always
  * the same and always looks like something else: a capability that reports
  * itself unconfigured while working credentials sit on the same disk.
  *
@@ -30,7 +30,7 @@
  * ── How this file makes the wrong thing hard ────────────────────────────────
  *
  * 1. Every credential key is DECLARED here with a typed scope and a reason.
- *    `daemon-needed` or `surface-local` — there is no third answer and no
+ *    `daemon-needed` or `surface-local`, there is no third answer and no
  *    default, so "which is it" is a question someone answered on purpose.
  *
  * 2. `isDaemonNeededSecretKey` consults this registry, and `SecretsManager.set`
@@ -50,7 +50,7 @@
  * A credential is surface-local ONLY when the daemon can never be the thing
  * that uses it. That is a narrow set: state that is meaningless off the machine
  * or the process that made it. It is NOT "the surface captured it", and it is
- * NOT "only that surface has UI for it" — the daemon does the work whichever
+ * NOT "only that surface has UI for it", the daemon does the work whichever
  * surface set it up.
  */
 
@@ -69,8 +69,8 @@ export interface CredentialScopeDeclaration {
   /** The secret-store key, or a prefix when the suffix is user-chosen (see `match`). */
   readonly key: string;
   /**
-   * `exact` — the key is this literal string.
-   * `prefix` — the key starts with this string; the rest is a name a person or
+   * `exact`, the key is this literal string.
+   * `prefix`, the key starts with this string; the rest is a name a person or
    *            a provider chose (a calendar subscription's name, a provider id).
    */
   readonly match: 'exact' | 'prefix';
@@ -102,9 +102,9 @@ export const CREDENTIAL_SCOPE_DECLARATIONS: readonly CredentialScopeDeclaration[
   // do not derive from anything, which is exactly how they were missed.
   //
   // TELEGRAM_BOT_TOKEN is the one that proved it. The derived spelling
-  // GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN migrated fine, while the bare name —
+  // GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN migrated fine, while the bare name,
   // the spelling the config reference actually points at, and the one on the
-  // owner's disk — was declared nowhere, so the registry answered "not a
+  // owner's disk, was declared nowhere, so the registry answered "not a
   // declared platform credential" and it never moved from any surface. The
   // migration would have reported success having moved a different key.
   //
@@ -160,8 +160,8 @@ export const CREDENTIAL_SCOPE_DECLARATIONS: readonly CredentialScopeDeclaration[
   { key: 'GOODVIBES_CLOUDFLARE_OPERATOR_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon authenticates to its own edge worker with it.' },
   { key: 'GOODVIBES_CLOUDFLARE_WORKER_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'Issued by the daemon for clients; the daemon is the authority that mints and checks it.' },
   { key: 'GOODVIBES_CLOUDFLARE_ACCESS_SERVICE_TOKEN', match: 'exact', scope: 'daemon-needed', why: 'The daemon presents it to Cloudflare Access on its own behalf.' },
-  { key: 'relay.identity', match: 'exact', scope: 'daemon-needed', why: 'The relay identity IS the daemon\'s identity. Written with no scope, it defaulted to the project tier — so one machine grew a different identity per directory the daemon happened to start in.' },
-  { key: 'push.vapid.keypair', match: 'exact', scope: 'daemon-needed', why: 'The daemon signs web-push notifications with it, and every subscription already registered is bound to that one public key — a second keypair in another tier silently invalidates them all.' },
+  { key: 'relay.identity', match: 'exact', scope: 'daemon-needed', why: 'The relay identity IS the daemon\'s identity. Written with no scope, it defaulted to the project tier, so one machine grew a different identity per directory the daemon happened to start in.' },
+  { key: 'push.vapid.keypair', match: 'exact', scope: 'daemon-needed', why: 'The daemon signs web-push notifications with it, and every subscription already registered is bound to that one public key, a second keypair in another tier silently invalidates them all.' },
 
   // ── Calendar ─────────────────────────────────────────────────────────────
   // The daemon answers "what is on my calendar" and creates events on a
@@ -203,7 +203,7 @@ export const CREDENTIAL_SCOPE_DECLARATIONS: readonly CredentialScopeDeclaration[
  * Model-provider credentials, derived from the provider catalog.
  *
  * The daemon runs the model. Without a provider credential it cannot answer at
- * all — which is why this one stayed hidden: the key usually resolves from the
+ * all, which is why this one stayed hidden: the key usually resolves from the
  * environment, so the STORED copy only matters when it does not, and by then
  * the daemon is the one that needs it and the TUI is the one that has it.
  *
@@ -263,7 +263,7 @@ export function findCredentialScopeDeclaration(key: string): CredentialScopeDecl
  * True when the daemon is the reader-of-record for this credential.
  *
  * Two sources, deliberately: a credential a daemon-owned CONFIG path names
- * (derived, never hand-maintained — see daemon-secret-keys.ts), and a
+ * (derived, never hand-maintained, see daemon-secret-keys.ts), and a
  * credential declared above (bare names nothing derives). Either one is
  * sufficient; a key covered by neither keeps the scope its caller asks for.
  */

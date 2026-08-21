@@ -1,5 +1,5 @@
 /**
- * gcloud.ts — the gcloud driver for the OAuth (Path B) setup flow.
+ * gcloud.ts, the gcloud driver for the OAuth (Path B) setup flow.
  *
  * Every subprocess call goes through the injected `GoogleCommandPort` (see
  * `types.ts`) so this module is fully testable without a real gcloud install,

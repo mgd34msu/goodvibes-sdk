@@ -7,7 +7,7 @@ import type { ReasoningEffortSpec } from './reasoning-effort.js';
  * (`lm-studio.ts`, `ollama.ts`, `llama-cpp.ts`).
  *
  * Marked `declared` rather than `catalog` because it is our own table for these
- * backends, not live feed data — and rather than `family` because it must
+ * backends, not live feed data, and rather than `family` because it must
  * outrank the vendor family table. A local `deepseek-r1:70b` shares its name
  * with DeepSeek's hosted API but not its levels: the hosted row offers only
  * `high` and `max`, neither of which the ollama adapter maps, while the four

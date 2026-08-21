@@ -1,5 +1,5 @@
 /**
- * Orchestration domain state — task graphs, node lifecycles, and bounded
+ * Orchestration domain state, task graphs, node lifecycles, and bounded
  * recursive execution telemetry for higher-level worker coordination.
  */
 

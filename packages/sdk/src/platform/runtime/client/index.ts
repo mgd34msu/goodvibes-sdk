@@ -4,15 +4,15 @@
  * The client SEAMS: what a surface product does at each place its own process
  * stops and the daemon's begins.
  *
- * `client-services.ts` next door is the COMPOSITION shape — what a surface's
+ * `client-services.ts` next door is the COMPOSITION shape, what a surface's
  * turn needs in-process. This directory is the other half of the same split:
  * for every capability that composition deliberately does NOT hold (approvals,
  * daemon-owned config and credentials, inbound session dispatch, conversation
  * rewind, device posture, the fleet and task registers, the spines), the policy
  * a surface applies when reaching the daemon for it.
  *
- * Every module here is policy over injected I/O. The I/O is one shape —
- * {@link DaemonVerbCaller}, two methods — and resolving what it points at stays
+ * Every module here is policy over injected I/O. The I/O is one shape,
+ * {@link DaemonVerbCaller}, two methods, and resolving what it points at stays
  * with the product, because deciding which daemon this surface trusts is a
  * trust-boundary concern the SDK core deliberately never reaches into.
  *

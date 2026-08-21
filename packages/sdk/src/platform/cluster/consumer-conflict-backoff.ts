@@ -1,10 +1,10 @@
 /**
- * consumer-conflict-backoff.ts — how long to wait before contesting a surface
+ * consumer-conflict-backoff.ts, how long to wait before contesting a surface
  * again after the provider refused it.
  *
  * A consumer conflict is not a transient network fault. It means a DIFFERENT
- * process holds the credential — Telegram answers the second getUpdates on one
- * bot token with a 409 naming the other consumer — and no amount of retrying
+ * process holds the credential, Telegram answers the second getUpdates on one
+ * bot token with a 409 naming the other consumer, and no amount of retrying
  * decides which process should have it. Only a person can.
  *
  * That makes a flat retry interval a hot loop against somebody else's API. On a
@@ -15,7 +15,7 @@
  * 90s timeout the same loop simply runs every 15s, forever.
  *
  * Kept out of election.ts because it is a policy with no dependency on the
- * state machine — the same reason `shouldYieldSurface` lives in ranking.ts —
+ * state machine, the same reason `shouldYieldSurface` lives in ranking.ts,
  * and because it can then be tested directly instead of through a cluster.
  */
 
@@ -39,7 +39,7 @@ export interface ConsumerConflictBackoffInput {
    * This, not the wall clock since the previous refusal, is what decides
    * whether the streak resets. Time since the previous refusal includes the
    * backoff and the re-probe that follow one, so early on it always exceeds
-   * the delay just waited and the streak would reset every round — which is
+   * the delay just waited and the streak would reset every round, which is
    * exactly the flat retry rate this exists to remove.
    */
   readonly servedForMs: number;

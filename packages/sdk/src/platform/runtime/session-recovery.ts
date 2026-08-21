@@ -8,7 +8,7 @@
  * last-session pointer); both halves resolve every path through the shared
  * scope layer in session-persistence-scope.ts.
  *
- * SUPERSESSION — when is a snapshot still live crash data?
+ * SUPERSESSION, when is a snapshot still live crash data?
  * A snapshot is offered when it is strictly newer than ITS OWN session's
  * durable store file (`<scope>/sessions/<sessionId>.jsonl`), or when that
  * session has no store file at all. It is NOT judged against the last-session
@@ -16,17 +16,17 @@
  * under that older rule, one message typed in an unrelated session (or in a
  * `--continue`d resume of this one) silently buried a snapshot that still held
  * unsaved messages, with no UI path left to reach it. Judging a snapshot
- * against its own session's store keeps that impossible — an unrelated
+ * against its own session's store keeps that impossible, an unrelated
  * session's activity cannot bury it, and a clean shutdown of the snapshot's
  * own session both writes the store AND deletes the snapshot, so the surviving
  * snapshot of a session whose store is older is a crash by definition.
  *
- * LIVENESS — is anything still writing it?
+ * LIVENESS, is anything still writing it?
  * The unsolicited boot offer additionally skips any snapshot whose file was
  * touched within LIVE_REFRESH_WINDOW_MS: a file being rewritten right now
  * belongs to a process that is still running, not to a crash. The signal is
  * the file's own mtime rather than a marker file, because a marker only
- * exists in versions that write one — see LIVE_REFRESH_WINDOW_MS. The
+ * exists in versions that write one, see LIVE_REFRESH_WINDOW_MS. The
  * explicit per-session probe (`checkRecoveryForSession`) does NOT apply this
  * rule: it answers a direct question about a named session, and the honest
  * answer there is what the caller asked for.
@@ -96,7 +96,7 @@ function listRecoveryFiles(dir: string): Array<{ path: string; mtimeMs: number }
     try {
       entries.push({ path, mtimeMs: statSync(path).mtimeMs });
     } catch {
-      // File vanished between readdir and stat — skip.
+      // File vanished between readdir and stat, skip.
     }
   }
   return entries.sort((a, b) => b.mtimeMs - a.mtimeMs);
@@ -104,7 +104,7 @@ function listRecoveryFiles(dir: string): Array<{ path: string; mtimeMs: number }
 
 /**
  * Every recovery snapshot visible to `options`, newest-first by mtime: the
- * scoped recovery directory, plus — for the surface form only — the legacy
+ * scoped recovery directory, plus, for the surface form only, the legacy
  * shared directory (see legacySharedRecoveryDir). One list, used by every
  * "which snapshot is THE snapshot" decision (check / load / consume / remove),
  * so the file that is offered is always exactly the file that is retired.
@@ -121,13 +121,13 @@ function listRecoveryCandidates(options?: SessionPersistenceOptions): Array<{ pa
  * The ONE snapshot file a recovery operation acts on, or undefined when there
  * is none. With a `sessionId`, that session's file wherever it actually lives
  * (canonical first, then the legacy shared dir); without one, the newest
- * snapshot across every visible location — the same file `checkRecoveryFile`
+ * snapshot across every visible location, the same file `checkRecoveryFile`
  * offers.
  *
  * In the corner case where the same session id has a snapshot in BOTH
  * locations, this resolves to the canonical one; the legacy duplicate stays
  * until it is itself the newest candidate. Retiring exactly one identified
- * file is the invariant — no operation here ever clears a directory.
+ * file is the invariant, no operation here ever clears a directory.
  */
 function pickRecoverySnapshotPath(
   options: SessionPersistenceOptions | undefined,
@@ -188,13 +188,13 @@ export function writeRecoveryFile(
 /**
  * Delete a per-session recovery snapshot (after a clean save, or once its
  * conversation has been restored). With an explicit `sessionId` only that
- * session's file is removed — for the surface form, this also tries the
+ * session's file is removed, for the surface form, this also tries the
  * legacy shared per-session file (see legacySharedRecoveryFile), so a
  * snapshot restored via the dual-read fallback is retired from wherever it
  * actually lived. Without a `sessionId`, every recovery snapshot in the
  * scoped directory is cleared: this is the explicit FULL-RESET path, for a
  * caller that genuinely means "discard all crash state for this surface". It
- * is deliberately NOT what the prompted/silent recovery flows use —
+ * is deliberately NOT what the prompted/silent recovery flows use,
  * `consumeRecovery`, `removeRecoveryPoint` and `autoRestoreRecovery` retire
  * exactly the one snapshot file they offered or loaded, so accepting one
  * session's snapshot can never destroy another session's. The full reset also
@@ -216,7 +216,7 @@ export function deleteRecoveryFile(options?: SessionPersistenceOptions, sessionI
         try {
           unlinkSync(legacySharedRecoveryFile(requireSurface(options), sessionId));
         } catch {
-          // missing file is fine — most of the time nothing lives here
+          // missing file is fine, most of the time nothing lives here
         }
       }
       return;
@@ -257,7 +257,7 @@ function readRecoveryMeta(recoveryFile: string): RecoveryFileInfo | null {
 
 /**
  * The mtime of `sessionId`'s durable store file, or null when that session has
- * no store file (never cleanly saved, or its file was deleted) — and also null
+ * no store file (never cleanly saved, or its file was deleted), and also null
  * for a snapshot that carries no session id at all, which nothing in the store
  * can correspond to.
  */
@@ -272,7 +272,7 @@ function sessionStoreMtimeMs(sessionsDir: string, sessionId: string): number | n
 
 /**
  * How recently a snapshot must have been written to count as ACTIVELY
- * REFRESHED — i.e. a live process is still maintaining it, so it is that
+ * REFRESHED, i.e. a live process is still maintaining it, so it is that
  * process's working state and not an orphaned crash.
  *
  * Surfaces rewrite a live session's snapshot on a fixed cadence (60s in the
@@ -280,7 +280,7 @@ function sessionStoreMtimeMs(sessionsDir: string, sessionId: string): number | n
  * being kept alive by something running right now. This is deliberately
  * evidence-on-disk rather than a marker file a writer has to opt into:
  * markers only exist in versions that know to write them, so a session
- * running an older build — or any other product sharing this directory —
+ * running an older build, or any other product sharing this directory,
  * looks abandoned to a marker check and gets offered as a crash forever. That
  * is not hypothetical: an older build left running across an upgrade rewrites
  * its snapshot every minute into the legacy shared directory the new build
@@ -310,7 +310,7 @@ function isActivelyRefreshed(snapshotMtimeMs: number, nowMs: number, windowMs: n
 
 /**
  * True when this snapshot was already superseded by a clean save of its OWN
- * session — the only thing that can make a snapshot stale.
+ * session, the only thing that can make a snapshot stale.
  *
  * No store file for that session (including a snapshot with no session id, and
  * a legacy shared-directory snapshot whose session was never saved under the
@@ -319,7 +319,7 @@ function isActivelyRefreshed(snapshotMtimeMs: number, nowMs: number, windowMs: n
  * Equal mtimes count as superseded, deliberately. Filesystem mtime resolution
  * and clock skew make "same timestamp" indistinguishable from "the store was
  * written last", and a snapshot whose content the store already holds is worth
- * nothing — so the tie goes to not re-offering data the user already has.
+ * nothing, so the tie goes to not re-offering data the user already has.
  */
 function isSupersededByOwnStore(sessionsDir: string, sessionId: string, snapshotMtimeMs: number): boolean {
   const storeMtimeMs = sessionStoreMtimeMs(sessionsDir, sessionId);
@@ -336,7 +336,7 @@ function isSupersededByOwnStore(sessionsDir: string, sessionId: string, snapshot
  * shared recovery directory (see legacySharedRecoveryDir) as a standing
  * one-time offer for a pre-upgrade snapshot that predates per-project
  * scoping entirely. That directory cannot be mapped to a project
- * deterministically — a snapshot found there might belong to a different
+ * deterministically, a snapshot found there might belong to a different
  * project that happened to share this surfaceRoot before scoping existed.
  * This is a deliberate, accepted tradeoff: offering a possibly-unrelated
  * snapshot once is judged better than silently losing a genuinely-relevant
@@ -346,14 +346,14 @@ function isSupersededByOwnStore(sessionsDir: string, sessionId: string, snapshot
  * unsolicited boot-time question, and asking about state nobody lost is the
  * defect this rule exists to prevent (see LIVE_REFRESH_WINDOW_MS for why
  * freshness rather than a marker file is the signal). An explicit request
- * about a named session still answers honestly — see checkRecoveryForSession.
+ * about a named session still answers honestly, see checkRecoveryForSession.
  */
 export function checkRecoveryFile(options?: SessionPersistenceOptions): RecoveryFileInfo | null {
   return findLiveRecoveryCandidate(options)?.info ?? null;
 }
 
 /**
- * Whether ONE specific session has a live crash snapshot — a snapshot strictly
+ * Whether ONE specific session has a live crash snapshot, a snapshot strictly
  * newer than that session's own durable store file, under exactly the rule
  * `checkRecoveryFile` uses. Returns its meta, or null when that session has no
  * snapshot or its snapshot was already superseded.
@@ -382,7 +382,7 @@ export function checkRecoveryForSession(surface: SessionSurface, sessionId: stri
 
 /**
  * The live crash snapshot to offer, as BOTH its meta and the exact path it was
- * read from — so a caller that acts on the offer (autoRestoreRecovery) retires
+ * read from, so a caller that acts on the offer (autoRestoreRecovery) retires
  * precisely the file it restored, rather than re-deriving a path from the
  * meta's session id and hoping the two agree.
  *
@@ -407,7 +407,7 @@ function findLiveRecoveryCandidate(
       try {
         info = readRecoveryMeta(entry.path);
       } catch {
-        // Unreadable/partial snapshot — skip to the next candidate.
+        // Unreadable/partial snapshot, skip to the next candidate.
         continue;
       }
       if (!info) continue;
@@ -421,7 +421,7 @@ function findLiveRecoveryCandidate(
   }
 }
 
-/** Parse a recovery snapshot file's contents into a SessionSnapshot. Throws on any read/parse failure — callers wrap this in their own try/catch. */
+/** Parse a recovery snapshot file's contents into a SessionSnapshot. Throws on any read/parse failure, callers wrap this in their own try/catch. */
 function parseRecoveryFile(recoveryFile: string): SessionSnapshot {
   const raw = readFileSync(recoveryFile, 'utf-8');
   const lines = raw.split('\n').filter(Boolean);
@@ -468,7 +468,7 @@ function parseRecoveryFile(recoveryFile: string): SessionSnapshot {
  * (the same one checkRecoveryFile offers) is loaded.
  *
  * The surface form ALSO dual-reads the legacy shared recovery directory when
- * the canonical (scoped) location has nothing — see checkRecoveryFile's doc
+ * the canonical (scoped) location has nothing, see checkRecoveryFile's doc
  * comment for the cross-project caveat this accepts, and
  * legacySharedRecoveryDir for why it can never be migrated instead.
  */
@@ -495,7 +495,7 @@ function loadRecoveryConversationAt(recoveryFile: string): SessionSnapshot | nul
 }
 
 /**
- * A one-line receipt sink — the structural shape of FeatureAnnouncementStore's
+ * A one-line receipt sink, the structural shape of FeatureAnnouncementStore's
  * announce-once queue (`record(id, text)`), so auto-restore can enqueue its
  * receipt into the same attach-time queue surfaces drain, without this module
  * depending on the config layer.
@@ -548,7 +548,7 @@ export function autoRestoreRecovery(
       logger.warn('[Recovery] receipt enqueue failed', { error: summarizeError(error) });
     }
   }
-  // The snapshot has served its purpose — retire exactly the file that was
+  // The snapshot has served its purpose, retire exactly the file that was
   // restored (never a directory sweep, and never a path re-derived from the
   // meta's session id, which a snapshot with an empty/foreign id would not
   // resolve back to).
@@ -567,22 +567,22 @@ export interface RecoveryConsumeResult {
 /**
  * The "yes, resume it" primitive for a consumer's PROMPTED recovery flow (as
  * opposed to `autoRestoreRecovery`'s silent path): loads a session's recovery
- * snapshot and deletes its file in one operation — load-then-delete. If the
+ * snapshot and deletes its file in one operation, load-then-delete. If the
  * load finds nothing (or fails; `loadRecoveryConversation` converts a read
  * failure into `null` rather than throwing), the snapshot file is left
- * untouched — retirement only follows a successful load, so a bad read can
+ * untouched, retirement only follows a successful load, so a bad read can
  * never destroy data that was never actually recovered.
  *
  * Contract: the SDK never applies the loaded snapshot to any conversation on
  * its own here. The caller decides what happens to the messages it gets
- * back — this keeps the prompted path honest, so retirement can't be
+ * back, this keeps the prompted path honest, so retirement can't be
  * forgotten (unlike a hand-rolled load-then-maybe-delete sequence, where a
  * consumer can forget the delete half entirely).
  *
  * Exactly ONE snapshot is retired: the file that was loaded, in whichever
  * directory it actually lives (canonical or the legacy shared dir). Omitting
- * `sessionId` selects the newest snapshot — the same one `checkRecoveryFile`
- * offers — and still retires only that one file. Another session's
+ * `sessionId` selects the newest snapshot, the same one `checkRecoveryFile`
+ * offers, and still retires only that one file. Another session's
  * never-loaded snapshot is never collateral damage.
  */
 export function consumeRecovery(surface: SessionSurface, sessionId?: string): RecoveryConsumeResult {
@@ -613,13 +613,13 @@ export interface RecoveryRemoveResult {
  * The "no, and remove it" primitive for a consumer's prompted recovery flow:
  * deletes a session's recovery snapshot WITHOUT loading it, and reports
  * honestly whether there was anything there to delete. Like `consumeRecovery`,
- * this never touches any conversation object — it only clears the on-disk
+ * this never touches any conversation object, it only clears the on-disk
  * snapshot.
  *
  * Symmetrically with `consumeRecovery`, exactly ONE snapshot is retired: the
  * identified one, in whichever directory it actually lives. Omitting
  * `sessionId` declines the snapshot currently being offered (the newest) and
- * removes only that file — every other session's snapshot survives untouched.
+ * removes only that file, every other session's snapshot survives untouched.
  */
 export function removeRecoveryPoint(surface: SessionSurface, sessionId?: string): RecoveryRemoveResult {
   const options: SessionPersistenceOptions = { surface };

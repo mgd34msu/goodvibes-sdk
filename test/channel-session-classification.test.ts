@@ -3,7 +3,7 @@
  *
  * The owner's private Telegram chat produced a shared control-plane session
  * with `kind: 'tui'`, `project: '/home/buzzkill'`, and
- * `attributedPrincipalId: 'principal:unknown'` — a private chat classified as
+ * `attributedPrincipalId: 'principal:unknown'`, a private chat classified as
  * an operator terminal session rooted at a filesystem project, and the owner
  * himself attributed as an unknown sender in his own chat even though the
  * channel's own ingress policy had already authorized him.
@@ -12,7 +12,7 @@
  *
  *  - a channel-originated session (no explicit kind/project, the shape every
  *    channel adapter's submitMessage call has) is classified 'channel', with
- *    no filesystem project root — never 'tui' merely because that happens to
+ *    no filesystem project root, never 'tui' merely because that happens to
  *    be the daemon's process cwd;
  *  - the pre-existing product-surface paths (TUI/webui/agent, which pass kind
  *    explicitly) are completely unaffected;
@@ -175,11 +175,11 @@ describe('a channel rollover re-derives classification from the surface, never b
 
     expect(submission.created).toBe(true);
     expect(submission.session.id).not.toBe('sess-e354d678');
-    // Re-derived from the incoming surface — not copied from the stale record.
+    // Re-derived from the incoming surface, not copied from the stale record.
     expect(submission.session.kind).toBe('channel');
     expect(submission.session.project).toBe('unknown');
     expect(submission.session.metadata.rolledOverFromSessionId).toBe('sess-e354d678');
-    // The predecessor is untouched history — its own wrong shape is not rewritten.
+    // The predecessor is untouched history, its own wrong shape is not rewritten.
     expect(broker.getSession('sess-e354d678')?.kind).toBe('tui');
     expect(broker.getSession('sess-e354d678')?.project).toBe('/home/buzzkill');
     expect(notices).toHaveLength(1);
@@ -240,7 +240,7 @@ describe('old-shape persisted session records load safely (no crash, no quaranti
     // The exact shape of the live defect: a persisted record whose `kind` is a
     // legitimately-known value ('tui') that is simply WRONG for what actually
     // created it (surfaceKinds says telegram). Loading it must not crash or
-    // quarantine the store, and it must not be silently rewritten in place —
+    // quarantine the store, and it must not be silently rewritten in place,
     // the fix is that the NEXT session a channel message lands in gets
     // classified correctly (see the rollover describe block above), not that
     // this file gets patched by a migration.
@@ -283,7 +283,7 @@ describe('a channel-policy-authorized owner sender is attributed as the known ow
   test('attributeInboundSession: the seeded owner attributes to the owner principal, not unknown', async () => {
     const policy = makePolicy();
     // Channel policy self-seeds its owner allowlist from the first identified
-    // sender — this IS "channel policy already authorized" for this userId.
+    // sender, this IS "channel policy already authorized" for this userId.
     await policy.evaluateIngress({ surface: 'telegram', userId: '678', conversationKind: 'direct', text: 'hi' });
 
     const principals = new PrincipalRegistry(new PrincipalStore(':memory:'));

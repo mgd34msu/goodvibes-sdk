@@ -41,7 +41,7 @@ interface MutableToolCallRecord {
 }
 
 /**
- * ToolCallsPanel — diagnostic data provider for tool call telemetry.
+ * ToolCallsPanel, diagnostic data provider for tool call telemetry.
  *
  * Listens to all tool domain events and builds a per-call timeline.
  * Completed calls are transferred to a bounded history buffer.

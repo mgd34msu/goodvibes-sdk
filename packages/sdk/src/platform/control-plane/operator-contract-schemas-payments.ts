@@ -4,7 +4,7 @@
  * Input/output JSON schemas for the `payments.*` operator methods.
  *
  * Note what is absent and must stay absent: no schema here carries a card
- * number, an expiry, a CVV or a cardholder name — in EITHER direction. Card
+ * number, an expiry, a CVV or a cardholder name, in EITHER direction. Card
  * material goes to the daemon secret store through `payments.cards.create` and
  * nothing reads it back out over the control plane. `last4` is the only thing
  * about the instrument a surface ever sees. See docs/payments.md §3.1 and §9.5.
@@ -14,7 +14,7 @@
  * it: its INPUT is a card id and a list of field targets, and its OUTPUT is a
  * list of field NAMES and a boolean. The daemon reads the material in-process
  * and types it. There is no property on either schema that could hold a value,
- * which is the point — the containment is a shape, not a promise.
+ * which is the point, the containment is a shape, not a promise.
  *
  * Handlers: routes/payments.ts.
  */
@@ -56,7 +56,7 @@ export const PAYMENTS_BUDGET_STATUS_OUTPUT_SCHEMA = objectSchema(
     reservationCount: NUMBER_SCHEMA,
     /**
      * False on a clustered node that is not the elected payments leader.
-     * Such a node refuses every purchase — today's spend does not replicate,
+     * Such a node refuses every purchase, today's spend does not replicate,
      * so a second spender would start from a clean daily budget.
      */
     isPaymentsLeader: BOOLEAN_SCHEMA,
@@ -77,7 +77,7 @@ const CARD_METADATA_SCHEMA = objectSchema(
     /** Declared by the owner and unverifiable by us; never treated as enforcement. */
     issuerCapMinorUnits: nullableSchema(NUMBER_SCHEMA),
     addedAt: STRING_SCHEMA,
-    /** Whether every required secret field is present — never the values. */
+    /** Whether every required secret field is present, never the values. */
     materialComplete: BOOLEAN_SCHEMA,
   },
   ['id', 'label', 'brand', 'last4', 'kind', 'expiryMonth', 'expiryYear', 'issuerCapMinorUnits', 'addedAt', 'materialComplete'],
@@ -93,7 +93,7 @@ export const PAYMENTS_CARDS_LIST_OUTPUT_SCHEMA = objectSchema(
 /**
  * Adding a card. Card material goes IN and never comes back out.
  *
- * The response is the metadata record only — there is deliberately no echo of
+ * The response is the metadata record only, there is deliberately no echo of
  * what was submitted, because an echo is a read path and the whole point is
  * that no read path exists.
  */
@@ -146,7 +146,7 @@ const PURCHASE_RECORD_SCHEMA = objectSchema(
     overagePoolDraw: NUMBER_SCHEMA,
     tolerancePoolDraw: NUMBER_SCHEMA,
     cardLast4: STRING_SCHEMA,
-    /** approval | veto | none — which window ran, and how it ended. */
+    /** approval | veto | none, which window ran, and how it ended. */
     windowKind: STRING_SCHEMA,
     windowOutcome: STRING_SCHEMA,
     /** Which command-authority channel actually answered, when one did. */
@@ -229,7 +229,7 @@ export const PAYMENTS_CHECKOUT_FILL_CARD_INPUT_SCHEMA = objectSchema(
  *
  * `filled` is a list of field NAMES. `failedField` names the one that did not
  * work. There is deliberately no property here that could carry a value, a
- * length, a prefix or a masked form — an echo is a read path, and the whole
+ * length, a prefix or a masked form, an echo is a read path, and the whole
  * design rests on no read path existing.
  */
 export const PAYMENTS_CHECKOUT_FILL_CARD_OUTPUT_SCHEMA = objectSchema(
@@ -299,7 +299,7 @@ const CARD_TARGET_SCHEMA = objectSchema(
  *
  * Note which `required` entries are present. The handler refuses without every
  * one of them, and a catalog that declared fewer would produce a 400 no
- * consumer could have predicted from the schema — the omission found in
+ * consumer could have predicted from the schema, the omission found in
  * method-catalog-email.ts, where the handler enforces `uid` and the descriptor
  * declares nothing.
  */

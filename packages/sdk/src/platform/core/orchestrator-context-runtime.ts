@@ -33,7 +33,7 @@ function failedReceipt(trigger: 'auto' | 'manual', strategy: string, detail: str
   };
 }
 
-/** Emit the receipt for a thrown compaction — the guard's kept-original receipt or a failed one. */
+/** Emit the receipt for a thrown compaction, the guard's kept-original receipt or a failed one. */
 function emitCompactionFailureReceipt(deps: EmitterContextFactoryLike, turnId: string, err: unknown, trigger: 'auto' | 'manual', strategy: string): void {
   if (err instanceof CompactionQualityError) emitReceipt(deps, turnId, err.receipt);
   else emitReceipt(deps, turnId, failedReceipt(trigger, strategy, summarizeError(err)));
@@ -76,7 +76,7 @@ function findLargerContextModels(
 }
 
 function readAutoCompactThreshold(configManager: Pick<ConfigManager, 'get'>): number {
-  // behavior.compactionStrategy 'off' turns session compaction off entirely —
+  // behavior.compactionStrategy 'off' turns session compaction off entirely,
   // the auto trigger honors it by reporting a disabled (0) threshold.
   if (configManager.get('behavior.compactionStrategy') === 'off') return 0;
   const raw = Number(configManager.get('behavior.autoCompactThreshold') ?? 0);
@@ -94,7 +94,7 @@ function formatAutoCompactTrigger(decision: ReturnType<typeof getAutoCompactDeci
  * Set when the model/provider itself reported context exhaustion on a response
  * (see isContextOverflowSignal). Forces compaction at the next opportunity,
  * regardless of locally estimated usage and even when the percentage threshold
- * is disabled — the provider's own report is authoritative over estimates,
+ * is disabled, the provider's own report is authoritative over estimates,
  * matching how the reactive strategy treats prompt-too-long errors.
  */
 export type ModelContextWarning = {

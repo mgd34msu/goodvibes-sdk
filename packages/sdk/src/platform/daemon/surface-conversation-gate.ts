@@ -14,13 +14,13 @@
  * the work.
  *
  * Not gated:
- * - goodvibes-tui and other local surfaces — the operator typed it while
+ * - goodvibes-tui and other local surfaces, the operator typed it while
  *   sitting in front of the terminal. They never build a surface adapter
  *   context, so they never reach this module.
- * - Pre-authorized work — schedules, triggers, on-exit chains, an agreed
+ * - Pre-authorized work, schedules, triggers, on-exit chains, an agreed
  *   proposal, and the explicit `retry <id>` control command. Those go through
  *   the raw trySpawnAgent, never this wrapper.
- * - Generic webhooks — machine automation, authorized at registration.
+ * - Generic webhooks, machine automation, authorized at registration.
  */
 import type { AutomationRouteBinding } from '../automation/routes.js';
 import type { RouteBindingManager } from '../channels/index.js';
@@ -45,7 +45,7 @@ import { summarizeError } from '../utils/error-display.js';
  * The adapter context is built once per inbound message, so a cell holding
  * this is scoped to exactly that message. Every adapter runs its ingress
  * policy check before it spawns anything, which is what makes that check the
- * one place the originating channel is still known — by the time the spawn
+ * one place the originating channel is still known, by the time the spawn
  * call happens the adapter has thrown the identity away.
  */
 export interface SurfaceIngressOrigin {
@@ -102,13 +102,13 @@ export function gateSurfaceSpawn(
   }
 
   // Classify the message the OWNER sent, not the enriched prompt the broker
-  // built from it — the enrichment adds framing that would read as work.
+  // built from it, the enrichment adds framing that would read as work.
   const inboundText = origin?.text ?? input.task;
   const intent = classifyInboundIntent(inboundText);
   const needsAgreement = config.mode === 'confirm-all' || intent.kind === 'work';
 
   if (!needsAgreement) {
-    // Conversation still gets a real reply — it just must not become a
+    // Conversation still gets a real reply, it just must not become a
     // workstream. Disabling WRFC here is the difference between answering
     // "Testing" and running engineer -> reviewer -> gates against it.
     //
@@ -202,7 +202,7 @@ export function resolveOriginBinding(
  *
  * The result is the caller's business, not this function's: a proposal whose
  * notice never arrived must not stay answerable, because the owner has not
- * seen it and their NEXT message — whatever it is about — would otherwise be
+ * seen it and their NEXT message, whatever it is about, would otherwise be
  * matchable against it. Discarding this outcome is exactly the defect that
  * let an unseen proposal be "accepted".
  */

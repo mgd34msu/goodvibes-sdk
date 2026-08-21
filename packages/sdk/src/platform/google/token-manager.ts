@@ -9,7 +9,7 @@
  *   2. Never refresh concurrently. Several tool calls arriving at once must
  *      share one refresh, or Google sees a burst of identical grants and the
  *      losers race to overwrite each other's token.
- *   3. Persist the result where it was safe to persist it — the encrypted
+ *   3. Persist the result where it was safe to persist it, the encrypted
  *      secret store. Credentials adopted from another tool's files are
  *      **never written back**; that tool owns them and is still using them.
  *   4. Report a dead refresh token in plain language. A revoked grant is the
@@ -114,7 +114,7 @@ export class GoogleTokenManager {
   /**
    * Forget a recorded dead grant so refreshes are attempted again.
    *
-   * Only meaningful after the credential itself has been replaced — a fresh
+   * Only meaningful after the credential itself has been replaced, a fresh
    * consent produces a different refresh token, and holding the old verdict
    * against it would make a successful re-authorization look like a failure.
    */
@@ -206,7 +206,7 @@ export class GoogleTokenManager {
 
     if (!outcome.ok) {
       // Record a dead grant so this exact request is never sent again. A
-      // transient failure is deliberately NOT latched — retrying a network
+      // transient failure is deliberately NOT latched, retrying a network
       // blip is reasonable, retrying a revoked token is not.
       if (outcome.failure === 'grant-invalid') {
         this.deadGrant = { problem: outcome.problem, fix: outcome.fix };
@@ -239,7 +239,7 @@ export class GoogleTokenManager {
  * The boot-time check.
  *
  * Proves at startup whether Google actually works, by exchanging the refresh
- * token for an access token — a request that reads nothing, sends nothing and
+ * token for an access token, a request that reads nothing, sends nothing and
  * changes nothing on the account. A session then knows its real posture
  * instead of inferring it from an empty registry, which is precisely the
  * mistake that led to a user being told email was unconfigured while working

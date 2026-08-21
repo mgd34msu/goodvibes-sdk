@@ -20,7 +20,7 @@
  *   4. Expectations are short-lived and single-use: they expire on success, on timeout,
  *      and on explicit close.
  *
- * Extraction returns exactly one artifact — a verification link or a verification code.
+ * Extraction returns exactly one artifact, a verification link or a verification code.
  * Everything else in the body is returned only as clearly-labelled untrusted display
  * text that no decision path reads.
  *
@@ -44,8 +44,8 @@ import { registrableDomain } from '../security/public-suffix.js';
  * `google/index.ts`.
  *
  * It moved because this file sat at the eight-hundred-line cap exactly, and the
- * fix that stopped a read from reaping an expectation — with the explanation of
- * why that mattered — could not be added without breaking that gate. The line
+ * fix that stopped a read from reaping an expectation, with the explanation of
+ * why that mattered, could not be added without breaking that gate. The line
  * the split falls on is a real one: the book decides which expectation a
  * message satisfies, and the extraction module decides what a satisfied message
  * yields. Neither can do the other's job, which is why the whole extraction
@@ -72,10 +72,10 @@ export type {
  * creating vs a fake verification email for a service we're already signed up
  * for or didn't request a login."
  *
- *  - `signup` — the agent is creating an account. Correlation is strongest
+ *  - `signup`, the agent is creating an account. Correlation is strongest
  *    here: the alias was minted for this one service, so mail arriving at it is
  *    almost certainly from that service.
- *  - `login`  — the agent is authenticating to an account that already exists,
+ *  - `login` , the agent is authenticating to an account that already exists,
  *    and the service is sending a code or magic link. Correlation is WEAKER,
  *    because the address is the one already registered with that service and
  *    tells you much less. The compensations are elsewhere in this module:
@@ -84,8 +84,8 @@ export type {
  *    stop on ambiguity.
  *
  * There is no third kind, deliberately. Everything else that looks like
- * verification mail — a password reset nobody asked for, a security alert, an
- * MFA prompt for an unrelated login, account recovery, an invoice — is
+ * verification mail, a password reset nobody asked for, a security alert, an
+ * MFA prompt for an unrelated login, account recovery, an invoice, is
  * human-only, permanently. No agent-initiated flow needs it, and it is exactly
  * what a phisher sends.
  */
@@ -120,7 +120,7 @@ export interface OpenExpectationInput {
    *
    * Spelled `| undefined` to match `kind` above. Under
    * `exactOptionalPropertyTypes` the bare `?:` form accepts an ABSENT property
-   * but refuses one explicitly set to `undefined` — so a caller assembling this
+   * but refuses one explicitly set to `undefined`, so a caller assembling this
    * from optional inputs (`{ ...base, windowMs: maybeWindow }`) was refused
    * here while the identical shape for `kind` was accepted. The optionals in
    * one interface disagreed about that; now they agree.
@@ -137,7 +137,7 @@ export interface CandidateEmail {
   /** Sender address as delivered. Corroborating signal only, never a gate. */
   readonly from: string;
   /**
-   * Proof of which address this message actually arrived at — the correlation
+   * Proof of which address this message actually arrived at, the correlation
    * key, and the only field that gates a match.
    *
    * Typed as `DeliveredRecipient` rather than `string` on purpose: the brand
@@ -148,7 +148,7 @@ export interface CandidateEmail {
    */
   readonly deliveredTo: DeliveredRecipient | null;
   /**
-   * The `To:` header, verbatim. **Display only — never evidence.** Kept so a
+   * The `To:` header, verbatim. **Display only, never evidence.** Kept so a
    * refusal can show the reader what the message claimed alongside where it
    * actually landed, which is what makes a forgery legible.
    */
@@ -162,14 +162,14 @@ export interface CandidateEmail {
  *
  * `surface` is `AuthoritySurface`, imported from the module that owns the
  * union, not the `string` it used to be. The old signature was a narrow local
- * mirror whose own comment pointed at `src/agent/surface-authority.ts` — a
+ * mirror whose own comment pointed at `src/agent/surface-authority.ts`, a
  * path that does not exist; the predicate lives in
  * `platform/security/untrusted-content.ts`. So the mirror had already drifted
  * from a file it named incorrectly, and typing the parameter as `string` made
  * the REAL implementation unassignable to it: a function accepting only
  * `AuthoritySurface` cannot stand where one accepting any string is required.
  * The production wiring could therefore never pass the genuine predicate
- * without inventing a shim around it — which is how a defensive check ends up
+ * without inventing a shim around it, which is how a defensive check ends up
  * guarded by a second, weaker copy of the thing it is checking.
  *
  * A test double supplying `(surface: string) => boolean` is still assignable,
@@ -260,15 +260,15 @@ export { MAX_EXPECTATION_ID_CHARS, normalizeExpectationId } from './verification
  * Whether a service domain is one a link could actually be validated against.
  *
  * `normalizeDomain` only trims, lowercases and strips a trailing dot and port
- * — it performs no hostname validation at all, so `"com"` survived it intact
+ *, it performs no hostname validation at all, so `"com"` survived it intact
  * on BOTH the load path and the live verb. That mattered because
  * `hostMatchesServiceDomain` accepts any host ending in `.${serviceDomain}`:
  * an expectation scoped to `"com"` authorises a link at every `.com` host in
  * existence. One edit of a 0644 file, or one call to the open verb, minted a
  * wildcard-TLD grant.
  *
- * `registrableDomain` answers the real question — is there a label BELOW a
- * public suffix — and returns null for a bare TLD, for a multi-label public
+ * `registrableDomain` answers the real question, is there a label BELOW a
+ * public suffix, and returns null for a bare TLD, for a multi-label public
  * suffix like `co.uk`, and for a single label. Used rather than a regex
  * because the set of public suffixes is data, not a pattern: `co.uk` is a
  * suffix and `co.com` is not, and no regex knows the difference.
@@ -294,7 +294,7 @@ function clampWindow(windowMs: number | undefined): number {
  * Whether an expectation's window has closed at `now`.
  *
  * One expression, used by every read and by `sweepExpired`, so "expired" cannot
- * come to mean one thing to a filter and another to the reaper — a `<` here and
+ * come to mean one thing to a filter and another to the reaper, a `<` here and
  * a `<=` there would leave a row that reads as open and sweeps as expired.
  */
 function hasElapsed(expectation: VerificationExpectation, now: Date): boolean {
@@ -314,26 +314,26 @@ function hasElapsed(expectation: VerificationExpectation, now: Date): boolean {
  * `recipientAddress` must normalize to something `openExpectation` would have
  * accepted, `id` must be one this daemon would have minted (see
  * `normalizeExpectationId`, the field that had no bound at all), and
- * `expiresAt - openedAt` must not exceed `MAX_VERIFICATION_WINDOW_MS` — the
+ * `expiresAt - openedAt` must not exceed `MAX_VERIFICATION_WINDOW_MS`, the
  * same ceiling `clampWindow` enforces on the live path. Returns `null` for
  * anything that fails any check. Never throws, never repairs, never widens a
  * window.
  *
  * Validated against the PRESENT, not only against itself.
  *
- * The window used to be checked as a delta alone — `expiresAt - openedAt`
- * within the ceiling — and the `now` parameter was accepted and ignored. A
+ * The window used to be checked as a delta alone, `expiresAt - openedAt`
+ * within the ceiling, and the `now` parameter was accepted and ignored. A
  * record dated `openedAt: 2999-01-01` with a thirty-minute window therefore
  * had a perfectly valid delta, validated, survived the sweep (which only
  * reaps records already EXPIRED, and this one expires in the year 2999) and
  * hydrated into a live expectation that never ages out. `openExpectation`
  * computes `expiresAt = now + clampWindow(...)`, so a live grant cannot
- * outlive the hour — which made the load path strictly weaker than the API it
+ * outlive the hour, which made the load path strictly weaker than the API it
  * claims to mirror, and falsified §9.2's guarantee that "a file on disk cannot
  * mint an expectation the live API would have refused".
  *
- * The earlier reasoning for leaving expiry to the sweep — that
- * `device-grants.ts` does the same — held only for records in the PAST, which
+ * The earlier reasoning for leaving expiry to the sweep, that
+ * `device-grants.ts` does the same, held only for records in the PAST, which
  * a sweep does catch. A future-dated record is caught by neither, and that is
  * the gap. Both ends are checked here now:
  *
@@ -341,7 +341,7 @@ function hasElapsed(expectation: VerificationExpectation, now: Date): boolean {
  *   - `openedAt` must NOT be in the future, or the record describes a grant
  *     that has not been issued yet;
  *   - the delta must sit within [MIN, MAX], the same bounds `clampWindow`
- *     enforces on the live path — `<= 0` used to be the only floor, so the
+ *     enforces on the live path, `<= 0` used to be the only floor, so the
  *     load path accepted a one-millisecond window the API would have raised
  *     to a second.
  */
@@ -381,14 +381,14 @@ export function validatePersistedExpectation(value: unknown, now: Date = new Dat
   // This one check is what closes the future-dating hole, and it is
   // deliberately the ONLY absolute-time check here. Refusing an already-EXPIRED
   // record at this layer as well would be strictly stronger and was the first
-  // thing I wrote — but it takes the `expired` classification away from
+  // thing I wrote, but it takes the `expired` classification away from
   // `sweep()`, which then reports a merely-spent record as malformed. The
   // owner would be told his store was corrupt when a signup simply timed out,
   // and §9's disclosure is worth more than a redundant check: a past-expiry
   // record is already caught by the sweep and by `hydrateExpectation`.
   //
-  // A future-dated record was caught by NEITHER — it is not malformed by
-  // delta and it is not expired — which is precisely why it survived. With
+  // A future-dated record was caught by NEITHER, it is not malformed by
+  // delta and it is not expired, which is precisely why it survived. With
   // `openedAt` pinned to the past, the delta ceiling bounds `expiresAt`: a
   // record claiming to expire in 2999 can only do so by also claiming to have
   // opened in 2999 (refused here) or by declaring a delta of centuries
@@ -433,7 +433,7 @@ export class VerificationExpectationBook {
 
   /**
    * @param authority Optional probe against the surface-authority module. When supplied,
-   * opening an expectation asserts email is still an input-only surface — if email ever
+   * opening an expectation asserts email is still an input-only surface, if email ever
    * gains command authority the narrow hole here is no longer the narrow hole, and that
    * should fail loudly rather than quietly widen.
    */
@@ -450,12 +450,12 @@ export class VerificationExpectationBook {
     const recipientAddress = normalizeEmailAddress(input.recipientAddress);
     const purpose = input.purpose.trim();
     // The SAME domain rule the load path applies. `"com"` used to pass here
-    // too — this half of the defect was reachable through the live verb with
+    // too, this half of the defect was reachable through the live verb with
     // no file edit at all, and an expectation scoped to a bare TLD authorises
     // a link at every host beneath it.
     if (!isRegistrableServiceDomain(serviceDomain)) {
       throw new Error(
-        `A verification expectation needs a registrable service domain — a name with a label below `
+        `A verification expectation needs a registrable service domain, a name with a label below `
         + `a public suffix, like 'github.com'. '${serviceDomain || input.serviceDomain}' is a public `
         + `suffix or is not a hostname, and scoping an expectation to one would authorise every host beneath it.`,
       );
@@ -506,18 +506,18 @@ export class VerificationExpectationBook {
   }
 
   /**
-   * Restore a persisted expectation into the live book — the ONLY entry point
+   * Restore a persisted expectation into the live book, the ONLY entry point
    * that inserts an expectation without minting a fresh window. Added for the
    * boot-time hydration path described in docs/inbound-email.md §9.2: the
    * daemon auto-restarts, so an expectation opened moments before a restart
    * must survive it, but "restarting cannot extend a grant" is the property
    * that override exists to protect.
    *
-   * `value` is validated by `validatePersistedExpectation` — the same rules
-   * `openExpectation` enforces — so a hand-edited or torn record on disk can
+   * `value` is validated by `validatePersistedExpectation`, the same rules
+   * `openExpectation` enforces, so a hand-edited or torn record on disk can
    * never mint an expectation the live API would have refused. An already-
    * expired record is refused here too (reaped before it can match anything),
-   * even though the store this feeds is expected to have reaped it already —
+   * even though the store this feeds is expected to have reaped it already,
    * defense in depth, not reliance.
    *
    * On success the original `id`, `openedAt` and `expiresAt` are kept
@@ -535,7 +535,7 @@ export class VerificationExpectationBook {
     return validated;
   }
 
-  /** Explicit close — on success, on abandonment, on anything. */
+  /** Explicit close, on success, on abandonment, on anything. */
   public closeExpectation(id: string): VerificationExpectation | null {
     const existing = this.open.get(id.trim());
     if (!existing) return null;
@@ -550,7 +550,7 @@ export class VerificationExpectationBook {
    * point of this comment.
    *
    * `list()` used to call `sweepExpired(now)` and throw the return value away.
-   * The rows it dropped were the rows that had just run out — the ones
+   * The rows it dropped were the rows that had just run out, the ones
    * `InboundExpectationRegistry.sweep()` exists to turn into
    * `ExpectationExpiryReport`s and hand to `onExpired`. Whichever of the two
    * ran first won, and the loser found an empty list and reported nothing. The
@@ -560,8 +560,8 @@ export class VerificationExpectationBook {
    * expiry, and the signup whose verification never arrived ended in exactly
    * the silence §2.3 was written to abolish.
    *
-   * The returned VALUE is unchanged — an expired expectation was absent before
-   * and is absent now — so no caller sees a difference except that reading no
+   * The returned VALUE is unchanged, an expired expectation was absent before
+   * and is absent now, so no caller sees a difference except that reading no
    * longer destroys the record. Reaping happens in `sweepExpired`, whose
    * callers either report what it removed or need the removal for their own
    * accounting (`openExpectation`, for the open-expectation cap).
@@ -572,7 +572,7 @@ export class VerificationExpectationBook {
 
   /**
    * Whether anything at all is open at `now`, without building the list and
-   * without reaping — see `list()`.
+   * without reaping, see `list()`.
    *
    * Present as its own method rather than left to `list().length > 0` because
    * that expression is what the Gmail source's presence predicate was, and a
@@ -605,7 +605,7 @@ export class VerificationExpectationBook {
    * `matchCandidate` answers about one message and cannot see a race. A
    * phisher who times a mail to arrive alongside a genuine login code produces
    * two messages that both correlate, and a single-message API would act on
-   * whichever was passed first — a coin flip deciding whether the agent
+   * whichever was passed first, a coin flip deciding whether the agent
    * follows the attacker's link. Callers that can see the mailbox should use
    * this instead.
    *
@@ -640,7 +640,7 @@ export class VerificationExpectationBook {
         reason:
           `${String(matched.length)} messages match the open expectation for "${expectation.recipientAddress}". `
           + 'One of them may be a forgery timed to arrive alongside the real one, and choosing between them '
-          + 'would be a guess, so none is acted on. The expectation stays open — complete it by hand.',
+          + 'would be a guess, so none is acted on. The expectation stays open, complete it by hand.',
       };
     }
 
@@ -656,7 +656,7 @@ export class VerificationExpectationBook {
   public matchCandidate(email: CandidateEmail, now: Date, options?: MatchOptions): VerificationMatch {
     // Correlation runs on delivery evidence and nothing else. A message whose
     // `To:` header names an open expectation but which carries no proof of
-    // where it landed is refused here, before any expectation is consulted —
+    // where it landed is refused here, before any expectation is consulted,
     // otherwise the header would be doing the work the brand exists to prevent.
     if (email.deliveredTo === null) {
       return {
@@ -687,7 +687,7 @@ export class VerificationExpectationBook {
     // Filtered, not swept: this arm only needs to know which addresses are
     // still being waited on so it can say so. Reaping here would delete an
     // elapsed expectation on the way to composing an error message, and the
-    // report the sweeper owes the owner for it would go with it — see `list()`.
+    // report the sweeper owes the owner for it would go with it, see `list()`.
     const live = this.list(now);
     if (live.length === 0) {
       return {
@@ -697,7 +697,7 @@ export class VerificationExpectationBook {
     }
     const claimNote =
       normalizeEmailAddress(email.toHeaderClaim) !== recipient && email.toHeaderClaim.trim().length > 0
-        ? ` Its "To:" header claims "${email.toHeaderClaim}", which does not match where it actually landed — that discrepancy is what a forged verification email looks like.`
+        ? ` Its "To:" header claims "${email.toHeaderClaim}", which does not match where it actually landed, that discrepancy is what a forged verification email looks like.`
         : '';
     return {
       kind: 'recipient-mismatch',
@@ -710,7 +710,7 @@ export class VerificationExpectationBook {
   /**
    * Drop everything past its window and RETURN what was dropped.
    *
-   * The return value is not incidental — it is the only record that an
+   * The return value is not incidental, it is the only record that an
    * expectation ended, and `InboundExpectationRegistry.sweep()` turns it into
    * the `onExpired` report the owner is told about. A caller that discards it
    * has silently thrown away a signup outcome, which is why the reads above no

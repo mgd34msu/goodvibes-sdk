@@ -490,8 +490,8 @@ export class DaemonBatchManager {
    * flight at once on the ordinary path: `tick` writes at the end of a pass
    * that begins with a network round trip to the provider, and `cancelJob`
    * writes the moment an operator cancels. Unordered, the tick's rename could
-   * land last and put its view of the job — 'queued', captured before the
-   * cancel — back on disk. After a restart the cancelled job reads back as
+   * land last and put its view of the job, 'queued', captured before the
+   * cancel, back on disk. After a restart the cancelled job reads back as
    * queued, and the next tick submits it to the provider, which is a paid
    * request the operator explicitly called off.
    *

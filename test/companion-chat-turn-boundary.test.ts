@@ -1,12 +1,12 @@
 /**
- * companion-chat-turn-boundary.test.ts — the webui gets a turn boundary too,
+ * companion-chat-turn-boundary.test.ts, the webui gets a turn boundary too,
  * and only where the daemon can prove who is speaking.
  *
  * ── Why this surface needed its own wiring ────────────────────────────────
  *
  * `CompanionChatManager` runs its own turn loop rather than the Orchestrator's,
- * so the boundary wired into `Orchestrator.runTurn` — the one that fixed the
- * agent and the TUI together — did not reach it. The consequence was narrow and
+ * so the boundary wired into `Orchestrator.runTurn`, the one that fixed the
+ * agent and the TUI together, did not reach it. The consequence was narrow and
  * bad: a message the owner typed in the webui never ended the previous turn's
  * untrusted-content window, so the friction removed everywhere else stayed
  * present on one of his three surfaces, and a page read an hour earlier still
@@ -19,7 +19,7 @@
  *
  *  - The HTTP route (`POST /api/companion/chat/sessions/:id/messages`) sits
  *    behind the daemon's bearer-token auth. Holding that token IS being the
- *    owner — same credential the TUI and operator API use — so it attests, and
+ *    owner, same credential the TUI and operator API use, so it attests, and
  *    the window resets.
  *  - The ntfy relay carries a topic. Anyone who learns the topic can publish to
  *    it, so it attests nothing and the window stays open.
@@ -44,8 +44,8 @@ import { startTurnForOwnerInput } from '../packages/sdk/src/platform/security/tu
  * The turn-start funnel's boundary call, as the manager makes it.
  *
  * `_startNextTurn` reads `next.ownerDirect` off the queued entry and calls
- * exactly this. Reproducing that one line keeps the test on the CONTRACT —
- * "an attested turn resets, an unattested one does not" — without standing up
+ * exactly this. Reproducing that one line keeps the test on the CONTRACT,
+ * "an attested turn resets, an unattested one does not", without standing up
  * a provider, a conversation store and a session persister to observe it.
  * The end of this file checks the manager really is wired this way.
  */

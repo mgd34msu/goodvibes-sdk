@@ -1,5 +1,5 @@
 /**
- * ticker.ts — something has to run the sweep.
+ * ticker.ts, something has to run the sweep.
  *
  * A loop that only runs when a verb asks it to is not proactive, and proactive
  * is the whole feature. This is the repeating timer that runs it, with the
@@ -21,8 +21,8 @@
  *  - **The interval is re-read every tick**, so `occasions.sweepIntervalMinutes`
  *    is a live setting rather than a restart-only one.
  *  - **Passes are strictly serial.** The next tick is armed only once the
- *    current pass has finished, so a slow sweep — delivering over a channel,
- *    say — delays the next pass rather than having one start on top of it. Two
+ *    current pass has finished, so a slow sweep, delivering over a channel,
+ *    say, delays the next pass rather than having one start on top of it. Two
  *    overlapping passes would deliver the same batch twice, and the fix for
  *    that is not to have a second one to skip.
  *  - **A failing sweep re-arms.** One transient error must not stop the loop for
@@ -92,7 +92,7 @@ export function startOccasionSweepTicker(options: SweepTickerOptions): SweepTick
       // Re-armed HERE, in `finally`, and nowhere else. Two things follow, and
       // both are asserted by test: one transient failure cannot end the loop
       // for the life of the process, and nothing is armed while a pass is in
-      // flight — so a slow pass delays the next one instead of having one land
+      // flight, so a slow pass delays the next one instead of having one land
       // on top of it.
       arm();
     }

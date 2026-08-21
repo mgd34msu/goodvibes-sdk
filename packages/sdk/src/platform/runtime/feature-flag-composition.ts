@@ -1,5 +1,5 @@
 /**
- * feature-flag-composition.ts — the ONE way a runtime composition gets its
+ * feature-flag-composition.ts, the ONE way a runtime composition gets its
  * feature-flag manager.
  *
  * Both compositions need the identical three steps: take the caller's manager
@@ -7,7 +7,7 @@
  * settings keys AND keep the live `config.set` bridge attached, then point the
  * process tracer at `telemetry.otelMode`. Written once here so the daemon-grade
  * `createRuntimeServices` and the pure-client `createClientRuntimeServices`
- * cannot drift on the "who owns the manager" rule — the subtle half, because
+ * cannot drift on the "who owns the manager" rule, the subtle half, because
  * loading + bridging a manager the caller already wired would double-bind it.
  */
 

@@ -4,7 +4,7 @@
  * The push channel for approval decisions, and the raise seam's preference for
  * it.
  *
- * The behaviour that matters is not "a frame arrives" — it is what happens
+ * The behaviour that matters is not "a frame arrives", it is what happens
  * around the frame: the gap between raising an ask and subscribing to it (a
  * decision taken in that window is never pushed, so it has to be read), and the
  * fallback when no stream can be opened at all (a permission ask blocks a tool
@@ -56,7 +56,7 @@ function verbs(script: {
   };
 }
 
-/** A prompt that never resolves — so only the remote path can decide. */
+/** A prompt that never resolves, so only the remote path can decide. */
 function neverPrompts() {
   return () => () => new Promise<never>(() => {});
 }
@@ -131,7 +131,7 @@ test('a stream that cannot be opened falls back to reading the record', async ()
     verbs: caller,
     localPrompt: neverPrompts(),
     actor: 'test-surface',
-    // Null means "no stream right now" — a supported answer, not a failure.
+    // Null means "no stream right now", a supported answer, not a failure.
     subscribeApprovalUpdates: async (): Promise<ApprovalUpdateSubscription | null> => null,
     pollIntervalMs: 1,
   });

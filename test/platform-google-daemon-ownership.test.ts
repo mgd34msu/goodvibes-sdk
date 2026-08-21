@@ -5,8 +5,8 @@
  * surface the operator happened to use.
  *
  * This is the property that decides whether the daemon can do anything once a
- * surface closes. Setup is a thing a person does in a UI — the agent, the TUI,
- * the web UI — but the runtime that has to act on the result at 3am is the
+ * surface closes. Setup is a thing a person does in a UI, the agent, the TUI,
+ * the web UI, but the runtime that has to act on the result at 3am is the
  * daemon. If any part of the connection lands in the surface's own silo, then
  * the moment that surface exits the daemon holds a partial credential and
  * reports "no Google account connected", and the failure looks like a

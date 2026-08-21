@@ -1,5 +1,5 @@
 /**
- * validation.ts — the door the declarative DSL is checked at.
+ * validation.ts, the door the declarative DSL is checked at.
  *
  * The rule this file exists to enforce: a trigger definition is DATA. There is
  * no probe kind that evaluates a JS expression, no extract kind that runs code,
@@ -51,13 +51,13 @@ const ACTION_KINDS = new Set(['agent-turn', 'action-grant']);
  * refusal message says what is wrong instead of "unknown kind".
  */
 const REJECTED_PROBE_KINDS: Readonly<Record<string, string>> = {
-  js: 'JavaScript probes are not supported — the trigger DSL is declarative.',
-  javascript: 'JavaScript probes are not supported — the trigger DSL is declarative.',
+  js: 'JavaScript probes are not supported, the trigger DSL is declarative.',
+  javascript: 'JavaScript probes are not supported, the trigger DSL is declarative.',
   eval: 'Expression evaluation is not a probe kind.',
   expression: 'Expression evaluation is not a probe kind.',
-  script: 'Script probes are not supported — use a command probe with argv and no shell.',
-  shell: 'Shell probes are not supported — use a command probe with argv and no shell.',
-  function: 'Function probes are not supported — the trigger DSL is declarative.',
+  script: 'Script probes are not supported, use a command probe with argv and no shell.',
+  shell: 'Shell probes are not supported, use a command probe with argv and no shell.',
+  function: 'Function probes are not supported, the trigger DSL is declarative.',
 };
 
 const REJECTED_ACTION_KINDS: Readonly<Record<string, string>> = {
@@ -117,7 +117,7 @@ export function assertPlainData(value: unknown, field: string, depth = 0): void 
   const type = typeof value;
   if (type === 'string' || type === 'number' || type === 'boolean') return;
   if (type === 'function') {
-    throw new TriggerDefinitionError(field, 'must not be a function — the trigger DSL is declarative data, not code');
+    throw new TriggerDefinitionError(field, 'must not be a function, the trigger DSL is declarative data, not code');
   }
   if (type !== 'object') {
     throw new TriggerDefinitionError(field, `must not be a ${type} value`);
@@ -141,7 +141,7 @@ export function validateRegexSource(pattern: string, field: string, flags?: stri
   const resolvedFlags = flags ?? '';
   for (const flag of resolvedFlags) {
     if (!ALLOWED_REGEX_FLAGS.has(flag)) {
-      throw new TriggerDefinitionError(field, `flag "${flag}" is not allowed (only i, m, s, u — g and y carry lastIndex state across checks)`);
+      throw new TriggerDefinitionError(field, `flag "${flag}" is not allowed (only i, m, s, u, g and y carry lastIndex state across checks)`);
     }
   }
   try {
@@ -348,7 +348,7 @@ export function validateAction(input: unknown, field = 'action'): TriggerFireAct
   if (typeof kind !== 'string' || !ACTION_KINDS.has(kind)) {
     throw new TriggerDefinitionError(
       `${field}.kind`,
-      `must be one of ${[...ACTION_KINDS].join(', ')} — a firing trigger runs an agent turn or a pre-registered action grant, never a newly composed command`,
+      `must be one of ${[...ACTION_KINDS].join(', ')}, a firing trigger runs an agent turn or a pre-registered action grant, never a newly composed command`,
     );
   }
   assertPlainData(action, field);
@@ -395,7 +395,7 @@ export function validateSpec(input: unknown, field = 'spec'): TriggerSpec {
       if (spec.stdin !== undefined && spec.stdin !== 'none' && spec.stdin !== 'empty') {
         throw new TriggerDefinitionError(
           `${field}.stdin`,
-          'must be "none" or "empty" — there is no interactive option because nobody is at the keyboard',
+          'must be "none" or "empty", there is no interactive option because nobody is at the keyboard',
         );
       }
       return spec as unknown as TriggerSpec;

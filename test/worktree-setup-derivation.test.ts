@@ -4,7 +4,7 @@
  * Worktree setup DERIVES from the repo: each ecosystem's lockfile yields its
  * install command, .env/.env.* files yield the carry-over globs, user config
  * OVERRIDES the derivation per field (never merely enables it), and a repo
- * with no signal at all derives nothing — setup stays an honest no-op.
+ * with no signal at all derives nothing, setup stays an honest no-op.
  */
 import { describe, expect, test } from 'bun:test';
 import {

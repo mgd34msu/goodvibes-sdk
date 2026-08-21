@@ -1,8 +1,8 @@
 /**
- * Health Error Propagation — Effect Handlers
+ * Health Error Propagation, Effect Handlers
  *
  * Implements concrete actions for each CascadeEffect type produced by the
- * CascadeEngine. Each handler is a pure dispatch function — side effects
+ * CascadeEngine. Each handler is a pure dispatch function, side effects
  * are performed through the provided aggregator and eventBus context.
  *
  * Callers (e.g. HealthStoreWiring) are responsible for iterating over
@@ -21,7 +21,7 @@ import type { AnyRuntimeEvent, RuntimeEventDomain } from '../events/index.js';
 /**
  * Emits a synthetic health event on the bus.
  *
- * Health events (e.g. CASCADE_APPLIED) are not part of AnyRuntimeEvent — they live
+ * Health events (e.g. CASCADE_APPLIED) are not part of AnyRuntimeEvent, they live
  * outside the typed domain-event union. This helper centralises the necessary
  * cross-domain cast in a single, documented location rather than duplicating it
  * at each call site.
@@ -34,7 +34,7 @@ function emitHealthEvent(
   // by design. Keep the cross-domain cast isolated here so standard domain events can continue
   // using typed emitters.
   bus.emit(
-    // Health events use 'session' as the routing domain — it is the most general
+    // Health events use 'session' as the routing domain, it is the most general
     // domain and health cascades originate from session-level failures.
     'session' as RuntimeEventDomain,
     envelope as RuntimeEventEnvelope<AnyRuntimeEvent['type'], AnyRuntimeEvent>,
@@ -43,9 +43,9 @@ function emitHealthEvent(
 
 /** Context injected into each effect handler. */
 export interface EffectHandlerContext {
-  /** The health aggregator — used to mark domain state changes. */
+  /** The health aggregator, used to mark domain state changes. */
   readonly aggregator: RuntimeHealthAggregator;
-  /** The event bus — used to emit CASCADE_APPLIED and domain events. */
+  /** The event bus, used to emit CASCADE_APPLIED and domain events. */
   readonly eventBus: RuntimeEventBus;
 }
 
@@ -53,12 +53,12 @@ export interface EffectHandlerContext {
  * Dispatches the appropriate runtime action for a given CascadeEffect.
  *
  * Handles all six CascadeEffect variants:
- * - `CANCEL_INFLIGHT` — cancels in-flight operations in the given scope
- * - `BLOCK_DISPATCH` — blocks new dispatch in the given scope (optionally queues)
- * - `MARK_CHILDREN` — marks child tasks/agents as failed or blocked
- * - `DEREGISTER_TOOLS` — deregisters tools, scoped by pluginId from sourceContext
- * - `EMIT_EVENT` — emits a domain event of the given eventType on the bus
- * - `BLOCK_NEW` — blocks new operations of the given scope
+ * - `CANCEL_INFLIGHT`, cancels in-flight operations in the given scope
+ * - `BLOCK_DISPATCH`, blocks new dispatch in the given scope (optionally queues)
+ * - `MARK_CHILDREN`, marks child tasks/agents as failed or blocked
+ * - `DEREGISTER_TOOLS`, deregisters tools, scoped by pluginId from sourceContext
+ * - `EMIT_EVENT`, emits a domain event of the given eventType on the bus
+ * - `BLOCK_NEW`, blocks new operations of the given scope
  *
  * After applying the effect, emits a `CASCADE_APPLIED` event on the event bus
  * so that other subsystems can observe cascade propagation.
@@ -93,8 +93,8 @@ export function handleCascadeEffect(
       if (result.target !== 'ALL') {
         aggregator.updateDomainHealth(result.target, 'degraded', {
           failureReason: effect.queueable
-            ? `Dispatch blocked (scope: ${effect.scope}) — queuing enabled`
-            : `Dispatch blocked (scope: ${effect.scope}) — queuing disabled`,
+            ? `Dispatch blocked (scope: ${effect.scope}), queuing enabled`
+            : `Dispatch blocked (scope: ${effect.scope}), queuing disabled`,
           degradedCapabilities: [effect.scope],
         });
       }

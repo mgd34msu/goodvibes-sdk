@@ -218,7 +218,7 @@ describe('PATCH /api/channels/policies/:surface: field filter', () => {
     expect(res.status).toBe(200);
     const body = await res.json() as Record<string, unknown>;
 
-    // Typed fields forwarded — present in response
+    // Typed fields forwarded, present in response
     expect(body['enabled']).toBe(true);
     expect(body['requireMention']).toBe(false);
 

@@ -1,5 +1,5 @@
 /**
- * device-posture-runtime.ts — one call that stands the paired-device feature up
+ * device-posture-runtime.ts, one call that stands the paired-device feature up
  * inside whichever process hosts the daemon.
  *
  * What lives here is everything about the feature that is NOT specific to a
@@ -9,7 +9,7 @@
  * device-posture-config.ts reaches the stores and the capability service.
  *
  * It was written once in the agent and nowhere else, which is exactly why the
- * `device.*` posture keys did nothing in the terminal app's daemon — the owner's
+ * `device.*` posture keys did nothing in the terminal app's daemon, the owner's
  * own deployment. A host now supplies three seams and gets the whole feature:
  *
  *   - a peer transport (the distributed runtime manager in a real daemon),

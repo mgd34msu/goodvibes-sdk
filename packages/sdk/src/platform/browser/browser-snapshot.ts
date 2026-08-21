@@ -23,13 +23,13 @@ interface RawElement {
   readonly disabled: boolean;
   readonly checked: boolean | null;
   readonly depth: number;
-  /** True when activating this control submits a form — an outward effect. */
+  /** True when activating this control submits a form, an outward effect. */
   readonly submits: boolean;
   /**
    * The attributes that identify a payment field, collected but NOT judged here.
    *
    * This function is serialized and evaluated inside the page, so it cannot
-   * import anything — a classification written here could never be tested
+   * import anything, a classification written here could never be tested
    * against real inputs, only read. So the raw attributes come back and
    * `isCardFieldDescriptor` decides in-process, where a test can drive it.
    */
@@ -45,7 +45,7 @@ interface RawElement {
 }
 
 /**
- * Runs inside the page. It must be entirely self-contained — it is serialized
+ * Runs inside the page. It must be entirely self-contained, it is serialized
  * and evaluated in the browser, so it cannot reference anything from module
  * scope. It reads the DOM and never mutates it: no injected attributes, no
  * markers left behind in the user's real, logged-in page.
@@ -92,7 +92,7 @@ function collectElements(limit: number): RawElement[] {
   /**
    * A CSS path to the element, crossing open shadow boundaries by continuing
    * from the shadow host. Playwright's CSS engine pierces open shadow roots,
-   * so a single path resolves whether or not the element lives inside one —
+   * so a single path resolves whether or not the element lives inside one,
    * verified against a real page rather than assumed.
    */
   const selectorFor = (element: Element): string => {
@@ -310,7 +310,7 @@ function selectorOfFrameElement(element: Element): string {
 /**
  * The chain of iframe selectors leading to a frame, outermost first.
  * Returns null when any link cannot be addressed, so a frame is either fully
- * reachable or reported not at all — never half-addressable.
+ * reachable or reported not at all, never half-addressable.
  */
 async function frameChainFor(frame: Frame): Promise<readonly string[] | null> {
   // A host-backed frame already knows its chain; the host computed it when it
@@ -335,7 +335,7 @@ async function frameChainFor(frame: Frame): Promise<readonly string[] | null> {
  *
  * `payments.checkout.fillCard` has the daemon type the owner's card into a
  * page so the model never holds it. Ten seconds later the model can call
- * `action:"snapshot"` and read `value` off every form control on that page —
+ * `action:"snapshot"` and read `value` off every form control on that page,
  * including the one just filled. Without the two steps below, the containment
  * is theatre.
  *
@@ -346,7 +346,7 @@ async function frameChainFor(frame: Frame): Promise<readonly string[] | null> {
  *
  * Both, because each covers the other's gap: the classification is defeated by
  * a page that misnames its fields, and the value matching only exists when a
- * guard is installed — which is why the fill refuses to run without one.
+ * guard is installed, which is why the fill refuses to run without one.
  */
 export async function takeSnapshot(
   page: Page,
@@ -368,12 +368,12 @@ export async function takeSnapshot(
     options.guard === undefined ? text : options.guard.redact(sessionId, pageId, text);
 
   const elements: BrowserElementRef[] = raw.map((element, index) => {
-    // A payment field's value is never reported. Not masked, not truncated —
+    // A payment field's value is never reported. Not masked, not truncated,
     // absent, exactly as a password field's already is.
     // Built defensively: `element` comes back from `frame.evaluate`, so its
     // shape is whatever that frame produced. A host-backed frame, an older
     // driver, or a frame whose evaluate partially failed can all hand back a
-    // record with no `control` — and a classifier that threw on one would take
+    // record with no `control`, and a classifier that threw on one would take
     // out EVERY snapshot, not just the payment case it was added for.
     const control = element.control ?? undefined;
     const cardField = isCardFieldDescriptor({
@@ -435,8 +435,8 @@ function namesAgree(expected: string, actual: string): boolean {
 /**
  * Turns a ref into a live locator, refusing when the page has moved on.
  *
- * A ref that no longer resolves — or resolves to a different element than the
- * snapshot recorded — fails with an instruction to re-snapshot. Acting on a
+ * A ref that no longer resolves, or resolves to a different element than the
+ * snapshot recorded, fails with an instruction to re-snapshot. Acting on a
  * position alone is how automation clicks the wrong thing.
  */
 export async function resolveRef(

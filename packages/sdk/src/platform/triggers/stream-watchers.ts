@@ -1,5 +1,5 @@
 /**
- * stream-watchers.ts — watching the output of a long-lived command.
+ * stream-watchers.ts, watching the output of a long-lived command.
  *
  * The pipeline, in order: split into lines -> keep lines matching `match` and
  * drop lines matching `exclude` -> suppress repeats of a line already seen
@@ -14,7 +14,7 @@
  *
  *   The queue is bounded and every drop is counted. When a log outruns the
  *   consumer the oldest entries go, and the drop count is reported on the
- *   trigger record — a silent drop would make the watcher look healthy while it
+ *   trigger record, a silent drop would make the watcher look healthy while it
  *   was losing exactly the lines it exists to catch.
  *
  * The processor below is pure and synchronous: feed it text, ask it for
@@ -120,7 +120,7 @@ export class StreamLineProcessor {
     }
   }
 
-  /** Flushes any partial trailing line — call when the stream closes. */
+  /** Flushes any partial trailing line, call when the stream closes. */
   finish(now: number): void {
     if (this.carry.length > 0) {
       this.acceptLine(this.carry, now);
@@ -163,7 +163,7 @@ export class StreamLineProcessor {
   }
 
   /**
-   * Returns a batch when one is ready — either the batch is full, or a partial
+   * Returns a batch when one is ready, either the batch is full, or a partial
    * batch has been waiting longer than `batchIntervalMs`. Returns null
    * otherwise, so a caller can poll on a timer without emitting empty turns.
    */
@@ -204,7 +204,7 @@ export function renderStreamPrompt(batch: StreamBatch, label: string, pattern: s
     lines.push(`Suppressed as repeats inside the dedup window: ${batch.deduped}`);
   }
   if (batch.dropped > 0) {
-    lines.push(`DROPPED because the bounded queue overflowed: ${batch.dropped} — this batch is incomplete.`);
+    lines.push(`DROPPED because the bounded queue overflowed: ${batch.dropped}, this batch is incomplete.`);
   }
   lines.push('', '--- matched lines ---', ...batch.lines, '');
   lines.push('Decide whether these lines need action, and act only on what they actually show.');

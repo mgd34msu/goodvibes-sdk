@@ -144,7 +144,7 @@ export function registerBuiltinProviders(
     /**
      * Where the prompt-cache keys (`cache.enabled`, `cache.stableTtl`) are read.
      *
-     * Only the explicit-caching builtins need it — `cache.enabled` describes
+     * Only the explicit-caching builtins need it, `cache.enabled` describes
      * itself as being for "eligible providers (Anthropic)".
      */
     readonly cachePolicy?: import('./cache-strategy.js').CachePolicyReader | undefined;
@@ -619,7 +619,7 @@ export function registerBuiltinProviders(
     tokenCachePath: options.githubCopilotTokenCachePath,
   }));
 
-  // Synthetic failover provider — must be after all backends.
+  // Synthetic failover provider, must be after all backends.
   // Stage 3: catalog-driven SyntheticProvider manages its own backend lists.
   registry.register(new SyntheticProvider({
     resolveProvider: options.resolveProvider,

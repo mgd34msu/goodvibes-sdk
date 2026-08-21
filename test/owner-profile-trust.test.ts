@@ -332,7 +332,7 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
       expect({ heading, served: store.section(heading) !== undefined })
         .toEqual({ heading, served: false });
     }
-    // Style is open tier — it is the section an injection path may read.
+    // Style is open tier, it is the section an injection path may read.
     expect(store.section('Style')?.prose.map((line) => line.text)).toEqual(['- Keep replies short']);
   });
 
@@ -348,7 +348,7 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
       ['person("*")', store.person('*')],
       // The two occasions readers. They serve `Important dates` and `Plans`,
       // which are closed tier like `People`, so they are named routes rather
-      // than a widened `section()` — and neither can reach the People section
+      // than a widened `section()`, and neither can reach the People section
       // at all, which is what this asserts rather than states.
       ['importantDates()', store.importantDates()],
       ['plans()', store.plans()],
@@ -385,7 +385,7 @@ describe('§14.19 — third-party containment: no enumerate-all-people call exis
     // which `section()` refuses:
     //
     //  - They are NAMED and fixed. Neither takes a heading, so neither can be
-    //    turned into the generic closed-section reader §10 exists to prevent —
+    //    turned into the generic closed-section reader §10 exists to prevent,
     //    the shape the hole originally had.
     //  - Their only consumer is the approach sweep, whose OUTPUT names the
     //    occasion and the person and never the date. There is no path from
@@ -417,7 +417,7 @@ describe('the disclosure a write returns', () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.disclosure).toBe('Noted — saved your shipping address to your profile.');
+    expect(result.disclosure).toBe('Noted, saved your shipping address to your profile.');
     expect(result.disclosure.split('\n')).toHaveLength(1);
     expect(result.disclosure).not.toContain('200 Office Way');
   });
@@ -428,7 +428,7 @@ describe('the disclosure a write returns', () => {
       { kind: 'set', fieldId: 'contact.phone', section: 'Contact', label: 'phone', superseded: false },
       { kind: 'append', fieldId: null, section: 'People', label: 'note', superseded: false },
     ]);
-    expect(line).toBe('Noted — saved your shipping address, your phone and a note under People to your profile.');
+    expect(line).toBe('Noted, saved your shipping address, your phone and a note under People to your profile.');
     expect(line.split('\n')).toHaveLength(1);
   });
 

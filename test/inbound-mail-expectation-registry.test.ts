@@ -123,7 +123,7 @@ describe('a workstream registers an expectation before it submits the form', () 
       NOW,
     );
     // The delivery address is what gates the match, so this still matches the
-    // expectation — but the sender is recorded as unrelated, which is what
+    // expectation, but the sender is recorded as unrelated, which is what
     // stops a link from the wrong host being followed downstream.
     if (match.kind !== 'matched') throw new Error(`expected a match, got ${match.kind}`);
     expect(match.senderCorroboration).toBe('sender-domain-unrelated');
@@ -178,7 +178,7 @@ describe('nothing arriving in mail can create, widen or extend an expectation', 
     expect(reachable.has('consumeMatch')).toBe(true);
 
     // The registry now hands over a purpose-built object rather than the book
-    // itself — the seam the consuming match is written through from — so the
+    // itself, the seam the consuming match is written through from, so the
     // insert verbs are unreachable AT RUNTIME, not merely unnameable in the
     // type. That is strictly stronger than what this test could assert while
     // the concrete object was the book, and it is asserted here so a later
@@ -203,7 +203,7 @@ describe('nothing arriving in mail can create, widen or extend an expectation', 
     expect(matcher).not.toBeInstanceOf(VerificationExpectationBook);
 
     // The narrowed type is a type-level fact and is asserted at the type level
-    // — `test/types/inbound-expectation-matcher-narrowing.ts` fails `tsc` if
+    //, `test/types/inbound-expectation-matcher-narrowing.ts` fails `tsc` if
     // `openExpectation` ever becomes nameable through `ExpectationMatcher`.
     // Nothing here can assert it: a runtime check cannot observe a type.
   });
@@ -274,7 +274,7 @@ describe('an expectation that runs out is reported, not lapsed quietly', () => {
     });
     clock.advance(16 * 60_000);
 
-    // Asked at the LATER time — the window is closed by then.
+    // Asked at the LATER time, the window is closed by then.
     const match = await registry.matcher.matchCandidate(
       arrival({ deliveredTo: 'signup-a1@alias.test', from: 'no-reply@example.com' }),
       clock.now(),
@@ -322,7 +322,7 @@ describe('a restart restores the original window, never a fresh one', () => {
       windowMs: 15 * 60_000,
     });
 
-    // The daemon restarts ten minutes in — it checks for updates hourly and
+    // The daemon restarts ten minutes in, it checks for updates hourly and
     // restarts itself at idle, which is what made persistence necessary.
     const second = build({ storePath, startMs: start + 10 * 60_000 });
     const hydrated = await second.registry.hydrate();
@@ -358,7 +358,7 @@ describe('the book is constructed with the real authority probe', () => {
   test('opening is refused outright if email ever gained command authority', async () => {
     // §2.2: the book's own defensive check has never run in production because
     // the book has never been constructed in production. This is that check,
-    // live — with a probe that answers the way a future mistake would.
+    // live, with a probe that answers the way a future mistake would.
     const store = new PersistedExpectationStore(newStorePath());
     const registry = new InboundExpectationRegistry({
       store,
@@ -384,7 +384,7 @@ describe('the book is constructed with the real authority probe', () => {
 
   test('the default probe is the SHIPPED predicate, not a stub that always says no', async () => {
     // The distinguishing question. Every stub anyone would write for this
-    // answers `false` for email, and so does the real predicate — so asking
+    // answers `false` for email, and so does the real predicate, so asking
     // about email proves nothing. `owner-direct` is the one surface that DOES
     // hold command authority, and only the genuine function says so.
     const { registry } = build();
@@ -394,7 +394,7 @@ describe('the book is constructed with the real authority probe', () => {
 });
 
 // ---------------------------------------------------------------------------
-// §12 gates #31, #32, #33 — an expectation is a promise to WATCH a mailbox
+// §12 gates #31, #32, #33, an expectation is a promise to WATCH a mailbox
 // ---------------------------------------------------------------------------
 
 const UNREADABLE: InboundCapabilityVerdict = capabilityVerdict(
@@ -443,7 +443,7 @@ describe('an expectation is refused against a mailbox that cannot be read (gate 
     }
     expect(raised.capability.reason).toBe('mailbox-unreadable');
     expect(raised.message).toContain('mailbox-unreadable');
-    // The remedial step travels with the refusal — the caller is the signup
+    // The remedial step travels with the refusal, the caller is the signup
     // workstream, and "it did not work" without "here is what to change" is
     // what sends it to retry the same call.
     expect(raised.message).toContain('surfaces.email.imap.mailbox');

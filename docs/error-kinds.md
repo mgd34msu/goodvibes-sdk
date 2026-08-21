@@ -1,8 +1,8 @@
-# SDK Error Kinds
+# SDK error kinds
 
 > Consumer reference. For handling patterns see [Error Handling](./error-handling.md); for internals see [Error Architecture](./errors.md).
 
-Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkError`. The `kind` field is the primary discriminant — use it in `switch` statements or `if` chains instead of parsing `message` strings or using `instanceof` on subclasses.
+Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkError`. The `kind` field is the primary discriminant. Use it in `switch` statements or `if` chains instead of parsing `message` strings or using `instanceof` on subclasses.
 
 ## Quick reference
 
@@ -51,7 +51,7 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ### `contract`
 
-**When it fires:** A method was invoked that has no registered HTTP binding, or a route ID was requested that does not exist in the contract manifest. These represent usage errors — the caller is invoking something the contract does not define.
+**When it fires:** A method was invoked that has no registered HTTP binding, or a route ID was requested that does not exist in the contract manifest. These represent usage errors. The caller is invoking something the contract does not define.
 
 **Remediation:** Verify the method ID or route ID against the operator contract manifest. This is typically a programming error caught at development time.
 
@@ -107,9 +107,9 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 **When it fires:** The remote service returned HTTP 5xx, or a daemon error body surfaced category `service`.
 
-**Remediation:** Log `err.requestId` for debugging. Retry with backoff for 500/502/503/504 — these are typically transient. Do not retry on 501.
+**Remediation:** Log `err.requestId` for debugging. Retry with backoff for 500/502/503/504, these are typically transient. Do not retry on 501.
 
-**Retryable:** Sometimes. Check `err.recoverable` — the SDK sets it based on status code. HTTP 500/502/503/504 are retryable by default.
+**Retryable:** Sometimes. Check `err.recoverable`. The SDK sets it based on status code. HTTP 500/502/503/504 are retryable by default.
 
 ---
 
@@ -155,9 +155,9 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ---
 
-## Route-Level Error Codes
+## Route-level error codes
 
-Daemon HTTP routes return structured error bodies with a `code` string that is separate from the SDK-layer `kind` discriminant. These codes appear in route-specific error responses and are not `GoodVibesSdkError` instances — they are HTTP error body fields returned by the daemon before the SDK maps them to a `GoodVibesSdkError`.
+Daemon HTTP routes return structured error bodies with a `code` string that is separate from the SDK-layer `kind` discriminant. These codes appear in route-specific error responses and are not `GoodVibesSdkError` instances. They are HTTP error body fields returned by the daemon before the SDK maps them to a `GoodVibesSdkError`.
 
 Common route-level codes:
 
@@ -176,9 +176,9 @@ The SDK maps these HTTP error responses to `GoodVibesSdkError` instances using t
 
 > **Three overlapping `code` value-spaces:** `err.code` is a single `string` field, but the value you read may come from any of three overlapping spaces:
 >
-> 1. **Canonical `SDKErrorCode`** — codes the SDK assigns to `GoodVibesSdkError` (e.g. `RATE_LIMITED`, `AUTH_REQUIRED`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`); see [Canonical SDK error codes](#canonical-sdk-error-codes).
-> 2. **Daemon route-body codes** — raw `code` strings in daemon HTTP error bodies (e.g. `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `RATE_LIMITED`, `INTERNAL_ERROR` — enumerated above) before the SDK normalises them.
-> 3. **`AppError`-subclass codes** — literal codes declared by `AppError` subclasses (e.g. `CONFIG_ERROR`, `PROVIDER_ERROR`, `TOOL_ERROR`, `ACP_ERROR`, `PERMISSION_DENIED`, `RENDER_ERROR`); see [Config errors and the AppError hierarchy](#config-errors-and-the-apperror-hierarchy).
+> 1. **Canonical `SDKErrorCode`.** Codes the SDK assigns to `GoodVibesSdkError` (e.g. `RATE_LIMITED`, `AUTH_REQUIRED`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`); see [Canonical SDK error codes](#canonical-sdk-error-codes).
+> 2. **Daemon route-body codes.** Raw `code` strings in daemon HTTP error bodies (e.g. `INVALID_KIND`, `PROVIDER_NOT_CONFIGURED`, `RATE_LIMITED`, `INTERNAL_ERROR`, enumerated above) before the SDK normalises them.
+> 3. **`AppError`-subclass codes.** Literal codes declared by `AppError` subclasses (e.g. `CONFIG_ERROR`, `PROVIDER_ERROR`, `TOOL_ERROR`, `ACP_ERROR`, `PERMISSION_DENIED`, `RENDER_ERROR`); see [Config errors and the AppError hierarchy](#config-errors-and-the-apperror-hierarchy).
 >
 > There is **no suffix rule** distinguishing these spaces: `INTERNAL_ERROR` appears as both a route-body code and a canonical code, and subclass codes exist both with (`CONFIG_ERROR`) and without (`PERMISSION_DENIED`) the `_ERROR` suffix. Always switch on `err.kind` (the `SDKErrorKind` discriminant) first, then read `err.code` only to disambiguate further.
 
@@ -191,7 +191,7 @@ Beyond the `kind` discriminant, every `GoodVibesSdkError` carries a `code`. SDK-
 Prefer the `SDKErrorCodes` const (`index.ts:124-147`) and the runtime guards over bare string literals:
 
 - `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)` (`index.ts:172-177`) returns `true` and narrows `err.code` to the given literal. It works on any object with an optional `code` field.
-- `isKnownErrorCode(value)` (`index.ts:185-187`) returns `true` when an arbitrary string is one of the canonical codes — useful for values received over the wire.
+- `isKnownErrorCode(value)` (`index.ts:185-187`) returns `true` when an arbitrary string is one of the canonical codes, useful for values received over the wire.
 
 ```ts
 import { isErrorCode, SDKErrorCodes, GoodVibesSdkError } from '@pellux/goodvibes-errors';
@@ -209,7 +209,7 @@ Canonical codes (`SDKErrorCodes.*`): `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSI
 
 ### Kind → representative code
 
-The SDK infers a representative canonical code for each `kind` (via `inferKind` / `inferCodeFromCategory`, `index.ts:189` onward). The mapping is representative, not exhaustive — one `kind` may surface several codes (for example, `auth` covers `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, and `PAYMENT_REQUIRED`).
+The SDK infers a representative canonical code for each `kind` (via `inferKind` / `inferCodeFromCategory`, `index.ts:189` onward). The mapping is representative, not exhaustive. One `kind` may surface several codes (for example, `auth` covers `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, and `PAYMENT_REQUIRED`).
 
 | `kind` | Representative `code` |
 |--------|-----------------------|
@@ -228,13 +228,13 @@ The SDK infers a representative canonical code for each `kind` (via `inferKind` 
 
 ---
 
-## WRFC Synthetic Critical Issues
+## WRFC synthetic critical issues
 
-> These are not `GoodVibesSdkError` error kinds — they are WRFC reviewer-report markers that may appear in review task payloads and can be confused for error kinds.
+> These are not `GoodVibesSdkError` error kinds. They are WRFC reviewer-report markers that may appear in review task payloads and can be confused for error kinds.
 
 See [WRFC Constraint Propagation](./wrfc-constraint-propagation.md) for the full constraint lifecycle context.
 
-WRFC chains can produce **synthetic critical issues** when the fixer violates constraint continuity (returning a `constraints[]` array with missing or extra IDs compared to the initial engineer enumeration). These are not `GoodVibesSdkError` instances — they are injected directly into the next review cycle's task payload as `[CRITICAL]` block entries and consumed once.
+WRFC chains can produce **synthetic critical issues** when the fixer violates constraint continuity (returning a `constraints[]` array with missing or extra IDs compared to the initial engineer enumeration). These are not `GoodVibesSdkError` instances. They are injected directly into the next review cycle's task payload as `[CRITICAL]` block entries and consumed once.
 
 Synthetic critical issues surface under the reviewer's `issues[]` array with `severity: 'critical'` and a description like:
 
@@ -262,7 +262,7 @@ export class ProviderError extends AppError {
 }
 ```
 
-> **`err.code` is not compiler-exhaustive.** A `switch (err.code)` with a `const _exhaustive: never = err.code` default does **not** type-check on a `GoodVibesSdkError` or `AppError` value. `GoodVibesSdkError.code` is typed `SDKErrorCode | (string & {})` (`index.ts:418`) and `AppError.code` is plain `string` (`platform/types/errors.ts:131`) — both are wide string types, so the `never` assignment is a type error. The trick only compiles after you narrow to a finite, hand-built union of concrete subclasses, where each branch contributes its literal `code`:
+> **`err.code` is not compiler-exhaustive.** A `switch (err.code)` with a `const _exhaustive: never = err.code` default does **not** type-check on a `GoodVibesSdkError` or `AppError` value. `GoodVibesSdkError.code` is typed `SDKErrorCode | (string & {})` (`index.ts:418`) and `AppError.code` is plain `string` (`platform/types/errors.ts:131`). Both are wide string types, so the `never` assignment is a type error. The trick only compiles after you narrow to a finite, hand-built union of concrete subclasses, where each branch contributes its literal `code`:
 
 ```ts
 // Compiles only because `err` is narrowed to a finite subclass union first.

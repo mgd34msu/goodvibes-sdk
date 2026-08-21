@@ -1,5 +1,5 @@
 /**
- * persisted-store-housekeeping.test.ts — the standing rule for anything the
+ * persisted-store-housekeeping.test.ts, the standing rule for anything the
  * platform persists across restarts and crashes: recovery must do real
  * housekeeping. Reap records whose owner is gone, bound the store by BOTH a
  * count and an age, validate by content rather than by existence, sweep for as
@@ -10,13 +10,13 @@
  *  1. The append-only retention registry swept exactly ONCE, at runtime
  *     construction. A daemon that stays up for weeks therefore never pruned any
  *     of its six registered stores again after boot. It also had no count bound
- *     at all — only age (30 days) and total size (512 MB), which ten thousand
+ *     at all, only age (30 days) and total size (512 MB), which ten thousand
  *     small fresh files sit comfortably under.
  *  2. The checkpoint cross-process lock left an orphan `.gv-lock.new-<pid>-<hex>`
  *     staging file behind whenever a process died between creating it and
  *     linking it onto the lock path. Nothing ever swept those.
  *  3. Daemon receipts had a 50-record count cap but no age bound at all, and a
- *     torn receipt file read as "no receipts" in complete silence — data loss
+ *     torn receipt file read as "no receipts" in complete silence, data loss
  *     and a clean slate look identical from the outside.
  *  4. The last-session pointer was written with a plain writeFileSync, so a
  *     crash mid-write could tear a previously-good pointer; and a pointer at a
@@ -177,7 +177,7 @@ describe('append-only retention sweeps for the life of the process, not only at 
     expect(outcomes).toEqual([0]);
     expect(harness.scheduled).toHaveLength(2); // re-armed
 
-    // The store only goes stale AFTER boot — this is the case a startup-only
+    // The store only goes stale AFTER boot, this is the case a startup-only
     // sweep can never reach.
     writeAgedFile(join(recoveryDir, 'recovery-late.jsonl'), '{"type":"x"}\n', 45 * DAY_MS);
     harness.fireLatest();
@@ -379,7 +379,7 @@ describe('daemon receipts are bounded by age as well as count, and disclose a to
       warnSpy.mockRestore();
     }
     expect(receipts.list()).toEqual([]);
-    expect(warnings).toContain('[daemon-receipt] receipt file was unreadable — starting from an empty receipt history');
+    expect(warnings).toContain('[daemon-receipt] receipt file was unreadable, starting from an empty receipt history');
   });
 
   test('a zero-filled receipt file is torn, not empty', () => {
@@ -394,7 +394,7 @@ describe('daemon receipts are bounded by age as well as count, and disclose a to
     } finally {
       warnSpy.mockRestore();
     }
-    expect(warnings).toContain('[daemon-receipt] receipt file was unreadable — starting from an empty receipt history');
+    expect(warnings).toContain('[daemon-receipt] receipt file was unreadable, starting from an empty receipt history');
   });
 
   test('an absent receipt file is NOT reported as torn', () => {

@@ -17,12 +17,12 @@
  *     discards every message the mailbox holds.
  *
  * One absurd value therefore ends inbound mail permanently while the drain
- * reports `complete, found: 0` and the watcher reports healthy — silence that
+ * reports `complete, found: 0` and the watcher reports healthy, silence that
  * announces itself as success. Nothing short of deleting the file recovers it.
  *
  * Three doors are checked, because closing one is not closing the room:
  * validation on LOAD, refusal on WRITE, and the ceiling on the wire read that
- * feeds the write. Out-of-range is DISCARDED or REFUSED, never clamped down —
+ * feeds the write. Out-of-range is DISCARDED or REFUSED, never clamped down,
  * a clamped cursor is a position the daemon never actually reached, and
  * resuming from one skips the mailbox just as silently as the bad value did.
  */
@@ -44,7 +44,7 @@ import { parseSearchNumbers } from '../packages/sdk/src/platform/email/imap-head
 import { searchAboveCursor } from '../packages/sdk/src/platform/email/inbound/poll-loop.ts';
 import type { MailboxWire } from '../packages/sdk/src/platform/email/inbound/ports.ts';
 
-/** `Number.MAX_SAFE_INTEGER` — a valid JS integer, and not a UID any server can issue. */
+/** `Number.MAX_SAFE_INTEGER`, a valid JS integer, and not a UID any server can issue. */
 const ABSURD_UID = 9_007_199_254_740_991;
 
 let dir: string;
@@ -221,7 +221,7 @@ describe('the silent-stall consequence is loud if it is ever reached at all', ()
 
   test('searching above an impossible cursor is a read failure, not an empty result', async () => {
     // The old behaviour returned [] here, which the drain reported as
-    // `complete, found: 0` — four live messages skipped, and called success.
+    // `complete, found: 0`, four live messages skipped, and called success.
     await expect(searchAboveCursor(wire, ABSURD_UID, {
       timeoutMs: 1000,
       signal: new AbortController().signal,

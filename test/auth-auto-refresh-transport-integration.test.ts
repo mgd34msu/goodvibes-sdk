@@ -3,7 +3,7 @@
  *
  * Integration tests for the auto-refresh transport middleware wired into
  * createGoodVibesSdk. Verifies that ALL typed operator/peer calls benefit
- * from automatic token refresh — not only auth.current().
+ * from automatic token refresh, not only auth.current().
  *
  * Assertion discipline: exact literal assertions, no regex unions, no auto-pass,
  * no `.catch(() => {})`, no skipped tests, no todo tests.
@@ -165,7 +165,7 @@ describe('transport integration: pre-flight refresh fires within leeway', () => 
     let refreshCount = 0;
     const fetchCalls: string[] = [];
 
-    // Token expires in 10s — well inside 60s leeway.
+    // Token expires in 10s, well inside 60s leeway.
     const store = createMemoryTokenStore('expiring-token', Date.now() + 10_000);
 
     const sdk = createGoodVibesSdk({
@@ -215,7 +215,7 @@ describe('transport integration: concurrent 401s collapse to one refresh', () =>
     const mockFetch = withPreconnect(async () => {
       fetchCount += 1;
       if (fetchCount <= 2) {
-        // First two calls are the concurrent initial attempts — both 401.
+        // First two calls are the concurrent initial attempts, both 401.
         return jsonResponse({ error: 'Unauthorized' }, 401);
       }
       // Retry calls (after refresh) succeed.
@@ -248,7 +248,7 @@ describe('transport integration: concurrent 401s collapse to one refresh', () =>
     // Both calls should return valid results.
     expect(r1).not.toBeNull();
     expect(r2).not.toBeNull();
-    // Coordinator must have serialised refresh — exactly ONE refresh call.
+    // Coordinator must have serialised refresh, exactly ONE refresh call.
     expect(refreshCount).toBe(1);
   });
 });
@@ -260,7 +260,7 @@ describe('transport integration: concurrent 401s collapse to one refresh', () =>
 describe('transport integration: consumer middleware sees fresh token after pre-flight', () => {
   it('sdk.use(mw) middleware sees refreshed Bearer token in ctx.headers.Authorization', async () => {
     const seenAuthorizations: string[] = [];
-    // Token expires in 5s — well within 60s leeway → pre-flight refresh will fire.
+    // Token expires in 5s, well within 60s leeway → pre-flight refresh will fire.
     const store = createMemoryTokenStore('expiring-token', Date.now() + 5_000);
 
     const sdk = createGoodVibesSdk({

@@ -11,7 +11,7 @@ import {
 import { invokeContractRoute, createHttpTransport } from '../packages/transport-http/dist/index.js';
 
 // ---------------------------------------------------------------------------
-// Helpers — create a transport that returns a fixed JSON body
+// Helpers, create a transport that returns a fixed JSON body
 // ---------------------------------------------------------------------------
 
 function createJsonFetch(body: unknown, status = 200): typeof fetch {
@@ -40,7 +40,7 @@ function makeTransport(responseBody: unknown) {
 const LOGIN_ROUTE = { id: 'control.auth.login', method: 'POST', path: '/api/control-plane/invoke/control.auth.login' };
 
 // ---------------------------------------------------------------------------
-// 1. Happy path — valid response passes through unchanged
+// 1. Happy path, valid response passes through unchanged
 // ---------------------------------------------------------------------------
 describe('zod-validation: happy path', () => {
   it('returns valid login response body when schema matches', async () => {
@@ -76,7 +76,7 @@ describe('zod-validation: happy path', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Contract violation — malformed response throws ContractError
+// 2. Contract violation, malformed response throws ContractError
 // ---------------------------------------------------------------------------
 describe('zod-validation: contract violations', () => {
   it('throws ContractError with kind=contract when required login fields are missing', async () => {
@@ -146,7 +146,7 @@ describe('zod-validation: contract violations', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Schema unit tests — no transport needed
+// 3. Schema unit tests, no transport needed
 // ---------------------------------------------------------------------------
 describe('zod-validation: schema correctness', () => {
   it('ControlAuthCurrentResponseSchema parses all auth modes', () => {

@@ -3,14 +3,14 @@
  *
  * Making a channel's reported state honest fixes the answer to a question that
  * nobody asks. The lived failure was not that a status endpoint said the wrong
- * thing — it was that a Telegram message got no reply and no surface, log line
+ * thing, it was that a Telegram message got no reply and no surface, log line
  * or notification said why. So the daemon watches the states it now reports
  * truthfully, and when one stops working it says so over a channel that still
  * does.
  *
  * Composed here rather than in facade-composition.ts because the announcer is
- * a policy — which surfaces may carry an unprompted alert, and what happens
- * when none can — and policies deserve a file a reader can find.
+ * a policy, which surfaces may carry an unprompted alert, and what happens
+ * when none can, and policies deserve a file a reader can find.
  */
 import { ChannelHealthWatcher, isChannelWorking } from '../channels/index.js';
 import type { ChannelDeliveryTarget } from '../channels/index.js';
@@ -21,7 +21,7 @@ import type { ResolvedDaemonFacadeRuntime } from './facade-types.js';
 /**
  * Surfaces an unprompted alert may be pushed to.
  *
- * `tui` and `web` are excluded because they are PULL surfaces — nothing is
+ * `tui` and `web` are excluded because they are PULL surfaces, nothing is
  * delivered to them, they are read when the owner happens to look, which is the
  * property that made the original defect invisible in the first place.
  * `webhook` is excluded because its target is whatever endpoint the operator
@@ -43,7 +43,7 @@ const DELIVERABLE_ALERT_SURFACES = new Set<string>([
  * wearing the alert's clothes.
  *
  * When nothing survives, the alert is stated at ERROR in the daemon log and
- * nowhere else, and it says so — an owner reading that line later learns both
+ * nowhere else, and it says so, an owner reading that line later learns both
  * that a channel died and that he was never told.
  */
 export function buildDaemonChannelHealthWatcher(runtime: ResolvedDaemonFacadeRuntime): ChannelHealthWatcher {

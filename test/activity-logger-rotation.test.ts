@@ -1,5 +1,5 @@
 /**
- * activity-logger-rotation.test.ts — the shared debug logger stops growing
+ * activity-logger-rotation.test.ts, the shared debug logger stops growing
  * unbounded.
  *
  * Defect class: utils/logger.ts appended to `.goodvibes/logs/activity.md`

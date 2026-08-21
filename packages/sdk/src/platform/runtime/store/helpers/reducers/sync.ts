@@ -317,12 +317,12 @@ function transportStateForEvent(event: TransportEvent): AcpTransportState | Daem
       return 'disconnected';
     case 'TRANSPORT_TERMINAL_FAILURE':
       return 'terminal_failure';
-    // observability-only events — no state change.
+    // observability-only events, no state change.
     case 'TRANSPORT_RETRY_SCHEDULED':
     case 'TRANSPORT_RETRY_EXECUTED':
     case 'STREAM_SUBSCRIBER_CONNECTED':
     case 'STREAM_SUBSCRIBER_DISCONNECTED':
-    // UX-enhancement observability events — no transport state change.
+    // UX-enhancement observability events, no transport state change.
     case 'TRANSPORT_BACKPRESSURE':
     case 'TRANSPORT_CONNECTION_STATE':
     case 'TRANSPORT_RECONNECT_ATTEMPT':

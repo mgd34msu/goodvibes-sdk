@@ -5,8 +5,8 @@
  * exception.
  *
  * `ConfigManager.resolvePath()` throws `Invalid config path` for a section that
- * does not exist, and every path this connector reads — `email.*`,
- * `calendar.google.*`, `google.*` — is app-layer rather than base schema. So on
+ * does not exist, and every path this connector reads, `email.*`,
+ * `calendar.google.*`, `google.*`, is app-layer rather than base schema. So on
  * a machine where nobody has run setup, the sections are simply absent and a
  * naive read throws on the FIRST key it touches. That turned a status command
  * into a crash, a capability probe into a crash, and a daemon route into a 500
@@ -39,7 +39,7 @@ const emptySecrets: GoogleSecretPort = {
   set: async () => undefined,
 };
 
-/** A secret store that is itself unreadable — the harsher case. */
+/** A secret store that is itself unreadable, the harsher case. */
 const throwingSecrets: GoogleSecretPort = {
   get: async () => {
     throw new Error('secret store is locked');

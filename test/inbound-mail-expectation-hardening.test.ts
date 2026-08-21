@@ -9,12 +9,12 @@
  *     to the present and the `now` parameter was accepted and ignored, so a
  *     record dated `openedAt: 2999-01-01` with a thirty-minute window had a
  *     perfectly valid delta, validated, survived the sweep (which reaps only
- *     records already EXPIRED — this one expires in 2999) and hydrated into an
+ *     records already EXPIRED, this one expires in 2999) and hydrated into an
  *     expectation that never ages out. `openExpectation` computes
  *     `expiresAt = now + clampWindow(...)`, so a live grant cannot outlive the
  *     hour; the load path was strictly weaker than the API it mirrors.
  *
- *   - `serviceDomain` was validated by `normalizeDomain` alone — trim,
+ *   - `serviceDomain` was validated by `normalizeDomain` alone, trim,
  *     lowercase, strip trailing dot and port, and no hostname validation at
  *     all. `"com"` survived intact, on the load path AND through the live
  *     verb, and `hostMatchesServiceDomain` accepts any host ending in
@@ -88,7 +88,7 @@ describe('a future-dated record cannot mint a permanent grant', () => {
   test('an already-expired record still validates as CONTENT, so the sweep can call it expired', () => {
     // Deliberately not refused here. Refusing it at this layer would take the
     // `expired` classification away from sweep(), which would then report a
-    // merely-spent record as malformed — telling the owner his store is
+    // merely-spent record as malformed, telling the owner his store is
     // corrupt when a signup simply timed out.
     expect(validatePersistedExpectation(planted({
       openedAt: new Date(NOW_MS - 20 * 60_000).toISOString(),
@@ -140,7 +140,7 @@ describe('a bare TLD is not a service domain, on either path', () => {
   });
 
   test('the LIVE verb refuses to open one', () => {
-    // This half needed no file edit at all — it was reachable through
+    // This half needed no file edit at all, it was reachable through
     // email.expectation.open.
     const book = new VerificationExpectationBook();
     expect(() => book.openExpectation({
@@ -213,7 +213,7 @@ describe('the full planted-record chain no longer completes', () => {
       expiresAt: '2999-01-01T00:30:00.000Z',
     });
 
-    // Refused twice over — the date and the domain each stop it alone.
+    // Refused twice over, the date and the domain each stop it alone.
     expect(validatePersistedExpectation(record, NOW)).toBeNull();
     expect(book.hydrateExpectation(record, NOW)).toBeNull();
     expect(book.list(NOW)).toHaveLength(0);

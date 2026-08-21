@@ -1,5 +1,5 @@
 /**
- * process-triggers.ts — one-shot on-exit process-lifecycle triggers.
+ * process-triggers.ts, one-shot on-exit process-lifecycle triggers.
  *
  * GoodVibes launches and supervises a command; exactly one payload fires when
  * it terminates. The watcher is owned by the daemon, not by the turn that
@@ -13,7 +13,7 @@
  *   termination state rather than announcing a finished build.
  *
  *   Bind only to processes we launched. A trigger references a tracked-process
- *   record we created, never an arbitrary PID — PIDs are recycled, and by the
+ *   record we created, never an arbitrary PID, PIDs are recycled, and by the
  *   time a daemon comes back a remembered PID very likely belongs to somebody
  *   else's process.
  *
@@ -53,7 +53,7 @@ export interface ObservedTermination {
 
 /**
  * The process effects an on-exit trigger needs. Injected so the whole lifecycle
- * — launch, poll, cancel, restart reconciliation — is testable without
+ *, launch, poll, cancel, restart reconciliation, is testable without
  * spawning anything.
  */
 export interface TriggerProcessHost {
@@ -70,7 +70,7 @@ export interface TriggerProcessHost {
   cancel(processId: string): void;
   /**
    * Whether a remembered pid still belongs to the process we launched. Used
-   * only for reporting after a restart — the trigger never re-binds to it.
+   * only for reporting after a restart, the trigger never re-binds to it.
    */
   isSameProcessAlive(pid: number, startedAt: number): boolean;
 }
@@ -125,7 +125,7 @@ function classify(observed: ObservedTermination): { state: TerminationState; rea
 
 /**
  * Builds the termination payload for a child we actually watched exit.
- * `observed: true` — every field here was measured, not inferred.
+ * `observed: true`, every field here was measured, not inferred.
  */
 export function buildTermination(input: {
   readonly process: TrackedProcessRef;
@@ -227,7 +227,7 @@ export function decideOnExitRecovery(input: {
   readonly host?: TriggerProcessHost | undefined;
 }): OnExitRecoveryDecision {
   if (input.process.daemonBootId === input.currentBootId) {
-    return { action: 'resume', reason: 'same daemon boot — the supervised child is still ours to observe' };
+    return { action: 'resume', reason: 'same daemon boot, the supervised child is still ours to observe' };
   }
   const stillAlive = input.host?.isSameProcessAlive(input.process.pid, input.process.startedAt) === true;
   return {
@@ -252,7 +252,7 @@ export function decideOnExitRecovery(input: {
 export function renderOnExitPrompt(termination: TerminationMetadata, label: string): string {
   const argv = [termination.command, ...termination.args].join(' ');
   const headline = termination.observed
-    ? `A supervised process finished. Do not assume it succeeded — read the termination state below before acting.`
+    ? `A supervised process finished. Do not assume it succeeded, read the termination state below before acting.`
     : `A supervised process's outcome is UNKNOWN. The daemon restarted while it was running, so nothing about how it ended was observed. Do not assume success or failure; verify independently before acting.`;
 
   const lines = [
@@ -263,7 +263,7 @@ export function renderOnExitPrompt(termination: TerminationMetadata, label: stri
     `Termination state: ${termination.state} (${termination.reason})`,
     `Exit code: ${termination.exitCode === null ? 'not available' : String(termination.exitCode)}`,
     `Signal: ${termination.signal ?? 'none'}`,
-    `Timed out: ${termination.timedOut ? 'yes — it hit its max-duration cap and was terminated' : 'no'}`,
+    `Timed out: ${termination.timedOut ? 'yes, it hit its max-duration cap and was terminated' : 'no'}`,
     `Duration: ${Math.round(termination.durationMs / 1000)}s`,
     `Outcome observed: ${termination.observed ? 'yes' : 'no'}`,
     '',

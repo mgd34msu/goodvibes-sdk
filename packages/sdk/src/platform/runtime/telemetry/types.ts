@@ -48,7 +48,7 @@ export interface SpanEvent {
   readonly attributes?: SpanAttributes | undefined;
 }
 
-/** Immutable span context — the W3C TraceContext identifiers. */
+/** Immutable span context, the W3C TraceContext identifiers. */
 export interface SpanContext {
   /** 128-bit trace ID as 32-char hex string. */
   readonly traceId: string;
@@ -123,7 +123,7 @@ export interface Span {
 /** Label set for a metric observation. */
 export type MetricLabels = Record<string, string>;
 
-/** A counter — monotonically increasing value. */
+/** A counter, monotonically increasing value. */
 export interface Counter {
   /** Increment by delta (default 1). Must be non-negative. */
   add(delta?: number, labels?: MetricLabels): void;
@@ -131,7 +131,7 @@ export interface Counter {
   value(labels?: MetricLabels): number;
 }
 
-/** A histogram — distribution of observed values. */
+/** A histogram, distribution of observed values. */
 export interface Histogram {
   /** Record an observation. */
   record(value: number, labels?: MetricLabels): void;
@@ -149,7 +149,7 @@ export interface HistogramSnapshot {
   readonly mean: number;
 }
 
-/** A gauge — arbitrary point-in-time value. */
+/** A gauge, arbitrary point-in-time value. */
 export interface Gauge {
   /** Set to an absolute value. */
   set(value: number, labels?: MetricLabels): void;
@@ -159,7 +159,7 @@ export interface Gauge {
 
 // ── Exporter interface ────────────────────────────────────────────────────────
 
-/** A span exporter — receives completed spans. */
+/** A span exporter, receives completed spans. */
 export interface SpanExporter {
   /** Name for logging/identification. */
   readonly name: string;

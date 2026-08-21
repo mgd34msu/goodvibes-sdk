@@ -3,7 +3,7 @@
  *
  * This gate exists because `api:check` is blind to `./platform/**`: the two
  * api-extractor rollups cover 806 of the package's 6 361 subpath exports, and
- * 78 of the 140 published subpaths — `./platform/email` among them — appear in
+ * 78 of the 140 published subpaths, `./platform/email` among them, appear in
  * neither. Measured, not assumed: changing `EmailSummary.subject` from `string`
  * to `string | null`, rebuilding and running `bunx api-extractor run --local`
  * produced no diff in `etc/goodvibes-sdk.api.md` at all.
@@ -291,7 +291,7 @@ describe('the committed report', () => {
   test('those same names are absent from the api-extractor rollups — the rollups are not this gate', () => {
     const rollup = readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk.api.md'), 'utf8')
       + readFileSync(join(SDK_ROOT, 'etc', 'goodvibes-sdk-embed.api.md'), 'utf8');
-    // If this ever fails it is good news — it means `packages/sdk/src/index.ts`
+    // If this ever fails it is good news, it means `packages/sdk/src/index.ts`
     // started re-exporting the platform tree and the rollup covers it too. Fix
     // by deleting this assertion, not by narrowing the report.
     expect(rollup).not.toContain('EmailInboxListResult');

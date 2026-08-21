@@ -1,4 +1,4 @@
-# Channel Surfaces
+# Channel surfaces
 
 Channel surfaces connect external messaging systems and automation sources to
 the daemon. They provide ingress, delivery, policy, account lifecycle, directory
@@ -11,7 +11,7 @@ Public API surfaces:
 - `@pellux/goodvibes-sdk/platform/integrations` (notifier integrations)
 - operator control-plane methods for channel setup, delivery, and route binding
 
-## Supported Surfaces
+## Supported surfaces
 
 The channel contract includes:
 
@@ -72,7 +72,7 @@ Ingress applies request-size limits, signature/token checks where configured,
 channel policy, conversation-kind mapping, route binding, and surface-specific
 reply setup before handing work to the daemon.
 
-## Conversation Kinds
+## Conversation kinds
 
 Channel conversation kinds are:
 
@@ -86,7 +86,7 @@ Policies can match at surface or group scope. The default policy posture is
 allow/deny/inherit by conversation kind, with command allowlists and actor
 authorization records available for managed surfaces.
 
-## Route Bindings
+## Route bindings
 
 Route bindings preserve the connection between an external conversation and
 GoodVibes runtime state. A binding can include surface kind, surface id,
@@ -109,7 +109,7 @@ Channel render policy controls:
 - output format: plain, Markdown, or JSON
 - phase: progress, final, or approval
 
-## Account Lifecycle
+## Account lifecycle
 
 Managed surfaces expose account records, secret status, setup schemas, repair
 actions, doctor reports, lifecycle state, allowlist resolution, allowlist edit,
@@ -120,7 +120,7 @@ start, stop, login, logout, and wait-login. Secrets can be read from the
 service registry, config, environment variables, derived values, or reported as
 missing.
 
-## Directory And Targets
+## Directory and targets
 
 Directory entries represent self, users, channels, groups, threads, members,
 and services. Target resolution can use explicit input, provider directories,
@@ -129,7 +129,7 @@ route bindings, normalized identifiers, synthetic targets, or miss records.
 This is what lets a client resolve names like a Slack channel, Discord thread,
 or Home Assistant service target before dispatching work.
 
-## Surface-Specific Notes
+## Surface-specific notes
 
 - ntfy has configurable chat, agent, and remote-chat topics. Chat-to-TUI routes
   into the active shared session; agent topics submit agent work; remote-chat
@@ -146,7 +146,7 @@ or Home Assistant service target before dispatching work.
   plain-text reply rendering tuned for phone channels.
 - Generic webhooks support signed ingress and generic reply delivery.
 
-## Operator Methods
+## Operator methods
 
 The operator contract exposes channel surfaces, accounts, setup schemas,
 doctor reports, repairs, lifecycle state, directory lookup, target resolution,

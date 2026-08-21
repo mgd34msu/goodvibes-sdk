@@ -1,5 +1,5 @@
 /**
- * Ecosystem barrel — the curated catalog + capability-bundle distribution layer.
+ * Ecosystem barrel, the curated catalog + capability-bundle distribution layer.
  *
  * Exposes the existing catalog/receipt/rollback machinery alongside the
  * capability-bundle format, SHA-256-pinned distribution, and the governed

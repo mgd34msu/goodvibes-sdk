@@ -11,7 +11,7 @@
  *   5. E2E with no auth token → 401 (auth rejected)
  *
  * Explicitly: NO test for workspace-scoped fallback. If you find yourself
- * writing a "workspace tokens also work" test, stop — that's the wrong spec.
+ * writing a "workspace tokens also work" test, stop, that's the wrong spec.
  */
 
 import { describe, expect, test, beforeEach, afterEach } from 'bun:test';
@@ -161,7 +161,7 @@ describe('global-only: workspace-scoped token path is never read', () => {
     const wsToken = { token: 'gv_workspace_should_not_be_used', peerId: 'ws_peer', createdAt: 999 };
     writeFileSync(join(fakeWorkspaceDotGv, 'operator-tokens.json'), JSON.stringify(wsToken));
 
-    // companion-token.ts with a fresh daemonHome has no token yet — should create a new one
+    // companion-token.ts with a fresh daemonHome has no token yet, should create a new one
     const result = getOrCreateCompanionToken({ daemonHomeDir: daemonHome });
 
     // Must NOT return the workspace-scoped token
@@ -251,7 +251,7 @@ describe('E2E real token through auth chain: file read inside checkAuth', () => 
   function makeRealAuthContext(daemonHomeDir: string) {
     // checkAuth implementation that genuinely reads the token file and
     // compares it to the Authorization: Bearer <token> request header.
-    // This is the live file-read path — readOperatorTokenFile is called
+    // This is the live file-read path, readOperatorTokenFile is called
     // for every request, proving the global file → auth chain is wired.
     const checkAuth = (req: Request): boolean => {
       const raw = readOperatorTokenFile(daemonHomeDir);

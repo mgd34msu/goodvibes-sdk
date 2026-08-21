@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Live process registry — one queryable + subscribable aggregation
+ * Live process registry, one queryable + subscribable aggregation
  * surface over the already-composed runtime managers. ZERO new store state:
  * every query is an aggregate-on-read over the managers' in-memory maps, and
  * the only registry-owned mutable state is the agent activity side-table fed
@@ -92,7 +92,7 @@ export interface RegistryTimers {
 }
 
 /**
- * Narrow structural deps — a pick of each manager's read/control surface, NOT
+ * Narrow structural deps, a pick of each manager's read/control surface, NOT
  * the whole RuntimeServices, so the registry stays testable with stubs and
  * cannot participate in a construction cycle.
  */
@@ -103,7 +103,7 @@ export interface ProcessRegistryDeps {
    * Optional: folds workstream/phase/work-item nodes into
    * the fleet, nested workstream -> phase -> work-item, mirroring the
    * wrfc-chain/subtask nesting. Without this dep the registry degrades to
-   * exactly today's behavior — no orchestration nodes, no new capability.
+   * exactly today's behavior, no orchestration nodes, no new capability.
    *
    * `kill` is used (not a raw AgentManager.cancel cascade like the wrfc-chain
    * path) so a fleet-initiated kill goes through the SAME
@@ -118,14 +118,14 @@ export interface ProcessRegistryDeps {
   readonly watcherRegistry: Pick<WatcherRegistry, 'list' | 'stopWatcher'>;
   readonly workflow: {
     readonly workflowManager: Pick<WorkflowManager, 'list' | 'cancel'>;
-    /** `enable` backs ProcessRegistry.resume() — the inverse of `disable`'s interrupt/pause. */
+    /** `enable` backs ProcessRegistry.resume(), the inverse of `disable`'s interrupt/pause. */
     readonly triggerManager: Pick<TriggerManager, 'list' | 'remove' | 'disable' | 'enable'>;
     readonly scheduleManager: Pick<ScheduleManager, 'list' | 'remove' | 'disable' | 'enable'>;
   };
   /**
    * Optional: the trigger family's supervisor (stream watchers, condition
    * checks, on-exit process triggers). When present its records fold in as
-   * 'trigger' nodes alongside the workflow tool's event triggers — the two are
+   * 'trigger' nodes alongside the workflow tool's event triggers, the two are
    * told apart by `isWatcherTriggerRaw`, never by kind alone, so a control verb
    * can never be routed to the wrong manager. Absent (the default, and the
    * case whenever watchers.triggers.enabled is false) ⇒ exactly today's
@@ -140,7 +140,7 @@ export interface ProcessRegistryDeps {
    * Optional: the repo source-tree code index (Stage A).
    * When present, its build/idle state surfaces as a single 'code-index'
    * ProcessNode. Without this dep the fleet degrades to exactly today's
-   * behavior — zero code-index nodes, no new capability.
+   * behavior, zero code-index nodes, no new capability.
    */
   readonly codeIndexService?: CodeIndexProcessSource | undefined;
   /** Optional: hosted third-party ACP agents fold in as 'acp-agent' nodes (steer = next prompt, kill = stop, permission ask = awaiting-approval). Absent ⇒ exactly today's behavior. */
@@ -150,15 +150,15 @@ export interface ProcessRegistryDeps {
   /**
    * Optional: folds `/schedule` automation jobs
    * (platform/automation, a SEPARATE subsystem from the workflow-tool's
-   * ScheduleManager above) into the fleet as 'schedule'-kind nodes — see
+   * ScheduleManager above) into the fleet as 'schedule'-kind nodes, see
    * adapters/automation.ts. Without this dep the fleet degrades to exactly
-   * today's behavior — zero automation-job nodes, no new capability.
+   * today's behavior, zero automation-job nodes, no new capability.
    */
   readonly automationManager?: Pick<AutomationManager, 'listJobs' | 'setEnabled' | 'removeJob'> | undefined;
   /**
    * Optional: backs `steer()` and the `steerable` capability. The
    * bus already exists in the composed runtime and already feeds every
-   * in-process agent's per-turn inbox drain (orchestrator-runner.ts) — this
+   * in-process agent's per-turn inbox drain (orchestrator-runner.ts), this
    * just hands the registry a narrow `send`-only pick of it. Without this
    * dep, steer() always refuses and steerable is false everywhere
    * (graceful degrade, matches the approvalBroker/sessionBroker pattern).
@@ -166,7 +166,7 @@ export interface ProcessRegistryDeps {
   readonly messageBus?: Pick<AgentMessageBus, 'send'> | undefined;
   /** Optional: feeds the fine-grained agent activity side-table. Without it the registry degrades to coarse states. */
   readonly runtimeBus?: RuntimeEventBus | undefined;
-  /** Optional: honest cost pricing. Return null when the model is unknown — NEVER fabricate. */
+  /** Optional: honest cost pricing. Return null when the model is unknown, NEVER fabricate. */
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
   /** Optional: provenance for the same resolution priceUsage prices with (costSource + as-of date on priced nodes). */
   readonly priceProvenance?: ((model: string | undefined) => { readonly source: 'user' | 'provider' | 'catalog'; readonly asOf?: string | undefined } | null) | undefined;
@@ -200,7 +200,7 @@ function unrefHandle(handle: unknown): void {
 
 /**
  * Change signature over the fields that constitute a MATERIAL change.
- * Deliberately excludes elapsedMs/capturedAt/activity.at — continuously
+ * Deliberately excludes elapsedMs/capturedAt/activity.at, continuously
  * varying derived values must not wake subscribers every tick.
  * Joined with an escaped NUL so no printable field value can collide.
  */
@@ -237,7 +237,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
   // ── Activity side-table (the only liveness mechanism, registry-owned) ─────
   const activity = new Map<string, AgentActivityEntry>();
   // Headline side-table: task/phase-identity-keyed, replaced in place on
-  // transitions only (see headlines.ts — the anti-feed contract lives there).
+  // transitions only (see headlines.ts, the anti-feed contract lives there).
   const headlines = new HeadlineTable();
   const busUnsubscribers: Array<() => void> = [];
   let disposed = false;
@@ -385,7 +385,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     }
 
     // Owner agent nodes to replace with a repriced copy after the chain loop
-    // (ProcessNode is readonly — collect overrides, apply in one pass at the end).
+    // (ProcessNode is readonly, collect overrides, apply in one pass at the end).
     const ownerNodeOverrides = new Map<string, ProcessNode>();
     for (const chain of chains) {
       // Members exclude the owner: its usage is populated FROM phase children
@@ -486,7 +486,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       ? nodes.map((node) => ownerNodeOverrides.get(node.id) ?? node)
       : nodes;
     // Read-model projections every surface inherits: the per-node headline
-    // (task/phase identity only, replaced in place — never a feed) and the
+    // (task/phase identity only, replaced in place, never a feed) and the
     // stall tell (pure timestamp comparison, no generated text).
     const liveIds = new Set<string>();
     const finalNodes = withOverrides.map((node) => {
@@ -570,7 +570,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
 
   // ── Control dispatch (existing manager paths only) ─────────────────────────
 
-  /** Cascade kill over member agents — always a hard kill, never an interrupt. */
+  /** Cascade kill over member agents, always a hard kill, never an interrupt. */
   function cancelAgents(agentIds: readonly (string | undefined)[]): string[] {
     const affected: string[] = [];
     for (const agentId of agentIds) {
@@ -582,7 +582,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
   /**
    * Fire-and-forget an AutomationManager async control call: the
    * registry's own kill/interrupt/resume verbs are
-   * synchronous, but AutomationManager.removeJob/setEnabled are Promises —
+   * synchronous, but AutomationManager.removeJob/setEnabled are Promises,
    * dispatch without awaiting rather than making every registry verb async,
    * but never let a rejection vanish silently. The next tick's assemble()
    * reflects the real outcome once the promise settles (mirrors the
@@ -607,7 +607,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
         return deps.workflow.workflowManager.cancel(node.id) ? [node.id] : [];
       case 'trigger':
         // Two managers share this kind. Ask the raw payload which one owns the
-        // node rather than assuming — routing to the wrong manager would
+        // node rather than assuming, routing to the wrong manager would
         // silently no-op and leave a supervised child process running.
         if (isWatcherTriggerRaw(node.raw)) {
           if (!deps.triggerSupervisor) return [];
@@ -638,7 +638,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       }
       case 'workstream': {
         // DERIVED: no native single-call cancel, so kill cascades
-        // engine.kill(itemId) over every non-terminal item — routed through
+        // engine.kill(itemId) over every non-terminal item, routed through
         // the engine (not a raw AgentManager.cancel cascade) so cooperative
         // cancellation (AbortController -> exec/fetch signal) fires the same
         // way it would for an engine-internal kill.
@@ -658,7 +658,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'acp-agent':
         return killHostedAcpNode(deps.acpHost, node, (hostedId, error) => logger.warn('[fleet] hosted ACP agent stop failed', { id: hostedId, error: summarizeError(error) }));
       case 'phase':
-        // Pure grouping node — not killable (see adaptPhase capabilities).
+        // Pure grouping node, not killable (see adaptPhase capabilities).
         return [];
       default:
         return [];
@@ -700,7 +700,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
     // Chain-kill consistency: under cascade, member agents are terminated by
     // the descendant pass BEFORE the chain's own killNode runs, so its
     // internal cancelAgents() call finds every member already cancelled
-    // (affected.length === 0 there) and omits 'chain:<id>' — even though the
+    // (affected.length === 0 there) and omits 'chain:<id>', even though the
     // chain itself was the kill target and a termination did occur. Make the
     // return value consistent across both cascade and non-cascade: include
     // the chain id whenever the chain was targeted and either a termination
@@ -719,7 +719,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
       case 'agent':
         return deps.agentManager.cancel(target.id, 'interrupt');
       case 'trigger':
-        // The trigger family has no disable/enable pause cycle — its records
+        // The trigger family has no disable/enable pause cycle, its records
         // are either armed, walking the backoff ladder, or parked by the
         // breaker. Refuse honestly instead of pretending to pause one.
         if (isWatcherTriggerRaw(target.raw)) return false;
@@ -746,7 +746,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
 
   /**
    * Re-arm a `paused` trigger/schedule via the owning
-   * manager's `enable()` — the inverse of interrupt()'s disable. Re-assemble
+   * manager's `enable()`, the inverse of interrupt()'s disable. Re-assemble
    * + dispatch-by-kind mirrors interrupt()/kill()'s own shape exactly (same
    * synchronous, no-owned-state pattern as every other control verb here).
    * Honest refusal (false, never throws) for anything not currently
@@ -788,7 +788,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
    *
    * Honest refusal for anything that cannot take mid-run input: no
    * messageBus dep, a terminal/non-conversational kind, or a wrfc-chain
-   * (coordinate FSM, no conversation loop of its own — steer its member
+   * (coordinate FSM, no conversation loop of its own, steer its member
    * subtask instead).
    */
   function steer(id: string, text: string): SteerResult {
@@ -809,7 +809,7 @@ export function createProcessRegistry(deps: ProcessRegistryDeps): ProcessRegistr
           // exhausted turn/circuit-breaker loop, idle-after-error, watchdog kill)
           // is re-triggered from its retained context with the steer as input,
           // rather than silently refused. A 'stalled' (still-running, no
-          // heartbeat) agent is NOT re-run — that would race a live promise; its
+          // heartbeat) agent is NOT re-run, that would race a live promise; its
           // steer stays refused honestly rather than falsely claimed delivered.
           if (target.state === 'failed' && deps.agentManager.wakeWithSteer) {
             const woke = deps.agentManager.wakeWithSteer(target.id, text);

@@ -3,7 +3,7 @@
  *
  * Making the reported state honest fixes the answer to a question, but nobody
  * asks that question. The lived failure was not "the status endpoint said the
- * wrong thing" — it was that the owner sent a Telegram message, got nothing
+ * wrong thing", it was that the owner sent a Telegram message, got nothing
  * back, and had no way to find out why without going and looking. A truthful
  * `dead` that nothing reads is the same silence with better bookkeeping.
  *
@@ -30,7 +30,7 @@ export interface ChannelHealthAlert {
   readonly label: string;
   readonly state: ChannelHealthState;
   readonly previousState: ChannelHealthState | null;
-  /** Why, in the surface's own words — the supervisor's named reason. */
+  /** Why, in the surface's own words, the supervisor's named reason. */
   readonly reason: string;
   /** A complete sentence fit to send as-is. */
   readonly message: string;
@@ -44,7 +44,7 @@ export interface ChannelHealthWatcherDeps {
   /**
    * Deliver the alert to the owner over some channel OTHER than
    * `alert.surface`. Absent means nothing is wired, which this class refuses to
-   * treat as normal — see `start()`.
+   * treat as normal, see `start()`.
    */
   readonly announce?: ((alert: ChannelHealthAlert) => Promise<void> | void) | undefined;
   /** How often to sweep. */
@@ -188,7 +188,7 @@ export class ChannelHealthWatcher {
   private async emit(alert: ChannelHealthAlert): Promise<void> {
     // Logged at ERROR regardless of whether an announcer exists, because the
     // daemon log is the one place this is guaranteed to be recoverable after
-    // the fact — and a channel going dead is the most expensive state the
+    // the fact, and a channel going dead is the most expensive state the
     // system can be in without saying anything.
     if (alert.kind === 'recovered') {
       logger.info('Channel recovered', { surface: alert.surface, detail: alert.message });

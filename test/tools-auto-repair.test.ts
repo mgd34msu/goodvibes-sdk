@@ -120,7 +120,7 @@ describe('Rule 1: infer agent mode', () => {
 
   test('does not infer mode for non-agent tools', () => {
     const result = repairToolCall('read', { task: 'Build it' }, STRING_SCHEMA);
-    // 'task' is not in STRING_SCHEMA — no mode inference attempted
+    // 'task' is not in STRING_SCHEMA, no mode inference attempted
     expect(result.fixed['mode']).toBeUndefined();
   });
 });
@@ -154,7 +154,7 @@ describe('Rule 2: fill missing required string params', () => {
   });
 
   test('does not fill missing required path from non-required string with no name overlap', () => {
-    // 'encoding' has no name overlap with 'path' — generic fallback removed
+    // 'encoding' has no name overlap with 'path', generic fallback removed
     const result = repairToolCall(
       'read',
       { encoding: '/etc/hosts' },
@@ -191,7 +191,7 @@ describe('Rule 2: fill missing required string params', () => {
 
   test('does not fill when no non-required string args present', () => {
     const result = repairToolCall('read', {}, STRING_SCHEMA);
-    // No candidates available — missing path stays missing
+    // No candidates available, missing path stays missing
     expect(result.fixed['path']).toBeUndefined();
     expect(result.repaired).toBe(false);
   });
@@ -209,7 +209,7 @@ describe('Rule 2: fill missing required string params', () => {
         },
       },
     };
-    // Both required — should not fill dst from src
+    // Both required, should not fill dst from src
     const result = repairToolCall('copy', { src: '/a/b' }, schema);
     expect(result.fixed['dst']).toBeUndefined();
   });
@@ -401,7 +401,7 @@ describe('RepairResult contract', () => {
       },
     };
     const result = repairToolCall('task', { duration: '1000', config: nested }, schema);
-    // Mutate the fixed copy — original must not be affected
+    // Mutate the fixed copy, original must not be affected
     (result.fixed['config'] as Record<string, unknown>)['extra'] = true;
     expect((nested as Record<string, unknown>)['extra']).toBeUndefined();
   });

@@ -18,7 +18,7 @@ export interface CiJob {
   readonly status: 'queued' | 'in_progress' | 'completed';
   /** null while not yet completed; otherwise the GitHub conclusion string. */
   readonly conclusion: string | null;
-  /** True when the job is configured continue-on-error — banned, because it masks a failure. */
+  /** True when the job is configured continue-on-error, banned, because it masks a failure. */
   readonly continueOnError?: boolean | undefined;
   readonly url?: string | undefined;
 }
@@ -90,7 +90,7 @@ export interface FixSessionBrief {
 
 /**
  * The starter's outcome: the REAL spawned session's id (the id session
- * attach/resume resolves — never a scheduling handle like an automation job
+ * attach/resume resolves, never a scheduling handle like an automation job
  * id), or the honest failure. The legacy bare string/undefined forms remain
  * accepted and are normalized by the service.
  */
@@ -104,7 +104,7 @@ export type FixSessionStarter = (brief: FixSessionBrief) => Promise<FixSessionSt
 /**
  * The offer's outcome. The object form carries the approval ask's callId so
  * the service can stamp the started session's id back onto the RESOLVED
- * approval record (broker seam) — giving the surface that accepted an
+ * approval record (broker seam), giving the surface that accepted an
  * in-process handle to the session its acceptance spawned. The bare boolean
  * form remains valid for wirings without an approval record.
  */
@@ -116,7 +116,7 @@ export type FixSessionOfferOutcome =
  * The "fix this?" offer for a red run on a watch that did NOT opt into
  * auto-start: surfaced through the approval/attention machinery (wired at the
  * composition root to the approval broker). Resolves accepted=true when the
- * operator accepts — the service then starts the fix-session with the SAME
+ * operator accepts, the service then starts the fix-session with the SAME
  * brief, and (given an offerCallId) stamps the started id onto the approval
  * record.
  */

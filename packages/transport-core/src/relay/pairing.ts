@@ -1,7 +1,7 @@
 // relay/pairing.ts
 //
 // The pairing payload is the out-of-band bootstrap for a relay connection: it
-// carries everything a surface needs to reach a daemon and authenticate it —
+// carries everything a surface needs to reach a daemon and authenticate it,
 // the relay URL, the unguessable rendezvous id, and the daemon's pinned static
 // public key. It is deliberately compact and QR-encodable (base64url of a small
 // JSON object, prefixed with a self-describing scheme tag) because the intended

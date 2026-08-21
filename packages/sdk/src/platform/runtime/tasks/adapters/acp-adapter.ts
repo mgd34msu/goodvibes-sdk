@@ -1,5 +1,5 @@
 /**
- * AcpTaskAdapter — bridges ACP remote subagent tasks (managed by AcpManager)
+ * AcpTaskAdapter, bridges ACP remote subagent tasks (managed by AcpManager)
  * into the unified RuntimeTask registry.
  *
  * Each spawned ACP subagent gets a corresponding RuntimeTask of kind 'acp'.
@@ -48,7 +48,7 @@ const TERMINAL_ACP_STATUSES: ReadonlySet<SubagentStatus> = new Set([
  *
  * NOTE: This adapter writes directly to the Zustand store for performance,
  * bypassing TaskManager. Lifecycle validation is the caller's responsibility.
- * This is intentional — adapters are authoritative sources for their subsystem.
+ * This is intentional, adapters are authoritative sources for their subsystem.
  *
  * @example
  * ```ts

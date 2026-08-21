@@ -1,18 +1,18 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * goodvibes-home.ts — where this process's GoodVibes tree lives, resolved in
+ * goodvibes-home.ts, where this process's GoodVibes tree lives, resolved in
  * ONE place for every entry point, on every surface.
  *
  * ## The defect this closes
  *
- * `GOODVIBES_HOME` relocates the tree root. It was read by exactly one file —
- * the daemon CLI entry point — and the CLIENT entry point called `homedir()`
+ * `GOODVIBES_HOME` relocates the tree root. It was read by exactly one file,
+ * the daemon CLI entry point, and the CLIENT entry point called `homedir()`
  * unconditionally, on the same object literal where it did honour
  * `GOODVIBES_WORKING_DIR`. So a harness that set `GOODVIBES_HOME` to a
  * throwaway directory and then ran a client command got a process that read and
- * wrote the REAL tree: settings, workspace state, and — because the daemon-tier
- * secret store is derived from the tree root — `~/.goodvibes/daemon/secrets.enc`.
+ * wrote the REAL tree: settings, workspace state, and, because the daemon-tier
+ * secret store is derived from the tree root, `~/.goodvibes/daemon/secrets.enc`.
  *
  * That is not hypothetical. An isolated round stored two throwaway credentials
  * and they landed in the owner's live secret store, where they had to be
@@ -21,11 +21,11 @@
  *
  * ## What each variable means
  *
- *  - `GOODVIBES_HOME` — the tree ROOT, the directory `.goodvibes/` sits under.
+ *  - `GOODVIBES_HOME`, the tree ROOT, the directory `.goodvibes/` sits under.
  *    Setting it relocates settings, workspace, discovery roots, and every tier
  *    of the secret store. This is what an isolated harness or a service unit
  *    sets.
- *  - `GOODVIBES_DAEMON_HOME` — the daemon's own IDENTITY directory (auth users,
+ *  - `GOODVIBES_DAEMON_HOME`, the daemon's own IDENTITY directory (auth users,
  *    operator tokens, daemon settings). It falls under the tree root unless set
  *    separately, and it names only that directory: it is not a second way to
  *    move the tree. Both entry points resolve it the same way now, so a client
@@ -48,11 +48,11 @@ export interface GoodVibesHomeOwnership {
   readonly daemonHomeDirectory: string;
   /**
    * True when either `GOODVIBES_HOME` or `GOODVIBES_DAEMON_HOME` named an
-   * override (a blank/whitespace-only value does not count — see
+   * override (a blank/whitespace-only value does not count, see
    * resolveGoodVibesHome). Callers that need to know "is this process running
    * out of a relocated tree or identity directory" (e.g. to refuse adopting
    * the machine's real service unit) read this instead of re-reading the raw
-   * environment variable themselves — this module is the one reader.
+   * environment variable themselves, this module is the one reader.
    */
   readonly isOverridden: boolean;
 }
@@ -93,7 +93,7 @@ export function resolveGoodVibesDaemonHome(
 }
 
 /**
- * The `.goodvibes` directory itself — the tree, not the root it sits under.
+ * The `.goodvibes` directory itself, the tree, not the root it sits under.
  *
  * This exists because the two were being derived independently and did not
  * agree. `GOODVIBES_HOME` meant the tree ROOT to the runtime
@@ -102,7 +102,7 @@ export function resolveGoodVibesDaemonHome(
  * `process.env.GOODVIBES_HOME ?? join(homedir(), '.goodvibes')`. Set it to
  * `/tmp/sandbox` to isolate a run and the runtime wrote
  * `/tmp/sandbox/.goodvibes/`, while a script inspected `/tmp/sandbox` as though
- * it were already the tree — so the two halves of one round disagreed about
+ * it were already the tree, so the two halves of one round disagreed about
  * which files were even in scope.
  *
  * That is the shape of an incident that has already happened here: a
@@ -112,15 +112,15 @@ export function resolveGoodVibesDaemonHome(
  * writes secrets and because an isolation harness needs a single root that
  * everything falls under.
  *
- * A caller that genuinely wants to name a `.goodvibes` directory directly —
- * auditing a tree that is not under any home — passes it explicitly rather than
+ * A caller that genuinely wants to name a `.goodvibes` directory directly,
+ * auditing a tree that is not under any home, passes it explicitly rather than
  * through the environment. Both scripts keep a `--home` flag for exactly that.
  */
 export function resolveGoodVibesTreeDirectory(env: NodeJS.ProcessEnv = process.env): string {
   return join(resolveGoodVibesHome(env), '.goodvibes');
 }
 
-/** Both roots at once — what an entry point wants. */
+/** Both roots at once, what an entry point wants. */
 export function resolveGoodVibesHomeOwnership(
   env: NodeJS.ProcessEnv = process.env,
 ): GoodVibesHomeOwnership {
@@ -142,7 +142,7 @@ export function resolveGoodVibesHomeOwnership(
  *
  * It lives here because the two variables have exactly one reader, and the
  * answer is a question ABOUT them. A caller checking `process.env` for itself is
- * how the second meaning that started all of this gets reintroduced — so the
+ * how the second meaning that started all of this gets reintroduced, so the
  * question is answered here rather than asked again somewhere else.
  */
 export function hasOverriddenGoodVibesHome(env: NodeJS.ProcessEnv = process.env): boolean {

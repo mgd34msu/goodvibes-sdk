@@ -1,11 +1,11 @@
 /**
- * Durable user-origin permission rules — approval decisions that persist.
+ * Durable user-origin permission rules, approval decisions that persist.
  *
  * A "remember" decision with a generalizing tier (exact command / command
  * class / path scope / whole tool) writes a PolicyRule with origin 'user'
  * here. PermissionManager consults these rules before ever prompting (the
  * in-memory session map is just a cache in front), and evaluateRuntimePolicy
- * folds them into the layered evaluator when the policy engine flag is on —
+ * folds them into the layered evaluator when the policy engine flag is on,
  * user rules are evaluated ahead of managed rules there.
  *
  * Storage: one JSON file per project (control-plane config dir), atomic
@@ -58,7 +58,7 @@ export class UserPermissionRuleStore {
         );
       }
     } catch (error) {
-      // A corrupt store must not silently grant or deny anything — start
+      // A corrupt store must not silently grant or deny anything, start
       // empty (every ask prompts again) and say so.
       logger.warn('user permission rule store unreadable; starting with no durable rules', {
         error: summarizeError(error),
@@ -73,7 +73,7 @@ export class UserPermissionRuleStore {
     return [...this.records].sort((a, b) => b.createdAt - a.createdAt);
   }
 
-  /** Just the PolicyRules, for evaluation (insertion order — first match wins). */
+  /** Just the PolicyRules, for evaluation (insertion order, first match wins). */
   rules(): readonly PolicyRule[] {
     return this.records.map((record) => record.rule);
   }
@@ -102,7 +102,7 @@ export class UserPermissionRuleStore {
    * rules are written by two paths that overlap in practice: `add`, from a
    * "remember this decision" answer, and `delete`, from a revocation. With the
    * writes unordered the add's rename could land AFTER the delete's, putting
-   * the revoked rule back on disk — and a durable user rule is consulted before
+   * the revoked rule back on disk, and a durable user rule is consulted before
    * anything prompts, so the next matching ask was auto-approved by a rule its
    * owner had already taken away.
    *

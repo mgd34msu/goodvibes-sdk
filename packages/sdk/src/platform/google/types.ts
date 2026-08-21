@@ -3,11 +3,11 @@
  *
  * Two paths exist, and they are genuinely different products:
  *
- *   Path A ("app-password") — no Google Cloud project at all. Gmail is reached
+ *   Path A ("app-password"), no Google Cloud project at all. Gmail is reached
  *   over IMAP/SMTP with a Google app password; Calendar is reached read-only
  *   over the private iCal address. This is the fast lane and the default.
  *
- *   Path B ("oauth") — a Google Cloud project, the Gmail API and Calendar API,
+ *   Path B ("oauth"), a Google Cloud project, the Gmail API and Calendar API,
  *   and an OAuth Desktop client. Needed for calendar writes, push/watch
  *   channels and richer queries.
  *
@@ -23,7 +23,7 @@
  * a machine that already held an OAuth client id and secret was still walked
  * through creating a Cloud project and filling in the consent screen, because
  * the only OAuth path started at `gcloud-installed`. When the client already
- * exists there is exactly one thing left to do — ask the person for consent —
+ * exists there is exactly one thing left to do, ask the person for consent,
  * so this path is those two steps and nothing else. It never touches a
  * project, a branding page or an audience setting.
  */
@@ -32,11 +32,11 @@ export type GoogleSetupPath = 'app-password' | 'oauth' | 'existing-client';
 /**
  * Who performs a step.
  *
- * - `automated`      — the flow does it with no human involvement.
- * - `human-assisted` — the flow drives the browser to the exact place and the
+ * - `automated`     , the flow does it with no human involvement.
+ * - `human-assisted`, the flow drives the browser to the exact place and the
  *                      human performs one specific interaction (a click, a
  *                      sign-in, a 2FA approval). The flow names the control.
- * - `manual`         — the flow cannot drive it at all; the runbook is the
+ * - `manual`        , the flow cannot drive it at all; the runbook is the
  *                      only route. Kept explicit so it is never mistaken for
  *                      something the automation silently skipped.
  */
@@ -48,7 +48,7 @@ export type GoogleStepOutcome =
   | 'done'
   /** Already true before this run started; nothing was changed. */
   | 'already-done'
-  /** Waiting on the human. Not an error — the flow reports and stops cleanly. */
+  /** Waiting on the human. Not an error, the flow reports and stops cleanly. */
   | 'needs-human'
   /** The step failed. `problem` and `fix` are always populated. */
   | 'failed'
@@ -129,7 +129,7 @@ export interface GoogleStepResult {
   readonly fix?: string;
   /**
    * Set when the step could not be completed and the written runbook is the
-   * fallback — carries the anchor to jump to.
+   * fallback, carries the anchor to jump to.
    */
   readonly runbookAnchor?: string;
   readonly elapsedMs: number;
@@ -147,7 +147,7 @@ export interface GoogleSetupReport {
   readonly waitingOn: GoogleStepId | null;
   /**
    * Plain-language warnings that do not fail the run but that the owner must
-   * see — most importantly the 7-day refresh token expiry when an OAuth app is
+   * see, most importantly the 7-day refresh token expiry when an OAuth app is
    * left in Testing.
    */
   readonly warnings: readonly string[];
@@ -203,7 +203,7 @@ export interface GoogleCommandPort {
  *
  * An implementation MUST NOT pin these writes to its own surface's silo. Every
  * path in `GOOGLE_CONFIG_KEYS` is daemon-owned, and the ownership machinery
- * routes an unqualified write to the daemon tier by itself — so the correct
+ * routes an unqualified write to the daemon tier by itself, so the correct
  * implementation is a plain `set`, and an explicitly surface-scoped one is the
  * bug. A connection stranded in one surface's file stops existing the moment
  * that surface is closed, which is precisely when the daemon still has to
@@ -221,7 +221,7 @@ export interface GoogleConfigPort {
  * `GOOGLE_SECRET_KEYS` derives from a daemon-owned config path, so the secret
  * store files it in the daemon tier when no scope is forced. Passing an
  * explicit surface scope overrides that and hides the credential from the
- * daemon — and from any node that later takes over. Do not pass one.
+ * daemon, and from any node that later takes over. Do not pass one.
  */
 export interface GoogleSecretPort {
   get(key: string): Promise<string | null>;

@@ -7,7 +7,7 @@ import type { AudioSink } from '../packages/sdk/src/platform/voice/spoken-turn/a
 /**
  * These tests pin the AudioSink BEHAVIORAL CONTRACT (readiness / head survival,
  * natural drain, abort cut, bounded waitForDrain) from the policy engine's
- * point of view — the guarantees the controller relies on and that a real sink
+ * point of view, the guarantees the controller relies on and that a real sink
  * (the subprocess player, the browser Web Audio sink) must honor. The
  * subprocess-level implementation of the head gate and drain lives with the
  * consumer's sink and is pinned by that consumer's player-playback tests; here
@@ -21,7 +21,7 @@ function turn(event: TurnEvent): TurnEvent {
 
 async function* multiByteChunks(text: string): AsyncIterable<VoiceAudioChunk> {
   // Emit one byte per character so a mid-stream abort is observable at a fine
-  // grain — a real MP3 stream arrives as many small chunks.
+  // grain, a real MP3 stream arrives as many small chunks.
   const bytes = new TextEncoder().encode(text);
   let sequence = 0;
   for (const b of bytes) {
@@ -86,7 +86,7 @@ describe('AudioSink contract — readiness / head survival', () => {
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(readinessOpened).toBe(true);
-    // Every byte survived, in order — including the leading 'H'.
+    // Every byte survived, in order, including the leading 'H'.
     expect(new TextDecoder().decode(new Uint8Array(received))).toBe('Hello.');
   });
 });
@@ -95,8 +95,8 @@ describe('AudioSink contract — abort cuts immediately', () => {
   test('a deliberate stop cuts the currently-playing sink mid-stream before the bytes finish', async () => {
     // The chunk that is actively playing has already been removed from the
     // controller's abort set (its signal is released before playback begins),
-    // so a deliberate stop cuts it through sink.stop() — the imperative
-    // instant-cut half of the contract — not through the signal. (The signal
+    // so a deliberate stop cuts it through sink.stop(), the imperative
+    // instant-cut half of the contract, not through the signal. (The signal
     // path short-circuits only queued chunks that have not started playing.)
     const received: number[] = [];
     let stopped = false;
@@ -161,7 +161,7 @@ describe('AudioSink contract — bounded waitForDrain on exit', () => {
       stop() {},
       waitForDrain(timeoutMs) {
         waitForDrainMs = timeoutMs;
-        // Contract 4: bounded — resolve after the window, never hang.
+        // Contract 4: bounded, resolve after the window, never hang.
         return new Promise<void>((resolve) => setTimeout(resolve, timeoutMs));
       },
     };

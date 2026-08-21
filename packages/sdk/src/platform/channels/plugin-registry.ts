@@ -184,7 +184,7 @@ export class ChannelPluginRegistry {
    * The error is RE-THROWN, deliberately. A webhook has no cursor to advance:
    * the provider decides whether to redeliver, and it decides on the status
    * code. Swallowing it here would turn a retryable 500 into a 200 and convert
-   * "might be redelivered" into "definitely lost" — the opposite of the fix.
+   * "might be redelivered" into "definitely lost", the opposite of the fix.
    * The alarm records; the caller still fails.
    */
   async handleInbound(pathname: string, req: Request): Promise<Response | null> {

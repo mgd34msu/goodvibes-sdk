@@ -68,7 +68,7 @@ describe('HTTP hook SSRF filter', () => {
   });
 
   test('public external URL is not blocked (does not contain SSRF error)', async () => {
-    // We do not make a real network request here — we only verify the filter passes.
+    // We do not make a real network request here, we only verify the filter passes.
     // The hook runner will try to fetch but will fail with a network error, NOT an SSRF block.
     const hook: HookDefinition = {
       match: 'Post:tool:*',

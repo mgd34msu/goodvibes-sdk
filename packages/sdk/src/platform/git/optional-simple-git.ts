@@ -1,12 +1,12 @@
 /**
- * optional-simple-git.ts — the one place `simple-git` is reached.
+ * optional-simple-git.ts, the one place `simple-git` is reached.
  *
  * The package is declared under `optionalDependencies` in
  * packages/sdk/package.json, and three modules imported it statically:
  * git/service.ts and workspace/checkpoint/side-git.ts each built their client
  * in a CONSTRUCTOR, and agents/worktree.ts called `simpleGit(...)` inline in
  * its async methods. All three are on the daemon's graph, so an install
- * without the package did not lose git integration — it lost the daemon at
+ * without the package did not lose git integration, it lost the daemon at
  * module init, before anything could report why (see
  * utils/optional-dependency.ts for the measured failure).
  *

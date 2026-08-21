@@ -1,7 +1,7 @@
 /**
  * push/vapid-subject.ts
  *
- * The VAPID `sub` contact — its fallback, its validity rule, and its wording.
+ * The VAPID `sub` contact, its fallback, its validity rule, and its wording.
  *
  * Deliberately dependency-free (no `node:` imports, no Buffer) so the config
  * schema can gate `push.vapidSubject` with the SAME predicate `VapidManager`
@@ -11,7 +11,7 @@
 
 /**
  * The fallback `sub` when no contact is configured. It is a real, well-formed
- * mailto that push services accept — but it reaches nobody, which is exactly
+ * mailto that push services accept, but it reaches nobody, which is exactly
  * why the `push.vapidSubject` config key exists.
  */
 export const DEFAULT_VAPID_SUBJECT = 'mailto:goodvibes-push@localhost';
@@ -21,7 +21,7 @@ export const VAPID_SUBJECT_HINT =
   'a mailto: address or an https: URL a push service can use to reach you';
 
 /**
- * RFC 8292 §2.1: the `sub` claim is a contact URI for the application server —
+ * RFC 8292 §2.1: the `sub` claim is a contact URI for the application server,
  * in practice a `mailto:` address or an `https:` page a push service operator
  * can use to report a delivery problem. Anything else is rejected rather than
  * signed into every JWT the daemon ever sends.

@@ -1,9 +1,9 @@
-# Public Exports
+# Public exports
 
 GoodVibes SDK exposes deliberate entrypoints. Code under repository
 source folders is implementation, not public API.
 
-## Facade Package
+## Facade package
 
 `@pellux/goodvibes-sdk` is the consumer-facing facade. It composes the
 source-of-truth workspace packages and SDK-owned platform/runtime modules.
@@ -16,7 +16,7 @@ import { createGoodVibesSdk } from '@pellux/goodvibes-sdk';
 
 The package also exposes `@pellux/goodvibes-sdk/package.json` as metadata.
 
-## Source-Of-Truth Package Facades
+## Source-of-truth package facades
 
 These subpaths expose source-of-truth workspace package outputs:
 
@@ -39,7 +39,7 @@ transport-direct sibling package.
 See [Transports](./transports.md) for the canonical `transport-direct` facade
 description.
 
-## Platform Surfaces
+## Platform surfaces
 
 Platform subpaths are intentionally listed in `packages/sdk/package.json`.
 There is no catch-all platform contract. If a platform path is not listed in
@@ -128,9 +128,9 @@ application code.
 
 See [Public Surface](./public-surface.md) for the canonical list of every stable subpath.
 
-## Sibling-Package Deep Subpaths
+## Sibling-package deep subpaths
 
-The source-of-truth sibling packages publish deep subpaths of their own — for example
+The source-of-truth sibling packages publish deep subpaths of their own, for example
 `@pellux/goodvibes-contracts/generated/*`, `@pellux/goodvibes-contracts/zod-schemas/*`, and
 `@pellux/goodvibes-contracts/node`; `@pellux/goodvibes-daemon-sdk/*` route helpers;
 `@pellux/goodvibes-transport-core/*`; `@pellux/goodvibes-transport-http/*`;

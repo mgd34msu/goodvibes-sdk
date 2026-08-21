@@ -18,7 +18,7 @@ export class RateLimiter {
    * Key = ip, value = last-seen timestamp.
    * To promote an entry to MRU: delete it and re-set it (both O(1)).
    * The Map iterator yields entries in insertion order, so the first entry is
-   * the least-recently-used — perfect for LRU eviction without any indexOf scan.
+   * the least-recently-used, perfect for LRU eviction without any indexOf scan.
    *
    */
   private lruMap = new Map<string, number>();

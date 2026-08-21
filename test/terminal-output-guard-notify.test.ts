@@ -4,7 +4,7 @@ import { installFullScreenTerminalOutputGuard } from '@pellux/goodvibes-terminal
 /**
  * The `notify` contract: a formatted, human-readable notice naming how many
  * direct writes were captured since the last notice (not the session
- * cumulative total — that is what `onCapture` is for) and the most recent
+ * cumulative total, that is what `onCapture` is for) and the most recent
  * write's preview.
  */
 describe('terminal-output guard formatted notice (notify)', () => {
@@ -41,7 +41,7 @@ describe('terminal-output guard formatted notice (notify)', () => {
       (fakeStdout.write as (s: string) => boolean)('first');
       (fakeStdout.write as (s: string) => boolean)('second, same instant');
       // Both writes land inside one rate-limit window, so only one notice
-      // fires — but the write itself is suppressed from the real stream
+      // fires, but the write itself is suppressed from the real stream
       // regardless of whether a notice fires.
       expect(notices).toHaveLength(1);
     } finally {
@@ -53,7 +53,7 @@ describe('terminal-output guard formatted notice (notify)', () => {
     const fakeStdout = { write: () => true };
     const captures: number[] = [];
 
-    // Only onCapture wired — notify absent entirely, so it must never be an
+    // Only onCapture wired, notify absent entirely, so it must never be an
     // error for it to be missing, and no notice-shaped side effect occurs.
     const guard = installFullScreenTerminalOutputGuard({
       stdout: fakeStdout as never,

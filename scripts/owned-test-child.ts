@@ -1,14 +1,14 @@
 /**
  * Run `bun test` as a child the calling script owns for its whole life.
  *
- * Shared by both direct-`bun test` entry points — `scripts/test.ts` and
- * `scripts/leak-scan.ts` — for the same reason they share `withRunTmpDir`:
+ * Shared by both direct-`bun test` entry points, `scripts/test.ts` and
+ * `scripts/leak-scan.ts`, for the same reason they share `withRunTmpDir`:
  * this is one lifecycle, and a second copy of it is a second thing to forget.
  *
  * Both used to spawn synchronously (`execFileSync` / `spawnSync`). A
  * synchronous wait parks the parent inside a native call where no JavaScript
  * runs, so a signal handler cannot fire and the child is never told anything
- * when the parent is killed — a CI job timeout, a cancelled run, Ctrl-C. The
+ * when the parent is killed, a CI job timeout, a cancelled run, Ctrl-C. The
  * CI job that this module was written for ended with the runner's post-job
  * step reporting `Terminate orphan process: pid (2410) (bun)` and
  * `pid (2421) (bun)`: the runner script and its test child, both still alive
@@ -35,7 +35,7 @@
  *   - a PARENT-DEATH WATCHDOG here: this process polls its own parent and gives
  *     up when it is gone, so a killed shell takes the runner with it;
  *   - the same watchdog inside the child (`scripts/test-child-watchdog.ts`),
- *     so a SIGKILLed runner — which can relay nothing, by definition — takes
+ *     so a SIGKILLed runner, which can relay nothing, by definition, takes
  *     the suite with it;
  *   - a STALL CEILING and an overall CEILING, below, so a run that stops making
  *     progress says so, by name, instead of buying fifteen minutes of silence
@@ -45,8 +45,8 @@
  *
  * The wedge that motivated the ceiling produced NO output at all: bun's module
  * loader deadlocked between two test files, where no per-test timeout applies.
- * Output is not a liveness signal either way — a fully green local run prints
- * almost nothing for three minutes — so the child reports each test it starts
+ * Output is not a liveness signal either way, a fully green local run prints
+ * almost nothing for three minutes, so the child reports each test it starts
  * through a heartbeat file, and silence in THAT is what a stall means. The
  * child's last line of output is still captured, because in CI it is the name
  * of the file bun was working on, which is the first thing anyone reading the
@@ -82,8 +82,8 @@ const DEFAULT_STALL_MS = 180_000;
  * The whole run's ceiling, whatever it is doing.
  *
  * Twelve minutes, deliberately under the 15-minute job timeout so that a run
- * which overruns is ended HERE — with the last file bun named and the number of
- * tests it had started — rather than by a runner that can only report that the
+ * which overruns is ended HERE, with the last file bun named and the number of
+ * tests it had started, rather than by a runner that can only report that the
  * operation was cancelled. Override with `GOODVIBES_TEST_CEILING_MS`; set it to
  * 0 for no overall ceiling.
  */
@@ -99,8 +99,8 @@ const POLL_MS = 1_000;
  * How long a child gets to exit on SIGTERM before it is SIGKILLed.
  *
  * A ceiling that asks politely and then waits forever is not a ceiling. A test
- * file only has to install a SIGTERM handler — deliberately, or as part of
- * exercising some shutdown path — for the polite request to be ignored, and
+ * file only has to install a SIGTERM handler, deliberately, or as part of
+ * exercising some shutdown path, for the polite request to be ignored, and
  * this module would then be parked on `child.exited` reproducing the exact
  * silence it exists to end. Five seconds is enough for an honest shutdown.
  */
@@ -114,7 +114,7 @@ const KILL_GRACE_MS = 5_000;
  * It cannot live in the run temp tree: `scripts/test.ts` points the CHILD's
  * `tmpdir()` at that tree, and this file is written by the child and read by
  * the parent, which does not share it. So it gets the same treatment every
- * other direct-`os.tmpdir()` user in this repo gets — a signal kill skips the
+ * other direct-`os.tmpdir()` user in this repo gets, a signal kill skips the
  * `finally` that would have removed it, exactly as it skips an `afterAll`, and
  * an unreclaimed per-run directory is an inode leak on a tmpfs.
  *
@@ -183,7 +183,7 @@ async function pump(
       const text = line.replace(ANSI_SGR, '').trim();
       if (text === '') continue;
       seen.lastLine = text;
-      // bun opens each file with a header — `path/to.test.ts:`, wrapped in a
+      // bun opens each file with a header, `path/to.test.ts:`, wrapped in a
       // `::group::` under GitHub Actions. That header is printed BEFORE the
       // file is loaded, which is precisely why it is the last thing a wedged
       // run ever printed.
@@ -218,7 +218,7 @@ export async function runOwnedTestChild(options: {
       // A pipe costs the child its colour, because bun colours for a terminal
       // and there is no longer one on the other end. Handing it FORCE_COLOR
       // back when THIS process has a terminal keeps an interactive run looking
-      // exactly as it did, and leaves a CI log — which never had one — alone.
+      // exactly as it did, and leaves a CI log, which never had one, alone.
       ...(process.stdout.isTTY && options.env.FORCE_COLOR === undefined
         ? { FORCE_COLOR: '1' }
         : {}),
@@ -277,7 +277,7 @@ export async function runOwnedTestChild(options: {
     if (process.ppid !== initialPpid) {
       stop(
         'parent-died',
-        `the process that started this runner (pid ${initialPpid}) is gone — ending the suite `
+        `the process that started this runner (pid ${initialPpid}) is gone, ending the suite `
         + `rather than outliving it (${progress}; ${where})`,
       );
       return;
@@ -287,7 +287,7 @@ export async function runOwnedTestChild(options: {
       stop(
         'stalled',
         `no test has started for ${describeSeconds(now - idleSince)} `
-        + `(ceiling ${describeSeconds(stallMs)}, GOODVIBES_TEST_STALL_MS) — ${progress}; ${where}. `
+        + `(ceiling ${describeSeconds(stallMs)}, GOODVIBES_TEST_STALL_MS), ${progress}; ${where}. `
         + `A suite that stops starting tests is stuck, not slow; ending it here so the reason is `
         + `on the record instead of a job timeout fifteen minutes from now.`,
       );
@@ -297,7 +297,7 @@ export async function runOwnedTestChild(options: {
       stop(
         'ceiling',
         `the suite has run for ${describeSeconds(now - startedAt)}, past its ceiling of `
-        + `${describeSeconds(ceilingMs)} (GOODVIBES_TEST_CEILING_MS) — ${progress}; ${where}`,
+        + `${describeSeconds(ceilingMs)} (GOODVIBES_TEST_CEILING_MS), ${progress}; ${where}`,
       );
     }
   }, POLL_MS);

@@ -1,8 +1,8 @@
 /**
- * gates.ts — step 0 of the decision order: the checks that are terminal.
+ * gates.ts, step 0 of the decision order: the checks that are terminal.
  *
  * Everything here refuses outright. There is no approval path around a gate and
- * no downgrade path through one — that is what separates step 0 from steps 1
+ * no downgrade path through one, that is what separates step 0 from steps 1
  * and 2, where a purchase can still be rescued by an approval or by stepping
  * delivery down.
  *
@@ -24,7 +24,7 @@ export interface GateInput {
   /**
    * This request came from the owner speaking directly, in this turn.
    *
-   * Not "a request arrived" — a schedule, a trigger or a channel message is not
+   * Not "a request arrived", a schedule, a trigger or a channel message is not
    * an instruction to spend money. See security/untrusted-content.ts: those
    * surfaces carry no command authority at all.
    */
@@ -67,7 +67,7 @@ export function checkPaymentGates(input: GateInput): GateRefusal | null {
       code: 'not-owner-request',
       reason:
         'Refused: this purchase was not asked for by you directly. A schedule, a trigger, or a '
-        + 'message from a channel cannot authorize spending — only you can, in your own words.',
+        + 'message from a channel cannot authorize spending, only you can, in your own words.',
     };
   }
   if (!input.isPaymentsLeader) {

@@ -62,7 +62,7 @@ export function readPromptFile(
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith('@') && !trimmed.startsWith('@@')) {
-      // @ include directive — resolve and inline the referenced file
+      // @ include directive, resolve and inline the referenced file
       const includePath = trimmed.slice(1).trim();
       if (includePath) {
         const includeResolved = resolve(baseDir, includePath);
@@ -99,12 +99,12 @@ export interface LoadSystemPromptOptions {
 /**
  * Which instruction file a loaded chain segment came from.
  *
- *  - `cli`     — an explicit `--system-prompt-file` argument (exclusive path)
- *  - `base`    — `~/.goodvibes/SYSTEM.md`
- *  - `global`  — `~/.goodvibes/GOODVIBES.md`
- *  - `agents`  — the nearest `AGENTS.md` walking up from the working directory
- *  - `project` — `<workingDirectory>/.goodvibes/GOODVIBES.md`
- *  - `config`  — the `provider.systemPromptFile` config value
+ *  - `cli`    , an explicit `--system-prompt-file` argument (exclusive path)
+ *  - `base`   , `~/.goodvibes/SYSTEM.md`
+ *  - `global` , `~/.goodvibes/GOODVIBES.md`
+ *  - `agents` , the nearest `AGENTS.md` walking up from the working directory
+ *  - `project`, `<workingDirectory>/.goodvibes/GOODVIBES.md`
+ *  - `config` , the `provider.systemPromptFile` config value
  */
 export type PromptSourceKind = 'cli' | 'base' | 'global' | 'agents' | 'project' | 'config';
 
@@ -145,11 +145,11 @@ export function findNearestAgentsFile(startDir: string): string | null {
  * contributed. See {@link loadSystemPrompt} for the plain-string variant.
  *
  * Layering (each present, non-empty file is concatenated in this order):
- *   1. `--system-prompt-file` CLI arg — exclusive; when set and readable it is
+ *   1. `--system-prompt-file` CLI arg, exclusive; when set and readable it is
  *      the only source.
  *   2. `~/.goodvibes/SYSTEM.md`
  *   3. `~/.goodvibes/GOODVIBES.md`
- *   4. nearest `AGENTS.md` (walking up from the working directory) — a
+ *   4. nearest `AGENTS.md` (walking up from the working directory), a
  *      convention fallback/addition. It is placed BEFORE the project's own
  *      `GOODVIBES.md` so the project-specific file keeps precedence (it is
  *      concatenated later, and later sources win in the append order).
@@ -168,7 +168,7 @@ export function loadSystemPromptWithSources(
     sources.push({ kind, path: resolve(path) });
   };
 
-  // 1. CLI arg override — exclusive, does not chain with other sources
+  // 1. CLI arg override, exclusive, does not chain with other sources
   const argIdx = argv.indexOf('--system-prompt-file');
   if (argIdx !== -1 && argv[argIdx + 1]) {
     const cliPath = argv[argIdx + 1]!;

@@ -1,5 +1,5 @@
 /**
- * Session domain state — tracks the active host session lifecycle,
+ * Session domain state, tracks the active host session lifecycle,
  * recovery machine state, lineage, and identity metadata.
  */
 
@@ -34,7 +34,7 @@ export interface SessionLineageEntry {
 }
 
 /**
- * SessionDomainState — full session context including recovery state machine.
+ * SessionDomainState, full session context including recovery state machine.
  */
 export interface SessionDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

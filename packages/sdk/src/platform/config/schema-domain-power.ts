@@ -1,13 +1,13 @@
 /**
- * schema-domain-power.ts — sleep-ownership config (`power.*`).
+ * schema-domain-power.ts, sleep-ownership config (`power.*`).
  *
  * Three keys with the ruled shape (2026-07-11 owner ruling):
- * - power.keepAwake: the OWNER TOGGLE — daemon-held keep-awake independent of
+ * - power.keepAwake: the OWNER TOGGLE, daemon-held keep-awake independent of
  *   work state, surviving surface closes. No timers, no AC-only sub-options
  *   (the always-visible chip is the safety mechanism), so this is exactly one
  *   boolean.
  * - power.inhibitWhileWorking: automatic inhibition while real work runs (a
- *   running turn, an active agent, a schedule about to fire). On by default —
+ *   running turn, an active agent, a schedule about to fire). On by default,
  *   a host sleeping mid-turn is the defect this exists to end.
  * - power.workInhibitMaxMinutes: the honest hard cap on the WORK inhibitor
  *   (never the toggle), so a wedged hold cannot pin the host awake forever.
@@ -40,7 +40,7 @@ export const powerConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'The owner keep-awake toggle: the daemon holds a sleep inhibitor INDEPENDENT of work state, so the host stays reachable after work finishes and after surfaces close. Covers idle + sleep + lid-switch inhibitor classes where the OS grants them; the served state names any refused class honestly. Every attached surface shows an always-visible "sleep disabled" chip while this is on — the chip, not a timer, is the safety mechanism.',
+      'The owner keep-awake toggle: the daemon holds a sleep inhibitor INDEPENDENT of work state, so the host stays reachable after work finishes and after surfaces close. Covers idle + sleep + lid-switch inhibitor classes where the OS grants them; the served state names any refused class honestly. Every attached surface shows an always-visible "sleep disabled" chip while this is on, the chip, not a timer, is the safety mechanism.',
   },
   {
     key: 'power.inhibitWhileWorking',

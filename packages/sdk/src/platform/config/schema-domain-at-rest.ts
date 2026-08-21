@@ -1,5 +1,5 @@
 /**
- * schema-domain-at-rest.ts — config for the at-rest redaction + retention policy
+ * schema-domain-at-rest.ts, config for the at-rest redaction + retention policy
  * applied to the on-disk transcript journal (agents/session.ts) and local
  * execution ledger (runtime/telemetry/exporters/local-ledger.ts). Consumed by
  * runtime/at-rest-persistence.ts (resolveAtRestPolicy).
@@ -26,7 +26,7 @@ export const atRestConfigSettings: ConfigSetting[] = [
     type: 'boolean',
     default: true,
     description:
-      'When true (default), secret/credential patterns (API keys, bearer tokens, GitHub/GitLab/Slack/AWS credentials, home paths) are redacted at WRITE time from the on-disk transcript journal (per-agent <agentId>.jsonl) and the local execution ledger (spans + ledger jsonl), reusing the same pattern set as the telemetry egress. A redacted value shows a [REDACTED_*] marker — a record never pretends the content was absent. Set false ONLY for local debugging where plaintext secrets on disk are acceptable.',
+      'When true (default), secret/credential patterns (API keys, bearer tokens, GitHub/GitLab/Slack/AWS credentials, home paths) are redacted at WRITE time from the on-disk transcript journal (per-agent <agentId>.jsonl) and the local execution ledger (spans + ledger jsonl), reusing the same pattern set as the telemetry egress. A redacted value shows a [REDACTED_*] marker, a record never pretends the content was absent. Set false ONLY for local debugging where plaintext secrets on disk are acceptable.',
   },
   {
     key: 'atRest.retentionMaxAgeDays',

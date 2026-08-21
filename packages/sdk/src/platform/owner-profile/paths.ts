@@ -1,5 +1,5 @@
 /**
- * paths.ts — where the profile lives.
+ * paths.ts, where the profile lives.
  *
  * ```
  * ~/.goodvibes/daemon/owner-profile.md
@@ -8,7 +8,7 @@
  * Daemon scope, not surface scope, and resolved exactly the way every other
  * daemon-home file is (`workspace/daemon-home.ts`, `config/daemon-config-tier.ts`):
  * `--daemon-home`, then `GOODVIBES_DAEMON_HOME`, then the daemon directory under
- * the tree root — which is what `GOODVIBES_HOME` names, falling back to the
+ * the tree root, which is what `GOODVIBES_HOME` names, falling back to the
  * login home. "Exactly the way" is load-bearing: this resolver and
  * `resolveDaemonHomeDir` both used to end at a bare `homedir()`, so a process
  * running under a redirected tree root wrote its profile into the real home.
@@ -60,7 +60,7 @@ export interface OwnerProfilePathOptions {
  *   1. an explicit `profile.path` override
  *   2. `--daemon-home`
  *   3. `GOODVIBES_DAEMON_HOME`
- *   4. `<tree root>/.goodvibes/daemon/` — an injected `homeDir` when a caller
+ *   4. `<tree root>/.goodvibes/daemon/`, an injected `homeDir` when a caller
  *      supplied one, else the tree root `GOODVIBES_HOME` names, else the login
  *      home.
  *

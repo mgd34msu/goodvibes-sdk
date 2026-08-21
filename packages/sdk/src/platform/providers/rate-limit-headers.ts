@@ -12,12 +12,12 @@
  *   - OpenAI / OpenAI-compatible: `x-ratelimit-{limit,remaining,reset}-{requests,tokens}`
  *     (reset is a duration like `1s`, `6m0s`, or `1h2m3s`).
  *   - IETF draft `RateLimit` (`ratelimit-limit`, `ratelimit-remaining`,
- *     `ratelimit-reset` — reset is delta-seconds).
+ *     `ratelimit-reset`, reset is delta-seconds).
  * Plus the universal `retry-after` (delta-seconds or an HTTP-date).
  *
  * HONESTY IDIOM: a field is populated ONLY when a header actually carried it.
  * `parseRateLimitHeaders` returns null when NO recognized header was present, so
- * a caller records a signal only for a genuine observation — never a fabricated
+ * a caller records a signal only for a genuine observation, never a fabricated
  * "full quota". The requests dimension is preferred for limit/remaining (the
  * fan-out assessment reasons over request counts); the tokens dimension is used
  * only as a fallback when no requests header is present.

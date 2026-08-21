@@ -191,7 +191,7 @@ describe('the supervisor starts, reports live status, and stops cleanly', () => 
     await rig.supervisor.stop();
     expect(rig.supervisor.status.running).toBe(false);
     expect(rig.supervisor.status.mode).toBe('inactive');
-    // stop() does not resolve until the source has genuinely stopped — the
+    // stop() does not resolve until the source has genuinely stopped, the
     // ordered cluster handoff depends on that promise being honest.
     expect(source.calls).toEqual(['start', 'run', 'stop']);
   });
@@ -386,7 +386,7 @@ describe('a restart rehydrates before it serves', () => {
   test('the recovery sweep runs before the source starts, not after', async () => {
     // The probe reads the housekeeper INSIDE `onStart`, which is the only
     // moment that can distinguish the two orderings. Reading it after
-    // `start()` resolves — which this test used to do — passes whichever way
+    // `start()` resolves, which this test used to do, passes whichever way
     // round the supervisor does the work, because by then both have happened.
     let sweepAtSourceStart = 'source-never-started';
     const rig = buildRig({
@@ -400,7 +400,7 @@ describe('a restart rehydrates before it serves', () => {
     });
     const status = await rig.supervisor.start();
     expect(status.running).toBe(true);
-    // The sweep had already run, and it was the RECOVERY one — not a periodic
+    // The sweep had already run, and it was the RECOVERY one, not a periodic
     // pass that happened to land first.
     expect(sweepAtSourceStart).toBe('swept-recovery');
     await rig.supervisor.stop();
@@ -481,7 +481,7 @@ describe('email.inbound.status discloses what is held', () => {
    *
    * Ported from a parallel branch that solved the same finding by redefining
    * `kept` to mean the file. This branch keeps `kept` as the served view and
-   * adds `stored`, so the assertion is retargeted — but the thing it pins is
+   * adds `stored`, so the assertion is retargeted, but the thing it pins is
    * identical and is the thing that was missing here: every other test for this
    * fix is at the STORE level, so `supervisor.ts` reverting `stored` to
    * `records.length` (the served view) would have reddened nothing at all. A
@@ -557,8 +557,8 @@ describe('email health reads live supervisor state', () => {
     await rig.supervisor.start();
 
     const health = rig.supervisor.health();
-    // Config still says enabled — the credential and the switch are both
-    // present — and the entry reports degraded anyway, because the watcher is
+    // Config still says enabled, the credential and the switch are both
+    // present, and the entry reports degraded anyway, because the watcher is
     // not running. That is the whole difference from the config-presence
     // computation used for channels.
     expect(health.enabled).toBe(true);

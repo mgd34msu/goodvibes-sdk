@@ -1,7 +1,7 @@
 /**
  * Tests for the gcloud driver (google-gcloud.ts). Every scenario is driven
  * through a fake GoogleCommandPort that returns recorded gcloud-shaped JSON
- * payloads — no real gcloud, no real network, no real Google account.
+ * payloads, no real gcloud, no real network, no real Google account.
  */
 import { describe, expect, test } from 'bun:test';
 import type { GoogleCommandPort, GoogleCommandResult } from '../packages/sdk/src/platform/google/types.ts';

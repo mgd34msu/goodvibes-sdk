@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * OrchestrationEvent — task-graph and bounded-recursion lifecycle events.
+ * OrchestrationEvent, task-graph and bounded-recursion lifecycle events.
  */
 
 export interface OrchestrationTaskContract {

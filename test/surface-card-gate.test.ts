@@ -5,11 +5,11 @@
  * one shared hook every remote adapter passes through:
  * `SurfaceActions.authorizeSurfaceIngress`.
  *
- * The card number used throughout is `4111111111111111` — the published Visa
+ * The card number used throughout is `4111111111111111`, the published Visa
  * test value. It passes Luhn and belongs to no cardholder.
  *
  * What these cases are actually defending. `parseApprovalReplyVerb` treats
- * `no — <anything>` as a veto whose trailing text becomes the resolution
+ * `no, <anything>` as a veto whose trailing text becomes the resolution
  * `note` AND the `reason` handed to the waiting tool call; `evaluateIngress`
  * writes `input.text.slice(0, 200)` into the channel policy audit trail and
  * schedules that trail to disk. So a veto typed with a card number in it had
@@ -48,7 +48,7 @@ let restoreLogger: (() => void) | null = null;
 /**
  * Capture at the logger METHOD rather than at its file. The logger buffers and
  * flushes asynchronously and redacts on the way out; patching the methods
- * asserts the stricter property — that nothing card-shaped is ever PASSED to it
+ * asserts the stricter property, that nothing card-shaped is ever PASSED to it
  * in the first place, so no redactor has to be right for the guarantee to hold.
  */
 function captureLogger(): void {
@@ -103,7 +103,7 @@ function buildHarness(options: HarnessOptions = {}) {
   const secretsStore = new Map<string, string>([['ntfy/primary', 'test-secret']]);
   /** The channel-policy audit trail: what evaluateIngress persists, reproduced faithfully. */
   const policyAudit: Array<Record<string, unknown>> = [];
-  /** Resolutions written through the approval broker — notes and steering reasons included. */
+  /** Resolutions written through the approval broker, notes and steering reasons included. */
   const approvalResolutions: Array<Record<string, unknown>> = [];
   /** The transcript: agent tasks spawned, and message bodies submitted to a session. */
   const spawnTasks: string[] = [];
@@ -122,7 +122,7 @@ function buildHarness(options: HarnessOptions = {}) {
       channelId: AGENT_TOPIC,
       userId: OWNER_ID,
     });
-    // Only a DELIVERED proposal is answerable — listPending excludes the rest,
+    // Only a DELIVERED proposal is answerable, listPending excludes the rest,
     // so without this the "nothing consumed it" assertion would be vacuous.
     proposals.markDelivered(proposal.id);
   }
@@ -294,7 +294,7 @@ describe('a card number on a remote channel is refused', () => {
 
   test('the refused digits reach no durable tier — each asserted by name', async () => {
     const harness = buildHarness({ pendingApproval: true, pendingProposal: true });
-    await harness.ingress(`no — charge my card ${CARD} cvv 123 expiry 07/29 instead`);
+    await harness.ingress(`no, charge my card ${CARD} cvv 123 expiry 07/29 instead`);
 
     expectTierClean('config', harness.tiers.config());
     expectTierClean('secrets', harness.tiers.secrets());
@@ -314,7 +314,7 @@ describe('a card number on a remote channel is refused', () => {
     const harness = buildHarness();
     await harness.ingress(`my card is ${CARD}`);
 
-    // Something WAS logged — an assertion over an empty log proves nothing.
+    // Something WAS logged, an assertion over an empty log proves nothing.
     expect(loggedText.join('\n')).toContain('card-shaped');
     expectTierClean('the logs', harness.tiers.logs());
   });
@@ -350,7 +350,7 @@ describe('the gate runs before everything that could store the message', () => {
 
   test('proposal-reply and approval-reply resolution never see it either', async () => {
     const harness = buildHarness({ pendingApproval: true, pendingProposal: true });
-    await harness.ingress(`no — my card is ${CARD}`);
+    await harness.ingress(`no, my card is ${CARD}`);
 
     expect(harness.stages).not.toContain('listApprovals');
     expect(harness.stages).not.toContain('resolveApproval');
@@ -373,14 +373,14 @@ describe('the gate runs before everything that could store the message', () => {
     expect(decision.allowed).toBe(true);
     expect(harness.stages[0]).toBe('evaluateIngress');
     // Approval-reply resolution is reached by verbs only, so a status question
-    // is the wrong probe for it — the 'no' case below covers that stage.
+    // is the wrong probe for it, the 'no' case below covers that stage.
   });
 });
 
 describe('a veto carrying a card is refused, and he is told', () => {
   test('the veto is not silently swallowed', async () => {
     const harness = buildHarness({ pendingApproval: true });
-    const decision = await harness.ingress(`no — that is not the card, use ${CARD}`);
+    const decision = await harness.ingress(`no, that is not the card, use ${CARD}`);
 
     // Refused...
     expect(decision.allowed).toBe(false);
@@ -392,11 +392,11 @@ describe('a veto carrying a card is refused, and he is told', () => {
   });
 
   test('the veto text never reaches the approval store as a steering note', async () => {
-    // Without the gate, parseApprovalReplyVerb reads `no — <text>` as a deny
+    // Without the gate, parseApprovalReplyVerb reads `no, <text>` as a deny
     // whose trailing text becomes both the audit note and the `reason` handed
     // to the waiting tool call. That is the path this closes.
     const harness = buildHarness({ pendingApproval: true });
-    await harness.ingress(`no — that is not the card, use ${CARD}`);
+    await harness.ingress(`no, that is not the card, use ${CARD}`);
     expect(harness.tiers.approvalStore()).toBe('[]');
     expectTierClean('the approval store', harness.tiers.approvalStore());
   });
@@ -525,7 +525,7 @@ describe('every remote adapter call site is covered by the shared hook', () => {
    * `authorizeSurfaceIngress` call in an enclosing scope.
    *
    * Per CALL SITE, using the compiler's own tree. The predecessor of this
-   * check was per FILE — "the file contains both strings somewhere" — which
+   * check was per FILE, "the file contains both strings somewhere", which
    * says nothing about a file that has one gated spawn and one ungated one.
    * An entirely ungated `context.trySpawnAgent({...})` appended to
    * `adapters/slack/index.ts` passed it, because slack's three legitimate
@@ -563,7 +563,7 @@ describe('every remote adapter call site is covered by the shared hook', () => {
      * gates by calling `authorizeNtfyPayload(...)`, a helper in the same file
      * that calls `context.authorizeSurfaceIngress` itself. A rule that only
      * recognised the literal call would report ntfy's one legitimate spawn as
-     * ungated — a false alarm, which is how a structural gate gets muted.
+     * ungated, a false alarm, which is how a structural gate gets muted.
      */
     const gatingFunctionNames = ((): ReadonlySet<string> => {
       const bodies = new Map<string, ts.Node>();
@@ -617,7 +617,7 @@ describe('every remote adapter call site is covered by the shared hook', () => {
       ...[...gatingFunctionNames].flatMap((name) => callsNamed(name)),
     ];
 
-    // FUNCTION scopes only — deliberately not the source file. Counting the
+    // FUNCTION scopes only, deliberately not the source file. Counting the
     // file as a scope is exactly the per-file rule wearing an AST costume: a
     // gate in one handler would "cover" a spawn in a different handler further
     // down, which is the defect this replaces.
@@ -700,7 +700,7 @@ describe('every remote adapter call site is covered by the shared hook', () => {
     );
     expect(source).toContain('refuseCardShapedIngress');
 
-    // Nothing under adapters/ carries its own copy — a per-adapter fix is what
+    // Nothing under adapters/ carries its own copy, a per-adapter fix is what
     // leaves the other seventeen open.
     for (const dir of adapterDirs()) {
       const adapterSource = readFileSync(join(ADAPTERS_DIR, dir, 'index.ts'), 'utf8');

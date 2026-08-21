@@ -1,10 +1,10 @@
 /**
- * manager-bootstrap.ts — what a ConfigManager needs before it can load anything.
+ * manager-bootstrap.ts, what a ConfigManager needs before it can load anything.
  *
  * Split out of manager.ts (line cap), and cohesive on its own terms: these four
  * helpers are the pre-load layer. Two of them decide the SHAPE of a config
- * object — a fresh clone of the frozen defaults, and the sanitizer that drops
- * permission-tool keys the schema no longer knows — and two decide the PATHS
+ * object, a fresh clone of the frozen defaults, and the sanitizer that drops
+ * permission-tool keys the schema no longer knows, and two decide the PATHS
  * and files a manager is constructed from. None of them touches an instance,
  * which is why they were already module-level functions and why moving them
  * changes no behaviour.
@@ -74,13 +74,13 @@ export function ensureSharedConfig(sharedPath: string): void {
  * before validation runs.
  *
  * Today that is money: an amount key accepts the number the owner would say out
- * loud and tolerates the ordinary ways a person writes one — a leading currency
+ * loud and tolerates the ordinary ways a person writes one, a leading currency
  * symbol, thousands grouping. Coercing here rather than at each caller means
  * `config set`, a settings screen, and a programmatic `set()` all reach the same
  * stored number, and a value that is not a number is refused with an example
  * before anything is written.
  *
- * Keyed off `setting.unit`, never off the shape of the key's NAME — a naming
+ * Keyed off `setting.unit`, never off the shape of the key's NAME, a naming
  * scheme is what tied every consumer of these keys to one spelling.
  *
  * The refusal is raised as a ConfigError so it reads like every other rejected

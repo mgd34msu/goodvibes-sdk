@@ -1,5 +1,5 @@
 /**
- * TransportObserver — first-class observability interface at the transport layer.
+ * TransportObserver, first-class observability interface at the transport layer.
  *
  * Defined here (transport-core) so that HTTP and realtime sibling transports can
  * accept it through their shared options types without depending on higher-level packages.

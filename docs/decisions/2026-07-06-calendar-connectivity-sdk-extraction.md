@@ -1,12 +1,12 @@
 # Decision: External-calendar READ connectivity machinery in the SDK (One-Platform Wave 4, A9)
 
-Status: accepted — 2026-07-06
-Scope: goodvibes-sdk (`packages/sdk`) — new public subpath `@pellux/goodvibes-sdk/platform/calendar`
-Wave: One-Platform Wave 4 — external calendar support (A9)
+Status: accepted, 2026-07-06
+Scope: goodvibes-sdk (`packages/sdk`), new public subpath `@pellux/goodvibes-sdk/platform/calendar`
+Wave: One-Platform Wave 4, external calendar support (A9)
 
 ## Decision
 
-One pure SDK module — `platform/calendar` — provides the machinery the agent needs to
+One pure SDK module, `platform/calendar`, provides the machinery the agent needs to
 READ external calendars two ways: parse `.ics` text (a file body or a fetched feed) into
 typed events, and manage named feed subscriptions with honest per-feed status. It is
 data, pure functions, and one small stateful store whose entire IO surface (network,
@@ -15,40 +15,40 @@ tests fake it.
 
 Files under `packages/sdk/src/platform/calendar/` (all ≤800 lines):
 
-1. **`ics-parser.ts`** — `parseIcs(text): ParsedCalendar`. A vendored, dependency-free
+1. **`ics-parser.ts`**, `parseIcs(text): ParsedCalendar`. A vendored, dependency-free
    RFC 5545 reader for the read subset we actually use: VCALENDAR framing, X-WR-CALNAME,
    and VEVENT UID/SUMMARY/LOCATION/DESCRIPTION/DTSTART/DTEND/RRULE, with RFC 5545 line
    unfolding and TEXT unescaping.
-2. **`rrule.ts`** — `describeRecurrence(rule)` classifies an RRULE at parse time;
+2. **`rrule.ts`**, `describeRecurrence(rule)` classifies an RRULE at parse time;
    `expandEvent(event, window)` expands the supported subset into concrete occurrences.
-3. **`subscription-store.ts`** — `SubscriptionStore`: named subscriptions, conditional
+3. **`subscription-store.ts`**, `SubscriptionStore`: named subscriptions, conditional
    (etag/last-modified) refresh, bounded intervals, honest health, snapshot/restore, and
    `maskFeedUrl`.
-4. **`types.ts`** / **`index.ts`** — shared shapes and public re-exports.
+4. **`types.ts`** / **`index.ts`**, shared shapes and public re-exports.
 
 New export subpath added to `packages/sdk/package.json` alphabetically between
 `platform/bookmarks` and `platform/channels`. Not added to `platform/node/capabilities.ts`
-(that file lists only a curated subset — session-spine and presentation aren't in it
+(that file lists only a curated subset, session-spine and presentation aren't in it
 either; `check:metadata` only requires that entries which EXIST there resolve). The module
-is reachable only via its own subpath — it is NOT re-exported from the main index or any
+is reachable only via its own subpath, it is NOT re-exported from the main index or any
 browser/react-native bundle, so its (currently zero) `node:` usage cannot leak into a
 runtime-neutral entry that `check:browser` guards.
 
 ## Parser decision: vendored, not a dependency
 
-`packages/sdk`'s runtime dependency set is workspace-only — ZERO third-party runtime deps
+`packages/sdk`'s runtime dependency set is workspace-only, ZERO third-party runtime deps
 (see `packages/sdk/package.json`), guarded by `bundle:check` / `check:browser` /
 `any:check` / `publint:check`. Pulling a general iCalendar library in for the read subset
 we need would break that convention for little gain and drag a large surface (and its own
 tz-database and RRULE assumptions) into the bundle budget. A focused, well-tested internal
 reader matches repo style, keeps the module pure and injectable, and lets us hold the
 honesty contract precisely (we control exactly what is and isn't expanded). Rejected: a
-third-party ICS/RRULE dependency — no strong reason clears the zero-runtime-deps bar.
+third-party ICS/RRULE dependency, no strong reason clears the zero-runtime-deps bar.
 
 ## RRULE supported subset (honest, deliberately bounded)
 
 The rule: recurrence is FULLY and correctly expanded, or NOT expanded at all with an
-explicit reason. We never emit occurrences from a rule we do not completely honor — a
+explicit reason. We never emit occurrences from a rule we do not completely honor, a
 half-applied `BYMONTHDAY` would place events on wrong dates, which is worse than not
 expanding.
 
@@ -57,7 +57,7 @@ Fully supported → expanded to real occurrences:
 - `INTERVAL` (default 1)
 - `COUNT` (occurrence cap)
 - `UNTIL` (inclusive end bound; DATE or date-time, `Z` or floating)
-- `BYDAY` — ONLY for `FREQ=WEEKLY` with `INTERVAL=1` and weekday-only tokens
+- `BYDAY`, ONLY for `FREQ=WEEKLY` with `INTERVAL=1` and weekday-only tokens
   (MO,TU,WE,TH,FR,SA,SU, no leading ordinal). Under those conditions `WKST` cannot change
   the matched set, so it is ignored safely.
 
@@ -65,7 +65,7 @@ Everything else present in the RRULE marks it `expansion: 'unsupported'` and nam
 offending part: `BYMONTHDAY`, `BYMONTH`, `BYSETPOS`, `BYHOUR`/…, `BYWEEKNO`, `BYYEARDAY`,
 an ordinal `BYDAY` (e.g. `3TU`), `BYDAY` on a non-weekly FREQ, `BYDAY` with `INTERVAL>1`
 (week-boundary/WKST handling required), or an unknown/missing `FREQ`. An unsupported event
-keeps its seed occurrence (if in-window), flagged `isSeed`, and carries the marker — the
+keeps its seed occurrence (if in-window), flagged `isSeed`, and carries the marker, the
 agent surfaces it as "recurrence not fully expanded". Never silently dropped, never
 fabricated. A hard occurrence cap (1000) plus a 10-year weekly-walk ceiling bound
 runaway rules.
@@ -89,7 +89,7 @@ UTC. Full TZID→offset conversion is out of scope for v1 and explicitly marked 
 - **Paste-URL-and-done** (per Mike's least-friction rule): `add({ url })` fetches ONCE
   (no separate validate round trip), auto-derives the subscription name from the feed's
   X-WR-CALNAME (falling back to the URL host), applies the default 1-hour cadence with no
-  mandatory knobs, and stores the events — or refuses without saving and names the failed
+  mandatory knobs, and stores the events, or refuses without saving and names the failed
   stage (`fetch` / `parse` / `duplicate`). `validateByFetch(url)` is the lighter "test this
   URL" pre-check the wizard can run without saving.
 - **Bounded refresh**: default 1h, clamped to [15m, 24h]. `refresh(name)` skips the network
@@ -111,12 +111,12 @@ the brief's guardrail they are left `invokable: false` and the route-reconcile g
 guarding them. Reasoning:
 - Those five descriptors are documented as **CalDAV-backed** (`calendar.ics.import` writes
   "into the configured CalDAV calendar"). There is no CalDAV backend anywhere, and there is
-  no `/api/calendar` route surface at any prefix — confirmed by 011c6fc3, which retired the
+  no `/api/calendar` route surface at any prefix, confirmed by 011c6fc3, which retired the
   route-reconcile debt precisely because no route exists.
 - The daemon HTTP router (`platform/daemon/http/router.ts`, ~846 lines) wires every route
   surface through a large dependency-injection context. A real calendar surface would need
   a daemon-side store wired into that context, an `operator.ts` dispatch case, and route
-  handlers in the separate `@pellux/goodvibes-daemon-sdk` package — a substantial, separate
+  handlers in the separate `@pellux/goodvibes-daemon-sdk` package, a substantial, separate
   effort, and pointing a CalDAV-labeled contract at a feed-subscription store would
   misrepresent the contract.
 - The new machinery is **read-focused file/feed** parsing consumed AGENT-side (the agent's
@@ -145,6 +145,6 @@ that no file under `platform/calendar/` imports fs/net/tty/process or calls `fet
 - **Persisting events in the SDK store.** Persistence (and secret storage of the URL) is the
   agent's job; the SDK store is the in-memory engine with snapshot/restore of metadata only.
 - **Serving the daemon `calendar.*` routes now.** Not cheap and contract-mismatched (CalDAV
-  vs feed) — see the routes verdict above.
+  vs feed), see the routes verdict above.
 - **Expanding unsupported RRULE parts "best effort".** Explicitly rejected: fabricated dates
   are worse than an honest "not fully expanded" marker.

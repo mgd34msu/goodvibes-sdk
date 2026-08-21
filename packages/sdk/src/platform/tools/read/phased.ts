@@ -7,7 +7,7 @@ import type { ProjectIndex } from '../../state/project-index.js';
 /**
  * Creates a phased version of the read tool.
  *
- * The read tool is categorised as `read` — it only reads file contents and
+ * The read tool is categorised as `read`, it only reads file contents and
  * produces no persistent side effects. Pre/post hooks are skipped because:
  *   - No write permissions need to be checked before reading.
  *   - Reads are fast and low-risk, making audit overhead disproportionate.

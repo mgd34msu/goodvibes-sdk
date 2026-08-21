@@ -2,7 +2,7 @@
 
 - **Date:** 2026-07-07
 - **Status:** Accepted and implemented in this change.
-- **Scope:** SDK daemon HTTP layer only — two opt-in capabilities plus their config
+- **Scope:** SDK daemon HTTP layer only, two opt-in capabilities plus their config
   keys. No operator-method / verb-catalog changes. The loopback default posture and
   every route's auth/admin scoping are unchanged.
 
@@ -14,7 +14,7 @@ Before this change the daemon emitted no `Access-Control-Allow-Origin`, had no
 `OPTIONS` handler, and served no static bundle: the only HTML surface was the inline
 control-plane debug page (`control-plane/gateway-web-ui.ts`), not an SPA host. A
 browser hosted at a different origin/machine than the daemon therefore could not
-reach it — this blocked every cross-machine and mobile journey.
+reach it, this blocked every cross-machine and mobile journey.
 
 A separate `web.*` config block (a distinct browser surface on its own port) already
 exists but is not the daemon; serving the app bundle from the daemon's own origin is
@@ -25,7 +25,7 @@ what makes the browser same-origin policy disappear.
 Resolve the cross-origin problem with BOTH mechanisms, same-origin serving as the
 primary path:
 
-1. **PRIMARY — same-origin bundle serving behind an opt-in capability.** The daemon
+1. **PRIMARY, same-origin bundle serving behind an opt-in capability.** The daemon
    serves a built web UI bundle at `/` when `controlPlane.webui.serve` is on and
    `controlPlane.webui.bundleDir` points at the build directory. Because the bundle
    and the API share an origin, the browser's same-origin policy is a non-issue. The
@@ -38,7 +38,7 @@ primary path:
    (served without a token); the app itself token-authenticates its API calls, so no
    wire data leaks from serving static files.
 
-2. **SECONDARY — OPTIONS preflight + `Access-Control-Allow-*` gated by an explicit
+2. **SECONDARY, OPTIONS preflight + `Access-Control-Allow-*` gated by an explicit
    allowlist.** When `controlPlane.cors.enabled` is on, the daemon answers OPTIONS
    preflight and emits `Access-Control-Allow-Origin` / `-Methods` / `-Headers` /
    `-Credentials` ONLY for origins listed in `controlPlane.cors.allowedOrigins`. There
@@ -58,10 +58,10 @@ for dev and non-proxied cross-origin, not the primary remote path.
 
 ## Alternatives rejected
 
-- **CORS-allowlist only** — leaves the daemon unable to self-serve the bundle, forces
+- **CORS-allowlist only**, leaves the daemon unable to self-serve the bundle, forces
   every deployment through a separate static host, and cross-origin browser auth over a
   preflighted request is fragile. Kept as the secondary path, not the whole answer.
-- **Reverse-proxy only (no daemon serving)** — pushes deployment complexity onto the
+- **Reverse-proxy only (no daemon serving)**, pushes deployment complexity onto the
   user and still needs a bundle host. `tailscale serve` as a proxy is supported but
   should not be the only way to reach the browser.
 

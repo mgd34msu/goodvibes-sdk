@@ -10,7 +10,7 @@
  *
  * Constructing a full `Orchestrator` needs 6+ required constructor params plus
  * post-construction `setCoreServices()` wiring (see orchestrator-abort.test.ts's own
- * comment on this), so — matching that file's established pattern — this test uses
+ * comment on this), so, matching that file's established pattern, this test uses
  * `Object.create(Orchestrator.prototype)` to exercise the real class's private
  * ring-management methods and public accessor directly, without needing a live turn loop.
  */

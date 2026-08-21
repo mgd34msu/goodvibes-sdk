@@ -4,7 +4,7 @@
  *
  * Metro and similar RN bundlers cannot handle `node:` protocol imports and
  * will hard-fail during release bundling. `Bun.*` API calls indicate the
- * agentic (Bun-only) surface has leaked into a companion bundle — this is a
+ * agentic (Bun-only) surface has leaked into a companion bundle, this is a
  * hard architectural violation and must block release.
  *
  * This test enforces the companion bundle boundary.

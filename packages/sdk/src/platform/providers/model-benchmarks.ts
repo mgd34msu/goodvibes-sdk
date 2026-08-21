@@ -201,7 +201,7 @@ export class BenchmarkStore {
   async refreshBenchmarks(): Promise<void> {
     const entries = await this.fetchBenchmarks();
     if (entries.length === 0) {
-      logger.warn('[model-benchmarks] Refresh returned 0 entries — keeping existing cache');
+      logger.warn('[model-benchmarks] Refresh returned 0 entries, keeping existing cache');
       return;
     }
     const next: BenchmarksCache = {

@@ -15,7 +15,7 @@
  *     over HTTPS with OAuth 2.0 authentication of a Google Account. Attempting
  *     to connect over HTTP or using Basic Authentication results in an HTTP
  *     401 Unauthorized status code."
- *     — https://developers.google.com/workspace/calendar/caldav/v2/guide
+ *     Source: https://developers.google.com/workspace/calendar/caldav/v2/guide
  *     So an app password cannot reach Google Calendar over CalDAV. The
  *     app-password path uses the private iCal address instead, which is
  *     read-only. Calendar writes require Path B.
@@ -24,7 +24,7 @@
  *     that expire after seven days: "A Google Cloud Platform project with an
  *     OAuth consent screen configured for an external user type and a
  *     publishing status of 'Testing' is issued a refresh token expiring in 7
- *     days." — https://developers.google.com/identity/protocols/oauth2
+ *     days." Source: https://developers.google.com/identity/protocols/oauth2
  *     The exemption for openid/email/profile-only apps does not apply to us;
  *     Gmail and Calendar scopes are sensitive or restricted. Path B therefore
  *     treats reaching "In production" as a first-class, verified step.
@@ -43,13 +43,13 @@ export const TWO_STEP_URL = 'https://myaccount.google.com/signinoptions/twosv';
 /** Google Calendar settings root; per-calendar "Integrate calendar" holds the iCal address. */
 export const CALENDAR_SETTINGS_URL = 'https://calendar.google.com/calendar/u/0/r/settings';
 
-/** Google Auth Platform — audience tab, where publishing status is changed. */
+/** Google Auth Platform, audience tab: where publishing status is changed. */
 export const AUTH_AUDIENCE_URL = 'https://console.cloud.google.com/auth/audience';
 
-/** Google Auth Platform — branding tab (app name, support email). */
+/** Google Auth Platform, branding tab (app name, support email). */
 export const AUTH_BRANDING_URL = 'https://console.cloud.google.com/auth/branding';
 
-/** Google Auth Platform — clients tab, where the Desktop app client is created. */
+/** Google Auth Platform, clients tab: where the Desktop app client is created. */
 export const AUTH_CLIENTS_URL = 'https://console.cloud.google.com/auth/clients';
 
 /** Gmail IMAP/SMTP endpoints, per Google's IMAP/SMTP guide. */
@@ -76,20 +76,20 @@ export const APP_PASSWORD_LABEL = 'goodvibes-agent';
  * permissions list is a bad trade; asking once for everything the product can
  * do is the honest one.
  *
- * Why each entry is here — every one has a live caller, none is speculative:
+ * Why each entry is here: every one has a live caller, none is speculative:
  *
- *  - `gmail.readonly` — `api-client.ts` reads messages through
+ *  - `gmail.readonly`: `api-client.ts` reads messages through
  *    `GET gmail/v1/users/me/messages`, and `history-delta.ts` gates inbound
  *    mail on `GMAIL_HISTORY_SCOPES`. Without it inbound mail reports
  *    `no-gmail-scope` and reads nothing.
- *  - `gmail.send` — `api-client.ts` posts to `gmail/v1/users/me/messages/send`.
- *  - `calendar.events` — event read AND write, which is the one thing an app
+ *  - `gmail.send`: `api-client.ts` posts to `gmail/v1/users/me/messages/send`.
+ *  - `calendar.events`: event read AND write, which is the one thing an app
  *    password genuinely cannot do. Narrower than full `calendar`, which would
  *    also grant calendar-list management the product never uses.
  *
  * On Google's scope tiers: `gmail.readonly` is *restricted* and the other two
  * are *sensitive*. The restricted tier matters when an app is published for
- * OTHER people's users — that is what triggers the third-party security
+ * OTHER people's users; that is what triggers the third-party security
  * assessment. It does not apply here, because the model this connector is
  * built on is that each person creates the OAuth client in their own Google
  * Cloud account and is its only user: there is nobody for Google to vouch to,
@@ -110,7 +110,7 @@ export const OAUTH_SCOPES: readonly string[] = [
 /**
  * Scopes this product must never request, whatever else changes.
  *
- * Both grant destructive mailbox access — `gmail.modify` can delete messages
+ * Both grant destructive mailbox access. `gmail.modify` can delete messages
  * and `https://mail.google.com/` is full IMAP-equivalent control. No feature
  * in this platform performs either, so requesting one would widen the blast
  * radius of a leaked credential for nothing. Exported so the guard test and
@@ -123,13 +123,13 @@ export const FORBIDDEN_OAUTH_SCOPES: readonly string[] = [
 
 /**
  * Every command invocation named in a user-facing string anywhere in this
- * connector — command AND subcommand, because the subcommand is what broke.
+ * connector, command AND subcommand, because the subcommand is what broke.
  *
  * This exists because of a specific failure: an error told the owner to
  * re-authorize with a missing scope by running the oauth setup subcommand, and
  * the command surface answered "Unknown setup item google". The command
  * existed; the subcommand did not. A fix line that names something which does
- * not resolve is worse than no fix line — it sends a person to a dead end
+ * not resolve is worse than no fix line. It sends a person to a dead end
  * while sounding authoritative. Five more attempts died the same way on
  * "Unknown setting calendar".
  *
@@ -155,7 +155,7 @@ export const FORBIDDEN_OAUTH_SCOPES: readonly string[] = [
 export const GOOGLE_WALKTHROUGH_CONTINUATION_PROMPT = [
   'When the user pastes a Google OAuth client id and client secret, that is the continuation of this walkthrough, not a new request: register them and carry on.',
   'When they name a path to a client JSON instead, read it and carry on the same way.',
-  'Registering is a local write of values they just handed over — store the secret encrypted, confirm by the client id\'s last characters only, and never echo the secret back.',
+  'Registering is a local write of values they just handed over. Store the secret encrypted, confirm by the client id\'s last characters only, and never echo the secret back.',
   'Answer with the consent link in the same reply, so the only thing left for them is to open it and approve.',
   'Never reply by telling them to run a command.',
 ].join('\n');
@@ -183,7 +183,7 @@ export const GOOGLE_REFERENCED_COMMANDS: readonly string[] = [
  * Google APIs the OAuth path enables.
  *
  * Both, now. Gmail's API used to be absent here on the reasoning that mail
- * went over IMAP/SMTP — but the platform reads mail through the Gmail API in
+ * went over IMAP/SMTP, but the platform reads mail through the Gmail API in
  * `api-client.ts` and `history-delta.ts`, and an API that is not enabled fails
  * with a service-disabled error rather than an auth error, which is a
  * genuinely confusing thing to debug. A scope without its API enabled is a
@@ -203,7 +203,7 @@ export const REQUIRED_SERVICES: readonly string[] = [
  *
  * All three, not just `google`. The flow writes `email.*`, `calendar.google.*`
  * and `google.oauth.*`, and ConfigManager throws on a section that is not on
- * the live config object — so seeding only `google` left the first
+ * the live config object, so seeding only `google` left the first
  * `calendar.google.clientId` write throwing "section 'calendar' does not
  * exist" in every product that did not separately carry a calendar seeder. One
  * did (goodvibes-agent, locally); the daemon, the TUI and the web UI did not,
@@ -238,8 +238,8 @@ export const GOOGLE_CONFIG_KEYS = {
  * Secret-store names, DERIVED from the config paths above rather than written
  * out by hand.
  *
- * The derivation is the platform-wide one — literally `daemonSecretKeyFor`,
- * the same function the daemon uses — and matching it is load-bearing rather
+ * The derivation is the platform-wide one, literally `daemonSecretKeyFor`,
+ * the same function the daemon uses, and matching it is load-bearing rather
  * than cosmetic: the daemon decides which credentials it owns, and therefore
  * which replicate to another node, by deriving names from daemon-owned config
  * paths with exactly this call. A hand-written name like
@@ -256,7 +256,7 @@ export const GOOGLE_SECRET_KEYS = {
 } as const;
 
 // ---------------------------------------------------------------------------
-// Path A — app password
+// Path A: app password
 // ---------------------------------------------------------------------------
 
 const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
@@ -268,7 +268,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       'The app password and the calendar address both live behind pages Google exposes through no API, so they have to be read out of a real browser.',
     actor: 'automated',
     manualSteps: [
-      'No action needed — this only matters to the automated flow. If you are following this runbook by hand, use whatever browser you normally use.',
+      'No action needed. This only matters to the automated flow. If you are following this runbook by hand, use whatever browser you normally use.',
     ],
   },
   {
@@ -314,7 +314,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       `In the "App name" box type: ${APP_PASSWORD_LABEL}`,
       'Click "Create".',
       'Google shows a 16-character password in a yellow box. Copy it. You cannot see it again after closing the dialog.',
-      'Paste it here and I will put it straight into the encrypted store — Google shows it only in this dialog.',
+      'Paste it here and I will put it straight into the encrypted store. Google shows it only in this dialog.',
     ],
     requires: ['two-step-verification'],
   },
@@ -341,7 +341,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
     manualSteps: [
       'I open a real IMAP session and a real authenticated SMTP session and report both.',
       'A successful run reports both the IMAP and the SMTP stage as connected.',
-      'If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped — create a new one and store it again.',
+      'If IMAP fails with AUTHENTICATIONFAILED, the app password was mistyped. Create a new one and store it again.',
     ],
     requires: ['gmail-config'],
   },
@@ -359,7 +359,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
       'Click "Integrate calendar".',
       'Under "Secret address in iCal format", click the copy button.',
       'Paste it here and I will put it in the encrypted store.',
-      'Treat this URL as a password — anyone holding it can read your calendar.',
+      'Treat this URL as a password. Anyone holding it can read your calendar.',
     ],
     requires: ['google-signed-in'],
   },
@@ -377,7 +377,7 @@ const APP_PASSWORD_STEPS: readonly GoogleSetupStepSpec[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Path B — OAuth
+// Path B: OAuth
 // ---------------------------------------------------------------------------
 
 const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
@@ -459,7 +459,7 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     path: 'oauth',
     title: 'Setting publishing status to In production',
     purpose:
-      'This is the step that decides whether the integration keeps working. An app left in "Testing" is issued refresh tokens that expire after seven days, so the integration dies once a week and does so silently. Moving to "In production" removes that expiry. It is self-certified: no Google review is needed, you just click through an "unverified app" warning once when you authorize.',
+      'This is the step that decides whether the integration keeps working. An app left in "Testing" is issued refresh tokens that expire after seven days, so the integration dies once a week and does so silently. Moving to "In production" removes that expiry. It is self-certified. No Google review is needed; you just click through an "unverified app" warning once when you authorize.',
     actor: 'human-assisted',
     url: AUTH_AUDIENCE_URL,
     manualSteps: [
@@ -476,7 +476,7 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     path: 'oauth',
     title: 'Creating the Desktop app OAuth client',
     purpose:
-      'The one thing in this whole flow that a person genuinely has to do in a browser. Google offers no API and no gcloud command for creating a Desktop app OAuth client — `gcloud iam oauth-clients create` exists but covers workforce identity federation only — so the Cloud console is the sole route. A Desktop app client is the right type: it permits the loopback redirect this product uses and needs no hosted redirect URL.',
+      'The one thing in this whole flow that a person genuinely has to do in a browser. Google offers no API and no gcloud command for creating a Desktop app OAuth client. `gcloud iam oauth-clients create` exists, but it covers workforce identity federation only, so the Cloud console is the sole route. A Desktop app client is the right type. It permits the loopback redirect this product uses and needs no hosted redirect URL.',
     actor: 'human-assisted',
     url: AUTH_CLIENTS_URL,
     // These steps are quoted from Google's live documentation, checked on
@@ -489,7 +489,7 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     // and download the full client secret once, at the time of its creation.
     // After the initial creation, the Google Cloud Console will only display
     // the last four characters of the client secret." So the instruction to
-    // copy both values out of the creation dialog is not a nicety — miss it
+    // copy both values out of the creation dialog is not a nicety. Miss it
     // and the client has to be recreated.
     //
     // Second, and this is why no file is mentioned anywhere here: Google's
@@ -500,17 +500,17 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     // could not verify those steps precisely against the live console, so the
     // guided path does not send anyone looking for a file. It uses the two
     // values the dialog definitely shows. Handing over a JSON path still works
-    // and is fully supported — it is just user-directed, via /google client-file
+    // and is fully supported. It is just user-directed, via /google client-file
     // <path>, never something this path talks a person into.
     manualSteps: [
       `Open ${AUTH_CLIENTS_URL}`,
-      'If it asks you to register your app before continuing, do that first — Google requires it before a client can be created.',
+      'If it asks you to register your app before continuing, do that first. Google requires it before a client can be created.',
       'Click "Create client".',
       'Application type: choose "Desktop app".',
-      'In the "Name" field type: goodvibes agent — this name is only ever shown in the Cloud console.',
+      'In the "Name" field type: goodvibes agent. This name is only ever shown in the Cloud console.',
       'Click "Create".',
-      'The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy BOTH now: Google shows the full secret only at this moment and afterwards displays just its last four characters.',
-      'Paste both values here and I will register them and continue — Google shows the full secret only in this dialog, so copy it before you close it.',
+      'The "OAuth client created" dialog appears showing a Client ID and a Client secret. Copy both now. Google shows the full secret only at this moment, and afterward shows only its last four characters.',
+      'Paste both values here and I will register them and continue. Google shows the full secret only in this dialog, so copy it before you close it.',
     ],
     requires: ['oauth-audience-production'],
   },
@@ -523,13 +523,13 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     alsoInPaths: ['existing-client'],
     title: 'Authorizing the agent',
     purpose:
-      'Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser: Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens: Google will show a red "Google hasn\'t verified this app" warning. That is expected here and is not a sign anything is wrong — the app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.',
+      'Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser. Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens, expect a red "Google hasn\'t verified this app" warning. That is expected here and is not a sign anything is wrong. The app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.',
     actor: 'human-assisted',
     manualSteps: [
       'I hand you a consent link. Open it.',
-      'Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account" — approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.',
-      'Expect a red warning screen saying "Google hasn\'t verified this app". This is normal for an app you created yourself and are the only user of — there is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".',
-      'Leave every permission ticked — mail and calendar are requested together so one approval covers both — then click "Continue".',
+      'Check the account at the top of the consent screen. If it is not the account you want the agent to use, choose "Use another account". Approving as a personal account by reflex is the single most common way this goes wrong, and it produces a credential that fails later with no obvious cause.',
+      'Expect a red warning screen saying "Google hasn\'t verified this app". This is normal for an app you created yourself and are the only user of. There is no third party for Google to have verified it on behalf of. Click "Advanced", then "Go to goodvibes agent (unsafe)".',
+      'Leave every permission ticked. Mail and calendar are requested together, so one approval covers both. Then click "Continue".',
       'The browser lands on a local page confirming the agent is connected.',
     ],
     requires: ['oauth-client'],
@@ -540,11 +540,11 @@ const OAUTH_STEPS: readonly GoogleSetupStepSpec[] = [
     alsoInPaths: ['existing-client'],
     title: 'Reading mail and calendar to prove it works',
     purpose:
-      'Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage — which is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.',
+      'Storing a credential is not evidence that the credential does the job. A token can be valid and still carry the wrong scopes or belong to the wrong account, and both look exactly like success at the moment of storage. That is how a Gmail-only consent was stored as a success and then failed on the first calendar call. So this step reads the mailbox and reads the calendar with the credential just obtained, and reports what it read. Both are reads: nothing is sent, nothing is marked, no event is created.',
     actor: 'automated',
     manualSteps: [
       'I read your mailbox and your calendar with the new credential and report the account it connected as, that both answered, and the publishing status.',
-      'If publishing status reads "Testing", publish the app at the audience page and tell me — I will start a fresh consent, because the existing token still expires seven days after it was issued.',
+      'If publishing status reads "Testing", publish the app at the audience page and tell me. I will start a fresh consent, because the existing token still expires seven days after it was issued.',
     ],
     requires: ['oauth-authorize'],
   },
@@ -561,7 +561,7 @@ export const GOOGLE_SETUP_STEPS: readonly GoogleSetupStepSpec[] = [
  *
  * The pruning is what makes `existing-client` work. `oauth-authorize` requires
  * `oauth-client` on the full OAuth path, but on the existing-client path the
- * client is already stored — that is the entire premise of the path — so the
+ * client is already stored, which is the entire premise of the path, so the
  * requirement names a step that is deliberately absent. Left unpruned, the
  * executor would see an unmet dependency and skip the only step that matters,
  * which is how a "go straight to consent" path would quietly do nothing.

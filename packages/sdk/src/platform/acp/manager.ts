@@ -1,5 +1,5 @@
 /**
- * AcpManager — Manages the lifecycle of all subagent ACP connections.
+ * AcpManager, Manages the lifecycle of all subagent ACP connections.
  *
  * The TUI orchestrator calls spawn() when it needs to delegate work.
  * The manager tracks active subagents and provides cancel / waitAll.
@@ -30,7 +30,7 @@ export function getDefaultAcpAgentCommand(): string[] {
 }
 
 /**
- * AcpManager — Manages multiple concurrent subagent connections.
+ * AcpManager, Manages multiple concurrent subagent connections.
  *
  * @example
  * ```ts
@@ -85,7 +85,7 @@ export class AcpManager {
       });
     }
 
-    // Start running — store the promise so waitAll() can await it
+    // Start running, store the promise so waitAll() can await it
     const promise = conn.run().finally(() => {
       // Clean up tracking once done
       this.connections.delete(id);

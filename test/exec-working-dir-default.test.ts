@@ -2,7 +2,7 @@
  * exec-working-dir-default.test.ts
  *
  * The exec tool used to throw "exec requires an explicit
- * working_dir" whenever a call omitted the top-level working_dir — including
+ * working_dir" whenever a call omitted the top-level working_dir, including
  * a model's FIRST exec call right after the user approved it (the approval
  * card's Directory line is sourced from the session's own working directory
  * independently of this arg, so the user had already seen the correct

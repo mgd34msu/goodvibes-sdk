@@ -3,7 +3,7 @@
  *
  * Split out of `setup-actions.ts` because it answers a different question. That
  * module binds step ids to runners and owns the consent exchange; these six
- * steps are about the PROJECT the OAuth client will live in — is gcloud there,
+ * steps are about the PROJECT the OAuth client will live in, is gcloud there,
  * is it signed in, which project, which APIs, is the consent screen filled in,
  * is the app published. None of it runs on a machine that already has a client,
  * which is the whole point of the `existing-client` path.
@@ -85,7 +85,7 @@ function gcloudAuthRunner(deps: GoogleSetupActionDeps, state: GcloudState): Goog
     return needsHuman(
       'gcloud is not signed in.',
       'gcloud needs its own sign-in before it can create a project or enable APIs, and it opens its own browser to do it.',
-      'Run: gcloud auth login — choose the Google account you want the agent to use, then re-run this flow.',
+      'Run: gcloud auth login, choose the Google account you want the agent to use, then re-run this flow.',
     );
   };
 }

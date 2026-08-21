@@ -1,5 +1,5 @@
 /**
- * AutoRefreshCoordinator — automatic token refresh with in-flight request queuing.
+ * AutoRefreshCoordinator, automatic token refresh with in-flight request queuing.
  *
  * Prevents user-visible 401s by:
  *   1. Pre-flight leeway check: if the token expires within refreshLeewayMs,
@@ -7,7 +7,7 @@
  *   2. Reactive 401 retry: if a request returns 401 and the token wasn't
  *      already known expired, trigger a refresh then retry the request once.
  *   3. In-flight queuing: while a refresh is in progress, subsequent refresh
- *      attempts queue on the same promise — one refresh call for all waiters.
+ *      attempts queue on the same promise, one refresh call for all waiters.
  *
  * When no refresh endpoint is available (the coordinator has no `refresh`
  * function), the pre-flight check is a graceful no-op and the reactive path
@@ -42,7 +42,7 @@ export interface AutoRefreshOptions {
   /**
    * Clock used for the expiry comparisons. Defaults to `Date.now`.
    *
-   * Exists so a caller — in practice a test — can drive the leeway and
+   * Exists so a caller, in practice a test, can drive the leeway and
    * expired-token branches deterministically instead of constructing tokens
    * whose real timestamps happen to straddle the window. Not a behaviour knob:
    * anything other than a monotonic wall clock makes expiry meaningless.
@@ -92,7 +92,7 @@ export interface AutoRefreshCoordinatorOptions {
    * one is near expiry or a 401 was received.
    *
    * If undefined, the coordinator performs a graceful no-op (does not
-   * error) — in-flight queuing and leeway checks are still respected, but
+   * error), in-flight queuing and leeway checks are still respected, but
    * no network call is made. Reactive 401 retry still re-reads the token
    * store in case an external party updated it.
    */
@@ -162,7 +162,7 @@ export class AutoRefreshCoordinator {
 
   /**
    * Trigger a refresh. If one is already in progress, all callers wait on the
-   * same promise — no duplicate refresh network calls.
+   * same promise, no duplicate refresh network calls.
    *
    * After a successful refresh, emits `onAuthTransition` reason='refresh'.
    * After a failed refresh, emits `onAuthTransition` reason='expire' and
@@ -175,7 +175,7 @@ export class AutoRefreshCoordinator {
 
     const promise = (async () => {
       if (!this.#refresh) {
-        // No refresh endpoint — graceful no-op.
+        // No refresh endpoint, graceful no-op.
         return;
       }
       try {
@@ -300,7 +300,7 @@ export class AutoRefreshCoordinator {
   /**
    * Refresh the token immediately and execute `fn` exactly once as the retry.
    *
-   * Unlike `withRetryOn401`, this method does NOT call `fn` before refreshing —
+   * Unlike `withRetryOn401`, this method does NOT call `fn` before refreshing,
    * it assumes the caller already received a 401 on the initial attempt. It
    * refreshes the token (serialised via the shared promise, as with
    * `withRetryOn401`) and then calls `fn` a single time.
@@ -315,7 +315,7 @@ export class AutoRefreshCoordinator {
    */
   async refreshAndRetryOnce<T>(fn: () => Promise<T>): Promise<T> {
     const wasExpired = await this.#isExpired();
-    // Refresh (serialised — if one is already in progress, join it).
+    // Refresh (serialised, if one is already in progress, join it).
     await this.#doRefresh();
     // Single retry attempt.
     try {

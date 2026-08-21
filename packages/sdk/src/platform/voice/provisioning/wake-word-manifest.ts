@@ -1,5 +1,5 @@
 /**
- * wake-word-manifest.ts — the PINNED wake-word classifier manifest.
+ * wake-word-manifest.ts, the PINNED wake-word classifier manifest.
  *
  * Same contract as the piper/whisper pins in ./manifest.ts: exact version, URL,
  * byte size and sha256 for every artifact, hosted at the ONE append-only
@@ -9,15 +9,15 @@
  * WHY THIS FILE IS DATA AND NOTHING ELSE
  *
  * A better classifier is expected to replace the pin below (an accent-diverse
- * retrain is the known next one). Swapping it must be a one-entry change here —
+ * retrain is the known next one). Swapping it must be a one-entry change here,
  * add the new version to {@link WAKE_WORD_MODELS}, move
- * {@link DEFAULT_WAKE_WORD_MODEL_VERSION} — and nothing else. Consumers read the
+ * {@link DEFAULT_WAKE_WORD_MODEL_VERSION}, and nothing else. Consumers read the
  * default through {@link resolveWakeWordModel}, so no consumer holds a version,
  * URL, or checksum of its own. Old versions stay listed and stay fetchable,
  * because the hosted assets are append-only and are never deleted.
  *
  * The wake-word engine, config surface, provisioning flow and recovery
- * housekeeping read this pin — see `platform/voice/wake/`. Per-surface audio
+ * housekeeping read this pin, see `platform/voice/wake/`. Per-surface audio
  * capture and UI do not live in the SDK, because capture is genuinely
  * per-surface: the engine takes 16 kHz frames and returns detections.
  *
@@ -28,7 +28,7 @@
  * It consumes speech EMBEDDINGS, not audio, so it cannot run alone. A runtime
  * must also provide the two front-end models. Source them from Google's own
  * Apache-2.0 `speech_embedding` TFHub distribution rather than redistributing
- * openWakeWord's copies — see {@link WAKE_WORD_FRONT_END_SOURCING} — so the
+ * openWakeWord's copies, see {@link WAKE_WORD_FRONT_END_SOURCING}, so the
  * provenance traces to that Apache-2.0 grant directly.
  */
 import type { VerifiedDownloadSpec } from './download-verified.js';
@@ -61,7 +61,7 @@ export const WAKE_WORD_FRONT_END_SOURCING =
  *
  * Both stages were re-sourced away from openWakeWord's copies, and both were
  * measured against them, because the pinned classifier was TRAINED against that
- * front end — if the front end shifts, every number in docs/wake-word-model.md
+ * front end, if the front end shifts, every number in docs/wake-word-model.md
  * stops describing the running detector.
  */
 export interface WakeWordFrontEndManifest {
@@ -117,7 +117,7 @@ export interface WakeWordFrontEndManifest {
 
 /**
  * The pinned front end. The melspectrogram stage carries no URL because there
- * is nothing to download — removing that download is the point.
+ * is nothing to download, removing that download is the point.
  */
 export const WAKE_WORD_FRONT_END: WakeWordFrontEndManifest = {
   melspectrogram: {
@@ -167,7 +167,7 @@ export interface WakeWordModelMeasurements {
   /**
    * Fraction of wake-phrase utterances detected, 0..1.
    *
-   * SYNTHETIC ONLY — see {@link recallIsSyntheticOnly}.
+   * SYNTHETIC ONLY, see {@link recallIsSyntheticOnly}.
    */
   readonly recall: number;
   /**
@@ -180,7 +180,7 @@ export interface WakeWordModelMeasurements {
   /**
    * Always true today, and stated rather than hidden: no human recording of the
    * wake phrase exists yet, so recall is measured entirely on text-to-speech
-   * output from a single VITS model — no real microphones, no real rooms, no
+   * output from a single VITS model, no real microphones, no real rooms, no
    * accents outside the synthesis model's distribution, no children, no
    * whispering, no speakerphone. The false-accept figures ARE measured on real
    * human speech. A human test pass is required before this ships as a default.
@@ -192,13 +192,13 @@ export interface WakeWordModelMeasurements {
 export interface WakeWordModelManifest {
   /** Wake phrase this classifier detects. */
   readonly phrase: string;
-  /** Manifest version of THIS artifact set — bumped per retrain, not per SDK release. */
+  /** Manifest version of THIS artifact set, bumped per retrain, not per SDK release. */
   readonly version: string;
   /** SPDX identifier of the grant the artifacts themselves ship under. */
   readonly license: string;
   /**
    * The attribution NOTICE, hosted next to the artifacts. Several training
-   * corpora are CC BY, which REQUIRES attribution — a deployment that
+   * corpora are CC BY, which REQUIRES attribution, a deployment that
    * redistributes these artifacts must carry this NOTICE with them. It is
    * checksummed like any other asset so it cannot be silently swapped.
    */
@@ -208,7 +208,7 @@ export interface WakeWordModelManifest {
   /** TensorFlow Lite format (mobile). Bit-identical decisions to the onnx twin. */
   readonly tflite: VerifiedDownloadSpec;
   /**
-   * The threshold to run at. NOT openWakeWord's 0.5 — see
+   * The threshold to run at. NOT openWakeWord's 0.5, see
    * {@link OPENWAKEWORD_UPSTREAM_DEFAULT_THRESHOLD}.
    */
   readonly recommendedThreshold: number;
@@ -268,7 +268,7 @@ export interface WakeVadThresholdRow {
    */
   readonly speechPassRate: number;
   /**
-   * Fraction of held-out NON-SPEECH frames the gate stops, 0..1 — classifier
+   * Fraction of held-out NON-SPEECH frames the gate stops, 0..1, classifier
    * inferences not run, which is the entire point of the stage.
    */
   readonly noiseGateRate: number;
@@ -288,7 +288,7 @@ export interface WakeVadThresholdRow {
  * its own front end, its own download, and its own provenance to keep honest.
  */
 export interface WakeVadModelManifest {
-  /** Manifest version of this head — bumped per retrain, not per SDK release. */
+  /** Manifest version of this head, bumped per retrain, not per SDK release. */
   readonly version: string;
   /** SPDX identifier of the grant the artifact ships under. */
   readonly license: string;
@@ -341,7 +341,7 @@ export interface WakeVadModelManifest {
  * THE ASSETS LAND WITH THIS ROUND'S RELEASE. The byte counts and checksums below
  * are of the built artifacts and are what the upload must match; until the upload
  * happens a provision reports the gate as failed and `vadReady` false, while the
- * detector itself stays ready — which is why the gate is not part of
+ * detector itself stays ready, which is why the gate is not part of
  * `WakeProvisionStatus.ready`.
  */
 export const WAKE_VAD_MODEL: WakeVadModelManifest = {
@@ -400,7 +400,7 @@ export const WAKE_VAD_MODEL: WakeVadModelManifest = {
 /**
  * Total download size of the speech gate's artifacts (bytes), for an offer.
  *
- * Counts what a provision FETCHES — the onnx head and its NOTICE — and not the
+ * Counts what a provision FETCHES, the onnx head and its NOTICE, and not the
  * tflite twin, which is pinned here for a runtime that cannot load onnx but is
  * not part of the plan, because nothing in this SDK loads it. The rule this obeys
  * is the one the classifier's twin was fixed to obey: a reported download size
@@ -459,7 +459,7 @@ export function wakeWordProvisionBytes(model: WakeWordModelManifest): number {
  * consumer summing `embedding.download.bytes` by hand quietly omitted the
  * attribution file, so the reported download size described a set of artifacts
  * that was not the set being fetched. The melspectrogram stage contributes
- * nothing — it is computed in code, which is the point of it.
+ * nothing, it is computed in code, which is the point of it.
  */
 export function wakeWordFrontEndProvisionBytes(): number {
   return WAKE_WORD_FRONT_END.embedding.download.bytes + WAKE_WORD_FRONT_END.embedding.notice.bytes;

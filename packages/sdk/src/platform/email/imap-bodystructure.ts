@@ -4,12 +4,12 @@
  * Why a structure parser at all
  * ─────────────────────────────
  * `ImapClient.fetchMessage` returns the text of a message and a LIST of its
- * attachments — never their bytes. That distinction is the reason this file
+ * attachments, never their bytes. That distinction is the reason this file
  * exists: the server describes every part of a message in its BODYSTRUCTURE
  * reply (type, subtype, encoding, size, filename), so a client can report what
  * is attached, and then fetch ONLY the sections it wants to read. Fetching
  * `BODY[]` would have been three lines of code and would have pulled every
- * attachment — a scanned PDF, an archive, whatever a stranger chose to send —
+ * attachment, a scanned PDF, an archive, whatever a stranger chose to send,
  * down the wire and into memory on every read.
  *
  * Everything here is text in, data out: no socket, no clock, no filesystem.
@@ -20,7 +20,7 @@
  * body and its structure are written by whoever sent the mail. Nothing throws:
  * a malformed structure yields no parts (and therefore no attachments), an
  * unterminated string yields what was readable, and nesting is bounded. The
- * caller's contract — empty rather than an exception — depends on that holding
+ * caller's contract, empty rather than an exception, depends on that holding
  * for every input, not for the inputs we thought of.
  */
 
@@ -32,7 +32,7 @@ import type { ImapAttachmentInfo } from './imap-client.js';
 
 /** One leaf MIME part, as the server described it in BODYSTRUCTURE. */
 export interface ImapBodyPart {
-  /** IMAP section specifier, e.g. `1`, `2`, `1.2` — what BODY.PEEK[..] takes. */
+  /** IMAP section specifier, e.g. `1`, `2`, `1.2`, what BODY.PEEK[..] takes. */
   readonly section: string;
   /** Lowercased MIME type, e.g. `text`. */
   readonly type: string;
@@ -186,8 +186,8 @@ function paramValue(params: SNode[], wanted: string): string {
 /**
  * Find the content-disposition list without depending on where it sits.
  *
- * Its index differs by type — a text part carries an extra line count, a
- * message/rfc822 part carries an envelope and a nested body — and getting that
+ * Its index differs by type, a text part carries an extra line count, a
+ * message/rfc822 part carries an envelope and a nested body, and getting that
  * arithmetic wrong silently mislabels attachments. Instead we look for the
  * shape a disposition has: a two-element list whose head is `attachment` or
  * `inline`.
@@ -243,7 +243,7 @@ function collectParts(node: SNode[], prefix: string, out: ImapBodyPart[]): void 
 
 /**
  * Parse a BODYSTRUCTURE expression into its leaf parts.
- * Returns an empty list for anything it cannot read — a caller that gets no
+ * Returns an empty list for anything it cannot read, a caller that gets no
  * parts reports no attachments, which is the honest answer when the server's
  * description of the message was not readable.
  */
@@ -271,7 +271,7 @@ export function selectBodyPart(
   return null;
 }
 
-/** Attachment metadata — names, types and sizes only, never content. */
+/** Attachment metadata, names, types and sizes only, never content. */
 export function attachmentsFromParts(
   parts: readonly ImapBodyPart[],
 ): ImapAttachmentInfo[] {
@@ -329,7 +329,7 @@ function decodeCharset(buffer: Buffer, charset: string): string {
  *
  * Handles base64 and quoted-printable, which is what mail actually arrives as;
  * 7bit/8bit/binary sections are already text by the time the socket has decoded
- * them. Never throws — an encoding we cannot undo yields the raw section, which
+ * them. Never throws, an encoding we cannot undo yields the raw section, which
  * is worse to read than the real thing and better than nothing.
  */
 export function decodeTextPart(raw: string, encoding: string, charset: string): string {
@@ -369,7 +369,7 @@ export function hasFetchResponse(lines: readonly string[]): boolean {
  * The session inlines a `{n}` literal into the line that announced it, so the
  * payload usually arrives as the tail of the `* n FETCH (BODY[..] ` line;
  * short sections may instead arrive as a quoted string, and an absent one as
- * NIL. Returns null when there was no FETCH response at all — which is how a
+ * NIL. Returns null when there was no FETCH response at all, which is how a
  * UID that no longer exists is told apart from a section that is empty.
  */
 export function extractFetchSection(lines: readonly string[]): string | null {

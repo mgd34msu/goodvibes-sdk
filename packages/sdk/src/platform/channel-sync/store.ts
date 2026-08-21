@@ -7,7 +7,7 @@
  *
  * One file for both tables because they share a lifetime and a reason to
  * exist: they are what a surface needs to draw the same channel screen on a
- * second device. A malformed snapshot is refused rather than silently reset —
+ * second device. A malformed snapshot is refused rather than silently reset,
  * `PersistentStore` keeps the file, so a store that cannot be read is a fault
  * an operator can still recover from by hand.
  */

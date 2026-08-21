@@ -1,5 +1,5 @@
 /**
- * session-migration.test.ts — the one-time migration from the pre-surface,
+ * session-migration.test.ts, the one-time migration from the pre-surface,
  * pre-agents-subdirectory on-disk layout into the SessionSurface-scoped
  * layout (runtime/session-migration.ts), invoked once per surface from
  * createSessionSurface (session-surface.ts).
@@ -90,7 +90,7 @@ describe('session-migration: full legacy layout', () => {
       'utf-8',
     );
 
-    // 3. Legacy unscoped checkpoints dir — populated with real git content by
+    // 3. Legacy unscoped checkpoints dir, populated with real git content by
     // the caller (a WorkspaceCheckpointManager pointed at workingDirectory
     // with no surface, before any surface exists).
     const legacyCheckpointsDir = join(workingDirectory, '.goodvibes', 'checkpoints');
@@ -110,7 +110,7 @@ describe('session-migration: full legacy layout', () => {
     const legacyCheckpointsDir = join(workingDirectory, '.goodvibes', 'checkpoints');
     expect(existsSync(join(legacyCheckpointsDir, 'git', 'HEAD'))).toBe(true);
 
-    // Now construct the surface — this is what triggers migration.
+    // Now construct the surface, this is what triggers migration.
     const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
 
     // Last-session pointer resumed from the legacy unscoped file.
@@ -169,7 +169,7 @@ describe('session-migration: full legacy layout', () => {
 
     // Modify the (already-migrated) canonical last-session pointer to a
     // DIFFERENT session id, and re-create the (already-gone) legacy unscoped
-    // pointer pointing at yet another id — if migration re-ran, it could
+    // pointer pointing at yet another id, if migration re-ran, it could
     // clobber the canonical value; idempotency means it must not.
     writeFileSync(surfaceA.lastSessionPointer, JSON.stringify({ sessionId: 'post-migration-value', timestamp: new Date().toISOString() }) + '\n', 'utf-8');
     const legacyPointer = join(workingDirectory, '.goodvibes', 'sessions', 'last-session.json');
@@ -192,7 +192,7 @@ describe('session-migration: full legacy layout', () => {
 
   test('R4: a user-saved session whose name looks like an agent journal is NEVER moved out of the session list', () => {
     // Reproduction: the journal move matched on filename alone, and
-    // SessionManager.sanitizeName keeps the `agent-` prefix — so a
+    // SessionManager.sanitizeName keeps the `agent-` prefix, so a
     // conversation the user saved as "agent-deadbeef" was relocated into
     // sessions/agents/ by the upgrade and vanished from list().
     const { workingDirectory, homeDirectory } = tempRoot();
@@ -232,7 +232,7 @@ describe('session-migration: the marker only appears when every step completed',
 
     createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
     expect(existsSync(markerPathFor(workingDirectory, 'tui'))).toBe(false);
-    // The journal is exactly where it was — a failed step moves nothing.
+    // The journal is exactly where it was, a failed step moves nothing.
     expect(existsSync(journal)).toBe(true);
 
     // Clear the obstruction: the next start retries the whole (idempotent)
@@ -322,7 +322,7 @@ describe('session-migration: the marker is validated by content, never by existe
   test('a marker that parses but never claims completion forces re-migration', () => {
     const { workingDirectory, homeDirectory } = tempRoot();
     const journal = seedOneJournal(workingDirectory);
-    // Valid JSON, plausible-looking, no completion assertion — and the legacy
+    // Valid JSON, plausible-looking, no completion assertion, and the legacy
     // pre-fix marker shape, which is exactly this.
     seedMarker(workingDirectory, JSON.stringify({ migratedAt: new Date().toISOString() }) + '\n');
 
@@ -348,7 +348,7 @@ describe('session-migration: the marker is validated by content, never by existe
     seedMarker(workingDirectory, JSON.stringify({ schemaVersion: 1, completed: true, migratedAt: new Date().toISOString() }));
 
     const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
-    // Untouched — the marker said the work was done, and it was believed.
+    // Untouched, the marker said the work was done, and it was believed.
     expect(existsSync(journal)).toBe(true);
     expect(existsSync(join(surface.agentJournalsDir, 'agent-deadbeef.jsonl'))).toBe(false);
   });
@@ -417,7 +417,7 @@ describe('session-migration: a crash-damaged destination is rejected, not served
     const journal = seedJournal(workingDirectory);
     const agentsDir = join(workingDirectory, '.goodvibes', 'tui', 'sessions', 'agents');
     mkdirSync(agentsDir, { recursive: true });
-    // A first line cut off partway through — nothing can parse it back.
+    // A first line cut off partway through, nothing can parse it back.
     writeFileSync(join(agentsDir, 'agent-deadbeef.jsonl'), '{"type":"meta","agen', 'utf-8');
 
     const surface = createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory });
@@ -508,7 +508,7 @@ describe('session-migration: the shared legacy checkpoint store is never claimed
       createSessionSurface({ surfaceRoot: 'tui', workingDirectory, homeDirectory }),
     );
 
-    // Untouched — a git store that may hold real history is never auto-deleted.
+    // Untouched, a git store that may hold real history is never auto-deleted.
     expect(readFileSync(join(legacyCheckpointsDir, 'git', 'HEAD'), 'utf-8')).toBe('ref: refs/heads/legacy\n');
     expect(readFileSync(join(scopedCheckpointsDir, 'git', 'HEAD'), 'utf-8')).toBe('ref: refs/heads/scoped\n');
     // ...but disclosed by name, so it is findable rather than silently orphaned.

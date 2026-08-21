@@ -11,7 +11,7 @@
  *   - A quarantine record is created with a timestamp and reason.
  *
  * Restore path:
- *   - `lift()` — Restores previously revoked capabilities (if trust was upgraded).
+ *   - `lift()`, Restores previously revoked capabilities (if trust was upgraded).
  *   - The caller is responsible for reloading the plugin after lifting.
  */
 
@@ -42,7 +42,7 @@ export interface QuarantineRecord {
 // ── Quarantine Engine ─────────────────────────────────────────────────────────
 
 /**
- * PluginQuarantineEngine — Tracks quarantined plugins and applies/revokes
+ * PluginQuarantineEngine, Tracks quarantined plugins and applies/revokes
  * capability restrictions.
  *
  * This is intentionally separate from the PluginLifecycleManager so that
@@ -53,7 +53,7 @@ export class PluginQuarantineEngine {
   private readonly records = new Map<string, QuarantineRecord>();
 
   /**
-   * quarantine — Apply quarantine to a plugin.
+   * quarantine, Apply quarantine to a plugin.
    *
    * Revokes all high-risk capabilities from the plugin's resolved manifest
    * and creates a quarantine record. The plugin remains in memory but its
@@ -70,7 +70,7 @@ export class PluginQuarantineEngine {
     reason: string,
   ): QuarantineRecord | null {
     if (this.isQuarantined(pluginName)) {
-      logger.warn(`[plugin-quarantine] ${pluginName}: already quarantined — skipping`);
+      logger.warn(`[plugin-quarantine] ${pluginName}: already quarantined, skipping`);
       return null;
     }
 
@@ -88,7 +88,7 @@ export class PluginQuarantineEngine {
     const newDenied: PluginCapability[] = [];
     for (const cap of revokedCapabilities) {
       newDenied.push(cap);
-      capabilityManifest.denialReasons[cap] = `Capability '${cap}' revoked: plugin quarantined — ${reason}`;
+      capabilityManifest.denialReasons[cap] = `Capability '${cap}' revoked: plugin quarantined, ${reason}`;
     }
     capabilityManifest.denied = [...capabilityManifest.denied, ...newDenied];
 
@@ -103,7 +103,7 @@ export class PluginQuarantineEngine {
     this.records.set(pluginName, record);
 
     logger.warn(
-      `[plugin-quarantine] ${pluginName}: quarantined — ${reason}` +
+      `[plugin-quarantine] ${pluginName}: quarantined, ${reason}` +
       (revokedCapabilities.length > 0
         ? ` (revoked: [${revokedCapabilities.join(', ')}])`
         : ' (no high-risk capabilities were granted)'),
@@ -113,7 +113,7 @@ export class PluginQuarantineEngine {
   }
 
   /**
-   * lift — Lift quarantine for a plugin.
+   * lift, Lift quarantine for a plugin.
    *
    * Previously revoked capabilities are NOT automatically restored here;
    * the caller should trigger a re-resolve of the capability manifest
@@ -125,7 +125,7 @@ export class PluginQuarantineEngine {
   lift(pluginName: string): boolean {
     const record = this.records.get(pluginName);
     if (!record) {
-      logger.debug(`[plugin-quarantine] ${pluginName}: no quarantine record found — nothing to lift`);
+      logger.debug(`[plugin-quarantine] ${pluginName}: no quarantine record found, nothing to lift`);
       return false;
     }
     if (record.lifted) {
@@ -162,10 +162,10 @@ export class PluginQuarantineEngine {
   }
 
   /**
-   * applyToNewManifest — Apply quarantine constraints to a freshly-resolved
+   * applyToNewManifest, Apply quarantine constraints to a freshly-resolved
    * capability manifest. Used when a plugin is reloaded while under quarantine.
    *
-   * Unlike `quarantine()`, this does not create a new record — it reuses the
+   * Unlike `quarantine()`, this does not create a new record, it reuses the
    * existing one. Call this during manifest re-resolution if `isQuarantined()`
    * is true.
    */
@@ -190,7 +190,7 @@ export class PluginQuarantineEngine {
     const newDenied: PluginCapability[] = [];
     for (const cap of toRevoke) {
       newDenied.push(cap);
-      capabilityManifest.denialReasons[cap] = `Capability '${cap}' blocked: plugin is quarantined — ${reason}`;
+      capabilityManifest.denialReasons[cap] = `Capability '${cap}' blocked: plugin is quarantined, ${reason}`;
     }
     capabilityManifest.denied = [...capabilityManifest.denied, ...newDenied];
 

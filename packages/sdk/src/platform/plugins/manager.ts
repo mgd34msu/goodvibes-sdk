@@ -21,7 +21,7 @@ import type { PluginCapability, PluginManifestV2 } from '../runtime/plugins/type
 import { summarizeError } from '../utils/error-display.js';
 
 /**
- * PluginState — Persisted state for all plugins.
+ * PluginState, Persisted state for all plugins.
  */
 interface PluginState {
   /** Map of plugin name → enabled boolean. */
@@ -35,7 +35,7 @@ interface PluginState {
 }
 
 /**
- * PluginStatus — Public-facing plugin info for /plugin list.
+ * PluginStatus, Public-facing plugin info for /plugin list.
  */
 export interface PluginStatus {
   name: string;
@@ -74,16 +74,16 @@ export interface PluginManagerOptions {
 }
 
 /**
- * PluginManager — orchestrates plugin discovery, loading, and persistence.
+ * PluginManager, orchestrates plugin discovery, loading, and persistence.
  */
 export class PluginManager {
   private plugins = new Map<string, LoadedPlugin>();
   private state: PluginState = { ...DEFAULT_STATE, enabled: {}, config: {}, trust: {}, quarantine: {} };
   private deps: PluginLoaderDeps | undefined;
 
-  /** Trust store — manages tier records for all plugins. */
+  /** Trust store, manages tier records for all plugins. */
   private readonly trustStore = new PluginTrustStore();
-  /** Quarantine engine — manages plugin quarantine state. */
+  /** Quarantine engine, manages plugin quarantine state. */
   private readonly quarantineEngine = new PluginQuarantineEngine();
   private readonly subscribers = new Set<() => void>();
   private readonly pathOptions: PluginPathOptions;
@@ -98,7 +98,7 @@ export class PluginManager {
   }
 
   /**
-   * init — Must be called once at startup with application dependencies.
+   * init, Must be called once at startup with application dependencies.
    * Loads state from disk, then discovers and loads all enabled plugins.
    */
   async init(deps: PluginLoaderDeps): Promise<void> {
@@ -139,7 +139,7 @@ export class PluginManager {
   }
 
   /**
-   * trust — Set the trust tier for a plugin.
+   * trust, Set the trust tier for a plugin.
    *
    * For the `trusted` tier, prefer `trustSigned()` which also validates the
    * signature. This method is for operator-forced tier assignment.
@@ -159,7 +159,7 @@ export class PluginManager {
       const manifest = discovered.manifest as { signature?: string };
       if (!manifest.signature) {
         logger.warn(
-          `[plugins] '${name}' set to 'trusted' tier without a signed manifest — ` +
+          `[plugins] '${name}' set to 'trusted' tier without a signed manifest, ` +
           'consider using /plugin verify first',
         );
       }
@@ -174,7 +174,7 @@ export class PluginManager {
   }
 
   /**
-   * trustSigned — Elevate a plugin to `trusted` after validating its manifest signature.
+   * trustSigned, Elevate a plugin to `trusted` after validating its manifest signature.
    */
   trustSigned(
     name: string,
@@ -204,7 +204,7 @@ export class PluginManager {
   }
 
   /**
-   * verify — Inspect a plugin's manifest signature without changing its tier.
+   * verify, Inspect a plugin's manifest signature without changing its tier.
    */
   verify(name: string, publicKey?: string): { ok: boolean } & SignatureValidationResult {
     const discovered = this.findDiscoveredPlugin(name);
@@ -224,7 +224,7 @@ export class PluginManager {
   }
 
   /**
-   * capabilities — Return the capability information for a plugin.
+   * capabilities, Return the capability information for a plugin.
    *
    * Returns the full set: requested, granted (based on current trust tier),
    * denied, and which capabilities are high-risk.
@@ -255,7 +255,7 @@ export class PluginManager {
   }
 
   /**
-   * quarantine — Apply quarantine to a plugin.
+   * quarantine, Apply quarantine to a plugin.
    *
    * This is the high-level operator path. It resolves the plugin's declared
    * capability manifest using the current trust tier, then applies quarantine
@@ -289,13 +289,13 @@ export class PluginManager {
 
     this.state.quarantine[name] = { ...record, revokedCapabilities: [...record.revokedCapabilities] };
     this.saveState();
-    logger.warn(`[plugins] ${name}: quarantined — ${reason}`);
+    logger.warn(`[plugins] ${name}: quarantined, ${reason}`);
     this.notifySubscribers();
     return { ok: true };
   }
 
   /**
-   * liftQuarantine — Remove quarantine from a plugin.
+   * liftQuarantine, Remove quarantine from a plugin.
    */
   liftQuarantine(name: string): { ok: boolean; error?: string } {
     if (!this.quarantineEngine.isQuarantined(name)) {
@@ -335,7 +335,7 @@ export class PluginManager {
         // Revert enable on load failure
         delete this.state.enabled[name];
         this.saveState();
-        return { ok: false, error: `Plugin '${name}' failed to load — check logs` };
+        return { ok: false, error: `Plugin '${name}' failed to load, check logs` };
       }
     }
 
@@ -375,7 +375,7 @@ export class PluginManager {
       }
     }
 
-    // Reactivate with cache busting — append timestamp to force fresh import
+    // Reactivate with cache busting, append timestamp to force fresh import
     if (this.deps) {
       const discovered = this.discoverPlugins();
       const cacheBust = Date.now();

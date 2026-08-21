@@ -1,5 +1,5 @@
 /**
- * read-versioned.ts — the migration-aware, quarantine-on-failure reader every
+ * read-versioned.ts, the migration-aware, quarantine-on-failure reader every
  * versioned JSON file on this platform is read through, plus the bounded
  * reclaim of the quarantine files it produces.
  *
@@ -42,7 +42,7 @@ export interface ReadVersionedOptions {
    * What to do when the file version is unrecognised (higher than
    * `currentVersion` or missing/non-numeric).
    *
-   * `'quarantine'` — rename the file to `<path>.unrecognized` and return null.
+   * `'quarantine'`, rename the file to `<path>.unrecognized` and return null.
    */
   readonly onUnknown: 'quarantine';
 }
@@ -59,7 +59,7 @@ export interface ReadVersionedOptions {
  *      If no migration exists for a version gap, or a migration throws,
  *      quarantine and return null.
  *   5. Return the (possibly migrated) object. Callers are responsible for
- *      narrowing the returned value — this helper handles versioning and
+ *      narrowing the returned value, this helper handles versioning and
  *      corruption only, not schema validation.
  */
 export function readVersioned<T extends { version: number }>(
@@ -88,7 +88,7 @@ export function readVersioned<T extends { version: number }>(
   }
 
   if (fileVersion > options.currentVersion) {
-    // Produced by a newer process — quarantine rather than corrupt.
+    // Produced by a newer process, quarantine rather than corrupt.
     quarantine(path);
     return null;
   }
@@ -100,7 +100,7 @@ export function readVersioned<T extends { version: number }>(
     for (let v = fileVersion; v < options.currentVersion; v++) {
       const migrate = migrations[v];
       if (!migrate) {
-        // No migration path for this version gap — quarantine.
+        // No migration path for this version gap, quarantine.
         quarantine(path);
         return null;
       }
@@ -126,14 +126,14 @@ function quarantine(path: string): void {
   try {
     renameSync(path, `${path}${UNRECOGNIZED_SUFFIX}`);
   } catch {
-    // Best-effort — if rename fails (e.g. race), proceed silently.
+    // Best-effort, if rename fails (e.g. race), proceed silently.
   }
 }
 
 // ─── Quarantine reclaim ───────────────────────────────────────────────────────
 //
 // Quarantining renames a bad file out of the way so a human can inspect it,
-// and until now nothing ever removed the result — every corrupt config file
+// and until now nothing ever removed the result, every corrupt config file
 // and every torn journal tail left a `.unrecognized` file behind permanently.
 // Forensic value is real, so the retention window below is deliberately long,
 // but "keep forever" is a leak.
@@ -142,7 +142,7 @@ function quarantine(path: string): void {
  * How long a quarantined file is kept before it is reclaimed: 30 days
  * (2_592_000_000 ms). These files exist so a person can look at what went
  * wrong, so the window is a month rather than the hours-to-days retention the
- * live durability artefacts get — long enough to survive a holiday, short
+ * live durability artefacts get, long enough to survive a holiday, short
  * enough that a recurring corruption cannot fill a disk.
  */
 export const QUARANTINE_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -175,7 +175,7 @@ export interface QuarantineReapOptions {
  *
  * Each directory is scanned non-recursively; a missing or unreadable directory
  * contributes nothing and is not an error. Idempotent, and safe to run
- * concurrently from several processes — a file another sweeper already
+ * concurrently from several processes, a file another sweeper already
  * unlinked (ENOENT) counts as reclaimed rather than failing the sweep.
  */
 export function reapQuarantinedFiles(
@@ -205,7 +205,7 @@ export function reapQuarantinedFiles(
       try {
         mtimeMs = statSync(path).mtimeMs;
       } catch {
-        // Vanished under us (another sweeper) — nothing left to reclaim.
+        // Vanished under us (another sweeper), nothing left to reclaim.
         continue;
       }
       if (now - mtimeMs > maxAgeMs) {

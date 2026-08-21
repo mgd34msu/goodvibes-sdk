@@ -4,8 +4,8 @@
  *
  * `createGoogleChatDeliveryStrategy` built the destination from
  * `target.address` / the service registry / config / env only, and read the
- * route binding solely for `threadKey`. A route bound purely by binding — the
- * out-of-the-box state after an inbound message, with no configured webhook —
+ * route binding solely for `threadKey`. A route bound purely by binding, the
+ * out-of-the-box state after an inbound message, with no configured webhook,
  * threw `Missing Google Chat webhook URL` and the reply reached nobody.
  *
  * Two strategies in the same file already treat binding metadata as a valid

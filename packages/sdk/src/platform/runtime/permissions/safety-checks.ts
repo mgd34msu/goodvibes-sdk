@@ -228,15 +228,15 @@ function checkDestructiveSQL(
 // ── Public API ───────────────────────────────────────────────────────────────────
 
 /**
- * runSafetyChecks — Executes all bypass-immune safety checks for a tool call.
+ * runSafetyChecks, Executes all bypass-immune safety checks for a tool call.
  *
  * Returns a SafetyCheckResult with `blocked: false` if all checks pass,
  * or `blocked: true` with a SAFETY_* reason code and trace step if any check fires.
  *
  * These checks cannot be bypassed by any policy rule, mode, or session override.
  *
- * @param toolName  — The tool being called.
- * @param args      — Arguments passed to the tool.
+ * @param toolName , The tool being called.
+ * @param args     , Arguments passed to the tool.
  */
 export function runSafetyChecks(
   toolName: string,
@@ -245,7 +245,7 @@ export function runSafetyChecks(
   const steps: EvaluationStep[] = [];
   const primaryArg = extractPrimaryArg(args);
 
-  // — Check 1: Destructive prefix
+  //, Check 1: Destructive prefix
   const prefixResult = checkDestructivePrefix(toolName, primaryArg);
   steps.push({
     layer: 'safety',
@@ -263,7 +263,7 @@ export function runSafetyChecks(
     };
   }
 
-  // — Check 2: Dangerous shell pattern
+  //, Check 2: Dangerous shell pattern
   const patternResult = checkDangerousPattern(toolName, primaryArg);
   steps.push({
     layer: 'safety',
@@ -281,7 +281,7 @@ export function runSafetyChecks(
     };
   }
 
-  // — Check 3: Path escape
+  //, Check 3: Path escape
   const pathResult = checkPathEscape(toolName, args);
   steps.push({
     layer: 'safety',
@@ -299,7 +299,7 @@ export function runSafetyChecks(
     };
   }
 
-  // — Check 4: Destructive SQL
+  //, Check 4: Destructive SQL
   const sqlResult = checkDestructiveSQL(toolName, primaryArg);
   steps.push({
     layer: 'safety',

@@ -1,5 +1,5 @@
 /**
- * Tests for `historyListDelta` (`api-client.ts` + `history-delta.ts`) — Gmail
+ * Tests for `historyListDelta` (`api-client.ts` + `history-delta.ts`), Gmail
  * incremental sync via `users.history.list`.
  *
  * The defect this guards against: a Google credential that never carried a
@@ -8,7 +8,7 @@
  * same, and a `startHistoryId` that has aged out of Gmail's retention window
  * must never degrade into "no new messages" either.
  *
- * No real network calls are made anywhere in this file — every HTTP call goes
+ * No real network calls are made anywhere in this file, every HTTP call goes
  * through an injected fake `GoogleApiFetchPort`.
  */
 
@@ -132,7 +132,7 @@ function historyPage(input: {
 describe('historyListDelta: scope gate', () => {
   test('a token without a Gmail scope reports unavailable: no-gmail-scope, and is NOT an empty success', async () => {
     const { port, calls } = fakeFetchPort({ history: [] });
-    // Only the calendar scope — exactly setup-plan.ts's default grant.
+    // Only the calendar scope, exactly setup-plan.ts's default grant.
     const client = new GoogleApiClient(tokenManagerWithScopes(['https://www.googleapis.com/auth/calendar.events']), port);
 
     const result = await client.historyListDelta({ startHistoryId: '100' });
@@ -141,8 +141,8 @@ describe('historyListDelta: scope gate', () => {
     if (result.ok) throw new Error('unreachable: asserted false above');
     // The failure arm is `HistoryDeltaUnavailable | GoogleApiFailure`, and only
     // the first carries `unavailable`. Asserting the discriminating property is
-    // present is part of the point of the test — a plain transient failure here
-    // would be the defect — so it is checked rather than narrowed past.
+    // present is part of the point of the test, a plain transient failure here
+    // would be the defect, so it is checked rather than narrowed past.
     expect('unavailable' in result, 'expected the unavailable arm, not a transient GoogleApiFailure').toBe(true);
     if (!('unavailable' in result)) throw new Error('unreachable: asserted above');
     expect(result.unavailable).toBe('no-gmail-scope');
@@ -150,7 +150,7 @@ describe('historyListDelta: scope gate', () => {
     // The two shapes must never be confusable: this is not `{ ok: true, value: { messages: [] } }`.
     expect('value' in result).toBe(false);
 
-    // The gate must trip before any network call — this must not have hit the endpoint at all.
+    // The gate must trip before any network call, this must not have hit the endpoint at all.
     expect(calls.length).toBe(0);
   });
 
@@ -180,8 +180,8 @@ describe('historyListDelta: scope gate', () => {
     if (result.ok) throw new Error('unreachable: asserted false above');
     // The failure arm is `HistoryDeltaUnavailable | GoogleApiFailure`, and only
     // the first carries `unavailable`. Asserting the discriminating property is
-    // present is part of the point of the test — a plain transient failure here
-    // would be the defect — so it is checked rather than narrowed past.
+    // present is part of the point of the test, a plain transient failure here
+    // would be the defect, so it is checked rather than narrowed past.
     expect('unavailable' in result, 'expected the unavailable arm, not a transient GoogleApiFailure').toBe(true);
     if (!('unavailable' in result)) throw new Error('unreachable: asserted above');
     expect(result.unavailable).toBe('metadata-scope-only');
@@ -219,7 +219,7 @@ describe('historyListDelta: scope gate', () => {
     expect(result.value.messages).toHaveLength(1);
     // The delta yields `GmailMessageBody | GmailMessageMetadata`; only the
     // first carries a body, and a metadata-only result here would be the very
-    // defect this asserts against — so its presence is checked, not assumed.
+    // defect this asserts against, so its presence is checked, not assumed.
     const delivered = result.value.messages[0]!;
     expect('body' in delivered, 'expected a body, not a metadata-only message').toBe(true);
     if (!('body' in delivered)) throw new Error('unreachable: asserted above');
@@ -272,7 +272,7 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     expect(fetched.to).toBe('owner@example.com');
     expect(fetched.deliveredTo).not.toContain(fetched.to);
 
-    // One call for the history page, one for the single new message — not a
+    // One call for the history page, one for the single new message, not a
     // re-listing of the whole mailbox.
     expect(calls.length).toBe(2);
   });
@@ -309,14 +309,14 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     if (!result.ok) throw new Error('unreachable');
     expect(result.value.messages.map((m) => m.id)).toEqual(['msg-2']);
     // Dropped as GONE, which is what a 404 means, and therefore NOT reported
-    // as something that went unread — the delta is complete and its historyId
+    // as something that went unread, the delta is complete and its historyId
     // is a position the caller may take.
     expect(result.value.unreadable).toEqual([]);
   });
 
   test('a fetch that FAILED is reported in `unreadable`, not silently dropped like a 404', async () => {
     // The defect: every non-ok getMessage was read as "the message is gone".
-    // A 429 is not a deletion — the message is still in the mailbox — and on a
+    // A 429 is not a deletion, the message is still in the mailbox, and on a
     // forward-only history log a caller that took this delta's historyId could
     // never ask for the record again.
     const page = historyPage({
@@ -390,7 +390,7 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     if (!result.ok) throw new Error('unreachable');
     expect(result.value.messages).toEqual([]);
     // Two unread messages, and the STATUS is preserved per entry rather than
-    // flattened — a caller has to tell "wait" from "the grant changed", and it
+    // flattened, a caller has to tell "wait" from "the grant changed", and it
     // cannot do that from a count.
     expect(result.value.unreadable.map((problem) => problem.status).sort()).toEqual([403, 500]);
     expect(result.value.unreadable.map((problem) => problem.id).sort())
@@ -427,7 +427,7 @@ describe('historyListDelta: with a granted Gmail scope', () => {
     expect(quietResult.value.messages).toEqual([]);
     expect(unreadResult.value.messages).toEqual([]);
     // Same historyId, same empty message list, and the two are still
-    // distinguishable — which is the entire requirement.
+    // distinguishable, which is the entire requirement.
     expect(quietResult.value.historyId).toBe(unreadResult.value.historyId);
     expect(quietResult.value.unreadable).toEqual([]);
     expect(unreadResult.value.unreadable).toHaveLength(1);
@@ -508,8 +508,8 @@ describe('historyListDelta: expired startHistoryId', () => {
     if (result.ok) throw new Error('unreachable: asserted false above');
     // The failure arm is `HistoryDeltaUnavailable | GoogleApiFailure`, and only
     // the first carries `unavailable`. Asserting the discriminating property is
-    // present is part of the point of the test — a plain transient failure here
-    // would be the defect — so it is checked rather than narrowed past.
+    // present is part of the point of the test, a plain transient failure here
+    // would be the defect, so it is checked rather than narrowed past.
     expect('unavailable' in result, 'expected the unavailable arm, not a transient GoogleApiFailure').toBe(true);
     if (!('unavailable' in result)) throw new Error('unreachable: asserted above');
     expect(result.unavailable).toBe('resync-required');

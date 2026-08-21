@@ -35,8 +35,8 @@ import {
  * The framing the fake servers in this file answer FETCH with.
  *
  * §13.5 names this file as a problem site. Every FETCH here wrote the header
- * block as bare response lines with no `{n}` count — the one framing no RFC
- * 3501 server sends — so the assertions were about a shape that never arrives.
+ * block as bare response lines with no `{n}` count, the one framing no RFC
+ * 3501 server sends, so the assertions were about a shape that never arrives.
  */
 let activeShape: FetchWireShape = FETCH_WIRE_SHAPES[0]!;
 
@@ -195,7 +195,7 @@ describe('ImapClient protocol', () => {
           if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
           else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
           else if (line.includes('FETCH') && line.includes('HEADER')) {
-            // Sequence number 1, UID 3 — the two differ, as they do in any
+            // Sequence number 1, UID 3, the two differ, as they do in any
             // mailbox something has been deleted from.
             writeFetchSectionResponse(sock, {
               seq: 1,
@@ -313,7 +313,7 @@ describe('ImapClient protocol', () => {
 });
 
 // ---------------------------------------------------------------------------
-// imapQuoteCredential — direct unit tests
+// imapQuoteCredential, direct unit tests
 // ---------------------------------------------------------------------------
 
 describe('imapQuoteCredential — direct unit tests', () => {
@@ -405,7 +405,7 @@ describe('ImapClient credential quoting and injection prevention', () => {
     });
 
     const socket = await connectSocket(fakeServer.address.port);
-    // Password contains backslash and double-quote — must be escaped in quoted string
+    // Password contains backslash and double-quote, must be escaped in quoted string
     const client = new ImapClient({
       socket,
       username: 'user@example.test',
@@ -455,7 +455,7 @@ describe('ImapClient credential quoting and injection prevention', () => {
   });
 
   test('credential containing CR throws before writing to socket', async () => {
-    // The socket is never connected — ImapClient.authenticate throws synchronously
+    // The socket is never connected, ImapClient.authenticate throws synchronously
     // before any socket write, so we use a dummy server that collects data.
     const received: string[] = [];
     fakeServer = await makeFakeImapServer((sock) => {
@@ -537,7 +537,7 @@ describe('ImapClient literal size cap', () => {
           if (line.includes('LOGIN')) serverWrite(sock, `${tag} OK LOGIN completed`);
           else if (line.includes('EXAMINE')) serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
           else if (line.includes('SEARCH')) {
-            // Respond with a gigantic literal annotation — 999 MB
+            // Respond with a gigantic literal annotation, 999 MB
             serverWrite(sock, `* SEARCH {999999999}`);
             // Send a few actual bytes but not the full 999 MB
             sock.write('ABCDE');
@@ -674,7 +674,7 @@ describe('ImapClient connection lifetime', () => {
     fakeServer = await makeFakeImapServer(baseScript(seen, (sock, line, tag) => {
       if (line.includes('EXAMINE')) {
         // The EXAMINE completion, and then the first four bytes of the next
-        // response — a response split across TCP segments, which is ordinary
+        // response, a response split across TCP segments, which is ordinary
         // and not under anyone's control. Those four bytes arrive while no
         // command is in flight.
         sock.write(`${tag} OK [READ-ONLY] EXAMINE completed\r\n* SEA`);
@@ -697,7 +697,7 @@ describe('ImapClient connection lifetime', () => {
     fakeServer = await makeFakeImapServer(baseScript(seen, (sock, line, tag) => {
       if (!line.includes('EXAMINE')) return false;
       serverWrite(sock, `${tag} OK [READ-ONLY] EXAMINE completed`);
-      // Unprompted, with nothing in flight — an arriving message, which is the
+      // Unprompted, with nothing in flight, an arriving message, which is the
       // only thing IDLE is for.
       setTimeout(() => { serverWrite(sock, '* 5 EXISTS'); }, 25);
       return true;
@@ -811,7 +811,7 @@ describe('ImapClient UID addressing', () => {
     fakeServer = null;
   });
 
-  /** Sequence 1,2,3 hold UIDs 101,205,307 — a mailbox things were deleted from. */
+  /** Sequence 1,2,3 hold UIDs 101,205,307, a mailbox things were deleted from. */
   const UID_BY_SEQ: Readonly<Record<number, number>> = { 1: 101, 2: 205, 3: 307 };
 
   // Spread into a mutable array: bun's scalar `test.each` overload is
@@ -1076,7 +1076,7 @@ describe('ImapClient open() reports capability, and names its failures', () => {
 
     expect(caught).toBeInstanceOf(ImapOpenError);
     const failure = caught as ImapOpenError;
-    // The credential was never rejected — it was never answered. Calling that
+    // The credential was never rejected, it was never answered. Calling that
     // a rejected credential would mark a network stall terminal and stop a
     // watcher from ever retrying it.
     expect(failure.reason).toBe('connection-failed');
@@ -1147,13 +1147,13 @@ describe('ImapClient open() reports capability, and names its failures', () => {
     const client = await build(fakeServer.address.port);
 
     const report = await client.open();
-    // Unknown, which is not the same fact as "does not support IDLE" — and the
+    // Unknown, which is not the same fact as "does not support IDLE", and the
     // shape does not let it be mistaken for one. `report.idle.supported` does
     // not exist until `known` has been narrowed, so a watcher cannot read the
     // unknown case as falsy by accident.
     expect(report.idle).toEqual({ known: false });
     expect(report.advertisedCapabilities).toEqual([]);
-    // Nothing was asked for during open — ordinary mail operations pay nothing.
+    // Nothing was asked for during open, ordinary mail operations pay nothing.
     expect(seen.some((line) => line.includes('CAPABILITY'))).toBe(false);
 
     // THE CASE THE TRI-STATE EXISTS FOR: a server that volunteered nothing in
@@ -1299,7 +1299,7 @@ describe('ImapClient refusal classification', () => {
 
   test('a connection-limit refusal at LOGIN is about the server, and is not terminal', async () => {
     // Gmail answers exactly this when a token already has fifteen IMAP
-    // connections open — which we reach on the owner's own account, because a
+    // connections open, which we reach on the owner's own account, because a
     // watcher holds one permanently and every request opens another. Read as a
     // rejected credential it stops the watcher forever, and the symptom is a
     // mailbox that looks quiet while mail piles up behind it.
@@ -1581,13 +1581,13 @@ describe('ImapSession line retention', () => {
   });
 
   // ---------------------------------------------------------------------
-  // probeBodyReadable() — the connect-time body probe
+  // probeBodyReadable(), the connect-time body probe
   // ---------------------------------------------------------------------
   //
   // `docs/inbound-email.md` §3.4d, "Scope sufficiency applies to both": IMAP
   // has no declaration of body access the way a Gmail scope grant has, so the
   // only way to know whether the server will hand over message content is to
-  // ask for some — at connect time, before an expectation for a real message
+  // ask for some, at connect time, before an expectation for a real message
   // could ever be opened.
   describe('probeBodyReadable', () => {
     function serverWithExamine(input: {

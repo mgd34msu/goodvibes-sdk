@@ -1,10 +1,10 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Persistence (see CHANGELOG 0.38.0) — mirrors the WrfcController chain seams
+ * Persistence (see CHANGELOG 0.38.0), mirrors the WrfcController chain seams
  * exactly: serializeChain:323 / deserializeChain:345 (including the
  * future-schemaVersion-reject guard at :364) / importChain:402. Writes to
- * `.goodvibes/orchestration/<workstreamId>.json` — SEPARATE from the TUI's
+ * `.goodvibes/orchestration/<workstreamId>.json`, SEPARATE from the TUI's
  * `.goodvibes/tui/wrfc-chains.json` (src/runtime/wrfc-persistence.ts), no
  * path collision. Debounce (250ms) and corrupt-snapshot quarantine
  * (`<path>.unrecognized`) mirror that same TUI module's conventions.
@@ -29,8 +29,8 @@ const DEBOUNCE_MS = 250;
 
 /**
  * Count cap on retained TERMINAL workstream snapshots (every item passed or
- * failed). 50 is several weeks of finished work for a busy project — enough
- * that "what did that run do?" is still answerable — while keeping the
+ * failed). 50 is several weeks of finished work for a busy project, enough
+ * that "what did that run do?" is still answerable, while keeping the
  * directory small enough to enumerate cheaply on every resume.
  *
  * A snapshot for a workstream that is still RUNNING is NEVER reaped, at any
@@ -58,7 +58,7 @@ const TERMINAL_SNAPSHOT_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
  */
 const QUARANTINE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-/** Count cap on quarantine files — a crash loop can mint one per resume, so the age TTL alone is not a bound. Newest are kept. */
+/** Count cap on quarantine files, a crash loop can mint one per resume, so the age TTL alone is not a bound. Newest are kept. */
 const MAX_QUARANTINE_FILES = 20;
 
 /**
@@ -68,7 +68,7 @@ const MAX_QUARANTINE_FILES = 20;
  */
 const STALE_TEMP_MAX_AGE_MS = 60 * 60 * 1000;
 
-/** Periodic housekeeping interval for {@link attachDebouncedWriter} — reaping must not be resume-only for a long-lived engine. */
+/** Periodic housekeeping interval for {@link attachDebouncedWriter}, reaping must not be resume-only for a long-lived engine. */
 const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 
 const QUARANTINE_SUFFIX = '.unrecognized';
@@ -123,23 +123,23 @@ export function deserializeWorkstreamSnapshot(json: string): WorkstreamSnapshot 
     return null;
   }
   if (raw === null || typeof raw !== 'object') {
-    logger.warn('orchestration persistence: invalid snapshot JSON — not an object');
+    logger.warn('orchestration persistence: invalid snapshot JSON, not an object');
     return null;
   }
   const candidate = raw as Partial<WorkstreamSnapshot>;
   if (typeof candidate.schemaVersion !== 'number') {
-    logger.warn('orchestration persistence: invalid snapshot JSON — missing schemaVersion');
+    logger.warn('orchestration persistence: invalid snapshot JSON, missing schemaVersion');
     return null;
   }
   if (candidate.schemaVersion > CURRENT_WORKSTREAM_SCHEMA_VERSION) {
-    logger.error('orchestration persistence: future schemaVersion rejected — upgrade runtime to read this snapshot', {
+    logger.error('orchestration persistence: future schemaVersion rejected, upgrade runtime to read this snapshot', {
       schemaVersion: candidate.schemaVersion,
       supportedVersion: CURRENT_WORKSTREAM_SCHEMA_VERSION,
     });
     return null;
   }
   if (!candidate.workstream || typeof candidate.workstream !== 'object' || !Array.isArray(candidate.completedResults)) {
-    logger.warn('orchestration persistence: invalid snapshot JSON — missing workstream/completedResults');
+    logger.warn('orchestration persistence: invalid snapshot JSON, missing workstream/completedResults');
     return null;
   }
   return candidate as WorkstreamSnapshot;
@@ -179,7 +179,7 @@ export function loadWorkstreamSnapshot(projectRoot: string, workstreamId: string
 }
 
 /**
- * List the workstream ids with a snapshot on disk (recognized or not — callers
+ * List the workstream ids with a snapshot on disk (recognized or not, callers
  * decide via loadWorkstreamSnapshot).
  *
  * This is the resume-enumeration path, so it is also the recovery point: a
@@ -206,7 +206,7 @@ export function writeWorkstreamSnapshot(projectRoot: string, workstream: Workstr
   const path = snapshotPath(projectRoot, workstream.id);
   // Temp-file-plus-rename: a crash mid-write can only leave a stray temp file
   // (aged out by the reap below), never a torn snapshot. Without this, a crash
-  // during the write destroys the snapshot outright — the next load quarantines
+  // during the write destroys the snapshot outright, the next load quarantines
   // the wreckage, which is self-healing but has already LOST the workstream.
   // The pid+timestamp suffix keeps two writing processes off one temp path.
   const tempPath = `${path}.${process.pid}.${Date.now()}${TEMP_SUFFIX}`;
@@ -225,7 +225,7 @@ export function writeWorkstreamSnapshot(projectRoot: string, workstream: Workstr
 /** Seams for the snapshot housekeeping pass. */
 export interface SnapshotReapOptions {
   /**
-   * "Is this workstream still running?" — INJECTED so the reap can protect a
+   * "Is this workstream still running?", INJECTED so the reap can protect a
    * live workstream's snapshot without depending on the engine. Returning
    * `true` exempts the snapshot from every bound. When omitted, liveness is
    * inferred from the snapshot's own item states (an item that is not `passed`
@@ -237,7 +237,7 @@ export interface SnapshotReapOptions {
   readonly now?: number | undefined;
 }
 
-/** What one housekeeping pass reclaimed. Counts and byte totals only — snapshot contents are never logged. */
+/** What one housekeeping pass reclaimed. Counts and byte totals only, snapshot contents are never logged. */
 export interface OrchestrationSnapshotReapSummary {
   /** Terminal snapshots removed for exceeding {@link TERMINAL_SNAPSHOT_MAX_AGE_MS}. */
   readonly terminalExpired: number;
@@ -301,7 +301,7 @@ interface DatedFile {
  * or over the count cap, quarantine files past theirs, and temp files left by
  * an interrupted write.
  *
- * Idempotent — a second pass immediately after a first reclaims nothing — and
+ * Idempotent, a second pass immediately after a first reclaims nothing, and
  * safe to run from two processes at once: every removal tolerates ENOENT, so
  * losing a race is a no-op rather than an error.
  */
@@ -465,7 +465,7 @@ export function attachDebouncedWriter(
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   // A workstream the engine still holds AND that has not finished is exempt
-  // from every bound — its snapshot is the resume point.
+  // from every bound, its snapshot is the resume point.
   const isRunning = (workstreamId: string): boolean => {
     const workstream = getWorkstream(workstreamId);
     return workstream !== null && !isTerminalItemSet(workstream.items);
@@ -494,7 +494,7 @@ export function attachDebouncedWriter(
 
   const unsubscribe = subscribe((event) => {
     // 'dirty-tree-at-launch' (see CHANGELOG 0.38.0) is engine-wide, not
-    // workstream-scoped — it has no workstreamId to schedule a write for.
+    // workstream-scoped, it has no workstreamId to schedule a write for.
     if (event.type === 'dirty-tree-at-launch') return;
     scheduleWrite(event.workstreamId);
   });

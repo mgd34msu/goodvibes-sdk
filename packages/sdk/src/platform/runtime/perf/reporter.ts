@@ -1,5 +1,5 @@
 /**
- * PerfReporter — formats a PerfReport as a human-readable console table
+ * PerfReporter, formats a PerfReport as a human-readable console table
  * and provides an exit code for CI integration.
  */
 
@@ -90,14 +90,14 @@ export function formatReport(report: PerfReport): string {
   lines.push(hr);
 
   if (report.passed) {
-    lines.push('Result: PASSED — all budgets within tolerance');
+    lines.push('Result: PASSED, all budgets within tolerance');
   } else {
-    lines.push(`Result: FAILED — ${report.violations.length} budget(s) exceeded tolerance`);
+    lines.push(`Result: FAILED, ${report.violations.length} budget(s) exceeded tolerance`);
     lines.push('');
     lines.push('Violations:');
     for (const v of report.violations) {
       if (v.warning) {
-        lines.push(`  ${v.budget.name}: WARNING — ${v.warning}`);
+        lines.push(`  ${v.budget.name}: WARNING, ${v.warning}`);
       } else {
         lines.push(
           `  ${v.budget.name}: actual=${formatValue(v.actual, v.budget.unit)} ` +

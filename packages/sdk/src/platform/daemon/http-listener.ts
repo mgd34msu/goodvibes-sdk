@@ -104,7 +104,7 @@ function ipv6ToBytes(ip: string): Uint8Array | undefined {
   try {
     // Strip brackets if present (e.g. [::1])
     const clean = ip.replace(/^\[|\]$/g, '');
-    // Reject zone IDs (e.g. fe80::1%eth0) — '%' is not valid in a routable address.
+    // Reject zone IDs (e.g. fe80::1%eth0), '%' is not valid in a routable address.
     if (clean.includes('%')) return undefined;
     const halves = clean.split('::');
     if (halves.length > 2) return undefined;
@@ -122,7 +122,7 @@ function ipv6ToBytes(ip: string): Uint8Array | undefined {
     const bytes = new Uint8Array(16);
     for (let i = 0; i < 8; i++) {
       const g = groups[i]!;
-      // Each group must be 1-4 hex characters — no leading garbage, no zone index fragments.
+      // Each group must be 1-4 hex characters, no leading garbage, no zone index fragments.
       if (!/^[0-9a-fA-F]{1,4}$/.test(g)) return undefined;
       const v = parseInt(g, 16);
       // parseInt with a valid hex pattern never exceeds 0xffff, but guard defensively.
@@ -179,7 +179,7 @@ interface HttpListenerConfig {
    * When true, CORS enforcement is active:
    *   - Constructor refuses to start when hostMode=network and allowedOrigins is empty
    *   - Requests carrying an Origin header are validated against allowedOrigins
-   * Default: false (permissive — no CORS enforcement). Opt-in for multi-user,
+   * Default: false (permissive, no CORS enforcement). Opt-in for multi-user,
    * internet-exposed, or enterprise deployments where browser-based CSRF is a
    * concern. Home/single-user local deployments do not need this. When true,
    * allowedOrigins must be configured or hostMode must be local/loopback.
@@ -221,12 +221,12 @@ function readCorsAllowedOrigins(configManager: ConfigManager): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * HttpListener — webhook listener, disabled by default.
+ * HttpListener, webhook listener, disabled by default.
  *
  * Enable via: danger.httpListener = true in config.
  * All routes require Bearer token auth (set via enable()).
- * POST /webhook — parse hook event, fire through HookDispatcher.
- * GET  /health  — liveness check.
+ * POST /webhook, parse hook event, fire through HookDispatcher.
+ * GET  /health , liveness check.
  * Rate limited to 60 requests/minute per IP by default.
  */
 export class HttpListener {
@@ -252,7 +252,7 @@ export class HttpListener {
   private tlsState: ResolvedInboundTlsContext | null = null;
   /** Unsubscribe from httpListener config key watchers; cleared on stop(). */
   private _configWatchUnsub: (() => void) | null = null;
-  /** True while a config-driven restart is in progress — prevents re-entrancy. */
+  /** True while a config-driven restart is in progress, prevents re-entrancy. */
   private _restarting = false;
   /** Awaitable promise for the active restart cycle; null when idle. */
   private _restartingPromise: Promise<void> | null = null;
@@ -288,7 +288,7 @@ export class HttpListener {
     this.enforceCors = config.enforceCors ?? (this.configManager.get('controlPlane.cors.enabled') === true);
 
     // When enforceCors is true, refuse to construct with hostMode=network + empty allowedOrigins.
-    // Off by default — home and single-user local deployments don't need CORS enforcement.
+    // Off by default, home and single-user local deployments don't need CORS enforcement.
     // Enterprise / multi-user / internet-exposed deployments set enforceCors: true to gate against CSRF.
     if (this.enforceCors) {
       const effectiveHostMode = (this.configManager.get('httpListener.hostMode') as string | undefined) ?? 'local';
@@ -309,7 +309,7 @@ export class HttpListener {
     this.trustProxy = config.trustProxy ?? Boolean(this.configManager.get('httpListener.trustProxy'));
     // Falls back to config exactly as trustProxy does. It had no fallback and
     // no config key at all, so the only way to turn it on was to construct the
-    // listener by hand with the flag set — which no shipped composition does.
+    // listener by hand with the flag set, which no shipped composition does.
     // The Cloudflare-range check the listener carries was therefore dead code
     // on every daemon anyone actually runs.
     this.trustCloudflare = config.trustCloudflare ?? Boolean(this.configManager.get('httpListener.trustCloudflare'));
@@ -323,7 +323,7 @@ export class HttpListener {
    */
   enable(dangerConfig: HttpDangerConfig, token?: string): boolean {
     if (!dangerConfig.httpListener) {
-      logger.info('HttpListener.enable: danger.httpListener is false — not enabling');
+      logger.info('HttpListener.enable: danger.httpListener is false, not enabling');
       return false;
     }
     this.enabled = true;
@@ -423,7 +423,7 @@ export class HttpListener {
 
     const restart = (): void => {
       if (this._restarting) {
-        // A change arrived mid-restart — queue a second cycle via dirty flag.
+        // A change arrived mid-restart, queue a second cycle via dirty flag.
         // Check _restarting BEFORE isRunning: stop() runs synchronously inside the
         // restart IIFE, so isRunning may be false even while a restart is in progress.
         this._restartDirty = true;
@@ -519,10 +519,10 @@ export class HttpListener {
       const peerIp = extractForwardedClientIp(req, true) ?? 'unknown';
       const cfConnectingIp = req.headers.get('cf-connecting-ip')?.trim();
       if (cfConnectingIp && isCloudflareIp(peerIp)) {
-        // Peer is a real Cloudflare edge node — trust the CF header.
+        // Peer is a real Cloudflare edge node, trust the CF header.
         clientIp = cfConnectingIp;
       } else {
-        // Not validated as a CF edge or no CF header — fall through without CF trust.
+        // Not validated as a CF edge or no CF header, fall through without CF trust.
         // Use peerIp if available (x-forwarded-for from non-CF proxy), else 'unknown'.
         clientIp = peerIp;
       }
@@ -536,7 +536,7 @@ export class HttpListener {
     } finally {
       const status = response?.status ?? 500;
       const latencyMs = Date.now() - startMs;
-      // structured HTTP access log — SIEM-ingestable
+      // structured HTTP access log, SIEM-ingestable
       logger.info('HTTP_ACCESS_LOG', {
         type: 'HTTP_ACCESS_LOG',
         requestId,
@@ -622,7 +622,7 @@ export class HttpListener {
     const authResult = this.userAuth.authenticate(username, password);
 
     if (!authResult.ok) {
-      // AUTH_FAILED — never log credential values
+      // AUTH_FAILED, never log credential values
       const lockedUntilMs = authResult.lockedUntilMs;
       logger.warn('AUTH_FAILED', {
         type: 'AUTH_FAILED',
@@ -644,7 +644,7 @@ export class HttpListener {
 
     const { user } = authResult;
     const session = this.userAuth.createSession(user.username);
-    // AUTH_SUCCEEDED — never log credential values
+    // AUTH_SUCCEEDED, never log credential values
     authSuccessTotal.add(1);
     logger.info('AUTH_SUCCEEDED', {
       type: 'AUTH_SUCCEEDED',
@@ -703,7 +703,7 @@ export class HttpListener {
     };
 
     if (!this.hookDispatcher) {
-      // No dispatcher wired — acknowledge without processing
+      // No dispatcher wired, acknowledge without processing
       logger.info('HttpListener: no HookDispatcher wired, acknowledging without processing', {
         event: eventType,
       });

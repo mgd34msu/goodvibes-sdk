@@ -2,7 +2,7 @@
  * channel-profiles/registry.ts
  *
  * The channel→profile binding registry: CRUD over the bindings plus the one
- * operation intake depends on — resolve(surfaceKind, channelId?), which returns
+ * operation intake depends on, resolve(surfaceKind, channelId?), which returns
  * the MOST SPECIFIC binding for an inbound message (a channel-scoped binding
  * wins over the surface-wide default), so a session originated from that channel
  * inherits the right model/permission defaults.
@@ -68,7 +68,7 @@ export class ChannelProfileRegistry {
    * `ChannelProfileStore.save` replaces the file atomically but says nothing
    * about ORDER, and `bindings` is one live array `set` and `delete` both mutate
    * in place. Unordered, a `set` could land after the `delete` that followed it
-   * and put the removed binding back on disk — and this binding is what decides
+   * and put the removed binding back on disk, and this binding is what decides
    * the model and permission mode a channel-originated session runs under, so a
    * deleted one returning means a channel keeps running under defaults its owner
    * unbound.
@@ -129,7 +129,7 @@ export class ChannelProfileRegistry {
   /**
    * Resolve the effective profile defaults for a channel-originated session: a
    * channel-scoped binding (surfaceKind + channelId) wins over the surface-wide
-   * default (surfaceKind only). Returns null when no binding applies — intake
+   * default (surfaceKind only). Returns null when no binding applies, intake
    * then falls back to the host defaults, unchanged.
    */
   async resolve(surfaceKind: string, channelId?: string): Promise<ChannelProfileDefaults | null> {

@@ -37,7 +37,7 @@ export interface PersistedChatSession {
  * Resolve the companion-chat sessions directory.
  *
  * Pass the runtime's INJECTED home directory so an isolated-home daemon never
- * reads or writes the real `~/.goodvibes/companion-chat` — the rest of the
+ * reads or writes the real `~/.goodvibes/companion-chat`, the rest of the
  * runtime resolves paths from the injected home, and this must agree. The
  * OS `homedir()` is used only as a last resort when nothing is injected.
  */

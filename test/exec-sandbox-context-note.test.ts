@@ -7,7 +7,7 @@
  * reaches it fine), a read-only filesystem outside the workspace, a masked
  * /tmp and $HOME, and narrower device and process visibility. None of that was
  * stated in the result, and the sandbox fields that did exist survived only at
- * `verbose` — so at the default verbosity a contained run was indistinguishable
+ * `verbose`, so at the default verbosity a contained run was indistinguishable
  * from a host run. A probe that found no Bluetooth adapter inside the boundary
  * was read as the user's headset not existing.
  *
@@ -80,8 +80,8 @@ describe('buildSandboxNote — names the isolation that actually applies', () =>
 
   test('it names the built-in tools that answer daemon and settings questions', () => {
     // Naming only the isolation leaves the next move unstated, and a model that
-    // has just been told the daemon is unreachable keeps reaching for it — curl,
-    // then systemctl, then a port check — because nothing named a route that
+    // has just been told the daemon is unreachable keeps reaching for it, curl,
+    // then systemctl, then a port check, because nothing named a route that
     // works. These two tool names are the route, and they are the registry's
     // real names (packages/sdk/src/platform/tools/goodvibes-runtime/index.ts),
     // not a description of one: a near-miss name spends the same turns.

@@ -1,14 +1,14 @@
 /**
- * exec-prompt-wiring.ts — compose the exec PTY prompt-answer seam at the
+ * exec-prompt-wiring.ts, compose the exec PTY prompt-answer seam at the
  * runtime composition root.
  *
  * STANDING RULE: a running command that stops on a terminal prompt reaches
  * the human through the SAME approval broker as a permission ask, a sandbox
- * escalation, and an MCP elicitation — one learned pattern, not five. This
+ * escalation, and an MCP elicitation, one learned pattern, not five. This
  * module turns an `ExecPromptAsk` (the detected prompt + bounded context)
  * into a `PermissionPromptRequest` attributed as `exec-prompt`; the approving
  * surface supplies the typed reply via the decision's `modifiedArgs.answer`,
- * which feeds the same continuing run. Deny (or an answer-less approval —
+ * which feeds the same continuing run. Deny (or an answer-less approval,
  * nothing is ever fabricated) declines the prompt and the run stops honestly.
  */
 import { randomUUID } from 'node:crypto';

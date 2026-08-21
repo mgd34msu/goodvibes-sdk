@@ -17,11 +17,11 @@ import {
  *
  * This host is Linux, so every test here fakes the darwin/launchd platform via
  * `configManager.set('service.platform', 'launchd')` (an explicit config override
- * the class already supports — detectPlatform short-circuits on it regardless of
+ * the class already supports, detectPlatform short-circuits on it regardless of
  * process.platform) rather than mocking the global `process.platform`. All
  * filesystem writes are scoped to a per-test tempdir passed as both
  * `homeDirectory` and `workingDirectory`, so nothing here ever touches the real
- * `~/Library/LaunchAgents` or invokes a real `launchctl`/`systemctl` binary —
+ * `~/Library/LaunchAgents` or invokes a real `launchctl`/`systemctl` binary,
  * `start`/`stop`/`restart` always run with an injected `actionRunner` stub.
  */
 
@@ -48,7 +48,7 @@ function launchdConfig(dir: string, serviceName = 'goodvibes-test'): ConfigManag
   const configManager = testConfigManager(join(dir, 'config'));
   configManager.set('service.platform', 'launchd');
   // definitionPath()/suggestedCommands() key off `service.serviceName`, not the
-  // (definitionOverride) ManagedServiceDefinition.name field — the two are logically
+  // (definitionOverride) ManagedServiceDefinition.name field, the two are logically
   // separate (definition.name only feeds the plist's <Label>). Set both to the same
   // value in these tests so the assertions read naturally.
   configManager.set('service.serviceName', serviceName);
@@ -141,8 +141,8 @@ describe('launchd plist rendering (install) — platform faked via service.platf
     // Additive key present, carrying the writer identity + the definition's
     // description (which launchd itself has nowhere to store).
     expect(contents).toContain('<key>GoodVibesManagedBy</key>');
-    expect(contents).toContain('<string>goodvibes daemon service manager — GoodVibes daemon (provenance test)</string>');
-    // Existing keys are untouched — Label still the definition name.
+    expect(contents).toContain('<string>goodvibes daemon service manager, GoodVibes daemon (provenance test)</string>');
+    // Existing keys are untouched, Label still the definition name.
     expect(contents).toContain('<key>Label</key>\n  <string>goodvibes-provenance</string>');
     // Stability: a second render of the same definition is byte-identical for
     // the provenance key (no timestamp/nonce crept in).
@@ -257,7 +257,7 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
 
   // Every start()/stop()/restart() call returns `{ ...this.status(), ... }`, and
   // status() now live-queries `launchctl list` (Finding 2) through this SAME
-  // injected runner — so each dispatch below ends with one extra `list` call
+  // injected runner, so each dispatch below ends with one extra `list` call
   // beyond the load/unload verb(s) themselves.
 
   test('start() issues `launchctl load <path>` then a status `launchctl list` query via the injected runner', () => withTempDir((dir) => {
@@ -358,7 +358,7 @@ describe('launchd start/stop/restart dispatch (injected actionRunner — never a
 
     // Each dispatch's own verb(s) plus one trailing `launchctl list` status
     // query (Finding 2): start=load+list=2, stop=unload+list=2,
-    // restart=unload+load+list=3 — 7 dispatches total, all launchctl.
+    // restart=unload+load+list=3, 7 dispatches total, all launchctl.
     expect(calls.length).toBe(7);
     expect(calls.every(([command]) => command === 'launchctl')).toBe(true);
   }));
@@ -518,10 +518,10 @@ describe('status() running detection — systemd/launchd query through the injec
 // --- body (this repo's test-skip:check forbids the skip/todo test modifiers;   ---
 // --- the sanctioned pattern is an in-body guard, cf. test/dist-freshness.test.ts). ---
 // --- On any non-macOS host the test still runs and asserts the detection       ---
-// --- result itself, logging the named reason — it never fabricates a pass for  ---
+// --- result itself, logging the named reason, it never fabricates a pass for  ---
 // --- darwin behavior it cannot observe. Host-safety: even the darwin branch    ---
 // --- constructs the manager with a tempdir homeDirectory/workingDirectory and  ---
-// --- exercises only read-only status() (existsSync checks) — it never touches  ---
+// --- exercises only read-only status() (existsSync checks), it never touches  ---
 // --- a real ~/Library/LaunchAgents entry or invokes a real launchctl mutation. ---
 function detectRealLaunchctl(): { available: boolean; reason: string } {
   if (process.platform !== 'darwin') {

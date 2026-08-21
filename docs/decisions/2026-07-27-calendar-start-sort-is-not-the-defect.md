@@ -9,7 +9,7 @@ Status: accepted
 The inbound-email round fixed a real defect in the webui mail view: it sorted
 the inbox by `message.date`, the `Date:` header, which the sender writes. Any
 stranger emailing the owner could set a far-future date and pin their message to
-the top of his inbox indefinitely — a display-order control handed to arbitrary
+the top of his inbox indefinitely, a display-order control handed to arbitrary
 outsiders, above everything real.
 
 The fix was to sort by `uid`, a value the owner's own IMAP server assigns on
@@ -51,7 +51,7 @@ that ignored it would not be a safer agenda; it would not be an agenda.
 
 ## The real risk is action, not ordering
 
-A spoofed start time only matters if something **acts** on "what's next" — an
+A spoofed start time only matters if something **acts** on "what's next", an
 agent reading the top of the agenda and doing something about it. That is a
 boundary that already exists for other inbound content, and it is where this
 belongs.
@@ -61,17 +61,17 @@ belongs.
 - `grep` for `recordUntrustedIngest` across `packages/sdk/src/platform/` returns
   hits only in `email/email-service.ts` and
   `control-plane/routes/email-composition.ts`.
-- `packages/sdk/src/platform/calendar/` — all twenty modules, including
+- `packages/sdk/src/platform/calendar/`, all twenty modules, including
   `ics-parser.ts`, `caldav-ics.ts`, `subscription-store.ts`,
-  `google-calendar-api.ts` and `merged-calendar-model.ts` — contains **no
+  `google-calendar-api.ts` and `merged-calendar-model.ts`, contains **no
   reference to untrusted content, taint, or the ledger** of any kind.
 - `UntrustedSurface` is `'web-page' | 'email' | 'channel-message' | 'document'`.
   Calendar content has no surface, so it cannot be labelled even if a caller
   wanted to.
 
 So event summaries, descriptions, locations and attendee names arriving from an
-external inviter — including from a **subscription URL the daemon polls on a
-timer**, which is continuous externally-controlled input — enter the system
+external inviter, including from a **subscription URL the daemon polls on a
+timer**, which is continuous externally-controlled input, enter the system
 carrying no marking at all. This is the same gap inbound mail had before this
 round, in a capability that already ships.
 
@@ -82,7 +82,7 @@ its own round. Required there:
    the existing `'document'` surface with an origin naming the inviter or the
    subscription URL.
 2. Record ingest **when a turn reads event content, never when a subscription
-   poll receives it** — the arrival-is-not-ingest rule
+   poll receives it**, the arrival-is-not-ingest rule
    (`2026-07-27-arrival-is-not-ingest.md`) applies unchanged. A background
    calendar poll that recorded on arrival would poison whatever turn happened to
    be open, exactly as an inbound mail poll would.
@@ -98,15 +98,15 @@ its own round. Required there:
   he is looking at.
 - **Make the sort stable on a daemon-stamped secondary key.** Identical start
   times must not be orderable by whoever crafts their payload to win the
-  tiebreak. `CalendarEventSummary` carries `id` but not `uid` — only
-  `CalendarEventDetail` has `uid` — so the tiebreak key needs choosing with that
+  tiebreak. `CalendarEventSummary` carries `id` but not `uid`, only
+  `CalendarEventDetail` has `uid`, so the tiebreak key needs choosing with that
   in mind.
 
 ## Alternatives considered
 
 **Sort by a server-assigned key, as mail now does.** Rejected: it produces an
 agenda in arrival order, which answers no question anyone has. It also is not
-available — `CalendarEventSummary` does not carry `uid`.
+available, `CalendarEventSummary` does not carry `uid`.
 
 **Clamp implausible start times.** Rejected: every threshold is wrong for
 someone. A legitimate invite a year out is real, and a clamp that permits it

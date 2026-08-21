@@ -13,14 +13,14 @@
  *   - Context-window-aware thresholds
  *
  * Public API:
- *   estimateConversationTokens(messages)   — rough token count for a message array
- *   estimateTokens(text)                   — rough token count for a string
- *   shouldAutoCompact(opts)                — check if configured usage threshold or safety buffer is exceeded
- *   compactSmallWindow(messages, keepRecent) — simplified compaction for small context windows
- *   compactMessages(ctx, registry)         — structured compaction entry point
- *   checkAndCompact(autoOpts, ctx)         — check and compact if threshold exceeded
- *   getCompactionEvents()                  — return compaction event log
- *   getLastCompactionEvent()               — return most recent compaction event
+ *   estimateConversationTokens(messages)  , rough token count for a message array
+ *   estimateTokens(text)                  , rough token count for a string
+ *   shouldAutoCompact(opts)               , check if configured usage threshold or safety buffer is exceeded
+ *   compactSmallWindow(messages, keepRecent), simplified compaction for small context windows
+ *   compactMessages(ctx, registry)        , structured compaction entry point
+ *   checkAndCompact(autoOpts, ctx)        , check and compact if threshold exceeded
+ *   getCompactionEvents()                 , return compaction event log
+ *   getLastCompactionEvent()              , return most recent compaction event
  */
 
 import type { ProviderMessage, ContentPart, LLMProvider } from '../providers/interface.js';
@@ -177,8 +177,8 @@ export function getAutoCompactDecision(opts: AutoCompactOptions): AutoCompactDec
   const remainingTokens = Math.max(0, contextWindow - currentTokens);
   // Scale the flat safety buffer to the window so a fixed token buffer never
   // reserves an outsized share of small/medium windows. A flat 15k buffer would
-  // trip a 20k window at ~25% usage, and would fire on every request — even an
-  // empty conversation — for any window at or below the buffer size. Capping the
+  // trip a 20k window at ~25% usage, and would fire on every request, even an
+  // empty conversation, for any window at or below the buffer size. Capping the
   // buffer at a fraction of the window keeps the full configured buffer on large
   // windows (e.g. 128k) while scaling it down on small ones, WITHOUT collapsing
   // the backstop for high (or disabled) percentage thresholds, where the buffer
@@ -243,7 +243,7 @@ export function compactSmallWindow(
   const omittedCount = messages.length - keepRecent;
   const summaryMsg: ProviderMessage = {
     role: 'user' as const,
-    content: `[Context compacted — small window mode, ${omittedCount} messages summarized]`,
+    content: `[Context compacted, small window mode, ${omittedCount} messages summarized]`,
   };
   const summaryReply: ProviderMessage = {
     role: 'assistant' as const,
@@ -340,7 +340,7 @@ function validateCompaction(
 
   if (ctx.compactionCount > 0 && !ctx.originalTask) {
     warnings.push(
-      'WARNING: compactionCount > 0 but originalTask is missing — lineage may be broken upstream',
+      'WARNING: compactionCount > 0 but originalTask is missing, lineage may be broken upstream',
     );
   }
 
@@ -354,14 +354,14 @@ function validateCompaction(
 }
 
 /**
- * resolveLineageOriginalTask — decide what text (if any) to show as
+ * resolveLineageOriginalTask, decide what text (if any) to show as
  * "Original task" in the session-lineage section.
  *
  * The lastUserMsg fallback is only valid for the very first compaction of a
  * session (compactionCount === 0): a genuine edge case where originalTask was
  * never recorded upstream. Past that point, falling back to the current
  * last-user-message would silently mislabel the CURRENT task as "Original
- * task" once real lineage exists — so the fallback is gated to
+ * task" once real lineage exists, so the fallback is gated to
  * compactionCount === 0 only. See the matching `validateCompaction` warning
  * for compactionCount > 0 with a missing originalTask.
  */
@@ -394,7 +394,7 @@ function assembleSections(sections: CompactionSection[]): string {
 // ---------------------------------------------------------------------------
 
 /**
- * compactMessages — structured compaction entry point.
+ * compactMessages, structured compaction entry point.
  */
 export async function compactMessages(
   ctx: CompactionContext,
@@ -404,7 +404,7 @@ export async function compactMessages(
 }
 
 /**
- * runCompaction — structured compaction implementation.
+ * runCompaction, structured compaction implementation.
  *
  * Accepts a CompactionContext containing all data sources. Makes targeted LLM
  * calls for substance filtering and extraction (parallelized), assembles a
@@ -478,7 +478,7 @@ async function runCompaction(
   const runningSection = buildRunningAgents(ctx.agents, ctx.wrfcChains);
   if (runningSection) sections.push(runningSection);
 
-  // Completed agent work (rule-based) — standalone agents not covered by a WRFC chain
+  // Completed agent work (rule-based), standalone agents not covered by a WRFC chain
   const completedSection = buildCompletedAgentWork(ctx.agents, ctx.wrfcChains);
   if (completedSection) sections.push(completedSection);
 
@@ -669,7 +669,7 @@ async function runCompaction(
 // ---------------------------------------------------------------------------
 
 /**
- * checkAndCompact — Check if context usage exceeds threshold and compact if so.
+ * checkAndCompact, Check if context usage exceeds threshold and compact if so.
  * Returns the compaction result if compaction was performed, null otherwise.
  *
  */

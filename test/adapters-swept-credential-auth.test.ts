@@ -1,5 +1,5 @@
 /**
- * adapters-swept-credential-auth.test.ts — inbound auth after the config sweep.
+ * adapters-swept-credential-auth.test.ts, inbound auth after the config sweep.
  *
  * `sweepPlaintextCredentials` moves a literal surface credential out of the
  * config file into the secret store and leaves a
@@ -11,12 +11,12 @@
  * Four cases per adapter family, because three of them pass for reasons that
  * do not generalise:
  *
- *   1. a swept (reference) credential authorises the right caller — the defect;
- *   2. a raw literal still authorises — the un-swept operator and the env-var
+ *   1. a swept (reference) credential authorises the right caller, the defect;
+ *   2. a raw literal still authorises, the un-swept operator and the env-var
  *      operator both still hold literals, and resolution must pass those
  *      through rather than require a reference;
- *   3. a wrong secret is refused — resolution must not weaken the comparison;
- *   4. a reference that resolves to NOTHING refuses rather than authorising —
+ *   3. a wrong secret is refused, resolution must not weaken the comparison;
+ *   4. a reference that resolves to NOTHING refuses rather than authorising,
  *      the failure mode resolution introduces. Seven of these adapters skip the
  *      comparison entirely when the configured credential is empty ("no secret
  *      configured, no check to run"), so a resolution failure that degrades to
@@ -42,7 +42,7 @@ const SECRET = 'the-real-surface-secret';
 
 /**
  * The exact reference the sweep writes for a config key, derived through the
- * same two functions the sweep uses rather than hand-spelled — a test that
+ * same two functions the sweep uses rather than hand-spelled, a test that
  * hard-codes the reference format keeps passing after the format changes.
  */
 function sweptReference(configKey: string): string {
@@ -62,7 +62,7 @@ interface HarnessOptions {
  *
  * `swept` files the secret in the store double and puts the reference in
  * config, which is the production shape after 1.19.1. `swept-unresolvable`
- * writes the same reference and leaves the store EMPTY — an operator who
+ * writes the same reference and leaves the store EMPTY, an operator who
  * cleared the store, a scope the daemon cannot read, a key renamed by hand.
  */
 function makeContext(options: HarnessOptions) {
@@ -146,7 +146,7 @@ function makeContext(options: HarnessOptions) {
 /**
  * One adapter family's inbound call, parameterised by the secret the caller
  * presents. `authorized` is what "this request got past the credential check"
- * looks like for that adapter — never merely "not 401", because an adapter that
+ * looks like for that adapter, never merely "not 401", because an adapter that
  * skips the check answers 200 for a request it never authenticated, and a test
  * asserting `not 401` would call that a pass.
  */
@@ -276,8 +276,8 @@ const CASES: readonly AdapterCase[] = [
 /**
  * Did this request get past the credential check?
  *
- * Measured by whether it reached `authorizeSurfaceIngress` — the first thing
- * every one of these adapters does once the caller is authenticated — and NOT
+ * Measured by whether it reached `authorizeSurfaceIngress`, the first thing
+ * every one of these adapters does once the caller is authenticated, and NOT
  * by the status code. "Not 401" is the tempting definition and it is wrong in
  * both directions: an adapter that refuses a broken credential answers 503, and
  * a test reading 503 as "authorised" reports a surface that rejects everything
@@ -333,7 +333,7 @@ describe('inbound surface adapters — a swept credential reference', () => {
         const context = build('swept-unresolvable');
         // Both the right secret and an empty one, because the bypass this
         // guards is an empty configured credential matched against an empty
-        // presented one — which no "wrong secret" case would ever catch.
+        // presented one, which no "wrong secret" case would ever catch.
         const withSecret = await adapter.call(SECRET, context.context);
         const withNothing = await adapter.call('', build('swept-unresolvable').context);
         // 503, and specifically not 200: a broken credential is a

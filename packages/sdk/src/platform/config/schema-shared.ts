@@ -21,7 +21,7 @@ export interface ConfigSettingDefinition {
    * `'money'` marks a key holding an amount of `payments.currency`, written the
    * way a person says it. It exists so a surface (a settings screen, a set
    * command, a formatter) can ask the SCHEMA what a key holds instead of
-   * pattern-matching the key's NAME — the old keys were detected by a suffix on
+   * pattern-matching the key's NAME, the old keys were detected by a suffix on
    * the name, which is exactly what tied every consumer to a naming scheme and
    * broke them all when the names changed.
    */
@@ -41,7 +41,7 @@ export interface ConfigSettingDefinition {
 export function reasoningEffortSetting(): Pick<ConfigSettingDefinition, 'validate' | 'validationHint'> {
   return {
     validate: isAcceptableReasoningEffortSetting,
-    validationHint: 'a reasoning level the current model supports — run /effort to list them',
+    validationHint: 'a reasoning level the current model supports, run /effort to list them',
   };
 }
 

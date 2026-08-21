@@ -5,7 +5,7 @@
 // entry generator (generate-foundation-io-entries.ts).
 //
 // It mirrors BUILTIN_GATEWAY_METHODS in
-// packages/sdk/src/platform/control-plane/method-catalog.ts exactly — the same
+// packages/sdk/src/platform/control-plane/method-catalog.ts exactly, the same
 // 27 descriptor arrays in the same order. That constant is module-private, so
 // this file re-composes it from the exported arrays rather than duplicating any
 // descriptor. `assertCoversMethodIds` below proves the composition has not
@@ -89,14 +89,14 @@ const DESCRIPTORS_BY_ID = new Map(ALL_GATEWAY_METHOD_DESCRIPTORS.map((d) => [d.i
  * The verbs whose `anyOf` requirement branches are dropped from the CLIENT TYPE
  * while the SCHEMA keeps them.
  *
- * The schema still carries the branches — the invoke gate enforces them, so the
- * runtime refusal is honest — but the rendered type omits them, because it
+ * The schema still carries the branches, the invoke gate enforces them, so the
+ * runtime refusal is honest, but the rendered type omits them, because it
  * provably cannot carry them. The reason is a measured TypeScript limit, not a
  * preference: the automation create verbs take a ~35-property input whose
  * members include several deeply nested unions (delivery targets, failure
  * policy, session target, each with a 19-member surfaceKind). Intersecting that
  * with a requirement union makes the operator client's method map exceed the
- * compiler's union-complexity ceiling — `packages/operator-sdk/src/client-core.ts`
+ * compiler's union-complexity ceiling, `packages/operator-sdk/src/client-core.ts`
  * fails with TS2590, and so does `packages/sdk/src/browser-scoped.ts`. Measured
  * at two, three and four branches, and with the branch contents reduced to a
  * single property: every one fails, while the same file compiles the moment the
@@ -140,7 +140,7 @@ export function parseMethodIds(idsFileText: string): string[] {
 
 /**
  * Fail loudly if the generated method id list contains an id this composition
- * cannot resolve — the signal that a new catalog module was wired into
+ * cannot resolve, the signal that a new catalog module was wired into
  * method-catalog.ts but not into ALL_GATEWAY_METHOD_DESCRIPTORS above.
  */
 export function assertCoversMethodIds(methodIds: readonly string[]): void {
@@ -148,7 +148,7 @@ export function assertCoversMethodIds(methodIds: readonly string[]): void {
   if (unresolved.length > 0) {
     throw new Error(
       `foundation-io-catalog.ts does not compose the descriptor arrays for ${unresolved.length} ` +
-        `operator method id(s) — add the missing method-catalog-*.ts module to ` +
+        `operator method id(s), add the missing method-catalog-*.ts module to ` +
         `ALL_GATEWAY_METHOD_DESCRIPTORS:\n  ${unresolved.join('\n  ')}`,
     );
   }

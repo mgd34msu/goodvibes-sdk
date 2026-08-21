@@ -1,5 +1,5 @@
 /**
- * schema-types-owner-profile.ts — the `profile.*` config domain's types.
+ * schema-types-owner-profile.ts, the `profile.*` config domain's types.
  *
  * Split out of schema-types.ts the same way schema-types-network.ts and
  * schema-types-platform.ts were: the shape, the key union and the key→value map
@@ -8,7 +8,7 @@
  *
  * Types only. The defaults, the descriptions and the editable settings rows are
  * in schema-domain-owner-profile.ts, which is also where the `declare module`
- * merge into `GoodVibesConfig` lives — co-located with the defaults, as every
+ * merge into `GoodVibesConfig` lives, co-located with the defaults, as every
  * other domain does it.
  */
 
@@ -56,7 +56,7 @@ export type ProfileConfigKey =
  * six booleans into a default arm. The completeness gate
  * (test/config-key-union-completeness.test.ts) reads these clauses out of the
  * source to prove no schema key is missing a typed accessor, and a default arm
- * would make five of the eight invisible to it — a gate that passes because it
+ * would make five of the eight invisible to it, a gate that passes because it
  * stopped looking is worse than no gate.
  */
 export type ProfileConfigValue<K extends ProfileConfigKey> =

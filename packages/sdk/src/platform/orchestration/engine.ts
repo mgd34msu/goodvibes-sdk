@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * OrchestrationEngine (see CHANGELOG 0.38.0) — owns Workstream state and
+ * OrchestrationEngine (see CHANGELOG 0.38.0), owns Workstream state and
  * drives the pipeline; the ONE engine review-derived fix graphs also feed. The
  * tick loop is reactive (every phase completion re-ticks); items are marked
  * 'in-phase' synchronously before any await, so re-entrant ticks never race
@@ -64,7 +64,7 @@ export interface OrchestrationEngineDeps {
   readonly sessionId?: string | undefined;
   readonly createWorktree?: (() => WrfcWorktreeOps) | undefined;
   readonly priceUsage?: ((model: string | undefined, usage: WorkItemUsage) => number | null) | undefined;
-  /** Provenance for the same resolution priceUsage prices with — stamped onto committed usage records at pricing time. */
+  /** Provenance for the same resolution priceUsage prices with, stamped onto committed usage records at pricing time. */
   readonly priceProvenance?: PriceProvenanceFn | undefined;
   readonly skipClaimVerification?: boolean | undefined;
   /** Bounds re-review cycles through a dynamically-inserted fix phase. Default 5. */
@@ -76,7 +76,7 @@ export interface OrchestrationEngineDeps {
   readonly keptWorktreeCap?: number | undefined;
   /** Cold-start worktree setup hook (deps install, .env carry-over); wired by the composition root; a failing setup never fails creation. */
   readonly runWorktreeSetup?: ((worktreePath: string) => Promise<void> | void) | undefined;
-  /** Optional best-of-N judge (PROPOSES a winner; never auto-picks unless the item opted in). Injectable — provider-agnostic. */
+  /** Optional best-of-N judge (PROPOSES a winner; never auto-picks unless the item opted in). Injectable, provider-agnostic. */
   readonly judgeAttempts?: AttemptJudge | undefined;
   /** Live probe of the ONE fleet ceiling (fleet.maxSize) for elastic workstreams; absent = ungated (legacy). */
   readonly fleetCapacity?: FleetCapacityFn | undefined;
@@ -94,7 +94,7 @@ export interface CreateWorkstreamInput {
   readonly budget?: BudgetCeiling | undefined;
   /**
    * Where this workstream's item phases run their file changes. Omitted
-   * (the default) ⇒ `'shared'` — every existing caller's behavior is
+   * (the default) ⇒ `'shared'`, every existing caller's behavior is
    * unchanged. See {@link WorkstreamIsolation} (types.ts) for the full
    * contrast with `'worktree'` mode.
    */
@@ -192,7 +192,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     return () => listeners.delete(listener);
   }
 
-  // Dirty-residue guard: snapshot dirty paths+hashes ONCE at launch (sync —
+  // Dirty-residue guard: snapshot dirty paths+hashes ONCE at launch (sync,
   // see dirty-guard.ts) so a later scoped commit can tell prior-run residue
   // from this run's own changes.
   const launchDirtySnapshot: DirtyLaunchSnapshot = snapshotDirtyTree(deps.projectRoot);
@@ -408,7 +408,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     item.lastActivityAt = now();
 
     // Worktree mode: ensure the item's dedicated worktree BEFORE spawning
-    // (idempotent). A setup failure is a genuine phase failure — never a
+    // (idempotent). A setup failure is a genuine phase failure, never a
     // silent fallback to the shared tree.
     let itemWorktree: Awaited<ReturnType<WorktreeIsolationManager['ensureWorktree']>> | undefined;
     if (workstream.isolation === 'worktree') {
@@ -440,7 +440,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     // ── Bookkeeping region (AFTER the phase outcome) ────────────────────────
     // Everything below layers on a verdict already reached; a bookkeeping
     // fault becomes a warning on a passed item (or, for the narrow negating
-    // set, an explicit fail) — never a silent contradiction of the gate.
+    // set, an explicit fail), never a silent contradiction of the gate.
     item.lastActivityAt = now();
     try {
       item.usage = mergeWorkItemUsage(item.usage, outcome.result.usage);
@@ -453,12 +453,12 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     emit({ type: 'workstream-persisted', workstreamId: workstream.id });
 
     // kill() may have transitioned the item to 'failed' while this phase was
-    // in flight — read via currentState() to defeat stale narrowing and never
+    // in flight, read via currentState() to defeat stale narrowing and never
     // clobber that terminal state.
     if (currentState(item) === 'failed') return;
 
     if (outcome.agentStatus === 'cancelled') {
-      // A deliberate requeue already reset this item — never clobber it.
+      // A deliberate requeue already reset this item, never clobber it.
       if (requeuedInFlight.delete(item.id)) return;
       failItem(workstream, item, 'cancelled by operator');
       return;
@@ -471,12 +471,12 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
 
     if (outcome.result.gate.passed) {
       // The PHASE PASSED. Post-gate commit bookkeeping can only WARN this item
-      // (or, for the narrow negating set, fail it) — it can never contradict
+      // (or, for the narrow negating set, fail it), it can never contradict
       // the passed verdict the gate already reached.
       const commit = outcome.result.commit;
       if (commit?.status === 'failed' && commit.negating) {
         // Negating set: the commit/merge left the workspace corrupted, so the
-        // recorded pass can no longer be trusted — this is the one post-gate
+        // recorded pass can no longer be trusted, this is the one post-gate
         // condition that genuinely fails the item.
         failItem(
           workstream,
@@ -510,7 +510,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
 
     // A review's FAILING gate with unsatisfied constraints gets one more
     // cycle through a (found-or-inserted) fix phase, bounded by visits. A
-    // fix phase's own FAILING gate (the fixer didn't actually fix anything —
+    // fix phase's own FAILING gate (the fixer didn't actually fix anything,
     // phantom guard or quality gates caught it) is a genuine terminal
     // failure, not something to retry-loop.
     const unsatisfied = outcome.result.gate.unsatisfiedConstraintIds ?? [];
@@ -531,7 +531,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     if (disposed) return;
     const workstream = workstreams.get(workstreamId);
     if (!workstream) return;
-    // Dependency gate FIRST — release/refuse first-phase items by their
+    // Dependency gate FIRST, release/refuse first-phase items by their
     // dependencies before computeClaims decides capacity (which never sees a
     // 'blocked-dependency' item, see scheduler.ts computeClaims).
     applyDependencyGates(workstream, emit);
@@ -551,7 +551,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
             if (decision.event.type === 'pool-at-cap') atCapNoted.add(workstreamId);
             emit(decision.event);
           }
-          // The task stays VISIBLY ready with its reason — never a silent stall.
+          // The task stays VISIBLY ready with its reason, never a silent stall.
           item.state = 'awaiting-capacity';
           item.blockedReason = decision.reason;
           continue;
@@ -573,7 +573,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
       void runItemPhase(workstream, item, phase)
         .catch((error) => {
           // A rejection here means no phase outcome exists (the run threw
-          // before a verdict) — failing the item is honest.
+          // before a verdict), failing the item is honest.
           logger.error('orchestration engine: phase run threw before producing an outcome', {
             workstreamId, itemId: item.id, phaseId: phase.id, error: summarizeError(error),
           });
@@ -622,7 +622,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
 
   /**
    * Reset a failed item to 'pending' at the first phase (fresh visit budget,
-   * usage RETAINED — monotone). A KEPT worktree is reused; a removed one is
+   * usage RETAINED, monotone). A KEPT worktree is reused; a removed one is
    * recreated at the next claim.
    */
   function retryItem(itemId: string): boolean {
@@ -702,7 +702,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
         type: 'item-requeued',
         workstreamId: workstream.id,
         itemId: item.id,
-        reason: 're-queued after restart — was in-phase when the snapshot was written',
+        reason: 're-queued after restart, was in-phase when the snapshot was written',
       });
     }
   }
@@ -713,7 +713,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     const workstream = deserializeWorkstreamModel(snapshot.workstream);
     const existing = workstreams.get(workstream.id);
     if (existing && !isTerminalWorkstream(existing) && !force) {
-      logger.warn('orchestration engine: importWorkstream refused — existing workstream is non-terminal; use force=true to overwrite', {
+      logger.warn('orchestration engine: importWorkstream refused, existing workstream is non-terminal; use force=true to overwrite', {
         workstreamId: workstream.id,
       });
       return false;
@@ -721,7 +721,7 @@ export function createOrchestrationEngine(deps: OrchestrationEngineDeps): Orches
     reconcileImportedItems(workstream);
     workstreams.set(workstream.id, workstream);
     completedResults.set(workstream.id, [...snapshot.completedResults]);
-    // Orphan worktree reconciliation (worktree mode) — synchronous, BEFORE any
+    // Orphan worktree reconciliation (worktree mode), synchronous, BEFORE any
     // tick can claim (see WorktreeIsolationManager.reconcileOrphans): adopt or
     // report crash-artifact trees, never delete on sight.
     if (workstream.isolation === 'worktree') {

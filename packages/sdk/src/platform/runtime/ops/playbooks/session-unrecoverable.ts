@@ -2,7 +2,7 @@
  * Playbook: Session Unrecoverable
  *
  * Handles the scenario where session recovery has been exhausted and the
- * runtime has emitted SESSION_UNRECOVERABLE — triggering a full-system cascade.
+ * runtime has emitted SESSION_UNRECOVERABLE, triggering a full-system cascade.
  */
 import type { Playbook, DiagnosticCheckResult } from '../types.js';
 import { safeCheck } from '../safe-check.js';
@@ -176,7 +176,7 @@ export function createSessionUnrecoverablePlaybook(
       title: 'Escalate if restart loop detected',
       action:
         'If the session reaches SESSION_UNRECOVERABLE again within 5 minutes, ' +
-        'escalate to human review — the root cause is not self-healing.',
+        'escalate to human review, the root cause is not self-healing.',
       kind: 'escalate',
       expectedOutcome: 'Human-reviewed root cause identified and resolved.',
       automatable: false,

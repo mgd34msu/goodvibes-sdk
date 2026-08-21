@@ -1,5 +1,5 @@
 /**
- * config-preconfigure.ts — after provisioning, point the voice.local.* config
+ * config-preconfigure.ts, after provisioning, point the voice.local.* config
  * keys at the managed install so local voice works immediately.
  *
  * Ownership is tracked via the install stamp: the exact values a previous
@@ -19,7 +19,7 @@
  * managed installer is itself the user's act, and its whole promise is that
  * voice works afterwards. On the owner's machine the installer downloaded and
  * verified a complete managed runtime, then skipped every config key because
- * they still pointed at a hand-built install under ~/.local/opt — so setup
+ * they still pointed at a hand-built install under ~/.local/opt, so setup
  * reported "provisioned" while the product went on using an install the new one
  * had just replaced. Nothing said so.
  *
@@ -40,7 +40,7 @@ export interface VoiceKeySkip {
 /** A key repointed from a different install at the managed one. */
 export interface VoiceKeySupersede {
   readonly key: string;
-  /** What the key pointed at before — named so the change is auditable. */
+  /** What the key pointed at before, named so the change is auditable. */
   readonly previousValue: string;
   readonly value: string;
 }
@@ -95,7 +95,7 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
    *
    * Superseding means "that path belongs to an install this one replaces", and
    * that judgement is only possible against a known managed root. Without one,
-   * every configured path looks foreign — which would supersede the lot, the
+   * every configured path looks foreign, which would supersede the lot, the
    * exact opposite of the careful rule. So no root means no superseding.
    */
   const canSupersede = managedRoot !== undefined && managedRoot.length > 0;
@@ -106,7 +106,7 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
    * Compared on a path BOUNDARY, not as a bare string prefix: a managed root of
    * `/m` is not a prefix of `/my/whisper`, and `/opt/voice` is not a prefix of
    * `/opt/voice-old`. Getting that wrong silently classifies someone else's
-   * install as ours and declines to supersede it — the exact failure this rule
+   * install as ours and declines to supersede it, the exact failure this rule
    * exists to end, hidden behind a `startsWith`.
    */
   const insideManagedRoot = (value: string): boolean => {
@@ -120,7 +120,7 @@ export function preconfigureLocalVoiceKeys(deps: VoicePreconfigDeps): VoicePreco
     const priorWrite = prior[key];
     if (current.length === 0) {
       if (priorWrite !== undefined && priorWrite.length > 0) {
-        // The user cleared a value THIS installer wrote — an intentional
+        // The user cleared a value THIS installer wrote, an intentional
         // disable. Never overwrite it back.
         skipped.push({ key, reason: 'previously install-written value was cleared by the user (deliberate disable)' });
         return;

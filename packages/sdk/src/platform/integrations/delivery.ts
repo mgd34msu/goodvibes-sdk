@@ -13,18 +13,18 @@ import { summarizeError } from '../utils/error-display.js';
 /**
  * The three possible outcomes for a single integration delivery attempt.
  *
- * - `delivered`   — message reached the destination successfully
- * - `retrying`    — delivery failed with a retryable error; queued for retry
- * - `dead_letter` — all retry attempts exhausted or terminal failure; moved to DLQ
+ * - `delivered`  , message reached the destination successfully
+ * - `retrying`   , delivery failed with a retryable error; queued for retry
+ * - `dead_letter`, all retry attempts exhausted or terminal failure; moved to DLQ
  */
 export type DeliveryOutcome = 'delivered' | 'retrying' | 'dead_letter';
 
 /**
  * Classification of a delivery failure.
  *
- * - `retryable` — transient error; should be retried with backoff
+ * - `retryable`, transient error; should be retried with backoff
  *   (network timeout, HTTP 429, HTTP 5xx)
- * - `terminal`  — permanent error; should not be retried
+ * - `terminal` , permanent error; should not be retried
  *   (HTTP 400/401/403/404, invalid URL, message too large)
  */
 export type DeliveryFailureClass = 'retryable' | 'terminal';
@@ -77,7 +77,7 @@ export function classifyDeliveryError(error: unknown): DeliveryFailureClass {
 }
 
 // ---------------------------------------------------------------------------
-// DeliveryError — typed error with explicit classification
+// DeliveryError, typed error with explicit classification
 // ---------------------------------------------------------------------------
 
 /** Typed delivery error that carries an explicit failure classification. */
@@ -171,7 +171,7 @@ export interface DeliveryQueueOptions extends Partial<DeliveryQueueConfig> {
   readonly featureFlags?: Pick<FeatureFlagManager, 'isEnabled'> | null | undefined;
   /**
    * Optional config source. When supplied, retry/backoff/DLQ/SLO defaults are read
-   * from integrations.delivery.* — explicit option fields still override, and the
+   * from integrations.delivery.*, explicit option fields still override, and the
    * gate remains the fallback source for sloEnforced.
    */
   readonly configManager?: Pick<ConfigManager, 'get'> | null | undefined;

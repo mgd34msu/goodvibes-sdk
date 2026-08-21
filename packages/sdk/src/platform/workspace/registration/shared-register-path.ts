@@ -1,5 +1,5 @@
 /**
- * shared-register-path.ts — where the workspace register lives, for every
+ * shared-register-path.ts, where the workspace register lives, for every
  * product that touches it.
  *
  * ── Why this file exists ──────────────────────────────────────────────────
@@ -7,8 +7,8 @@
  * The register is not one surface's state. Three products read and write the
  * SAME file: the SDK's gateway verb group writes it, goodvibes-agent reads and
  * writes it directly, and the daemon reads it again to decide checkpoint
- * eligibility. It sat at `~/.goodvibes/control-plane/` — the unscoped pre-split
- * orphan — which was the wrong address but at least an address all three
+ * eligibility. It sat at `~/.goodvibes/control-plane/`, the unscoped pre-split
+ * orphan, which was the wrong address but at least an address all three
  * agreed on.
  *
  * Surface-scoping it (`.goodvibes/<surface root>/control-plane/`) is what the
@@ -18,7 +18,7 @@
  * the other, and checkpoint eligibility would refuse workspaces the operator had
  * registered. That split was written once and reverted before it shipped.
  *
- * It belongs in the platform's SHARED tier — `~/.goodvibes/shared/`, which
+ * It belongs in the platform's SHARED tier, `~/.goodvibes/shared/`, which
  * already holds the cross-surface settings tier and the canonical memory store.
  * That tier is home-scoped and takes no surface root, which is the property the
  * register needs: one path, identical from every product.
@@ -32,11 +32,11 @@
  * That fallback is the whole version-skew story. A machine mid-update has an
  * updated product and a not-yet-updated one running side by side:
  *
- *   - An updated product finds the state wherever it currently is — shared once
+ *   - An updated product finds the state wherever it currently is, shared once
  *     the daemon's boot fold has run, legacy before that. It never sees an empty
  *     register because of the move.
  *   - A product still on the old build keeps reading and writing legacy until it
- *     updates. Its worst case is missing a registration made after the fold —
+ *     updates. Its worst case is missing a registration made after the fold,
  *     it never loses one, and nothing overwrites the shared copy.
  *
  * Non-destructive in both directions, and the window is one auto-update cycle

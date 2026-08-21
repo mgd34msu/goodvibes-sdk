@@ -56,13 +56,13 @@ export class VoiceProviderRegistry {
   /**
    * Resolve the provider an UNNAMED request should use.
    *
-   * Registration order is an implementation detail, not a preference — picking
+   * Registration order is an implementation detail, not a preference, picking
    * the first registrant handed every unnamed request to a cloud provider that
    * merely lacked its key while a fully provisioned local engine sat last in
    * the map ("OpenAI API key missing" on a host whose whisper worked). So the
    * default consults each candidate's own `configured` state: a configured
    * 'local' provider wins first (provisioned engines exist precisely so
-   * unnamed requests use them — free, offline, no key), then any other
+   * unnamed requests use them, free, offline, no key), then any other
    * configured provider in registration order. Only when nothing reports
    * configured does the old first-registered fallback apply, so the resulting
    * error still names one concrete provider instead of "none".
@@ -89,7 +89,7 @@ export class VoiceProviderRegistry {
     if (configured.length > 0) {
       return configured.find((provider) => provider.id === 'local') ?? configured[0] ?? null;
     }
-    // Nothing configured: plain first-registered, exactly the old behavior —
+    // Nothing configured: plain first-registered, exactly the old behavior,
     // the point is a concrete provider name in the resulting error, not a
     // preference among options that are all equally unusable.
     return candidates[0] ?? null;

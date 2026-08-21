@@ -67,7 +67,7 @@ describe('WorkspaceTrustManager', () => {
   });
 
   // The grandfather-by-side-effect is gone: a workspace that already
-  // carries prior GoodVibes runtime state gets NO special treatment anymore —
+  // carries prior GoodVibes runtime state gets NO special treatment anymore,
   // it stays undecided just like any other new WorkspaceTrustManager, and the
   // first non-read tool request is what raises the real question (via
   // trustGatedAsk's requestTrustDecision callback), never a silent
@@ -107,7 +107,7 @@ describe('WorkspaceTrustManager', () => {
   });
 
   it('an already-persisted grandfathered decision (from before this fix) still reads honestly', async () => {
-    // Simulates a trust.json written by the old grandfathering behavior —
+    // Simulates a trust.json written by the old grandfathering behavior,
     // reading it must not crash or silently re-decide it.
     mkdirSync(join(workspace, '.goodvibes', SURFACE_ROOT), { recursive: true });
     writeFileSync(
@@ -161,7 +161,7 @@ describe('trustGatedAsk', () => {
   });
 
   // The actual fix: an UNDECIDED workspace's first non-read request no
-  // longer silently denies without a prompt — it raises requestTrustDecision,
+  // longer silently denies without a prompt, it raises requestTrustDecision,
   // persists the answer via setLevel, and forwards the ORIGINAL request to ask
   // when the answer is 'trusted' (so the thing the user just approved
   // actually happens instead of failing anyway).

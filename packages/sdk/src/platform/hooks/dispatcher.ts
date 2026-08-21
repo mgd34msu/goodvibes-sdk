@@ -75,7 +75,7 @@ export class HookDispatcher {
   /** Load hooks from hooks.json file */
   loadFromFile(filePath: string): void {
     this.hooksBaseDirectory = dirname(filePath);
-    // No hooks file is the normal state for most installs — skip quietly
+    // No hooks file is the normal state for most installs, skip quietly
     // instead of emitting a WARN (permission probe) + ERROR (read) pair on
     // every startup for a file that was never created.
     if (!existsSync(filePath)) {
@@ -83,13 +83,13 @@ export class HookDispatcher {
       return;
     }
     try {
-      // Warn if hooks.json is world-writable — it is a trust boundary.
+      // Warn if hooks.json is world-writable, it is a trust boundary.
       try {
         const st = statSync(filePath);
         // st.mode & 0o002 is the world-writable bit
         if ((st.mode & 0o002) !== 0) {
           logger.info(
-            'HookDispatcher: hooks.json is world-writable — only load trusted hooks files',
+            'HookDispatcher: hooks.json is world-writable, only load trusted hooks files',
             { filePath },
           );
         }

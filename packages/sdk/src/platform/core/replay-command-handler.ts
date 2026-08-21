@@ -2,11 +2,11 @@
  * /replay command handler.
  *
  * Handles the subcommands of the /replay slash command:
- *   /replay load <runId>     — load a recorded run by ID
- *   /replay step [n]         — advance n steps (default 1)
- *   /replay seek <rev>       — jump to a specific revision
- *   /replay diff             — run diff mode and report mismatches
- *   /replay export <path>    — export replay report to a JSON file
+ *   /replay load <runId>    , load a recorded run by ID
+ *   /replay step [n]        , advance n steps (default 1)
+ *   /replay seek <rev>      , jump to a specific revision
+ *   /replay diff            , run diff mode and report mismatches
+ *   /replay export <path>   , export replay report to a JSON file
  *
  * The handler delegates to an injected `DeterministicReplayEngine`
  * and an optional ledger reader for run access.
@@ -113,7 +113,7 @@ export function handleReplayCommand(
           `  First: ${new Date(entries[0]?.ts ?? Date.now()).toISOString()}`,
           `  Last:  ${new Date(entries[entries.length - 1]?.ts ?? Date.now()).toISOString()}`,
           ...(redacted
-            ? ['', 'Note: some records were redacted at rest — secrets appear as [REDACTED_*] markers; the content shown is post-redaction.']
+            ? ['', 'Note: some records were redacted at rest, secrets appear as [REDACTED_*] markers; the content shown is post-redaction.']
             : []),
           '',
           'Use /replay step to advance, /replay seek <rev> to jump, /replay diff to compare.',

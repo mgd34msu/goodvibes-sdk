@@ -1,16 +1,16 @@
 /**
- * memory-consolidation-scheduler.ts — the daemon-side driver that makes the
+ * memory-consolidation-scheduler.ts, the daemon-side driver that makes the
  * consolidation engine actually run.
  *
  * The engine (memory-consolidation.ts) was complete but had no production
- * wiring in this runtime — the only driver lived in the agent surface behind
+ * wiring in this runtime, the only driver lived in the agent surface behind
  * an agent-local toggle, so consolidation effectively never ran. The DAEMON is
  * the memory store's single writer, so this scheduler runs the pass here, on
  * the two triggers the engine's enum already names:
  *
  * - `idle`: the runtime has been continuously idle for minIdleMs and at least
  *   intervalMs has passed since the last run (the preferred, cheap moment);
- * - `schedule`: the slow fallback — even a never-idle daemon consolidates once
+ * - `schedule`: the slow fallback, even a never-idle daemon consolidates once
  *   per SCHEDULE_FACTOR x intervalMs, so a busy host cannot starve the pass
  *   forever.
  *
@@ -18,7 +18,7 @@
  * with the engine's own run receipts logged and retained on a bounded ring;
  * judgment outcomes stay PROPOSALS in the receipt, routed to the existing
  * confirmation-gated memory routes; nothing is ever auto-deleted (the engine
- * marks stale, never deletes — see its module contract).
+ * marks stale, never deletes, see its module contract).
  *
  * Timers are unref'd and injectable; `learning.consolidation.enabled: false`
  * remains the user's off switch, re-read live on every wake.
@@ -101,7 +101,7 @@ export class MemoryConsolidationScheduler {
   }
 
   /**
-   * One wake: track continuous idleness, then run when due — the idle trigger
+   * One wake: track continuous idleness, then run when due, the idle trigger
    * at intervalMs cadence, or the slow schedule fallback when the runtime has
    * not offered an idle window for SCHEDULE_FACTOR x intervalMs.
    */

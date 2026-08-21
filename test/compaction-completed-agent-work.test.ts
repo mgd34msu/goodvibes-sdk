@@ -8,7 +8,7 @@
  *    CompactionContext.agents applied a premature isActiveAgent filter.
  *  - buildAgentActivityTable(): extended with a Files column sourced from
  *    WrfcChain.touchedPaths.
- *  - resolveLineageOriginalTask(): the "Original task" mislabel fix — the
+ *  - resolveLineageOriginalTask(): the "Original task" mislabel fix, the
  *    lastUserMsg fallback must only fire on the very first compaction
  *    (compactionCount === 0), not on every subsequent manual compaction.
  */

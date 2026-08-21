@@ -264,7 +264,7 @@ export function selectOccurrences(
     if (positions.length > 1) {
       return {
         error: `Ambiguous match: find string appears ${positions.length} times. Specify occurrence: 'first', 'last', 'all', or a number.`,
-        hint: `Pattern matched ${positions.length} times — use occurrence: 'first', 'last', 'all', or a number (1-${positions.length}) to disambiguate.`,
+        hint: `Pattern matched ${positions.length} times, use occurrence: 'first', 'last', 'all', or a number (1-${positions.length}) to disambiguate.`,
       };
     }
     return { selected: positions };
@@ -475,7 +475,7 @@ export async function computeAstPatternEdit(
   let selected: typeof positions;
   if (occSpec === undefined) {
     if (positions.length > 1) {
-      return { error: `ast_pattern: ${positions.length} matches found — set occurrence to 'first', 'last', 'all', or N to disambiguate` };
+      return { error: `ast_pattern: ${positions.length} matches found, set occurrence to 'first', 'last', 'all', or N to disambiguate` };
     }
     selected = positions;
   } else if (occSpec === 'all') {
@@ -618,7 +618,7 @@ export function computeSingleEdit(
   if (usedFallback === 'whitespace') {
     warning = 'Exact match failed; used whitespace-normalized match instead.';
   } else if (usedFallback === 'fuzzy-lines') {
-    warning = 'Exact match failed; used fuzzy line match (content may differ slightly — verify the edit).';
+    warning = 'Exact match failed; used fuzzy line match (content may differ slightly, verify the edit).';
   }
 
   return { newContent, occurrencesReplaced: selResult.selected.length, warning };

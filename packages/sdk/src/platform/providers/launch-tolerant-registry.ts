@@ -1,5 +1,5 @@
 /**
- * launch-tolerant-registry.ts — a `ProviderRegistry` construction that never
+ * launch-tolerant-registry.ts, a `ProviderRegistry` construction that never
  * dies at boot because a provider's API key env var is unset.
  *
  * `ProviderRegistry`'s constructor eagerly constructs every built-in provider
@@ -13,7 +13,7 @@
  * construction to succeed, the real environment is restored immediately
  * after (in a `finally`, so a construction failure never leaves the
  * placeholder behind), and then each placeholder-constructed provider is
- * explicitly reset to an unconfigured, empty-key state — so the registry
+ * explicitly reset to an unconfigured, empty-key state, so the registry
  * construction never fails, but the resulting registry is exactly as honest
  * about which providers are actually configured as one built from a real
  * environment with those keys absent.
@@ -23,8 +23,8 @@
  * This existed only in the agent (`runtime/services.ts`), which needed it
  * because it is itself a daemon-grade host process. The parity gap the
  * daemon/TUI split checklist calls out is that the *standalone* daemon has
- * the identical must-boot property — a real deployment will not always have
- * every provider's API key set — so this is hoisted here rather than staying
+ * the identical must-boot property, a real deployment will not always have
+ * every provider's API key set, so this is hoisted here rather than staying
  * agent-only, unchanged from the agent's implementation (it has no
  * agent-specific dependency: only `ProviderRegistry`, its constructor
  * options, and `process.env`).

@@ -1,10 +1,10 @@
 /**
- * extract.ts — turning a probe result into one observation.
+ * extract.ts, turning a probe result into one observation.
  *
  * Three extractors, all bounded and all pure:
- *   jsonpath  — `$`, `.key`, `["key"]`, `[0]`, `[*]` against parsed JSON
- *   regex     — one match, optionally a capture group
- *   jq-subset — a `.path[…]` selector optionally piped into length/keys/first/last
+ *   jsonpath , `$`, `.key`, `["key"]`, `[0]`, `[*]` against parsed JSON
+ *   regex    , one match, optionally a capture group
+ *   jq-subset, a `.path[…]` selector optionally piped into length/keys/first/last
  *
  * None of them evaluates an expression. `jq-subset` is a hand-written walker
  * over a validated selector grammar, not a jq interpreter, precisely so there
@@ -178,7 +178,7 @@ function applyJqFilter(value: TriggerValue, filter: string): TriggerValue {
 }
 
 /**
- * Runs one extractor over a probe result. Throws nothing on a miss — a miss is
+ * Runs one extractor over a probe result. Throws nothing on a miss, a miss is
  * `null`, which is a perfectly good observation for a `change` rule to see.
  */
 export function runExtract(extract: TriggerExtract, input: TriggerValue): TriggerValue {

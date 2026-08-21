@@ -77,7 +77,7 @@ export const builtinGatewaySkillsMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'skills.list',
     title: 'List Skills',
-    description: 'Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here — call skills.get for the one skill you decide to open.',
+    description: 'Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here, call skills.get for the one skill you decide to open.',
     category: 'skills',
     scopes: ['read:skills'],
     http: { method: 'GET', path: '/api/skills' },
@@ -97,7 +97,7 @@ export const builtinGatewaySkillsMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'skills.create',
     title: 'Create Skill',
-    description: 'Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists — use skills.update to change an existing one.',
+    description: 'Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists, use skills.update to change an existing one.',
     category: 'skills',
     scopes: ['write:skills'],
     http: { method: 'POST', path: '/api/skills' },
@@ -117,7 +117,7 @@ export const builtinGatewaySkillsMethodDescriptors: readonly GatewayMethodDescri
   methodDescriptor({
     id: 'skills.delete',
     title: 'Delete Skill',
-    description: 'Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed — an honest boolean, never a 200 that pretends a phantom skill was removed.',
+    description: 'Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed, an honest boolean, never a 200 that pretends a phantom skill was removed.',
     category: 'skills',
     scopes: ['write:skills'],
     http: { method: 'DELETE', path: '/api/skills/{name}' },

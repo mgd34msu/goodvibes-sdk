@@ -1,13 +1,13 @@
 /**
  * The live verb and the load path must agree at every boundary.
  *
- * The failure this file exists to rule out is not a refusal — a refusal is
+ * The failure this file exists to rule out is not a refusal, a refusal is
  * loud. It is an expectation that `openExpectation` ACCEPTS and
  * `validatePersistedExpectation` then REFUSES: the workstream opens it, the
  * signup proceeds, the daemon restarts, and the grant is gone. Nothing errors,
  * nothing logs, and the verification mail that arrives afterwards matches
  * nothing. The store re-validates every entry it writes, so the drop happens
- * silently at the mirror write — `replaceAll` filters and returns void.
+ * silently at the mirror write, `replaceAll` filters and returns void.
  *
  * §9.2 states the property in one direction: *a file on disk must not be able
  * to mint an expectation the live API would have refused.* This file asserts
@@ -15,8 +15,8 @@
  * live API must not be able to mint an expectation the file would refuse.**
  *
  * Proved rather than asserted. The round trip is driven with generated input
- * across every boundary either side enforces — window clamping, the id bound,
- * domain registrability, address and purpose ceilings — and the whole restart
+ * across every boundary either side enforces, window clamping, the id bound,
+ * domain registrability, address and purpose ceilings, and the whole restart
  * is exercised end to end: open, mirror, sweep, hydrate.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
@@ -51,7 +51,7 @@ afterEach(() => {
 });
 
 // ---------------------------------------------------------------------------
-// Generators — aimed at the boundaries, not at the middle
+// Generators, aimed at the boundaries, not at the middle
 // ---------------------------------------------------------------------------
 
 /** Registrable domains: a label below a public suffix. */
@@ -76,8 +76,8 @@ const purpose = fc.oneof(
  * Windows the live verb CLAMPS rather than refuses.
  *
  * `clampWindow` floors and clamps into [MIN, MAX]; the load path refuses
- * anything outside that range. So every value here — including the absurd ones
- * — must come out the other side inside the range, or the two disagree.
+ * anything outside that range. So every value here, including the absurd ones
+ *, must come out the other side inside the range, or the two disagree.
  */
 const windowMs = fc.oneof(
   fc.integer({ min: -1_000_000, max: 10_000_000 }),
@@ -100,7 +100,7 @@ const windowMs = fc.oneof(
  * Generating only values the live verb accepts would make the agreement
  * property unable to fail: loosening `openExpectation` would produce no input
  * that reaches the disagreement. The generator has to straddle every boundary
- * for the property to mean anything — see the note above `openInput`.
+ * for the property to mean anything, see the note above `openInput`.
  */
 const suppliedId = fc.oneof(
   fc.constant(undefined),
@@ -122,7 +122,7 @@ const suppliedId = fc.oneof(
  * The property below is deliberately conditional: if `openExpectation` throws,
  * the input was refused loudly and the two paths agree by construction. What
  * must never happen is `openExpectation` RETURNING a record that
- * `validatePersistedExpectation` then rejects — that is the silent-vanish
+ * `validatePersistedExpectation` then rejects, that is the silent-vanish
  * case, and it is only reachable if the generator can produce input that one
  * side accepts and the other does not.
  */
@@ -177,7 +177,7 @@ describe('anything the live verb mints, the load path accepts', () => {
         // "already stale" the moment it is written.
         const validated = validatePersistedExpectation(opened, T0);
         expect(validated).not.toBeNull();
-        // And byte-for-byte the same grant — the load path may not silently
+        // And byte-for-byte the same grant, the load path may not silently
         // rewrite a window, an id, or an expiry.
         expect(validated).toEqual(opened);
       }),
@@ -239,7 +239,7 @@ describe('an expectation survives the restart it was persisted for', () => {
 
         // The mirror write. `replaceAll` returns void and silently drops
         // anything it re-validates as invalid, so a disagreement here is
-        // invisible at the call site — which is exactly why it is asserted.
+        // invisible at the call site, which is exactly why it is asserted.
         const store = new PersistedExpectationStore(storePath, { now: () => T0 });
         await store.replaceAll(book.list(T0));
         expect(await store.list()).toHaveLength(1);

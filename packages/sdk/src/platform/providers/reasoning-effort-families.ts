@@ -3,7 +3,7 @@
 /**
  * Curated per-family-generation reasoning-effort table.
  *
- * Consulted when the live models.dev catalog carries nothing for a model —
+ * Consulted when the live models.dev catalog carries nothing for a model,
  * a stale or missing catalog entry, a self-hosted endpoint, a gateway that
  * re-exposes a known model under its own id. Every row is sourced from the
  * provider's own current documentation, cited inline, and re-checked whenever
@@ -117,12 +117,12 @@ const FAMILY_ROWS: readonly ReasoningEffortFamilyRow[] = [
     match: /^claude-(?:opus|sonnet)-4-6/,
     spec: effort(['low', 'medium', 'high', 'max'], ANTHROPIC_EFFORT_DEFAULT),
   },
-  // Opus 4.5 accepts effort, but only low/medium/high — no xhigh, no max.
+  // Opus 4.5 accepts effort, but only low/medium/high, no xhigh, no max.
   {
     match: /^claude-opus-4-5/,
     spec: effort(['low', 'medium', 'high'], ANTHROPIC_EFFORT_DEFAULT),
   },
-  // Claude 3.7 through 4.5 have no effort parameter — extended thinking with a
+  // Claude 3.7 through 4.5 have no effort parameter, extended thinking with a
   // token budget, minimum 1024, is the only control. These generations are
   // enumerated rather than matched by a `claude-` catch-all on purpose: a
   // catch-all would route the next unreleased Claude to `budget_tokens`, which
@@ -194,7 +194,7 @@ const FAMILY_ROWS: readonly ReasoningEffortFamilyRow[] = [
 
   // --- Inception Mercury -------------------------------------------------
   // Mercury-2 takes `reasoning_effort` and names an `instant` level below
-  // `low` — the one place on the ladder where `instant` is a real provider
+  // `low`, the one place on the ladder where `instant` is a real provider
   // value rather than our own label for "barely think".
   {
     match: /^mercury-edit/,
@@ -245,7 +245,7 @@ export function resolveReasoningEffortSpec(input: ReasoningEffortSpecRequest): R
 }
 
 /**
- * Resolve the governing spec and the level to send in one step — the entry
+ * Resolve the governing spec and the level to send in one step, the entry
  * point for adapters, which hold a model id and a requested level but no
  * model definition.
  */

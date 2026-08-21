@@ -7,15 +7,15 @@ import { logger } from '../utils/logger.js';
  * What was done with an operator-token file that could not be read.
  *
  * A token store is a fleet's shared secret: every paired client authenticates
- * with the value in it. When the file was unreadable — truncated by a crash
+ * with the value in it. When the file was unreadable, truncated by a crash
  * mid-write, half-written, or overwritten with something that is not a token
- * record — the read fell through and MINTED A NEW TOKEN over the top of it.
+ * record, the read fell through and MINTED A NEW TOKEN over the top of it.
  * That is a fleet-wide 401 with no record of what happened and no way back:
  * the bytes that every client was holding are gone, and nothing says so.
  *
  * So the unreadable file is moved aside first, under a `.unrecognized`
- * neighbour, and the event is reported. The rotation still happens — a daemon
- * with no readable token cannot serve — but it is now a stated one, with the
+ * neighbour, and the event is reported. The rotation still happens, a daemon
+ * with no readable token cannot serve, but it is now a stated one, with the
  * old file still on disk.
  */
 export interface CompanionTokenQuarantine {
@@ -59,7 +59,7 @@ export interface CompanionTokenOptions {
   readonly daemonHomeDir: string;
   readonly regenerate?: boolean | undefined;
   /**
-   * Where a quarantine is recorded for the next surface that looks — the
+   * Where a quarantine is recorded for the next surface that looks, the
    * daemon's own receipt store (platform/daemon/receipts.ts). Omitted ⇒ the
    * event is logged and returned but nothing carries it to a person.
    */
@@ -94,7 +94,7 @@ function generatePeerId(): string {
  * The only valid location is <daemonHomeDir>/operator-tokens.json.
  * Operator tokens are global and daemon-home scoped.
  *
- * @throws {Error} when daemonHomeDir is not provided — all callers must supply it.
+ * @throws {Error} when daemonHomeDir is not provided, all callers must supply it.
  */
 function resolveSharedTokenPath(daemonHomeDir: string): string {
   return join(daemonHomeDir, 'operator-tokens.json');
@@ -218,14 +218,14 @@ function quarantineTokenStore(
       error: String(error),
     });
   }
-  logger.error('The operator token store was unreadable — a new token was issued and every paired client must pair again', {
+  logger.error('The operator token store was unreadable, a new token was issued and every paired client must pair again', {
     path: tokenPath,
     reason,
     ...(destination ? { movedTo: destination } : {}),
   });
   try {
     receipts?.record(
-      `the operator token store was unreadable (${reason}) — a new token was issued, so every paired client must pair again`
+      `the operator token store was unreadable (${reason}), a new token was issued, so every paired client must pair again`
       + (destination ? `; the old file is at ${destination}` : ''),
     );
   } catch (error) {

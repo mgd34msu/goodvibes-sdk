@@ -1,5 +1,5 @@
 /**
- * Diagnostics system — barrel re-exports and factory.
+ * Diagnostics system, barrel re-exports and factory.
  *
  * This module provides the public API for the runtime diagnostics system.
  * Import from here to access types, providers, and the factory function.

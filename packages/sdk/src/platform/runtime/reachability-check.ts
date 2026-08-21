@@ -1,12 +1,12 @@
 /**
- * reachability-check.ts — the boot-time answer to "is this the build you are
+ * reachability-check.ts, the boot-time answer to "is this the build you are
  * actually reaching, and is it the current one".
  *
  * It wires the real host inputs (a process's executable, the real PATH,
  * existsSync/realpathSync, and a bounded `<path> --version` spawn) into the pure
  * scan in path-shadow.ts and the pure wording in reachability-notice.ts, and
- * hands back lines. WHERE those lines go — a system-message router, stdout
- * before the alternate screen, a log — is the product's, because only the
+ * hands back lines. WHERE those lines go, a system-message router, stdout
+ * before the alternate screen, a log, is the product's, because only the
  * product knows what it has to print with at that moment.
  *
  * Cost discipline, because this runs on every start:
@@ -93,7 +93,7 @@ export function probeVersionLine(path: string): string | undefined {
  * standalone binary.
  *
  * Fallback, for a standalone binary only: the directory the executable sits in.
- * That directory being absent from PATH is itself worth reporting — an
+ * That directory being absent from PATH is itself worth reporting, an
  * installed binary nobody can reach by name. For a package-managed install the
  * executable lives inside node_modules, which is never on PATH and never meant
  * to be, so there is nothing honest to say and the check stays silent.
@@ -230,7 +230,7 @@ export async function boundedLatestRelease(
 /**
  * Run the check and hand every line to `emit`, in the order it should be read.
  * Returns the lines emitted so a caller that printed them before its alternate
- * screen took over can re-surface them afterwards. Swallows everything — a
+ * screen took over can re-surface them afterwards. Swallows everything, a
  * reachability check must never block or crash boot.
  */
 export async function announceReachability(
@@ -247,7 +247,7 @@ export async function announceReachability(
       }
     }
   } catch {
-    // Best-effort — a reachability check must never block or crash boot.
+    // Best-effort, a reachability check must never block or crash boot.
   }
   return lines;
 }

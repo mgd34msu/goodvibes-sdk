@@ -2,8 +2,8 @@
  * routes/register-fleet-checkpoints-search.ts
  *
  * Single composite entry point for the fleet.*, checkpoints.*, sessions.search
- * verb-registration calls (see CHANGELOG 1.0.0), so ../../runtime/services.ts —
- * already at its line-cap ceiling — only needs one import and one call
+ * verb-registration calls (see CHANGELOG 1.0.0), so ../../runtime/services.ts,
+ * already at its line-cap ceiling, only needs one import and one call
  * instead of three of each. See routes/fleet.ts, routes/checkpoints.ts, and
  * routes/session-search.ts for what each registration actually does and why
  * it's a catalog.register(descriptor, handler) call rather than a daemon-sdk

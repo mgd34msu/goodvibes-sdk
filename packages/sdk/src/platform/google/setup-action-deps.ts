@@ -48,7 +48,7 @@ export interface GoogleSetupActionDeps {
    * Opens the local HTTP listener Google redirects back to after consent.
    *
    * Injected because binding a port is real machine I/O: the whole consent
-   * exchange — authorization URL, PKCE, state check, code-for-token — runs
+   * exchange, authorization URL, PKCE, state check, code-for-token, runs
    * against a fake listener with no socket. The shipped bun/node
    * implementation is `startLoopbackListener` in the `google/node` entry.
    */
@@ -67,7 +67,7 @@ export interface GoogleSetupActionDeps {
    * stylistic: Google blocks automated browsers at its sign-in wall ("this
    * browser or app may not be secure"), so driving the consent screen is the
    * route most likely to dead-end. Printing a link is one action for the
-   * person — the only action the whole flow asks of them — and it always
+   * person, the only action the whole flow asks of them, and it always
    * works.
    */
   readonly announceConsentUrl?: (url: string) => void;

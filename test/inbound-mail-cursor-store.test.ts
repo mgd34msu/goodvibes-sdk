@@ -11,7 +11,7 @@
  *    the caller-supplied high-water mark rather than replaying the mailbox.
  *  - A first run establishes the mark and reports the skip count rather than
  *    backfilling.
- *  - The cursor only moves when `advance()` is called — a crash between
+ *  - The cursor only moves when `advance()` is called, a crash between
  *    fetch and completion leaves it where it was, so recovery re-fetches
  *    rather than skips.
  *  - The Gmail half of the same rules: a `historyId` survives a restart
@@ -110,7 +110,7 @@ describe('the cursor survives a restart', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Validate by content — never repair
+// Validate by content, never repair
 // ---------------------------------------------------------------------------
 describe('a corrupt, oversized, or stale record is discarded, not repaired', () => {
   test('validateMailboxCursor refuses each broken field independently', () => {
@@ -124,7 +124,7 @@ describe('a corrupt, oversized, or stale record is discarded, not repaired', () 
     expect(validateMailboxCursor({ ...validCursor(), lastSeenUid: 'not-a-number' })).toBeNull();
     expect(validateMailboxCursor({ ...validCursor(), updatedAt: 'not-a-date' })).toBeNull();
     expect(validateMailboxCursor({ ...validCursor(), updatedAt: 'x'.repeat(100) })).toBeNull();
-    // A record coerced to lastSeenUid 0 must never be manufactured by validation —
+    // A record coerced to lastSeenUid 0 must never be manufactured by validation,
     // it must be dropped outright, or a corrupt cursor would replay the whole mailbox.
     expect(validateMailboxCursor({ account: 'a', mailbox: 'b', uidValidity: 'garbage', lastSeenUid: 0, updatedAt: new Date().toISOString() })).toBeNull();
   });
@@ -160,7 +160,7 @@ describe('a corrupt, oversized, or stale record is discarded, not repaired', () 
    * "The config has not loaded yet" is not "this account is gone".
    *
    * The reap predicate answered `boolean`, so a caller that could not yet know
-   * had to pick one — and picking `false` costs mail with no trace. The cursor
+   * had to pick one, and picking `false` costs mail with no trace. The cursor
    * is reaped; the next `resolve()` answers `first-run` at the mailbox's
    * CURRENT high-water mark; every message in between is skipped, not
    * replayed; and the owner is told the mailbox started fresh, which is
@@ -290,7 +290,7 @@ describe('resolve() never replays the mailbox', () => {
     expect(resolution.previous?.uidValidity).toBe(1);
     expect(resolution.previous?.lastSeenUid).toBe(100);
 
-    // The change is persisted immediately — a fresh instance sees the new cursor, not the old one.
+    // The change is persisted immediately, a fresh instance sees the new cursor, not the old one.
     const reopened = new MailboxCursorStore(storePath);
     const cursor = await reopened.get('acct-1', 'INBOX');
     expect(cursor?.uidValidity).toBe(2);
@@ -318,7 +318,7 @@ describe('the cursor advances only after processing completes', () => {
     await store.resolve({ account: 'acct-1', mailbox: 'INBOX', serverUidValidity: 1, currentHighestUid: 10, currentMessageCount: 10 });
     // Simulate: new mail (UID 11) was fetched but processing crashed before advance() ran.
     const beforeCrash = await store.get('acct-1', 'INBOX');
-    // No advance() call here — this is the crash.
+    // No advance() call here, this is the crash.
     const afterRestart = new MailboxCursorStore(storePath);
     const cursor = await afterRestart.get('acct-1', 'INBOX');
     expect(cursor?.lastSeenUid).toBe(beforeCrash?.lastSeenUid);
@@ -332,8 +332,8 @@ describe('the cursor advances only after processing completes', () => {
     // `{ ...current, lastSeenUid: uid }` itself, which is what the two
     // declarations used to disagree about.
     //
-    // Without the clamp, a write arriving out of order — a retried pass after
-    // a reconnect, a slow advance overtaken by a faster one — drags the
+    // Without the clamp, a write arriving out of order, a retried pass after
+    // a reconnect, a slow advance overtaken by a faster one, drags the
     // high-water mark back down, and every message between the two marks is
     // fetched and announced to the owner a second time.
     const store = new MailboxCursorStore(storePath);
@@ -351,7 +351,7 @@ describe('the cursor advances only after processing completes', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The Gmail half — the same rules, a position that is not a number
+// The Gmail half, the same rules, a position that is not a number
 // ---------------------------------------------------------------------------
 
 function validGmailCursor(overrides: Partial<GmailMailboxCursor> = {}): GmailMailboxCursor {

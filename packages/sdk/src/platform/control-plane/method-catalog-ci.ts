@@ -3,8 +3,8 @@
  *
  * Contract descriptors for CI-watch: the one-shot per-job status tool
  * (ci.status) and the standing subscription mechanism (ci.watches.*). ci.status
- * lists every job and its conclusion — the doctrine forbids reporting green from
- * a rollup — and the report's overall verdict is derived from those per-job
+ * lists every job and its conclusion, the doctrine forbids reporting green from
+ * a rollup, and the report's overall verdict is derived from those per-job
  * conclusions with continue-on-error jobs flagged as violations.
  */
 import type { GatewayMethodDescriptor } from './method-catalog-shared.js';
@@ -84,7 +84,7 @@ export const CI_WATCHES_RUN_OUTPUT_SCHEMA = objectSchema({
   notified: BOOLEAN_SCHEMA,
   notificationId: STRING_SCHEMA,
   fixSessionTriggered: BOOLEAN_SCHEMA,
-  // The REAL spawned session's id (attach/resume-resolvable) — never a
+  // The REAL spawned session's id (attach/resume-resolvable), never a
   // scheduling handle like an automation job id.
   fixSessionId: STRING_SCHEMA,
   // The honest failure when the auto-start fix-session produced no

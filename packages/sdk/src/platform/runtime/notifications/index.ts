@@ -1,5 +1,5 @@
 /**
- * Notification routing module — barrel export and factory.
+ * Notification routing module, barrel export and factory.
  *
  * Implements conversation noise routing.
  * Operational noise is routed to dedicated panels while the main
@@ -51,7 +51,7 @@ import { NotificationRouter } from './router.js';
 import type { ConfigManager } from '../../config/manager.js';
 
 /**
- * Factory function — creates a NotificationRouter with default policy stack.
+ * Factory function, creates a NotificationRouter with default policy stack.
  *
  * @param batchWindowMs - Optional batch window override in milliseconds
  *                        (default: 2000ms).

@@ -70,7 +70,7 @@ export async function fireTriggers(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Safe condition evaluator — no eval() or new Function()
+// Safe condition evaluator, no eval() or new Function()
 // ---------------------------------------------------------------------------
 //
 // Supports a restricted expression language for trigger conditions.
@@ -148,7 +148,7 @@ function tokenise(condition: string): string[] {
       tokens.push(condition.slice(i, j)); i = j; continue;
     }
 
-    // Unknown character — abort
+    // Unknown character, abort
     throw new Error(`Unexpected character '${condition[i]}' in condition`);
   }
   return tokens;
@@ -165,7 +165,7 @@ function parseValue(token: string, event: HookEvent): ConditionValue {
   }
   // Number
   if (/^-?[0-9]+(\.[0-9]+)?$/.test(token)) return Number(token);
-  // Property path — only event.* and payload.*
+  // Property path, only event.* and payload.*
   if (token.startsWith('event.')) {
     return resolvePath(toRecord(event), token.slice(6));
   }
@@ -273,7 +273,7 @@ class ConditionParser {
 /**
  * Safely evaluate a simple boolean condition string.
  * The condition has access to `event` and `payload` (alias for event.payload).
- * Uses a restricted expression parser — no eval() or new Function().
+ * Uses a restricted expression parser, no eval() or new Function().
  * Returns false if the condition is invalid or throws.
  */
 function evaluateCondition(condition: string, event: HookEvent): boolean {

@@ -18,7 +18,7 @@ export interface RuntimeStoreAccess {
 }
 
 /**
- * TaskHooks — lifecycle callbacks for task/subtask tracking.
+ * TaskHooks, lifecycle callbacks for task/subtask tracking.
  * Populated by higher tiers; all fields optional until wired.
  */
 export interface TaskHooks {
@@ -31,7 +31,7 @@ export interface TaskHooks {
 }
 
 /**
- * ToolRuntimeContext — full context passed to each phase and to the tool itself.
+ * ToolRuntimeContext, full context passed to each phase and to the tool itself.
  *
  * The typed runtime substrate is mandatory for tool execution; phase handlers
  * should not need defensive guards around store or runtime-bus availability.
@@ -68,7 +68,7 @@ export interface ToolRuntimeContext {
     contextWindow: number;
   };
 
-  /** Agent context — present only when executing inside an agent scope. */
+  /** Agent context, present only when executing inside an agent scope. */
   agent?: {
     agentId: string;
     parentAgentId?: string | undefined;
@@ -77,7 +77,7 @@ export interface ToolRuntimeContext {
 
   /**
    * Execution budget constraints.
-   * All fields optional — absent means unlimited.
+   * All fields optional, absent means unlimited.
    */
   budget?: {
     maxMs?: number | undefined;
@@ -95,7 +95,7 @@ export interface ToolRuntimeContext {
     reason?: string | undefined;
   };
 
-  /** Execution mode — determines prompt and timeout behaviour. */
+  /** Execution mode, determines prompt and timeout behaviour. */
   executionMode: 'interactive' | 'background' | 'remote';
 
   /**

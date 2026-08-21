@@ -1,4 +1,4 @@
-# Testing Architecture
+# Testing architecture
 
 > Internal source map. For day-to-day validation commands see [Testing and Validation](./testing-and-validation.md).
 

@@ -4,7 +4,7 @@
  * The splitter has its own unit tests (inline-reasoning-extraction.test.ts);
  * these drive an actual SSE stream through the provider so the wiring is
  * covered too: what lands in `response.content`, what reaches `onDelta` as
- * reasoning, and — the part that matters most — that the split can never
+ * reasoning, and, the part that matters most, that the split can never
  * empty a reply.
  */
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -15,7 +15,7 @@ import { OpenAICompatProvider } from '../packages/sdk/src/platform/providers/ope
  * Serve `pieces` as one OpenAI-compatible SSE completion stream.
  *
  * A piece given as `{ reasoning }` is emitted on the delta's own `reasoning`
- * field — the shape cerebras actually sends (verified against
+ * field, the shape cerebras actually sends (verified against
  * api.cerebras.ai/v1 with gpt-oss-120b).
  */
 type Piece = string | { readonly reasoning: string };
@@ -98,7 +98,7 @@ describe('OpenAICompatProvider.chat splits inline reasoning out of the answer', 
   });
 
   test('a tag split across chunk boundaries never leaks a fragment into content', async () => {
-    // The open tag arrives one character at a time — the shape that a
+    // The open tag arrives one character at a time, the shape that a
     // naive per-chunk filter misses entirely.
     server = sseServer(['Answer: ', '<', 't', 'h', 'i', 'n', 'k', '>', 'hidden', '</think>', ' 8.']);
     const response = await providerFor(server).chat({
@@ -151,7 +151,7 @@ describe('OpenAICompatProvider.chat splits inline reasoning out of the answer', 
   test('a returned reasoning FIELD is reasoning even on a reasoningFormat:none endpoint', async () => {
     // The root cause of the ntfy leak. `reasoningFormat: 'none'` (how cerebras,
     // groq and mistral are registered) used to tell the stream extractor to
-    // FOLD a returned `reasoning` field into `content` — so reasoning became
+    // FOLD a returned `reasoning` field into `content`, so reasoning became
     // ordinary answer text before any surface policy could see it, and arrived
     // interleaved with the answer. What a response carries is not a function
     // of what the request asked for.
@@ -185,7 +185,7 @@ describe('OpenAICompatProvider.chat splits inline reasoning out of the answer', 
   });
 
   test('a tool-call turn with only reasoning keeps its empty content', async () => {
-    // An empty content field is NORMAL on a tool turn — the work is in the
+    // An empty content field is NORMAL on a tool turn, the work is in the
     // calls. Promoting reasoning into it there would inject chain-of-thought
     // into the conversation as an assistant answer.
     server = sseServer(['<think>I should list the directory.</think>'], { toolCall: true });

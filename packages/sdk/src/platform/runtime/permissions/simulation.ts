@@ -1,9 +1,9 @@
 /**
  * Runtime permissions simulation pipeline.
  *
- * `PermissionSimulator` wraps two `LayeredPolicyEvaluator` instances —
+ * `PermissionSimulator` wraps two `LayeredPolicyEvaluator` instances,
  * the *actual* (authoritative) evaluator and a *simulated* (candidate)
- * evaluator — and runs both in parallel for every call to `evaluate()`.
+ * evaluator, and runs both in parallel for every call to `evaluate()`.
  *
  * Divergence tracking:
  *   - Counts by tool class, command prefix, and simulation mode.
@@ -11,10 +11,10 @@
  *   - `getDivergenceReport()` returns aggregated stats.
  *
  * Simulation modes:
- *   - `simulation-only`    — Actual decision enforced; divergence recorded for
+ *   - `simulation-only`   , Actual decision enforced; divergence recorded for
  *                            reports without warning emission.
- *   - `warn-on-divergence` — Actual decision enforced; divergence emits a warning.
- *   - `enforce`            — Simulated decision becomes authoritative; blocked if
+ *   - `warn-on-divergence`, Actual decision enforced; divergence emits a warning.
+ *   - `enforce`           , Simulated decision becomes authoritative; blocked if
  *                           divergence gate fails (rate > threshold).
  *
  * Capability gate: `permissions-simulation` (permissions.simulation) must be on to use this module.
@@ -95,7 +95,7 @@ function accumulateStats(
 // ── PermissionSimulator ────────────────────────────────────────────────────────
 
 /**
- * PermissionSimulator — Dual-evaluator simulation pipeline for runtime permissions.
+ * PermissionSimulator, Dual-evaluator simulation pipeline for runtime permissions.
  *
  * Runs two `LayeredPolicyEvaluator` instances (actual + simulated) in parallel
  * and tracks divergence between their decisions.
@@ -156,19 +156,19 @@ export class PermissionSimulator {
   }
 
   /**
-   * evaluate — Runs both evaluators and returns a `SimulationResult`.
+   * evaluate, Runs both evaluators and returns a `SimulationResult`.
    *
    * In `enforce` mode the call will throw `SimulationEnforcementError` if
    * the divergence rate exceeds the configured threshold.
    *
-   * @param toolName — The tool name being evaluated.
-   * @param args     — The arguments passed to the tool.
+   * @param toolName, The tool name being evaluated.
+   * @param args    , The arguments passed to the tool.
    */
   evaluate(
     toolName: string,
     args: Record<string, unknown>,
   ): SimulationResult {
-    // Enforcement gate — checked before evaluation in enforce mode
+    // Enforcement gate, checked before evaluation in enforce mode
     if (this.simulationMode === 'enforce') {
       this.assertDivergenceGate();
     }
@@ -236,7 +236,7 @@ export class PermissionSimulator {
   }
 
   /**
-   * getDivergenceReport — Returns aggregated divergence statistics.
+   * getDivergenceReport, Returns aggregated divergence statistics.
    *
    * Queryable by tool class and command prefix. Includes overall summary,
    * per-class, per-prefix, and per-mode breakdowns.
@@ -268,7 +268,7 @@ export class PermissionSimulator {
       const mode = rec.mode;
       const type = rec.divergenceType;
 
-      // Overall — use accumulateStats for consistency with other buckets
+      // Overall, use accumulateStats for consistency with other buckets
       accumulatedOverall = accumulateStats(accumulatedOverall, type);
 
       // By class
@@ -302,28 +302,28 @@ export class PermissionSimulator {
   }
 
   /**
-   * getActualEvaluator — Exposes the actual evaluator for direct inspection.
+   * getActualEvaluator, Exposes the actual evaluator for direct inspection.
    */
   getActualEvaluator(): LayeredPolicyEvaluator {
     return this.actual;
   }
 
   /**
-   * getSimulatedEvaluator — Exposes the simulated evaluator for direct inspection.
+   * getSimulatedEvaluator, Exposes the simulated evaluator for direct inspection.
    */
   getSimulatedEvaluator(): LayeredPolicyEvaluator {
     return this.simulated;
   }
 
   /**
-   * getSimulationMode — Returns the active simulation mode.
+   * getSimulationMode, Returns the active simulation mode.
    */
   getSimulationMode(): SimulationMode {
     return this.simulationMode;
   }
 
   /**
-   * isDivergenceGatePassing — Returns whether the divergence rate is within
+   * isDivergenceGatePassing, Returns whether the divergence rate is within
    * the configured threshold. Always `true` in non-enforce modes.
    */
   isDivergenceGatePassing(): boolean {
@@ -335,7 +335,7 @@ export class PermissionSimulator {
   // ── Private helpers ──────────────────────────────────────────────────────────
 
   /**
-   * assertDivergenceGate — Throws if divergence rate exceeds threshold.
+   * assertDivergenceGate, Throws if divergence rate exceeds threshold.
    *
    * Only called in `enforce` mode prior to evaluation.
    */

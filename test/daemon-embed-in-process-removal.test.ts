@@ -3,7 +3,7 @@
  *
  * The key described a topology the product does not have. Every surface starts
  * host services in adopt-only mode, and the adoption policy answers adopt-only
- * before it looks at the embed preference — so a settings file carrying
+ * before it looks at the embed preference, so a settings file carrying
  * `embedInProcess: true` behaved exactly like one without it, while the
  * schema-driven settings UI presented it as a live toggle complete with a "NOT
  * RECOMMENDED" warning.
@@ -50,7 +50,7 @@ describe('the key is gone from the schema', () => {
     const row = CONFIG_SCHEMA.find((entry) => entry.key === 'daemon.enabled');
     expect(row).toBeDefined();
     expect(row!.default).toBe(true);
-    // It governs whether THIS surface talks to a daemon — not how one is hosted.
+    // It governs whether THIS surface talks to a daemon, not how one is hosted.
     expect(row!.description).toContain('surface');
   });
 });

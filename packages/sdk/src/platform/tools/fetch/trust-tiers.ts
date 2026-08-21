@@ -3,18 +3,18 @@
  *
  * Classifies outbound HTTP request targets into one of four tiers before
  * the request is sent. Blocked hosts are denied pre-request with an
- * `SSRF_DENY` telemetry event — absolutely, regardless of configuration.
+ * `SSRF_DENY` telemetry event, absolutely, regardless of configuration.
  * Localhost/loopback targets (dev servers) are their own tier: they ask once
  * and can be allowed per project (fetch.allowLocalhost). Unknown hosts
  * receive `safe-text` sanitization. Trusted hosts may opt into `none`
  * sanitization via config.
  *
  * Trust tiers:
- *   - `trusted`   — Host is explicitly allowlisted. Sanitization may be relaxed.
- *   - `unknown`   — Host is not in any list; apply `safe-text` sanitization.
- *   - `localhost` — Loopback/dev-server target; requires the per-project
+ *   - `trusted`  , Host is explicitly allowlisted. Sanitization may be relaxed.
+ *   - `unknown`  , Host is not in any list; apply `safe-text` sanitization.
+ *   - `localhost`, Loopback/dev-server target; requires the per-project
  *                   approval (fetch.allowLocalhost) before the request is sent.
- *   - `blocked`   — Host matches an internal address, metadata endpoint, or
+ *   - `blocked`  , Host matches an internal address, metadata endpoint, or
  *                   explicit blocklist entry. Request is denied pre-flight.
  *
  * SSRF protections detect (always blocked):
@@ -34,10 +34,10 @@ import { hostMatchesGlob } from './host-utils.js';
 /**
  * Trust classification for an outbound request host.
  *
- * - `trusted`   — Explicitly allowlisted; sanitization may be relaxed.
- * - `unknown`   — Not in any list; standard `safe-text` sanitization applied.
- * - `localhost` — Loopback dev-server target; needs the per-project approval.
- * - `blocked`   — Sensitive host; request denied pre-request, absolutely.
+ * - `trusted`  , Explicitly allowlisted; sanitization may be relaxed.
+ * - `unknown`  , Not in any list; standard `safe-text` sanitization applied.
+ * - `localhost`, Loopback dev-server target; needs the per-project approval.
+ * - `blocked`  , Sensitive host; request denied pre-request, absolutely.
  */
 export type HostTrustTier = 'trusted' | 'unknown' | 'localhost' | 'blocked';
 
@@ -76,7 +76,7 @@ export interface TrustTierConfig {
 
 /** IPv4 private/loopback ranges per RFC 1918, RFC 5735. */
 const PRIVATE_IPV4_PATTERNS: RegExp[] = [
-  // 127.0.0.0/8 — loopback
+  // 127.0.0.0/8, loopback
   /^127\./,
   // 10.0.0.0/8
   /^10\./,
@@ -84,19 +84,19 @@ const PRIVATE_IPV4_PATTERNS: RegExp[] = [
   /^172\.(1[6-9]|2[0-9]|3[01])\./,
   // 192.168.0.0/16
   /^192\.168\./,
-  // 169.254.0.0/16 — link-local / AWS/GCP metadata
+  // 169.254.0.0/16, link-local / AWS/GCP metadata
   /^169\.254\./,
-  // 0.0.0.0 — unspecified
+  // 0.0.0.0, unspecified
   /^0\.0\.0\.0$/,
 ];
 
 /** IPv6 loopback, link-local, and private prefixes. */
 const PRIVATE_IPV6_PATTERNS: RegExp[] = [
-  // ::1 — loopback
+  // ::1, loopback
   /^::1$/i,
-  // fe80::/10 — link-local
+  // fe80::/10, link-local
   /^fe[89ab][0-9a-f]:/i,
-  // fc00::/7 — unique local (fc00:: and fd00::)
+  // fc00::/7, unique local (fc00:: and fd00::)
   /^f[cd][0-9a-f]{2}:/i,
 ];
 
@@ -199,7 +199,7 @@ function isLocalhostAlias(host: string): boolean {
 }
 
 /**
- * Returns true if the host is a plainly-written loopback target — a localhost
+ * Returns true if the host is a plainly-written loopback target, a localhost
  * alias, a 127.0.0.0/8 IPv4 address, or IPv6 ::1. Encoded/obfuscated loopback
  * forms (hex, octal, decimal-int) deliberately do NOT count: writing
  * 0x7f000001 instead of localhost is a filter-bypass signal and stays blocked.
@@ -259,49 +259,49 @@ export function classifyHostTrustTier(
     };
   }
 
-  // 2. Plain loopback dev-server targets — their own tier, gated by the
+  // 2. Plain loopback dev-server targets, their own tier, gated by the
   // per-project approval rather than blocked outright.
   if (isPlainLoopbackHost(normalizedHost)) {
     return {
       tier: 'localhost',
-      reason: `host "${host}" is a loopback address — needs the per-project localhost approval (fetch.allowLocalhost)`,
+      reason: `host "${host}" is a loopback address, needs the per-project localhost approval (fetch.allowLocalhost)`,
       isSsrf: false,
     };
   }
 
-  // 3. SSRF — cloud metadata endpoints (checked before the generic private
+  // 3. SSRF, cloud metadata endpoints (checked before the generic private
   // ranges so 169.254.169.254 reports the specific metadata reason).
   if (isMetadataHost(normalizedHost)) {
     return {
       tier: 'blocked',
-      reason: `host "${host}" is a cloud metadata endpoint — SSRF risk`,
+      reason: `host "${host}" is a cloud metadata endpoint, SSRF risk`,
       isSsrf: true,
     };
   }
 
-  // 4. SSRF — private IPv4
+  // 4. SSRF, private IPv4
   if (isPrivateIpv4(normalizedHost)) {
     return {
       tier: 'blocked',
-      reason: `host "${host}" is a private IPv4 address — SSRF risk`,
+      reason: `host "${host}" is a private IPv4 address, SSRF risk`,
       isSsrf: true,
     };
   }
 
-  // 5. SSRF — private IPv6
+  // 5. SSRF, private IPv6
   if (isPrivateIpv6(normalizedHost)) {
     return {
       tier: 'blocked',
-      reason: `host "${host}" is a private IPv6 address — SSRF risk`,
+      reason: `host "${host}" is a private IPv6 address, SSRF risk`,
       isSsrf: true,
     };
   }
 
-  // 6. SSRF — encoded/obfuscated IP bypass
+  // 6. SSRF, encoded/obfuscated IP bypass
   if (isEncodedIp(normalizedHost)) {
     return {
       tier: 'blocked',
-      reason: `host "${host}" uses encoded IP representation — DNS rebinding / SSRF bypass risk`,
+      reason: `host "${host}" uses encoded IP representation, DNS rebinding / SSRF bypass risk`,
       isSsrf: true,
     };
   }
@@ -318,7 +318,7 @@ export function classifyHostTrustTier(
     };
   }
 
-  // 8. Default — unknown
+  // 8. Default, unknown
   return {
     tier: 'unknown',
     reason: `host "${host}" is not in any trust list`,

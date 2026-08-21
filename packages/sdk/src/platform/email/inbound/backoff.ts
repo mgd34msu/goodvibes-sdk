@@ -7,12 +7,12 @@
  * every mailbox of every restarted daemon retrying at the same instant. A
  * provider outage disconnects them all within the same second; an unjittered
  * schedule then has all of them reconnect at t+1s, all fail, all retry at t+3s,
- * and so on — a synchronised storm that arrives precisely when the provider is
+ * and so on, a synchronised storm that arrives precisely when the provider is
  * least able to absorb it, and that keeps arriving on a schedule the outage
  * itself set. The same thing happens after our own auto-update restart, which
  * restarts every mailbox at once by design.
  *
- * So the delay is `random() * min(ceiling, initial * factor^attempt)` — FULL
+ * So the delay is `random() * min(ceiling, initial * factor^attempt)`, FULL
  * jitter, the whole window, not `base/2 + jitter`. Full jitter spreads a
  * cohort across the entire window from the first attempt onwards; the
  * half-window variants keep a visible pulse at the base delay, which is the
@@ -54,7 +54,7 @@ export const DEFAULT_BACKOFF_POLICY: BackoffPolicy = {
  *
  * Computed by repeated multiplication with an early exit rather than by
  * `Math.pow`, because `initial * 2 ** 900` is `Infinity` and
- * `Math.min(Infinity, ceiling)` only accidentally gives the right answer —
+ * `Math.min(Infinity, ceiling)` only accidentally gives the right answer,
  * a policy with a factor below 1, or a caller that passes a huge attempt
  * count, should reach the ceiling and stay there by construction.
  */
@@ -86,7 +86,7 @@ export function fullJitterDelayMs(
   if (window <= 0) return 0;
   const draw = random();
   // A source that hands back something outside [0, 1) must not be able to
-  // produce a delay outside the window — including a negative one, which
+  // produce a delay outside the window, including a negative one, which
   // would turn a backoff into a busy loop.
   const bounded = Number.isFinite(draw) ? Math.min(Math.max(draw, 0), 1) : 1;
   return Math.floor(window * bounded);
@@ -98,7 +98,7 @@ export function fullJitterDelayMs(
  * Stateful on purpose: "how many times has THIS mailbox failed in a row" is
  * exactly what the caller must not have to track, and resetting it on a
  * successful connection is the one thing that is easy to forget and invisible
- * when forgotten — a watcher that never resets converges on the ceiling and
+ * when forgotten, a watcher that never resets converges on the ceiling and
  * stays there for the life of the process, so its first reconnect after a week
  * of health takes five minutes.
  */
@@ -128,7 +128,7 @@ export class BackoffSchedule {
    * `ceilingOverrideMs` widens (or narrows) the ceiling for THIS draw without
    * disturbing the attempt count. It exists for the simultaneous-connection
    * limit, which wants a longer ceiling than an ordinary reconnect but is
-   * still the same run of consecutive failures — a second schedule with its
+   * still the same run of consecutive failures, a second schedule with its
    * own counter would let a mailbox alternating between the two failures
    * escalate neither.
    */

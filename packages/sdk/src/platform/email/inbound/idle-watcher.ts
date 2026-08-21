@@ -8,7 +8,7 @@
  *
  * **1. `DONE` is not a tagged command.** It is a bare line answering the
  * server's continuation request. The tagged completion that follows belongs to
- * the ORIGINAL `IDLE` tag — allocating a new tag for `DONE`, or expecting a
+ * the ORIGINAL `IDLE` tag, allocating a new tag for `DONE`, or expecting a
  * completion under one, leaves the real completion unmatched and the reader
  * waiting for a line that already went past.
  *
@@ -16,7 +16,7 @@
  * between writing `DONE` and reading the tagged completion is a real interval
  * on a real network, and mail delivered into it produces an `EXISTS` that is
  * every bit as real as one delivered a second earlier. A loop that subscribes
- * for the wait and unsubscribes before the handshake drops those — silently,
+ * for the wait and unsubscribes before the handshake drops those, silently,
  * and only under load, which is when it matters. So the subscription is opened
  * BEFORE `IDLE` goes out and closed AFTER the tagged completion comes back,
  * and everything collected in between counts.
@@ -29,14 +29,14 @@
  * Nothing in this file ever turns an `EXISTS` number into a message identity.
  *
  * **4. `EXPUNGE` renumbers everything above it.** It cannot produce new mail,
- * so it needs no refetch — but it invalidates every sequence number in flight.
+ * so it needs no refetch, but it invalidates every sequence number in flight.
  * This loop never holds sequence-number work to invalidate, because the delta
  * is UID-keyed end to end; an `EXPUNGE` is therefore recorded and otherwise
  * ignored, which is the correct amount of work to do about it.
  *
  * **5. A dead TCP connection reads as a healthy IDLE forever.** No bytes are
  * expected during an IDLE, so "no bytes arrived" is indistinguishable from
- * "the socket died two hours ago" — and that is the exact failure this whole
+ * "the socket died two hours ago", and that is the exact failure this whole
  * capability exists to eliminate. The re-issue timer therefore doubles as the
  * liveness probe: every `idleReissueMs` the loop ends the IDLE and starts a
  * new one, and if that round trip does not complete within the operation
@@ -98,7 +98,7 @@ export interface IdleWakeSummary {
    * True when the mailbox grew, and ALSO true on every re-issue. The re-issue
    * sweep costs one `UID SEARCH` every twenty-seven minutes and closes the one
    * hole push cannot close by itself: a notification that was never sent, or
-   * was sent while nothing could receive it. `EXPUNGE` alone never sets it —
+   * was sent while nothing could receive it. `EXPUNGE` alone never sets it,
    * a deletion cannot produce mail.
    */
   readonly refetch: boolean;
@@ -178,7 +178,7 @@ function isTimeout(error: unknown): boolean {
  * Run one `IDLE` … `DONE` cycle.
  *
  * The subscription is opened first and released last, so the collected lines
- * span the entire cycle including the `DONE` handshake — see point 2 in the
+ * span the entire cycle including the `DONE` handshake, see point 2 in the
  * file header. `DONE` is written even when the wait ended in shutdown, and its
  * tagged completion is awaited WITHOUT the caller's abort signal: a shutdown
  * that skipped the completion would leave a half-finished command on a
@@ -201,7 +201,7 @@ export async function runIdleRound(deps: IdleRoundDeps): Promise<IdleRoundResult
       // `retainUntagged: false`: this command is outstanding for twenty-seven
       // minutes, and every untagged line arriving in that window would
       // otherwise be retained in its own buffer for a reader that never comes
-      // — the IDLE completion is read for its status, never for its lines. The
+      //, the IDLE completion is read for its status, never for its lines. The
       // subscription above still sees all of them, which is where they are
       // actually used.
       tag = await deps.wire.sendCommand('IDLE', { retainUntagged: false });
@@ -242,7 +242,7 @@ export async function runIdleRound(deps: IdleRoundDeps): Promise<IdleRoundResult
       return { outcome: 'connection-lost', wake: summarise(collected, 'error'), error };
     }
     try {
-      // Deliberately no abort signal — see the doc comment.
+      // Deliberately no abort signal, see the doc comment.
       await deps.wire.awaitTag(tag, { timeoutMs: deps.settings.operationTimeoutMs });
     } catch (error) {
       // A DONE the server never completes is the liveness probe failing. When
@@ -284,8 +284,8 @@ type WakeEnd =
  *
  * Both waits are cancelled by one inner controller as soon as either wins, so
  * neither is left attached to the session for the life of the process. The
- * untagged wait passes `timeoutMs: null` — the whole point is a wait that
- * lasts as long as the silence does — and is bounded by that controller
+ * untagged wait passes `timeoutMs: null`, the whole point is a wait that
+ * lasts as long as the silence does, and is bounded by that controller
  * instead, which is what keeps it from being unbounded in both.
  */
 async function waitForWake(deps: IdleRoundDeps): Promise<WakeEnd> {
@@ -331,7 +331,7 @@ export type IdleLoopOutcome =
   | 'idle-refused'
   | 'connection-lost'
   | 'reissue-stalled'
-  /** The caller's wake handler asked to stop — a read or a delivery failed. */
+  /** The caller's wake handler asked to stop, a read or a delivery failed. */
   | 'wake-halted';
 
 export interface IdleLoopResult {
@@ -345,7 +345,7 @@ export interface IdleLoopDeps extends Omit<IdleRoundDeps, 'roundIndex'> {
   readonly observer?: InboundMailObserver | undefined;
   /**
    * Ask what is above the cursor. Returns `'continue'` to keep IDLEing and
-   * `'halt'` when the caller must take the connection back — a refused fetch
+   * `'halt'` when the caller must take the connection back, a refused fetch
    * or a message the sink would not accept.
    */
   readonly onWake: (wake: IdleWakeSummary) => Promise<'continue' | 'halt'>;

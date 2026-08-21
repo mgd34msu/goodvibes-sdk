@@ -2,7 +2,7 @@
  * knowledge-self-improve-scheduling.test.ts
  *
  * Guards for the governed background self-improvement scheduler: the minimum
- * floor (asserted at PRODUCTION defaults via injected clock/schedule seams —
+ * floor (asserted at PRODUCTION defaults via injected clock/schedule seams,
  * never by overriding the floor down), burst coalescing per scope, the
  * distinct-scope cardinality bound (the incident's ~1,400-distinct-source burst
  * shape collapses into ONE global sweep), zero-gap backoff with new-gap
@@ -126,7 +126,7 @@ describe('coalescing and cardinality', () => {
 
   test('a burst across MANY DISTINCT scopes (the incident shape) collapses into one global sweep', async () => {
     const h = harness({ minDelayMs: 100, candidateGaps: 1 });
-    // 1,400 distinct sources — the 2026-07-14 trigger class.
+    // 1,400 distinct sources, the 2026-07-14 trigger class.
     for (let i = 0; i < 1400; i++) {
       h.svc.queueBackgroundSelfImprove({ reason: 'ingest', sourceIds: [`src-${i}`] }, 0);
     }
@@ -168,7 +168,7 @@ describe('zero-gap backoff with gap evidence', () => {
     h.svc.queueBackgroundSelfImprove({ reason: 'answer', knowledgeSpaceId: 'space-g' }, 0);
     await h.advance(20);
     expect(h.runs.length).toBe(1); // armed the backoff
-    // New answer discovers a concrete gap — evidence the scope is not gap-free.
+    // New answer discovers a concrete gap, evidence the scope is not gap-free.
     h.svc.queueBackgroundSelfImprove({ reason: 'answer', knowledgeSpaceId: 'space-g', gapIds: ['gap-7'] }, 0);
     await h.advance(20);
     expect(h.runs.length).toBe(2);
@@ -216,7 +216,7 @@ describe('governor pause + admission at fire time', () => {
     h.svc.queueBackgroundSelfImprove({ reason: 'reindex', knowledgeSpaceId: 'space-c' }, 0);
     await h.advance(50);
     expect(h.runs.length).toBe(0);
-    // The slot is released — a later trigger can schedule again.
+    // The slot is released, a later trigger can schedule again.
     expect([...h.state().values()].some((s) => s.pending)).toBe(false);
   });
 });

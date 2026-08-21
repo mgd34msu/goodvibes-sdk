@@ -1,5 +1,5 @@
 /**
- * DiagnosticsProvider — aggregates all diagnostic panel data providers
+ * DiagnosticsProvider, aggregates all diagnostic panel data providers
  * into a single unified interface.
  *
  * Implements the provider contract for diagnostics and the state inspector.
@@ -68,7 +68,7 @@ export type DiagnosticPanelName =
   | 'tool-contracts';
 
 /**
- * DiagnosticsProvider — unified data access layer for all diagnostic panels.
+ * DiagnosticsProvider, unified data access layer for all diagnostic panels.
  *
  * Each panel is self-contained and subscribes to its own event sources.
  * The provider exposes a stable interface for retrieving snapshots and

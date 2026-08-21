@@ -61,11 +61,11 @@ import {
  * Decide what reasoning depth this turn asks for, and hand the model's own
  * resolved options down to the adapter so it can pick the right request field.
  *
- * A model that does not reason is sent nothing at all — the configured level
+ * A model that does not reason is sent nothing at all, the configured level
  * has a default, so an unconditional pass-through used to hand a reasoning
  * parameter to models that reject one. Publishing the resolved levels here is
  * also what lets `provider.reasoningEffort` be validated at set-time against
- * the model actually in use — published under this session's own id, so a
+ * the model actually in use, published under this session's own id, so a
  * daemon running several sessions on different models does not let the one that
  * ran a turn most recently decide what is valid on the others.
  */
@@ -97,14 +97,14 @@ function resolveTurnReasoning(
 const AUTO_SPAWN_FALLBACK_DELAY_MS = 5_000;
 /**
  * Per-turn passive-injection headroom clamp for the MAIN interactive session.
- * Sourced from config `agents.contextCompactThreshold` (default 0.85) — the same
+ * Sourced from config `agents.contextCompactThreshold` (default 0.85), the same
  * key the agent-runner's CONTEXT_COMPACT_THRESHOLD is promoted to. Deliberately
  * SEPARATE from `behavior.autoCompactThreshold` (default 80), which governs
  * CONVERSATION compaction and can be user-tuned or disabled (0) independently of
  * this feature; the injection headroom margin has its own key.
  *
  * Final fallback when a config source's `.get()` returns `undefined` for this key
- * — a real ConfigManager always resolves the schema default (0.85, identical to
+ *, a real ConfigManager always resolves the schema default (0.85, identical to
  * this constant) so behaviour is unchanged in production, but `context.configManager`
  * is typed `Pick<ConfigManager, 'get'>`, and a partial/stub implementation (as used
  * by some embedders/tests) can legitimately return `undefined`. Without this
@@ -165,7 +165,7 @@ export interface OrchestratorTurnLoopContext {
   /**
    * The model/provider reported its context window filled (see
    * isContextOverflowSignal). The orchestrator must compact at the next
-   * opportunity regardless of locally estimated usage — the provider's own
+   * opportunity regardless of locally estimated usage, the provider's own
    * report is authoritative over the estimate.
    */
   readonly noteModelContextWindowWarning: (details: {
@@ -180,7 +180,7 @@ export interface OrchestratorTurnLoopContext {
     cacheWrite: number;
   };
   /**
-   * Per-turn passive-injection wiring for the MAIN interactive session —
+   * Per-turn passive-injection wiring for the MAIN interactive session,
    * the sibling of the agent-runner's runAgentTask wiring in agents/orchestrator-runner.ts,
    * gated on the SAME `agent-passive-knowledge-injection` capability gate (its description
    * already promised "the EVOLVING main-session conversation" coverage; see
@@ -194,7 +194,7 @@ export interface OrchestratorTurnLoopContext {
   readonly passiveKnowledgeInjectionBudgetTokens?: number | undefined;
   readonly passiveKnowledgeInjectionRelevanceFloor?: number | undefined;
   /**
-   * Stage B — repo code index for the main session's per-turn injection. Undefined is a
+   * Stage B, repo code index for the main session's per-turn injection. Undefined is a
    * hard no-op. `isPassiveCodeInjectionEnabled` resolves the combined gate (flag AND setting);
    * both it and the source must be present for code hits to be considered this turn.
    */
@@ -202,7 +202,7 @@ export interface OrchestratorTurnLoopContext {
   readonly isPassiveCodeInjectionEnabled: () => boolean;
   /**
    * The main session has no spawn-time `AgentRecord.knowledgeInjections` baseline, so this
-   * starts empty and grows monotonically for the life of the Orchestrator — no record is
+   * starts empty and grows monotonically for the life of the Orchestrator, no record is
    * ever surfaced twice across the whole interactive session (mirrors the agent-runner's
    * knowledgeIdsAlreadySurfaced, but session-lifetime instead of one-agent-run-lifetime).
    */
@@ -225,7 +225,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
   // MEMORY-sourced knowledge-record ids injected anywhere in THIS turn
   // (TurnInjectionRecord filtered to source 'memory'; code-index hits excluded).
   // Accumulated across the loop's LLM calls and stamped onto TURN_COMPLETED as
-  // metadata.memory.recordIds — the provenance convention surfaces read. Stays
+  // metadata.memory.recordIds, the provenance convention surfaces read. Stays
   // empty (and the event carries no metadata field) when nothing memory-sourced landed.
   const turnMemoryRecordIds = new Set<string>();
   // One compact-and-retry per runTurn() when the provider rejects a request
@@ -238,7 +238,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
   let isFirstIterationOfThisCall = true;
   // The last successfully-built per-turn knowledge block, reused verbatim
   // on tool-continuation iterations of THIS call where nothing new arrived (mirrors
-  // the agent-runner's priorTurnKnowledgeBlock) — declared OUTSIDE the while loop so a block built on
+  // the agent-runner's priorTurnKnowledgeBlock), declared OUTSIDE the while loop so a block built on
   // iteration 1 (the human message that started this runTurn()) stays available to every
   // later tool round of the SAME call, not just the first LLM call. It is composed onto
   // the CURRENT `composedBaseSystemPrompt` fresh every iteration (see
@@ -345,16 +345,16 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
     }
 
     // Per-turn passive knowledge injection for the MAIN interactive
-    // session — the missing counterpart to the agent-runner's wiring in
+    // session, the missing counterpart to the agent-runner's wiring in
     // agents/orchestrator-runner.ts. `newUserInputThisTurn` mirrors the agent-runner's
     // turn-1/steer-drain gate: it is true exactly on the FIRST LLM call this
     // executeOrchestratorTurnLoop() invocation makes (the fresh human message this
     // runTurn() call was invoked with) and false on every subsequent tool-continuation
     // iteration of the SAME call, since the main session never drains new human input
     // mid-call (handleUserInput queues a second message until the current runTurn()
-    // completes — see orchestrator.ts). Retrieval reruns only when newUserInputThisTurn
+    // completes, see orchestrator.ts). Retrieval reruns only when newUserInputThisTurn
     // is true; tool-continuation iterations reuse `turnKnowledgeBlock` as-is (declared
-    // before the while loop) — exactly the agent-runner's reuse behavior for no-new-input
+    // before the while loop), exactly the agent-runner's reuse behavior for no-new-input
     // turns, just with a different trigger for what counts as "new".
     const newUserInputThisTurn = isFirstIterationOfThisCall;
     isFirstIterationOfThisCall = false;
@@ -399,11 +399,11 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         const codeInjectionEnabled = !!context.codeIndex && context.isPassiveCodeInjectionEnabled();
         const { block, record: turnInjectionRecord } = buildPerTurnKnowledgeInjection({
           memoryRegistry: context.memoryRegistry,
-          // The main session has no frozen "task" distinct from the live conversation —
+          // The main session has no frozen "task" distinct from the live conversation,
           // context.text (this call's originating human message) IS this turn's task, and
           // is also the latest user-role message already appended to the conversation
           // before the loop started (see prepareConversationForTurn), so
-          // deriveTurnKnowledgeQuery collapses to it with no duplication — the same
+          // deriveTurnKnowledgeQuery collapses to it with no duplication, the same
           // turn-1 behavior documented for the agent path.
           task: context.text,
           conversationTail: context.conversation.getMessagesForLLM(),
@@ -427,13 +427,13 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       } else {
         // Hard no-op: no budget headroom this call. Never call into retrieval for a
         // budget already known to be zero, and never keep claiming a stale block from an
-        // earlier iteration that no longer fits — clear it so composeTurnSystemPrompt
+        // earlier iteration that no longer fits, clear it so composeTurnSystemPrompt
         // falls back to the base prompt exactly (mirrors the agent-runner's identical branch).
         turnKnowledgeBlock = null;
       }
     }
     // Composed fresh at the call site (never a hoisted `const` reused across calls) so the
-    // block is re-validated against LIVE tokens at the instant it is actually sent — the
+    // block is re-validated against LIVE tokens at the instant it is actually sent, the
     // same "never mutate the cached base, recompute at the call site" discipline the
     // agent-runner's composeTurnSystemPrompt established, even though this loop has no in-call
     // context-exceeded retry path to go stale across (compaction here is the PROACTIVE
@@ -506,7 +506,7 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
         // window (e.g. openai-codex 'context_length_exceeded'). This is the
         // authoritative signal that the effective window is smaller than the
         // catalog claims: learn the rejected size as the model's practical
-        // ceiling, then compact immediately and retry the request once —
+        // ceiling, then compact immediately and retry the request once,
         // never tell the user to run /compact by hand.
         contextOverflowRetried = true;
         const rejectedAtTokens = estimateConversationTokens(context.conversation.getMessagesForLLM());
@@ -614,14 +614,14 @@ export async function executeOrchestratorTurnLoop(context: OrchestratorTurnLoopC
       + (response.usage.cacheWriteTokens ?? 0);
     context.setLastInputTokens(realInputTokens);
     // A successful request whose real billed input exceeds a learned context
-    // ceiling proves that ceiling too pessimistic (estimates overshoot) —
+    // ceiling proves that ceiling too pessimistic (estimates overshoot),
     // raise it to what the provider demonstrably accepted.
     context.providerRegistry.reconcileObservedContextWindow(model.registryKey, realInputTokens);
 
     if (context.runtimeBus) {
       // Actuals-only cost attribution: usage x resolved price at the emit
       // site. Unknown pricing emits costSource 'unknown' with NO costUsdCents
-      // — an explicit unpriced marker, never a silent $0.
+      //, an explicit unpriced marker, never a silent $0.
       const resolvedPricing = context.providerRegistry.resolveModelPricing(model.id, model.provider);
       const costUsdCents = computeUsageCostUsdCents(resolvedPricing, response.usage, model.provider);
       emitLlmResponseReceived(context.runtimeBus, context.emitterContext(context.turnId), {

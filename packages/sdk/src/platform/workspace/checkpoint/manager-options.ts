@@ -1,9 +1,9 @@
 /**
- * manager-options.ts — the public option/filter shapes for
+ * manager-options.ts, the public option/filter shapes for
  * WorkspaceCheckpointManager (manager.ts), split out to keep manager.ts under
  * the repo's 800-line file cap. Re-exported from manager.ts, so every
  * existing import site (`from './manager.js'` / `from './index.js'`) keeps
- * working unchanged — this is a pure code-organization split, not a public
+ * working unchanged, this is a pure code-organization split, not a public
  * API change.
  */
 import type { RuntimeEventBus } from '../../runtime/events/index.js';
@@ -20,7 +20,7 @@ export interface CreateCheckpointOptions {
    * Session this checkpoint belongs to. Explicit callers may pass it directly;
    * automatic snapshots leave it undefined and let the manager's
    * `resolveSessionId` hook stamp it from the triggering turn/agent. Never
-   * fabricated — stays undefined when no session is in scope.
+   * fabricated, stays undefined when no session is in scope.
    */
   readonly sessionId?: string | undefined;
   /** Scope the snapshot to these paths instead of sweeping the whole workspace. */
@@ -47,7 +47,7 @@ export interface ListCheckpointsFilter {
  * when an automatic snapshot fires, carrying whichever id the triggering
  * lifecycle event supplied (a turn id for TURN_* events, an agent id for
  * AGENT_COMPLETED). The resolver returns the owning session id, or undefined
- * when it cannot map the event to a session — in which case the checkpoint is
+ * when it cannot map the event to a session, in which case the checkpoint is
  * simply left unstamped rather than guessed.
  */
 export interface CheckpointSessionResolveContext {
@@ -68,7 +68,7 @@ export interface WorkspaceCheckpointManagerOptions {
    * automatic snapshots can be stamped with `sessionId`. Consulted at the
    * moment each lifecycle event fires (not at subscription time), so it may be
    * installed after construction via {@link WorkspaceCheckpointManager.setSessionResolver}.
-   * Returning undefined leaves the checkpoint unstamped — the linkage is never
+   * Returning undefined leaves the checkpoint unstamped, the linkage is never
    * fabricated.
    */
   readonly resolveSessionId?: CheckpointSessionResolver | undefined;
@@ -113,13 +113,13 @@ export interface WorkspaceCheckpointManagerOptions {
   /**
    * A declare-once `SessionSurface` (see platform/runtime/session-surface.ts).
    * When given (and `checkpointDir` is not explicitly set), the checkpoint
-   * store resolves to `surface.checkpointsDir` —
-   * `<workingDirectory>/.goodvibes/<surfaceRoot>/checkpoints` — instead of the
+   * store resolves to `surface.checkpointsDir`,
+   * `<workingDirectory>/.goodvibes/<surfaceRoot>/checkpoints`, instead of the
    * legacy, unscoped `<workspaceRoot>/.goodvibes/checkpoints`. Fixed to the
    * surface's own `workingDirectory` regardless of the `preferGitRoot`
    * resolution (the surface is a deterministic, declare-once handle; it does
    * not move when the enclosing git repo's top level differs from the raw
-   * root). Legacy construction (no `surface`) is unchanged — existing
+   * root). Legacy construction (no `surface`) is unchanged, existing
    * consumers keep working exactly as before; adopting the surface form is
    * each consumer's own choice to make.
    */

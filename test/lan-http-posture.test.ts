@@ -3,10 +3,10 @@
  *
  * The LAN plain-http posture, end to end across its seams:
  *  - the transport accepts private-network http origins (RFC 1918, .local,
- *    localhost) with NO env escape hatch — including in a browser-like runtime
- *    where process.env does not exist — while genuinely public http origins
+ *    localhost) with NO env escape hatch, including in a browser-like runtime
+ *    where process.env does not exist, while genuinely public http origins
  *    keep the SDK_TRANSPORT_INSECURE_BASE_URL wall;
- *  - the origin posture labels browser-gated capability gaps ("needs https —
+ *  - the origin posture labels browser-gated capability gaps ("needs https,
  *    available via tailscale") instead of leaving dead buttons, keeps all
  *    three on localhost, and states the one honest LAN notice line;
  *  - the pairing hand-off carries that posture so surfaces render it at
@@ -66,7 +66,7 @@ describe('transport: private-network http origins are a supported posture', () =
     expect(isPrivateNetworkHost('[::1]')).toBe(true);
     // Wildcard binds: as dial targets they reach the local machine. A client
     // that inherited a daemon's bind host (0.0.0.0 = "listen everywhere")
-    // must not be refused as if it were dialing a public origin — the live
+    // must not be refused as if it were dialing a public origin, the live
     // failure was profile calls dying on http://0.0.0.0:3421.
     expect(isPrivateNetworkHost('0.0.0.0')).toBe(true);
     expect(isPrivateNetworkHost('[::]')).toBe(true);
@@ -90,7 +90,7 @@ describe('origin posture: labeled degradation, never dead buttons', () => {
     expect(posture.capabilities.map((c) => c.capability).sort()).toEqual(['microphone', 'push', 'service-worker']);
     for (const capability of posture.capabilities) {
       expect(capability.available).toBe(false);
-      expect(capability.reason).toBe('needs https — available via tailscale');
+      expect(capability.reason).toBe('needs https, available via tailscale');
     }
   });
 

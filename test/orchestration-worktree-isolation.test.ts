@@ -1,9 +1,9 @@
 /**
- * Worktree isolation (wo/worktree-isolation) — stage (a): the REAL
+ * Worktree isolation (wo/worktree-isolation), stage (a): the REAL
  * IsolatedWorktree lifecycle + the engine's sequential integration lane,
  * driven end to end through createOrchestrationEngine with a FAKE agentManager
  * whose "agent" writes real files into item.worktreePath. No AgentOrchestrator
- * involved (that's stage (b) — see orchestration-agent-cwd.test.ts) — this
+ * involved (that's stage (b), see orchestration-agent-cwd.test.ts), this
  * file proves the engine's own worktree-mode wiring (claim-time creation,
  * merge-lane integration with conflict-keep-and-continue, fail/kill cleanup
  * rules, orphan reconciliation, per-worktree dirty-guard) against a REAL git
@@ -39,7 +39,7 @@ function initRepo(root: string): void {
  * Ceiling for a condition wait. Deliberately far above how long any of these
  * predicates takes even on a badly loaded machine: the wait returns the instant
  * the predicate holds, so headroom costs a fast host nothing, while a genuinely
- * hung condition still fails the test — just later, and with a message that
+ * hung condition still fails the test, just later, and with a message that
  * says what it was waiting for.
  */
 const WAIT_CEILING_MS = 60_000;
@@ -48,18 +48,18 @@ const WAIT_INTERVAL_MS = 20;
 /**
  * Per-test budget for every test in this file, kept above WAIT_CEILING_MS so a
  * stuck condition fails with waitUntil's labelled diagnostic instead of bun's
- * opaque "test timed out" — and so a merely SLOW runner never trips it at all.
+ * opaque "test timed out", and so a merely SLOW runner never trips it at all.
  */
 const WAIT_TEST_TIMEOUT_MS = 90_000;
 
 /**
- * Real-clock polling — worktree creation/merge/commit go through real `git`
+ * Real-clock polling, worktree creation/merge/commit go through real `git`
  * subprocesses, which resolve on macrotask boundaries, not microtasks (same
  * reasoning as dirty-guard.ts's snapshotDirtyTree doc comment).
  *
  * Load tolerance: this used to impose a fixed 15s (locally: 20s) budget, which
  * a loaded CI runner blew through while the git subprocesses were still making
- * perfectly normal progress — the test failed for being slow, not for being
+ * perfectly normal progress, the test failed for being slow, not for being
  * wrong. There is no fixed sleep anywhere: the loop exits on the first true
  * predicate, and only an unbounded wait is treated as a failure. The thrown
  * message reports the label, the elapsed time and the worst observed scheduler
@@ -78,7 +78,7 @@ async function waitUntil(
     const elapsedMs = Date.now() - startedAt;
     if (elapsedMs > ceilingMs) {
       throw new Error(
-        `waitUntil: condition never became true — ${opts.label ?? 'unlabelled predicate'}; ` +
+        `waitUntil: condition never became true, ${opts.label ?? 'unlabelled predicate'}; ` +
           `waited ${elapsedMs}ms (ceiling ${ceilingMs}ms), worst poll lag ${worstLagMs}ms`,
       );
     }
@@ -90,7 +90,7 @@ async function waitUntil(
 
 /**
  * Best-effort settle wait: polls until the predicate holds or `ceilingMs`
- * elapses and reports which happened. Never throws — for the one call site
+ * elapses and reports which happened. Never throws, for the one call site
  * whose predicate may legitimately never become true, where the real assertion
  * comes afterwards.
  */
@@ -226,7 +226,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     h.completeAgent(bottomAgentId, engineerReportOutput({ filesModified: ['shared.txt'] }));
 
     // Wait for the terminal worktree-lifecycle event (removed/kept), not just
-    // item-merged/item-merge-conflict — the lane emits the merge-outcome
+    // item-merged/item-merge-conflict, the lane emits the merge-outcome
     // event BEFORE awaiting the (real, async) worktree removal, so the
     // removal/keep bookkeeping can still be in flight right after the merge
     // event lands.
@@ -247,7 +247,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     expect(top.worktreeKept).toBeFalsy();
     expect(bottom.worktreeKept).toBeFalsy();
 
-    // BOTH hunks landed in the base tree's file — the whole point of the test.
+    // BOTH hunks landed in the base tree's file, the whole point of the test.
     const finalContent = readFileSync(join(root, 'shared.txt'), 'utf-8');
     expect(finalContent).toContain('TOP');
     expect(finalContent).toContain('BOTTOM');
@@ -306,7 +306,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     expect(second.mergeState).toBe('conflict');
     expect(second.blockedReason).toMatch(/^merge-conflict:/);
     expect(second.worktreeKept).toBe(true);
-    // The worktree + branch are KEPT — never silently dropped.
+    // The worktree + branch are KEPT, never silently dropped.
     expect(second.worktreePath).toBeDefined();
     expect(existsSync(second.worktreePath!)).toBe(true);
     const branches = runGit(root, ['branch', '--list', 'ws/*']);
@@ -315,7 +315,7 @@ describe('WorktreeIsolationManager — claim-time creation + concurrent non-conf
     const keptEvent = events.find((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-second');
     expect(keptEvent).toBeDefined();
 
-    // The item itself is still terminally 'passed' — mergeState is orthogonal
+    // The item itself is still terminally 'passed', mergeState is orthogonal
     // to the pipeline verdict (see ItemMergeState's doc, types.ts).
     expect(second.state).toBe('passed');
 
@@ -496,11 +496,11 @@ describe('WorktreeIsolationManager — orphan reconciliation (adopt-or-report)',
     expect(itemX.worktreePath).toBe(canonicalPath);
     expect(itemX.worktreeBranch).toBe('ws/orphan/x');
 
-    // Reported (unmatched) worktree is left exactly in place — never deleted on sight.
+    // Reported (unmatched) worktree is left exactly in place, never deleted on sight.
     expect(existsSync(ghostPath)).toBe(true);
 
     // Reusing the adopted worktree at claim time must not attempt to re-create
-    // it (which would throw — the path already exists).
+    // it (which would throw, the path already exists).
     engineB.start(importedWs.id);
     // Best-effort settle: this predicate MAY legitimately never hold, so its
     // outcome is deliberately not asserted (the assertion below is).
@@ -517,7 +517,7 @@ describe('WorktreeIsolationManager — empty integration (no commits beyond base
     const h = makeWtHarness();
     const events: OrchestrationEvent[] = [];
     // gate scope 'off' disables the scoped commit entirely (see
-    // phase-runner.ts commitPhaseWork) — the item branch never gets a commit.
+    // phase-runner.ts commitPhaseWork), the item branch never gets a commit.
     const offPhase: PhaseSpec = { role: 'engineer', capacity: 1, kind: 'engineer', gate: { scope: 'off', gates: [] } };
     const engine = makeEngine(root, h);
     engine.on((e) => events.push(e));
@@ -536,7 +536,7 @@ describe('WorktreeIsolationManager — empty integration (no commits beyond base
     expect(item.mergeState).toBe('merged');
     expect(item.mergeHash).toBeUndefined();
     expect(item.worktreePath).toBeUndefined();
-    // No item-merged event — there is no merge commit to report for a true no-op.
+    // No item-merged event, there is no merge commit to report for a true no-op.
     expect(events.some((e) => e.type === 'item-merged' && e.itemId === 'item-noop')).toBe(false);
 
     rmSync(root, { recursive: true, force: true });
@@ -588,7 +588,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     const onePath = one.worktreePath!;
     const twoPath = two.worktreePath!;
 
-    // Kill 'one' first (it becomes the OLDEST kept entry), then 'two' — the
+    // Kill 'one' first (it becomes the OLDEST kept entry), then 'two', the
     // cap of 1 means adding the second KEPT worktree must evict the first.
     engine.kill('item-one');
     await waitUntil(() => events.some((e) => e.type === 'item-worktree-kept' && e.itemId === 'item-one'), { label: 'item-one worktree kept' });
@@ -600,7 +600,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
       { label: 'item-one evicted and item-two kept' },
     );
 
-    // 'one' was evicted — its worktree DIRECTORY is gone and bookkeeping cleared.
+    // 'one' was evicted, its worktree DIRECTORY is gone and bookkeeping cleared.
     expect(existsSync(onePath)).toBe(false);
     expect(one.worktreePath).toBeUndefined();
     expect(one.worktreeKept).toBeFalsy();
@@ -625,7 +625,7 @@ describe('WorktreeIsolationManager — bounded kept-worktree cap, oldest-first e
     runGit(root, ['worktree', 'add', recovered, evictedEvent.branch]);
     expect(readFileSync(join(recovered, 'wip.txt'), 'utf8')).toBe('wip-one\n');
 
-    // 'two' is still kept — under the cap now that 'one' was evicted.
+    // 'two' is still kept, under the cap now that 'one' was evicted.
     expect(existsSync(twoPath)).toBe(true);
     expect(two.worktreeKept).toBe(true);
     expect(two.worktreePath).toBe(twoPath);

@@ -1,12 +1,12 @@
 /**
- * routes/calendar-composition.ts — the daemon's own calendar connection.
+ * routes/calendar-composition.ts, the daemon's own calendar connection.
  *
  * Assembling it here rather than in the runtime composition root keeps one
  * property visible: the daemon reads the connection from the DAEMON tier and
  * from nowhere else. `configManager.get` and `secretsManager.get` both resolve
  * against the daemon's own stores, and every path and secret name the
  * connector uses is daemon-owned (see `config/config-ownership.ts`), so a
- * setup performed in any surface — the agent, the TUI, the web UI — is
+ * setup performed in any surface, the agent, the TUI, the web UI, is
  * readable here the moment it lands, and stays readable after that surface has
  * exited. That is the whole point: the runtime that has to answer mail at 3am
  * is not the one the operator did the setup in.
@@ -16,8 +16,8 @@
  *
  * Two backends can answer, and this is where one is chosen: a CalDAV server
  * when `surfaces.calendar.caldavUrl`/`caldavUser` are set, a connected Google
- * account otherwise. The five verbs behave identically either way — that is the
- * point of the `CalendarGatewayService` slice — so the choice is invisible
+ * account otherwise. The five verbs behave identically either way, that is the
+ * point of the `CalendarGatewayService` slice, so the choice is invisible
  * above this line.
  */
 import {
@@ -83,7 +83,7 @@ export function createDaemonCalendarGatewayService(
   // record rather than three that cannot see each other.
   //
   // The literal `'calendar-event'` the calendar package emits is checked
-  // against `UntrustedSurface` right here, by this assignment — that is the
+  // against `UntrustedSurface` right here, by this assignment, that is the
   // only place the two halves meet, and it is why the calendar package needs no
   // import from security.
   const ledger = deps.untrustedContentLedger ?? getProcessUntrustedContentLedger();
@@ -92,8 +92,8 @@ export function createDaemonCalendarGatewayService(
   };
 
   // A configured CalDAV server wins. It is the more explicit statement of
-  // intent — someone typed a server address and an account name into settings
-  // — where a Google credential can be present on the machine for any number of
+  // intent, someone typed a server address and an account name into settings
+  //, where a Google credential can be present on the machine for any number of
   // other reasons, and answering an operator's own calendar server with
   // somebody's Gmail calendar would be the wrong calendar, silently.
   if (configString(deps, CALDAV_URL_KEY).length > 0 && configString(deps, CALDAV_USER_KEY).length > 0) {
@@ -110,7 +110,7 @@ export function createDaemonCalendarGatewayService(
     sources: {
       files: nodeGoogleFilePort,
       homeDirectory: deps.homeDirectory,
-      // `get` throws on a config section that does not exist yet — the mail
+      // `get` throws on a config section that does not exist yet, the mail
       // and calendar sections are app-layer and absent on a machine where
       // nobody has run setup. The connector reads every config value through
       // its own guard (platform/google/config-access.ts), so an absent section

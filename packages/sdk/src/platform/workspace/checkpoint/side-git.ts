@@ -1,7 +1,7 @@
 /**
  * side-git.ts
  *
- * SideGitRunner — a hidden git repository ("side repo") whose object store
+ * SideGitRunner, a hidden git repository ("side repo") whose object store
  * (GIT_DIR) lives under <workspaceRoot>/.goodvibes/checkpoints/git while its
  * GIT_WORK_TREE is the live workspace itself.
  *
@@ -16,15 +16,15 @@
  *
  * DO NOT reuse GitService (../../git/service.ts) for this: it binds a single
  * baseDir with no GIT_DIR support, and it fires Pre/Post hook events on
- * every commit/add — automatic silent snapshots must never trigger a user's
+ * every commit/add, automatic silent snapshots must never trigger a user's
  * PreCommit/PostCommit hooks. AgentWorktree (../../agents/worktree.ts) already
  * proves the `simpleGit(...).raw([...])` + explicit env pattern used here.
  *
  * Checkpoints are addressed entirely through our own ref namespace
  * (refs/goodvibes/checkpoints/<id>) and through commit objects created via
  * `commit-tree`, never through the side repo's HEAD/branch. There is no
- * meaningful "current branch" in this design — parent/lineage is tracked in
- * the manifest (manager.ts), not via git HEAD — so there is nothing to leave
+ * meaningful "current branch" in this design, parent/lineage is tracked in
+ * the manifest (manager.ts), not via git HEAD, so there is nothing to leave
  * "detached" and no branch state to pollute.
  */
 
@@ -48,8 +48,8 @@ const FALLBACK_IDENTITY = { name: 'GoodVibes Checkpoints', email: 'checkpoints@g
  * Environment variable names that simple-git's built-in vulnerability scanner
  * treats as unsafe (it would otherwise throw on every raw call rather than
  * risk spawning an interactive editor/pager/askpass/proxy). We never need
- * any of these — every commit here is created via `commit-tree -m <message>`,
- * never a bare `commit`/`rebase -i`/`merge` — so stripping them from the
+ * any of these, every commit here is created via `commit-tree -m <message>`,
+ * never a bare `commit`/`rebase -i`/`merge`, so stripping them from the
  * inherited environment we pass through is both safe and avoids depending on
  * simple-git's `unsafe.allowUnsafe*` escape hatches (not part of this
  * package version's public option types).
@@ -99,8 +99,8 @@ export interface SideGitRunnerOptions {
  * This runs a plain `git rev-parse --show-toplevel` with a sanitized
  * environment that deliberately does NOT carry any GIT_DIR / GIT_WORK_TREE
  * override, so it discovers the user's real repository (walking up from
- * `dir`), never a side/checkpoint repo. Any failure — not a repo, git
- * missing, permission error — is swallowed and reported as `null`, since the
+ * `dir`), never a side/checkpoint repo. Any failure, not a repo, git
+ * missing, permission error, is swallowed and reported as `null`, since the
  * only caller uses this as a best-effort preference, not a hard requirement.
  */
 export async function detectGitToplevel(dir: string): Promise<string | null> {
@@ -121,7 +121,7 @@ export async function detectGitToplevel(dir: string): Promise<string | null> {
 /**
  * Thin runner around a `simple-git` instance permanently scoped (via `.env()`)
  * to an isolated GIT_DIR/GIT_WORK_TREE pair. Every method here is a small,
- * named wrapper around a raw git invocation — no hook emission, no shared
+ * named wrapper around a raw git invocation, no hook emission, no shared
  * state with the user's real repository.
  */
 export class SideGitRunner {
@@ -138,7 +138,7 @@ export class SideGitRunner {
    */
   private gitClient: Promise<SimpleGit> | undefined;
   /**
-   * The environment the client is scoped to, snapshotted at construction —
+   * The environment the client is scoped to, snapshotted at construction,
    * the same moment `sanitizeGitEnv(process.env)` ran when the client itself
    * was built here, so deferring the construction does not defer the reading
    * of `process.env`.
@@ -187,7 +187,7 @@ export class SideGitRunner {
       await (await this.git()).raw(['init', '--quiet']);
       logger.debug('SideGitRunner.init: initialized side repo', { gitDir: this.gitDir });
     }
-    // Local (side-repo-scoped) identity — never touches the user's ~/.gitconfig
+    // Local (side-repo-scoped) identity, never touches the user's ~/.gitconfig
     // or the workspace's real .git/config (there is no --global here, and
     // GIT_DIR points at our own directory, so `git config` without --global
     // writes to <gitDir>/config).
@@ -203,7 +203,7 @@ export class SideGitRunner {
    * this, `git status`/`git add -A` in the user's real repo would see our
    * GIT_DIR as an untracked directory and could accidentally stage it.
    *
-   * This intentionally only ever writes inside `.goodvibes/` — it never
+   * This intentionally only ever writes inside `.goodvibes/`, it never
    * touches the workspace's own top-level `.gitignore`.
    */
   private ensureGoodvibesIgnored(): void {
@@ -236,7 +236,7 @@ export class SideGitRunner {
    * (scoped snapshot). Otherwise sweep the whole work tree with a plain `.`
    * pathspec. `.goodvibes` (our own storage) is kept out of that sweep by
    * `.goodvibes/.gitignore`'s own `*` self-ignore line, written by `init()`
-   * (via `ensureGoodvibesIgnored()`) before this method can ever run — NOT by
+   * (via `ensureGoodvibesIgnored()`) before this method can ever run, NOT by
    * naming `.goodvibes` explicitly here. An earlier version of this method
    * did pass an explicit `:(exclude).goodvibes` / `:(exclude).goodvibes/**`
    * pathspec (mirroring the pattern AgentWorktree uses for the same reason),
@@ -245,7 +245,7 @@ export class SideGitRunner {
    * own TUI writes at startup): git aborts the entire `add -A` with "The
    * following paths are ignored by one of your .gitignore files: .goodvibes
    * ... Use -f if you really want to add them," because naming an
-   * already-ignored path in ANY pathspec — exclude magic or not — triggers
+   * already-ignored path in ANY pathspec, exclude magic or not, triggers
    * that check. A path git discovers and skips implicitly while walking a
    * wildcard `.` sweep never hits that check. Beyond `.goodvibes`, git's
    * normal `.gitignore` handling already applies here: `.gitignore` matching
@@ -272,7 +272,7 @@ export class SideGitRunner {
   async countFirstSnapshotFiles(): Promise<number> {
     const out: string = await (await this.git()).raw(['ls-files', '--others', '--exclude-standard', '-z']);
     if (out.length === 0) return 0;
-    // Trailing NUL after the last entry — filter empties rather than off-by-one.
+    // Trailing NUL after the last entry, filter empties rather than off-by-one.
     return out.split('\0').filter((entry: string) => entry.length > 0).length;
   }
 
@@ -291,11 +291,11 @@ export class SideGitRunner {
    * (no `-p`) and WITHOUT moving any branch/HEAD.
    *
    * Checkpoint lineage is tracked exclusively via the manifest's `parentId`
-   * field (manager.ts) — never via git ancestry. This isn't just a style
+   * field (manager.ts), never via git ancestry. This isn't just a style
    * choice: if checkpoint commits chained via `-p` the way a normal git
    * history does, deleting an OLD checkpoint's ref in `gc()` would free
    * nothing, because that commit stays reachable through every NEWER
-   * checkpoint's parent pointer — the ref is gone but the commit (and any
+   * checkpoint's parent pointer, the ref is gone but the commit (and any
    * tree/blob objects unique to it) is still walkable from every surviving
    * descendant. Parentless commits mean a checkpoint's own ref is the ONLY
    * thing keeping its commit reachable, so once that ref is deleted,

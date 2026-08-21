@@ -1,5 +1,5 @@
 /**
- * workspace-floor.ts — one client-shape composition per WORKSPACE, shared by
+ * workspace-floor.ts, one client-shape composition per WORKSPACE, shared by
  * every hosted session in it.
  *
  * ── The choice this file records ───────────────────────────────────────────
@@ -9,7 +9,7 @@
  * a floor costs, per composition:
  *
  *  - a provider stack, including a model-DISCOVERY pass at construction
- *    (provider-stack.ts: `initProviderModelDiscovery`) — a network round trip
+ *    (provider-stack.ts: `initProviderModelDiscovery`), a network round trip
  *    per configured provider;
  *  - filesystem watchers on the config tree (`watchConfigFiles`) plus a
  *    config→bus bridge;
@@ -18,8 +18,8 @@
  *  - a `ProjectIndex` and a `FileStateCache` over the workspace tree.
  *
  * Every one of those is a per-machine or per-workspace truth. Duplicating them
- * per session buys no isolation — two sessions in one workspace would discover
- * the same models, watch the same files, and index the same tree — and costs
+ * per session buys no isolation, two sessions in one workspace would discover
+ * the same models, watch the same files, and index the same tree, and costs
  * watcher handles and discovery traffic linear in session count. The file cache
  * and project index are the sharpest case: they exist precisely SO tools share
  * cache state, and two sessions editing one workspace with two caches would
@@ -28,7 +28,7 @@
  * What genuinely differs per session is the conversation and the turn: message
  * history, the queued mid-turn messages, the in-flight tool-call aborts, the
  * live-turn controls, context accounting. Those all belong to the Orchestrator
- * and its own tool registry — which is exactly what hosted-session-runtime.ts
+ * and its own tool registry, which is exactly what hosted-session-runtime.ts
  * builds per session, over the floor this file shares.
  *
  * So: floors are keyed by resolved workspace root, reference-counted by the
@@ -37,7 +37,7 @@
  *
  * ── Why the factory is injected ────────────────────────────────────────────
  *
- * The floor's `requestApproval` seam is where a product's trust posture lives —
+ * The floor's `requestApproval` seam is where a product's trust posture lives,
  * the daemon puts its workspace trust gate there, and that gate reads a
  * decision file under the workspace being asked about. A floor built for
  * workspace W must therefore be built with W's gate, which only the product can
@@ -47,7 +47,7 @@
  * The exec POSTURE ({@link HostedWorkspaceFloor.execPosture}) is here for the
  * same reason and no other: it is a statement about how much authority a run on
  * this floor carries, which is the product's to make. The engine's own default
- * — stated when a floor says nothing — is the contained one.
+ *, stated when a floor says nothing, is the contained one.
  */
 
 import { logger } from '../utils/logger.js';
@@ -66,7 +66,7 @@ export interface HostedWorkspaceFloor {
   /**
    * Review-chain listing for the orchestrator's services bag. Omitted ⇒ this
    * floor runs no review/fix chains, and the orchestrator is told so by being
-   * handed a listing that reports none — an honest empty answer rather than a
+   * handed a listing that reports none, an honest empty answer rather than a
    * missing dependency.
    */
   readonly wrfcController?: Pick<WrfcController, 'listChains'> | undefined;

@@ -1,5 +1,5 @@
 /**
- * fixture-merchant.ts — two local merchants, deliberately unlike each other.
+ * fixture-merchant.ts, two local merchants, deliberately unlike each other.
  *
  * ══ Why a fixture at all ══════════════════════════════════════════════════
  *
@@ -20,7 +20,7 @@
  *   ALPHA  a table-driven US store. `$1,299.00`. Fields carry the standard
  *          `autocomplete="cc-number"` tokens. Labels say "Sales tax",
  *          "Delivery". Prices in `<td class="price">`.
- *   BETA   a div-and-span European store. `1.299,00 €` — dot thousands, comma
+ *   BETA   a div-and-span European store. `1.299,00 €`, dot thousands, comma
  *          decimal, symbol trailing. NO autocomplete attributes at all, so the
  *          card fields are recognisable only by their names. Labels say
  *          "Umsatzsteuer", "Versand". Prices in `<span data-amount>`.

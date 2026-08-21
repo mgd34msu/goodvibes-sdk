@@ -9,8 +9,8 @@
  * received it, and the only trace was a warn line in the daemon log. On a
  * survive-detach session with nobody attached that is a message that vanished.
  *
- * So: a failure keeps the input, retries it, and — once the attempts are spent
- * — fails it on the spine and puts the incident in front of the owner. And the
+ * So: a failure keeps the input, retries it, and, once the attempts are spent
+ *, fails it on the spine and puts the incident in front of the owner. And the
  * tick itself never throws out of its own interval, which used to be an
  * unhandled rejection on a read that would have succeeded a moment later.
  *

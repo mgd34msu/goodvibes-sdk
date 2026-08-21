@@ -1,11 +1,11 @@
 /**
- * session-migration.ts — one-time migration from the pre-SessionSurface,
+ * session-migration.ts, one-time migration from the pre-SessionSurface,
  * pre-agents-subdirectory on-disk layout into the surface-scoped layout,
  * invoked once per surface from createSessionSurface (session-surface.ts).
  *
  * Idempotent: guarded by a marker file at
  * `<workingDirectory>/.goodvibes/<surfaceRoot>/.migrated-v1`. A surface whose
- * marker VALIDATES returns immediately — the migration steps below never run
+ * marker VALIDATES returns immediately, the migration steps below never run
  * twice. Validation is by CONTENT, never by existence: the marker holds a
  * schema version, a completion flag, a timestamp and a per-step summary of what
  * was moved and how many, and is re-read and parsed on every boot. A marker
@@ -24,7 +24,7 @@
  * Steps:
  *  1. Last-session pointer: the canonical path
  *     (`surface.lastSessionPointer`) IS the same path the legacy `surfaceRoot`-
- *     scoped call form already wrote to — no migration needed between those
+ *     scoped call form already wrote to, no migration needed between those
  *     two. The real gap is the legacy fully-UNSCOPED pointer
  *     (`<workingDirectory>/.goodvibes/sessions/last-session.json`, written by
  *     a caller that never passed a surfaceRoot at all). When only the
@@ -35,7 +35,7 @@
  *     flat in sessions/ whose FIRST LINE is genuinely that journal's opening
  *     record (see legacy-agent-journal-patterns.ts for the exact, shared
  *     name-plus-content classification) are MOVED (not copied) into
- *     sessions/agents/ — these are relocated files, not a legacy/canonical
+ *     sessions/agents/, these are relocated files, not a legacy/canonical
  *     pair to reconcile by recency. A user conversation whose saved name
  *     merely collides with a journal filename shape is never moved: moving it
  *     would make it vanish from the user's session list. A name that already
@@ -47,14 +47,14 @@
  *     atomic on the same filesystem, so this can never half-move: it either
  *     fully succeeds or throws with the legacy directory completely
  *     untouched (caught and logged, never re-attempted destructively).
- *     Because that legacy store is SHARED — two products working in the same
+ *     Because that legacy store is SHARED, two products working in the same
  *     directory both see it, and whichever constructs its surface first
- *     adopts the history — the move leaves a `checkpoints-moved.json` marker
+ *     adopts the history, the move leaves a `checkpoints-moved.json` marker
  *     at the old location naming where the store went, and logs the adoption.
  *     The second product's user finds a trace instead of a silent coin flip.
  *     When the scoped store already exists, the legacy directory is stranded
  *     (nothing reclaims it): that is disclosed by name in one log line and
- *     never auto-deleted — it is a git store that may hold real history.
+ *     never auto-deleted, it is a git store that may hold real history.
  *
  * The marker is written only when every step either succeeded or found
  * nothing to do. A step that failed transiently (an unreadable directory, a
@@ -63,7 +63,7 @@
  *
  * NOT handled here (by design):
  *  - Shared crash-recovery snapshots (`~/.goodvibes/recovery/*.jsonl`, home-
- *    anchored and unscoped) cannot be mapped to a project deterministically —
+ *    anchored and unscoped) cannot be mapped to a project deterministically,
  *    there is nothing to move. Instead session-recovery.ts's
  *    checkRecoveryFile/loadRecoveryConversation/deleteRecoveryFile dual-read
  *    that legacy shared directory directly, session-id-keyed, as a
@@ -71,11 +71,11 @@
  *    caveat this accepts).
  *  - KVState (tools/index.ts's session_*.json store) dual-reads the legacy
  *    unscoped state dir directly (see state/kv-state.ts's `legacyStateDir`)
- *    and copies forward lazily, per session, on first read — no bulk move is
+ *    and copies forward lazily, per session, on first read, no bulk move is
  *    performed here.
  *  - The dead `.goodvibes/state/events.jsonl` + `event-archives/` store is
  *    reclaimed by the append-only retention sweep (legacy-event-store), not
- *    by migration — it has no live reader to migrate FOR.
+ *    by migration, it has no live reader to migrate FOR.
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -87,14 +87,14 @@ import type { SessionSurface } from './session-surface.js';
 
 /**
  * The outcome of one migration step. `failed` is the only value that holds
- * back the migration marker — `nothing` (no legacy data to migrate) is a
+ * back the migration marker, `nothing` (no legacy data to migrate) is a
  * completed step, not a deferred one.
  */
 type StepOutcome = 'done' | 'nothing' | 'failed';
 
 /**
  * The marker's schema version. A marker written by an OLDER schema reads as
- * "not migrated" and the pass re-runs — every step is existsSync/rename-guarded
+ * "not migrated" and the pass re-runs, every step is existsSync/rename-guarded
  * and safe to repeat, so re-running costs a directory listing, never data. A
  * marker written by a NEWER schema is accepted: a later build already did at
  * least this much work, and downgrading must not re-migrate on every boot.
@@ -139,8 +139,8 @@ function markerPath(surface: SessionSurface): string {
  * the migration would then be skipped forever with the user's legacy sessions,
  * journals and checkpoints stranded in the old layout. So the marker must
  * positively assert its own completion: a JSON object with a known schema
- * version and `completed: true`. Anything else — unreadable, unparseable, an
- * array, a bare `true`, a missing flag, an older schema — is treated as "not
+ * version and `completed: true`. Anything else, unreadable, unparseable, an
+ * array, a bare `true`, a missing flag, an older schema, is treated as "not
  * migrated" and the idempotent pass runs again.
  */
 function readCompletedMarker(surface: SessionSurface): { schemaVersion: number } | null {
@@ -150,41 +150,41 @@ function readCompletedMarker(surface: SessionSurface): { schemaVersion: number }
     if (!existsSync(path)) return null;
     raw = readFileSync(path, 'utf-8');
   } catch (error) {
-    logger.warn('session-migration: marker unreadable — treating this surface as unmigrated', {
+    logger.warn('session-migration: marker unreadable, treating this surface as unmigrated', {
       marker: path,
       error: summarizeError(error),
     });
     return null;
   }
   if (raw.trim().length === 0) {
-    logger.warn('session-migration: marker is empty (interrupted write) — re-running the migration', { marker: path });
+    logger.warn('session-migration: marker is empty (interrupted write), re-running the migration', { marker: path });
     return null;
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    logger.warn('session-migration: marker is not parseable JSON (torn write) — re-running the migration', {
+    logger.warn('session-migration: marker is not parseable JSON (torn write), re-running the migration', {
       marker: path,
       bytes: raw.length,
     });
     return null;
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    logger.warn('session-migration: marker is not an object — re-running the migration', { marker: path });
+    logger.warn('session-migration: marker is not an object, re-running the migration', { marker: path });
     return null;
   }
   const record = parsed as { schemaVersion?: unknown; completed?: unknown };
   if (record.completed !== true) {
-    logger.warn('session-migration: marker does not assert completion — re-running the migration', { marker: path });
+    logger.warn('session-migration: marker does not assert completion, re-running the migration', { marker: path });
     return null;
   }
   if (typeof record.schemaVersion !== 'number' || !Number.isFinite(record.schemaVersion)) {
-    logger.warn('session-migration: marker has no usable schema version — re-running the migration', { marker: path });
+    logger.warn('session-migration: marker has no usable schema version, re-running the migration', { marker: path });
     return null;
   }
   if (record.schemaVersion < MARKER_SCHEMA_VERSION) {
-    logger.info('session-migration: marker was written by an older schema — re-running the migration', {
+    logger.info('session-migration: marker was written by an older schema, re-running the migration', {
       marker: path,
       markerSchemaVersion: record.schemaVersion,
       currentSchemaVersion: MARKER_SCHEMA_VERSION,
@@ -200,7 +200,7 @@ function readCompletedMarker(surface: SessionSurface): { schemaVersion: number }
  *
  * Written to a sibling temp file and renamed into place, so an interruption
  * leaves either no marker at all (the pass retries) or the complete previous
- * one — never a half-written file that a later boot would trust. The temp name
+ * one, never a half-written file that a later boot would trust. The temp name
  * carries the pid so two processes racing to migrate the same surface cannot
  * scribble over each other's partial file; `rename` onto the final path is
  * atomic, and both processes write the same "completed" assertion, so whichever
@@ -241,14 +241,14 @@ function writeCompletedMarker(surface: SessionSurface, summary: MigrationSummary
   }
 }
 
-/** Copy `from` forward to `to`, creating `to`'s parent directory if needed. Throws on failure — callers wrap this. */
+/** Copy `from` forward to `to`, creating `to`'s parent directory if needed. Throws on failure, callers wrap this. */
 function copyForward(from: string, to: string): void {
   mkdirSync(dirname(to), { recursive: true });
   copyFileSync(from, to);
 }
 
 /**
- * Is the file at `path` genuinely absent of content — zero bytes, or bytes that
+ * Is the file at `path` genuinely absent of content, zero bytes, or bytes that
  * do not begin a parseable JSON record?
  *
  * Used to tell "a real file already holds this name" from "a crash left a
@@ -329,7 +329,7 @@ function migrateAgentJournals(surface: SessionSurface, summary: MigrationSummary
     const from = join(sessionsDir, name);
     const to = join(surface.agentJournalsDir, name);
     try {
-      // Never clobber a REAL existing agents/ file with the same name — leave
+      // Never clobber a REAL existing agents/ file with the same name, leave
       // the legacy copy in place rather than guess which one is authoritative.
       // But "the destination exists" is not the same claim as "the destination
       // holds data": a crash mid-copy leaves a zero-byte or truncated file that
@@ -338,7 +338,7 @@ function migrateAgentJournals(surface: SessionSurface, summary: MigrationSummary
       if (existsSync(to)) {
         if (!isTornOrEmptyFile(to)) {
           leftInPlace++;
-          logger.info('session-migration: agent journal left in place — a readable file already holds that name', {
+          logger.info('session-migration: agent journal left in place, a readable file already holds that name', {
             file: name,
             destination: to,
           });
@@ -367,7 +367,7 @@ function migrateAgentJournals(surface: SessionSurface, summary: MigrationSummary
   return moved > 0 ? 'done' : 'nothing';
 }
 
-/** `<workingDirectory>/.goodvibes/checkpoints-moved.json` — the trace left at the old shared location. */
+/** `<workingDirectory>/.goodvibes/checkpoints-moved.json`, the trace left at the old shared location. */
 function checkpointsMovedMarkerPath(surface: SessionSurface): string {
   return join(surface.workingDirectory, '.goodvibes', 'checkpoints-moved.json');
 }
@@ -377,10 +377,10 @@ function migrateCheckpointsDir(surface: SessionSurface, summary: MigrationSummar
   if (!existsSync(legacyDir)) return 'nothing'; // nothing legacy to move
   if (existsSync(surface.checkpointsDir)) {
     // The scoped store already exists, so the legacy store cannot be adopted
-    // here — and nothing else reclaims it. Disclose it by name rather than
+    // here, and nothing else reclaims it. Disclose it by name rather than
     // leaving it silently orphaned; never auto-delete a git store that may
     // hold real checkpoint history.
-    logger.info('session-migration: legacy checkpoint store left in place — the surface-scoped store already exists', {
+    logger.info('session-migration: legacy checkpoint store left in place, the surface-scoped store already exists', {
       strandedLegacyCheckpoints: legacyDir,
       scopedCheckpoints: surface.checkpointsDir,
       surfaceRoot: surface.surfaceRoot,
@@ -391,18 +391,18 @@ function migrateCheckpointsDir(surface: SessionSurface, summary: MigrationSummar
     mkdirSync(dirname(surface.checkpointsDir), { recursive: true });
     // A single rename() of the whole directory is atomic on the same
     // filesystem: it either fully succeeds (side GIT_DIR + index.json move
-    // together) or throws with the legacy directory completely untouched —
+    // together) or throws with the legacy directory completely untouched,
     // there is no intermediate, half-moved state to reach.
     renameSync(legacyDir, surface.checkpointsDir);
   } catch (error) {
-    logger.warn('session-migration: checkpoints dir move failed — leaving legacy checkpoints in place', {
+    logger.warn('session-migration: checkpoints dir move failed, leaving legacy checkpoints in place', {
       error: summarizeError(error),
     });
     return 'failed';
   }
 
   // The shared legacy store has been adopted by THIS surface. In a working
-  // directory used by two products, the first mover claims the history —
+  // directory used by two products, the first mover claims the history,
   // so leave a findable trace at the old location for the second one's user,
   // and say so in the log.
   summary.checkpointsAdopted = true;
@@ -448,7 +448,7 @@ function runStep(name: string, step: () => StepOutcome): StepOutcome {
 
 /**
  * Run the one-time migration for `surface`, guarded by its marker file.
- * Never throws — every step and the marker write itself are independently
+ * Never throws, every step and the marker write itself are independently
  * best-effort; a failure anywhere is logged and otherwise ignored so a
  * migration problem can never break `createSessionSurface` or startup.
  *
@@ -468,7 +468,7 @@ export function runSessionSurfaceMigration(surface: SessionSurface): void {
   ];
 
   if (outcomes.includes('failed')) {
-    logger.warn('session-migration: a step failed — leaving the migration marker unwritten so the next start retries', {
+    logger.warn('session-migration: a step failed, leaving the migration marker unwritten so the next start retries', {
       surfaceRoot: surface.surfaceRoot,
       workingDirectory: surface.workingDirectory,
     });
@@ -477,7 +477,7 @@ export function runSessionSurfaceMigration(surface: SessionSurface): void {
 
   // Disclosure: a migration that actually moved something says what it moved
   // and how many, rather than relocating a user's data in silence. A pass that
-  // found nothing to do stays quiet — it is the common case on every boot after
+  // found nothing to do stays quiet, it is the common case on every boot after
   // the first, and logging it would drown the lines that matter.
   const movedAnything = summary.agentJournalsMoved > 0
     || summary.lastSessionPointerAdopted
@@ -500,8 +500,8 @@ export function runSessionSurfaceMigration(surface: SessionSurface): void {
     writeCompletedMarker(surface, summary);
   } catch (error) {
     // If the marker itself cannot be written, the next createSessionSurface
-    // call will simply retry the (idempotent — existsSync/rename-guarded)
+    // call will simply retry the (idempotent, existsSync/rename-guarded)
     // steps above; nothing is lost by trying again.
-    logger.warn('session-migration: marker write failed — migration will retry next time', { error: summarizeError(error) });
+    logger.warn('session-migration: marker write failed, migration will retry next time', { error: summarizeError(error) });
   }
 }

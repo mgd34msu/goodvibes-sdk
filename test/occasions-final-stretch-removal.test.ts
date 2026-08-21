@@ -1,16 +1,16 @@
 /**
- * occasions-final-stretch-removal.test.ts — retiring `occasions.finalStretchDays`.
+ * occasions-final-stretch-removal.test.ts, retiring `occasions.finalStretchDays`.
  *
  * The setting used to say how many days before a date the reminder rhythm went
  * DAILY. That rhythm is gone: an occasion is now raised once when it enters its
  * lead window and at most once more on the day itself, which is the owner's
  * ruling after being told about his own birthday five times in one day. A count
- * of two has nothing to tune, so the key is removed rather than left inert —
+ * of two has nothing to tune, so the key is removed rather than left inert,
  * a settings entry that changes nothing is worse than no entry at all.
  *
  * Removing a schema key is the part with a history. An existing settings file
  * still carries the key, and a build that no longer declares it reads it as "a
- * setting this component does not know" — so the removal ships WITH a load-time
+ * setting this component does not know", so the removal ships WITH a load-time
  * migration that strips it, and the migration runs BEFORE the key screen so
  * nothing warns about a state that has already been handled.
  *
@@ -18,7 +18,7 @@
  * for the same reason: `occasions.` is a DAEMON-OWNED prefix, so the daemon
  * store is written by the daemon and read by every terminal product. The owner
  * rewrites the file and files a receipt; a non-owning reader strips the key from
- * its in-memory view, writes no bytes, and files no receipt — a receipt without
+ * its in-memory view, writes no bytes, and files no receipt, a receipt without
  * the change on disk would be a lie.
  */
 import { describe, expect, test } from 'bun:test';
@@ -63,7 +63,7 @@ describe('the settings catalog no longer offers the key', () => {
   test('it is not a declared occasions setting', () => {
     const keys = occasionsConfigSettings.map((setting) => setting.key);
     expect(keys).not.toContain(RETIRED_OCCASIONS_FINAL_STRETCH_KEY);
-    // The neighbours it sat between are untouched — this is a removal, not a
+    // The neighbours it sat between are untouched, this is a removal, not a
     // reshuffle of the occasions domain.
     expect(keys).toContain('occasions.cadenceDays');
     expect(keys).toContain('occasions.leadDays');
@@ -124,7 +124,7 @@ describe('the owning process strips the key and files a receipt', () => {
       daemonTierPath,
       ownsDaemonTier: true,
     });
-    // The neighbouring value is still resolved — this removes one key, not the
+    // The neighbouring value is still resolved, this removes one key, not the
     // owner's occasions configuration.
     expect(daemon.get('occasions.leadDays')).toBe(14);
 
@@ -234,8 +234,8 @@ describe('the ingestion screen does not warn about a key the migration handles',
     // by prefix in either direction; `finalStretchDays` shares a prefix with no
     // remaining occasions key, so it would have gone unremarked even without the
     // migration. That is worth pinning rather than assuming, because it says the
-    // migration is here to STRIP A DEAD KEY FROM HIS FILE — not to paper over a
-    // warning — and it fails loudly if someone later makes the screen broader
+    // migration is here to STRIP A DEAD KEY FROM HIS FILE, not to paper over a
+    // warning, and it fails loudly if someone later makes the screen broader
     // and reintroduces a warning the migration is supposed to have handled.
     const announced: string[] = [];
     ingestSettingsFile(

@@ -3,7 +3,7 @@
  *
  * One regression per defect a refutation review reproduced against the real
  * modules. Each was measured, not theorised, and none was covered by an existing
- * case — which is why they are gathered here rather than folded into the suites
+ * case, which is why they are gathered here rather than folded into the suites
  * that missed them.
  *
  * The shared theme is that every one of these is SILENT: a false success
@@ -100,7 +100,7 @@ describe('defect 2 — a nested fence must not desynchronise the scanner', () =>
     const projection = parseProfileDocument({ path: '/x', text: DOC, exists: true });
     // The sample must never become the live value.
     expect(projection.fields.get('commerce.shippingAddress')?.value).toBe('200 Office Way');
-    // The fenced "## Style" must not open a section — that is what made his
+    // The fenced "## Style" must not open a section, that is what made his
     // sample lines open tier and put them in the model prompt.
     expect(projection.sections.map((section) => section.heading)).toEqual(['Commerce', 'Notes']);
   });
@@ -431,7 +431,7 @@ describe('defect 8 — forget must not deny a value that read still serves', () 
 
   test('a field under a heading he renamed is found and removed', async () => {
     const { store, path } = await storeFor(DOC);
-    // It is not in the model — the heading is not a section this parser knows...
+    // It is not in the model, the heading is not a section this parser knows...
     expect(store.get('commerce.shippingAddress')).toBeUndefined();
     // ...but read() serves it and the file holds it, so forget must not deny it.
     expect(JSON.stringify(store.read())).toContain('401 Home St');

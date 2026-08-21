@@ -1,5 +1,5 @@
 /**
- * pairing-node-cap.test.ts — `device.nodes.maxPaired` is a real cap.
+ * pairing-node-cap.test.ts, `device.nodes.maxPaired` is a real cap.
  *
  * The setting presented as a live cap on paired device nodes and nothing read
  * it: pairing was unbounded, so the number in settings described nothing. It is
@@ -103,7 +103,7 @@ describe('device.nodes.maxPaired bounds pairing', () => {
       const rePaired = f.manager.mint({ name: '  pixel  ' });
       expect(rePaired.token).not.toBe(pixel.token);
       expect(f.manager.pairedCount()).toBe(2);
-      // The other device is untouched — re-pairing one node never unpairs another.
+      // The other device is untouched, re-pairing one node never unpairs another.
       expect(f.manager.list().some((token) => token.name === 'Laptop')).toBe(true);
       // The new token authenticates; the superseded one does not.
       expect(f.manager.authenticate(rePaired.token)?.name).toBe('pixel');

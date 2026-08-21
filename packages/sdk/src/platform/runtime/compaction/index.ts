@@ -76,7 +76,7 @@ export type {
  * with other runtime subsystem factories.
  *
  * NOTE: This factory is not yet wired to a consumer in the bootstrap layer.
- * Integration with the session bootstrap pipeline is the next step — the
+ * Integration with the session bootstrap pipeline is the next step, the
  * CompactionManager will be instantiated per-session during session init
  * and attached to the session context for lifecycle event routing.
  *

@@ -11,7 +11,7 @@
  *
  * The two properties that makes load-bearing: the view answers with this
  * session's model, and everything else it forwards still operates on the one
- * real registry — otherwise a credential re-registration or a discovery pass
+ * real registry, otherwise a credential re-registration or a discovery pass
  * would land on a copy and the shared stack would silently diverge.
  */
 

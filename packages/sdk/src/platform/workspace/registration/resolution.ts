@@ -2,7 +2,7 @@
  * workspace/registration/resolution.ts
  *
  * The PURE resolution function and path helpers for the registered-workspace
- * registry. No disk, no git spawning — given a path, optional worktree-link git
+ * registry. No disk, no git spawning, given a path, optional worktree-link git
  * metadata, and the registry state, it decides whether the path is covered by
  * (and which) registered root, remembered-declined, or unknown.
  *
@@ -42,7 +42,7 @@ export function normalizeWorkspaceRoot(root: string): string {
   return resolved;
 }
 
-/** Does `ancestor` cover `descendant` — same path, or a directory strictly above it? */
+/** Does `ancestor` cover `descendant`, same path, or a directory strictly above it? */
 export function pathCovers(ancestor: string, descendant: string): boolean {
   if (ancestor === descendant) return true;
   const prefix = ancestor.endsWith(sep) ? ancestor : ancestor + sep;
@@ -51,7 +51,7 @@ export function pathCovers(ancestor: string, descendant: string): boolean {
 
 /**
  * The best (nearest = longest) root among `roots` that covers `path` directly or
- * — when a main worktree root is supplied — via the worktree link. Returns the
+ *, when a main worktree root is supplied, via the worktree link. Returns the
  * matching root and whether the match was only through the link.
  */
 function bestCoveringRoot(

@@ -30,8 +30,8 @@ export interface FetchRuntimeDeps {
    */
   readonly defaultSanitizeMode?: FetchSanitizeMode | undefined;
   /**
-   * Default trusted hosts (from config fetch.trustedHosts). Merged with — never
-   * replaced by — per-call trusted_hosts.
+   * Default trusted hosts (from config fetch.trustedHosts). Merged with, never
+   * replaced by, per-call trusted_hosts.
    */
   readonly defaultTrustedHosts?: readonly string[] | undefined;
   /**
@@ -42,7 +42,7 @@ export interface FetchRuntimeDeps {
   /**
    * Cooperative cancellation: an externally-supplied signal,
    * combined with each request's own per-URL timeout signal via
-   * `AbortSignal.any`. Optional and additive — omitted, behavior is
+   * `AbortSignal.any`. Optional and additive, omitted, behavior is
    * unchanged from before this field existed.
    */
   readonly signal?: AbortSignal | undefined;
@@ -164,7 +164,7 @@ export class FetchRuntimeService {
       }
     }
 
-    // Page text entered the conversation here, so the ledger is told — with the
+    // Page text entered the conversation here, so the ledger is told, with the
     // text, not merely the fact. This tool recorded nothing at all before; see
     // ./untrusted-ingest.ts for the gap that left and why the text is the part
     // that keeps this from refusing everything.
@@ -284,7 +284,7 @@ async function fetchOneRaw(
   const { signal: timeoutSignal, dispose } = createTimeoutController(urlInput.timeout_ms ?? DEFAULT_TIMEOUT_MS);
   const signal = externalSignal ? AbortSignal.any([timeoutSignal, externalSignal]) : timeoutSignal;
   try {
-    // Redirect chains are ALWAYS validated hop-by-hop — host blocking is
+    // Redirect chains are ALWAYS validated hop-by-hop, host blocking is
     // absolute and does not depend on the sanitization mode or kill switch.
     return await fetchWithValidatedRedirects({
       url: effectiveUrl,

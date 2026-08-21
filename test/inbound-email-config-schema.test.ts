@@ -17,11 +17,11 @@
  * documented one, its range refuses what it should. None of it says the
  * setting does anything. A key can have a perfect row, a validated range, a
  * daemon-owned scope and a user-facing description while nothing anywhere
- * reads it — and the coverage reads as complete precisely because the schema
+ * reads it, and the coverage reads as complete precisely because the schema
  * half is thorough. `enabled` was the only key whose EFFECT was tested.
  *
- * So the last section drives `composeInboundMail` — the real production
- * assembly — with non-default values and asserts each one reaches the thing it
+ * So the last section drives `composeInboundMail`, the real production
+ * assembly, with non-default values and asserts each one reaches the thing it
  * names. A setting that stops being read reddens there rather than continuing
  * to look configured.
  */
@@ -75,13 +75,13 @@ function freshManager(): ConfigManager {
  * keys added after the design doc landed (owner ruling relayed mid-round:
  * the daemon must state plainly, and refuse by default, when the mailbox
  * cannot do what inbound mail requires), plus the three source-selection keys
- * from §3.4d — Gmail is a first-class inbound source, and its poll interval is
+ * from §3.4d, Gmail is a first-class inbound source, and its poll interval is
  * adaptive because an open expectation and an idle week have genuinely
  * different needs.
  */
 // A mutable array: bun's scalar `test.each` overload is
 // `each<const T>(table: T[])`, so a ReadonlyArray matches no overload and every
-// row degrades to `any` — which is how these cases were running against
+// row degrades to `any`, which is how these cases were running against
 // untyped rows.
 const EXPECTED_DEFAULTS: { key: string; default: unknown }[] = [
   { key: 'surfaces.email.inbound.enabled', default: false },
@@ -289,7 +289,7 @@ describe('range validators reject out-of-range values', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The settings TAKE EFFECT — driven through the real composition
+// The settings TAKE EFFECT, driven through the real composition
 // ---------------------------------------------------------------------------
 
 const ACCOUNT = 'primary';
@@ -309,7 +309,7 @@ function transitionTo(to: InboundCapabilityVerdict): InboundCapabilityTransition
 /**
  * Announce a verdict down the path the SOURCE uses.
  *
- * Deliberately not `deps.observer` — that is the facade's observer, and
+ * Deliberately not `deps.observer`, that is the facade's observer, and
  * reaching it directly would skip the supervisor's own wrapper, which is where
  * `this.verdict` is recorded and therefore where the registry's capability
  * probe reads from. `observer()` is the object the supervisor hands to the
@@ -324,8 +324,8 @@ function announce(rig: ComposedRig, verdict: InboundCapabilityVerdict): void {
 /**
  * Let the observer's `void`-ed continuation settle.
  *
- * `InboundMailObserver` is synchronous by contract — a report sink must never
- * hold up the watcher — so the registry write it starts finishes on the
+ * `InboundMailObserver` is synchronous by contract, a report sink must never
+ * hold up the watcher, so the registry write it starts finishes on the
  * microtask queue rather than before `stateChanged` returns.
  */
 async function flushMicrotasks(times = 5): Promise<void> {
@@ -377,13 +377,13 @@ function readSourceFilesOutsideConfig(): string[] {
 }
 
 /**
- * Is this key READ by any of these sources — as opposed to merely mentioned?
+ * Is this key READ by any of these sources, as opposed to merely mentioned?
  *
  * ONE definition, called by the gate and by both tests that prove the gate can
  * fail. It used to be an arrow function inside the gate test with a
  * character-for-character copy inside its companion, which is the arrangement
  * where widening the real one leaves the companion still asserting the narrow
- * one — a check that proves a pattern nothing uses.
+ * one, a check that proves a pattern nothing uses.
  *
  * The rule: the key's own text, inside a config-read CALL. A doc comment naming
  * it does not count, and neither does a bare string assignment; that is the
@@ -394,7 +394,7 @@ function readSourceFilesOutsideConfig(): string[] {
  * handed is named that rather than `get`, and a genuine read this could not see
  * would be worse than an unread key: it would look wired to a reader and
  * unwired to the gate, and the next person would trust the wrong one. It still
- * has to be a CALL — widening this to bare mentions is exactly what would make
+ * has to be a CALL, widening this to bare mentions is exactly what would make
  * the gate unable to fail, and with the inert list now empty there would be
  * nothing else left to notice.
  */
@@ -497,7 +497,7 @@ function compose(
 /**
  * The watcher settings the composition actually handed to the source.
  *
- * Two private hops — the source's inner watcher, and that watcher's settings.
+ * Two private hops, the source's inner watcher, and that watcher's settings.
  * Reaching through them is deliberate: these four settings have no public
  * accessor anywhere, and "no way to observe it" is exactly how a setting stops
  * being wired without anything noticing.
@@ -566,8 +566,8 @@ describe('each inbound setting reaches the thing it names', () => {
     const readTtl = (supervisor: InboundMailSupervisor): number =>
       (supervisor as unknown as { dedupTtlMs(): number }).dedupTtlMs();
     expect(readTtl(rig.supervisor)).toBe(23 * 60_000);
-    // An unusable value falls back to the correctness FLOOR — one hour, which
-    // outlasts the daemon's own hourly restart — rather than to zero.
+    // An unusable value falls back to the correctness FLOOR, one hour, which
+    // outlasts the daemon's own hourly restart, rather than to zero.
     expect(readTtl(compose({ 'surfaces.email.inbound.dedupTtlMinutes': 'soon' })!.supervisor))
       .toBe(60 * 60_000);
   });
@@ -586,7 +586,7 @@ describe('each inbound setting reaches the thing it names', () => {
     expect(status.running).toBe(false);
     // The refusal now carries the reason the COMPOSITION found, which for this
     // rig is a machine with no Google account. It used to assert "no Google
-    // credentials have been adopted" — a sentence the selector printed whether
+    // credentials have been adopted", a sentence the selector printed whether
     // or not any had been, because nothing had looked.
     expect(status.reason).toContain('No Google account is connected on this machine');
     expect(status.reason).toContain('surfaces.email.inbound.source is set to "gmail"');
@@ -606,7 +606,7 @@ describe('each inbound setting reaches the thing it names', () => {
 
     // A named binding id wins.
     expect(await deliveredTo({ 'surfaces.email.inbound.notice.route': 'older' })).toEqual(['older']);
-    // `default` — the shipped value — means "inherit whatever he already
+    // `default`, the shipped value, means "inherit whatever he already
     // uses", which is the binding he was last seen on.
     expect(await deliveredTo({ 'surfaces.email.inbound.notice.route': 'default' })).toEqual(['newest']);
   });
@@ -640,8 +640,8 @@ describe('each inbound setting reaches the thing it names', () => {
    * settings UI offer a behaviour the daemon answered with silence.
    *
    * That path now exists. `GoogleApiClient.readMessageMetadata` issues
-   * `messages.get?format=metadata` — the call a `gmail.metadata` token is
-   * authorized to make — `collectHistoryDelta` takes it under
+   * `messages.get?format=metadata`, the call a `gmail.metadata` token is
+   * authorized to make, `collectHistoryDelta` takes it under
    * `onMetadataOnlyGrant: 'fetch-metadata'`, and `intake.ts` routes the result
    * to the `capability-degraded` notice outcome. `source-factory.ts` reads this
    * key at source-create time and hands it to `GmailMailSource`, which is what
@@ -662,7 +662,7 @@ describe('each inbound setting reaches the thing it names', () => {
       .filter((key) => !keyIsReadBy(sources, key));
 
     // Not a tautology in either direction: most keys ARE read, and the two
-    // tests below prove this detector can still answer no — over synthetic
+    // tests below prove this detector can still answer no, over synthetic
     // text AND over this exact source corpus.
     expect(wired.length).toBeGreaterThan(10);
     expect(unread.sort()).toEqual([...INERT].sort());
@@ -676,7 +676,7 @@ describe('each inbound setting reaches the thing it names', () => {
    * BOTH ways the gate above could stop being able to fail:
    *
    *   1. A detector that answers true regardless of its input. The absent key
-   *      catches that — nothing under `packages/sdk/src` contains that string,
+   *      catches that, nothing under `packages/sdk/src` contains that string,
    *      so a `true` means the answer stopped depending on the argument.
    *   2. A detector widened to match a bare MENTION instead of a call. The
    *      absent key does NOT catch that, and this was verified rather than
@@ -684,7 +684,7 @@ describe('each inbound setting reaches the thing it names', () => {
    *      re-run, and this assertion stayed green, because a key absent from
    *      the corpus is absent as a mention too. Only the companion test below
    *      reddened. So the mention case is asserted HERE as well, against a
-   *      source file of exactly the shape an inert key had — named in a doc
+   *      source file of exactly the shape an inert key had, named in a doc
    *      comment beside behaviour it never selects.
    *
    * The last assertion is the control: a key that genuinely IS read answers
@@ -715,14 +715,14 @@ describe('each inbound setting reaches the thing it names', () => {
    * rests on.
    *
    * Written after a night in which four checks turned out to be unable to fail.
-   * A regex widened one alternation too far — `['"]key['"]` with no call in
-   * front of it — would report every key in the schema as read, and with the
+   * A regex widened one alternation too far, `['"]key['"]` with no call in
+   * front of it, would report every key in the schema as read, and with the
    * inert list now empty that widening would make the gate above pass forever.
    *
    * It calls `keyIsReadBy`, the same function the two tests above call, rather
    * than restating the pattern. A restated copy is how a widened production
    * regex goes on being "proved" by a companion test still holding the narrow
-   * one — the mirror that agrees with itself and with nothing else.
+   * one, the mirror that agrees with itself and with nothing else.
    */
   test('the read-detector rejects a mention and an absent key', () => {
     const key = 'surfaces.email.inbound.pollIntervalSeconds';
@@ -736,14 +736,14 @@ describe('each inbound setting reaches the thing it names', () => {
   });
 
   /**
-   * One key, one reader — for the two keys that had a reader in two places.
+   * One key, one reader, for the two keys that had a reader in two places.
    *
    * The check above answers "is anything reading this", and it is `some(...)`:
    * it says yes just as happily for one reader as for three. That is the shape
    * that let `gmailPollSecondsExpecting` and `gmailPollSecondsIdle` acquire a
    * second reader without anything noticing. Two independent branches wired
-   * them at two different tiers — `source-factory.ts` at source-CREATE time,
-   * and `facade-inbound-mail.ts` at compose time — and the gate accepted both
+   * them at two different tiers, `source-factory.ts` at source-CREATE time,
+   * and `facade-inbound-mail.ts` at compose time, and the gate accepted both
    * call forms, so the duplication looked exactly like the fix.
    *
    * Create time is the tier that wins, and the reason is behavioural rather
@@ -753,7 +753,7 @@ describe('each inbound setting reaches the thing it names', () => {
    * same freshness rule `liveConnectionPort` applies to the IMAP host.
    *
    * Two readers of one key is the shape that made these settings inert in the
-   * first place — a value that appears to apply, applied twice, is a value
+   * first place, a value that appears to apply, applied twice, is a value
    * whose effective setting depends on which caller ran last.
    */
   test('each Gmail poll interval is read exactly once, at source-create time', () => {
@@ -790,7 +790,7 @@ describe('each inbound setting reaches the thing it names', () => {
 
     // And the one reader for the poll pair is the create-time one. Naming the
     // file is what makes the count above mean "the right single reader" rather
-    // than "some single reader" — a count of one in the facade would be the
+    // than "some single reader", a count of one in the facade would be the
     // tier this was ruled out of.
     const factory = readFileSync(
       join(root, 'platform', 'email', 'inbound', 'source-factory.ts'), 'utf8');
@@ -836,7 +836,7 @@ describe('the expectation book is instantiated in production (gate #25)', () => 
    * says the composition CONNECTED them: the registry could have a perfect
    * capability mechanism and the facade could hand it no probe and route it no
    * transitions, and every one of those tests would still be green. That is
-   * the same shape as the terminal-notice defect — a mechanism built, and its
+   * the same shape as the terminal-notice defect, a mechanism built, and its
    * only consumer never wired.
    */
   test('a capability transition reaches the registry through the composed observer', async () => {
@@ -862,7 +862,7 @@ describe('the expectation book is instantiated in production (gate #25)', () => 
 
   test('the composed capability probe is the supervisor’s live verdict, so open() refuses on it', async () => {
     const rig = compose()!;
-    // Nothing has probed yet — the honest answer is "unknown", and an unknown
+    // Nothing has probed yet, the honest answer is "unknown", and an unknown
     // mailbox does not block a signup.
     await rig.deps.expectations.open({
       serviceDomain: 'first.example',
@@ -884,8 +884,8 @@ describe('the expectation book is instantiated in production (gate #25)', () => 
   });
 
   test('the book carries the REAL authority probe, not a permissive stand-in', () => {
-    // §2.2's defensive check — refuse to open an expectation if email ever
-    // gained command authority — could not have fired before, because the book
+    // §2.2's defensive check, refuse to open an expectation if email ever
+    // gained command authority, could not have fired before, because the book
     // was never constructed in production. Asserting it fires requires knowing
     // the probe in force is the shipped predicate, and asking about `email`
     // cannot establish that: the real function and every plausible stub both

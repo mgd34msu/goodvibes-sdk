@@ -169,7 +169,7 @@ describe('Retry policy: non-idempotent mutations', () => {
     await expect(
       transport.requestJson('/v1/sessions', { method: 'POST', body: { title: 'test' } }),
     ).rejects.toThrow();
-    // Non-idempotent POST must NOT retry — exactly 1 attempt.
+    // Non-idempotent POST must NOT retry, exactly 1 attempt.
     expect(callCount).toBe(1);
   });
 
@@ -259,7 +259,7 @@ describe('perMethodPolicy override', () => {
 });
 
 // ---------------------------------------------------------------------------
-// MAJOR 1: perMethodPolicy end-to-end — methodId from contract, 3 attempts
+// MAJOR 1: perMethodPolicy end-to-end, methodId from contract, 3 attempts
 // ---------------------------------------------------------------------------
 
 describe('perMethodPolicy end-to-end via contract route', () => {
@@ -285,7 +285,7 @@ describe('perMethodPolicy end-to-end via contract route', () => {
         },
       },
     });
-    // Invoke with methodId in options — simulates what invokeContractRoute does
+    // Invoke with methodId in options, simulates what invokeContractRoute does
     const result = await transport.requestJson<{ ok: boolean }>('/v1/snapshot', {
       method: 'POST',
       body: {},
@@ -315,7 +315,7 @@ describe('perMethodPolicy end-to-end via contract route', () => {
       },
     });
     await expect(
-      // No methodId passed — default mutation safety applies
+      // No methodId passed, default mutation safety applies
       transport.requestJson('/v1/action', { method: 'POST', body: {} }),
     ).rejects.toThrow();
     expect(callCount).toBe(1);

@@ -1,5 +1,5 @@
 /**
- * Route emitters — typed wrappers for RouteEvent domain.
+ * Route emitters, typed wrappers for RouteEvent domain.
  */
 
 import { createEventEnvelope } from '../events/envelope.js';

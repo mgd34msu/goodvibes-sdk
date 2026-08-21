@@ -9,8 +9,8 @@
  * AutomationRun using the same context idioms the main execution path uses
  * (set run, advance job counters, persist, emit queued/started/completed).
  *
- * The check-in run is SYNCHRONOUS and terminal — there is no fire-and-forget
- * agent to reconcile later — so the run it produces is already `completed` or
+ * The check-in run is SYNCHRONOUS and terminal, there is no fire-and-forget
+ * agent to reconcile later, so the run it produces is already `completed` or
  * `failed`, and its `result` records what the check-in decided.
  */
 import { randomUUID } from 'node:crypto';
@@ -19,7 +19,7 @@ import type { AutomationRun } from './runs.js';
 import type { AutomationRunTrigger } from './types.js';
 import type { AutomationManagerExecutionContext } from './manager-runtime-execution.js';
 
-/** What a single check-in evaluation decided — the outcome the evaluator returns. */
+/** What a single check-in evaluation decided, the outcome the evaluator returns. */
 export interface AutomationCheckinOutcome {
   /** delivered: contacted the user. quiet: judged nothing warranted contact. skipped: disabled/quiet-hours. error: evaluation failed. */
   readonly outcome: 'delivered' | 'quiet' | 'skipped' | 'error';
@@ -38,7 +38,7 @@ export type AutomationCheckinEvaluator = (job: AutomationJob) => Promise<Automat
  * Run a check-in job to a terminal AutomationRun via the attached evaluator.
  * Records the run through the same context methods executeAutomationJob uses so
  * the automation run history, persistence, and events are identical to any
- * other job — the run is simply terminal on return rather than pending an agent.
+ * other job, the run is simply terminal on return rather than pending an agent.
  */
 export async function executeCheckinJob(
   context: AutomationManagerExecutionContext,

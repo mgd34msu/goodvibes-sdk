@@ -4,29 +4,29 @@
  *
  * Emits the MECHANICAL Python transport layer for the Home Assistant integration
  * (custom_components/goodvibes/client.py + schemas.py hand-write this today), from
- * the committed operator contract. HA keeps its ergonomic layer — the aiohttp
+ * the committed operator contract. HA keeps its ergonomic layer, the aiohttp
  * `_request` core, SSE/multipart variants, the voluptuous service validators, the
- * webhook + conversation transports — hand-written on top.
+ * webhook + conversation transports, hand-written on top.
  *
  * Scope is HONEST: HA consumes only a subset of the operator surface as plain
  * REST, so this generates for exactly that subset (inventoried from its client).
- * The daemon endpoints HA reaches that are NOT operator methods — the webhook
+ * The daemon endpoints HA reaches that are NOT operator methods, the webhook
  * (/webhook/homeassistant), the conversation stream/cancel, and the surface
- * health probe — carry no contract entry and are intentionally excluded; they
+ * health probe, carry no contract entry and are intentionally excluded; they
  * stay hand-written. Full-surface generation is not the goal.
  *
  * Emits, for the consumed subset:
  *   - CONTRACT_VERSION: the daemon contract version these types were generated
  *     against (the version pin surface).
  *   - CONSUMED_METHOD_IDS: the operator method ids this client depends on (the
- *     capability surface — the daemon must expose these).
+ *     capability surface, the daemon must expose these).
  *   - OPERATOR_ROUTES: methodId -> OperatorRoute(method, path) route constants.
  *   - Per-method input/output TypedDicts, generated from the contract's JSON
  *     Schemas (nested objects degrade to Mapping[str, Any], matching HA's
  *     existing dict-based transport rather than inventing deep structure).
  *
  * Deterministic (sorted ids, no clock): a regenerated file is byte-identical
- * unless the contract changed — the committed-artifact + --check drift idiom.
+ * unless the contract changed, the committed-artifact + --check drift idiom.
  *
  * Source of truth: packages/contracts/artifacts/operator-contract.json
  * Output (committed): packages/contracts/artifacts/python/homeassistant_operator_client.py
@@ -88,7 +88,7 @@ function literalOf(value: unknown): string {
 
 /**
  * Map a JSON Schema node to a Python type expression. Nested objects degrade to
- * `Mapping[str, Any]` — HA's transport is dict-based today, so deep typing would
+ * `Mapping[str, Any]`, HA's transport is dict-based today, so deep typing would
  * invent structure the integration does not carry. Top-level object schemas are
  * handled by the TypedDict emitter, not here.
  */
@@ -101,7 +101,7 @@ function pyType(schema: JsonSchema | undefined): string {
     const branches: string[] = [];
     for (const branch of anyOf as JsonSchema[]) {
       const t = pyType(branch);
-      // `Any` absorbs every other branch — a union with it is just `Any`.
+      // `Any` absorbs every other branch, a union with it is just `Any`.
       if (t === 'Any') return 'Any';
       if (!branches.includes(t)) branches.push(t);
     }
@@ -274,14 +274,14 @@ export function generateHomeassistantClient({ check }: { check: boolean }): bool
   }
   mkdirSync(dirname(HA_CLIENT_OUT_PATH), { recursive: true });
   writeFileSync(HA_CLIENT_OUT_PATH, content, 'utf8');
-  console.log(`[homeassistant-client] wrote ${HA_CLIENT_OUT_PATH} — ${consumedIdsFor(contract).length} consumed methods`);
+  console.log(`[homeassistant-client] wrote ${HA_CLIENT_OUT_PATH}, ${consumedIdsFor(contract).length} consumed methods`);
   return false;
 }
 
 if (import.meta.main) {
   const drifted = generateHomeassistantClient({ check: process.argv.includes('--check') });
   if (drifted) {
-    console.error('[homeassistant-client] drift detected — run `bun run refresh:contracts`');
+    console.error('[homeassistant-client] drift detected, run `bun run refresh:contracts`');
     process.exit(1);
   }
 }

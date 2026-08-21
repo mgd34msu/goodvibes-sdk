@@ -27,7 +27,7 @@ import {
 } from './phases/index.js';
 
 /**
- * PhasedToolExecutor — runs a ToolCall through the multi-phase execution pipeline.
+ * PhasedToolExecutor, runs a ToolCall through the multi-phase execution pipeline.
  *
  * Pipeline (in order):
  *   validate → prehook → permission → execute → mapOutput → posthook → succeeded
@@ -60,7 +60,7 @@ export class PhasedToolExecutor {
 
   /**
    * Execute a tool call through all pipeline phases.
-   * Returns a ToolResult regardless of outcome — callers never need to catch.
+   * Returns a ToolResult regardless of outcome, callers never need to catch.
    */
   async execute(
     call: ToolCall,
@@ -79,7 +79,7 @@ export class PhasedToolExecutor {
       const check = this.config.idempotencyStore.checkAndRecord(idKey);
 
       if (check.status === 'duplicate') {
-        logger.debug('PhasedToolExecutor: duplicate tool call — returning cached result', {
+        logger.debug('PhasedToolExecutor: duplicate tool call, returning cached result', {
           callId: call.id,
           tool: call.name,
           idKey,
@@ -99,7 +99,7 @@ export class PhasedToolExecutor {
       }
 
       if (check.status === 'in-flight') {
-        logger.warn('PhasedToolExecutor: in-flight duplicate detected — rejecting', {
+        logger.warn('PhasedToolExecutor: in-flight duplicate detected, rejecting', {
           callId: call.id,
           tool: call.name,
           idKey,
@@ -112,7 +112,7 @@ export class PhasedToolExecutor {
         };
       }
 
-      // 'new' — proceed; store the key so _fail/_cancel can markFailed.
+      // 'new', proceed; store the key so _fail/_cancel can markFailed.
       this._idKeyMap.set(call, idKey);
     }
 

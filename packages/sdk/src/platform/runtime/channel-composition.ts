@@ -1,5 +1,5 @@
 /**
- * channel-composition — route bindings, surface registry, and channel plugin
+ * channel-composition, route bindings, surface registry, and channel plugin
  * registry for a host composition root (held apart from the composition root for the
  * line cap).
  *
@@ -7,11 +7,11 @@
  * ChannelPluginRegistry are constructed WITHOUT the gate manager. The SDK's
  * surface gate map only names six surfaces (web/slack/discord/ntfy/webhook/
  * homeassistant) and reads every other adapter (telegram, whatsapp, signal,
- * imessage, msteams, ...) as OFF whenever a manager is present — no settings
+ * imessage, msteams, ...) as OFF whenever a manager is present, no settings
  * key could re-enable them. Until the gate map covers every adapter, the
  * honest governing switch here stays the surfaces.<id>.enabled config each
  * adapter already reads, exactly as the feature surface's own
- * constant-binding rule states. RouteBindingManager keeps its manager — its
+ * constant-binding rule states. RouteBindingManager keeps its manager, its
  * route-binding gate is a real registry feature.
  */
 

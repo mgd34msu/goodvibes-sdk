@@ -2,8 +2,8 @@
  * tool-denial-structured.test.ts
  *
  * A permission denial must reach the asking agent as structured, call-scoped data
- * — {denied, reason, scope} on the failed ToolResult, plus a self-explaining
- * error string — never a hung promise or a bare "Permission denied" line. These
+ *, {denied, reason, scope} on the failed ToolResult, plus a self-explaining
+ * error string, never a hung promise or a bare "Permission denied" line. These
  * tests drive the phased executor's permission phase with a denying permission
  * manager and assert the structured denial rides on the returned result.
  */

@@ -42,14 +42,14 @@ export class ControllableStore<T extends Record<string, unknown>> extends Persis
    * The delay is applied AFTER the bytes are formed, not before.
    *
    * This matters for the callers that hand `persist` a LIVE object rather than
-   * a copy — `DaemonBatchManager` passes `this.data`, `KVState` passes its own
+   * a copy, `DaemonBatchManager` passes `this.data`, `KVState` passes its own
    * map. `PersistentStore.persist` serialises what it is given a few
    * microtasks in, so for those callers the write's content is fixed early and
    * only its RENAME is late. That is also what the CI failure was: a slow
    * fsync, which is slow after the content exists. Sleeping before the capture
    * would model a write that is slow before it has looked at anything, and a
    * test built on that would let a stale write pick up state written while it
-   * was asleep — which is to say it would pass with the defect still in place.
+   * was asleep, which is to say it would pass with the defect still in place.
    */
   override async persist(data: T): Promise<void> {
     this.started += 1;

@@ -8,8 +8,8 @@
  * Split out of register-gateway-verb-groups.ts so the composition root stays a
  * registration index rather than also being the place push policy is assembled.
  *
- * Every config read here is LIVE — evaluated per event or per sweep, never
- * captured at construction — so changing `push.*` or `notifications.push*`
+ * Every config read here is LIVE, evaluated per event or per sweep, never
+ * captured at construction, so changing `push.*` or `notifications.push*`
  * takes effect without restarting the daemon.
  */
 import {
@@ -30,7 +30,7 @@ import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 
 /** The slice of the gateway dependency bag push composition needs. */
 export interface PushCompositionDeps {
-  /** SecretsManager (get/set) — VAPID keypair custody lives here, never in config. */
+  /** SecretsManager (get/set), VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
   /** Home-scoped path service; the subscription store file resolves under it. */
   readonly shellPaths: { resolveUserPath(...segments: string[]): string };
@@ -56,7 +56,7 @@ function readNumber(deps: PushCompositionDeps, key: ConfigKey, fallback: number)
 }
 
 /**
- * The VAPID JWT `sub` — the contact a push service uses to report a delivery
+ * The VAPID JWT `sub`, the contact a push service uses to report a delivery
  * problem. Explicit dep first (embedders), then the `push.vapidSubject` config
  * key, then the documented localhost fallback inside VapidManager. A configured
  * value that is not a mailto:/https: contact is refused by the config gate; if
@@ -80,7 +80,7 @@ export function resolveVapidSubject(deps: PushCompositionDeps): string | undefin
 
 /**
  * The subscription store with housekeeping running: reaped on recovery before
- * any push verb is served, then swept on the configured interval — a daemon
+ * any push verb is served, then swept on the configured interval, a daemon
  * that only swept at boot would never sweep at all.
  *
  * `warnAbovePerPrincipal` is a WARNING line, never a cap: nothing that still
@@ -129,7 +129,7 @@ export function createPushService(deps: PushCompositionDeps): PushService {
       DEFAULT_PUSH_SUBSCRIPTION_POLICY.failureThreshold,
     ),
     // Per-class silencing toggles (notifications.push*), read live per event.
-    // Every class defaults ON — the toggles only ever turn a class OFF.
+    // Every class defaults ON, the toggles only ever turn a class OFF.
     isCategoryEnabled: (category) => {
       const key = category === 'approval'
         ? 'notifications.pushApproval'

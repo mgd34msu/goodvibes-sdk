@@ -8,7 +8,7 @@
  *    oversized endpoint, and a non-http(s) scheme are each refused with a plain
  *    reason, so a record that could never receive a push is never stored.
  *  - The per-principal figure is a WARNING, not a cap. Passing it accepts the
- *    new device anyway and discloses the crowding — nothing that still works is
+ *    new device anyway and discloses the crowding, nothing that still works is
  *    ever removed to make room, so nobody has to resubscribe.
  *  - Only PROVABLY dead records are reaped: unusable key material, a torn
  *    record, or an endpoint the push service refused past the bounded-failure
@@ -41,7 +41,7 @@ import {
 } from '../packages/sdk/src/platform/push/index.ts';
 
 // ---------------------------------------------------------------------------
-// Real key material — a genuine 65-byte uncompressed P-256 point + 16-byte auth.
+// Real key material, a genuine 65-byte uncompressed P-256 point + 16-byte auth.
 // ---------------------------------------------------------------------------
 function realKeys(): { p256dh: string; auth: string } {
   const ecdh = createECDH('prime256v1');
@@ -53,7 +53,7 @@ function realKeys(): { p256dh: string; auth: string } {
 }
 
 /**
- * Per-test ceiling for the tests below that do real work — real ECDH keygen,
+ * Per-test ceiling for the tests below that do real work, real ECDH keygen,
  * real VAPID JWT signing, a real HTTP delivery to a real local socket, and real
  * file writes. A ceiling, not a target: nothing waits it out, so a fast host is
  * unaffected. bun's implicit 5 s default is an idle machine's number for that
@@ -214,7 +214,7 @@ describe('a working subscription is never removed to make room', () => {
     }
     const all = await store.all();
     expect(all).toHaveLength(4);
-    // Every device registered is still addressable — nothing was evicted.
+    // Every device registered is still addressable, nothing was evicted.
     expect(all.map((r) => r.id).sort()).toEqual([...ids].sort());
   });
 
@@ -287,7 +287,7 @@ describe('reaping requires evidence the subscription is already dead', () => {
     expect(report.removed[0]?.subscriptionId).toBe('push-dead');
     expect(report.removed[0]?.reason).toBe('failure-threshold');
     expect(report.removed[0]?.evidence).toContain('5 consecutive deliveries');
-    // The capability URL never appears in disclosure — origin + hash only.
+    // The capability URL never appears in disclosure, origin + hash only.
     expect(report.removed[0]?.endpointOrigin).toBe('https://push.example');
     expect(JSON.stringify(report)).not.toContain('/push-dead');
     const remaining = await store.all();
@@ -404,7 +404,7 @@ describe('housekeeping discloses and repeats', () => {
   test('a read never serves a record that is provably dead', async () => {
     seed([record({ id: 'push-junk', keys: { p256dh: 'p', auth: 'a' } }), record({ id: 'push-ok' })]);
     const store = makeStore();
-    // No sweep run yet — the read still refuses to hand back the dead record.
+    // No sweep run yet, the read still refuses to hand back the dead record.
     expect((await store.all()).map((r) => r.id)).toEqual(['push-ok']);
     expect(await store.get('push-junk')).toBeNull();
     expect(await store.listPublic('op-1')).toHaveLength(1);
@@ -504,7 +504,7 @@ describe('push.vapidSubject reaches a real delivery', () => {
     const secrets = new Map<string, string>();
     const config: Partial<Record<ConfigKey, unknown>> = {
       'push.vapidSubject': 'mailto:ops@example.test',
-      // Keep the periodic sweep out of this test's way — and out of every
+      // Keep the periodic sweep out of this test's way, and out of every
       // later file's way, since the service's own store is private and its
       // sweeper cannot be stopped from here.
       'push.subscriptions.sweepIntervalMinutes': SWEEP_NEVER_MINUTES,

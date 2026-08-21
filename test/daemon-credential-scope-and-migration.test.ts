@@ -1,6 +1,6 @@
 /**
  * A credential a daemon-side capability needs is the daemon's, wherever it was
- * captured — and the ones already stranded get lifted, without ever being lost.
+ * captured, and the ones already stranded get lifted, without ever being lost.
  *
  * The owner's rule, verbatim: "anything configured on one of the surfaces is
  * automatically available to be used by the daemon, even after the surface
@@ -8,11 +8,11 @@
  *
  * Three things are held here:
  *
- *   1. The RULE — a daemon-needed credential lands in the daemon tier no matter
+ *   1. The RULE, a daemon-needed credential lands in the daemon tier no matter
  *      which surface wrote it or what scope it asked for.
- *   2. The GATE — a surface-scoped write of a daemon-needed credential is
+ *   2. The GATE, a surface-scoped write of a daemon-needed credential is
  *      prevented structurally, by relocation, not by anyone remembering.
- *   3. The MIGRATION — credentials already in a surface store move up,
+ *   3. The MIGRATION, credentials already in a surface store move up,
  *      idempotently, and the source is never dropped until the destination has
  *      been read back and matched.
  *
@@ -48,7 +48,7 @@ import type { SecretRecord, SecretScope } from '../packages/sdk/src/platform/con
  * Every throwaway home this file creates, reaped when it finishes.
  *
  * `mkdtempSync` leaves the directory behind. One suite run is nothing; the
- * suites run constantly, and /tmp is a tmpfs with a fixed inode table — this
+ * suites run constantly, and /tmp is a tmpfs with a fixed inode table, this
  * repo's test scratch had taken 51,306 top-level directories and pushed the
  * table to 100% used, at which point every `mkdtempSync` in every suite fails
  * with ENOSPC while `df -h` still reports 24% free. Cleaning up is cheap and it
@@ -152,7 +152,7 @@ describe('the rule: a credential the daemon needs has one home', () => {
 describe('the gate: a surface-scoped write of a daemon credential is relocated, not honoured', () => {
   test('the value written from a surface is readable by the daemon with that surface gone', async () => {
     const root = throwawayHome();
-    // The agent writes it, asking — as every historical call site did — for its
+    // The agent writes it, asking, as every historical call site did, for its
     // own tier.
     const agent = manager(root, 'agent');
     await agent.set('SLACK_BOT_TOKEN', 'xoxb-test-only-not-a-real-token', { scope: 'user' });
@@ -225,7 +225,7 @@ function fakeStore(initial: Partial<Record<SecretScope, Record<string, string>>>
     async deleteFromScope(key, scope) {
       // Narrow by construction. The fake used to expose `delete` and honour the
       // scope filter literally, while the real `SecretsManager.delete` DISCARDS
-      // it for a daemon-needed key and sweeps every tier — so every ordering
+      // it for a daemon-needed key and sweeps every tier, so every ordering
       // test passed against a fake that disagreed with the real store on
       // exactly the operation the safety property depends on, and a successful
       // migration destroyed the credential. The port no longer offers `delete`
@@ -274,7 +274,7 @@ describe('the migration: stranded credentials move up, and are never lost doing 
 
   test('the source survives when the daemon copy does not read back', async () => {
     const store = fakeStore({ user: { [STRANDED_KEY]: STRANDED_VALUE } });
-    // The write "succeeds" and the read-back returns something else — a silent
+    // The write "succeeds" and the read-back returns something else, a silent
     // half-write, which is the failure the ordering exists to survive.
     store.failures.readBackReturns = null; // the daemon tier reads back empty
     const report = await migrateDaemonNeededCredentials(store);

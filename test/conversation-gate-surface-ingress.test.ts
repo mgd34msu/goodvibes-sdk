@@ -45,7 +45,7 @@ function buildHarness(
   const notices: Array<{ routeId: string | undefined; text: string }> = [];
   const queuedReplies: Array<{ agentId: string }> = [];
   // The store starts a sweep interval as soon as a proposal is pending, and it
-  // only self-clears once the last one resolves — a test that leaves one open
+  // only self-clears once the last one resolves, a test that leaves one open
   // otherwise leaves the sweep running for the rest of the shared process.
   const proposals = disposables.add(
     clock ? new WorkProposalStore({ now: () => clock.now }) : new WorkProposalStore(),
@@ -202,7 +202,7 @@ describe('conversation gate at the surface spawn boundary', () => {
     expect(harness.spawns).toHaveLength(0);
     await harness.send('yes');
     expect(harness.spawns).toHaveLength(1);
-    // Real work keeps the completion report — the WRFC controller parses it.
+    // Real work keeps the completion report, the WRFC controller parses it.
     expect(harness.spawns[0]!.replyStyle).toBeUndefined();
   });
 
@@ -320,7 +320,7 @@ describe('conversation gate at the surface spawn boundary', () => {
     const harness = buildHarness();
     ntfyInboundDedup.clear();
     // The same ntfy message id, delivered by the JSON subscription and again
-    // by the HTTP webhook route — the shape that produced two agent runs.
+    // by the HTTP webhook route, the shape that produced two agent runs.
     const payload = { topic: AGENT_TOPIC, message: 'Testing', id: 'ntfy-duplicate-1' };
 
     const first = await harness.deliver({ ...payload });

@@ -29,7 +29,7 @@ interface AutomationSchedulingContext {
   readonly maxConcurrentRuns: () => number;
   readonly executeJob: (job: AutomationJob, trigger: AutomationRunTrigger, dueRun: boolean, attempt?: number) => Promise<AutomationRun>;
   /**
-   * Record that a scheduled occurrence was missed — the planned run time is now
+   * Record that a scheduled occurrence was missed, the planned run time is now
    * further in the past than the catch-up window, so the run never fired (the
    * daemon was down, or the host was asleep). Optional so callers that only
    * (re)schedule live jobs need not wire it. When present it is invoked with the

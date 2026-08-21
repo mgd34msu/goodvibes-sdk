@@ -161,9 +161,9 @@ function githubYamlSources(): PinSource[] {
 /**
  * One bun version across the whole repository.
  *
- * `engines.bun` in the root package.json is the number; everything else — the
+ * `engines.bun` in the root package.json is the number; everything else, the
  * `packageManager` field, the `@types/bun` devDependency, and every
- * `bun-version` pin or default under `.github/` — is held to it. The per-package
+ * `bun-version` pin or default under `.github/`, is held to it. The per-package
  * `engines.bun` copies are already checked against the root above.
  *
  * The floor exists for a reason (bun 1.3.10-1.3.13 deadlock the module loader

@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness — barrel export.
+ * Evaluation Harness, barrel export.
  *
  * Provides the eval runner, scorecard scorer, built-in suites,
  * and baseline persistence utilities.

@@ -82,14 +82,14 @@ describe('durable approval rules', () => {
       const rebornStore = new UserPermissionRuleStore(rulePath);
       await rebornStore.init();
       const reborn = makeManager(rebornStore, async () => {
-        throw new Error('re-asked after restart — the durable rule was lost');
+        throw new Error('re-asked after restart, the durable rule was lost');
       });
       const afterRestart = await reborn.checkDetailed('exec', execArgs('git commit -m "two"'));
       expect(afterRestart.approved).toBe(true);
       expect(afterRestart.sourceLayer).toBe('user_rule');
       expect(afterRestart.reasonCode).toBe('user_rule_allow');
 
-      // A non-git command still asks — the class grant does not blanket exec.
+      // A non-git command still asks, the class grant does not blanket exec.
       let asked = false;
       const askingManager = makeManager(rebornStore, async () => {
         asked = true;
@@ -136,7 +136,7 @@ describe('durable approval rules', () => {
       expect(sameDir.approved).toBe(true);
       expect(prompts).toBe(1);
 
-      // Different directory: NOT covered — prompts again.
+      // Different directory: NOT covered, prompts again.
       await manager.checkDetailed('edit', {
         edits: [{ path: `${WORKSPACE}/secrets/c.ts`, find: 'x', replace: 'y' }],
       });
@@ -168,7 +168,7 @@ describe('durable approval rules', () => {
       expect(result.reasonCode).toBe('user_denied');
       expect(result.userReason).toBe('use bun, not npm');
 
-      // The exact structured result the model sees on the CONTINUING turn —
+      // The exact structured result the model sees on the CONTINUING turn,
       // same shape as the plan-mode prior art, with the user's words on it.
       const source = { reasonCode: result.reasonCode, sourceLayer: result.sourceLayer, userReason: result.userReason };
       const denial = buildToolDenial(source);
@@ -219,13 +219,13 @@ describe('approval broker coalescing and sweep', () => {
   test('a remember-tier decision sweeps queued asks the rule covers', async () => {
     const broker = new ApprovalBroker({ storePath: ':memory:' });
 
-    // Two DIFFERENT git commands queued (not identical — no coalescing).
+    // Two DIFFERENT git commands queued (not identical, no coalescing).
     const p1 = broker.requestApproval({ request: makeRequest('c1', 'exec', execArgs('git commit -m "x"')), sessionId: 's1' });
     const p2 = broker.requestApproval({ request: makeRequest('c2', 'exec', execArgs('git push origin main')), sessionId: 's1' });
     // And one non-git ask that the git grant must NOT sweep.
     const p3 = broker.requestApproval({ request: makeRequest('c3', 'exec', execArgs('npm publish')), sessionId: 's1' });
 
-    // Registration is async (store load + persist) — let the records land.
+    // Registration is async (store load + persist), let the records land.
     await Bun.sleep(5);
     const pending = broker.listApprovals().filter((record) => record.status === 'pending');
     expect(pending).toHaveLength(3);
@@ -244,7 +244,7 @@ describe('approval broker coalescing and sweep', () => {
 
     const after = broker.listApprovals();
     expect(after.filter((record) => record.status === 'approved')).toHaveLength(2);
-    // The npm ask is still pending — resolve it so nothing dangles.
+    // The npm ask is still pending, resolve it so nothing dangles.
     const npmAsk = after.find((record) => record.callId === 'c3')!;
     expect(npmAsk.status).toBe('pending');
     await broker.resolveApproval(npmAsk.id, { approved: false, reason: 'not now', actor: 'operator' });

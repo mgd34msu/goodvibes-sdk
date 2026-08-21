@@ -1,5 +1,5 @@
 /**
- * FeatureFlagManager — runtime feature gate and emergency kill-switch controller.
+ * FeatureFlagManager, runtime feature gate and emergency kill-switch controller.
  *
  * Responsibilities:
  *   - Initialises all flags from the registry with their default states.
@@ -97,7 +97,7 @@ class FeatureFlagManagerImpl {
    * `state` is the live effective state. `persistedState` is the last known
    * config-layer value; for a startup-gated flag with a pending restart these
    * two differ, which `pendingRestart` calls out explicitly rather than
-   * leaving a caller to infer it — see `applyConfigState()`.
+   * leaving a caller to infer it, see `applyConfigState()`.
    */
   getAll(): Map<string, { flag: FeatureFlag; state: FlagState; persistedState: FlagState; pendingRestart: boolean }> {
     const result = new Map<string, { flag: FeatureFlag; state: FlagState; persistedState: FlagState; pendingRestart: boolean }>();
@@ -118,7 +118,7 @@ class FeatureFlagManagerImpl {
 
   /**
    * True when a startup-gated flag has a persisted config value that differs
-   * from its current effective state — i.e. a process restart is required
+   * from its current effective state, i.e. a process restart is required
    * before the persisted value takes effect.
    *
    * @param flagId - The flag's kebab-case identifier.
@@ -217,7 +217,7 @@ class FeatureFlagManagerImpl {
    * Calling `kill()` on an already-killed flag updates the reason and
    * records a new transition (idempotent on state, not on reason).
    *
-   * **Note:** `kill()` intentionally bypasses `runtimeToggleable` — it is an
+   * **Note:** `kill()` intentionally bypasses `runtimeToggleable`, it is an
    * emergency override and must never be blocked by flag configuration.
    *
    * @param flagId - The flag's kebab-case identifier.
@@ -247,7 +247,7 @@ class FeatureFlagManagerImpl {
    * - A config-level `'killed'` state is applied without a reason string;
    *   use `kill()` directly for operator-initiated kills with reasons.
    *
-   * This is the boot-time path — called once, before the runtime event loop
+   * This is the boot-time path, called once, before the runtime event loop
    * begins, so it applies EVERY flag's desired state directly regardless of
    * `runtimeToggleable` (a startup-only flag may only be seeded this way).
    * For a config change arriving after boot, use `applyConfigState()`
@@ -268,7 +268,7 @@ class FeatureFlagManagerImpl {
 
   /**
    * Applies a single flag's config-layer value from a LIVE config change
-   * (i.e. `configManager.set('featureFlags.<id>', ...)` firing after boot —
+   * (i.e. `configManager.set('featureFlags.<id>', ...)` firing after boot,
    * see `bindFeatureFlagConfigBridge`), honoring `runtimeToggleable`:
    *
    * - Runtime-toggleable flags apply immediately through the same
@@ -300,7 +300,7 @@ class FeatureFlagManagerImpl {
   }
 
   /**
-   * Shared transition logic for a single flag's desired config-layer state —
+   * Shared transition logic for a single flag's desired config-layer state,
    * used by both `loadFromConfig()` (every flag, at boot) and
    * `applyConfigState()` (one flag, already gated on `runtimeToggleable` by
    * its caller). Idempotent, and honors kill precedence: config can never
@@ -317,7 +317,7 @@ class FeatureFlagManagerImpl {
     }
 
     if (desiredState === 'enabled' && current === 'killed') {
-      // Config wants enabled but flag is killed — skip; kill takes precedence
+      // Config wants enabled but flag is killed, skip; kill takes precedence
       return;
     }
 
@@ -330,7 +330,7 @@ class FeatureFlagManagerImpl {
    * Subscribes to flag state changes.
    *
    * The callback fires synchronously when a flag transitions state.
-   * Callbacks must not throw — errors are caught and logged to stderr.
+   * Callbacks must not throw, errors are caught and logged to stderr.
    *
    * @param callback - Called with `(flagId, newState, previousState)`.
    * @returns An unsubscribe function; call it to remove the subscription.

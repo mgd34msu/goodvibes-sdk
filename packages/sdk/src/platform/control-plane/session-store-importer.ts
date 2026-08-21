@@ -2,18 +2,18 @@
  * session-store-importer.ts
  *
  * Boot-time migration that folds every pre-existing session store into the ONE
- * home-scoped durable broker store. Idempotent and safe to run repeatedly — the
+ * home-scoped durable broker store. Idempotent and safe to run repeatedly, the
  * merge is keyed on session id, so a re-run over the same sources is a no-op.
  *
  * Sources folded in (the one-broker session-spine effort, see CHANGELOG 1.0.0, S1 spine):
- *  1. Companion chat files — ~/.goodvibes/companion-chat/sessions/*.json
+ *  1. Companion chat files, ~/.goodvibes/companion-chat/sessions/*.json
  *     (home-scoped, projectless → project 'unknown'); INCLUDING closed sessions.
- *  2. Per-project broker snapshots — <root>/.goodvibes/<surface>/control-plane/
+ *  2. Per-project broker snapshots, <root>/.goodvibes/<surface>/control-plane/
  *     sessions.json (the old project-scoped store path); stamped project = <root>.
- *  3. The stale agent-fork store — same broker-snapshot shape under its surface.
+ *  3. The stale agent-fork store, same broker-snapshot shape under its surface.
  *
  * No session is dropped (closed included); deletion remains the GC's job. Corrupt
- * or partial files are logged and skipped per-file — the run never aborts.
+ * or partial files are logged and skipped per-file, the run never aborts.
  */
 
 import { existsSync, readdirSync } from 'node:fs';

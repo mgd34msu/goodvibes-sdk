@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Tool result summary — verifies that toToolResultSummary correctly maps
+ * Tool result summary, verifies that toToolResultSummary correctly maps
  * ToolResult / SyntheticToolResult shapes to ToolResultSummary.
  */
 describe('tool result summary', () => {

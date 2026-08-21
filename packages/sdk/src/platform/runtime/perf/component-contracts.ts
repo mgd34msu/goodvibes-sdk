@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Component resource contracts — per-component CPU/IO/update budget definitions.
+ * Component resource contracts, per-component CPU/IO/update budget definitions.
  *
  * Each component declares a resource contract describing its acceptable update
  * rate and render cost. The ComponentHealthMonitor enforces these contracts at

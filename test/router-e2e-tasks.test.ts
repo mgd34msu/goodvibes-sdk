@@ -19,7 +19,7 @@ import { makeDefaultDaemonHandlerStub } from './_helpers/daemon-stub-handlers.js
 import { makeRequest } from './_helpers/router-requests.js';
 
 // ---------------------------------------------------------------------------
-// describe: task routes — happy paths
+// describe: task routes, happy paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e tasks — POST /task (happy path)', () => {
@@ -119,7 +119,7 @@ describe('router-e2e tasks — POST /task (happy path)', () => {
 });
 
 // ---------------------------------------------------------------------------
-// describe: task routes — failure paths
+// describe: task routes, failure paths
 // ---------------------------------------------------------------------------
 
 describe('router-e2e tasks — failure paths', () => {

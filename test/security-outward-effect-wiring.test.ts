@@ -2,7 +2,7 @@
  * security-outward-effect-wiring.test.ts
  *
  * This file protects the wiring around `evaluateOutwardEffect`, not the
- * derivation math itself — that is `security-content-taint.test.ts`'s job.
+ * derivation math itself, that is `security-content-taint.test.ts`'s job.
  * Three things had to be right together for the fix this round shipped to
  * actually fix anything, and each is a place a single wrong line silently
  * reopens the hole the mechanism exists to close:
@@ -12,11 +12,11 @@
  *    "since the process started", and one mailbox read on Monday refused
  *    every send for the rest of the week. `inputOriginIsOwnerDirect` is the
  *    predicate it trusts, and it has to fail closed on anything it does not
- *    recognise — an unknown source string must never be read as the owner.
+ *    recognise, an unknown source string must never be read as the owner.
  *  - WHAT can clear a refusal. Only `grantOwnerApproval` from the
  *    `owner-direct` surface, bound to the exact payload, for a few minutes,
- *    spent once. Every other shape — a phrase in the chat, an approval for a
- *    different message, an expired one, one taken twice — has to still
+ *    spent once. Every other shape, a phrase in the chat, an approval for a
+ *    different message, an expired one, one taken twice, has to still
  *    refuse, or the gate is cleared by whichever surface can get the right
  *    words in front of it, which is the thing being defended against.
  *  - WHAT the refusal SAYS. It has to name the surface correctly (a mailbox
@@ -29,10 +29,10 @@
  *    from the same owner, in the same minute, for the same action id.
  *  - An approval granted without seeing the payload (the coarse gesture)
  *    never clears a finding that says a specific field derives from
- *    specific untrusted text — it can only clear the coarse "I read
+ *    specific untrusted text, it can only clear the coarse "I read
  *    something, unspecified what" refusal it was actually shown.
  *  - A surface with no `ownerRemedy` wired gets told, plainly, that nothing
- *    in the conversation clears this — never a generic "reply to confirm"
+ *    in the conversation clears this, never a generic "reply to confirm"
  *    that implies a mechanism the surface has not built.
  */
 
@@ -79,7 +79,7 @@ describe('inputOriginIsOwnerDirect — the predicate the turn reset trusts', () 
 
   test('ownerDirect is an attestation from the code path and overrides source in both directions', () => {
     expect(inputOriginIsOwnerDirect({ ownerDirect: true, source: 'anything' })).toBe(true);
-    // An explicit denial wins even over a source that would otherwise pass —
+    // An explicit denial wins even over a source that would otherwise pass,
     // a transport that knows this was NOT the owner must be believed.
     expect(inputOriginIsOwnerDirect({ ownerDirect: false, source: 'operator' })).toBe(false);
   });
@@ -160,7 +160,7 @@ describe('evaluateOutwardEffect — the allowed case the whole mechanism exists 
   });
 
   test('an ingest recorded WITHOUT its text falls back to the coarse check and still refuses', () => {
-    // The recorder could not supply the text — the ledger degrades to "was
+    // The recorder could not supply the text, the ledger degrades to "was
     // anything read", not to "assume safe because nothing is comparable".
     const ledger = new UntrustedContentLedger();
     ledger.record({ surface: 'email', origin: 'email:someone.example', at: new Date().toISOString() });
@@ -241,7 +241,7 @@ describe('wording — naming the surface right, and never asking the owner to au
       { surface: 'email', origin: 'email:legal.example' },
     ]);
 
-    // One "who controls it" clause for the surface, not one per origin — that
+    // One "who controls it" clause for the surface, not one per origin, that
     // half is a property of being email, and repeating it is noise.
     expect(description.match(/written by/g)).toHaveLength(1);
     expect(description).toContain('email:accounting.example');

@@ -9,7 +9,7 @@
  * is returned exactly once, at mint time (for the QR / pairing hand-off); after
  * that the daemon authenticates by hashing the presented token and looking the
  * hash up, so the listable record never contains the secret. `list()` hands
- * back name / created / last-seen only — never the hash, never the secret.
+ * back name / created / last-seen only, never the hash, never the secret.
  *
  * Revocation is immediate: `revoke()` deletes the record, so the very next
  * `authenticate()` of that token misses and the request is unauthorized.
@@ -20,7 +20,7 @@
  *
  * Storage is synchronous JSON at mode 0600 (the same custody posture as the
  * shared operator token file), because the auth path that consults it is itself
- * synchronous — one in-memory index, flushed on every mutation.
+ * synchronous, one in-memory index, flushed on every mutation.
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { readJsonFileOrQuarantine, writeJsonFileAtomic } from '../utils/atomic-json-store.js';
@@ -30,7 +30,7 @@ const TOKEN_PREFIX = 'gvp_';
 /** Do not thrash the disk stamping last-seen on every request. */
 const LAST_SEEN_FLUSH_INTERVAL_MS = 10_000;
 
-/** A per-pairing token as stored on disk — the hash, never the secret. */
+/** A per-pairing token as stored on disk, the hash, never the secret. */
 interface StoredPairingToken {
   readonly id: string;
   name: string;
@@ -46,7 +46,7 @@ interface PairingTokenSnapshot {
   legacyRevoked?: boolean | undefined;
 }
 
-/** The redacted, wire-safe view of a pairing token — no hash, no secret. */
+/** The redacted, wire-safe view of a pairing token, no hash, no secret. */
 export interface PublicPairingToken {
   readonly id: string;
   readonly name: string;
@@ -54,11 +54,11 @@ export interface PublicPairingToken {
   readonly lastSeenAt?: number | undefined;
 }
 
-/** The result of minting a token — the ONLY time the plaintext secret is exposed. */
+/** The result of minting a token, the ONLY time the plaintext secret is exposed. */
 export interface MintedPairingToken {
   readonly id: string;
   readonly name: string;
-  /** The plaintext token — returned once, never stored, never listed again. */
+  /** The plaintext token, returned once, never stored, never listed again. */
   readonly token: string;
   readonly createdAt: number;
 }
@@ -109,7 +109,7 @@ export interface PairingTokenManagerOptions {
   /**
    * Reads `device.nodes.maxPaired` at mint time. A function, not a number, so a
    * cap change takes effect on the next pairing without re-constructing the
-   * store — and so this module never has to depend on ConfigManager.
+   * store, and so this module never has to depend on ConfigManager.
    */
   readonly maxPaired?: (() => number | undefined) | undefined;
 }
@@ -148,7 +148,7 @@ export class PairingTokenManager {
     return Math.floor(raw);
   }
 
-  /** How many paired device nodes exist right now — one record per node. */
+  /** How many paired device nodes exist right now, one record per node. */
   pairedCount(): number {
     return this.snapshot.tokens.length;
   }
@@ -211,7 +211,7 @@ export class PairingTokenManager {
    * Bounded by `device.nodes.maxPaired` when the host supplied a reader for it.
    * The rules, all of which are exercised by tests:
    *
-   * - Below the cap nothing changes at all — same append, same result.
+   * - Below the cap nothing changes at all, same append, same result.
    * - At the cap, a NEW node is refused with {@link PairingLimitReachedError},
    *   which names the setting, the cap and the live count.
    * - At the cap, a node that is ALREADY paired (same name) is never refused: it

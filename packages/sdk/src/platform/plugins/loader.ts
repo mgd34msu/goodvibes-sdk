@@ -43,7 +43,7 @@ export function getPluginDirectories(options: PluginPathOptions): string[] {
 }
 
 /**
- * PluginManifest — The structure of a plugin's manifest.json.
+ * PluginManifest, The structure of a plugin's manifest.json.
  */
 export interface PluginManifest {
   /** Unique plugin identifier (no spaces, lowercase-kebab). */
@@ -58,7 +58,7 @@ export interface PluginManifest {
 }
 
 /**
- * PluginEntryPoint — The exports expected from a plugin's entry file.
+ * PluginEntryPoint, The exports expected from a plugin's entry file.
  */
 export interface PluginEntryPoint {
   /** Called once after the plugin is loaded. Receives the sandboxed PluginAPI. */
@@ -70,7 +70,7 @@ export interface PluginEntryPoint {
 }
 
 /**
- * LoadedPlugin — Runtime state of a single loaded plugin.
+ * LoadedPlugin, Runtime state of a single loaded plugin.
  */
 export interface LoadedPlugin {
   manifest: PluginManifest;
@@ -85,7 +85,7 @@ export interface LoadedPlugin {
 }
 
 /**
- * DiscoveredPlugin — Result of scanning the plugins directory.
+ * DiscoveredPlugin, Result of scanning the plugins directory.
  */
 export interface DiscoveredPlugin {
   pluginDir: string;
@@ -93,7 +93,7 @@ export interface DiscoveredPlugin {
 }
 
 /**
- * discoverPlugins — Scan the configured plugin directories for valid plugin folders.
+ * discoverPlugins, Scan the configured plugin directories for valid plugin folders.
  * Each subdirectory with a readable manifest.json is a candidate.
  */
 function scanPluginDirectory(rootDir: string): DiscoveredPlugin[] {
@@ -141,7 +141,7 @@ function scanPluginDirectory(rootDir: string): DiscoveredPlugin[] {
 
       results.push({ pluginDir, manifest });
     } catch (err) {
-      logger.warn(`[plugins] ${entry}: failed to parse manifest — ${summarizeError(err)}`);
+      logger.warn(`[plugins] ${entry}: failed to parse manifest, ${summarizeError(err)}`);
     }
   }
 
@@ -161,7 +161,7 @@ export function discoverPlugins(options: PluginPathOptions): DiscoveredPlugin[] 
 }
 
 /**
- * PluginLoaderDeps — External dependencies injected into the loader.
+ * PluginLoaderDeps, External dependencies injected into the loader.
  */
 export interface PluginLoaderDeps {
   runtimeBus: RuntimeEventBus;
@@ -182,7 +182,7 @@ export interface PluginLoaderDeps {
 }
 
 /**
- * loadPlugin — Load, init, and activate a single plugin.
+ * loadPlugin, Load, init, and activate a single plugin.
  * Returns a LoadedPlugin on success, or null on failure.
  *
  * @param cacheBust - Optional timestamp suffix appended to the import URL to bypass
@@ -201,7 +201,7 @@ export async function loadPlugin(
   const resolvedEntry = resolve(entryPath);
   const resolvedPluginDir = resolve(pluginDir);
   if (!resolvedEntry.startsWith(resolvedPluginDir + '/') && resolvedEntry !== resolvedPluginDir) {
-    logger.error(`[plugins] ${manifest.name}: path traversal detected — entry '${entryFile}' resolves outside plugin directory`);
+    logger.error(`[plugins] ${manifest.name}: path traversal detected, entry '${entryFile}' resolves outside plugin directory`);
     return null;
   }
 
@@ -210,8 +210,8 @@ export async function loadPlugin(
     return null;
   }
 
-  // Trust notice — plugins run as trusted code (like VS Code extensions)
-  logger.warn(`[plugins] Loading '${manifest.name}' — plugins are trusted code and run with full application access`);
+  // Trust notice, plugins run as trusted code (like VS Code extensions)
+  logger.warn(`[plugins] Loading '${manifest.name}', plugins are trusted code and run with full application access`);
 
   const loaded: LoadedPlugin = {
     manifest,
@@ -221,7 +221,7 @@ export async function loadPlugin(
   };
 
   try {
-    // Dynamic import — Bun supports TS imports directly.
+    // Dynamic import, Bun supports TS imports directly.
     // Append cache-bust query param on reload so Bun re-executes the module.
     const importPath = cacheBust !== undefined ? `${entryPath}?t=${cacheBust}` : entryPath;
     const mod = await import(importPath) as unknown;
@@ -279,13 +279,13 @@ export async function loadPlugin(
     logger.info(`[plugins] ${manifest.name} v${manifest.version} activated`);
     return loaded;
   } catch (err) {
-    logger.error(`[plugins] ${manifest.name}: load failed — ${summarizeError(err)}`);
+    logger.error(`[plugins] ${manifest.name}: load failed, ${summarizeError(err)}`);
     // Run cleanup for anything that was registered before the error
     for (const fn of loaded.cleanup) {
       try {
         fn();
       } catch (cleanupError) {
-        logger.warn(`[plugins] ${manifest.name}: cleanup after failed load threw — ${summarizeError(cleanupError)}`);
+        logger.warn(`[plugins] ${manifest.name}: cleanup after failed load threw, ${summarizeError(cleanupError)}`);
       }
     }
     return null;
@@ -293,7 +293,7 @@ export async function loadPlugin(
 }
 
 /**
- * unloadPlugin — Deactivate a plugin and run all cleanup callbacks.
+ * unloadPlugin, Deactivate a plugin and run all cleanup callbacks.
  */
 export async function unloadPlugin(plugin: LoadedPlugin): Promise<void> {
   if (!plugin.active) return;
@@ -303,14 +303,14 @@ export async function unloadPlugin(plugin: LoadedPlugin): Promise<void> {
       await plugin.entry.deactivate();
     }
   } catch (err) {
-    logger.warn(`[plugins] ${plugin.manifest.name}: deactivate threw — ${summarizeError(err)}`);
+    logger.warn(`[plugins] ${plugin.manifest.name}: deactivate threw, ${summarizeError(err)}`);
   }
 
   for (const fn of plugin.cleanup) {
     try {
       fn();
     } catch (err) {
-      logger.warn(`[plugins] ${plugin.manifest.name}: cleanup threw — ${summarizeError(err)}`);
+      logger.warn(`[plugins] ${plugin.manifest.name}: cleanup threw, ${summarizeError(err)}`);
     }
   }
   plugin.cleanup.length = 0;

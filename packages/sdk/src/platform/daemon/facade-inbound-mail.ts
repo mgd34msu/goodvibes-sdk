@@ -1,5 +1,5 @@
 /**
- * facade-inbound-mail.ts — assembling the inbound-mail graph for the daemon.
+ * facade-inbound-mail.ts, assembling the inbound-mail graph for the daemon.
  *
  * Every piece here already exists and is already tested. This file is the
  * wiring, and it is separate from `facade-composition.ts` for the same reason
@@ -9,21 +9,21 @@
  *
  * Three of those decisions are worth reading before changing anything.
  *
- * **The stores live under `~/.goodvibes/daemon/`** — `resolveUserPath('daemon',
+ * **The stores live under `~/.goodvibes/daemon/`**, `resolveUserPath('daemon',
  * …)`, the surface-scoped mechanism, not a hand-built path. All three outlive a
  * restart, so all three are swept at load by the housekeeper before the watcher
  * serves any mail.
  *
  * **The expectation book is constructed HERE, once, with the real authority
  * probe.** It had never been constructed in production at all: its own
- * defensive check — refuse to open an expectation if email ever gained command
- * authority — could not have fired, because there was nothing for it to fire
+ * defensive check, refuse to open an expectation if email ever gained command
+ * authority, could not have fired, because there was nothing for it to fire
  * in. `InboundExpectationRegistry` defaults to the genuine predicate, so
  * building it is what takes that check off the shelf.
  *
  * **The verbs are registered here too.** `email.expectation.open/list/cancel`
  * were cataloged with no production call site, which made the whole capability
- * inert in exactly the way §2.3 describes — the middle of the chain missing
+ * inert in exactly the way §2.3 describes, the middle of the chain missing
  * while both ends worked. They are attached to the registry that this function
  * builds, alongside `email.inbound.status` over the supervisor.
  *
@@ -32,7 +32,7 @@
  * `createInboundMailSourceFactory` took the builder as an optional `deps.gmail`
  * and this file passed nothing, so the factory answered `null` for
  * `kind: 'gmail'` on every machine while `selectionFacts` reported
- * `googleAdopted: options.gmail !== undefined` — permanently false. An owner
+ * `googleAdopted: options.gmail !== undefined`, permanently false. An owner
  * with Google adopted and no IMAP set up therefore had no inbound mail at all,
  * and was told "no Google credentials have been adopted on this machine".
  *
@@ -42,7 +42,7 @@
  * provider (see `facade-gmail-reader.ts`); the cursor store, the expectation
  * predicate and the clock are this file's own; and the poll cadence and the
  * capability re-probe wait arrive on the builder's input, read once in
- * `source-factory.ts` at create time. One key, one reader — a second read here
+ * `source-factory.ts` at create time. One key, one reader, a second read here
  * would be a second answer to a question the owner has already answered, and
  * the config gate accepts either call form so it could not tell them apart.
  *
@@ -92,7 +92,7 @@ import type { ShellPathService } from '../runtime/shell-paths.js';
 import type { StructuredNotice } from '../email/inbound-notice.js';
 import type { SurfaceNoticeDelivery } from './types.js';
 
-/** How many accounts one supervisor watches. One, today — see `readWatchedAccount`. */
+/** How many accounts one supervisor watches. One, today, see `readWatchedAccount`. */
 const DEFAULT_MAILBOX = 'INBOX';
 
 export interface InboundMailCompositionOptions {
@@ -115,7 +115,7 @@ export interface InboundMailCompositionOptions {
    *
    * Takes the STRUCTURE, not a rendered string, so nothing on the inbound path
    * ever holds channel-formatted text. The helper resolves the surface from the
-   * binding and picks the escaper there — the only code that turns spans into
+   * binding and picks the escaper there, the only code that turns spans into
    * text is the code that knows where they are going.
    */
   readonly deliverStructuredNotice: (
@@ -130,7 +130,7 @@ export interface InboundMailCompositionOptions {
    * ever filled it, and an unfilled optional field is indistinguishable from a
    * machine with no Google account. A required provider that ANSWERS
    * `unavailable` with a reason carries the same information and cannot be
-   * forgotten — `createBuiltinChannelRuntime` stops compiling if it is dropped.
+   * forgotten, `createBuiltinChannelRuntime` stops compiling if it is dropped.
    *
    * Called once per supervisor start rather than held as a resolved value, so a
    * credential adopted while the daemon is running is picked up on the next
@@ -168,9 +168,9 @@ type NoticeRouteAnswer =
   | Extract<NoticeRouteResolution, { kind: 'unavailable' }>;
 
 /**
- * Where the owner is told about inbound mail (§8) — or why there is nowhere.
+ * Where the owner is told about inbound mail (§8), or why there is nowhere.
  *
- * A named binding id wins. `default` — the shipped value — means "inherit
+ * A named binding id wins. `default`, the shipped value, means "inherit
  * whatever he already uses", and with no separate owner-notice-route concept
  * in the platform, the honest reading of that is the route binding most
  * recently seen: the one he last reached the daemon on.
@@ -189,8 +189,8 @@ type NoticeRouteAnswer =
  * All three were recorded as `no-route-binding` and none of them was reported
  * as anything, so a message the owner never heard about looked the same as a
  * message he had never configured a route for. The record still says
- * `no-route-binding` — that is the delivery layer's vocabulary and the store's
- * — while the condition surfaced through `email.inbound.status` and the health
+ * `no-route-binding`, that is the delivery layer's vocabulary and the store's
+ *, while the condition surfaced through `email.inbound.status` and the health
  * entry carries the reason and its own remedial step.
  */
 function resolveNoticeRoute(
@@ -261,7 +261,7 @@ function readNumberSetting(configManager: ConfigManager, key: Parameters<ConfigM
  * `null` is not a failure and it is not silence: `BuiltinChannelRuntime`
  * reports at ERROR when inbound mail is enabled and nothing was composed, and
  * the cluster registration declines to contest a surface this node cannot
- * serve — a node that won that election would stand every other node down and
+ * serve, a node that won that election would stand every other node down and
  * then read nothing.
  */
 export function composeInboundMail(
@@ -353,7 +353,7 @@ export function composeInboundMail(
   // announcer: they are two consumers of one fact, and an announcer that also
   // retired expectations would be doing something its name does not say.
   //
-  // `capabilityChanged` itself is the one that decides what to fail — a
+  // `capabilityChanged` itself is the one that decides what to fail, a
   // `degraded` transition (reconnecting, backing off) fails NOTHING, because
   // the reconnect fetches everything above the cursor.
   const announcer = createInboundTerminalFailureAnnouncer({
@@ -414,8 +414,8 @@ export function composeInboundMail(
       // `hasOpen()` rather than `list().length > 0`, and that is a correctness
       // fix rather than a tidier spelling. `list()` reaped what it found
       // expired and dropped the reports, and this predicate runs every five
-      // seconds while an expectation is open — far faster than the thirty-second
-      // reporting sweep — so it won the race every time and a verification that
+      // seconds while an expectation is open, far faster than the thirty-second
+      // reporting sweep, so it won the race every time and a verification that
       // never arrived expired without anybody being told. See
       // `InboundExpectationRegistry.hasOpen`.
       expectationOpen: () => expectations.hasOpen(),
@@ -431,7 +431,7 @@ export function composeInboundMail(
       // in, from the `settings` this file resolved and passed to the factory.
       capabilityRecheckMs: input.capabilityRecheckMs,
       // `surfaces.email.inbound.onInsufficientCapability`, read once by
-      // `source-factory.ts` at CREATE time and handed in — one key, one reader,
+      // `source-factory.ts` at CREATE time and handed in, one key, one reader,
       // the rule the two poll intervals are annotated with above. Re-reading it
       // here would be a second answer to a question that decides whether the
       // daemon announces mail it can never act on.
@@ -456,7 +456,7 @@ export function composeInboundMail(
     // on the next start rather than at the next restart.
     //
     // `googleAdopted` is the answer from a composition that actually opened the
-    // credential and asked Google for the mailbox — not, as it was, the
+    // credential and asked Google for the mailbox, not, as it was, the
     // presence of an injected builder that nothing ever injected. When it is
     // false the reason travels with it, because "no account connected", "the
     // grant was refused" and "Google could not be reached" need three different
@@ -498,7 +498,7 @@ export function composeInboundMail(
       noticeHealth,
     }),
     // §3.4b: a terminal state is ANNOUNCED, not merely recorded. This used to
-    // be a `logger.error` and nothing else — the once-per-transition tracker
+    // be a `logger.error` and nothing else, the once-per-transition tracker
     // built, and its sink a log line, for the one condition that means no mail
     // will ever arrive again. It goes to the owner through the same structured
     // notice port arriving mail goes through, and still logs.
@@ -510,7 +510,7 @@ export function composeInboundMail(
   housekeeper.start(6 * 60 * 60_000);
   // The call `sweep()` never had. Beside the housekeeper's timer and not inside
   // the supervisor's start, because `email.expectation.open` can register an
-  // expectation while no source is running — and a daemon watching no mailbox
+  // expectation while no source is running, and a daemon watching no mailbox
   // is exactly when an expectation running out would otherwise be reported by
   // nothing. Six hours is right for reaping records off disk; it is not right
   // for a promise measured in minutes, so this runs on its own cadence.
@@ -535,14 +535,14 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
  * and it names the address those credentials read. That is a fact obtained from
  * Google. The previous version asked instead whether the first entry of
  * `surfaces.email.inbound.accounts` equalled that address, which made a
- * configuration convention the source of truth — and the convention does not
+ * configuration convention the source of truth, and the convention does not
  * hold. The schema calls that key a list of "mailbox account identifiers, e.g.
  * `["primary"]`", its description is what the owner reads when he sets it, and
  * `sameAddress('primary', 'owner@gmail.com')` is false. So an owner who
  * connected Google, turned inbound mail on and filled the key in the way its
  * own description tells him to got `mailAccountIsGmail: false`, `auto` chose
- * IMAP, and — with no IMAP host configured, which is the whole premise of this
- * path — the factory answered `null`: the exact end state the Gmail
+ * IMAP, and, with no IMAP host configured, which is the whole premise of this
+ * path, the factory answered `null`: the exact end state the Gmail
  * construction fix was written to close. Only a key holding a full Gmail
  * address made it work, and the test that covered it set one.
  *
@@ -551,7 +551,7 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
  *
  * **The account names an address.** It is compared, because an owner who wrote
  * an address meant that mailbox. Equal to the connected one is direct evidence.
- * Different, and Gmail's API cannot read it — unless the configured IMAP host
+ * Different, and Gmail's API cannot read it, unless the configured IMAP host
  * is a Google one, which is the Workspace-custom-domain case below.
  *
  * **The account is an identifier, and no IMAP host is configured.** Nothing
@@ -580,7 +580,7 @@ function isGmailMailbox(
   }
   // No host configured: nothing in this machine's configuration names a mailbox
   // other than the one the credential reads, and the credential resolved. That
-  // is direct evidence, not a fallback — `resolveGmailInboundReader` has
+  // is direct evidence, not a fallback, `resolveGmailInboundReader` has
   // already proved the grant works and asked Google which address it belongs
   // to. An `unavailable` resolution never reaches here at all; the caller
   // answers `mailAccountIsGmail: false` with the reader's own reason.
@@ -591,7 +591,7 @@ function isGmailMailbox(
 /**
  * Whether an `accounts` entry is an email address or a mailbox identifier.
  *
- * The schema allows both — `["primary"]` is its own example — and they mean
+ * The schema allows both, `["primary"]` is its own example, and they mean
  * different things here: an address is a claim about WHICH mailbox and gets
  * compared, an identifier is a label for this watcher and claims nothing.
  * Treating an identifier as an address is what produced a false negative for
@@ -612,7 +612,7 @@ function isGoogleHost(host: string): boolean {
 }
 
 /**
- * Address equality, case-folded and trimmed — and nothing cleverer.
+ * Address equality, case-folded and trimmed, and nothing cleverer.
  *
  * Deliberately NOT Gmail's dot-and-plus folding. Deciding that
  * `o.wner+tag@gmail.com` is the same mailbox as `owner@gmail.com` would be this

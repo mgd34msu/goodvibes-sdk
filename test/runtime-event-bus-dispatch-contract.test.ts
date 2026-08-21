@@ -2,12 +2,12 @@
  * RuntimeEventBus dispatch ordering contract.
  *
  * Pins the guarantee documented on the RuntimeEventBus class doc: emit() NEVER
- * invokes a subscriber synchronously — every handler is deferred to its own
+ * invokes a subscriber synchronously, every handler is deferred to its own
  * queueMicrotask. Consequently a component may emit from the MIDDLE of a state
  * mutation and no subscriber can ever observe the half-applied state: by the
  * time a listener runs, the mutating call has already returned and the state
  * has settled. Event-ordering safety across the runtime (e.g. the orchestration
- * zombie-reap path) rests on this — a change to synchronous dispatch would flip
+ * zombie-reap path) rests on this, a change to synchronous dispatch would flip
  * these assertions.
  */
 import { describe, expect, test } from 'bun:test';
@@ -32,7 +32,7 @@ describe('RuntimeEventBus dispatch ordering contract', () => {
     const observed: string[] = [];
     bus.onDomain('agents', () => { observed.push(state.phase); });
 
-    // A state mutation that emits from its MIDDLE — before the synchronous
+    // A state mutation that emits from its MIDDLE, before the synchronous
     // section finishes. If emit dispatched synchronously, the listener would
     // read the transient 'mutating' state.
     function mutateAndEmit(): void {
@@ -48,7 +48,7 @@ describe('RuntimeEventBus dispatch ordering contract', () => {
 
     await flushMicrotasks();
 
-    // The listener ran later and observed ONLY the settled state — never 'mutating'.
+    // The listener ran later and observed ONLY the settled state, never 'mutating'.
     expect(observed).toEqual(['settled']);
   });
 

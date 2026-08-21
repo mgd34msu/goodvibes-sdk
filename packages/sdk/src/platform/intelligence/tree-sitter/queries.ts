@@ -239,7 +239,7 @@ function extractTSSymbols(root: Node, container?: string): SymbolInfo[] {
       return;
     }
 
-    // const/let/var declarations — look for declarators at top level only
+    // const/let/var declarations, look for declarators at top level only
     if (type === 'lexical_declaration' || type === 'variable_declaration') {
       const isConst = node.child(0)?.text === 'const';
       for (let i = 0; i < node.childCount; i++) {

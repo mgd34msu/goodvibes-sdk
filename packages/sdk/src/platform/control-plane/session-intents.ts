@@ -72,7 +72,7 @@ export type SharedSessionContinuationRunner = (
  * "This agent is going to answer THIS message, and the message came in over a
  * channel."
  *
- * The broker is the one place every route into a shared session converges on —
+ * The broker is the one place every route into a shared session converges on,
  * a webhook adapter, a polled surface, an HTTP route, a gateway method, and the
  * shared-session continuation runner all end up here. Announcing the pairing
  * from the broker is therefore the only way to guarantee the answer is routed
@@ -92,7 +92,7 @@ export interface SharedSessionSurfaceReplyBinding {
   readonly surfaceKind?: AutomationSurfaceKind | undefined;
   /** The owner's own words, for the reply header. */
   readonly task: string;
-  /** How this pairing came about — carried into logs when nothing can be sent. */
+  /** How this pairing came about, carried into logs when nothing can be sent. */
   readonly reason: 'spawn-claimed-input' | 'continued-live' | 'continuation-runner';
 }
 
@@ -117,7 +117,7 @@ export interface SharedSessionAgentSpawnRoutingInput {
  * bare id with no provider hint resolves via the shared resolver (unique
  * across the registry -> auto-qualify; ambiguous/unknown -> a rich error
  * naming real candidates) instead of the old abstract format lecture. A
- * bare id WITH a provider hint keeps qualifying by concatenation — that
+ * bare id WITH a provider hint keeps qualifying by concatenation, that
  * path already correctly implements "provider in context -> qualify"
  * without needing registry access.
  */
@@ -172,7 +172,7 @@ export function buildSharedSessionAgentSpawnRoutingInput(
   routing: SharedSessionRoutingIntent | undefined,
   options: {
     readonly restrictTools?: boolean | undefined;
-    /** The live registry's model candidates — enables bare model id resolution when supplied. */
+    /** The live registry's model candidates, enables bare model id resolution when supplied. */
     readonly modelCandidates?: readonly ModelIdCandidate[] | undefined;
   } = {},
 ): SharedSessionAgentSpawnRoutingInput {

@@ -4,7 +4,7 @@ import type { AgentManager } from '../../tools/agent/index.js';
 import { summarizeError } from '../../utils/error-display.js';
 
 /**
- * Agent hook runner — spawns a subagent via AgentManager and waits for
+ * Agent hook runner, spawns a subagent via AgentManager and waits for
  * completion up to the hook's configured timeout.
  *
  * The hook's `prompt` field (with `$ARGUMENTS` replaced by the event JSON)
@@ -81,14 +81,14 @@ export async function run(
       return { ok: false, error: `agent ${agentId} was cancelled before completing` };
     }
 
-    // Agent still pending/running — wait a tick
+    // Agent still pending/running, wait a tick
     await new Promise<void>((resolve) => {
       const timer = setTimeout(resolve, pollInterval);
       timer.unref?.();
     });
   }
 
-  // Timed out — cancel the agent and return error
+  // Timed out, cancel the agent and return error
   manager.cancel(agentId);
   const timeoutSecs = hook.timeout ?? 60;
   logger.error('agent hook: timed out', { agentId, timeoutSecs });

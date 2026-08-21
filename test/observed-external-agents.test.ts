@@ -348,7 +348,7 @@ describe('registry — observed rows fold in but never own a lifecycle', () => {
 describe('fleet-count — observed rows CANNOT enter the cap (structural)', () => {
   test('the responsibility probe counts only owned sources; observed rows are not a source', () => {
     // One native running agent + zero ACP hosted = active 1. There is no
-    // observed-source parameter on the probe AT ALL — observed rows are
+    // observed-source parameter on the probe AT ALL, observed rows are
     // excluded by construction, not by a filter.
     const probe = fleetCapacityProbeFrom({
       readConfig: (key) => (key === 'fleet.maxSize' ? 8 : undefined),
@@ -365,7 +365,7 @@ describe('fleet-count — observed rows CANNOT enter the cap (structural)', () =
     const probe = makeRuntimeFleetProbe({ readConfig: () => 8, agentManager, acpHost });
     const before = probe().active;
     // The observed source exists and lists rows, but makeRuntimeFleetProbe has
-    // no channel to it — so the count cannot change.
+    // no channel to it, so the count cannot change.
     const registry = createProcessRegistry(makeDeps({
       agentManager: { list: () => [agentRecord], cancel: () => false } as unknown as Pick<AgentManager, 'list' | 'cancel'>,
       observedAgents: tmuxRowSource(),
@@ -423,7 +423,7 @@ describe('routes/fleet — fleet.observed.steer handler', () => {
 // channel actually carries text on a real tmux server.
 //
 // Session discipline (absolute): the test creates its OWN uniquely-named
-// session and only ever targets THAT name — it never lists, reads, resizes,
+// session and only ever targets THAT name, it never lists, reads, resizes,
 // sends to, or kills any session it did not create. Pane discovery is scoped to
 // the owned session; the process-table scan is the OS process table, not a tmux
 // read.
@@ -431,7 +431,7 @@ describe('live tmux steer on this host (observed-agent steer channel end-to-end)
   test('discovers our own tmux-hosted agent-shaped session, resolves its pane, and the three-send steer lands in the pane', async () => {
     const tmuxOk = spawnSync('tmux', ['-V'], { encoding: 'utf-8' }).status === 0;
     if (!tmuxOk) {
-      console.warn('[observed test] tmux unavailable in this environment — live steer proof skipped honestly');
+      console.warn('[observed test] tmux unavailable in this environment, live steer proof skipped honestly');
       return;
     }
     const session = `gv-obs-live-${randomBytes(4).toString('hex')}`;
@@ -454,14 +454,14 @@ describe('live tmux steer on this host (observed-agent steer channel end-to-end)
       expect(Number.isInteger(panePid) && panePid > 0).toBe(true);
 
       // STAGING PRECONDITION (bounded wait, honest skip): the pane pid becomes
-      // agent-shaped only after bash's `exec -a claude` completes — until then
+      // agent-shaped only after bash's `exec -a claude` completes, until then
       // its cmdline is the bash launcher, which the REAL classifier correctly
       // ignores. Racing discovery against that exec produced flaky "must be
       // discovered" failures. Verify via /proc that the staged process's
       // cmdline matches the real discovery matcher BEFORE asserting discovery;
       // if the precondition cannot be met, this leg cannot prove anything about
       // discovery and skips honestly with the reason. The matcher itself is the
-      // production classifyExternalKind — never a weakened copy.
+      // production classifyExternalKind, never a weakened copy.
       const readStagedArgs = (): string | null => {
         try {
           return readFileSync(`/proc/${panePid}/cmdline`, 'utf-8').replaceAll('\0', ' ').trim();
@@ -476,7 +476,7 @@ describe('live tmux steer on this host (observed-agent steer channel end-to-end)
       }
       if (stagedArgs === null || classifyExternalKind(stagedArgs) !== 'claude-code') {
         console.warn(
-          `[observed test] live steer proof skipped honestly: the staged pane process (pid ${panePid}) never became agent-shaped within 5s — ` +
+          `[observed test] live steer proof skipped honestly: the staged pane process (pid ${panePid}) never became agent-shaped within 5s, ` +
           `last /proc cmdline was ${stagedArgs === null ? 'unreadable (process gone)' : `"${stagedArgs}"`}; ` +
           'the staging precondition (exec -a claude completing) was not met on this host, so there is nothing real for discovery to prove.',
         );

@@ -6,7 +6,7 @@
  * gets exactly ONE repair attempt and then falls back to the heuristic path
  * with a reason + honest event; timeout/kill fall back with reason 'cancelled';
  * a dependency cycle is rejected; config can force the heuristic path. The LLM
- * transport is not touched — a stubbed DecompositionRunner supplies canned
+ * transport is not touched, a stubbed DecompositionRunner supplies canned
  * agent output, mirroring how the SDK's orchestrator-turn-loop tests script a
  * fake provider.
  */

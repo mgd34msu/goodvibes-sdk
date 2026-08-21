@@ -16,7 +16,7 @@ import type {
 } from '../../../core/deterministic-replay.js';
 
 /**
- * ReplayPanel — diagnostics data provider for the deterministic replay view.
+ * ReplayPanel, diagnostics data provider for the deterministic replay view.
  *
  * Usage:
  * ```ts

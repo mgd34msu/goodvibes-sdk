@@ -1,11 +1,11 @@
 /**
- * CascadeTimer — timing instrumentation for cascade rule evaluations.
+ * CascadeTimer, timing instrumentation for cascade rule evaluations.
  *
  * Wraps CascadeEngine.evaluate() to measure evaluation latency and attach
  * timing metadata (latencyMs, severity, remediationPlaybookIds) to each
  * CascadeResult before returning them to callers.
  *
- * The timer is transparent to the cascade engine — it delegates evaluation
+ * The timer is transparent to the cascade engine, it delegates evaluation
  * and annotates results without modifying engine state.
  */
 
@@ -29,7 +29,7 @@ export type CascadeSeverity = 'critical' | 'high' | 'medium' | 'low';
 export function deriveCascadeSeverity(result: CascadeResult): CascadeSeverity {
   const { effect, target } = result;
 
-  // Session unrecoverable cascades to ALL — always critical
+  // Session unrecoverable cascades to ALL, always critical
   if (effect.type === 'EMIT_EVENT' && effect.eventType === 'SESSION_UNRECOVERABLE') {
     return 'critical';
   }
@@ -94,7 +94,7 @@ function annotate(result: CascadeResult, latencyMs: number): TimedCascadeResult 
 }
 
 /**
- * CascadeTimer — instruments CascadeEngine.evaluate() with latency tracking.
+ * CascadeTimer, instruments CascadeEngine.evaluate() with latency tracking.
  *
  * Wrap the cascade engine with this class to get TimedCascadeResult objects
  * that include per-result latency, severity, and remediation playbook IDs.
@@ -103,9 +103,9 @@ function annotate(result: CascadeResult, latencyMs: number): TimedCascadeResult 
  * ```ts
  * const timer = new CascadeTimer(cascadeEngine);
  * const { cascades, totalLatencyMs } = timer.evaluate('mcp', 'failed');
- * // cascades[0].latencyMs — evaluation latency
- * // cascades[0].severity  — 'high' | 'critical' etc.
- * // cascades[0].remediationPlaybookIds — ['reconnect-failure']
+ * // cascades[0].latencyMs, evaluation latency
+ * // cascades[0].severity , 'high' | 'critical' etc.
+ * // cascades[0].remediationPlaybookIds, ['reconnect-failure']
  * ```
  */
 export class CascadeTimer {

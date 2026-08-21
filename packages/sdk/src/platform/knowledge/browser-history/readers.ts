@@ -14,8 +14,8 @@ interface BplistParser {
 }
 
 /**
- * `bplist-parser` is an optionalDependency, and only Safari bookmarks — a
- * binary plist — need it. A static import made the whole module, and therefore
+ * `bplist-parser` is an optionalDependency, and only Safari bookmarks, a
+ * binary plist, need it. A static import made the whole module, and therefore
  * every graph that reaches browser knowledge, unloadable when the package is
  * absent: the same class of failure the `bun:sqlite` note below describes, and
  * the one utils/optional-dependency.ts records for the daemon.
@@ -31,7 +31,7 @@ async function loadBplistParser(): Promise<BplistParser> {
 // under any non-Bun runtime (Node's ESM linker rejects the `bun:` scheme at link
 // time, breaking the release install-smoke check and any Node import of the
 // surfaces that transitively reach this module). Resolve the Database constructor
-// lazily via require so the `bun:` specifier stays off the static import graph —
+// lazily via require so the `bun:` specifier stays off the static import graph,
 // it is only pulled on the Bun-only code path that opens a browser database.
 let bunDatabaseCtor: typeof import('bun:sqlite').Database | null = null;
 function bunSqliteDatabase(): typeof import('bun:sqlite').Database {

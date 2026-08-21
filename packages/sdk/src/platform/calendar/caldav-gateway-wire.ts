@@ -1,16 +1,16 @@
 /**
- * caldav-gateway-wire.ts — the CalDAV requests the gateway verbs make, and the
+ * caldav-gateway-wire.ts, the CalDAV requests the gateway verbs make, and the
  * one place their failures become honest statuses.
  *
  * Transport is `CalDavHttpPort`, the port the hoisted CalDAV client already
- * defines (`platform/google/caldav-client.ts`), so the same injected adapter —
- * the fetch-backed one in `platform/google/node.ts`, or a fake — drives both.
+ * defines (`platform/google/caldav-client.ts`), so the same injected adapter,
+ * the fetch-backed one in `platform/google/node.ts`, or a fake, drives both.
  * Nothing here opens a socket.
  *
  * What a caller sees on failure is deliberately thin: `CalDAV server returned
  * HTTP 401.` and nothing else. The base URL, the account name, the credential
  * and the raw transport error (`getaddrinfo ENOTFOUND cal.example.com`, which
- * names the host) all stay inside this module — `calendar.ics.import` returns
+ * names the host) all stay inside this module, `calendar.ics.import` returns
  * per-event error strings straight to the caller, so anything this layer puts
  * in a message is a string that travels.
  */
@@ -65,7 +65,7 @@ export function calendarQueryBody(from?: string, to?: string): string {
  * A `calendar-query` REPORT that matches ONE VEVENT by UID, server-side.
  *
  * The server does the matching, so a UID lookup costs one resource on the wire
- * instead of the whole collection — and, more importantly, cannot silently miss
+ * instead of the whole collection, and, more importantly, cannot silently miss
  * an event that a truncated unfiltered listing would have cut off.
  */
 export function calendarQueryByUidBody(uid: string): string {
@@ -120,7 +120,7 @@ const BASE64_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012
  * Base64 of the UTF-8 bytes of a string, written out rather than reached for.
  *
  * Node's byte-array type would be one line of this, and is what the CalDAV
- * client elsewhere uses — but `platform/calendar` is runtime-neutral by rule,
+ * client elsewhere uses, but `platform/calendar` is runtime-neutral by rule,
  * and a test reads these files to keep it that way (no node builtins, no bare
  * import specifiers, nothing runtime-specific). `btoa` is the other one-liner
  * and it is wrong for exactly the input that matters here: a password with a
@@ -154,7 +154,7 @@ function basicAuthHeader(username: string, password: string): string {
  * Status mapping, unchanged from the surface this replaces: 401/403 are
  * `CALENDAR_AUTH_FAILED`, 404 is `CALENDAR_NOT_FOUND`, any other 4xx keeps its
  * own status under `CALENDAR_REQUEST_FAILED`, and anything else (including a
- * 5xx from the calendar server) is reported as a 502 — the daemon is not the
+ * 5xx from the calendar server) is reported as a 502, the daemon is not the
  * thing that failed.
  */
 export function createCalDavRequest(
@@ -204,7 +204,7 @@ export function createCalDavRequest(
   };
 }
 
-/** Case-insensitive header lookup — header casing is the server's choice, not ours. */
+/** Case-insensitive header lookup, header casing is the server's choice, not ours. */
 export function readHeader(
   headers: Readonly<Record<string, string>>,
   name: string,

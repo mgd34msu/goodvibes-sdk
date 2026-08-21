@@ -3,7 +3,7 @@
  *
  * Two owner rulings are load-bearing here and are asserted rather than trusted:
  * every row is a real configurable feature with a written description (never a
- * bare toggle), and the feature ships disabled — an always-on microphone is an
+ * bare toggle), and the feature ships disabled, an always-on microphone is an
  * explicit act.
  */
 import { describe, expect, test } from 'bun:test';
@@ -160,8 +160,8 @@ describe('the wake-word feature registry row', () => {
 });
 
 describe('the feature is wired up, and the mechanism that said otherwise is retired', () => {
-  // The failure this block used to guard against — a settings row that looks
-  // like a working switch, flips cleanly, and silently does nothing — is fixed
+  // The failure this block used to guard against, a settings row that looks
+  // like a working switch, flips cleanly, and silently does nothing, is fixed
   // rather than declared, so the assertions are inverted: the gate now follows
   // the user's setting, and the copy describes what happens on each surface.
   test('nothing declares this feature inoperable any more', () => {
@@ -413,13 +413,13 @@ describe('a row that cannot take effect says so — blocker or limitation, never
     expect(resolved.blockers[0]?.detail).toContain('has not loaded the speech gate');
     // And it names what the gate would do at the configured value, measured.
     expect(resolved.blockers[0]?.detail).toContain('95.3% of speech frames');
-    // And 0 — the shipped default — is the value that runs.
+    // And 0, the shipped default, is the value that runs.
     expect(resolveWakeRuntimeSettings(wakeReader({ 'voice.wake.enabled': true }), 'tui').active).toBe(true);
   });
 
   test('speex RUNS by default now that the platform carries the filter', () => {
     // The row used to refuse everywhere. The stage is a WebAssembly module in the
-    // package, so on a runtime with WebAssembly — which every surface here is —
+    // package, so on a runtime with WebAssembly, which every surface here is,
     // asking for it starts the detector with it applied.
     const running = resolveWakeRuntimeSettings(
       wakeReader({ 'voice.wake.enabled': true, 'voice.wake.noiseSuppression': 'speex' }), 'tui',

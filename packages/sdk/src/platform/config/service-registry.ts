@@ -1,5 +1,5 @@
 /**
- * ServiceRegistry — named service credential resolution.
+ * ServiceRegistry, named service credential resolution.
  *
  * Reads service configs from the configured services.json path.
  * Each service entry declares its authType and the SecretsManager key
@@ -113,7 +113,7 @@ function readServicesFile(filePath: string): Record<string, ServiceConfig> {
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code !== 'ENOENT') {
-      logger.error('ServiceRegistry: failed to read services file — treating as empty', {
+      logger.error('ServiceRegistry: failed to read services file, treating as empty', {
         path: filePath,
       });
     }

@@ -1,5 +1,5 @@
 /**
- * caldav-gateway-service.ts — the CalDAV-backed implementation of the daemon's
+ * caldav-gateway-service.ts, the CalDAV-backed implementation of the daemon's
  * `calendar.*` verbs.
  *
  * A sibling of `google/gateway-calendar-service.ts`, not a replacement for it:
@@ -10,7 +10,7 @@
  * The route layer knows about neither.
  *
  * This is a port, verb for verb, of the CalDAV surface that lived inside one
- * product — the same discovery, the same collection mapping, the same
+ * product, the same discovery, the same collection mapping, the same
  * .ics import/export, and the same operator-facing wording, including the
  * config keys the errors name. Two implementations of one advertised capability
  * is how a contract drifts, so there is now one.
@@ -24,7 +24,7 @@
  *    address local-part) and never the address itself. The raw value survives
  *    only inside a PUT, where the server needs it to address an invitation.
  *  - **Import is per-event and honest.** One bad VEVENT in a file does not
- *    fail the whole import or vanish from the result — the rest land and the
+ *    fail the whole import or vanish from the result, the rest land and the
  *    failure is named, per event, in `errors`.
  *
  * Everything is injected: the HTTP port, the config port, the secret port, the
@@ -91,7 +91,7 @@ export interface CalDavCalendarGatewayServiceOptions {
    * Events on a CalDAV collection are written by whoever sent the invitation,
    * so every read path here records: `listEvents`, `getEvent`, `exportIcs` and
    * `importIcs`. Each of those runs because a caller asked for it, which is the
-   * condition for recording at all — nothing in this service runs on a timer.
+   * condition for recording at all, nothing in this service runs on a timer.
    * See untrusted-events.ts.
    */
   readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder | undefined;
@@ -105,7 +105,7 @@ export interface CalDavCalendarSummary {
 
 /**
  * The gateway slice plus discovery. `listCalendars` is not one of the five
- * cataloged verbs — it is what a setup flow calls to fill in
+ * cataloged verbs, it is what a setup flow calls to fill in
  * `surfaces.calendar.defaultCalendarId` with something real instead of asking
  * an operator to hand-copy a collection path out of a web UI.
  */
@@ -246,14 +246,14 @@ export function createCalDavCalendarGatewayService(
    * Record that a caller just read these events.
    *
    * The origin prefers the RAW organizer value, because the inviter's address
-   * is what identifies who wrote the text — that value stays inside the ledger
+   * is what identifies who wrote the text, that value stays inside the ledger
    * and never reaches a gateway response, which continues to carry display
    * names only.
    *
    * A CalDAV collection is the owner's own server: it holds both the entries he
    * created and the invitations delivered to him. Recording every event on it
    * would mark the ordinary act of reading his own calendar as untrusted ingest
-   * and refuse every outward action for the rest of the turn — and refuse it
+   * and refuse every outward action for the rest of the turn, and refuse it
    * COARSELY, because `createUntrustedContentPort` calls `evaluateOutwardEffect`
    * with `request`, `ledger` and `approval` only, no `content`, so a port
    * consumer such as `platform/browser/browser-engine.ts` takes the "any origin
@@ -262,7 +262,7 @@ export function createCalDavCalendarGatewayService(
    * positive match is treated as the owner's own. Absent, unparseable or
    * unmatched all stay external; an unconfigured account matches nothing.
    *
-   * The identity comes from `surfaces.calendar.caldavUser` — configuration —
+   * The identity comes from `surfaces.calendar.caldavUser`, configuration,
    * exactly as the mail exemption reads only configured owner addresses
    * (`platform/security/owner-identity.ts`). It is never read from an event.
    */
@@ -352,8 +352,8 @@ export function createCalDavCalendarGatewayService(
       if (calendars.length > 0) return calendars;
 
       // The configured URL is not itself a calendar home (a server root, or a
-      // principal URL). Chain the standard discovery — current-user-principal,
-      // then calendar-home-set, then the collections under it — through the
+      // principal URL). Chain the standard discovery, current-user-principal,
+      // then calendar-home-set, then the collections under it, through the
       // hoisted client, which speaks exactly those three PROPFINDs.
       const discovered = await new CalDavClient({
         http: options.http,
@@ -368,8 +368,8 @@ export function createCalDavCalendarGatewayService(
         }));
       }
       // Nothing advertised a calendar collection. The configured default is
-      // still a usable answer — it is the collection every other verb writes
-      // to — and is a better reply than an empty list that reads as "you have
+      // still a usable answer, it is the collection every other verb writes
+      // to, and is a better reply than an empty list that reads as "you have
       // no calendars".
       return [{ calendarId: config.defaultCalendarId, displayName: config.defaultCalendarId }];
     },
@@ -393,7 +393,7 @@ export function createCalDavCalendarGatewayService(
       const id = calendarId && calendarId.length > 0 ? calendarId : config.defaultCalendarId;
       const collectionUrl = collectionUrlFor(config, id);
 
-      // Strategy 1 — an href-like identifier (a path, or a *.ics resource
+      // Strategy 1, an href-like identifier (a path, or a *.ics resource
       // name): resolve it to a single resource URL and GET that. A true
       // single-event fetch, not a collection scan.
       if (isHrefLike(eventId)) {
@@ -420,7 +420,7 @@ export function createCalDavCalendarGatewayService(
         return toDetail(event);
       }
 
-      // Strategy 2 — a bare UID: ask the server for only the matching resource
+      // Strategy 2, a bare UID: ask the server for only the matching resource
       // via a UID prop-filter. Some servers ignore an unsupported prop-filter
       // and return the whole collection, so the exact UID is confirmed here as
       // well; a near-miss must never come back as the answer.
@@ -492,7 +492,7 @@ export function createCalDavCalendarGatewayService(
         );
       }
       // The .ics body is somebody else's text and the caller asked for it to be
-      // read, so this is an ingest — recorded before a single PUT is attempted.
+      // read, so this is an ingest, recorded before a single PUT is attempted.
       recordCalendarEventIngest({
         record: options.recordUntrustedIngest,
         provenance: { kind: 'ics-import' },

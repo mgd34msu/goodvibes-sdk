@@ -12,7 +12,7 @@ const LOG_FLUSH_INTERVAL_MS = 100;
  * size it is rotated to activity.md.1 (one backup kept) and a fresh file is
  * started, so an append-only debug log on a long-lived daemon stops growing
  * without limit. Honest default: 10 MB (a real 22.8 MB activity.md was the
- * motivating observation — two rotations' worth of debugging history stays on
+ * motivating observation, two rotations' worth of debugging history stays on
  * disk, older history is reclaimed).
  */
 const LOG_ROTATION_MAX_BYTES = 10 * 1024 * 1024;
@@ -24,7 +24,7 @@ const LOG_ROTATION_MAX_BYTES = 10 * 1024 * 1024;
  * logger into a memory leak in exactly the situation (a broken destination)
  * where the process is already in trouble. Past the cap the OLDEST entries are
  * dropped and counted, and the count is written into the log the moment one
- * lands — a gap that says how big it is beats a silent one.
+ * lands, a gap that says how big it is beats a silent one.
  */
 const MAX_BUFFERED_ENTRIES = 1_000;
 /**
@@ -68,7 +68,7 @@ let exitHookInstalled = false;
  *
  * Installed on `process.exit`, which is what makes the guarantee hold for exit
  * paths the SDK does not own the call site of. `process.exit()` runs 'exit'
- * listeners before terminating, and only synchronous work in them completes —
+ * listeners before terminating, and only synchronous work in them completes,
  * which is the reason the flush path is synchronous at all.
  */
 function flushAllLoggers(): void {
@@ -93,11 +93,11 @@ function errorCode(error: unknown): string {
 }
 
 /**
- * ActivityLogger — Persistent debug logger for GoodVibes.
+ * ActivityLogger, Persistent debug logger for GoodVibes.
  * Writes to .goodvibes/logs/activity.md
  *
- * Entries are batched — flushed when the buffer reaches LOG_BUFFER_MAX or after
- * LOG_FLUSH_INTERVAL_MS, whichever comes first — so a busy process does not
+ * Entries are batched, flushed when the buffer reaches LOG_BUFFER_MAX or after
+ * LOG_FLUSH_INTERVAL_MS, whichever comes first, so a busy process does not
  * touch the disk per line. The batched write itself is SYNCHRONOUS. It used to
  * be `appendFile` with a callback, which meant a write could still be in flight
  * when the process ended: a daemon handing over or shutting down took its last
@@ -109,13 +109,13 @@ function errorCode(error: unknown): string {
  * LOG_ROTATION_MAX_BYTES). When a flush would carry the file past the cap it
  * is renamed to `activity.md.1` (a single backup, overwritten each rotation)
  * and a fresh file is started. The size is tracked with an in-memory byte
- * counter — seeded once from the existing file at configure() and incremented
- * per flush — so the hot write path never stats the file per entry.
+ * counter, seeded once from the existing file at configure() and incremented
+ * per flush, so the hot write path never stats the file per entry.
  *
  * Destination loss: a log directory that disappears under a running process
  * (a temp dir reclaimed at teardown, a workspace moved) is recreated and the
  * write retried. A destination that cannot be written at all is reported ONCE
- * and then abandoned — the logger stops accepting entries rather than emitting
+ * and then abandoned, the logger stops accepting entries rather than emitting
  * `flush error: ENOENT` on a loop into a stream nobody is reading.
  */
 export class ActivityLogger {
@@ -136,7 +136,7 @@ export class ActivityLogger {
   /**
    * True once a destination has been named. Until then every info/warn/error
    * in the whole platform accumulates in memory and reaches no file, which is
-   * how a host that forgets `configure()` turns the entire platform mute — a
+   * how a host that forgets `configure()` turns the entire platform mute, a
    * shipped daemon did exactly that, and an inbound channel surface that
    * refused to start produced no record anywhere. A host that cannot be sure
    * it configured the logger asks this and supplies a destination.
@@ -158,7 +158,7 @@ export class ActivityLogger {
    * True once `dispose()` has run and before any later `configure()`.
    *
    * A disposed logger accepts nothing and writes nothing. Observable because
-   * the alternative — finding out by watching a temp directory come back — is
+   * the alternative, finding out by watching a temp directory come back, is
    * how this was found in the first place.
    */
   get isDisposed(): boolean {
@@ -176,7 +176,7 @@ export class ActivityLogger {
     if (options.report) this.report = options.report;
     // Naming a destination is a host saying "log here now", so it clears a
     // previous destination's verdict: the new one has not failed yet. For the
-    // same reason it revives a disposed logger — an explicit configure() is a
+    // same reason it revives a disposed logger, an explicit configure() is a
     // deliberate act, and silently staying mute after one would reproduce the
     // "host forgot to configure" muteness this class already guards against.
     this.degraded = false;
@@ -202,7 +202,7 @@ export class ActivityLogger {
    * the process.
    */
   dispose(): void {
-    // recreateDestination: false — the difference between a live logger and a
+    // recreateDestination: false, the difference between a live logger and a
     // disposed one. A live logger whose directory was moved underneath it
     // rebuilds it and retries, which is right and is asserted by
     // test/activity-logger-dispose-lifetime.test.ts. Doing the same DURING
@@ -233,7 +233,7 @@ export class ActivityLogger {
    *
    * A rotation that cannot happen is never reported here. A missing file or
    * directory is the destination-loss case the append path already handles, and
-   * any other rotation failure simply leaves the current file in place — an
+   * any other rotation failure simply leaves the current file in place, an
    * append that cannot rotate is never dropped, so there is nothing a reader
    * could do with a message about it beyond the one the append path will send
    * if the write itself then fails.
@@ -287,7 +287,7 @@ export class ActivityLogger {
    * Recreating is the honest response to the case actually observed: the
    * directory existed when the host named it and was removed underneath a
    * running process. Recreating restores exactly what the host asked for. It is
-   * attempted once per flush, never in a loop — if the path cannot be a
+   * attempted once per flush, never in a loop, if the path cannot be a
    * directory at all, the retry fails and the caller degrades.
    */
   private append(chunk: string, recreateDestination: boolean): boolean {
@@ -316,8 +316,8 @@ export class ActivityLogger {
    * has failed MAX_CONSECUTIVE_FLUSH_FAILURES times in a row.
    *
    * Giving up is the point. The prior behaviour wrote `[ActivityLogger] flush
-   * error: ENOENT` to stderr on every single flush — once per 100ms for as long
-   * as the process lived — while continuing to accept entries as though they
+   * error: ENOENT` to stderr on every single flush, once per 100ms for as long
+   * as the process lived, while continuing to accept entries as though they
    * were being recorded. One report, then stop accepting, is what a reader can
    * actually act on.
    */
@@ -355,7 +355,7 @@ export class ActivityLogger {
   private write(level: string, message: string, data?: Record<string, unknown>) {
     // Disposed: the owner has torn this logger down. Accepting the entry would
     // re-arm the flush timer and, on the next flush, rebuild a destination the
-    // owner deleted. Dropped silently for the same reason `degraded` is —
+    // owner deleted. Dropped silently for the same reason `degraded` is,
     // there is nobody left to tell.
     if (this.disposed) return;
     // Abandoned destination: entries are dropped deliberately and silently.
@@ -370,7 +370,7 @@ export class ActivityLogger {
     this.buffer.push(entry);
     this.enforceBufferCap();
     if (this.buffer.length >= LOG_BUFFER_MAX) {
-      // Buffer full — flush immediately without waiting for the timer
+      // Buffer full, flush immediately without waiting for the timer
       this.flushSync();
     } else {
       this.scheduleFlush();
@@ -405,7 +405,7 @@ export function flushActivityLogSync(): void {
  * whether this call was the one that did it.
  *
  * The platform's runtimes are embedded by several hosts, and a host that
- * forgets `configureActivityLogger` does not get a degraded log — it gets no
+ * forgets `configureActivityLogger` does not get a degraded log, it gets no
  * log at all, for every component in the process. That is not a defect the
  * component can detect from the inside, so the long-lived runtimes call this
  * at start with their own working directory as the fallback. A host that DID

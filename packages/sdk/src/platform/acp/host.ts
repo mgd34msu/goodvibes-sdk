@@ -1,20 +1,20 @@
 /**
- * acp/host.ts — HOSTING third-party coding agents over the Agent Client
+ * acp/host.ts, HOSTING third-party coding agents over the Agent Client
  * Protocol.
  *
  * The existing acp/ modules make GoodVibes an ACP *agent* (agent.ts) and spawn
  * short-lived ACP *subagents* (connection.ts/manager.ts). This module is the
  * daemon-side HOST: it discovers installed third-party coding agents (Claude
  * Code, Codex CLI, opencode), spawns one over stdio as a LONG-LIVED session,
- * and exposes the lifecycle a fleet row needs — prompt (steer), stop, and the
- * waiting-on-human attention states — so a hosted agent is visible, steerable,
+ * and exposes the lifecycle a fleet row needs, prompt (steer), stop, and the
+ * waiting-on-human attention states, so a hosted agent is visible, steerable,
  * and stoppable exactly like a native row.
  *
  * Honesty contract:
  *  - Discovery is READ-ONLY (PATH + known install directories; no execution).
- *    Absence is quiet — an empty list, never a nag.
+ *    Absence is quiet, an empty list, never a nag.
  *  - A binary that fails the ACP handshake yields a STRUCTURED error (which
- *    binary, which stage, what happened) on a 'failed' record — never a hung
+ *    binary, which stage, what happened) on a 'failed' record, never a hung
  *    row. Spawn/initialize/session are bounded by a handshake timeout.
  *  - Permission requests from the hosted agent flow through the injected
  *    permission handler (the daemon wires its shared approval broker) and the
@@ -102,7 +102,7 @@ function knownInstallDirs(io: DiscoveryIo): string[] {
 
 /**
  * Discover installed third-party ACP-capable agents. READ-ONLY: existence
- * checks over $PATH entries and known install directories — no process is ever
+ * checks over $PATH entries and known install directories, no process is ever
  * executed. Returns only what is present; absence is a quiet empty list.
  */
 export function discoverAcpAgents(io: DiscoveryIo = defaultDiscoveryIo): DiscoveredAcpAgent[] {
@@ -127,7 +127,7 @@ export function discoverAcpAgents(io: DiscoveryIo = defaultDiscoveryIo): Discove
 /** Lifecycle state of a hosted third-party agent session. */
 export type HostedAcpState = 'starting' | 'idle' | 'prompting' | 'awaiting-approval' | 'failed' | 'stopped';
 
-/** The structured, user-renderable handshake/spawn failure — never a bare string. */
+/** The structured, user-renderable handshake/spawn failure, never a bare string. */
 export interface AcpHostError {
   /** The binary that was launched. */
   readonly binary: string;
@@ -150,7 +150,7 @@ export interface HostedAcpAgent {
   readonly sessionId?: string | undefined;
   /** Latest streamed output tail (bounded), for the row's activity line. */
   readonly progress?: string | undefined;
-  /** Present while a permission ask is pending — the attention detail. */
+  /** Present while a permission ask is pending, the attention detail. */
   readonly pendingPermission?: string | undefined;
   /** Present when state === 'failed'. */
   readonly error?: AcpHostError | undefined;
@@ -180,11 +180,11 @@ export type AcpSessionRegistrar = (input: {
 export interface AcpHostServiceDeps {
   /** Permission asks from hosted agents route here (the daemon wires its shared approval broker). */
   readonly requestPermission?: PermissionRequestHandler | undefined;
-  /** Maps the hosted agent onto a daemon shared session (kind 'acp'). Optional — narrower embeds skip it. */
+  /** Maps the hosted agent onto a daemon shared session (kind 'acp'). Optional, narrower embeds skip it. */
   readonly registerSession?: AcpSessionRegistrar | undefined;
   /** Injectable spawn seam for tests. Defaults to Bun.spawn. */
   readonly spawn?: ((cmd: string[], opts: { cwd: string }) => ReturnType<typeof Bun.spawn>) | undefined;
-  /** Handshake bound (spawn→initialize→session). Default 15s — a bad binary becomes a structured failure, never a hung row. */
+  /** Handshake bound (spawn→initialize→session). Default 15s, a bad binary becomes a structured failure, never a hung row. */
   readonly handshakeTimeoutMs?: number | undefined;
   readonly now?: (() => number) | undefined;
 }
@@ -227,7 +227,7 @@ export class AcpHostService {
    * Resolves once the ACP handshake + session creation completed (state
    * 'idle', ready for prompts) or failed (state 'failed' with the structured
    * error). An initial prompt, when given, is fired after the handshake
-   * without being awaited — the row streams like any live agent.
+   * without being awaited, the row streams like any live agent.
    */
   async spawnAgent(input: {
     readonly agent: DiscoveredAcpAgent;
@@ -259,7 +259,7 @@ export class AcpHostService {
     let stage: AcpHostError['stage'] = 'spawn';
     try {
       // Inside the try, so an install without the optional ACP package fails
-      // this one session start with a message naming it — reported through the
+      // this one session start with a message naming it, reported through the
       // same AcpHostError path as a spawn failure.
       const { ClientSideConnection, ndJsonStream } = await loadAcpSdk();
       record.child = spawn([input.agent.binaryPath, ...input.agent.args], { cwd: input.cwd });
@@ -387,7 +387,7 @@ export class AcpHostService {
         const toolTitle = params.toolCall?.title ?? 'unknown tool';
         const approveOptionId = params.options[0]?.optionId ?? 'allow';
         // Waiting-on-human: the row classifies as awaiting-approval while the
-        // ask is pending — glyph/count/jump/push inherit from the fleet
+        // ask is pending, glyph/count/jump/push inherit from the fleet
         // attention classification.
         const priorState = record.info.state;
         record.info.state = 'awaiting-approval';

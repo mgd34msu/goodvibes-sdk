@@ -1,5 +1,5 @@
 /**
- * Summary formatter — produces condensed single-line summaries for batched
+ * Summary formatter, produces condensed single-line summaries for batched
  * or grouped notifications destined for the conversation surface. Keeps the
  * main conversation high-signal by collapsing repeated events into a brief
  * human-readable description.
@@ -36,7 +36,7 @@ export function formatNotificationSummary(notification: Notification): string {
     parts.push(body);
   }
 
-  return parts.join(' — ');
+  return parts.join(', ');
 }
 
 /**
@@ -45,7 +45,7 @@ export function formatNotificationSummary(notification: Notification): string {
  *
  * @param notifications - The notifications to collapse (must be non-empty).
  * @returns A condensed summary string, e.g.
- *          "[Info] Tool progress (×12 events) — last: Wrote 3 files"
+ *          "[Info] Tool progress (×12 events), last: Wrote 3 files"
  */
 export function formatBatchSummary(notifications: Notification[]): string {
   if (notifications.length === 0) {
@@ -64,6 +64,6 @@ export function formatBatchSummary(notifications: Notification[]): string {
       ? `${last.body.slice(0, MAX_BODY_PREVIEW)}…`
       : last?.body;
 
-  const suffix = preview ? ` — last: ${preview}` : '';
+  const suffix = preview ? `, last: ${preview}` : '';
   return `[${label}] ${last?.title ?? ''} (\xD7${count} events)${suffix}`;
 }

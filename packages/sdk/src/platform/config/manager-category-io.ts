@@ -1,5 +1,5 @@
 /**
- * manager-category-io.ts — whole-category patch/remove persistence.
+ * manager-category-io.ts, whole-category patch/remove persistence.
  *
  * Split out of manager.ts (line cap). These two operations exist for the config
  * fields that cannot be expressed as a scalar dot-path (arrays, open maps), and
@@ -37,7 +37,7 @@ export function persistCategoryPatch(
     raw[categoryName] = rawCategory;
   }
   const rawCat = rawCategory as Record<string, unknown>;
-  // Only the patched keys reach disk — the category's defaults are never frozen in.
+  // Only the patched keys reach disk, the category's defaults are never frozen in.
   for (const key of Object.keys(patch)) {
     if (patch[key] === undefined) continue;
     live[key] = patch[key];

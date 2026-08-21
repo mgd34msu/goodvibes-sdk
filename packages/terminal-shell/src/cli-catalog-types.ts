@@ -1,11 +1,11 @@
 /**
- * cli-catalog-types.ts — the generic argument-parsing engine's catalog
+ * cli-catalog-types.ts, the generic argument-parsing engine's catalog
  * contract: what a product declares to get argv parsing, independent of which
  * commands or flags it has.
  *
  * A daemon-shaped front-end and a terminal-shaped front-end need DIFFERENT
  * command vocabularies over the SAME parsing mechanics: tokens, values,
- * arity, `--`, and refusals. This file is the seam between them — it holds no
+ * arity, `--`, and refusals. This file is the seam between them, it holds no
  * product's commands or flags, only the SHAPE a catalog takes. See
  * cli-parser-engine.ts for the engine that reads a `CliCatalog<TCommand,
  * TField, TFlags>` and produces an `EngineParseResult`, and
@@ -22,7 +22,7 @@
  * a value (`--resume [id]`), a flag that assigns a fixed value to a field it
  * shares with another flag (`--json` on the same field `--output` writes),
  * and a flag whose value is checked against a fixed set. A catalog that never
- * declares these three simply never exercises them — legal, unused kinds
+ * declares these three simply never exercises them, legal, unused kinds
  * cost it nothing.
  */
 export type CliFlagKind = 'boolean' | 'string' | 'port' | 'string-list' | 'string-optional' | 'const' | 'enum';
@@ -46,7 +46,7 @@ export interface CommandFlagSpec<TField extends string> {
   readonly enumValues?: readonly string[] | undefined;
   /** `enum` only: applied in place of an invalid value. */
   readonly enumDefault?: string | undefined;
-  /** Pushed to `warnings` whenever this spec is matched — a deprecated alias's notice. */
+  /** Pushed to `warnings` whenever this spec is matched, a deprecated alias's notice. */
   readonly warning?: string | undefined;
 }
 
@@ -65,14 +65,14 @@ export interface CommandSpec<TCommand extends string, TField extends string> {
   /**
    * True when everything from the command word onward belongs to the
    * command's own parser rather than to this one: no flag interpretation at
-   * all past that point, not even the catalog's global flags — every
+   * all past that point, not even the catalog's global flags, every
    * remaining token, flag-shaped or not, lands in `commandArgs` verbatim.
    */
   readonly passthrough: boolean;
   /**
    * When true (and `passthrough` is false), an option-shaped token that
    * matches no flag accepted here is pushed into `commandArgs` instead of
-   * refused — the command's own downstream handler is trusted to interpret
+   * refused, the command's own downstream handler is trusted to interpret
    * it. Defaults to false: an unmatched option refuses, naming what this
    * command accepts.
    */
@@ -98,7 +98,7 @@ export interface CliCatalog<TCommand extends string, TField extends string, TFla
   readonly defaultCommand: TCommand;
   /**
    * What happens when the first non-flag token names no known command:
-   * `'reject'` refuses it by name (the daemon-shaped answer — an unmatched
+   * `'reject'` refuses it by name (the daemon-shaped answer, an unmatched
    * word must never quietly start the default command); `'passthrough'`
    * treats it as an ordinary positional under `defaultCommand`, silently (the
    * terminal-shaped answer, preserved for exact backward compatibility).
@@ -108,7 +108,7 @@ export interface CliCatalog<TCommand extends string, TField extends string, TFla
   readonly unresolvedCommandSentinel?: TCommand | undefined;
   readonly createDefaultFlags: () => TFlags;
   /**
-   * Final, whole-parse adjustments a catalog's own domain rules need — e.g.
+   * Final, whole-parse adjustments a catalog's own domain rules need, e.g.
    * folding leftover positionals into a prompt field, inferring one field
    * from another, or flagging a conflicting combination of flags. Absent for
    * a catalog with no such rules (there is nothing the daemon's own
@@ -133,7 +133,7 @@ export interface EngineParseResult<TCommand extends string, TFlags> {
   readonly flags: TFlags;
   /** Usage refusals. A non-empty list means the caller should exit non-zero. */
   readonly errors: readonly string[];
-  /** Non-fatal notices — deprecation and soft warnings. */
+  /** Non-fatal notices, deprecation and soft warnings. */
   readonly warnings: readonly string[];
 }
 
@@ -154,7 +154,7 @@ export function catalogFlagArity<TCommand extends string, TField extends string>
   return table;
 }
 
-/** The catalog entry for a command, or throws — every catalog's own command union is exhaustive by construction. */
+/** The catalog entry for a command, or throws, every catalog's own command union is exhaustive by construction. */
 export function catalogCommandSpec<TCommand extends string, TField extends string>(
   catalog: Pick<CliCatalog<TCommand, TField, unknown>, 'commands'>,
   command: TCommand,
@@ -189,7 +189,7 @@ export function catalogFlagsForCommand<TCommand extends string, TField extends s
  *
  * The engine's pre-scan for the command word runs before the command is
  * known and therefore reads a token's arity from the catalog-wide table
- * above — honest only while no token means one kind under one command and a
+ * above, honest only while no token means one kind under one command and a
  * different kind under another. A violation is returned as a list of
  * problems, never thrown, so a catalog's own test can name them.
  */

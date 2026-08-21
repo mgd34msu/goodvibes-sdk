@@ -1,7 +1,7 @@
 /**
  * relay-server-hub.test.ts
  *
- * Behavioral tests for the runtime-neutral RelayHub — the rendezvous core of the
+ * Behavioral tests for the runtime-neutral RelayHub, the rendezvous core of the
  * self-hostable relay. A pair of in-memory fake sockets stands in for real
  * WebSockets so the pairing, opaque forwarding, caps, and lifecycle can be
  * exercised deterministically without a network. The hub must never inspect the

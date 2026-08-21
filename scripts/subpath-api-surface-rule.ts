@@ -1,5 +1,5 @@
 /**
- * subpath-api-surface-rule.ts — the decision logic behind the subpath API gate.
+ * subpath-api-surface-rule.ts, the decision logic behind the subpath API gate.
  *
  * Split out of `check-subpath-api-surface.ts` so every branch of it can be
  * exercised directly by `test/subpath-api-surface-gate.test.ts`, including the
@@ -135,7 +135,7 @@ export function requiredMembers(symbol: ts.Symbol): string[] | undefined {
 /**
  * The public members an exported class exposes.
  *
- * `private`/`protected` members and `#name` private fields are excluded — they
+ * `private`/`protected` members and `#name` private fields are excluded, they
  * are not surface. The constructor is included as `constructor`, because its
  * parameter list is what a consumer calls.
  */
@@ -175,7 +175,7 @@ export function publicClassMembers(symbol: ts.Symbol): string[] | undefined {
  * Block comments go first so a doc-only edit does not churn the report; `.d.ts`
  * emit keeps JSDoc on interface members, which sits INSIDE the declaration text
  * and would otherwise dominate the diff. Line comments are left alone on
- * purpose — `//` occurs inside string literal types (`'https://…'`) and
+ * purpose, `//` occurs inside string literal types (`'https://…'`) and
  * stripping it would corrupt the recorded surface.
  */
 export function normalizeDeclarationText(text: string): string {
@@ -189,8 +189,8 @@ export function normalizeDeclarationText(text: string): string {
  * The gap this closes, twice observed rather than imagined:
  * `PermissionConfigReader.getSnapshot(): PermissionConfigSnapshot` and
  * `automationManager.listRuns(): AutomationRunLike[]` both changed materially
- * — one narrowed from the whole GoodVibesConfig to a single key, the other had
- * silently lost a field — while the recorded declaration text stayed
+ *, one narrowed from the whole GoodVibesConfig to a single key, the other had
+ * silently lost a field, while the recorded declaration text stayed
  * byte-identical, because only the alias's definition moved and the alias name
  * did not.
  *
@@ -274,7 +274,7 @@ export function buildSnapshot(program: ts.Program, entryPoints: ReadonlyMap<stri
  * Subpaths that publish types but whose recorded surface is empty.
  *
  * Nearly every subpath in this package exports at least one symbol, so a
- * zero-export subpath normally means the entry point failed to resolve — which
+ * zero-export subpath normally means the entry point failed to resolve, which
  * is precisely the case that used to pass silently. A genuinely empty entry
  * point goes here WITH a reason rather than weakening the check.
  */
@@ -283,7 +283,7 @@ export const EMPTY_SUBPATH_ALLOWLIST: ReadonlyMap<string, string> = new Map([
     './sql-js',
     'Ambient module declaration for the untyped `sql.js` package. Its whole '
       + 'content is a `declare module` block, which contributes no exported '
-      + 'symbol to this package — a consumer picks it up with '
+      + 'symbol to this package, a consumer picks it up with '
       + '`/// <reference types="@pellux/goodvibes-sdk/sql-js" />`, not by '
       + 'importing from it. An empty recorded surface is correct here, not a '
       + 'resolution failure.',
@@ -299,7 +299,7 @@ export function coverageProblems(
     if (entries.length > 0) continue;
     if (allowlist.has(subpath)) continue;
     problems.push(
-      `${subpath}: resolved to a type entry point that exports nothing — its public surface is absent from the report`,
+      `${subpath}: resolved to a type entry point that exports nothing, its public surface is absent from the report`,
     );
   }
   return problems;
@@ -335,7 +335,7 @@ export function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
       if (added.length > 0) {
         lines.push(
           `  ! ${subpath} ${name} gained REQUIRED member(s): ${added.join(', ')}`
-          + ' — this breaks every consumer that implements it.',
+          + ', this breaks every consumer that implements it.',
         );
       }
       const removedRequired = (was.required ?? []).filter((member) => !(entry.required ?? []).includes(member));
@@ -346,7 +346,7 @@ export function diffSnapshots(before: Snapshot, after: Snapshot): string[] {
       if (addedPublic.length > 0) {
         lines.push(
           `  + ${subpath} class ${name} gained PUBLIC member(s): ${addedPublic.join(', ')}`
-          + ' — a class member is as public as a top-level export.',
+          + ', a class member is as public as a top-level export.',
         );
       }
       const removedPublic = (was.publicMembers ?? []).filter((member) => !(entry.publicMembers ?? []).includes(member));

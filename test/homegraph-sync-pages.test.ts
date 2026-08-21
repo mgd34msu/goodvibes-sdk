@@ -15,7 +15,7 @@ import {
   useHomeGraphFixtures,
 } from './_helpers/homegraph-service-fixtures.js';
 
-// Registered here, at this file's own top level — see the helper's doc comment
+// Registered here, at this file's own top level, see the helper's doc comment
 // for why it cannot be registered inside the helper.
 useHomeGraphFixtures();
 

@@ -4,7 +4,7 @@
  * Exports enriched data providers and one-shot factory functions for
  * the model picker and provider health surfaces.
  *
- * These modules produce structured data for renderers — no UI rendering
+ * These modules produce structured data for renderers, no UI rendering
  * logic lives here.
  */
 

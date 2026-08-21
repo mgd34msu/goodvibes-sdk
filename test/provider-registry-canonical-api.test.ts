@@ -28,8 +28,8 @@ function makeProvider(name: string, models: readonly string[] = []): LLMProvider
   return {
     name,
     models: [...models],
-    // Every provider — whether its models array starts empty or already
-    // populated — needs a declared modelSource to pass the registration-time
+    // Every provider, whether its models array starts empty or already
+    // populated, needs a declared modelSource to pass the registration-time
     // contract check (model-source-contract.ts): a non-empty array is no
     // longer accepted by itself now that the bare-array escape hatch is
     // closed, so this test double always declares 'live-discovery', the same
@@ -62,7 +62,7 @@ function makeRegistry(
 
   // No bare `as unknown as` on this double any more. The cast was hiding that
   // it does not implement setModelFactsSource, which the registry CALLS on
-  // every catalog update — the omission surfaced only as a runtime TypeError
+  // every catalog update, the omission surfaced only as a runtime TypeError
   // once a test reached that path. The `satisfies` clause makes the next
   // missing method a compile error instead.
   const capabilityRegistry = {
@@ -166,7 +166,7 @@ describe('ProviderRegistry.has()', () => {
 });
 
 // ---------------------------------------------------------------------------
-// tryGet() — nullable lookup, never throws
+// tryGet(), nullable lookup, never throws
 // ---------------------------------------------------------------------------
 
 describe('ProviderRegistry.tryGet()', () => {
@@ -259,12 +259,12 @@ describe('ProviderRegistry.require()', () => {
 
 describe('ProviderRegistry model catalog cache', () => {
   // 'gpt-9999-catalog-only-fixture' stands in for a model that is ONLY ever
-  // known via the third-party models.dev catalog — unlike a real OpenAI
+  // known via the third-party models.dev catalog, unlike a real OpenAI
   // model id, it deliberately never appears in OpenAIProvider's dated-static
   // baseline (openai.ts), so these tests still exercise "unknown until the
   // catalog loads" instead of accidentally passing because the live-model-
   // discovery baseline already knows the id (as it now does for real ids
-  // like 'gpt-5.4' — see provider-live-model-discovery.test.ts).
+  // like 'gpt-5.4', see provider-live-model-discovery.test.ts).
   test('initCatalog invalidates model registry built before cached catalog load', () => {
     const root = mkdtempSync(join(tmpdir(), 'goodvibes-provider-registry-'));
     try {
@@ -278,7 +278,7 @@ describe('ProviderRegistry model catalog cache', () => {
       registry.initCatalog();
       expect(registry.listModels().some((model) => model.registryKey === 'openai:gpt-9999-catalog-only-fixture')).toBe(true);
       // Once the catalog load makes this bare id unique across the registry,
-      // the shared resolver auto-qualifies it — no format required.
+      // the shared resolver auto-qualifies it, no format required.
       expect(registry.getForModel('gpt-9999-catalog-only-fixture').name).toBe('openai');
       expect(registry.getForModel('openai:gpt-9999-catalog-only-fixture').name).toBe('openai');
     } finally {
@@ -318,7 +318,7 @@ describe('ProviderRegistry model catalog cache', () => {
   });
 
   // 'gpt-5.4' is a real model id that now appears in more than one provider's
-  // dated-static baseline (openai, openai-subscriber, github-copilot) — the
+  // dated-static baseline (openai, openai-subscriber, github-copilot), the
   // shared resolver reports it as ambiguous with the real candidate keys,
   // never a silent guess and never the old abstract format lecture.
   test('bare model ids: ambiguous across providers reports the real candidates; unique auto-qualifies', () => {
@@ -327,7 +327,7 @@ describe('ProviderRegistry model catalog cache', () => {
     expect(() => registry.setCurrentModel('gpt-5.4')).toThrow(/ambiguous/);
     expect(() => registry.getCapabilityForModel('gpt-5.4')).toThrow(/ambiguous/);
 
-    // 'claude-fable-5' is unique to Anthropic's dated-static baseline — it
+    // 'claude-fable-5' is unique to Anthropic's dated-static baseline, it
     // auto-qualifies and resolves to the real provider, no format required.
     expect(registry.getForModel('claude-fable-5').name).toBe('anthropic');
   });
@@ -358,20 +358,20 @@ describe('ProviderRegistry model catalog cache', () => {
 });
 
 // ---------------------------------------------------------------------------
-// getCurrentModel() — fresh-home fallback for the well-known configured default
+// getCurrentModel(), fresh-home fallback for the well-known configured default
 // ---------------------------------------------------------------------------
 //
 // Root cause (D7b): buildModelRegistry() only draws from custom/runtime/
 // synthetic/catalog/discovered models. The catalog is populated exclusively
 // by an async models.dev fetch (initProviderCatalog/refreshProviderCatalog),
-// which is never awaited at construction time — so on a fresh daemon home
+// which is never awaited at construction time, so on a fresh daemon home
 // (no cache file yet) or while offline, getModelRegistry() is missing every
 // catalog-sourced entry, including the stock default 'openrouter:openrouter/
 // free', and getCurrentModel() throws for the entire lifetime of a catalog-
 // less boot. ProviderRegistry.buildConfiguredModelFallback() closes that gap
 // by synthesizing a minimal definition when the configured registryKey names
 // an actually-registered provider whose own static `models` list already
-// declares that id — narrow enough that a genuinely bad ref still throws.
+// declares that id, narrow enough that a genuinely bad ref still throws.
 describe('ProviderRegistry.getCurrentModel() — fresh-home default fallback', () => {
   test('the stock default resolves with no catalog cache and no initCatalog() call', () => {
     const registry = makeRegistry();
@@ -420,20 +420,20 @@ describe('ProviderRegistry.getCurrentModel() — fresh-home default fallback', (
 });
 
 // ---------------------------------------------------------------------------
-// getProviderUsageSnapshot() — defense in depth for GET /api/providers/:id/usage
+// getProviderUsageSnapshot(), defense in depth for GET /api/providers/:id/usage
 // ---------------------------------------------------------------------------
 //
 // getProviderUsageSnapshot() makes its own, separate getCurrentModel() call
 // after buildSnapshotForProvider() (which already tolerates an unresolved
 // current model). Before this fix that second call was unguarded, so a
-// configured model that still can't resolve — even after the fallback above —
+// configured model that still can't resolve, even after the fallback above,
 // turned this into an unhandled throw instead of an honest JSON payload.
 describe('getProviderUsageSnapshot() — honest degrade on an unresolvable current model', () => {
   test('reports the resolved default cleanly for the provider that owns it', async () => {
     const registry = makeRegistry();
     // Swap the real builtin 'openrouter' (whose describeRuntime() needs full
     // secrets/service-registry deps this test double doesn't provide) for a
-    // minimal stub that still declares 'openrouter/free' — register()
+    // minimal stub that still declares 'openrouter/free', register()
     // overwrites by name, so buildConfiguredModelFallback still matches.
     registry.register(makeProvider('openrouter', ['openrouter/free']));
     const snapshot = await getProviderUsageSnapshot(registry, 'openrouter');

@@ -1,5 +1,5 @@
 /**
- * Failure Forensics types — core data model for automatic failure reports.
+ * Failure Forensics types, core data model for automatic failure reports.
  *
  * A FailureReport is generated automatically whenever a task or turn reaches
  * a terminal failure state. It captures the causal chain derived from phase

@@ -41,7 +41,7 @@ export interface AgentAdapterContext {
   readonly stalledThresholdMs: number;
   /** Side-table entries keyed by agentId. Empty map when no runtimeBus was provided. */
   readonly activity: ReadonlyMap<string, AgentActivityEntry>;
-  /** True when a runtimeBus feeds the side-table — gates the stalled derivation. */
+  /** True when a runtimeBus feeds the side-table, gates the stalled derivation. */
   readonly liveness: boolean;
   /** Agent ids that have a pending shared approval (metadata.agentId match). */
   readonly pendingApprovalAgentIds: ReadonlySet<string>;
@@ -60,10 +60,10 @@ export interface AgentAdapterContext {
   /** All agent ids present in this snapshot. */
   readonly agentIds: ReadonlySet<string>;
   readonly priceUsage?: ((model: string | undefined, usage: ProcessUsage) => number | null) | undefined;
-  /** Provenance for the same resolution priceUsage prices with — stamped onto the node at pricing time. */
+  /** Provenance for the same resolution priceUsage prices with, stamped onto the node at pricing time. */
   readonly priceProvenance?: ((model: string | undefined) => { readonly source: 'user' | 'provider' | 'catalog'; readonly asOf?: string | undefined } | null) | undefined;
   /**
-   * True when the registry was constructed with a `messageBus` dep — gates
+   * True when the registry was constructed with a `messageBus` dep, gates
    * `steerable`. Without it, steering has no delivery mechanism, so every
    * agent (even a live one) honestly reports steerable=false.
    */
@@ -130,14 +130,14 @@ function deriveAgentState(
       // terminationKind distinguishes a graceful interrupt request from a hard
       // kill for display purposes. Records
       // persisted before this field existed have no terminationKind and
-      // default to 'killed' — the historical behavior.
+      // default to 'killed', the historical behavior.
       return record.terminationKind === 'interrupt' ? 'interrupted' : 'killed';
     case 'pending':
       return 'queued';
     case 'running':
       break;
   }
-  // running — fine-grained derivation.
+  // running, fine-grained derivation.
   if (
     ctx.pendingApprovalAgentIds.has(record.id) ||
     (sessionId !== undefined && ctx.pendingApprovalSessionIds.has(sessionId))
@@ -164,7 +164,7 @@ function deriveAgentState(
 /**
  * Derive the attention marker from a node's already-derived coarse `state`.
  *
- * Pure projection — no new signal is consulted. `awaiting-approval` is the only
+ * Pure projection, no new signal is consulted. `awaiting-approval` is the only
  * blocked-on-human state today, so it is the only one that yields an attention
  * marker; every other state yields `undefined`. Kept as a shared helper so any
  * adapter (or a roll-up) derives attention identically from state. The
@@ -199,7 +199,7 @@ export function adaptAgent(record: AgentRecord, ctx: AgentAdapterContext): Proce
     if (priced !== null) {
       costUsd = priced;
       costState = 'priced';
-      // Same resolution instant as the dollars — never re-derived later.
+      // Same resolution instant as the dollars, never re-derived later.
       const provenance = ctx.priceProvenance?.(record.model) ?? null;
       if (provenance) {
         costSource = provenance.source;

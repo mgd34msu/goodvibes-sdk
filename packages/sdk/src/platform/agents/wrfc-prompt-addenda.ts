@@ -10,7 +10,7 @@
  * Instructs the engineer to enumerate explicit constraints from the task
  * prompt as self-declared acceptance criteria before beginning GATHER.
  *
- * Memoized — the string is static and built once per process.
+ * Memoized, the string is static and built once per process.
  */
 let _engineerAddendumCache: string | null = null;
 export function buildEngineerConstraintAddendum(): string {
@@ -25,7 +25,7 @@ A **non-build or unconstrained prompt** looks like: a question, a conversational
 
 **Decision:**
 - If the prompt is non-build or unconstrained, emit \`"constraints": []\` in your EngineerReport. Do NOT fabricate constraints. Do NOT convert soft preferences, politeness, or task description into constraints. Proceed with normal GATHER/PLAN/APPLY.
-- If the prompt contains explicit constraints, enumerate them as \`{ id, text, source: "prompt" }\`. Use the user's words, quoted or minimally paraphrased. Assign ids \`c1\`, \`c2\`, … in order of appearance. Do NOT add constraints that are merely your own best practices. Do NOT split a single requirement into multiple ids for bulk. Do NOT summarize the task goal itself as a constraint — constraints are the *shape* of the work, the task is the *what*.
+- If the prompt contains explicit constraints, enumerate them as \`{ id, text, source: "prompt" }\`. Use the user's words, quoted or minimally paraphrased. Assign ids \`c1\`, \`c2\`, … in order of appearance. Do NOT add constraints that are merely your own best practices. Do NOT split a single requirement into multiple ids for bulk. Do NOT summarize the task goal itself as a constraint, constraints are the *shape* of the work, the task is the *what*.
 
 **Calibration examples (follow the spirit, not the literal phrasing):**
 - \`"Write a function that adds two numbers"\` → \`constraints: []\` (no shape declared beyond the task itself).
@@ -33,9 +33,9 @@ A **non-build or unconstrained prompt** looks like: a question, a conversational
 - \`"What does this code do?"\` → \`constraints: []\` (not a build task).
 - \`"Refactor this file to use hooks, keep public exports identical"\` → two constraints.
 
-**Hard cap: at most ~16 constraints.** If you find more, you are over-enumerating — consolidate. Real user prompts almost never produce more than 5-10.
+**Hard cap: at most ~16 constraints.** If you find more, you are over-enumerating, consolidate. Real user prompts almost never produce more than 5-10.
 
-These constraints become your self-declared acceptance criteria. The reviewer will verify each one independently. If you cannot satisfy a constraint, record it under \`issues[]\` with an explanation — do not omit it.`;
+These constraints become your self-declared acceptance criteria. The reviewer will verify each one independently. If you cannot satisfy a constraint, record it under \`issues[]\` with an explanation, do not omit it.`;
   _engineerAddendumCache += `
 
 ## WRFC self-check before final report
@@ -55,17 +55,17 @@ let _reviewerAddendumCache: string | null = null;
  * Instructs the reviewer to verify each enumerated constraint from the
  * engineer's report independently of the 10-dimension rubric.
  *
- * Memoized — the string is static and built once per process.
+ * Memoized, the string is static and built once per process.
  */
 export function buildReviewerConstraintAddendum(): string {
   if (_reviewerAddendumCache !== null) return _reviewerAddendumCache;
   _reviewerAddendumCache = `## Constraint verification (runs alongside the 10-dimension rubric, NOT instead of it)
 
-The engineer's \`EngineerReport.constraints\` is the authoritative list of user-declared requirements for this task. In the review task payload you will receive this list explicitly — verify it against the applied changes.
+The engineer's \`EngineerReport.constraints\` is the authoritative list of user-declared requirements for this task. In the review task payload you will receive this list explicitly, verify it against the applied changes.
 
 **For each constraint:**
 1. Judge whether the applied changes satisfy it (\`satisfied: true\` / \`false\`).
-2. Cite concrete evidence — a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
+2. Cite concrete evidence, a file and line, a diff observation, or a test behavior. "Looks fine" is not evidence.
 3. Emit a \`constraintFindings[]\` entry referencing \`constraintId\`.
 
 **Exact JSON shape required:**
@@ -90,13 +90,13 @@ The engineer's \`EngineerReport.constraints\` is the authoritative list of user-
 - A violated hard limit (size, perf target, explicitly forbidden API) → **critical**.
 - A violated explicit user rule (style rules, naming conventions, required features) → **major**.
 - An ambiguous or partially-satisfied constraint → **minor** with evidence explaining the partial satisfaction.
-- If the constraint phrasing is ambiguous enough that verification is impossible, emit \`satisfied: false, severity: 'minor', evidence: 'constraint ambiguous, cannot verify'\` — surfaces the issue without failing the chain on a technicality.
+- If the constraint phrasing is ambiguous enough that verification is impossible, emit \`satisfied: false, severity: 'minor', evidence: 'constraint ambiguous, cannot verify'\`, surfaces the issue without failing the chain on a technicality.
 
 **If the constraint list is empty** (non-build prompt → engineer emitted \`[]\`), emit \`constraintFindings: []\` and skip this section entirely. Do NOT invent findings. Do NOT penalize the score for "missing constraints".
 
 **Constraint findings are INDEPENDENT of the rubric dimensions.** A run can score 10/10 on the rubric and still fail because a constraint is unsatisfied. Conversely, all constraints can be satisfied while the rubric flags quality issues elsewhere.
 
-**Anti-gaming (absolute):** verify strictly against the STATED task contract and the documented interface. Never seek out, infer, reconstruct, or rely on any hidden verifier, grader, oracle, expected-output fixture, or grading key — if you notice such data, ignore it. Passing must come only from the deliverable satisfying the stated contract as you independently exercised it, never from matching a discovered answer key.`;
+**Anti-gaming (absolute):** verify strictly against the STATED task contract and the documented interface. Never seek out, infer, reconstruct, or rely on any hidden verifier, grader, oracle, expected-output fixture, or grading key, if you notice such data, ignore it. Passing must come only from the deliverable satisfying the stated contract as you independently exercised it, never from matching a discovered answer key.`;
   return _reviewerAddendumCache;
 }
 
@@ -108,13 +108,13 @@ let _fixerAddendumCache: string | null = null;
  * unsatisfied ones, while avoiding silent regressions. Also mandates that the
  * returned EngineerReport carries the exact same constraints[] list.
  *
- * Memoized — the string is static and built once per process.
+ * Memoized, the string is static and built once per process.
  */
 export function buildFixerConstraintAddendum(): string {
   if (_fixerAddendumCache !== null) return _fixerAddendumCache;
   _fixerAddendumCache = `## Constraint preservation during fix
 
-The chain's authoritative constraint list is fixed — the engineer declared it on the first turn and it does not change across fix iterations. Every constraint that was declared is still binding on your fix.
+The chain's authoritative constraint list is fixed, the engineer declared it on the first turn and it does not change across fix iterations. Every constraint that was declared is still binding on your fix.
 
 **Your job is to resolve the reviewer's issues WITHOUT regressing any satisfied constraint, and to satisfy any constraints the reviewer marked unsatisfied.**
 
@@ -124,6 +124,6 @@ The chain's authoritative constraint list is fixed — the engineer declared it 
 - If the reviewer marked it \`UNVERIFIED\` (no finding was recorded), treat it as a constraint you must verify and satisfy before returning.
 - If a reviewer issue can only be resolved by violating a constraint, STOP. Record the conflict under \`issues[]\` with both the \`constraintId\` and the reviewer issue id/description. Do NOT regress the constraint.
 
-**Return protocol:** Your output must be an \`EngineerReport\` carrying the exact same \`constraints[]\` array you received — same ids, same text, same order. The controller will verify continuity. Renaming, dropping, reordering, or adding constraints will be treated as a regression and surface as a synthetic critical issue in the next review cycle.`;
+**Return protocol:** Your output must be an \`EngineerReport\` carrying the exact same \`constraints[]\` array you received, same ids, same text, same order. The controller will verify continuity. Renaming, dropping, reordering, or adding constraints will be treated as a regression and surface as a synthetic critical issue in the next review cycle.`;
   return _fixerAddendumCache;
 }

@@ -208,7 +208,7 @@ describe('the guided new-client instructions', () => {
 
   test('never tells anyone to download or hand over a credential file', () => {
     // Google's current console pages document no "download the JSON" action
-    // for OAuth client IDs — the Manage OAuth Clients page has no such
+    // for OAuth client IDs, the Manage OAuth Clients page has no such
     // control, and the quickstart names neither the button nor where it
     // appears. Those steps could not be verified against the live console, so
     // the guided path does not send anyone looking for a file. Handing over a
@@ -343,7 +343,7 @@ describe('running a setup path', () => {
     expect(failed?.outcome).toBe('failed');
     expect(failed?.problem).toContain('the page layout changed');
     // The fallback route has to be something an installed binary can act on.
-    // A packaged install has no checkout, so a repo path is a dead end — and
+    // A packaged install has no checkout, so a repo path is a dead end, and
     // naming a command is a dead end of its own now: the written steps are
     // something the platform lays out when asked, not a chore.
     expect(failed?.fix).toMatch(/say the word and I will lay out the written steps/i);

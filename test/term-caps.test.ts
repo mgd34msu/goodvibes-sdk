@@ -126,7 +126,7 @@ describe('probeTermCaps', () => {
 });
 
 // ---------------------------------------------------------------------------
-// nearestAnsi256() — known hex → expected 256 palette index
+// nearestAnsi256(), known hex → expected 256 palette index
 // ---------------------------------------------------------------------------
 
 describe('nearestAnsi256', () => {
@@ -170,7 +170,7 @@ describe('nearestAnsi256', () => {
 });
 
 // ---------------------------------------------------------------------------
-// nearestAnsi16Fg() — known hex → expected 16-color fg code
+// nearestAnsi16Fg(), known hex → expected 16-color fg code
 // ---------------------------------------------------------------------------
 
 describe('nearestAnsi16Fg', () => {
@@ -290,7 +290,7 @@ describe('downsampleColor', () => {
       // reliably mapped to ANSI-16 without an RGB lookup table. downsampleColor
       // returns null so the caller emits NO color sequence, and the character
       // renders in the terminal default color. This is a documented fidelity
-      // tradeoff — the alternative (emitting an incorrect color) would be worse.
+      // tradeoff, the alternative (emitting an incorrect color) would be worse.
       // A full 256→16 reverse-palette table would close this gap in a future pass.
       expect(downsampleColor('42', basic16Caps, 'fg')).toBeNull();
       expect(downsampleColor('196', basic16Caps, 'bg')).toBeNull();

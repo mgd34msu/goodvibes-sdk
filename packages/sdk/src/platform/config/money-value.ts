@@ -1,5 +1,5 @@
 /**
- * money-value.ts — the codec for config keys that hold an amount of money.
+ * money-value.ts, the codec for config keys that hold an amount of money.
  *
  * ── What a money setting is now ───────────────────────────────────────────
  *
@@ -7,7 +7,7 @@
  * `100` and the file reads `100`. He writes `19.99` and the file reads `19.99`.
  * There is no second representation to keep straight, no suffix on the key
  * telling him which one he is in, and nothing here rewrites what he typed into
- * a "canonical" form — a whole number stays whole, and a decimal keeps exactly
+ * a "canonical" form, a whole number stays whole, and a decimal keeps exactly
  * the decimal he entered.
  *
  * These keys used to be named for, and stored in, the currency's smallest
@@ -78,8 +78,8 @@ export function isValidMoneyAmount(value: unknown): value is number {
  *
  * Accepts a number (`100`, `19.99`) or the text of one, with a leading currency
  * symbol and thousands grouping tolerated and removed (`$100`, `1,250.50`).
- * Refuses anything else — text that is not a number, more decimal places than
- * an amount can carry, a negative, or a figure past {@link MAX_MONEY_AMOUNT} —
+ * Refuses anything else, text that is not a number, more decimal places than
+ * an amount can carry, a negative, or a figure past {@link MAX_MONEY_AMOUNT},
  * and the refusal names an example rather than a units rule.
  *
  * The returned number is the one that was typed. Nothing is rounded, padded, or
@@ -117,7 +117,7 @@ export function parseMoneyAmount(raw: unknown): MoneyParseResult {
 export function coerceMoneyAmount(key: string, raw: unknown): number {
   const parsed = parseMoneyAmount(raw);
   if (parsed.ok) return parsed.value;
-  throw new Error(`Invalid value for ${key}: ${describe(raw)} — enter ${MONEY_VALIDATION_HINT}.`);
+  throw new Error(`Invalid value for ${key}: ${describe(raw)}, enter ${MONEY_VALIDATION_HINT}.`);
 }
 
 /**
@@ -125,7 +125,7 @@ export function coerceMoneyAmount(key: string, raw: unknown): number {
  * schema.
  *
  * The `unit: 'money'` mark is the part consumers key off. Anything that needs
- * to know "is this key an amount of money" asks the schema for that mark — not
+ * to know "is this key an amount of money" asks the schema for that mark, not
  * the shape of the key's name, which is how the previous naming scheme reached
  * into every surface that touched one of these keys.
  */

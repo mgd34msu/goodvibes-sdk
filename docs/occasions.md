@@ -1,7 +1,7 @@
 # Occasions and plans
 
-The daemon holds durable facts about the owner's life — his wife's birthday, an
-anniversary, a friend's birthday — and **raises them on its own, before they
+The daemon holds durable facts about the owner's life, his wife's birthday, an
+anniversary, a friend's birthday, and **raises them on its own, before they
 matter**, without being asked. It remembers what he answered so it does not keep
 asking, but not forever, because the occasions recur.
 
@@ -22,10 +22,10 @@ His framing, verbatim:
 
 They behave differently and share no code path beyond storage.
 
-**Occasions** — dated, usually recurring, and they *need an action*. Birthdays,
+**Occasions.** Dated, usually recurring, and they *need an action*. Birthdays,
 anniversaries. These prompt, and they remember the answer.
 
-**Plans** — a dated range with attributes, ambient rather than prompting.
+**Plans.** A dated range with attributes, ambient rather than prompting.
 "Vacation, 12–19 September, Lisbon." There is nothing to decide; the system just
 needs to know, so it can stop suggesting things into that window and so it can
 move a nudge that would otherwise land while he is abroad.
@@ -34,8 +34,8 @@ move a nudge that would otherwise land while he is abroad.
 
 **Nothing unresolved is ever dropped.**
 
-One principle behind three cases — an unanswered nudge, a conflicting date, and
-an interview he walked away from — and therefore ONE mechanism: the open item
+One principle behind three cases, an unanswered nudge, a conflicting date, and
+an interview he walked away from, and therefore ONE mechanism: the open item
 (`occasions/cadence.ts`, `OccasionStateStore.openItems`). Silence never ends
 anything. It only moves a date.
 
@@ -83,17 +83,17 @@ reaped on schedule (an answer expires with its occurrence), swept (orphans and
 aged gift history), and it discloses what it holds through `occasions.state`.
 Every write is ordered through `StoreWriteQueue`: the sweep runs on a timer while
 an answer arrives over a channel, and an unordered write would put the file back
-without the answer — so he would be asked again about something he had answered.
+without the answer, so he would be asked again about something he had answered.
 
 ## 4. Owner rulings
 
 Each of these was decided by the owner. They are not to be quietly revised.
 
-### 4.1 Lead time — 10 days, with a per-occasion override
+### 4.1 Lead time: 10 days, with a per-occasion override
 Enough runway to order something and have it arrive. `occasions.leadDays`, and a
 line carrying `lead 21` overrides it for that occasion alone.
 
-### 4.2 Channel — Telegram **and** the agent. Never the TUI
+### 4.2 Channel: Telegram **and** the agent. Never the TUI
 His reason, verbatim: *"that's more of a 'get work done' kind of interface."*
 
 **And** rather than **or**: `occasions.nudgeChannel` is a comma-separated list, so
@@ -101,7 +101,7 @@ His reason, verbatim: *"that's more of a 'get work done' kind of interface."*
 its own and a failure on one is recorded rather than thrown, so an expired
 Telegram token cannot stop the agent hearing about his wife's birthday.
 
-Telegram is a transport the daemon can reach by itself — a bot token and an HTTP
+Telegram is a transport the daemon can reach by itself, a bot token and an HTTP
 call. The agent is not: landing a message in an agent conversation means taking a
 turn inside the agent product. So the SDK owns the destination and the contract
 (`channels/delivery/strategies-agent.ts`) and the agent product registers the
@@ -111,7 +111,7 @@ fails saying exactly that, rather than looking like an unknown surface.
 **This generalises beyond this feature.** The TUI is a work interface;
 life-admin and proactive personal nudges belong on Telegram and the agent.
 `resolveNudgeDestinations` refuses a TUI target structurally rather than merely
-not choosing one — and a list that names the TUI alongside real destinations
+not choosing one, and a list that names the TUI alongside real destinations
 loses the TUI entry and keeps the rest.
 
 #### One thing said once
@@ -123,7 +123,7 @@ configured push destination the pull leaves stamped items out.
 
 The condition is the push that LANDED, not the one that was configured. An item
 no push has ever landed on the agent carries no stamp, so it still comes back
-through the pull — that covers `agent` configured with no sender registered, and
+through the pull, that covers `agent` configured with no sender registered, and
 a send that failed, neither of which may cost him the nudge. Once an item HAS
 been landed there, the stamp stays for the life of the item: the agent has
 already raised that occasion, and a later failed re-push on its cadence is a
@@ -135,14 +135,14 @@ His words: *"it only needs to tell me a birthday date if i ask it what it is,
 same for other dates."*
 
 Stronger than "do not print the date": "in 10 days" is the date with arithmetic
-applied. So proximity is a WORD — approaching / soon / imminent — chosen from a
+applied. So proximity is a WORD, approaching, soon, or imminent, chosen from a
 day count that never leaves `occasions/nudge.ts`. Side effect worth preserving:
 a reminder delivered to Telegram never puts family birth dates into a message
 channel. `occasions.list` does return the dates, because that is him asking his
-own system over an authenticated verb — the explicit ask that unlocks a
+own system over an authenticated verb, the explicit ask that unlocks a
 closed-tier read.
 
-### 4.4 Occasion **kind** is chosen by him at capture time — never inferred
+### 4.4 Occasion **kind** is chosen by him at capture time, never inferred
 Kinds: **gift-giving**, **remember-only**, and **neither**. `occasions.confirm`
 refuses without one. A parent's death anniversary might well be worth
 remembering, and a cheerful "you'll probably want to sort something" against it
@@ -154,7 +154,7 @@ can still catch a mishearing. Silent afterwards; no re-confirmation at nudge
 time. For an annual date a silent write means he discovers the error up to
 eleven months later.
 
-### 4.6 Silence does not end anything — but the push does not repeat
+### 4.6 Silence does not end anything, but the push does not repeat
 No give-up-after-one-retry: the open ITEM persists and stays enumerable until it
 is resolved or its date passes, so asking "anything coming up?" always finds it.
 That is what "nothing unresolved drops" means, and it is not a licence to say the
@@ -163,8 +163,8 @@ same thing again.
 **Owner ruling, 2026-08-05**, after being told about his own birthday five times
 in one day: an occasion is raised ONCE when it enters its lead window, and at
 most once more on the day itself. Between those it stays open and quiet. The
-ceiling is structural — each raise records which of the two boundaries it served,
-and a served boundary is never served again — so no sweep interval, restart or
+ceiling is structural: each raise records which of the two boundaries it served,
+and a served boundary is never served again, so no sweep interval, restart or
 clock change can produce a third push.
 
 The earlier rhythm here (every `occasions.cadenceDays` days, then daily for the
@@ -172,13 +172,13 @@ last `occasions.finalStretchDays`) was **my choice, not his**, flagged and not
 objected to at the time. It is what an hourly sweep turned into an hourly
 reminder. `occasions.cadenceDays` now governs only conflict re-raise (§4.14);
 `occasions.finalStretchDays` is REMOVED, with a load-time migration that strips
-it from existing settings files and files a receipt — a count of two has nothing
+it from existing settings files and files a receipt, a count of two has nothing
 to tune, and a setting that changes nothing is worse than no setting.
 
-### 4.7 Quiet hours — 8am to 10pm, in his timezone
+### 4.7 Quiet hours: 8am to 10pm, in his timezone
 *"8am to 10pm are generally fine, anything outside of that probably not, so
 quiet outside of that range."* `occasions.activeHours`, reckoned in
-`daemon.timezone`. Outside the window nothing is dropped — it waits.
+`daemon.timezone`. Outside the window nothing is dropped. It waits.
 
 ### 4.8 Declining goes silent until the date passes, then asks fresh next year
 One "no" ends it for this cycle. The record expires WITH THE OCCURRENCE, so next
@@ -201,20 +201,20 @@ resumes at the question he did not answer.
 Not unquestioned, and not an argument. People divorce and people die. Orphaned
 acknowledgement state is dropped with the occasion.
 
-### 4.12 Conflicting dates — raise immediately, and again later if ignored
+### 4.12 Conflicting dates: raise immediately, and again later if ignored
 Two different dates for one thing are both reported. The newer value is never
 taken silently.
 
-### 4.13 Travel/away state feeds nudge timing
+### 4.13 Travel and away state feeds nudge timing
 *"if you know i'm going to be somewhere, then sure, you can modify things like
 nudge times."* A nudge due inside an away window moves EARLIER, to the day before
-he leaves — he cannot have something delivered to a house he is not in. Once he
+he leaves, he cannot have something delivered to a house he is not in. Once he
 has already left there is nothing earlier to move to and the nudge stands.
 
 ### 4.14 Bulk entry is not needed in v1
 Skipped.
 
-## 5. Calendar — the profile is the record, the calendar is a mirror
+## 5. Calendar: the profile is the record, the calendar is a mirror
 
 His ruling, verbatim:
 
@@ -228,7 +228,7 @@ His ruling, verbatim:
   `occasions/reader.ts` at all, so this is structural rather than a rule someone
   has to remember. Calendar feed content from outside the owner is also
   untrusted content, so ingesting occasions from one would be wrong twice over.
-- **Deleting the calendar entry never deletes the occasion** — nothing reads a
+- **Deleting the calendar entry never deletes the occasion.** Nothing reads a
   calendar, so there is no path by which it could.
 - **Mirrored occasions suppress our nudge** (`occasions.suppressMirroredNudges`),
   so the calendar's own reminder is the only ping.
@@ -245,8 +245,8 @@ His ruling, verbatim:
   the People section, which is prose-only by design.
 - Nudge cadence as in §4.6.
 - Nudges push to Telegram by default (`occasions.nudgeChannel = telegram`), the
-  owner's ruling. The key takes a **list**, so `telegram,agent` pushes to both —
-  his ruling in §4.2 — and each entry may carry an address
+  owner's ruling. The key takes a **list**, so `telegram,agent` pushes to both,
+  his ruling in §4.2, and each entry may carry an address
   (`telegram:12345,agent`). Setting the key to empty makes the feature
   **pull-only** instead: nothing is pushed, and `occasions.pending` is how a
   surface sees what is outstanding.
@@ -260,7 +260,7 @@ His ruling, verbatim:
 
 Everything a surface needs is a verb. A consumer that computed anything beyond
 calling these and rendering the answers would be a second implementation of a
-rule that lives in the daemon — most dangerously the rule that a nudge never
+rule that lives in the daemon, most dangerously the rule that a nudge never
 carries the date.
 
 | Verb | Scope | What it is for |
@@ -312,7 +312,7 @@ came from originally.
 ## 8.1 What runs the sweep
 
 A loop that only runs when a verb asks it to is not proactive, and proactive is
-the whole feature — so the composition arms a repeating timer
+the whole feature, so the composition arms a repeating timer
 (`occasions/ticker.ts`), re-read from config every tick so
 `occasions.sweepIntervalMinutes` is live rather than restart-only.
 
@@ -320,7 +320,7 @@ The ticker is deliberately dumb, because the sweep is where the judgement is: a
 tick inside quiet hours raises nothing and reaps anyway, and a tick on a day an
 occasion has already been raised finds its open item not yet due. The interval
 therefore decides how soon the FIRST nudge lands after a window opens and
-nothing else — shortening it cannot make the system nag.
+nothing else. Shortening it cannot make the system nag.
 
 Passes are strictly serial: the next tick is armed only when the current pass
 finishes, so a slow sweep delays the next one rather than having one start on
@@ -332,6 +332,6 @@ timer is `unref`'d so it never holds the daemon open.
 
 Several adjacent things were discussed with the owner and marked "on the list",
 "not now" or "think about it later". None of them is built here, and none of them
-is scaffolded here either — no stub, no extension seam, no flag. The open-item
+is scaffolded here either, no stub, no extension seam, no flag. The open-item
 loop is a general mechanism and would serve some of them one day, but nothing in
 this code refers to any of them.

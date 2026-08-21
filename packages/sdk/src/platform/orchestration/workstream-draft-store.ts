@@ -1,15 +1,15 @@
 // ---------------------------------------------------------------------------
-// workstream-draft-store.ts — durable journal for not-yet-launched proposals
+// workstream-draft-store.ts, durable journal for not-yet-launched proposals
 //
 // A workstream proposal (WorkstreamDraft, workstream-draft-types.ts) is facade
-// state the OrchestrationEngine has no concept of — its only creation entry
+// state the OrchestrationEngine has no concept of, its only creation entry
 // point materializes a real, ticking workstream with no pre-launch "draft"
 // stage. Held in memory alone, a restart between create and launch silently
 // loses it. This store journals each draft to disk so the plan-review gate
 // survives a restart and is resumable: the same reshaped, approved proposal is
 // still there to launch afterward.
 //
-// This is FACADE persistence, not an engine feature — it sits ALONGSIDE the
+// This is FACADE persistence, not an engine feature, it sits ALONGSIDE the
 // engine's own .goodvibes/orchestration/<id>.json workstream snapshots, under a
 // drafts/ subdirectory, and is loaded by the command facade at construction the
 // same way the engine's resumeAllFromDisk() reloads live workstreams. A draft
@@ -18,13 +18,13 @@
 //
 // Every operation is guarded and NEVER throws: a missing directory, an
 // unreadable or malformed file, or a write failure degrades to "that draft
-// isn't there" rather than crashing session startup — mirroring the engine
+// isn't there" rather than crashing session startup, mirroring the engine
 // persistence layer's own quarantine-don't-propagate discipline.
 //
 // RECLAIM: `remove(id)` retires a draft the moment it is launched or cancelled,
 // but a draft the user simply walks away from was never reclaimed by anything,
-// so the directory grew forever. `loadAll()` — the recovery point, called once
-// at command-facade construction — now also bounds the directory by BOTH an age
+// so the directory grew forever. `loadAll()`, the recovery point, called once
+// at command-facade construction, now also bounds the directory by BOTH an age
 // TTL and a count cap, and reports what it reclaimed through `lastReclaim` /
 // the `onReclaim` hook. Deletions are `rmSync(..., { force: true })`, so a file
 // another process removed first is not an error: two concurrent `loadAll()`
@@ -58,7 +58,7 @@ export const WORKSTREAM_DRAFT_CAP = 50;
  */
 export const WORKSTREAM_DRAFT_SWEEP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-/** What one `loadAll()` reclaimed. Counts only — never draft text. */
+/** What one `loadAll()` reclaimed. Counts only, never draft text. */
 export interface WorkstreamDraftReclaim {
   /** Unix ms of the sweep. */
   readonly at: number;
@@ -74,7 +74,7 @@ export interface WorkstreamDraftStoreOptions {
   /**
    * Called after a `loadAll()` that reclaimed at least one file, so the count
    * can be surfaced to the operator. Receives counts only. Never throws out of
-   * `loadAll()` — a failing hook is swallowed like every other side effect here.
+   * `loadAll()`, a failing hook is swallowed like every other side effect here.
    */
   readonly onReclaim?: (summary: WorkstreamDraftReclaim) => void;
   /** Clock seam (tests). Defaults to Date.now. */
@@ -97,7 +97,7 @@ export interface WorkstreamDraftStore {
    * fatal, and are only deleted once older than the TTL.
    */
   loadAll(): WorkstreamDraft[];
-  /** Write (or overwrite) one draft's snapshot atomically. Silently no-ops on any I/O failure — a lost journal write must never break the in-memory flow. */
+  /** Write (or overwrite) one draft's snapshot atomically. Silently no-ops on any I/O failure, a lost journal write must never break the in-memory flow. */
   save(draft: WorkstreamDraft): void;
   /** Delete one draft's snapshot (on launch or cancel). Missing file ⇒ no-op. */
   remove(id: string): void;
@@ -152,7 +152,7 @@ export function createWorkstreamDraftStore(
     try {
       rmSync(path, { force: true });
     } catch {
-      // Unremovable (permissions, or a racing process holding it) — the next
+      // Unremovable (permissions, or a racing process holding it), the next
       // loadAll() will try again; never fatal.
     }
   };
@@ -172,7 +172,7 @@ export function createWorkstreamDraftStore(
    * drafts, oldest first. Never throws.
    *
    * Idempotent: a second run over the same directory finds nothing left to
-   * remove, which is also what makes two processes running it at once safe —
+   * remove, which is also what makes two processes running it at once safe,
    * they converge on the same surviving set and unlink races count as done.
    */
   const reap = (): WorkstreamDraft[] => {
@@ -211,7 +211,7 @@ export function createWorkstreamDraftStore(
     }
     drafts.sort((a, b) => a.createdAt - b.createdAt);
 
-    // Bound 1 — age TTL: an abandoned proposal is reclaimed.
+    // Bound 1, age TTL: an abandoned proposal is reclaimed.
     const live: WorkstreamDraft[] = [];
     let expired = 0;
     for (const draft of drafts) {
@@ -222,7 +222,7 @@ export function createWorkstreamDraftStore(
       }
       live.push(draft);
     }
-    // Bound 2 — count cap: keep the newest `cap`, reclaim the oldest overflow.
+    // Bound 2, count cap: keep the newest `cap`, reclaim the oldest overflow.
     const overCapCount = Math.max(0, live.length - cap);
     for (const draft of live.slice(0, overCapCount)) discard(fileFor(draft.id));
     const kept = live.slice(overCapCount);

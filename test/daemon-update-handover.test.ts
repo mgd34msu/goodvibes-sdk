@@ -10,7 +10,7 @@
  *   2. A daemon update no longer claims the terminal app binary sitting beside
  *      it. A daemon-repository release publishes no `goodvibes-<os>-<arch>`
  *      asset, so a daemon that still listed it would look for a file that does
- *      not exist — and would be overwriting a product that updates itself from
+ *      not exist, and would be overwriting a product that updates itself from
  *      a different repository on a different version line.
  */
 import { describe, expect, test } from 'bun:test';
@@ -119,7 +119,7 @@ describe('the files a daemon update owns', () => {
     }
   });
 
-  // An addon that is not installed is not a missing asset — it is a machine
+  // An addon that is not installed is not a missing asset, it is a machine
   // that never had one. It must not appear in the set, because a set naming an
   // asset that will not be downloaded fails the whole all-or-nothing pass.
   test('an absent optional addon leaves the set applicable rather than bricked', () => {

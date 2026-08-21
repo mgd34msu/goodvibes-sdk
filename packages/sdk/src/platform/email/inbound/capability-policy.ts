@@ -1,5 +1,5 @@
 /**
- * capability-policy.ts — what `surfaces.email.inbound.onInsufficientCapability`
+ * capability-policy.ts, what `surfaces.email.inbound.onInsufficientCapability`
  * actually selects, and where it cannot select anything.
  *
  * ── The problem this file exists to remove ────────────────────────────────
@@ -13,33 +13,33 @@
  * it were true of all of them. Walk the `insufficient` reasons and there is
  * nothing to announce on any of the others:
  *
- *   - `credentials-missing` / `credentials-rejected` — we cannot sign in. There
+ *   - `credentials-missing` / `credentials-rejected`, we cannot sign in. There
  *     is no envelope, because there is no session.
- *   - `mailbox-unreadable` — signed in, and the mailbox will not open. Same.
- *   - `uidvalidity-missing` / `mailbox-position-unknown` — the mailbox opened
+ *   - `mailbox-unreadable`, signed in, and the mailbox will not open. Same.
+ *   - `uidvalidity-missing` / `mailbox-position-unknown`, the mailbox opened
  *     and we cannot keep a position in it. Announcing from here would mean
  *     announcing the whole mailbox as new, repeatedly.
- *   - `fetch-refused` — minted from a FAILED envelope fetch (`capability.ts`).
+ *   - `fetch-refused`, minted from a FAILED envelope fetch (`capability.ts`).
  *     When it fires there are no envelopes; that is what failed.
- *   - `fetch-unreadable` — the server answers and we cannot parse the answer.
+ *   - `fetch-unreadable`, the server answers and we cannot parse the answer.
  *     There is nothing legible to put in a notice.
- *   - `local-store-unwritable` — our own disk. Announcing would mean announcing
+ *   - `local-store-unwritable`, our own disk. Announcing would mean announcing
  *     the same message on every pass, because nothing can record that we did.
- *   - `watcher-stopped-unexpectedly` — by definition we do not know what
+ *   - `watcher-stopped-unexpectedly`, by definition we do not know what
  *     happened.
  *
  * The one that leaves envelopes readable is `gmail-metadata-only`: Google's
  * `gmail.metadata` scope authorizes `users.history.list` and
- * `users.messages.get?format=metadata` and excludes the body — "View your email
+ * `users.messages.get?format=metadata` and excludes the body, "View your email
  * message metadata such as labels and headers, but not the email body", its own
  * description, verbatim. Headers are available; bodies are not. That is the
  * only place `notice-only` describes something the daemon can do.
  *
  * ── So it degrades, and it says so ────────────────────────────────────────
  *
- * `notice-only` on any other reason resolves to `refuse-and-notify` — which is
+ * `notice-only` on any other reason resolves to `refuse-and-notify`, which is
  * what the daemon was going to do regardless, since there is nothing to
- * announce — and `resolveInboundCapabilityPolicy` returns the SENTENCE that
+ * announce, and `resolveInboundCapabilityPolicy` returns the SENTENCE that
  * says the setting did not apply. That sentence rides on the capability
  * verdict's `detail`, which the supervisor's status and the terminal notice
  * both already render, so the owner reads it on the surface he was going to
@@ -87,7 +87,7 @@ export const INBOUND_CAPABILITY_POLICY_DEFAULT: InboundCapabilityPolicy = 'refus
 
 /**
  * Every reason on which `notice-only` describes something that can actually
- * happen — that is, every reason that leaves envelope fields readable.
+ * happen, that is, every reason that leaves envelope fields readable.
  *
  * A `Set` of the union's own members, so adding a reason to
  * `InboundCapabilityReason` does not silently join this list, and a member
@@ -97,7 +97,7 @@ export const INBOUND_CAPABILITY_POLICY_DEFAULT: InboundCapabilityPolicy = 'refus
  * `gmail.metadata` grant refusing (`gmail-metadata-only`) and the same grant
  * announcing (`gmail-metadata-notice-only`). Both are here because the question
  * this set answers is "does this condition leave envelope fields readable",
- * which is a fact about the grant and not about the policy — asking it of the
+ * which is a fact about the grant and not about the policy, asking it of the
  * running state has to give the same answer as asking it of the stopped one, or
  * a source that had already switched to announcing would be told its own
  * setting does not apply. Every other reason in the union is absent, and that
@@ -114,13 +114,13 @@ export interface ResolvedInboundCapabilityPolicy {
   /** What this reason permits. Never weaker than `refuse-and-notify`. */
   readonly effective: InboundCapabilityPolicy;
   /**
-   * True when the two differ — the owner asked for `notice-only` on a condition
+   * True when the two differ, the owner asked for `notice-only` on a condition
    * that cannot honour it.
    */
   readonly degraded: boolean;
   /**
    * One sentence, appended to the capability verdict's `detail`, saying which
-   * policy is in force and — when they differ — why the configured one is not.
+   * policy is in force and, when they differ, why the configured one is not.
    *
    * Never empty. A caller that appends it unconditionally always adds a true
    * statement, so there is no branch at the call site deciding whether the
@@ -160,7 +160,7 @@ export function resolveInboundCapabilityPolicy(
       statusSentence:
         'surfaces.email.inbound.onInsufficientCapability is "notice-only", so arriving mail is '
         + 'still announced from its sender, subject and delivery address. Nothing is read beyond '
-        + 'those fields, and no verification expectation can be satisfied while this lasts — a '
+        + 'those fields, and no verification expectation can be satisfied while this lasts, a '
         + 'signup or order confirmation waiting on a link in a message body will wait until it '
         + 'expires.',
     };

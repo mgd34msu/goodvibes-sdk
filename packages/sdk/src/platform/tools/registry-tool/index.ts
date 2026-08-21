@@ -139,7 +139,7 @@ interface FuzzyFilterOutcome {
  * Results are sorted by ascending Fuse score (lower = better match).
  *
  * `fuse.js` is an optionalDependency, so it is reached through a dynamic
- * import at the moment a query needs it rather than at module init — a static
+ * import at the moment a query needs it rather than at module init, a static
  * import of an optional package takes down every graph that reaches this
  * module when the package is absent, which for this one includes the daemon
  * (see utils/optional-dependency.ts for the measured failure). Without it the
@@ -362,7 +362,7 @@ async function runRecommend(
       .sort((a, b) => a.name.localeCompare(b.name));
     sorted = [...sorted, ...unmatched];
   } else {
-    // No task — fall back to simple word-overlap scoring.
+    // No task, fall back to simple word-overlap scoring.
     const lowerTask2 = lowerTask; // already empty string
     const taskWords = lowerTask2.split(/\s+/).filter(Boolean);
     const scored = candidates.map((item) => {

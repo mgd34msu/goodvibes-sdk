@@ -29,8 +29,8 @@ export async function handleBlueBubblesSurfaceWebhook(req: Request, context: Sur
   //
   // BlueBubbles' own webhook configuration can only append `?password=`, so the
   // query parameter has to keep working or every existing install breaks. But a
-  // credential in a URL is copied into places nobody chose to put it — access
-  // logs, proxy logs, a Referer header — so a caller that can send the header
+  // credential in a URL is copied into places nobody chose to put it, access
+  // logs, proxy logs, a Referer header, so a caller that can send the header
   // should never have its query parameter read instead.
   const providedPassword = readBearerOrHeaderToken(req, 'x-goodvibes-bluebubbles-token')
     || url.searchParams.get('password')

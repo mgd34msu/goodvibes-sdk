@@ -1,5 +1,5 @@
 /**
- * RuntimeHealthAggregator — tracks health status for all runtime domains and
+ * RuntimeHealthAggregator, tracks health status for all runtime domains and
  * derives composite system health. Consumers subscribe to health changes or
  * query current health state.
  */

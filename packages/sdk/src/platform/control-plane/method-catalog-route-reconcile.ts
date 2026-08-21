@@ -23,12 +23,12 @@ import { MODEL_ROUTES } from '../daemon/http/model-routes.js';
  * binding actually resolves against the real dispatch pipeline:
  * `dispatchDaemonApiRoutes` from @pellux/goodvibes-daemon-sdk, the function
  * DaemonHttpRouter.dispatchApiRoutes (packages/sdk/src/platform/daemon/http/
- * router.ts — read as this reconcile's route authority, never edited by it)
+ * router.ts, read as this reconcile's route authority, never edited by it)
  * ultimately delegates to for every method-catalog family except a short
  * list of specialized sub-routers wired directly in router.ts ahead of that
  * delegation (see SPECIALIZED_SUB_ROUTER_PREFIXES). The probe dispatches a
  * synthetic Request against handler stubs that only ever return a fixed
- * marker Response — no real service, manager, or handler body ever runs, so
+ * marker Response, no real service, manager, or handler body ever runs, so
  * probing stays side-effect free even for `dangerous: true` write methods
  * (email.send, automation job mutation, etc.).
  *
@@ -39,7 +39,7 @@ import { MODEL_ROUTES } from '../daemon/http/model-routes.js';
  * router.ts special-cases before it ever reaches dispatchDaemonApiRoutes
  * (MCP config, batch, Cloudflare, Home Assistant, model routes, companion
  * chat, project planning). This module has no evidence either way for
- * those paths, so it marks them 'unchecked' rather than guessing — a false
+ * those paths, so it marks them 'unchecked' rather than guessing, a false
  * "unavailable" verdict would just be a different flavor of the same
  * dishonesty this module exists to catch.
  */
@@ -56,7 +56,7 @@ export interface RouteReconcileResult {
 export type RouteProbe = (method: string, path: string) => boolean | Promise<boolean>;
 
 /**
- * "Is a handler registered for this method id?" — `GatewayMethodCatalog.hasHandler`.
+ * "Is a handler registered for this method id?", `GatewayMethodCatalog.hasHandler`.
  *
  * This closes a hole the route probe alone cannot see. A path in
  * `GATEWAY_REST_ROUTES` dispatches through `invokeGatewayRestVerb` into
@@ -136,7 +136,7 @@ function resolveTemplatePath(template: string): string {
 /**
  * Builds a dispatchDaemonApiRoutes-backed probe: does *any* route in the
  * operator/automation/remote/session/task dispatch chain match this
- * method+path? Every handler in the stub is inert — a Proxy that returns a
+ * method+path? Every handler in the stub is inert, a Proxy that returns a
  * single marker function for any property access, so it never needs
  * updating when DaemonApiRouteHandlers gains a field (the exact kind of
  * drift this reconcile exists to avoid reintroducing elsewhere).
@@ -218,11 +218,11 @@ export async function reconcileCatalogRoutes(
 /**
  * The regression gate. Every descriptor whose http binding was actually
  * checked (status !== 'unchecked') and resolved to no live route must
- * already be marked `invokable: false` at the source — i.e. the
+ * already be marked `invokable: false` at the source, i.e. the
  * advertisement itself must already say "don't call this" instead of
  * silently 404ing a caller who trusted it. Returns the ids that violate
  * that rule. A non-empty result means some descriptor is advertised as
- * live but isn't backed by a route, and isn't marked unavailable either —
+ * live but isn't backed by a route, and isn't marked unavailable either,
  * an email.inbox.list-shaped regression. Wire this into a test (or a boot
  * self-check, once one exists) and fail loudly on a non-empty result.
  */
@@ -236,7 +236,7 @@ export function findUnreconciledAdvertisements(
     // `unhandled` is a violation whatever the flag says: `invokable: false`
     // means "cataloged, not callable", and a method that IS marked callable
     // while reaching no handler is the advertise-without-substance case this
-    // gate exists to catch — one level deeper than a missing route.
+    // gate exists to catch, one level deeper than a missing route.
     if (result.status === 'unhandled') {
       violations.push(result.methodId);
       continue;

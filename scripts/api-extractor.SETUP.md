@@ -2,7 +2,7 @@
 
 `api:check` runs as a step inside the consolidated `validate` job (via `bun run
 validate`) in `.github/workflows/ci.yml`; there is no separate
-`api-surface-check` job. The standalone job below is illustrative — add it only
+`api-surface-check` job. The standalone job below is illustrative, add it only
 if this check ever needs to be isolated into its own job.
 
 Uses the same SHA-pinned action versions as the existing CI jobs.
@@ -27,9 +27,9 @@ Fails if the extracted public API surface differs from the committed baseline `e
 ## Notes
 
 - Configs at repo root, one per tracked entry point:
-  - `api-extractor.json` — the SDK's client entry point (`packages/sdk/dist/index.d.ts`)
-  - `api-extractor.embed.json` — the SDK's embed entry point
-  - `api-extractor.terminal-shell.json` — `packages/terminal-shell`, the other package
+  - `api-extractor.json`, the SDK's client entry point (`packages/sdk/dist/index.d.ts`)
+  - `api-extractor.embed.json`, the SDK's embed entry point
+  - `api-extractor.terminal-shell.json`, `packages/terminal-shell`, the other package
     consumers import directly. It carries its own
     `packages/terminal-shell/tsconfig.api-extractor.json` for the same reason the SDK
     does, and declares no `bundledPackages`: terminal-shell depends on the SDK rather
@@ -37,7 +37,7 @@ Fails if the extracted public API surface differs from the committed baseline `e
     inlining them.
 - Baselines, all committed: `etc/goodvibes-sdk.api.md`, `etc/goodvibes-sdk-embed.api.md`,
   `etc/goodvibes-terminal-shell.api.md`
-- Temp output: `temp/goodvibes-sdk.api.md` — api-extractor's transient scratch report; `temp/` is gitignored (see `.gitignore`). Drift is detected by `git diff` against the committed baseline in `etc/`, not via `temp/`.
+- Temp output: `temp/goodvibes-sdk.api.md`, api-extractor's transient scratch report; `temp/` is gitignored (see `.gitignore`). Drift is detected by `git diff` against the committed baseline in `etc/`, not via `temp/`.
 - Root scripts:
   - `api:extract` → runs all three configs in local mode (writes to `etc/`, always succeeds)
   - `api:check`  → `api:extract`, then `git diff --quiet` over all three committed

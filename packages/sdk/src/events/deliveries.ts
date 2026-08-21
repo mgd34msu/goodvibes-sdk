@@ -1,5 +1,5 @@
 /**
- * DeliveryEvent — discriminated union covering outbound delivery attempts and outcomes.
+ * DeliveryEvent, discriminated union covering outbound delivery attempts and outcomes.
  */
 
 import type { RouteSurfaceKind } from './routes.js';

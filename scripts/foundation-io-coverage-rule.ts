@@ -34,7 +34,7 @@ export function parseMethodIds(idsFileText: string): string[] {
 }
 
 /**
- * The sorted list of operator method ids that lack full typed IO — i.e. are not
+ * The sorted list of operator method ids that lack full typed IO, i.e. are not
  * present as a key in both the input and output maps.
  */
 export function untypedMethodIds(
@@ -59,7 +59,7 @@ export interface RatchetResult {
  * Compare the current untyped count to the frozen baseline:
  *   - increased  -> FAIL: new untyped methods landed; add their typed IO entries.
  *   - decreased  -> FAIL: coverage improved; lower the checked-in baseline to lock it in
- *                   (a ratchet must never outlive the count it recorded — mirrors the
+ *                   (a ratchet must never outlive the count it recorded, mirrors the
  *                   line-cap stale-entry rule).
  *   - ok (equal) -> pass.
  */

@@ -11,7 +11,7 @@ export type SharedSessionStatus = 'active' | 'closed';
 export type SharedSessionMessageRole = 'user' | 'assistant' | 'system';
 
 /**
- * A session participant — the identity triple {surfaceKind, surfaceId, userId?}
+ * A session participant, the identity triple {surfaceKind, surfaceId, userId?}
  * standardized on the canonical (wide) {@link SurfaceKind}, so product surfaces
  * (agent/webui/companion) are first-class participants alongside transport
  * surfaces. `userId` is the documented identity key. This is a DIFFERENT axis
@@ -43,7 +43,7 @@ export interface SharedSessionMessage {
 }
 
 /**
- * Discriminates the session ORIGIN — which product created the session. This is
+ * Discriminates the session ORIGIN, which product created the session. This is
  * a separate axis from {@link SharedSessionParticipant.surfaceKind} (the surface
  * a participant speaks through). Do not conflate them: a session's origin `kind`
  * is stamped once at creation; a session can have many participants across many
@@ -55,7 +55,7 @@ export interface SharedSessionMessage {
  * - 'companion-chat': created via companion chat-mode API (no agent spawn; uses per-session orchestrator)
  * - 'automation': created by an automation job/run
  * - 'channel': created by a third-party messaging channel adapter (Telegram,
- *   Slack, ntfy, a webhook, ...) — see `isChannelSurfaceKind` in
+ *   Slack, ntfy, a webhook, ...), see `isChannelSurfaceKind` in
  *   events/surfaces.ts, which decides this from the originating participant's
  *   surfaceKind. Never claims a filesystem project root: like companion chat,
  *   a channel session is home-scoped and its `project` defaults to 'unknown'.
@@ -84,7 +84,7 @@ export type SharedSessionKind =
  * - 'idle-reaped': the GC sweep closed an idle session. It AUTO-REOPENS on the
  *   next register heartbeat from a participant (a surface coming back to a
  *   session the SYSTEM closed underneath it is not a conflict).
- * - 'user' / 'surface': a deliberate close. It does NOT auto-reopen — register
+ * - 'user' / 'surface': a deliberate close. It does NOT auto-reopen, register
  *   records the heartbeat and returns the still-closed record with a conflict
  *   marker unless `reopen: true` is passed (the session-spine honest-register semantics, see CHANGELOG 1.0.0).
  *
@@ -178,8 +178,8 @@ export interface SteerSharedSessionMessageInput extends SubmitSharedSessionMessa
  * The participant/route attach input consumed by the broker's participant merge.
  * Identical to a submit message minus `metadata`, but `surfaceKind` is the WIDE
  * canonical {@link SurfaceKind} so product-surface participants (agent/webui/
- * companion) — which arrive via sessions.register, not the transport submit
- * path — can be merged. Transport submit inputs (narrow surfaceKind) remain
+ * companion), which arrive via sessions.register, not the transport submit
+ * path, can be merged. Transport submit inputs (narrow surfaceKind) remain
  * assignable to this type.
  */
 export type ParticipantRouteAttachInput =
@@ -226,7 +226,7 @@ export interface EnsureSharedSessionInput {
 }
 
 /**
- * Input to {@link SharedSessionBroker.register} — the idempotent upsert keyed on
+ * Input to {@link SharedSessionBroker.register}, the idempotent upsert keyed on
  * a caller-supplied session id. Re-calling register with the same id is the
  * heartbeat: it advances `participant.lastSeenAt`. Carries the identity spine
  * (kind + project + participant triple) that {@link EnsureSharedSessionInput}
@@ -240,7 +240,7 @@ export interface RegisterSharedSessionInput {
   readonly participant: SharedSessionParticipant;
   /**
    * Explicit intent to reopen a CLOSED session. Default `false`: registering
-   * against a closed id does NOT silently reopen it — it records the heartbeat
+   * against a closed id does NOT silently reopen it, it records the heartbeat
    * (participant.lastSeenAt) and returns the still-closed record with an honest
    * conflict marker. Pass `true` to reopen as part of the register.
    */

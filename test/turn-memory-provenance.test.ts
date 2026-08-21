@@ -2,7 +2,7 @@
  * Memory provenance on the turn wire (the owner-ruled chip's producer).
  *
  * TURN_COMPLETED now carries the turn's MEMORY-sourced injected knowledge ids
- * as `metadata.memory.recordIds` — the exact documented convention the webui's
+ * as `metadata.memory.recordIds`, the exact documented convention the webui's
  * shipped provenance chip reads (`readMemoryProvenanceIds`: metadata.memory.
  * recordIds: string[], defensively). Covered here:
  *   - a turn WITH memory injections serves the ids on the wire payload,
@@ -52,7 +52,7 @@ async function captureTurnCompleted(run: (bus: RuntimeEventBus) => void): Promis
     seen.push(envelope.payload);
   });
   run(bus);
-  // The bus dispatches each subscriber in its own microtask — flush them.
+  // The bus dispatches each subscriber in its own microtask, flush them.
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(seen).toHaveLength(1);
   return seen[0]!;

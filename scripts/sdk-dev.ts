@@ -1,19 +1,19 @@
 #!/usr/bin/env bun
 /**
- * sdk-dev — the canonical local-SDK overlay tool (see CHANGELOG 1.0.0).
+ * sdk-dev, the canonical local-SDK overlay tool (see CHANGELOG 1.0.0).
  *
  * Consolidates what were three independently-drifted copies (TUI 154 lines,
  * agent 172 lines, webui 114 lines) into ONE tool that ships FROM the SDK.
  * Each consumer's own scripts/sdk-dev.ts is now a one-line alias that locates
  * this file (via GOODVIBES_SDK_PATH, default ~/Projects/goodvibes-sdk) and
- * forwards to it with the consumer repo as cwd — see the alias template this
+ * forwards to it with the consumer repo as cwd, see the alias template this
  * brief installs in TUI/agent/webui.
  *
  * `link`    Build the local SDK checkout and overlay dist + package.json for
  *           EVERY public workspace package (enumerated from packages/*, not
- *           hardcoded — a 10th @pellux package needs no consumer edit) into
+ *           hardcoded, a 10th @pellux package needs no consumer edit) into
  *           the caller's node_modules/@pellux/<pkg>, so SDK changes are
- *           testable immediately — no npm release round-trip.
+ *           testable immediately, no npm release round-trip.
  * `status`  Report whether the overlay is active and what it was built from.
  * `restore` Remove the overlay and reinstall the pinned npm version byte-exact.
  *
@@ -21,7 +21,7 @@
  *  - unlink-before-copy: bun hardlinks node_modules package files to
  *    its global install cache (~/.bun/install/cache/...). Overwriting a file
  *    IN PLACE (cpSync onto an existing file) writes through that hardlink and
- *    silently corrupts the shared cache entry for the pinned npm version —
+ *    silently corrupts the shared cache entry for the pinned npm version,
  *    poisoning every other project on the machine that resolves it. Always
  *    rm the destination first so cpSync creates a fresh inode.
  *  - all-siblings overlay: refreshing only goodvibes-sdk leaves sibling
@@ -29,7 +29,7 @@
  *    published build, so a consumer's real-HTTP-client test can validate the
  *    local SDK's records against an OLD wire schema (a transport-parity test
  *    rejected a new field because only goodvibes-sdk was overlaid). This was
- *    already true in the TUI's copy but NEVER true in agent/webui's copies —
+ *    already true in the TUI's copy but NEVER true in agent/webui's copies,
  *    the live re-sync gap this brief closes.
  *  - precise restore: the marker records exactly which packages were
  *    overlaid, so `restore` removes exactly those and nothing else.
@@ -38,7 +38,7 @@
  * package directory (node_modules/@pellux/goodvibes-sdk). Every consumer's
  * release gate (TUI publish-check.ts, agent sdk-release-gates.ts, webui
  * release-gate.ts) reads that marker path directly and hard-fails while it
- * exists, or while the pin is anything but an exact semver — so the fast path
+ * exists, or while the pin is anything but an exact semver, so the fast path
  * can never leak into a release. Those gates are untouched by this
  * consolidation: the marker's location and shape are unchanged, so nothing
  * downstream needed to move.
@@ -59,7 +59,7 @@
  *  - webui's build-time overlay guard (GOODVIBES_ALLOW_OVERLAY_BUILD escape)
  *    lives entirely in webui's vite.config.ts, which reads the marker file
  *    path directly and does not import anything from sdk-dev.ts. It needs no
- *    parameterization here at all — verified read-only, untouched.
+ *    parameterization here at all, verified read-only, untouched.
  */
 import { execSync } from 'node:child_process';
 import { cpSync, existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -71,7 +71,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 /**
  * This file's own SDK checkout root. Honors GOODVIBES_SDK_PATH so tests (and
  * a consumer's alias, which sets the same env var to locate this file in the
- * first place) can override it, but defaults to self-location — this copy
+ * first place) can override it, but defaults to self-location, this copy
  * lives INSIDE the checkout, unlike the three consumer copies it replaces,
  * so it never needs to guess a homedir path for itself.
  */
@@ -87,7 +87,7 @@ export interface WorkspacePackage {
 }
 
 /**
- * Enumerate every PUBLIC workspace package under packages/* — replacing the
+ * Enumerate every PUBLIC workspace package under packages/*, replacing the
  * hardcoded 9-package array the TUI's copy carried. A 10th @pellux package
  * is picked up automatically the moment it exists on disk with
  * publishConfig.access:"public"; no consumer script needs an edit. Private/
@@ -143,13 +143,13 @@ export function overlayStatus(markerRaw: string | null, installedVersion: string
     const m = JSON.parse(markerRaw) as { sdkGit?: string; overlaidAt?: string; sourcePath?: string };
     return {
       active: true,
-      line: `sdk-dev: OVERLAY ACTIVE — ${m.sdkGit}, overlaid ${m.overlaidAt} from ${m.sourcePath}`,
+      line: `sdk-dev: OVERLAY ACTIVE, ${m.sdkGit}, overlaid ${m.overlaidAt} from ${m.sourcePath}`,
       exitCode: 2,
     };
   }
   return {
     active: false,
-    line: `sdk-dev: clean — npm @pellux/goodvibes-sdk@${installedVersion} installed.`,
+    line: `sdk-dev: clean, npm @pellux/goodvibes-sdk@${installedVersion} installed.`,
     exitCode: 0,
   };
 }
@@ -172,7 +172,7 @@ function fail(msg: string): never {
 
 /**
  * Overlay one monorepo package's dist + package.json into a consumer's
- * node_modules. MUST unlink package.json (and the dist dir) before copying —
+ * node_modules. MUST unlink package.json (and the dist dir) before copying,
  * see the cache-safety note in the file header. Returns false when the
  * package is not installed in this consumer / not built in the SDK (skip;
  * not every consumer depends on every sibling package).
@@ -196,7 +196,7 @@ export function markerPath(consumerRoot: string): string {
 async function link(consumerRoot: string, sdkRoot: string): Promise<void> {
   if (!existsSync(sdkRoot)) fail(`local SDK checkout not found at ${sdkRoot} (set GOODVIBES_SDK_PATH to override)`);
   const installedSdkPkg = join(consumerRoot, 'node_modules/@pellux/goodvibes-sdk');
-  if (!existsSync(installedSdkPkg)) fail('node_modules/@pellux/goodvibes-sdk missing — run bun install first');
+  if (!existsSync(installedSdkPkg)) fail('node_modules/@pellux/goodvibes-sdk missing, run bun install first');
 
   const sha = sh('git rev-parse --short HEAD', sdkRoot);
   const branch = sh('git rev-parse --abbrev-ref HEAD', sdkRoot);
@@ -207,7 +207,7 @@ async function link(consumerRoot: string, sdkRoot: string): Promise<void> {
   // acquires the SDK's own build lock internally (withWorkspaceLock('build',
   // ...)). Locking again around this execSync call would be a SEPARATE
   // acquisition in the parent process racing the child's own acquisition of
-  // the SAME lock directory — a deadlock, not extra safety. Two consumers
+  // the SAME lock directory, a deadlock, not extra safety. Two consumers
   // linking concurrently still serialize correctly through build.ts's lock.
   execSync('bun run build && bun run prepare:sdk', { cwd: sdkRoot, stdio: 'inherit' });
   if (!existsSync(join(sdkRoot, 'packages/sdk/dist'))) fail('SDK build produced no dist at packages/sdk/dist');
@@ -217,7 +217,7 @@ async function link(consumerRoot: string, sdkRoot: string): Promise<void> {
   for (const pkg of packages) {
     if (overlayPackage(consumerRoot, sdkRoot, pkg)) overlaid.push(pkg.nm);
   }
-  if (!overlaid.includes('goodvibes-sdk')) fail('goodvibes-sdk overlay failed — is node_modules populated?');
+  if (!overlaid.includes('goodvibes-sdk')) fail('goodvibes-sdk overlay failed, is node_modules populated?');
   console.log(`sdk-dev: overlaid ${overlaid.length} package(s): ${overlaid.join(', ')}`);
 
   writeFileSync(markerPath(consumerRoot), JSON.stringify({
@@ -228,7 +228,7 @@ async function link(consumerRoot: string, sdkRoot: string): Promise<void> {
     note: 'Local SDK overlay active. Run `bun scripts/sdk-dev.ts restore` before releasing; release gates fail while this file exists.',
   }, null, 2));
 
-  console.log(`sdk-dev: LINKED — ${branch}@${sha} (${dirty}) now overlaid into this repo.`);
+  console.log(`sdk-dev: LINKED, ${branch}@${sha} (${dirty}) now overlaid into this repo.`);
   console.log('sdk-dev: run `bun scripts/sdk-dev.ts restore` to return to the pinned npm version.');
 }
 
@@ -269,7 +269,7 @@ async function restore(consumerRoot: string): Promise<void> {
     rmSync(join(consumerRoot, 'node_modules/@pellux', nm), { recursive: true, force: true });
   }
   execSync('bun install', { cwd: consumerRoot, stdio: 'inherit' });
-  if (existsSync(marker)) fail('marker still present after reinstall — restore failed');
+  if (existsSync(marker)) fail('marker still present after reinstall, restore failed');
   const installedPkgJson = join(consumerRoot, 'node_modules/@pellux/goodvibes-sdk/package.json');
   const installedVersion = existsSync(installedPkgJson)
     ? (JSON.parse(readFileSync(installedPkgJson, 'utf8')) as { version?: string }).version
@@ -277,7 +277,7 @@ async function restore(consumerRoot: string): Promise<void> {
   const pinned = readSdkPin(consumerRoot);
   const issue = restoreVersionIssue(installedVersion, pinned);
   if (issue) fail(issue);
-  console.log(`sdk-dev: RESTORED — npm @pellux/goodvibes-sdk@${installedVersion}.`);
+  console.log(`sdk-dev: RESTORED, npm @pellux/goodvibes-sdk@${installedVersion}.`);
 }
 
 /**

@@ -1,5 +1,5 @@
 /**
- * Tests for durability-housekeeping.ts — the one composition point that runs
+ * Tests for durability-housekeeping.ts, the one composition point that runs
  * every crash-residue reap, aggregates the counts, and discloses them.
  *
  * The disclosure half matters as much as the deletion half: a silent sweep is
@@ -239,7 +239,7 @@ describe('startDurabilityHousekeeping', () => {
       // The startup sweep already ran, synchronously.
       expect(existsSync(first)).toBe(false);
 
-      // Residue that appears AFTER boot is reclaimed by the repeating sweep —
+      // Residue that appears AFTER boot is reclaimed by the repeating sweep,
       // the point of scheduling it at all.
       const second = putOrphanJournal('crashed-second');
       await Bun.sleep(120);

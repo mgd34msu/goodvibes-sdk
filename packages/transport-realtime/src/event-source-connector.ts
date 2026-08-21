@@ -1,23 +1,23 @@
 /**
- * event-source-connector.ts — the SSE runtime-event connector.
+ * event-source-connector.ts, the SSE runtime-event connector.
  *
  * Lifted out of runtime-events.ts so the two things a fresh-stream-per-turn
  * client needs have somewhere to live and something to be tested against:
  *
  *  RESUMPTION. The stream underneath already remembers its position across its
  *  OWN reconnects, but a caller that closes the stream and opens a new one for
- *  the next turn used to start from nothing — and a gateway replays "recent
+ *  the next turn used to start from nothing, and a gateway replays "recent
  *  traffic" to a client claiming no position, which hands the new stream the
  *  tail of the previous turn, terminal frames included. The connector now keeps
  *  the last event id it saw per URL and presents it as `Last-Event-ID` on every
  *  (re)establishment, so the gateway replays only what this connector has not
  *  already been given.
  *
- *  TURN IDENTITY. Second line, for the replays we cannot prevent — a gateway
+ *  TURN IDENTITY. Second line, for the replays we cannot prevent, a gateway
  *  that cannot resolve the position, a server that predates the resume, a frame
  *  that genuinely arrives twice. Turn frames carry a `turnId`; the gate drops
  *  the ones addressed to a turn this connection is not rendering, so a replayed
- *  `TURN_COMPLETED` can never finish a different turn. On by default —
+ *  `TURN_COMPLETED` can never finish a different turn. On by default,
  *  `turnScope: 'off'` opts out, `{ turnId }` pins the connection to one turn.
  */
 
@@ -73,7 +73,7 @@ export function createEventSourceConnector<TEvent extends RuntimeEventRecord = R
   const { observer } = options;
   const handleError = options.onError;
   // Position per URL, held for the life of the connector rather than the life
-  // of one stream: that is the whole point — a NEW stream for the next turn
+  // of one stream: that is the whole point, a NEW stream for the next turn
   // resumes where the closed one stopped.
   const resumePositions = new Map<string, string>();
   // One gate per connector, not per domain: tool frames and turn frames arrive

@@ -1,5 +1,5 @@
 /**
- * cli-redaction.ts — masking credential-bearing values out of anything a
+ * cli-redaction.ts, masking credential-bearing values out of anything a
  * front-end writes to a file a person might hand to someone else (a support
  * bundle, a diagnostic dump, a config snapshot).
  *
@@ -7,7 +7,7 @@
  * then prints it. `isSensitiveConfigPath` matches a config path by its LAST
  * SEGMENT against a generic trailing-word pattern, which is why the declared
  * key list below also exists: a key whose last segment merely CONTAINS the
- * word — `caldavPassword`, `imapPassword`, `appPassword`, `authToken` — does
+ * word, `caldavPassword`, `imapPassword`, `appPassword`, `authToken`, does
  * not end in `.password` or `.token`, so the generic pattern answers false for
  * it. Those names are listed explicitly as a backstop.
  */
@@ -18,7 +18,7 @@ export const REDACTED_VALUE = '<redacted>';
 // is the whole reach of this pattern, and it is why the declared list below
 // exists: `surfaces.calendar.caldavPassword` does not end in a `.password`
 // segment, it ends in a `caldavPassword` segment, so this pattern answers false
-// for it — as it does for `imapPassword`, `appPassword` and `authToken`.
+// for it, as it does for `imapPassword`, `appPassword` and `authToken`.
 const SENSITIVE_PATH_PATTERN = /(^|\.)(apiKey|accessToken|botToken|appToken|signingSecret|webhookSecret|verifyToken|verificationToken|secret|password|token|keyFile)$/i;
 
 // Credential-bearing config keys that are sensitive by NAME rather than by the
@@ -35,7 +35,7 @@ const SENSITIVE_PATH_PATTERN = /(^|\.)(apiKey|accessToken|botToken|appToken|sign
 // path that writes a literal token there and that token reaching a file a
 // person emails to someone for support.
 const SENSITIVE_CONFIG_KEYS: ReadonlySet<string> = new Set([
-  // Mailbox / CalDAV — the credentials a daemon polls mail and calendar with.
+  // Mailbox / CalDAV, the credentials a daemon polls mail and calendar with.
   'surfaces.email.password',
   'surfaces.email.imapPassword',
   'surfaces.email.imap.password',
@@ -55,8 +55,8 @@ const SENSITIVE_CONFIG_KEYS: ReadonlySet<string> = new Set([
   // Payment card material. ADDED to this set, never substituted for it: this
   // set is a hardcoded list with no delegation, so replacing it wholesale with
   // another product's would silently stop redacting whatever that one omits.
-  // The four names below end in no word the suffix pattern knows —
-  // "cardNumber", "cardExpiry" and "cardholderName" match none of them — which
+  // The four names below end in no word the suffix pattern knows,
+  // "cardNumber", "cardExpiry" and "cardholderName" match none of them, which
   // is the whole reason a declared list exists rather than a naming habit.
   // (The `.map` below lowercases every entry; the lookup lowercases too.)
   'payments.cardNumber',
@@ -133,7 +133,7 @@ export function redactConfig<T>(config: T): RedactedConfigResult<T> {
 }
 
 export function redactText(input: string): string {
-  // Assignment form: keyword=value — anchored so 'monkey=' and 'donkey=' do NOT match.
+  // Assignment form: keyword=value, anchored so 'monkey=' and 'donkey=' do NOT match.
   // Matches: token=, access_token=, api_key=, api-key=, secret=, password= and colon form token: value
   let output = input
     .replace(

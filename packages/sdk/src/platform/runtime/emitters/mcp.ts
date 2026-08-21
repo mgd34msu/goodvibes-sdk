@@ -1,5 +1,5 @@
 /**
- * MCP emitters — typed emission wrappers for McpEvent domain.
+ * MCP emitters, typed emission wrappers for McpEvent domain.
  */
 import { createEventEnvelope } from '../events/envelope.js';
 import type { RuntimeEventBus } from '../events/index.js';

@@ -1,13 +1,13 @@
 /**
- * hosted-session-exec-posture.test.ts — the posture reaches the tool a hosted
+ * hosted-session-exec-posture.test.ts, the posture reaches the tool a hosted
  * turn actually calls.
  *
  * `decideExecContainment` being correct and `createHostedSessionRuntime`
  * consulting it are two different claims, and the incident was the second one:
  * every piece of the sandbox was wired, the fallback was simply silent, and a
  * conversational turn ran on the host. So this drives the REAL exec tool out of
- * the registry a real hosted session composed — no stubs between the posture
- * and the command — with the boundary switched off, which is exactly the state
+ * the registry a real hosted session composed, no stubs between the posture
+ * and the command, with the boundary switched off, which is exactly the state
  * the daemon was in.
  *
  * The default is the load-bearing half. A hosted session composed with no

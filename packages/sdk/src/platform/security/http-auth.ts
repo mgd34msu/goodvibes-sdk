@@ -117,7 +117,7 @@ export function authenticateOperatorToken(
     return { kind: 'pairing-token', token: normalized, tokenId: pairing.id, name: pairing.name };
   }
 
-  // Then the legacy shared token — unless it has been revoked. A non-match must
+  // Then the legacy shared token, unless it has been revoked. A non-match must
   // still be checked as a user session so session cookies remain valid when
   // operator tooling also uses a bearer token.
   if (

@@ -369,7 +369,7 @@ export async function fetchModelContextWindows(
 
   switch (serverType) {
     case 'ollama': {
-      // Ollama: POST /api/show for each model — parallel to avoid blocking pool slot
+      // Ollama: POST /api/show for each model, parallel to avoid blocking pool slot
       await Promise.allSettled(
         models.map(async (model) => {
           try {
@@ -413,7 +413,7 @@ export async function fetchModelContextWindows(
     }
 
     case 'vllm': {
-      // vLLM: GET /v1/models/{id} returns max_model_len — parallel to avoid blocking pool slot
+      // vLLM: GET /v1/models/{id} returns max_model_len, parallel to avoid blocking pool slot
       await Promise.allSettled(
         models.map(async (model) => {
           try {
@@ -481,7 +481,7 @@ export async function fetchModelContextWindows(
     case 'tgi':
     case 'unknown':
     default: {
-      // Generic: try /v1/models/{id} for each model, look for common context length fields — parallel
+      // Generic: try /v1/models/{id} for each model, look for common context length fields, parallel
       await Promise.allSettled(
         models.map(async (model) => {
           try {
@@ -555,7 +555,7 @@ async function fetchModelOutputLimits(
 
   switch (serverType) {
     case 'ollama': {
-      // Ollama: POST /api/show for each model — look for num_predict in model_info or parameters
+      // Ollama: POST /api/show for each model, look for num_predict in model_info or parameters
       await Promise.allSettled(
         models.map(async (model) => {
           try {
@@ -598,7 +598,7 @@ async function fetchModelOutputLimits(
     }
 
     case 'vllm': {
-      // vLLM: GET /v1/models/{id} — look for max_completion_tokens
+      // vLLM: GET /v1/models/{id}, look for max_completion_tokens
       await Promise.allSettled(
         models.map(async (model) => {
           try {
@@ -620,7 +620,7 @@ async function fetchModelOutputLimits(
     }
 
     case 'llamacpp': {
-      // llama.cpp: GET /props — look for default_generation_settings.n_predict
+      // llama.cpp: GET /props, look for default_generation_settings.n_predict
       try {
         const res = await instrumentedFetch(`http://${host}:${port}/props`, {
           signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),

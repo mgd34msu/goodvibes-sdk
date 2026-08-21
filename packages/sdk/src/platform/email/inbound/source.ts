@@ -1,5 +1,5 @@
 /**
- * source.ts — the seam that makes inbound mail source-agnostic
+ * source.ts, the seam that makes inbound mail source-agnostic
  * (docs/inbound-email.md §3.4d).
  *
  * The watcher was IMAP-only, so someone who had already adopted Google
@@ -21,8 +21,8 @@
  * Because the two sources do not cost the same thing, and the difference is
  * the kind that gets quietly rounded off in a status line. IMAP IDLE is true
  * push and delivers in under a second. Gmail's `users.history.list` is
- * POLLING — `users.watch` + Pub/Sub needs a public HTTPS endpoint and a GCP
- * topic, which a daemon on someone's own machine behind NAT does not have —
+ * POLLING, `users.watch` + Pub/Sub needs a public HTTPS endpoint and a GCP
+ * topic, which a daemon on someone's own machine behind NAT does not have,
  * so its worst case is the whole poll interval and nothing on that path can
  * be faster. Making the latency a value the source must state means the owner
  * is told a number rather than the word "real-time", and a surface that wants
@@ -39,8 +39,8 @@ import type { InboundCapabilityVerdict } from './ports.js';
 /**
  * How quickly a source can notice mail, stated rather than implied.
  *
- *   - `push` — the provider tells us. Sub-second; the delay is a round trip.
- *   - `poll` — we ask on a timer. `worstCaseMs` is the floor: a message that
+ *   - `push`, the provider tells us. Sub-second; the delay is a round trip.
+ *   - `poll`, we ask on a timer. `worstCaseMs` is the floor: a message that
  *     lands one millisecond after a poll waits the whole interval, and there
  *     is no configuration that makes it shorter than the interval in force.
  */
@@ -55,7 +55,7 @@ export type SourceLatency =
  * PRECONDITION (§3.4a), not something discovered mid-stream: `start` connects
  * and answers "can this source do the job", and a verdict of `insufficient`
  * means `run` is never entered. A source that authenticated but cannot fetch
- * bodies says so here, loudly, with the step that fixes it — it never returns
+ * bodies says so here, loudly, with the step that fixes it, it never returns
  * an empty-looking success, because a mailbox going quiet is exactly what a
  * working mailbox looks like on a slow day.
  */
@@ -86,12 +86,12 @@ export interface InboundMailSource {
    * What it does NOT do, said here so a call site is not read as more than it
    * is: it cuts short `InboundMailboxWatcher.waitForRecheck()`, and that wait
    * exists only after a terminal verdict. On a healthy connected watcher there
-   * is nothing to wake and asking is deliberately a no-op — a settings save is
+   * is nothing to wake and asking is deliberately a no-op, a settings save is
    * not a reason to drop a working IDLE connection and rebuild it.
    *
    * `GmailMailSource` does not implement it. Its `insufficient` states are
    * grants changed in Google's console, and no edit to this daemon's settings
-   * clears one — so an immediate re-probe would spend a request to learn what
+   * clears one, so an immediate re-probe would spend a request to learn what
    * was already known.
    */
   recheckNow?(): void;

@@ -1,8 +1,8 @@
 /**
- * supervisor.ts — the restart policy for a wake-word detector process.
+ * supervisor.ts, the restart policy for a wake-word detector process.
  *
  * The detector holds a microphone open for as long as the user has it on, so
- * the failure that matters is not one crash — it is a crash LOOP. A process
+ * the failure that matters is not one crash, it is a crash LOOP. A process
  * that dies on startup and is restarted immediately becomes a storm that pins a
  * core, spams the log, and repeatedly grabs and releases the capture device.
  *
@@ -120,7 +120,7 @@ export class WakeSupervisor {
 
   /**
    * Record a crash and decide what to do. Returns `latched` once the budget is
-   * spent, and keeps returning it — the decision is sticky until
+   * spent, and keeps returning it, the decision is sticky until
    * {@link clearLatch}.
    */
   noteCrashed(now: number): WakeRestartDecision {
@@ -143,7 +143,7 @@ export class WakeSupervisor {
   }
 
   /**
-   * Record a deliberate stop — the user turned the feature off, or the process
+   * Record a deliberate stop, the user turned the feature off, or the process
    * was replaced. A clean stop is not a crash and consumes no budget.
    */
   noteStopped(): void {

@@ -1,8 +1,8 @@
 /**
  * The accepted "fix this?" offer's spawned session id must not strand: after
  * the starter returns, the id is stamped onto the RESOLVED approval record
- * (broker seam) and published live, so the surface that accepted — attached
- * right now — has an in-process handle to open the session. The channel
+ * (broker seam) and published live, so the surface that accepted, attached
+ * right now, has an in-process handle to open the session. The channel
  * notification is unchanged; a denied offer is never stamped; the auto-start
  * path is unchanged.
  */

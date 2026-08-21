@@ -1,8 +1,8 @@
 /**
- * ics-parser.ts — a pure, dependency-free iCalendar (RFC 5545) reader.
+ * ics-parser.ts, a pure, dependency-free iCalendar (RFC 5545) reader.
  *
  * Vendored on purpose. The SDK's `packages/sdk` ships ZERO third-party runtime
- * dependencies (workspace packages only — see packages/sdk/package.json), and it
+ * dependencies (workspace packages only, see packages/sdk/package.json), and it
  * guards that with bundle-budget / browser-compat / no-any gates. Pulling a general
  * ICS library in for the read-focused subset we actually need would break that
  * convention for little gain; this focused reader matches repo style and is easy to
@@ -21,7 +21,7 @@
  *
  * Everything unrecognised is ignored quietly EXCEPT the two things a caller must be
  * told about: a VEVENT with no usable DTSTART is `skipped` with a reason, and an
- * RRULE we do not fully expand is flagged on the event (in rrule.ts) — never dropped.
+ * RRULE we do not fully expand is flagged on the event (in rrule.ts), never dropped.
  *
  * PURE: no fs, no network, no process globals. Input is text; output is data.
  */
@@ -210,7 +210,7 @@ export function parseIcs(text: string): ParsedCalendar {
         // The value is a CAL-ADDRESS ('mailto:alice@example.com'); the address
         // is what identifies the inviter, so the scheme is dropped and the
         // CN parameter (a display name the same party wrote) is not preferred
-        // over it. Recorded as CLAIMED — nothing here verifies it.
+        // over it. Recorded as CLAIMED, nothing here verifies it.
         const address = cl.value.trim().replace(/^mailto:/i, '').trim();
         if (address.length > 0) draft.organizer = address;
         break;
@@ -218,13 +218,13 @@ export function parseIcs(text: string): ParsedCalendar {
       case 'DTSTART': {
         const parsed = parseDateValue(cl.value, cl.params);
         if (parsed) draft.start = parsed;
-        else diagnostics.push({ line: cl.line, component: 'DTSTART', message: `Unrecognised DTSTART value '${cl.value.trim()}' — event kept without a usable start.` });
+        else diagnostics.push({ line: cl.line, component: 'DTSTART', message: `Unrecognised DTSTART value '${cl.value.trim()}', event kept without a usable start.` });
         break;
       }
       case 'DTEND': {
         const parsed = parseDateValue(cl.value, cl.params);
         if (parsed) draft.end = parsed;
-        else diagnostics.push({ line: cl.line, component: 'DTEND', message: `Unrecognised DTEND value '${cl.value.trim()}' — event kept without an end.` });
+        else diagnostics.push({ line: cl.line, component: 'DTEND', message: `Unrecognised DTEND value '${cl.value.trim()}', event kept without an end.` });
         break;
       }
       case 'RRULE':
@@ -236,7 +236,7 @@ export function parseIcs(text: string): ParsedCalendar {
   }
 
   if (inEvent && draft) {
-    diagnostics.push({ line: draft.startLine, component: 'VEVENT', message: 'VEVENT was not closed with END:VEVENT before end of feed — finalised anyway.' });
+    diagnostics.push({ line: draft.startLine, component: 'VEVENT', message: 'VEVENT was not closed with END:VEVENT before end of feed, finalised anyway.' });
     finalizeEvent(draft, events, skipped, diagnostics);
   }
 
@@ -255,7 +255,7 @@ function finalizeEvent(
   diagnostics: ParseDiagnostic[],
 ): void {
   if (!draft.start) {
-    skipped.push({ line: draft.startLine, component: 'VEVENT', message: `Skipped VEVENT '${draft.summary ?? draft.uid ?? 'untitled'}' — no usable DTSTART.` });
+    skipped.push({ line: draft.startLine, component: 'VEVENT', message: `Skipped VEVENT '${draft.summary ?? draft.uid ?? 'untitled'}', no usable DTSTART.` });
     return;
   }
   const summary = draft.summary ?? '(no title)';

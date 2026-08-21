@@ -1,5 +1,5 @@
 /**
- * stable-host.ts — a stable name for printed/QR pairing links.
+ * stable-host.ts, a stable name for printed/QR pairing links.
  *
  * Resolving the first non-internal IPv4 in enumeration order gives an address
  * bound to the current DHCP lease: when the lease changes, every printed link
@@ -8,13 +8,13 @@
  * routable address when no stable name is available.
  *
  * Resolution ladder (highest preference first):
- *   1. Tailscale MagicDNS name — preferred when tailscale is up. It resolves on
+ *   1. Tailscale MagicDNS name, preferred when tailscale is up. It resolves on
  *      and off the LAN and is never bound to a DHCP lease.
- *   2. mDNS `<hostname>.local` — a LAN name a DHCP change does not break.
- *   3. Gateway-routed interface address — the IPv4 on the default-route
+ *   2. mDNS `<hostname>.local`, a LAN name a DHCP change does not break.
+ *   3. Gateway-routed interface address, the IPv4 on the default-route
  *      interface (not merely the first non-internal one, which can land on a
  *      bridge/VPN). The last resort; DHCP-bound.
- *   4. Loopback — nothing routable enumerated.
+ *   4. Loopback, nothing routable enumerated.
  *
  * The resolver (resolveStableHost) is a pure function of injected inputs so the
  * ladder is testable under mocked interface / tailscale states; the probes that
@@ -34,11 +34,11 @@ export interface TailscaleState {
 }
 
 export interface StableHostInputs {
-  /** os.hostname(), possibly an FQDN — the `.local` name derives from its first label. */
+  /** os.hostname(), possibly an FQDN, the `.local` name derives from its first label. */
   readonly hostname: string;
   /** The routable IPv4 on the default-route interface, when known. */
   readonly gatewayInterfaceIp?: string | undefined;
-  /** First non-internal IPv4 in enumeration order — the last-resort address. */
+  /** First non-internal IPv4 in enumeration order, the last-resort address. */
   readonly firstNonInternalIp?: string | undefined;
   /** Tailscale state, when the CLI is present and answered in time. */
   readonly tailscale?: TailscaleState | undefined;
@@ -65,7 +65,7 @@ export function mdnsLocalName(host: string): string | null {
 }
 
 /**
- * Resolve the stable host from injected inputs. Pure — no I/O — so the ladder is
+ * Resolve the stable host from injected inputs. Pure, no I/O, so the ladder is
  * exercised directly under mocked interface / tailscale states.
  */
 export function resolveStableHost(inputs: StableHostInputs): ResolvedStableHost {
@@ -81,7 +81,7 @@ export function resolveStableHost(inputs: StableHostInputs): ResolvedStableHost 
   return { host: '127.0.0.1', kind: 'loopback', stable: false };
 }
 
-/** First non-internal IPv4 in enumeration order — the last-resort address. */
+/** First non-internal IPv4 in enumeration order, the last-resort address. */
 export function firstNonInternalIpv4(nets: ReturnType<typeof networkInterfaces>): string | undefined {
   for (const name of Object.keys(nets)) {
     for (const netInfo of nets[name] ?? []) {

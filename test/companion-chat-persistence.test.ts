@@ -158,7 +158,7 @@ describe('P2: messages restored in order after restart', () => {
 
 // ---------------------------------------------------------------------------
 // P3: Closed sessions SURVIVE restart (closed-skip data-loss fix, S1 spine) and
-// are HISTORY. The old behavior dropped closed sessions on reload — the exact
+// are HISTORY. The old behavior dropped closed sessions on reload, the exact
 // "299 on-disk, serves 0" bug. They must now load (listable + importable). GC's
 // deletion authority is SPLIT: it may evict message BODIES from memory after a
 // grace (meta stays listable, on-disk copy untouched), but it must NOT delete
@@ -220,7 +220,7 @@ describe('P3: closed sessions survive restart and stay listable', () => {
       expect(manager.listSessions({ includeClosed: true }).sessions.map((s) => s.id)).toContain('stale-closed');
       manager.dispose();
 
-      // Still on disk — a fresh manager reloads it.
+      // Still on disk, a fresh manager reloads it.
       const reloaded = makeManager(sessionsDir);
       await reloaded.init();
       expect(reloaded.getSession('stale-closed')).not.toBeNull();
@@ -258,7 +258,7 @@ describe('P3: closed sessions survive restart and stay listable', () => {
       expect(manager.getSession('evict-me')?.messageCount).toBe(2);
       manager.dispose();
 
-      // On-disk copy is UNTOUCHED — a fresh manager restores the bodies.
+      // On-disk copy is UNTOUCHED, a fresh manager restores the bodies.
       const reloaded = makeManager(sessionsDir);
       await reloaded.init();
       expect(reloaded.getMessages('evict-me')).toHaveLength(2);
@@ -416,7 +416,7 @@ describe('P6: deleteSession drains an in-flight close-time save before unlinking
       await settleEvents(20);
       expect(existsSync(filePath)).toBe(true);
 
-      // Now release the gate — the drained save completes its write, and
+      // Now release the gate, the drained save completes its write, and
       // only then should deleteSession proceed to unlink.
       releaseSave!();
       const result = await withTestTimeout(deletePromise, 2_000, 'deleteSession did not settle after the gated save was released');
@@ -430,7 +430,7 @@ describe('P6: deleteSession drains an in-flight close-time save before unlinking
       manager.dispose();
 
       // Simulated re-init (fresh manager instance, same dir) must not reload
-      // the deleted session — proving there's no leftover file to reload.
+      // the deleted session, proving there's no leftover file to reload.
       const reloaded = makeManager(sessionsDir);
       await reloaded.init();
       expect(reloaded.getSession(session.id)).toBeNull();

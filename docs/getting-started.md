@@ -1,13 +1,13 @@
-# Getting Started
+# Getting started
 
 > **What this SDK is:** `@pellux/goodvibes-sdk` is a client SDK for the GoodVibes daemon.
-> It does **not** call Anthropic, OpenAI, Gemini, or any other AI provider directly — the daemon
+> It does **not** call Anthropic, OpenAI, Gemini, or any other AI provider directly. The daemon
 > orchestrates those on your behalf. If you need to call a provider directly, use their official
 > SDK instead. If you don't have a daemon yet, see [Daemon embedding](./daemon-embedding.md).
 
 This SDK has two surfaces. Read the [Published Surface Matrix](./surfaces.md) (the consumer surface map; the internal runtime-boundary model lives in [Runtime Surfaces](./runtime-surfaces.md)) to understand which applies to you:
-- **Full surface** — Bun consumers (TUI, daemon, CLI).
-- **Companion surface** — Hermes (React Native / Expo), browser, or Cloudflare Workers consumers.
+- **Full surface.** Bun consumers (TUI, daemon, CLI).
+- **Companion surface.** Hermes (React Native or Expo), browser, or Cloudflare Workers consumers.
 
 ## Install
 
@@ -60,7 +60,7 @@ Bun.serve({
 });
 ```
 
-## Companion quickstart (React Native / Expo / browser / Cloudflare Workers)
+## Companion quickstart (React Native, Expo, browser, Cloudflare Workers)
 
 For companion apps and web UIs, use the runtime-specific entry point. These entry points contain no Bun globals and bundle cleanly with Metro, Vite, webpack, and esbuild.
 
@@ -112,7 +112,7 @@ const stop = sdk.realtime.viaSse().agents.on('AGENT_COMPLETED', (event) => {
 ### Cloudflare Worker batch bridge
 
 Cloudflare is optional and off by default. For onboarding, call the daemon's
-`/api/cloudflare/*` routes so the SDK validates the token/account and provisions
+`/api/cloudflare/*` routes so the SDK validates the token and account and provisions
 Queues, DLQ, Worker secrets, queue consumer, and cron trigger.
 
 ```ts
@@ -127,13 +127,13 @@ export default createGoodVibesCloudflareWorker();
 
 The SDK accepts two auth options, with the following precedence (highest first):
 
-1. **`tokenStore`** — a `GoodVibesTokenStore` object with `getToken` / `setToken` / `clearToken`.
+1. **`tokenStore`.** A `GoodVibesTokenStore` object with `getToken`, `setToken`, and `clearToken`.
    Recommended for any interactive or long-lived client.
 
-2. **`getAuthToken`** — an async resolver with signature `() => Promise<string | null>`.
+2. **`getAuthToken`.** An async resolver with signature `() => Promise<string | null>`.
    Use for dynamic token resolution without the full store interface.
 
-3. **`authToken`** — a static value. The TypeScript type is `string | null | undefined`; setting it to `null` or omitting it both mean "unauthenticated". Lowest precedence. Use only for short-lived scripts or when the token is static. See [client.ts JSDoc](../packages/sdk/src/client.ts) `Auth token precedence` block for the canonical type definition.
+3. **`authToken`.** A static value. The TypeScript type is `string | null | undefined`. Setting it to `null` or omitting it both mean "unauthenticated". Lowest precedence. Use only for short-lived scripts or when the token is static. See [client.ts JSDoc](../packages/sdk/src/client.ts) `Auth token precedence` block for the canonical type definition.
 
 When `tokenStore` is present, `auth.login()` and `auth.clearToken()` automatically persist changes through the store.
 
@@ -217,24 +217,24 @@ See [Observability](./observability.md) for the `SDKObserver` interface and avai
 
 ## Choosing an entry point
 
-- `@pellux/goodvibes-sdk` — Bun full surface. Use this for TUI, daemon, and CLI apps.
-- `@pellux/goodvibes-sdk/daemon` — Bun server hosts embedding daemon routes.
-- `@pellux/goodvibes-sdk/react-native` — React Native (Hermes) companion apps.
-- `@pellux/goodvibes-sdk/expo` — Expo companion defaults and Expo secure token stores.
-- `@pellux/goodvibes-sdk/browser` — browser apps that need the full operator contract.
-- `@pellux/goodvibes-sdk/browser/knowledge` — base knowledge/wiki WebUI apps.
-- `@pellux/goodvibes-sdk/browser/homeassistant` — Home Assistant browser panels.
-- `@pellux/goodvibes-sdk/browser/agent` — agent-scoped browser companion; routes Knowledge/Wiki calls to the Agent-owned knowledge environment.
-- `@pellux/goodvibes-sdk/web` — full browser + service-worker defaults for apps that need the complete operator contract. See [Web UI integration](./web-ui-integration.md).
-- `@pellux/goodvibes-sdk/operator` — operator/control-plane client only.
-- `@pellux/goodvibes-sdk/peer` — peer/distributed-runtime client only.
-- `@pellux/goodvibes-sdk/auth` — token storage helpers and auth flows.
-- `@pellux/goodvibes-sdk/errors` — typed error classes.
-- `@pellux/goodvibes-sdk/transport-*` — low-level transport primitives, including `@pellux/goodvibes-sdk/transport-direct` for an in-process direct transport.
+- `@pellux/goodvibes-sdk`: Bun full surface. Use this for TUI, daemon, and CLI apps.
+- `@pellux/goodvibes-sdk/daemon`: Bun server hosts embedding daemon routes.
+- `@pellux/goodvibes-sdk/react-native`: React Native (Hermes) companion apps.
+- `@pellux/goodvibes-sdk/expo`: Expo companion defaults and Expo secure token stores.
+- `@pellux/goodvibes-sdk/browser`: browser apps that need the full operator contract.
+- `@pellux/goodvibes-sdk/browser/knowledge`: base knowledge/wiki WebUI apps.
+- `@pellux/goodvibes-sdk/browser/homeassistant`: Home Assistant browser panels.
+- `@pellux/goodvibes-sdk/browser/agent`: agent-scoped browser companion. Routes Knowledge and Wiki calls to the Agent-owned knowledge environment.
+- `@pellux/goodvibes-sdk/web`: full browser and service-worker defaults for apps that need the complete operator contract. See [Web UI integration](./web-ui-integration.md).
+- `@pellux/goodvibes-sdk/operator`: operator/control-plane client only.
+- `@pellux/goodvibes-sdk/peer`: peer/distributed-runtime client only.
+- `@pellux/goodvibes-sdk/auth`: token storage helpers and auth flows.
+- `@pellux/goodvibes-sdk/errors`: typed error classes.
+- `@pellux/goodvibes-sdk/transport-*`: low-level transport primitives, including `@pellux/goodvibes-sdk/transport-direct` for an in-process direct transport.
 
 See [Package guide](./packages.md) for a full decision matrix, and the canonical [Public surface](./public-surface.md) for every published entry point.
 
-## Next Reads
+## Next reads
 
 - [Published surface matrix](./surfaces.md)
 - [Authentication](./authentication.md)

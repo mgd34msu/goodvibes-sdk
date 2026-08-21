@@ -2,7 +2,7 @@
  * Declarative cascade rules table for the goodvibes-sdk runtime.
  * Cross-machine error propagation rules.
  *
- * Each entry is pure data — adding a new cascade rule means adding a new object to this array.
+ * Each entry is pure data, adding a new cascade rule means adding a new object to this array.
  * The CascadeEngine consumes this table; no logic lives here.
  */
 

@@ -149,16 +149,16 @@ import type { DivergenceDashboardConfig } from './divergence-dashboard.js';
 import type { PolicyRegistryConfig } from './policy-registry.js';
 
 /**
- * createPermissionEvaluator — Factory function for the runtime permission evaluator.
+ * createPermissionEvaluator, Factory function for the runtime permission evaluator.
  *
  * Returns a LayeredPolicyEvaluator configured with the given options.
  * Designed as the primary entry point for integrating the runtime permissions system.
  *
  * The returned evaluator exposes:
- *   - `evaluate(toolName, args)` — perform a full layered evaluation
- *   - `recordSessionOverride(...)` — cache a user prompt response
- *   - `log` — DecisionLog for audit queries
- *   - `getMode()` — inspect the active mode
+ *   - `evaluate(toolName, args)`, perform a full layered evaluation
+ *   - `recordSessionOverride(...)`, cache a user prompt response
+ *   - `log`, DecisionLog for audit queries
+ *   - `getMode()`, inspect the active mode
  *
  * @example
  * ```ts
@@ -169,8 +169,8 @@ import type { PolicyRegistryConfig } from './policy-registry.js';
  * }
  * ```
  *
- * @param config     — Optional configuration; all fields have safe defaults.
- * @param provenance — Optional bundle provenance (GC-PERM-011).
+ * @param config    , Optional configuration; all fields have safe defaults.
+ * @param provenance, Optional bundle provenance (GC-PERM-011).
  */
 export function createPermissionEvaluator(
   config: PermissionsConfig = {},
@@ -184,17 +184,17 @@ export function createPermissionEvaluator(
 }
 
 /**
- * createPermissionSimulator — Factory for `PermissionSimulator`.
+ * createPermissionSimulator, Factory for `PermissionSimulator`.
  *
  * Creates a dual-evaluator simulation pipeline for the runtime permissions system that runs
  * both the actual and simulated evaluators in parallel, tracking divergence.
  *
  * Requires the `permissions-simulation` gate (permissions.simulation) to be on.
  *
- * @param actualConfig    — Config for the authoritative evaluator.
- * @param simulatedConfig — Config for the candidate evaluator.
- * @param simulationMode  — Controls enforcement and warning behaviour.
- * @param config          — Optional tuning: record limit, divergence threshold.
+ * @param actualConfig   , Config for the authoritative evaluator.
+ * @param simulatedConfig, Config for the candidate evaluator.
+ * @param simulationMode , Controls enforcement and warning behaviour.
+ * @param config         , Optional tuning: record limit, divergence threshold.
  *
  * @example
  * ```ts
@@ -236,7 +236,7 @@ export function createPermissionSimulator(
 }
 
 /**
- * createDivergenceDashboard — Factory for the permissions divergence dashboard.
+ * createDivergenceDashboard, Factory for the permissions divergence dashboard.
  *
  * Requires the `permission-divergence-dashboard` gate (permissions.divergenceDashboard) when a gate manager
  * is supplied. Hosts without the feature-flag subsystem can gate this factory
@@ -253,7 +253,7 @@ export function createDivergenceDashboard(
 }
 
 /**
- * createPolicyRegistry — Factory for the policy-as-code registry.
+ * createPolicyRegistry, Factory for the policy-as-code registry.
  *
  * Requires the `policy-as-code` gate (policy.registryEnabled) when a gate manager is supplied.
  * Hosts without the feature-flag subsystem can gate this factory at their own

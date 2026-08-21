@@ -43,7 +43,7 @@ const settle = async (): Promise<void> => {
  *
  * Replaces "sleep a fixed 70 ms and then assert a keepalive beat has landed".
  * The keepalive's cadence is 15 ms here, so on an idle machine 70 ms is four
- * beats of headroom — but the beat has to travel through the adapter and be
+ * beats of headroom, but the beat has to travel through the adapter and be
  * recorded, and how long that takes on a machine running the rest of this suite
  * concurrently is not something a fixed sleep can know. The poll returns on the
  * first beat, so a fast host is no slower than before, and the ceiling is large
@@ -53,7 +53,7 @@ async function waitUntil(predicate: () => boolean, what: string, budgetMs = 30_0
   const deadline = Date.now() + budgetMs;
   while (!predicate()) {
     if (Date.now() > deadline) {
-      throw new Error(`waitUntil: ${what} never became true — waited ${budgetMs}ms`);
+      throw new Error(`waitUntil: ${what} never became true, waited ${budgetMs}ms`);
     }
     await new Promise<void>((r) => setTimeout(r, 5));
   }
@@ -286,7 +286,7 @@ for (const makeAdapter of adapters) {
 
       client.dispose();
       // Settle first so a beat already in flight when dispose() ran is recorded
-      // BEFORE the baseline is taken — otherwise a busy machine could make a
+      // BEFORE the baseline is taken, otherwise a busy machine could make a
       // pre-dispose beat look like a post-dispose one.
       await settle();
       const afterDispose = fix.calls.length;
@@ -448,7 +448,7 @@ describe('SessionSpineClient — activation modes', () => {
 
 // ---------------------------------------------------------------------------
 // mirroredSessionIds (self-mirror identity fix): the CANONICAL "which wire rows are mine"
-// set — what SessionUnionCache consults instead of assuming a caller's local
+// set, what SessionUnionCache consults instead of assuming a caller's local
 // reader id happens to match what THIS client actually sent to the wire.
 // ---------------------------------------------------------------------------
 describe('SessionSpineClient — mirroredSessionIds (the true shared identity for a self-mirrored wire row)', () => {
@@ -521,7 +521,7 @@ describe('foldLegacySpineStore', () => {
   test('skips when the marker VALIDATES (idempotent)', () => {
     // The marker must assert its own completion. The pre-2026-07 shape
     // ({migratedAt, count} with no schemaVersion/completed) is indistinguishable
-    // from a torn write and deliberately no longer short-circuits — see
+    // from a torn write and deliberately no longer short-circuits, see
     // test/session-spine-legacy-fold-marker.test.ts for the full contract.
     const storePath = join(root, 'sessions.json');
     const markerPath = join(root, 'sessions.json.spine-migrated');

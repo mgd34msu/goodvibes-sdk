@@ -9,7 +9,7 @@
  *
  * Behaviour:
  *   1. Builds the SDK if dist/ is missing. Warns (but does NOT rebuild) if dist/
- *      exists but appears stale — the build step is left to the caller in CI so
+ *      exists but appears stale, the build step is left to the caller in CI so
  *      that a concurrent build failure does not mask a budget violation.
  *      Pass --build to force a rebuild when dist/ is stale.
  *   2. Reads budget config from bundle-budgets.json at the repo root.
@@ -160,10 +160,10 @@ if (!distExists()) {
     console.error('ERROR: dist/ is missing and --no-build was passed. Run `bun run build` first.');
     process.exit(1);
   }
-  console.log('dist/ is missing — running bun run build …');
+  console.log('dist/ is missing, running bun run build …');
   runBuild();
 } else if (FORCE_BUILD && isStale()) {
-  console.log('dist/ is stale and --build was passed — running bun run build …');
+  console.log('dist/ is stale and --build was passed, running bun run build …');
   runBuild();
 } else if (isStale()) {
   console.warn(
@@ -209,7 +209,7 @@ for (const { entry, distRel } of entries) {
   const filePath = resolve(SDK_PKG, distRel);
   if (!existsSync(filePath)) {
     if (isStale()) {
-      // File is absent because dist/ is stale — the entry exists in package.json
+      // File is absent because dist/ is stale, the entry exists in package.json
       // exports but has no corresponding built file yet. Fail fast with an
       // actionable message instead of blaming bundle-budgets.json.
       console.error(

@@ -71,7 +71,7 @@ describe('what a conversational turn is spawned with', () => {
 
   it('tells the turn to infer what the thing means and to use it, with work still opt-in', () => {
     // Owner ruling 2026-08-02: "if i give the agent something like a plane
-    // itinerary, i expect it to know what to do with it — where to save it,
+    // itinerary, i expect it to know what to do with it, where to save it,
     // how to use it, the things to infer from it."
     const context = buildConversationalTurnContext({ sessionId: 's1', surfaceKind: 'telegram' });
     expect(context).toContain('Capture what the message implies, not only what it states.');
@@ -106,7 +106,7 @@ describe('which turns carry the owner\'s own authority', () => {
   });
 
   it('telegram does, on the shipped defaults, with nothing configured', () => {
-    // occasions.nudgeChannel ships as 'telegram' — the channel already trusted
+    // occasions.nudgeChannel ships as 'telegram', the channel already trusted
     // to carry his private reminders outbound. This is the reported case.
     const decision = resolveCaptureAuthority({
       channel: { surfaceKind: 'telegram' },
@@ -203,7 +203,7 @@ describe('a trip keeps the details he pasted', () => {
     expect(reread.plan.away).toBe(true);
     expect(reread.plan.destination).toBe('Picayune MS');
     expect(reread.plan.extras).toEqual(ITINERARY_DETAILS);
-    // The confirmation number specifically — it is the thing a grep for the
+    // The confirmation number specifically, it is the thing a grep for the
     // trip found nowhere on disk.
     expect(proposal.line).toContain('B79YKY');
   });
@@ -225,7 +225,7 @@ describe('a trip keeps the details he pasted', () => {
 
   it('a detail that reads like structure does not become structure', () => {
     // "in Dallas" would otherwise be parsed as the destination, and "away" as
-    // the away flag — silently changing the record.
+    // the away flag, silently changing the record.
     expect(normalizePlanDetail('in Dallas')).toBe('note in Dallas');
     expect(normalizePlanDetail('away')).toBe('note away');
     expect(normalizePlanDetail('2026-01-01..2026-01-02')).toBe('note 2026-01-01..2026-01-02');
@@ -365,7 +365,7 @@ describe('the profile capture tool', () => {
     }));
     const args = { action: 'record_trip', title: 'T', from: '2026-08-06', to: '2026-08-09', said: 'x' };
     expect(JSON.parse((await refused.execute(args)).output as string).stored).toBe(false);
-    // The original is untouched — binding returns a copy.
+    // The original is untouched, binding returns a copy.
     expect(JSON.parse((await base.execute(args)).output as string).stored).toBe(true);
     expect(plans).toHaveLength(1);
   });

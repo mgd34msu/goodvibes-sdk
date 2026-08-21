@@ -1,5 +1,5 @@
 /**
- * SDKObserver — first-class observability hooks for the GoodVibes SDK.
+ * SDKObserver, first-class observability hooks for the GoodVibes SDK.
  *
  * Consumers can implement any subset of `SDKObserver` and pass the instance
  * via the `observer` option on supported client factories. All methods are
@@ -28,9 +28,9 @@ export type { AnyRuntimeEvent };
 
 /**
  * The auth state kind used in transition notifications.
- * - `'anonymous'` — no credentials present
- * - `'session'` — session-cookie or short-lived token
- * - `'token'` — long-lived bearer token
+ * - `'anonymous'`, no credentials present
+ * - `'session'`, session-cookie or short-lived token
+ * - `'token'`, long-lived bearer token
  */
 export type AuthStateKind = 'anonymous' | 'session' | 'token';
 
@@ -69,7 +69,7 @@ export interface SDKObserver extends TransportObserver {
    * Called for every event dispatched through the realtime transport
    * (SSE or WebSocket). Receives the fully-typed runtime event payload.
    *
-   * Wired as of 0.19.7 — fires on every envelope dispatched through
+   * Wired as of 0.19.7, fires on every envelope dispatched through
    * `createEventSourceConnector` and `createWebSocketConnector`.
    */
   onEvent?(event: AnyRuntimeEvent): void;
@@ -78,7 +78,7 @@ export interface SDKObserver extends TransportObserver {
    * Called when the SDK catches and is about to rethrow a GoodVibesSdkError.
    * The error is still rethrown; this is notification only.
    *
-   * Wired as of 0.19.7 — fires at every `GoodVibesSdkError` throw site in
+   * Wired as of 0.19.7, fires at every `GoodVibesSdkError` throw site in
    * the transport and auth layers before the error propagates to the caller.
    */
   onError?(err: GoodVibesSdkError): void;
@@ -88,7 +88,7 @@ export interface SDKObserver extends TransportObserver {
    * - `'send'` fires before the request is dispatched.
    * - `'recv'` fires after a response is received (with status + duration).
    *
-   * Wired as of 0.19.7 — fires in `transport-http` request/response boundary
+   * Wired as of 0.19.7, fires in `transport-http` request/response boundary
    * and in realtime connect/message boundaries.
    */
   onTransportActivity?(activity: TransportActivityInfo): void;
@@ -238,7 +238,7 @@ export interface OtelHistogram {
  * Create an observer that emits OpenTelemetry spans and metrics.
  *
  * Pass a pre-configured `Tracer` and `Meter` from your OpenTelemetry SDK setup.
- * This adapter has no hard dependency on `@opentelemetry/*` — it accepts the
+ * This adapter has no hard dependency on `@opentelemetry/*`, it accepts the
  * abstractions defined above, which match the subset of the real
  * OpenTelemetry API.
  *

@@ -157,7 +157,7 @@ function countTaskTransition(
 }
 
 export function updateTaskState(domain: TaskDomainState, event: TaskEvent): TaskDomainState {
-  // Progress-only events (BATCH_JOB_PROGRESS, EXPORT_PROGRESS) have no taskId —
+  // Progress-only events (BATCH_JOB_PROGRESS, EXPORT_PROGRESS) have no taskId,
   // they are not task lifecycle events and do not mutate the task registry.
   if (!('taskId' in event)) return domain;
   const tasks = new Map(domain.tasks);

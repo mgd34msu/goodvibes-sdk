@@ -1,7 +1,7 @@
 /**
  * MCP server lifecycle state machine.
  *
- * Pure transition logic — no side effects, no I/O.
+ * Pure transition logic, no side effects, no I/O.
  * All state changes flow through `applyTransition()`.
  */
 import type { McpServerState } from './types.js';
@@ -58,7 +58,7 @@ export type TransitionResult =
  * Returns `{ success: true, previous, next }` if the transition is valid,
  * or `{ success: false, reason }` if it is not.
  *
- * This function is pure — callers are responsible for updating the entry.
+ * This function is pure, callers are responsible for updating the entry.
  *
  * @param current  - The current state of the server
  * @param target   - The desired next state

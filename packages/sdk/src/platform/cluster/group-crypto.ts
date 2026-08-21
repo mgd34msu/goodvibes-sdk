@@ -1,5 +1,5 @@
 /**
- * group-crypto.ts — the primitives the group-key layer is built from.
+ * group-crypto.ts, the primitives the group-key layer is built from.
  *
  * Everything here is a pure function over strings and buffers. No file I/O, no
  * sockets, no config: that keeps the parts a reviewer has to be sure about in
@@ -8,7 +8,7 @@
  * The layout of the trust:
  *
  *   joinKey      the only thing a human ever handles. Typed on a second
- *                machine to get it into the group. Stable — it changes only
+ *                machine to get it into the group. Stable, it changes only
  *                when the operator deliberately changes it.
  *   joinVerifier scrypt(joinKey, joinSalt). Replicated to every member so any
  *                member can admit a newcomer. Deliberately expensive to derive
@@ -16,7 +16,7 @@
  *                be brute-forced cheaply from a captured verifier.
  *   groupRoot    32 random bytes minted once at create. Never rotates, never
  *                leaves the creating node, never on the wire. Its ONLY job is
- *                to name the group (see deriveGroupId) — which is why losing
+ *                to name the group (see deriveGroupId), which is why losing
  *                it costs nothing: the id it produced is already stored.
  *   groupKey     32 random bytes per GENERATION. Signs every datagram. Rotates
  *                on a schedule and immediately on any removal.
@@ -26,7 +26,7 @@
  *                itself after every group key it ever held has expired.
  *   agreement    a per-node x25519 key pair. The public half lives in the
  *                roster; a new group key is wrapped to each member with it, so
- *                a REMOVED member — absent from the roster — is simply not
+ *                a REMOVED member, absent from the roster, is simply not
  *                sent the new key and cannot derive it either.
  */
 import {
@@ -51,7 +51,7 @@ import { isSurfaceId } from './surface-id.js';
 const KEY_BYTES = 32;
 
 /**
- * scrypt cost. N=2^15/r=8/p=1 is ~32 MiB and ~100 ms on a modern CPU — high
+ * scrypt cost. N=2^15/r=8/p=1 is ~32 MiB and ~100 ms on a modern CPU, high
  * enough that guessing a human-chosen passphrase from a captured verifier is
  * expensive, low enough that a Raspberry Pi joining a group does not appear to
  * hang. `maxmem` has to be raised explicitly: 128*N*r is exactly Node's 32 MiB
@@ -59,7 +59,7 @@ const KEY_BYTES = 32;
  */
 export const JOIN_SCRYPT_PARAMS = { N: 32_768, r: 8, p: 1, maxmem: 96 * 1024 * 1024 } as const;
 
-/** Crockford base32 — no I, L, O or U, so nothing reads as a digit by mistake. */
+/** Crockford base32, no I, L, O or U, so nothing reads as a digit by mistake. */
 const BASE32_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
 
 function toBase32(bytes: Buffer): string {
@@ -78,7 +78,7 @@ function toBase32(bytes: Buffer): string {
   return out;
 }
 
-/** Base64url of raw bytes — the encoding every stored key uses. */
+/** Base64url of raw bytes, the encoding every stored key uses. */
 export function encodeKeyBytes(bytes: Buffer): string {
   return bytes.toString('base64url');
 }
@@ -125,8 +125,8 @@ export function generateJoinKey(): string {
  *
  * A key the operator retyped with different case, with spaces instead of
  * dashes, or with a trailing newline from a shell heredoc is the same key. A
- * PASSPHRASE, however, is whatever the operator typed — normalizing it would
- * quietly shrink its keyspace — so normalization is applied only to keys in the
+ * PASSPHRASE, however, is whatever the operator typed, normalizing it would
+ * quietly shrink its keyspace, so normalization is applied only to keys in the
  * generated `gvj1-` shape.
  */
 export function normalizeJoinKey(value: string): string {
@@ -140,7 +140,7 @@ export function normalizeJoinKey(value: string): string {
  *
  * A salt's job is to be DIFFERENT per group, so that work spent guessing one
  * group's passphrase buys nothing against another. It does not need to be
- * secret and it does not need to be random — deriving it from the group id gets
+ * secret and it does not need to be random, deriving it from the group id gets
  * uniqueness for free, and means a machine that has been given a join key and a
  * group id has everything it needs to attempt a join without the group first
  * having to advertise a salt on the network.
@@ -183,8 +183,8 @@ export function generateGroupRoot(): string {
 /**
  * The group's public name on the wire.
  *
- * Derived from the ROOT secret and the fixed label 'group' — never from a group
- * key — which is the whole reason it survives rotation: rotating produces a new
+ * Derived from the ROOT secret and the fixed label 'group', never from a group
+ * key, which is the whole reason it survives rotation: rotating produces a new
  * signing key and touches nothing this depends on. Truncated to 10 bytes (80
  * bits) and rendered base32, which is short enough to read out over the phone
  * and far too long to collide with a neighbour's group by accident.
@@ -212,15 +212,15 @@ export function generateGroupKey(): string {
 /**
  * Hash a surface identity down to something safe to put on a LAN.
  *
- * An ntfy topic, a bot token's chat id, an account address — all of those name
+ * An ntfy topic, a bot token's chat id, an account address, all of those name
  * a way to reach the operator, and none of them belong in a datagram any
  * neighbour can capture. A value that is ALREADY a digest of this shape passes
  * through unchanged so a caller that hashed upstream is not double-hashing.
  *
  * TWO digest shapes pass through, and the second one matters more than it
  * looks. The per-surface election layer derives its own surface ids in
- * surface-id.ts — 128 bits of a domain-separated SHA-256, bare hex with no
- * prefix — and those ids are what the election routes on, what the holdings
+ * surface-id.ts, 128 bits of a domain-separated SHA-256, bare hex with no
+ * prefix, and those ids are what the election routes on, what the holdings
  * ledger is keyed by, and what the envelope carries. Re-hashing one here would
  * produce a value nothing can route and would break the election's own inner
  * signature, whose canonical form covers `surfaceId`. So a surface id that has
@@ -247,9 +247,9 @@ export interface NodeKeyPairMaterial {
 
 /** Both key pairs a node needs to be a member. */
 export interface NodeKeyMaterial {
-  /** ed25519 — proves "I am this node id" after every group key has expired. */
+  /** ed25519, proves "I am this node id" after every group key has expired. */
   readonly identity: NodeKeyPairMaterial;
-  /** x25519 — the address a new group key is wrapped to. */
+  /** x25519, the address a new group key is wrapped to. */
   readonly agreement: NodeKeyPairMaterial;
 }
 
@@ -290,7 +290,7 @@ export function generateNodeKeyMaterial(): NodeKeyMaterial {
  * When a machine that has been away asks to come back, the reply has to be
  * authenticated against something the returning machine ALREADY HELD when it
  * left. Its stored roster is stale by definition, so a reply signed by whichever
- * member happened to answer may be signed by a machine it has never heard of —
+ * member happened to answer may be signed by a machine it has never heard of,
  * which previously left the seal as the only thing standing behind that reply.
  *
  * The group signing key fixes that: every member can sign as the GROUP, and the

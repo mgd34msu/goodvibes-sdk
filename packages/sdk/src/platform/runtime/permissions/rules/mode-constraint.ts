@@ -21,7 +21,7 @@ export interface ModeConstraintRuleResult {
 }
 
 /**
- * toolMatchesModePattern — Returns true if `toolName` matches the rule's toolPattern.
+ * toolMatchesModePattern, Returns true if `toolName` matches the rule's toolPattern.
  */
 function toolMatchesModePattern(
   toolName: string,
@@ -34,17 +34,17 @@ function toolMatchesModePattern(
 }
 
 /**
- * evaluateModeConstraintRule — Evaluates a single ModeConstraintRule.
+ * evaluateModeConstraintRule, Evaluates a single ModeConstraintRule.
  *
  * Returns `matched: true` when:
  *   1. The active mode is listed in `rule.activeModes`, AND
  *   2. The tool name matches `rule.toolPattern`, AND
  *   3. If `rule.classifications` is set, the tool classification is in that list.
  *
- * @param rule           — The ModeConstraintRule to evaluate.
- * @param toolName       — Name of the tool being called.
- * @param activeMode     — The currently active PermissionMode.
- * @param classification — The semantic classification of the tool call (may be undefined).
+ * @param rule          , The ModeConstraintRule to evaluate.
+ * @param toolName      , Name of the tool being called.
+ * @param activeMode    , The currently active PermissionMode.
+ * @param classification, The semantic classification of the tool call (may be undefined).
  */
 export function evaluateModeConstraintRule(
   rule: ModeConstraintRule,
@@ -52,7 +52,6 @@ export function evaluateModeConstraintRule(
   activeMode: PermissionMode,
   classification: CommandClassification | undefined,
 ): ModeConstraintRuleResult {
-  // Check mode match
   if (!rule.activeModes.includes(activeMode)) {
     return {
       matched: false,
@@ -65,7 +64,6 @@ export function evaluateModeConstraintRule(
     };
   }
 
-  // Check tool name match
   const toolMatches = toolMatchesModePattern(toolName, rule.toolPattern);
   if (!toolMatches) {
     return {
@@ -79,7 +77,6 @@ export function evaluateModeConstraintRule(
     };
   }
 
-  // Check classification constraint (optional)
   if (rule.classifications !== undefined && rule.classifications.length > 0) {
     if (classification === undefined || !rule.classifications.includes(classification)) {
       return {

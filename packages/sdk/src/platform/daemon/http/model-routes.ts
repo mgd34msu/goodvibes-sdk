@@ -4,12 +4,12 @@
  * HTTP route handlers for model catalog discovery and global model selection.
  *
  * Routes:
- *   GET    /api/models          — list all providers + models with configured flags
- *   GET    /api/models/current  — return current model + configured status
- *   PATCH  /api/models/current  — switch current model live
+ *   GET    /api/models         , list all providers + models with configured flags
+ *   GET    /api/models/current , return current model + configured status
+ *   PATCH  /api/models/current , switch current model live
  *
  * All routes require the existing daemon bearer-token auth (enforced by the
- * caller — DaemonHttpRouter.handleRequest validates auth before dispatching).
+ * caller, DaemonHttpRouter.handleRequest validates auth before dispatching).
  */
 
 import type { ProviderRegistry } from '../../providers/registry.js';
@@ -23,7 +23,7 @@ import { BUILTIN_COMPAT_PROVIDERS, BUILTIN_PROVIDER_ENV_KEYS } from '../../provi
 import { logger } from '../../utils/logger.js';
 
 // ---------------------------------------------------------------------------
-// Provider label map — brand-accurate display names
+// Provider label map, brand-accurate display names
 // ---------------------------------------------------------------------------
 
 const BUILTIN_LABEL_MAP: Record<string, string> = {
@@ -312,7 +312,7 @@ async function buildCurrentModelResponse(
  * Exported because it is READ by the capability-route reconcile
  * (control-plane/method-catalog-route-reconcile.ts): router.ts dispatches this
  * sub-router before the shared route table, so the reconcile's probe cannot see
- * these paths and used to skip them by prefix — which is how three verbs stayed
+ * these paths and used to skip them by prefix, which is how three verbs stayed
  * outside the catalog with nothing noticing. The dispatch below is driven off
  * this same table, so the two cannot drift.
  */
@@ -350,7 +350,7 @@ async function handleListProviderModels(context: ModelRouteContext): Promise<Res
 
   // Remote pickers get the same freshness as the TUI's picker-open hook: a
   // GET triggers the TTL-respecting live-discovery re-check. Fire-and-forget
-  // — the response serves the current list immediately (fresher on the next
+  //, the response serves the current list immediately (fresher on the next
   // read) so a slow provider can never block it, and the TTL keeps repeat
   // GETs cheap (no forced refetch storms).
   void providerRegistry.refreshLiveModelDiscovery?.().catch((error) => {
@@ -440,7 +440,7 @@ async function handlePatchCurrentModel(
     );
   }
 
-  // Accepts either a provider-qualified registryKey or a bare model id — bare
+  // Accepts either a provider-qualified registryKey or a bare model id, bare
   // ids resolve via the shared resolver (unique -> auto-qualify; ambiguous or
   // unknown -> a rich error naming real candidates from the live registry).
   const allModels = providerRegistry.listModels();
@@ -502,7 +502,7 @@ async function handlePatchCurrentModel(
     logger.warn(`[model-routes] Failed to persist model selection to config: ${msg}`);
   }
 
-  // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus —
+  // setCurrentModel emits MODEL_CHANGED synchronously on the same runtimeBus,
   // no second emission needed here.
   return Response.json({ ...(await buildCurrentModelResponse(providerRegistry, secretKeys)), persisted });
 }

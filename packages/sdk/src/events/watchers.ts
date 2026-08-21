@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * WatcherEvent — discriminated union covering managed watcher and listener lifecycle events.
+ * WatcherEvent, discriminated union covering managed watcher and listener lifecycle events.
  */
 
 export const WATCHER_SOURCE_KINDS = ['poll', 'webhook', 'tail', 'file', 'api', 'stream'] as const;

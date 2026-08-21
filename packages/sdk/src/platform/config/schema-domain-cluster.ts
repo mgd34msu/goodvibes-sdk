@@ -1,9 +1,9 @@
 /**
- * schema-domain-cluster.ts — the `cluster.*` config domain.
+ * schema-domain-cluster.ts, the `cluster.*` config domain.
  *
  * These settings describe how the local network's goodvibes nodes agree on
  * which ONE of them consumes inbound channel messages. They never affect
- * outbound sends, sessions, the control plane, or HTTP — those run on every
+ * outbound sends, sessions, the control plane, or HTTP, those run on every
  * node regardless of who holds the role.
  *
  * `cluster.peers` is an array, so like `conversationGate.gatedSurfaces` it is
@@ -26,7 +26,7 @@ export interface ClusterConfig {
    * drop multicast (many corporate wireless networks, some VPN interfaces).
    * Additive rather than exclusive: coordination messages go to the multicast
    * group AND to every host listed here, so a mixed network where only some
-   * links carry multicast still converges. Empty — the default — means
+   * links carry multicast still converges. Empty, the default, means
    * multicast only, and this setting does nothing.
    */
   peers: string[];
@@ -76,7 +76,7 @@ export const clusterConfigSettings: ConfigSettingDefinition[] = [
     type: 'boolean',
     default: false,
     description:
-      'Let this machine share inbound channel work with your OTHER goodvibes machines on this network, so exactly one of them reads each inbox (Telegram polling, ntfy subscriptions, inbox pollers) instead of all of them answering the same message. For a homelab where you run goodvibes on several machines that are all yours and configured with the same surfaces: switch it on everywhere and they sort it out between themselves, including taking over within about a second when one is shut down or crashes. Off by default because switching it on asserts that every goodvibes node on this network belongs to you — on a shared network (an office, a shared house) a stranger\'s node would join the same coordination and one of you would stop receiving messages with nothing to indicate why. Outbound sends, sessions and the control plane are unaffected either way.',
+      'Let this machine share inbound channel work with your OTHER goodvibes machines on this network, so exactly one of them reads each inbox (Telegram polling, ntfy subscriptions, inbox pollers) instead of all of them answering the same message. For a homelab where you run goodvibes on several machines that are all yours and configured with the same surfaces: switch it on everywhere and they sort it out between themselves, including taking over within about a second when one is shut down or crashes. Off by default because switching it on asserts that every goodvibes node on this network belongs to you, on a shared network (an office, a shared house) a stranger\'s node would join the same coordination and one of you would stop receiving messages with nothing to indicate why. Outbound sends, sessions and the control plane are unaffected either way.',
   },
   {
     key: 'cluster.heartbeatSeconds',
@@ -129,7 +129,7 @@ export const clusterConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 24,
     description:
-      'How often the group replaces the internal key it signs coordination messages with, in hours. This is NOT the join key you type when adding a machine — that one is stable and changes only when you change it. This key rotates by itself, is never shown to you, and rotating it limits how long a copy taken off an old disk or a backup would be accepted. Lower means a shorter window and a little more network traffic once per rotation; the changeover never interrupts anything, because both the new key and the previous one are accepted for a few minutes either side of it.',
+      'How often the group replaces the internal key it signs coordination messages with, in hours. This is NOT the join key you type when adding a machine, that one is stable and changes only when you change it. This key rotates by itself, is never shown to you, and rotating it limits how long a copy taken off an old disk or a backup would be accepted. Lower means a shorter window and a little more network traffic once per rotation; the changeover never interrupts anything, because both the new key and the previous one are accepted for a few minutes either side of it.',
     ...intRange(1, 8_760),
   },
   {
@@ -137,7 +137,7 @@ export const clusterConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 5,
     description:
-      'How long both the new and the previous internal group key are accepted around a rotation, in minutes. This exists so that machines which have not yet picked up the new key are still heard while they catch up — without it, a rotation would look like every other machine going silent at once, and the group would needlessly hand work around. Raise it if your machines are often asleep or on a flaky link. It does NOT apply when you remove a machine: that rotation takes effect at once, which is the point of it.',
+      'How long both the new and the previous internal group key are accepted around a rotation, in minutes. This exists so that machines which have not yet picked up the new key are still heard while they catch up, without it, a rotation would look like every other machine going silent at once, and the group would needlessly hand work around. Raise it if your machines are often asleep or on a flaky link. It does NOT apply when you remove a machine: that rotation takes effect at once, which is the point of it.',
     ...intRange(1, 120),
   },
   {
@@ -145,7 +145,7 @@ export const clusterConfigSettings: ConfigSettingDefinition[] = [
     type: 'number',
     default: 15,
     description:
-      'How often this machine advertises its group on the local network, in seconds. The advertisement carries the group\'s id, its name, how many machines are in it and this build\'s version — and nothing else. It is what lets a new machine running `cluster join` see the group and pick it from a list. Lower means a new machine finds the group faster; higher means slightly less traffic.',
+      'How often this machine advertises its group on the local network, in seconds. The advertisement carries the group\'s id, its name, how many machines are in it and this build\'s version, and nothing else. It is what lets a new machine running `cluster join` see the group and pick it from a list. Lower means a new machine finds the group faster; higher means slightly less traffic.',
     ...intRange(5, 3_600),
   },
   {

@@ -5,7 +5,7 @@
  * That is every mailbox anything has ever been deleted from, and it is the
  * case the previous code got wrong: `SEARCH` returned sequence numbers,
  * `fetchEnvelopes` reported one in a field named `uid`, and `email.inbox.read`
- * then passed it to `UID FETCH` — so opening a message from a listing opened a
+ * then passed it to `UID FETCH`, so opening a message from a listing opened a
  * different message. These tests hold the two numbers apart on purpose (seq
  * 1,2,3 hold UIDs 101,205,307) so that reporting the wrong one is a visible
  * failure rather than a coincidence.
@@ -225,7 +225,7 @@ describe(`list then read, where UID and sequence number differ — ${shape.name}
 
     const detail = await service.readMessage(middle?.uid ?? 0);
     // Reporting sequence number 2 as the uid would have read UID 2, which is
-    // not in the mailbox at all — a null, or worse, somebody else's message.
+    // not in the mailbox at all, a null, or worse, somebody else's message.
     expect(detail?.subject).toBe('middle');
     expect(detail?.bodyText).toContain('body of 205');
   });
@@ -239,7 +239,7 @@ describe(`list then read, where UID and sequence number differ — ${shape.name}
     const result = await service.listInbox({ unreadOnly: false, limit: 2 });
 
     // Newest first, so the page is 307 then 205 and the preview belongs on the
-    // first row — which is what "the newest message" meant all along.
+    // first row, which is what "the newest message" meant all along.
     expect(result.messages.map((message) => message.uid)).toEqual([307, 205]);
     expect(result.messages[0]?.bodyPreview).toContain('body of 307');
     expect(result.messages[1]?.bodyPreview).toBe('');

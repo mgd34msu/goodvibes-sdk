@@ -1,9 +1,9 @@
 /**
- * cluster-group-rotation.test.ts — rotating the group key must be invisible.
+ * cluster-group-rotation.test.ts, rotating the group key must be invisible.
  *
  * The failure this file exists to prevent: a rotation that makes members stop
  * verifying each other for a moment, so the watchdog fires, an election runs,
- * and a surface changes hands for no reason — once per rotation, forever.
+ * and a surface changes hands for no reason, once per rotation, forever.
  */
 import { describe, expect, test, afterEach } from 'bun:test';
 import {
@@ -373,7 +373,7 @@ describe('two rotations at once', () => {
     };
 
     // Whichever order the two announcements arrive in, both sides land on the
-    // same key — which is what lets the healed partition talk again.
+    // same key, which is what lets the healed partition talk again.
     const oneWay = adoptGroupKeys(adoptGroupKeys(base, [fromA], 7, now, 0), [fromB], 7, now, 0);
     const otherWay = adoptGroupKeys(adoptGroupKeys(base, [fromB], 7, now, 0), [fromA], 7, now, 0);
     expect(oneWay.keys.find((entry) => entry.generation === 7)?.key).toBe('key-from-a');
@@ -448,7 +448,7 @@ describe('the housekeeping timer', () => {
     await settle();
 
     const before = a.runtime.keyMaterial?.currentGeneration ?? -1;
-    // Stepped at the housekeeping interval so every tick actually completes —
+    // Stepped at the housekeeping interval so every tick actually completes,
     // one jump would let the first tick's reentrancy guard swallow the rest.
     const tick = 30 * 1_000;
     // Short of the interval: nothing should rotate yet.

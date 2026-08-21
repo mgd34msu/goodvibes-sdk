@@ -1,5 +1,5 @@
 /**
- * listening-claim.ts — what a surface is ALLOWED to say about wake detection.
+ * listening-claim.ts, what a surface is ALLOWED to say about wake detection.
  *
  * Split out of listener.ts because it is the answer to a specific defect and
  * deserves to be found on its own: surfaces derived their listening indicator
@@ -8,8 +8,8 @@
  * an entire boot on a machine with no capture stream, no recorder process and
  * not one line in the log. Intent is not evidence.
  *
- * Everything here is derived from capture truth — a stream being open, and
- * frames having actually arrived — so a surface rendering this cannot make that
+ * Everything here is derived from capture truth, a stream being open, and
+ * frames having actually arrived, so a surface rendering this cannot make that
  * claim again.
  */
 import type { WakeListenerState } from './listener.js';
@@ -19,7 +19,7 @@ import type { WakeListenerState } from './listener.js';
  *
  * `listening` is the only kind that means audio is arriving. It exists because
  * surfaces derived their indicator from the listener's phase, and `starting`
- * was mapped to "listening for the wake phrase" — so a start that hung showed a
+ * was mapped to "listening for the wake phrase", so a start that hung showed a
  * listening banner through an entire boot on a machine with no capture stream
  * at all. A surface that renders this instead of the phase cannot make that
  * claim again.
@@ -42,7 +42,7 @@ export function describeWakeListening(state: WakeListenerState): WakeListeningCl
     return {
       kind: 'listening',
       message: state.phase === 'capturing-utterance'
-        ? 'Listening — recording what you are saying.'
+        ? 'Listening, recording what you are saying.'
         : `Listening for the wake phrase on ${where}.`,
     };
   }
@@ -53,7 +53,7 @@ export function describeWakeListening(state: WakeListenerState): WakeListeningCl
     };
   }
   if (state.phase === 'starting') {
-    return { kind: 'starting', message: `Opening ${where} — not listening yet.` };
+    return { kind: 'starting', message: `Opening ${where}, not listening yet.` };
   }
   if (state.phase === 'restarting') {
     return {

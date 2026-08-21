@@ -1,9 +1,9 @@
 /**
- * oauth-token-store.ts — token persistence + honest lifecycle over the injected
+ * oauth-token-store.ts, token persistence + honest lifecycle over the injected
  * secret store. Tokens (access + refresh) live ONLY in the secret store, never in
  * plain config and never echoed. The store computes an honest connection state from
- * the stored set + the clock, auto-refreshes when the access token is due, and — when
- * a refresh fails — records a durable `reconnect-needed` marker so every later read is
+ * the stored set + the clock, auto-refreshes when the access token is due, and, when
+ * a refresh fails, records a durable `reconnect-needed` marker so every later read is
  * honest about the account being broken until the user reconnects.
  */
 
@@ -34,7 +34,7 @@ const DEFAULT_REFRESH_LEEWAY_MS = 60_000;
  * halves of one connection lived in different tiers.
  *
  * `daemonSecretKeyFor` produces the identical string and, unlike a template
- * literal, makes the credential daemon-owned by construction — the same call
+ * literal, makes the credential daemon-owned by construction, the same call
  * the Google connector's key set already uses.
  */
 function tokenKey(provider: CalendarProviderId): string {
@@ -73,7 +73,7 @@ export class CalendarTokenStore {
   /**
    * In-instance single-flight dedup for concurrent refreshes of the same provider.
    * Providers that rotate refresh tokens (Microsoft) invalidate the prior refresh
-   * token the moment one refresh succeeds — a second concurrent call that still
+   * token the moment one refresh succeeds, a second concurrent call that still
    * holds the OLD refresh token would otherwise lose the race with invalid_grant
    * and stamp reconnect-needed over a perfectly working account. Every concurrent
    * caller for a given provider instead awaits the SAME in-flight refresh.
@@ -138,7 +138,7 @@ export class CalendarTokenStore {
   /**
    * Return a usable access token, refreshing first when it is due. On a refresh
    * failure this records a durable reconnect-needed marker and throws
-   * TokenRefreshError — never returns a stale/invalid token as if it were good.
+   * TokenRefreshError, never returns a stale/invalid token as if it were good.
    */
   async getFreshAccessToken(
     provider: CalendarProviderId,
@@ -189,7 +189,7 @@ export class CalendarTokenStore {
   /**
    * Disconnect a provider: revoke the token at the provider when possible, then
    * delete every stored key. Returns whether the provider-side revocation succeeded
-   * (false for providers without a revocation endpoint — disconnect is still local).
+   * (false for providers without a revocation endpoint, disconnect is still local).
    */
   async disconnect(
     provider: CalendarProviderId,
@@ -208,7 +208,7 @@ export class CalendarTokenStore {
   }
 
   /**
-   * Stamp the durable reconnect-needed marker — UNLESS a valid (non-expired) token
+   * Stamp the durable reconnect-needed marker, UNLESS a valid (non-expired) token
    * set already exists. A refresh can fail here while a concurrent winner (this
    * instance's own single-flight already prevents an in-process race, but a
    * separate process/instance sharing the same secret store is not covered by

@@ -1,9 +1,9 @@
-# Network Defaults Reference
+# Network defaults reference
 
 This document records every timeout, retry, and backoff default in the SDK.
 All values are in milliseconds unless stated otherwise.
 
-## HTTP Transport (`@pellux/goodvibes-sdk/transport-http`)
+## HTTP transport (`@pellux/goodvibes-sdk/transport-http`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -19,7 +19,7 @@ All values are in milliseconds unless stated otherwise.
 **Rationale:** Single-attempt default keeps latency predictable for interactive workloads. Callers
 increase `maxAttempts` for batch/background operations.
 
-## SSE Stream Reconnect (`@pellux/goodvibes-sdk/transport-http` — `reconnect.ts`)
+## SSE stream reconnect (`@pellux/goodvibes-sdk/transport-http`, `reconnect.ts`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -33,7 +33,7 @@ increase `maxAttempts` for batch/background operations.
 persistent auth failure or server outage. `maxDelayMs: 30 000` caps worst-case
 wait between attempts to 30 seconds.
 
-## Daemon Batch Processing
+## Daemon batch processing
 
 | Config key | Default | Notes |
 |------|---------|-------|
@@ -78,7 +78,7 @@ wait between attempts to 30 seconds.
 
 See [Daemon batch processing](./daemon-batch-processing.md) for provider support, routes, and Worker bridge behavior.
 
-## Artifact Storage
+## Artifact storage
 
 | Config key | Default | Notes |
 |------|---------|-------|
@@ -87,7 +87,7 @@ See [Daemon batch processing](./daemon-batch-processing.md) for provider support
 The default is `512 MiB`. JSON control bodies remain intentionally small; send
 large content through multipart or raw binary upload routes.
 
-## Home Assistant Surface
+## Home Assistant surface
 
 | Config key | Default | Notes |
 |------|---------|-------|
@@ -95,7 +95,7 @@ large content through multipart or raw binary upload routes.
 
 See [Home Assistant integration](./homeassistant-integration.md) for the Assist conversation route and event delivery contract.
 
-## OpenAI-Compatible Daemon Ingress
+## OpenAI-compatible daemon ingress
 
 | Config key | Default | Notes |
 |------|---------|-------|
@@ -104,7 +104,7 @@ See [Home Assistant integration](./homeassistant-integration.md) for the Assist 
 
 See [Runtime orchestration](./runtime-orchestration.md#openai-compatible-ingress) for the contract and scope.
 
-## Web UI Bundle Serving & Cross-Origin Access
+## Web UI bundle serving and cross-origin access
 
 Both capabilities default off; the daemon stays loopback-only until you opt in explicitly.
 
@@ -117,7 +117,7 @@ Both capabilities default off; the daemon stays loopback-only until you opt in e
 
 See [Web UI Integration → Deployment topology](./web-ui-integration.md#deployment-topology-same-origin-vs-cross-origin) and the decision record [`docs/decisions/2026-07-07-webui-cross-origin-deployment.md`](./decisions/2026-07-07-webui-cross-origin-deployment.md).
 
-## Spoken Output / TTS
+## Spoken output and TTS
 
 | Config key | Default | Notes |
 |------|---------|-------|
@@ -128,7 +128,7 @@ See [Web UI Integration → Deployment topology](./web-ui-integration.md#deploym
 
 See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming route and TUI integration contract.
 
-## WebSocket Reconnect (`@pellux/goodvibes-sdk/transport-realtime`)
+## WebSocket reconnect (`@pellux/goodvibes-sdk/transport-realtime`)
 
 | Path | Default | Notes |
 |------|---------|-------|
@@ -149,22 +149,22 @@ See [Voice and streaming TTS](./voice.md) for the provider-agnostic streaming ro
 **Rationale:** Auth calls go through the HTTP transport layer which applies `DEFAULT_HTTP_RETRY_POLICY`.
 There is no separate auth-specific timeout; callers should pass an `AbortSignal` for bounded waits.
 
-## Session Auth (`@pellux/goodvibes-sdk/daemon` — daemon embedders)
+## Session auth (`@pellux/goodvibes-sdk/daemon`, daemon embedders)
 
 | Constant | Default | Notes |
 |----------|---------|-------|
 | `DEFAULT_SESSION_TTL_MS` | `3 600 000` (1 hour) | Session tokens expire after 1 hour of creation; expired sessions are rejected and pruned on access |
 
-**Source:** `packages/sdk/src/platform/security/user-auth.ts`. Not a public configurable — set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
+**Source:** `packages/sdk/src/platform/security/user-auth.ts`. Not a public configurable. Set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
 
-## Rate Limits (daemon built-in)
+## Rate limits (daemon built-in)
 
 | Limiter | Default | Notes |
 |---------|---------|-------|
 | General rate limiter | 60 requests / minute / IP | Applied to all routes except login; configurable via `rateLimit` daemon option |
 | Login rate limiter | 5 requests / minute / IP | Applied to `POST /login` only; configurable via `loginRateLimit` daemon option |
 
-## Outbound Producer Queue (`@pellux/goodvibes-sdk/transport-realtime` — `runtime-events.ts`)
+## Outbound producer queue (`@pellux/goodvibes-sdk/transport-realtime`, `runtime-events.ts`)
 
 | Field | Value | Notes |
 |-------|-------|-------|

@@ -1,5 +1,5 @@
 /**
- * routes/payments.ts — the daemon actually serving `payments.*`.
+ * routes/payments.ts, the daemon actually serving `payments.*`.
  *
  * The daemon is the process that holds the card and charges it, with every
  * surface closed and across restarts, so these handlers are the only way a
@@ -13,7 +13,7 @@
  *  - **Card material is write-only.** `cards.create` takes the number, expiry,
  *    CVV and cardholder name and returns the METADATA record. Nothing in this
  *    module can return a stored secret, and `sanitizeCardMetadata` strips any
- *    field a future service might mistakenly hand back — a service bug becomes
+ *    field a future service might mistakenly hand back, a service bug becomes
  *    a missing field rather than a leaked card.
  *  - **Card material never reaches an error.** Failures report the stage and a
  *    plain reason; what was submitted is never part of a diagnostic, because
@@ -31,7 +31,7 @@
  *     service's field names and boolean.
  *   - Nothing is echoed. The output has no property that could hold a value,
  *     and `sanitizeFillResult` rebuilds the response from an allowlist for the
- *     same reason `sanitizeCardMetadata` does — a service bug becomes a missing
+ *     same reason `sanitizeCardMetadata` does, a service bug becomes a missing
  *     field rather than a leaked card.
  *   - A failure names the FIELD, never the value. The service's own error is
  *     discarded rather than forwarded.
@@ -184,7 +184,7 @@ export interface PaymentBeginResultView {
   readonly challengeStep: string | null;
 }
 
-/** What a fill reports. Field names and a boolean — nothing that holds a value. */
+/** What a fill reports. Field names and a boolean, nothing that holds a value. */
 export interface PaymentFillCardResult {
   readonly ok: boolean;
   readonly filled: readonly string[];
@@ -303,7 +303,7 @@ export function createPaymentsCardsDeleteHandler(service: PaymentsGatewayService
  * An allowlist for the same reason `sanitizeCardMetadata` is one: a denylist
  * silently ships whatever a later change adds, and for anything on the card's
  * code path that is the wrong direction to fail. `filled` is rebuilt as strings
- * so a service that returned richer objects — with, say, the value it typed —
+ * so a service that returned richer objects, with, say, the value it typed,
  * loses everything but the names.
  */
 function sanitizeFillResult(result: PaymentFillCardResult): PaymentFillCardResult {
@@ -343,8 +343,8 @@ function optionalString(value: unknown): string | null {
 /**
  * `payments.checkout.begin`.
  *
- * Validates shape and nothing else. Every judgement about MEANING — whether an
- * amount parses, whether the cart matches, whether the budget covers it — is
+ * Validates shape and nothing else. Every judgement about MEANING, whether an
+ * amount parses, whether the cart matches, whether the budget covers it, is
  * the service's, because those are the decisions that must not be reachable by
  * a caller that skipped this route.
  */

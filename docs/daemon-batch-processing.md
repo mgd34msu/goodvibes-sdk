@@ -1,4 +1,4 @@
-# Daemon Batch Processing
+# Daemon batch processing
 
 GoodVibes can queue daemon-side provider requests for upstream provider Batch APIs. This is opt-in and asynchronous.
 
@@ -21,18 +21,18 @@ Live TUI, companion, and daemon chat behavior remains live unless a client uses 
 
 `batch.mode` controls whether the daemon accepts batch work:
 
-- `off` — reject batch jobs.
-- `explicit` — accept requests sent to the batch job API. This is the intended default when a client exposes a per-message "run as batch" control.
-- `eligible-by-default` — accept batch-capable daemon requests as batch by default. Current SDK-owned batch-capable request path is `/api/batch/jobs`; streaming chat paths stay live because provider Batch APIs are asynchronous and non-streaming.
+- `off`: reject batch jobs.
+- `explicit`: accept requests sent to the batch job API. This is the intended default when a client exposes a per-message "run as batch" control.
+- `eligible-by-default`: accept batch-capable daemon requests as batch by default. Current SDK-owned batch-capable request path is `/api/batch/jobs`. Streaming chat paths stay live because provider Batch APIs are asynchronous and non-streaming.
 
 `batch.fallback` is published for clients that need a policy decision when a request cannot be batched:
 
-- `live` — clients may retry through their normal live path.
-- `fail` — clients should surface the batch ineligibility as a hard error.
+- `live`: clients may retry through their normal live path.
+- `fail`: clients should surface the batch ineligibility as a hard error.
 
 The `/api/batch/jobs` endpoint itself never executes a live response. It only queues provider-batch jobs.
 
-## Provider Support
+## Provider support
 
 The SDK exposes provider Batch API adapters for:
 
@@ -118,7 +118,7 @@ Jobs are persisted under the daemon config directory in `batch-jobs.json`.
 | `500` | `BATCH_STORE_INVALID` | The daemon batch store snapshot is invalid. |
 | `500` | `BATCH_ERROR` | An unexpected batch failure not covered by a more specific `DaemonBatchError` code. |
 
-## Cloudflare Integration
+## Cloudflare integration
 
 Cloudflare is optional. The daemon works without Cloudflare, and `cloudflare.enabled` defaults to `false`.
 
@@ -144,7 +144,7 @@ Cloudflare remains opt-in. The default provisioning target is still the batch Wo
 
 Unset component keys use safe defaults: `workers` and `queues` are on for the existing batch integration, while Tunnel, Access, DNS, KV, Durable Objects, Secrets Store, and R2 stay off unless a client enables them.
 
-### Provisioning Requirements
+### Provisioning requirements
 
 The SDK provisioning flow needs:
 
@@ -160,7 +160,7 @@ When a zone is selected, DNS and Access hostnames must belong to that zone. The 
 
 Secrets are stored as `goodvibes://secrets/...` references when the provisioning route is asked to persist them. Raw Cloudflare tokens are never written into config.
 
-### Token Bootstrap
+### Token bootstrap
 
 Onboarding clients can either collect a manually-created operational Cloudflare API token or use the SDK bootstrap flow:
 
@@ -198,7 +198,7 @@ A user-owned bootstrap token can create account- and zone-scoped operational tok
 
 `POST /api/cloudflare/discover` lists accounts, zones, workers.dev subdomain, queues, KV namespaces, Durable Object namespaces, R2 buckets, Secrets Stores, Zero Trust Tunnels, and Access applications visible to the token. Use this for onboarding account/zone/domain selection. If no zone is available, Workers can still use a `workers.dev` URL.
 
-### Cloudflare Daemon API
+### Cloudflare daemon API
 
 All Cloudflare routes require daemon authentication and admin privileges.
 
@@ -293,7 +293,7 @@ The SDK provisioning route configures the queue consumer with `dead_letter_queue
 
 `/health` and `/batch/health` are always reachable without authentication; every other route requires `Authorization: Bearer <token>` unless `allowUnauthenticated` is set.
 
-## Free-Tier Guardrails
+## Free-tier guardrails
 
 The defaults assume Cloudflare Queues are used as signal transport:
 

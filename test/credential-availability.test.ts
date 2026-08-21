@@ -7,7 +7,7 @@ import {
 } from '../packages/sdk/src/platform/config/credential-availability.ts';
 
 // Prove the client-side credential-status read degrades HONESTLY and never
-// fabricates a confident "configured" or leaks a secret value. Fully hermetic — no
+// fabricates a confident "configured" or leaks a secret value. Fully hermetic, no
 // daemon, no ports, no network. The transport error shapes below mirror the real
 // HttpStatusError the daemon wire produces (top-level `.code` sourced from the
 // daemon response body: CREDENTIAL_STORE_UNAVAILABLE / METHOD_NOT_FOUND), so these

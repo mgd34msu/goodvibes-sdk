@@ -35,14 +35,14 @@ export interface NotifyOptions {
  *
  * Note this governs only the external shell-out/HTTP layer. The in-process
  * terminal bell (a single \x07 byte written to this process's own stdout) has
- * no external side effect and is NOT gated by this — see {@link notifyCompletion}.
+ * no external side effect and is NOT gated by this, see {@link notifyCompletion}.
  *
  * Suppressed when either:
  *   - `NODE_ENV === 'test'` (set automatically by `bun test`), or
  *   - `GOODVIBES_SUPPRESS_NOTIFY` is set to a truthy value (explicit
  *     override for harnesses that don't run under NODE_ENV=test).
  *
- * `options.force: true` bypasses suppression entirely — the one sanctioned
+ * `options.force: true` bypasses suppression entirely, the one sanctioned
  * escape hatch, for tests that specifically exercise this shell-out layer.
  */
 export function isNotifySuppressed(force?: boolean): boolean {
@@ -91,7 +91,7 @@ export function notifyCompletion(title: string, message: string, durationMs: num
   // should inject this behaviour via a callback rather than calling it here.
   //
   // The bell is an in-process byte write with no external side effect, so it
-  // is emitted even under test suppression — only the real desktop-notification
+  // is emitted even under test suppression, only the real desktop-notification
   // spawn below is suppressed. (This is the notify-guard scope fix: silencing a
   // test run must not silence the terminal bell, which several host surfaces
   // assert as product behaviour.)
@@ -100,7 +100,7 @@ export function notifyCompletion(title: string, message: string, durationMs: num
   }
 
   // Desktop notification for responses > 30s. Real notify-send/osascript
-  // spawns must never fire from an automated test run — suppressed under
+  // spawns must never fire from an automated test run, suppressed under
   // NODE_ENV=test / GOODVIBES_SUPPRESS_NOTIFY, with `force` as the opt-back-in
   // for tests that exercise this shell-out layer itself.
   if (durationMs > 30000) {

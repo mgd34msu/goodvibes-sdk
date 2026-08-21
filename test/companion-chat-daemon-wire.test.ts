@@ -89,7 +89,7 @@ function makeRouterContext(
   companionChatManager?: CompanionChatManager | null,
 ): ConstructorParameters<typeof DaemonHttpRouter>[0] {
   const noop = () => {};
-  // Minimal controlPlaneGateway stub — only publishEvent and registerSubscriber
+  // Minimal controlPlaneGateway stub, only publishEvent and registerSubscriber
   // are exercised by the companion POST /sessions path.
   const controlPlaneGateway = {
     publishEvent: noop,
@@ -333,7 +333,7 @@ describe('companion-chat provider adapter: stream-error path', () => {
   test('turn.error is published when chatStream throws mid-iteration', async () => {
     // Tests the case where the underlying generator throws (rather than yielding
     // an error chunk). The facade-composition adapter catches this in .catch()
-    // and yields { type: 'error' } — but this test verifies the manager's
+    // and yields { type: 'error' }, but this test verifies the manager's
     // behavior when the provider itself throws directly.
     const throwingProvider: CompanionLLMProvider = {
       async *chatStream(): AsyncIterable<CompanionProviderChunk> {
@@ -363,7 +363,7 @@ describe('companion-chat provider adapter: stream-error path', () => {
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Router-level plumbing — resolveDefaultProviderModel forwarded.
+// Router-level plumbing, resolveDefaultProviderModel forwarded.
 // ---------------------------------------------------------------------------
 
 describe('DaemonHttpRouter forwards resolveDefaultProviderModel into companion dispatch', () => {

@@ -8,7 +8,7 @@
  *
  * These are behavioral tests: two independent parties (a "client" and a
  * "daemon") each run only their own half of the handshake and must arrive at a
- * working, mutually-decryptable channel — and a third party that lacks the
+ * working, mutually-decryptable channel, and a third party that lacks the
  * daemon's static private key must NOT be able to impersonate it. That last
  * property is what makes the relay operator unable to read or forge traffic.
  */
@@ -92,7 +92,7 @@ describe('relay E2E handshake + secure channel', () => {
     const realDaemon = await generateRelayIdentity();
     const realPubRaw = await exportRawPublicKey(realDaemon.publicKey);
     // A malicious relay generates its OWN identity and tries to answer the
-    // handshake in the daemon's place — but the client pinned realPubRaw.
+    // handshake in the daemon's place, but the client pinned realPubRaw.
     const attacker = await generateRelayIdentity();
 
     const ridBytes = encodeUtf8(RID);

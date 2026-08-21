@@ -1,5 +1,5 @@
 /**
- * Cache Strategy Planner — uses the helper model (or main model) to optimize
+ * Cache Strategy Planner, uses the helper model (or main model) to optimize
  * cache breakpoint placement for explicit-caching providers.
  *
  * Two modes:
@@ -34,7 +34,7 @@ export interface PlanResult {
 }
 
 /**
- * CachePlanner — manages cache strategy lifecycle.
+ * CachePlanner, manages cache strategy lifecycle.
  *
  * Caches the current strategy and refreshes it based on
  * turn count and hit rate thresholds.
@@ -65,7 +65,6 @@ export class CachePlanner {
     const startMs = Date.now();
     this.turnsSinceLastPlan++;
 
-    // Check if we need to refresh
     const needsRefresh = this.shouldRefresh(context);
 
     if (this.currentStrategy && !needsRefresh) {

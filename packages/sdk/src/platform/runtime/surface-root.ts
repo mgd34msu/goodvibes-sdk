@@ -38,12 +38,12 @@ export function resolveScopedDirectory(
  * session-surface.ts, so both produce byte-identical filenames for the same
  * session id.
  *
- * Collision resistance: character replacement alone is not injective — `a/b`
+ * Collision resistance: character replacement alone is not injective, `a/b`
  * and `a_b` both flatten to `a_b`, so two different sessions would share one
  * snapshot file and silently overwrite each other. When (and only when)
  * sanitization actually changed the id, a short digest of the RAW id is
  * appended, which restores one-file-per-id. An id that is already a safe
- * segment is returned byte-for-byte unchanged — machine-minted session ids
+ * segment is returned byte-for-byte unchanged, machine-minted session ids
  * (`randomBytes(4).toString('hex')`, see generateUserSessionId; agent ids
  * `agent-<8 hex>`) always take that path, so no existing on-disk filename
  * moves as a result of this rule.

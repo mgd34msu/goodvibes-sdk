@@ -6,7 +6,7 @@
  * fleet row whose FIRST job is visibility. It is never killable/interruptible
  * (observing is not owning the lifecycle), it carries an honest external kind +
  * pid + cwd + start time + liveness, and it is steerable only when the session
- * exposes a genuine channel (a tmux pane) — with the steer weighted as a
+ * exposes a genuine channel (a tmux pane), with the steer weighted as a
  * drill-in capability, never a primary affordance (see ProcessObserved).
  */
 import type { ObservedAgentRow, ObservedAgentSource } from '../observed/source.js';
@@ -28,7 +28,7 @@ const KIND_LABEL: Record<ObservedAgentRow['externalKind'], string> = {
  * Coarse state from read-only liveness ONLY: `active` (CPU advanced) -> the
  * generic working state `executing-tool` (same mapping acp-host uses for a
  * prompting session), `quiet` -> `idle`. This is a projection of CPU liveness,
- * NOT a claim about the foreign agent's internal phase — the honest detail lives
+ * NOT a claim about the foreign agent's internal phase, the honest detail lives
  * in observed.liveness. The state flip is what wakes fleet subscribers on a
  * liveness transition.
  */
@@ -49,7 +49,7 @@ export function adaptObservedAgent(row: ObservedAgentRow, now: number): ProcessN
     state,
     startedAt,
     elapsedMs: startedAt !== undefined ? Math.max(0, now - startedAt) : 0,
-    // Foreign agents do not report token usage to us — honest absence.
+    // Foreign agents do not report token usage to us, honest absence.
     usage: undefined,
     costUsd: null,
     costState: 'unpriced',

@@ -1,9 +1,9 @@
 /**
- * error-codes.ts — the canonical {@link SDKErrorCode} union, its runtime-accessible
+ * error-codes.ts, the canonical {@link SDKErrorCode} union, its runtime-accessible
  * {@link SDKErrorCodes} mirror, and the two membership/narrowing helpers built on it.
  *
  * Split out of index.ts to stay under the repo's 800-line file cap (see
- * scripts/check-line-cap.ts) — this block is self-contained (no dependency on
+ * scripts/check-line-cap.ts), this block is self-contained (no dependency on
  * GoodVibesSdkError or anything else in index.ts) and index.ts re-exports it
  * unchanged, so this is a pure file-organization move with no API surface change.
  */
@@ -123,7 +123,7 @@ const SDK_ERROR_CODE_SET = new Set<string>(Object.values(SDKErrorCodes));
  * Returns `true` when `err.code` equals the given {@link SDKErrorCode},
  * narrowing the type of `err.code` to the specific literal.
  *
- * Works with any object that has a `code?: string` field — not limited to
+ * Works with any object that has a `code?: string` field, not limited to
  * {@link GoodVibesSdkError} subclasses.
  *
  * @example

@@ -43,12 +43,12 @@ type AnthropicMessageStream = AsyncIterable<MessageStreamEvent> & {
   }>;
   /**
    * The raw HTTP `Response`, populated once the stream connects (well before
-   * `finalMessage()` resolves — the SDK's `_connected(response)` fires as soon
+   * `finalMessage()` resolves, the SDK's `_connected(response)` fires as soon
    * as headers arrive). Verified against the installed
    * `@anthropic-ai/sdk` `lib/MessageStream.d.ts`: `get response(): Response |
    * null | undefined`. Both AmazonBedrockProvider (`@anthropic-ai/bedrock-sdk`,
    * whose `messages` resource is literally `@anthropic-ai/sdk`'s `Resources.
-   * Messages` re-exported — see its `client.d.ts`) and AnthropicVertexProvider
+   * Messages` re-exported, see its `client.d.ts`) and AnthropicVertexProvider
    * (`AnthropicVertexClient extends BaseAnthropic` from the same SDK, using the
    * same `Resources.Messages`) return this exact class from `.stream()`, so one
    * read site here covers both.
@@ -79,7 +79,7 @@ export interface AnthropicSdkProviderOptions {
    * A promise is allowed because both Bedrock providers and the Vertex
    * provider now resolve their vendor package (`@anthropic-ai/bedrock-sdk`,
    * `@anthropic-ai/sdk`) through a dynamic import at this point rather than a
-   * static import at module init — see utils/optional-dependency.ts. The one
+   * static import at module init, see utils/optional-dependency.ts. The one
    * caller below already runs inside an async retry body, so awaiting here
    * changes no public signature, and a sync factory (every test double, for
    * instance) still satisfies the type unchanged.

@@ -2,7 +2,7 @@
  * Playbook: Permission Deadlock
  *
  * Diagnoses and resolves situations where permission requests are blocking
- * forward progress — typically from circular approval chains, missing
+ * forward progress, typically from circular approval chains, missing
  * policy rules, or a stalled host permission prompt.
  */
 import type { Playbook, DiagnosticCheckResult } from '../types.js';

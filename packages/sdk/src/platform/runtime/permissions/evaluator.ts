@@ -43,7 +43,7 @@ const ESCALATION_TOOLS: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * classifyTool — Returns the semantic classification of a tool call.
+ * classifyTool, Returns the semantic classification of a tool call.
  * For exec/execute, we classify based on arg content (destructive check
  * is done in safety layer; here we return 'write' as the baseline).
  */
@@ -66,7 +66,7 @@ interface ModeCheckResult {
 }
 
 /**
- * evaluateModeLayer — Applies mode-level constraints.
+ * evaluateModeLayer, Applies mode-level constraints.
  *
  * Returns a deny decision for certain tool/classification combinations
  * depending on the active mode, or allow for `allow-all` mode.
@@ -115,7 +115,7 @@ function evaluateModeLayer(
     case 'accept-edits':
       // Accept-edits auto-approves only genuine file write/edit tools by name.
       // exec classifies as 'write' here too, so gate on WRITE_TOOLS membership
-      // rather than classification — exec, network, and escalation then impose
+      // rather than classification, exec, network, and escalation then impose
       // no mode-level constraint and fall through to the policy/default layers
       // so they are still gated.
       if (WRITE_TOOLS.has(toolName)) {
@@ -194,7 +194,7 @@ interface PolicyRuleCheckResult {
 }
 
 /**
- * dispatchPolicyRule — Routes a PolicyRule to its typed evaluator.
+ * dispatchPolicyRule, Routes a PolicyRule to its typed evaluator.
  */
 function dispatchPolicyRule(
   rule: PolicyRule,
@@ -255,7 +255,7 @@ function dispatchPolicyRule(
 // ── LayeredPolicyEvaluator ───────────────────────────────────────────────────────
 
 /**
- * LayeredPolicyEvaluator — Core runtime permissions evaluator.
+ * LayeredPolicyEvaluator, Core runtime permissions evaluator.
  *
  * Evaluates tool calls through five layers in priority order.
  * Maintains a session approval cache and a structured audit log.
@@ -289,13 +289,13 @@ export class LayeredPolicyEvaluator {
   }
 
   /**
-   * evaluate — Evaluates a tool call and returns a PermissionDecision.
+   * evaluate, Evaluates a tool call and returns a PermissionDecision.
    *
    * Runs all five layers in priority order. Populates a full evaluation trace.
    * Appends the decision to the audit log if `auditLog` is enabled (default: true).
    *
-   * @param toolName — The tool name being called.
-   * @param args     — The arguments passed to the tool.
+   * @param toolName, The tool name being called.
+   * @param args    , The arguments passed to the tool.
    */
   evaluate(
     toolName: string,
@@ -420,13 +420,13 @@ export class LayeredPolicyEvaluator {
   }
 
   /**
-   * recordSessionOverride — Records a user-provided session approval/denial
+   * recordSessionOverride, Records a user-provided session approval/denial
    * in the cache (used after a user prompt resolves).
    *
-   * @param toolName  — Tool name.
-   * @param args      — Tool arguments.
-   * @param approved  — Whether the user approved or denied.
-   * @param remember  — Whether to persist for the session (default: false = once only).
+   * @param toolName , Tool name.
+   * @param args     , Tool arguments.
+   * @param approved , Whether the user approved or denied.
+   * @param remember , Whether to persist for the session (default: false = once only).
    */
   recordSessionOverride(
     toolName: string,
@@ -449,7 +449,7 @@ export class LayeredPolicyEvaluator {
   }
 
   /**
-   * getMode — Returns the active PermissionMode.
+   * getMode, Returns the active PermissionMode.
    */
   getMode(): PermissionMode {
     return this.mode;

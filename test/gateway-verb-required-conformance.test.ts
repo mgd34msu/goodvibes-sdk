@@ -53,7 +53,7 @@ const REGISTRAR_NAME = /^register\w*(?:GatewayMethods|Verbs|VerbGroups)$/;
  * files, found by parsing each file and walking its top-level statements.
  *
  * The parser is what makes this trustworthy: comments and string literals are
- * not statements, so prose describing a registrar — including a removed one —
+ * not statements, so prose describing a registrar, including a removed one,
  * cannot be mistaken for the real thing.
  */
 function collectExportedRegistrars(directory: string): Set<string> {
@@ -82,7 +82,7 @@ function collectExportedRegistrars(directory: string): Set<string> {
 /**
  * Input-shaped refusals that legitimately name no field, each with the reason.
  * A refusal about the state of the world is not a statement about the caller's
- * input shape, so there is no field to attribute it to — but the set has to
+ * input shape, so there is no field to attribute it to, but the set has to
  * stay closed, or "no field" becomes a way to opt out of the gate.
  */
 const ALLOWED_UNATTRIBUTED_REFUSALS: Readonly<Record<string, string>> = {
@@ -91,7 +91,7 @@ const ALLOWED_UNATTRIBUTED_REFUSALS: Readonly<Record<string, string>> = {
   'profile.forget':
     'Takes EITHER a fieldId OR a section plus the exact text of the line. The refusal is about the '
     + 'combination, so no single field name is the honest answer and no single entry in the descriptor\'s '
-    + 'required array could express it — declaring fieldId required would break the section+text path, '
+    + 'required array could express it, declaring fieldId required would break the section+text path, '
     + 'which is the one that removes a prose line.',
 };
 
@@ -148,7 +148,7 @@ describe('gateway verb required-field conformance', () => {
     // A `required` array is only load-bearing if the invoke gate actually reads
     // it, and `invoke-input-validation.ts` skips any verb whose inputSchema is
     // absent or untyped. Such a verb can grow a handler requirement with no
-    // contract to state it in — the defect class with the paperwork removed.
+    // contract to state it in, the defect class with the paperwork removed.
     //
     // The probe still covers them (an undeclared requirement on a verb with no
     // schema is reported like any other), so this is not a hole; it is a list
@@ -175,7 +175,7 @@ describe('gateway verb required-field conformance', () => {
 
   test('every route registrar is either probed or explicitly accounted for', () => {
     // A new register*GatewayMethods in routes/ must be added to the probe's
-    // registrar list (and to EXPECTED_ROUTE_REGISTRARS) — otherwise its verbs
+    // registrar list (and to EXPECTED_ROUTE_REGISTRARS), otherwise its verbs
     // are never invoked and this gate would report green over a family it has
     // never seen.
     //

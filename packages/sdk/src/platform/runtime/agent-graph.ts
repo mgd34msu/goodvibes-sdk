@@ -1,10 +1,10 @@
 /**
- * agent-graph.ts — the four objects that make up a conversation loop's agent
+ * agent-graph.ts, the four objects that make up a conversation loop's agent
  * graph, wired in the one order that works.
  *
  * The ordering is not cosmetic. `AgentOrchestrator` predates `AgentManager`, so
  * two of their links (the conversation-snapshot sink and the cooperative
- * cancellation source) cannot be constructor deps — they are set afterwards, on
+ * cancellation source) cannot be constructor deps, they are set afterwards, on
  * the orchestrator, pointing back at the manager. Miss either and a spawned
  * agent's transcript never reaches a panel, or a cancel never reaches the run.
  * Both compositions that own a loop (the daemon-grade `createRuntimeServices`

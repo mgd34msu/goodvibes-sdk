@@ -474,7 +474,7 @@ export async function resolveSharedSessionExecution(
     // A schedule, trigger, or on-exit chain was authorized when it was
     // CREATED and must not be re-asked at execution time. The marker is what
     // tells the shared-session continuation runner that this input is
-    // confirmed work rather than a message to answer — see
+    // confirmed work rather than a message to answer, see
     // agents/conversation-continuation.ts.
     metadata: markWorkAuthorized({
       automationJobId: job.id,

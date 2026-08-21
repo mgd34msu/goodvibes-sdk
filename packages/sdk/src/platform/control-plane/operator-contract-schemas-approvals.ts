@@ -50,20 +50,20 @@ export const SHARED_APPROVAL_RECORD_SCHEMA = objectSchema({
   resolvedAt: NUMBER_SCHEMA,
   resolvedBy: STRING_SCHEMA,
   decision: PERMISSION_PROMPT_DECISION_SCHEMA,
-  // The REAL session an ACCEPTED ask spawned (attach/resume-resolvable —
+  // The REAL session an ACCEPTED ask spawned (attach/resume-resolvable,
   // never a scheduling handle), stamped at the moment the session exists and
   // published as a record update so an attached surface can open it live.
   // Never present on denied records; mutually exclusive with fixSessionError.
   fixSessionId: STRING_SCHEMA,
   // The honest failure when an accepted ask's spawn produced no attachable
-  // session — recorded instead of a dead id.
+  // session, recorded instead of a dead id.
   fixSessionError: STRING_SCHEMA,
   // When a raise carried `timeoutMs`, the moment the ask expires if nobody has
   // answered (approval-broker-raise.ts stamps it). Declared here because the
   // record schema is closed: without it, `approvals.list` fails RESPONSE
   // validation for any ask that has one, and a client that asked for the list
   // gets a contract error instead of the pending asks. That is not theoretical
-  // — a daemon-hosted run's workspace-trust question is raised with a timeout,
+  //, a daemon-hosted run's workspace-trust question is raised with a timeout,
   // so the first hosted ask made every surface's approvals list unreadable.
   expiresAt: NUMBER_SCHEMA,
   metadata: METADATA_SCHEMA,
@@ -105,7 +105,7 @@ export const APPROVAL_DENY_INPUT_SCHEMA = objectSchema({
 // or a non-edit approval is a 400. rememberTier generalizes the decision
 // (and sweeps queued asks it covers); modifiedArgs carries an
 // argument-modifying approval (e.g. the typed answer to a command's terminal
-// prompt) to the waiting call — selectedHunks, when present, supersedes it.
+// prompt) to the waiting call, selectedHunks, when present, supersedes it.
 export const APPROVAL_APPROVE_INPUT_SCHEMA = objectSchema({
   approvalId: STRING_SCHEMA,
   note: STRING_SCHEMA,
@@ -116,7 +116,7 @@ export const APPROVAL_APPROVE_INPUT_SCHEMA = objectSchema({
   modifiedArgs: TOOL_ARGUMENTS_SCHEMA,
 }, ['approvalId'], { additionalProperties: false });
 
-// What the broker actually recorded on the resolved decision — derived from
+// What the broker actually recorded on the resolved decision, derived from
 // the returned record, never echoed from the request, so a surface can report
 // "tier recorded / reason stored / answer delivered" without claiming
 // optimistically (an already-resolved approval keeps its original decision).
@@ -132,7 +132,7 @@ export const APPROVAL_ACTION_OUTPUT_SCHEMA = objectSchema({
   recorded: APPROVAL_RECORDED_DECISION_SCHEMA,
 }, ['approval']);
 
-// approvals.raise — a surface CREATING an ask in the shared broker, which no
+// approvals.raise, a surface CREATING an ask in the shared broker, which no
 // verb could do before (list/claim/approve/deny/cancel could only act on asks
 // the daemon's own in-process callers had raised). `request` is the same ask
 // object every surface already renders. `waitMs` is an optional bounded inline
@@ -150,7 +150,7 @@ export const APPROVAL_RAISE_INPUT_SCHEMA = objectSchema({
 
 // `coalesced` says the ask attached to an identical one already in flight, so
 // the returned record is older than this call and only one prompt exists.
-// `decided` is true only when a decision genuinely landed inside waitMs — a
+// `decided` is true only when a decision genuinely landed inside waitMs, a
 // wait that ran out reports false with the record still pending, never a
 // decision nobody made.
 export const APPROVAL_RAISE_OUTPUT_SCHEMA = objectSchema({

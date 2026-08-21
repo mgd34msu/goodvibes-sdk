@@ -10,10 +10,10 @@ export type PermissionAction = 'allow' | 'prompt' | 'deny';
 /**
  * How background/subagent tool execution consults the permission layer.
  * - 'inherit' (default): background tool calls run through the SAME session
- *   permission mode as the foreground turn loop — allow-all changes nothing,
+ *   permission mode as the foreground turn loop, allow-all changes nothing,
  *   prompt/plan/accept-edits/custom apply their matrices, and any ask brokers
  *   through the same blocked-on-user machinery with subagent attribution.
- * - 'allow-all': background agents are deliberately exempt — their tool calls
+ * - 'allow-all': background agents are deliberately exempt, their tool calls
  *   auto-approve regardless of the session mode (the escape hatch for fully
  *   autonomous runs that never want a background ask).
  */

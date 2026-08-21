@@ -1,5 +1,5 @@
 /**
- * Live model discovery — shared fetch/cache/diff/report machinery so a
+ * Live model discovery, shared fetch/cache/diff/report machinery so a
  * provider's model list can never go stale silently.
  *
  * Each provider that has its own model-listing API (Anthropic, OpenAI,
@@ -117,7 +117,7 @@ export function formatModelDiscoveryReport(providerName: string, result: LiveMod
   }
   if (result.error) {
     const fallback = result.source === 'cache' ? 'last known list' : `dated static list (as of ${result.asOf ?? 'unknown'})`;
-    return `${providerName}: live model refresh failed (${result.error}) — using ${fallback}`;
+    return `${providerName}: live model refresh failed (${result.error}), using ${fallback}`;
   }
   return `${providerName}: using dated static list (as of ${result.asOf ?? 'unknown'})`;
 }
@@ -127,7 +127,7 @@ export interface LiveModelRefreshOptions {
   /**
    * Absolute path to this provider's on-disk model-list cache file. When
    * omitted, refresh runs in-memory only (no on-disk persistence, no TTL
-   * skip) — used by tests and any caller that hasn't wired a persistence
+   * skip), used by tests and any caller that hasn't wired a persistence
    * root through yet.
    */
   readonly cachePath?: string | undefined;
@@ -197,7 +197,7 @@ export async function runLiveModelRefresh(opts: LiveModelRefreshOptions): Promis
   }
 }
 
-/** Chat-capable OpenAI model id — excludes embeddings, audio, image, and moderation endpoints. */
+/** Chat-capable OpenAI model id, excludes embeddings, audio, image, and moderation endpoints. */
 const OPENAI_NON_CHAT_MODEL_PATTERN = /embedding|whisper|tts|dall-e|davinci|babbage|^ada|moderation|text-search|similarity|transcribe|speech|realtime|image/i;
 
 /**
@@ -376,7 +376,7 @@ export function buildProviderNativeModelDefinition(providerId: string, modelId: 
     provider: providerId,
     registryKey: `${providerId}:${modelId}`,
     displayName: modelId,
-    description: `${modelId} — sourced from live ${providerId} model discovery.`,
+    description: `${modelId}, sourced from live ${providerId} model discovery.`,
     capabilities: {
       toolCalling: true,
       codeEditing: true,

@@ -4,21 +4,21 @@
  * One trivial message produced FOUR notifications, three of them strict
  * supersets of an earlier one:
  *
- *   [2] 'Turn 1 · exec — ls'
- *   [3] 'Turn 1 · exec — echo $((5 + 3))\nTurn 1 · Thinking…'
- *   [4] 'Turn 1 · exec — ls\nTurn 1 · exec — echo $((5 + 3))'
+ *   [2] 'Turn 1 · exec, ls'
+ *   [3] 'Turn 1 · exec, echo $((5 + 3))\nTurn 1 · Thinking…'
+ *   [4] 'Turn 1 · exec, ls\nTurn 1 · exec, echo $((5 + 3))'
  *
  * The single-call delta was already correct. What was wrong was the
  * interleaving: `deliverProgress` selected the undelivered events, awaited the
  * network dispatch, and only marked them delivered AFTER it returned. Two
- * callers reach this concurrently by design — `handleEnvelope` on every bus
+ * callers reach this concurrently by design, `handleEnvelope` on every bus
  * event, and the daemon's pending-reply poller (daemon/surface-delivery.ts)
- * on its own tick — so both read the same unmarked watermark and each selected
+ * on its own tick, so both read the same unmarked watermark and each selected
  * everything the other was already sending. `deliverFinal` had the same shape.
  *
  * A fast dispatch hides this completely: the window is the duration of one
  * HTTP request. These tests inject a slow one, which makes the ladder
- * deterministic — this file fails on the unfixed pipeline and passes on the
+ * deterministic, this file fails on the unfixed pipeline and passes on the
  * fixed one.
  */
 import { describe, expect, test } from 'bun:test';
@@ -78,7 +78,7 @@ function harness(surfaceKind: string, dispatchMs = DISPATCH_MS) {
      *
      * Owner-audience, because these tests are about the delivery critical
      * section rather than about content. Tool-activity progress never reaches
-     * this machinery at all — see channels/render-audience.ts and
+     * this machinery at all, see channels/render-audience.ts and
      * channel-internal-diagnostics-never-delivered.test.ts.
      */
     emitProgress(agentId: string, text: string, audience: 'owner' | 'operator' = 'owner') {
@@ -190,7 +190,7 @@ describe('concurrent progress deliveries with a slow dispatch', () => {
 
     h.emitProgress('agent-final-race', 'Turn 1 · Network error, retrying in 5s…');
     h.advance(30_000);
-    // The completion lands while the progress publish is still on the wire —
+    // The completion lands while the progress publish is still on the wire,
     // deliverFinal had the same select/await/mark shape as deliverProgress.
     h.emitCompleted('agent-final-race', 'The answer is 42.');
     await h.settle();

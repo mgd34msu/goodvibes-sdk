@@ -89,7 +89,7 @@ export interface HttpTransportSessionsClient {
     inputId: string,
     options?: {
       readonly consumed?: boolean | undefined;
-      /** The agent this surface is running for the input — binds the channel reply. */
+      /** The agent this surface is running for the input, binds the channel reply. */
       readonly agentId?: string | undefined;
       /** That agent's finished output, reported with `consumed:true`. */
       readonly answer?: string | undefined;

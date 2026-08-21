@@ -1,5 +1,5 @@
 /**
- * gateway-verbs.ts — attach handlers for every ws-only gateway verb group, and
+ * gateway-verbs.ts, attach handlers for every ws-only gateway verb group, and
  * build the archive-aware fleet registry, in one shared place both daemon
  * front-ends consume.
  *
@@ -9,7 +9,7 @@
  * 501 "Gateway method is not invokable" over both websocket and HTTP invoke.
  * A composition root that registers those descriptors but never calls the SDK's
  * registration entry point ships exactly that 501 for the whole ws-only family
- * — the regression this package exists to make impossible to reintroduce
+ *, the regression this package exists to make impossible to reintroduce
  * independently in each front-end. `attachWsOnlyGatewayVerbHandlers` binds the
  * descriptors and their handlers together, and the conformance helper in
  * ./conformance.ts gates that no descriptor is ever left handler-less.
@@ -53,7 +53,7 @@ export function attachWsOnlyGatewayVerbHandlers(
 /**
  * Build the one shared, archive-aware process registry that aggregates a
  * front-end's runtime managers (agents, WRFC chains, workflows, watchers,
- * background processes). Constructed once per composition — not per consumer —
+ * background processes). Constructed once per composition, not per consumer,
  * so the coalesced tick and the agent-activity side-table are shared, not
  * duplicated. Archive-aware: finished agent/swarm subtrees can be moved out of
  * the live fleet view into a session-scoped archive (see the SDK's

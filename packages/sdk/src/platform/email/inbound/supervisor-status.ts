@@ -1,10 +1,10 @@
 /**
- * supervisor-status.ts — the shape `email.inbound.status` answers with.
+ * supervisor-status.ts, the shape `email.inbound.status` answers with.
  *
  * Split out of `supervisor.ts`, which sits on the repository's 800-line cap and
- * had no room left. The seam is not arbitrary: everything here is DISCLOSURE —
+ * had no room left. The seam is not arbitrary: everything here is DISCLOSURE,
  * what a reader is told about cursors, retention, store health and the source
- * in force — while what remains in `supervisor.ts` is lifecycle: start, stop,
+ * in force, while what remains in `supervisor.ts` is lifecycle: start, stop,
  * choose a source, hold its run loop, settle a status. The supervisor produces
  * these; nothing here produces anything the supervisor does not hand it.
  *
@@ -23,7 +23,7 @@ import type { InboundSourceCursor } from './source-cursor.js';
  *
  * `latency` is carried as the SENTENCE `describeSourceLatency` produces rather
  * than as a raw number, because the whole reason `SourceLatency` is on the
- * interface is that "real-time" must never be claimed for a poll — and a
+ * interface is that "real-time" must never be claimed for a poll, and a
  * consumer handed `{ kind: 'poll', worstCaseMs }` is a consumer that can write
  * that sentence itself, wrongly.
  */
@@ -78,7 +78,7 @@ export interface InboundMailRetentionReport {
     readonly retentionDays: number;
     readonly maxRecords: number;
     readonly maxBodyExcerptChars: number;
-    /** Records write-time bounding removed since this daemon started — the §9.5 disclosure for a reap no sweep report can itemise. */
+    /** Records write-time bounding removed since this daemon started, the §9.5 disclosure for a reap no sweep report can itemise. */
     readonly reapedOnWrite: number;
   };
   readonly expectations: { readonly open: number; readonly maxOpen: number };
@@ -136,7 +136,7 @@ export interface InboundMailStatusSnapshot {
    * Whether arriving mail is reaching the owner, and what is stopping it.
    *
    * `state: 'ok'` means notices are getting through OR nothing has been refused
-   * yet — deliberately one value, because "nothing refused" and "refusals
+   * yet, deliberately one value, because "nothing refused" and "refusals
    * cleared" are the same fact about right now. `state: 'refused'` carries the
    * condition, its remedial step, when it started and how many messages have
    * been recorded without a notice under it. A capability quietly demoted to a

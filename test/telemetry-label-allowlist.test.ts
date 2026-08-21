@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 
 /**
- * Telemetry label allowlist — verifies that METRIC_LABEL_ALLOWLIST exists
+ * Telemetry label allowlist, verifies that METRIC_LABEL_ALLOWLIST exists
  * and that filterMetricLabels strips non-allowlisted keys.
  */
 describe('label allowlist', () => {

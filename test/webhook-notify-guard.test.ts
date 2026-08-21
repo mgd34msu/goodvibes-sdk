@@ -4,12 +4,12 @@
  *
  * WebhookNotifier posts real HTTP requests to configured webhook URLs (Slack/
  * Discord/ntfy/etc). Under an automated test run this must never actually
- * reach the network — same class of leak as desktop notifications, guarded
+ * reach the network, same class of leak as desktop notifications, guarded
  * through the same shared isNotifySuppressed() check. Verifies:
  * - Suppressed by default under NODE_ENV=test (no real fetch attempted).
  * - Suppressed when GOODVIBES_SUPPRESS_NOTIFY is set, regardless of NODE_ENV.
  * - The `{ force: true }` constructor option opts a specific instance back in
- *   (for tests that exercise the real delivery layer itself — see
+ *   (for tests that exercise the real delivery layer itself, see
  *   ssrf-filter.test.ts, which relies on suppression NOT masking SSRF blocks).
  * - Normal runtime (NODE_ENV unset/production, no override) is unaffected.
  */
@@ -19,7 +19,7 @@ import { WebhookNotifier } from '../packages/sdk/src/platform/integrations/webho
 import * as fetchWithTimeout from '../packages/sdk/src/platform/utils/fetch-with-timeout.ts';
 
 // A hostname that passes the SSRF trust-tier filter (public, non-private) so
-// suppression — not the SSRF filter — is what's under test here.
+// suppression, not the SSRF filter, is what's under test here.
 const PUBLIC_URL = 'https://example.com/webhook';
 
 describe('WebhookNotifier delivery suppression', () => {

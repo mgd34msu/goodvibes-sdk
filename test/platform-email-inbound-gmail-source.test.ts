@@ -1,7 +1,7 @@
 /**
  * The Gmail inbound source: polling, the scope gate, and losing our place.
  *
- * No network and no real sleeping — Google's API is a scripted function, the
+ * No network and no real sleeping, Google's API is a scripted function, the
  * poll interval runs on an injected clock, and the cursor is the real
  * persisted store on a throwaway file.
  *
@@ -121,7 +121,7 @@ async function build(input: {
    *
    * Needed as its own input because the default below answers 404 for an id it
    * does not know, and 404 is the one status meaning "genuinely gone". Every
-   * OTHER failure — a rate limit, a server fault, a refused token — has to be
+   * OTHER failure, a rate limit, a server fault, a refused token, has to be
    * injectable separately, since telling those two apart is the whole of the
    * behaviour under test.
    */
@@ -167,7 +167,7 @@ async function build(input: {
       },
       /**
        * The `format=metadata` call, faked from the SAME message fixtures with
-       * the body and the snippet removed — which is the shape Google returns
+       * the body and the snippet removed, which is the shape Google returns
        * under a `gmail.metadata` grant, and which `readMessageMetadata` in
        * `api-client.ts` produces.
        *
@@ -209,7 +209,7 @@ async function build(input: {
 }
 
 // ---------------------------------------------------------------------------
-// The scope gate — §3.4a, §3.4b
+// The scope gate, §3.4a, §3.4b
 // ---------------------------------------------------------------------------
 
 describe('gmail source — capability sufficiency', () => {
@@ -242,9 +242,9 @@ describe('gmail source — capability sufficiency', () => {
     expect(harness.fetchedMessageIds).toEqual([]);
     expect(harness.metadataFetchedIds).toEqual([]);
     // Its own reason, no longer borrowing IMAP's `fetch-refused`. The two are
-    // opposite situations — `fetch-refused` is minted from a FAILED envelope
+    // opposite situations, `fetch-refused` is minted from a FAILED envelope
     // fetch, so nothing is readable there, and here everything except the body
-    // is — and `onInsufficientCapability` has to tell them apart.
+    // is, and `onInsufficientCapability` has to tell them apart.
     expect(verdict.reason).toBe('gmail-metadata-only');
   });
 
@@ -253,7 +253,7 @@ describe('gmail source — capability sufficiency', () => {
    *
    * This is what the setting selects: the mailbox is polled, every message is
    * delivered from its headers, and the verdict says `degraded` rather than
-   * `healthy` — because mail is moving and nothing it carries can complete a
+   * `healthy`, because mail is moving and nothing it carries can complete a
    * signup.
    */
   test('under notice-only a metadata-only grant DELIVERS envelope-only messages', async () => {
@@ -282,7 +282,7 @@ describe('gmail source — capability sufficiency', () => {
       expect(message.deliveredTo).toEqual(['owner+signup@example.test']);
     }
 
-    // Degraded, not healthy and not insufficient — it is running with less than
+    // Degraded, not healthy and not insufficient, it is running with less than
     // it wanted.
     expect(verdict.state).toBe('degraded');
     expect(verdict.reason).toBe('gmail-metadata-notice-only');
@@ -300,7 +300,7 @@ describe('gmail source — capability sufficiency', () => {
    *
    * `notice-only` on a condition that leaves NOTHING readable behaves exactly
    * as `refuse-and-notify`, and the verdict says so rather than degrading in
-   * silence — an owner who set it and then heard nothing would conclude no mail
+   * silence, an owner who set it and then heard nothing would conclude no mail
    * arrived, when what happened is that his setting could not apply.
    */
   test('under notice-only a grant with NO Gmail scope still refuses, and the verdict says why', async () => {
@@ -322,7 +322,7 @@ describe('gmail source — capability sufficiency', () => {
     expect(verdict.detail).toContain('does not apply to this condition');
     expect(verdict.detail).toContain('gmail.metadata');
     // And it reaches the owner through the terminal notice, not only the status
-    // line — that notice is the surface he actually reads when mail stops.
+    // line, that notice is the surface he actually reads when mail stops.
     expect(harness.terminals[0]?.detail).toBe(verdict.detail);
   });
 
@@ -452,15 +452,15 @@ describe('gmail source — delivery', () => {
 });
 
 // ---------------------------------------------------------------------------
-// A message that was not read never gets stepped over — §3.4d
+// A message that was not read never gets stepped over, §3.4d
 // ---------------------------------------------------------------------------
 
 /**
  * The defect these gate: `collectHistoryDelta` dropped EVERY failed
  * `getMessage` as though the message had been deleted, so a delta whose
  * fetches were rate-limited came back `ok` with zero messages, the source
- * advanced the cursor to the delta's `historyId`, and — because Gmail's
- * history is a forward-only log — those records could never be asked for
+ * advanced the cursor to the delta's `historyId`, and, because Gmail's
+ * history is a forward-only log, those records could never be asked for
  * again. A verification email arrived, was never read, was never announced,
  * and the verdict said `healthy`.
  *
@@ -486,7 +486,7 @@ describe('gmail source — a delta that could not be fully read', () => {
 
     const verdict = await harness.source.start(new AbortController().signal);
 
-    // Nothing was readable, so nothing was delivered — that part was always true.
+    // Nothing was readable, so nothing was delivered, that part was always true.
     expect(harness.sink.delivered).toEqual([]);
     // This is the fix: the position does NOT move to 200. Had it moved, the
     // two messages would sit at or below the new startHistoryId and Gmail
@@ -530,7 +530,7 @@ describe('gmail source — a delta that could not be fully read', () => {
 
     const verdict = await harness.source.start(new AbortController().signal);
 
-    // "not yet", not "cannot" — the delta is still above the cursor.
+    // "not yet", not "cannot", the delta is still above the cursor.
     expect(verdict.state).toBe('degraded');
     expect(verdict.reason).toBe('server-unavailable');
     expect(verdict.detail).toContain('rate limit');
@@ -556,8 +556,8 @@ describe('gmail source — a delta that could not be fully read', () => {
 
     const verdict = await harness.source.start(new AbortController().signal);
 
-    // A refused credential and a rate limit need opposite answers — a new
-    // grant versus waiting — so they must not collapse into one verdict.
+    // A refused credential and a rate limit need opposite answers, a new
+    // grant versus waiting, so they must not collapse into one verdict.
     expect(verdict.state).toBe('insufficient');
     expect(verdict.reason).toBe('credentials-rejected');
     // Google's own remedial step reaches the owner. An `insufficient` verdict
@@ -599,7 +599,7 @@ describe('gmail source — a delta that could not be fully read', () => {
 
     await harness.source.start(new AbortController().signal);
 
-    // What was read is handed on immediately — withholding it would delay a
+    // What was read is handed on immediately, withholding it would delay a
     // verification email we DID manage to fetch because a sibling 429'd.
     expect(harness.sink.delivered).toHaveLength(1);
     // And the position still does not move, because m2 was not read. The
@@ -613,7 +613,7 @@ describe('gmail source — a delta that could not be fully read', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Losing our place — §3.4d, §4
+// Losing our place, §3.4d, §4
 // ---------------------------------------------------------------------------
 
 describe('gmail source — resync', () => {
@@ -644,7 +644,7 @@ describe('gmail source — resync', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The adaptive interval — §3.4d
+// The adaptive interval, §3.4d
 // ---------------------------------------------------------------------------
 
 describe('gmail source — adaptive interval', () => {
@@ -682,7 +682,7 @@ describe('gmail source — adaptive interval', () => {
   });
 
   test('stop() ends the run, and nothing polls afterwards', async () => {
-    // This used to terminate in `expect(true).toBe(true)` — a hang gate, which
+    // This used to terminate in `expect(true).toBe(true)`, a hang gate, which
     // asserts that `await loop` resolved and nothing else. Resolving is not the
     // claim: the claim is that the loop is over and the source has genuinely
     // stopped asking Gmail for pages.
@@ -691,7 +691,7 @@ describe('gmail source — adaptive interval', () => {
     let ended = false;
     const loop = harness.source.run(new AbortController().signal).then(() => { ended = true; });
     await harness.clock.waitForSleepers(1, 'the first poll wait');
-    // Running, and not yet finished — so the assertion after `stop()` is about
+    // Running, and not yet finished, so the assertion after `stop()` is about
     // `stop()` rather than about a loop that had already fallen out.
     expect(ended).toBe(false);
     expect(harness.clock.pending).toBe(1);
@@ -729,7 +729,7 @@ describe('gmail source — adaptive interval', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The structural rule — §2.1
+// The structural rule, §2.1
 // ---------------------------------------------------------------------------
 
 describe('inbound sources cannot register an expectation', () => {
@@ -750,7 +750,7 @@ describe('inbound sources cannot register an expectation', () => {
   /**
    * Every module specifier the file names, however the import is written.
    *
-   * A line filter — `lines.filter(l => l.startsWith('import '))` — was what
+   * A line filter, `lines.filter(l => l.startsWith('import '))`, was what
    * this used to do, and it is blind to the dominant style in these very
    * files: a multi-line import contributes only `import {`, and the
    * `from './x.js'` line that carries the specifier is on a different line and
@@ -796,8 +796,8 @@ describe('inbound sources cannot register an expectation', () => {
     for (const file of files) {
       const text = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
       const specifiers = moduleSpecifiers(text);
-      // Non-empty, so a file that stopped being parseable — or a path typo
-      // that read an empty file — cannot pass by naming nothing.
+      // Non-empty, so a file that stopped being parseable, or a path typo
+      // that read an empty file, cannot pass by naming nothing.
       expect(specifiers.length, `${file} names no imports at all`).toBeGreaterThan(0);
       for (const forbidden of ['expectation-registry', 'verification-expectations', 'expectation-store']) {
         const offending = specifiers.filter((specifier) => specifier.includes(forbidden));

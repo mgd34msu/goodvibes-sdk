@@ -1,5 +1,5 @@
 /**
- * daemon-adoption-policy.ts — the SHARED adopt-or-spawn DECISION policy.
+ * daemon-adoption-policy.ts, the SHARED adopt-or-spawn DECISION policy.
  *
  * Find an already-running compatible daemon and attach to it, else spawn one (or,
  * under an adopt-only policy, run without one). The probing/spawn I/O lives in
@@ -15,8 +15,8 @@
  *     skipped it and would adopt a wire-incompatible daemon).
  *   - A probe is always the source of truth for "is a daemon there and mine"
  *     (no pid/lockfile is trusted; that is the caller's discovery hint only).
- * The one genuine choice — own the daemon lifecycle (spawn) vs never own it
- * (adopt-only) — is expressed as the `adoptOnly` flag rather than a wholesale
+ * The one genuine choice, own the daemon lifecycle (spawn) vs never own it
+ * (adopt-only), is expressed as the `adoptOnly` flag rather than a wholesale
  * function override.
  */
 
@@ -76,7 +76,7 @@ export interface DaemonAdoptionPolicyInput {
   readonly enabled: boolean;
   /** Whether the configured host/port is currently accepting connections. */
   readonly portInUse: boolean;
-  /** The identity probe of the occupant — required when `portInUse`, ignored otherwise. */
+  /** The identity probe of the occupant, required when `portInUse`, ignored otherwise. */
   readonly identity: DaemonIdentityProbeResult | null;
   readonly localVersion: string;
   readonly versionCompatible: (localVersion: string, remoteVersion: string | undefined) => boolean;
@@ -91,7 +91,7 @@ export interface DaemonAdoptionPolicyInput {
  * Decide adopt-or-spawn from probe results + config. Pure. The caller maps the
  * returned action onto its I/O (adopt = keep external status, spawn = launch the
  * detached `goodvibes-daemon` binary, etc.) and supplies the surface-specific
- * status strings — this function owns only the ruling, so it is identical for
+ * status strings, this function owns only the ruling, so it is identical for
  * every consumer.
  */
 export function decideDaemonAdoption(input: DaemonAdoptionPolicyInput): DaemonAdoptionDecision {

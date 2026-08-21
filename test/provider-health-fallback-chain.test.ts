@@ -5,8 +5,8 @@
  * for them, not one recomposed from `${providerId}:${modelId}`.
  *
  * Node 0 (the active model) always read `modelState.registryKey`. Nodes 1..N
- * recomposed theirs, so for any model whose id already carries a namespace —
- * an OpenRouter `vendor/model`, a Bedrock-style id — the same model was
+ * recomposed theirs, so for any model whose id already carries a namespace,
+ * an OpenRouter `vendor/model`, a Bedrock-style id, the same model was
  * described by two different keys depending on whether it happened to be
  * active or a fallback. Anything keyed off the visualizer's `registryKey`
  * (the model picker's position map, a click-to-switch handler) then failed to
@@ -23,7 +23,7 @@ import { buildFallbackChainData } from '../packages/sdk/src/platform/runtime/ui/
 
 /**
  * A model whose registry key is NOT `${providerId}:${modelId}` naively joined
- * in the shape the old code assumed — the id itself carries a slash-namespace,
+ * in the shape the old code assumed, the id itself carries a slash-namespace,
  * which is the everyday OpenRouter case.
  */
 function stateWithNamespacedChain(): ModelDomainState {
@@ -79,7 +79,7 @@ describe('buildFallbackChainData', () => {
     const data = buildFallbackChainData(state, createInitialProviderHealthState());
 
     expect(data.nodes[1]?.registryKey).toBe('bedrock:us.anthropic.claude-fable-5-v1:0');
-    // The recomposed form is what the old code produced — assert it is gone.
+    // The recomposed form is what the old code produced, assert it is gone.
     expect(data.nodes[1]?.registryKey).not.toBe('bedrock:claude-fable-5');
   });
 

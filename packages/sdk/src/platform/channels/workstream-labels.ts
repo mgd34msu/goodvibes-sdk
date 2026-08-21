@@ -1,8 +1,8 @@
 /**
- * workstream-labels.ts — naming a workstream by what it is doing, not by its id.
+ * workstream-labels.ts, naming a workstream by what it is doing, not by its id.
  *
  * The workstream progress lines are the owner's: someone who asked for a long
- * piece of work is owed its legs — which phase it reached, whether review
+ * piece of work is owed its legs, which phase it reached, whether review
  * passed, whether a gate failed. Suppressing them would be the "suppress the
  * message that should have been there" failure.
  *
@@ -12,7 +12,7 @@
  *     WRFC chain 7f3a91c02b4e moved from reviewing to fixing
  *
  * Both halves of that are internal. `WRFC` is a name for the machinery, and
- * `7f3a91c02b4e` is a register id — and the standing rule is that neither
+ * `7f3a91c02b4e` is a register id, and the standing rule is that neither
  * appears in outward-facing text. Plain language only; provenance travels as a
  * decision-record path or a version, not as an identifier a person cannot use.
  *
@@ -26,7 +26,7 @@
  *
  * ── Two workstreams that would read the same ────────────────────────────────
  *
- * Two tasks can share an opening phrase — the same ask repeated, or two asks
+ * Two tasks can share an opening phrase, the same ask repeated, or two asks
  * whose first clauses only differ past the length a label keeps. The id used to
  * be what told them apart, so something else has to, and it is words rather
  * than a shorter id: the colliding workstreams are counted in the order they
@@ -36,7 +36,7 @@
  *     Started work on: rewrite the retry backoff (the second one)
  *     "rewrite the retry backoff" (the first one) is now in review
  *
- * The first one is unqualified until a second appears — there is nothing to
+ * The first one is unqualified until a second appears, there is nothing to
  * distinguish it from, and a bare "(the first one)" on a lone workstream reads
  * as if a second is coming. Once assigned, a place is KEPT for the rest of that
  * workstream's life, including after the other one finishes: a name that
@@ -53,7 +53,7 @@
  * moment its workstream reaches a terminal state, and the map is capped so a
  * process that somehow never sees a terminal event cannot grow one unbounded.
  * A workstream whose label was evicted or never seen reads as "the workstream",
- * which is honest — it does not invent an identifier to fill the gap.
+ * which is honest, it does not invent an identifier to fill the gap.
  */
 
 import type { WrfcState } from '../../events/workflows.js';
@@ -76,15 +76,15 @@ interface RememberedWorkstream {
   readonly base: string;
   /**
    * Its place among live workstreams sharing that phrase, or null while it is
-   * the only one. Sticky once set — see the header.
+   * the only one. Sticky once set, see the header.
    */
   place: number | null;
   /**
    * Set when the workstream reached a terminal state.
    *
    * A finished workstream is NOT dropped on the spot. Several subscribers each
-   * build a line from the same terminal event — the channel renderer, the
-   * conversation follow-up, the webhook notifier — and whichever ran after a
+   * build a line from the same terminal event, the channel renderer, the
+   * conversation follow-up, the webhook notifier, and whichever ran after a
    * drop would render "the workstream" while the others named it. That is a
    * race decided by subscription order, which is not a thing a reader should be
    * able to see. So a finished entry stays readable and is simply first in line
@@ -97,7 +97,7 @@ const labels = new Map<string, RememberedWorkstream>();
 
 /** Reduce a task to the phrase a person would use for it. */
 function toLabel(task: string): string {
-  // First sentence or clause only — a task description can be a paragraph, and
+  // First sentence or clause only. A task description can be a paragraph, and
   // a label is a handle, not a summary.
   const firstClause = task.split(/[.\n;]/)[0] ?? task;
   const collapsed = firstClause.replace(/\s+/g, ' ').trim();
@@ -115,7 +115,7 @@ const PLACE_WORDS = [
 /**
  * A place in words. Past the words there are digits with an ordinal suffix,
  * which is still something a person reads rather than an identifier they
- * cannot use — eleven concurrent workstreams sharing one phrase is already
+ * cannot use, eleven concurrent workstreams sharing one phrase is already
  * past the point where prose helps.
  */
 function placeWord(place: number): string {
@@ -174,7 +174,7 @@ export function rememberWorkstreamLabel(chainId: string, task: string): void {
   const base = toLabel(task);
   if (base.length === 0) return;
   // Re-announcing moves it to the newest position rather than duplicating it,
-  // and drops any place it held — the collision pass below re-derives it.
+  // and drops any place it held, the collision pass below re-derives it.
   labels.delete(chainId);
   // Only a LIVE namesake forces a place. A workstream that already finished is
   // not something the reader has to tell this one apart from, and numbering
@@ -188,7 +188,7 @@ export function rememberWorkstreamLabel(chainId: string, task: string): void {
 /**
  * Mark a workstream finished. Called on every terminal event.
  *
- * Deliberately not a delete — see `RememberedWorkstream.finished`. Survivors
+ * Deliberately not a delete, see `RememberedWorkstream.finished`. Survivors
  * keep the place they were given; a name that changes under the reader is worse
  * than one that stays specific.
  */
@@ -201,7 +201,7 @@ export function finishWorkstreamLabel(chainId: string): void {
  * How to refer to this workstream in a line a person reads.
  *
  * Quoted when known, so the task words read as a name rather than as part of
- * the sentence around them. `The workstream` when not — never the id.
+ * the sentence around them. `The workstream` when not, never the id.
  */
 export function workstreamLabel(chainId: string): string {
   const entry = labels.get(chainId);
@@ -217,7 +217,7 @@ export function workstreamLabelInline(chainId: string): string {
 }
 
 /**
- * The place suffix alone, for the opening line — which already carries the
+ * The place suffix alone, for the opening line, which already carries the
  * task in full and would otherwise repeat it.
  */
 export function workstreamPlaceSuffix(chainId: string): string {

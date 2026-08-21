@@ -3,7 +3,7 @@
  *
  * Before this, `validateInboundMailRecord` required a positive `uidValidity`
  * and `uid` unconditionally, so EVERY Gmail message failed validation and was
- * dropped — on the path automatic source selection makes the default once
+ * dropped, on the path automatic source selection makes the default once
  * Google is adopted. Mail arrived, was matched, was announced, and nothing was
  * ever written: §9.3's thirty-day retention had nothing to retain, §11.0's
  * card redaction had nothing to redact, and `email.inbound.status` truthfully
@@ -181,7 +181,7 @@ describe('a record is discarded when its payload does not match its declared sou
     // Backward compatibility, deliberately asymmetric: every record written
     // before the union existed is an IMAP record, and discarding them all on
     // first load would be a worse bug than the one being fixed. Gmail is never
-    // inferred from absence — it must say so.
+    // inferred from absence, it must say so.
     const read = validateInboundMailRecord({
       id: 'rec-1', account: 'acct-1', mailbox: 'INBOX',
       uidValidity: 100, uid: 42,
@@ -207,7 +207,7 @@ describe('card-shape redaction runs on a Gmail record', () => {
     const read = (await new InboundMailStore(storePath).list())[0]!;
     expect(read.subject).not.toContain('4111 1111 1111 1111');
     expect(read.bodyExcerpt).not.toContain('4111111111111111');
-    // Redacted, not deleted — the owner can still see what the mail was about.
+    // Redacted, not deleted, the owner can still see what the mail was about.
     expect(read.subject).toContain('was charged');
     expect(read.bodyExcerpt).toContain('Receipt for card');
   });
@@ -225,7 +225,7 @@ describe('a sweep report names which message went, whatever found it', () => {
 
   test('an expired Gmail record is reported with its own identity, not a zeroed uid', async () => {
     // The discard used to carry `uid: number`, which for a Gmail record could
-    // only ever be 0 — a report that looks like it told the owner which
+    // only ever be 0, a report that looks like it told the owner which
     // message went while telling him nothing.
     const store = new InboundMailStore(storePath, { policy: { retentionMs: 1 } });
     await store.record(gmailInput());

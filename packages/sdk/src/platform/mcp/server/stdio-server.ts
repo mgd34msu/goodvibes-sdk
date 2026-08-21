@@ -5,8 +5,8 @@
  * 2.0 over a newline-delimited stream (stdio is the local-first default). It
  * exposes the GoodVibes operator surface as MCP tools (tool-definitions.ts) and
  * dispatches every tools/call through an injected invoker, so the transport that
- * reaches the daemon is the consumer's choice — the operator client, an
- * in-process handler, anything — and this module stays pure protocol plumbing.
+ * reaches the daemon is the consumer's choice, the operator client, an
+ * in-process handler, anything, and this module stays pure protocol plumbing.
  *
  * Implemented against the protocol directly rather than pulling in an MCP SDK
  * dependency: the surface is small (initialize / tools/list / tools/call /
@@ -76,7 +76,7 @@ function errorText(error: unknown): string {
 
 /**
  * The protocol core: turns a decoded JSON-RPC message into a response (or null
- * for a notification, which gets none). Transport-agnostic — call it from a
+ * for a notification, which gets none). Transport-agnostic, call it from a
  * stdio loop, a socket, or a test.
  */
 export class OperatorMcpServer {

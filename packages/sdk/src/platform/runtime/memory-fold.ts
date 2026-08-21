@@ -17,7 +17,7 @@ import {
  * it is a fact about existing disks rather than a scope this function chooses.
  *
  * Called once at boot AFTER `memoryStore.init()` so records written before
- * unification survive. Id-keyed and idempotent — a re-run imports nothing new
+ * unification survive. Id-keyed and idempotent, a re-run imports nothing new
  * and never deletes the legacy file. Returns the report so boot can log what
  * moved.
  */

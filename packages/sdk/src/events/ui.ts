@@ -1,5 +1,5 @@
 /**
- * UIEvent — discriminated union covering UI render, scroll, and panel events.
+ * UIEvent, discriminated union covering UI render, scroll, and panel events.
  *
  * These events drive terminal and web surface rendering without coupling it to business logic.
  */

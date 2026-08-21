@@ -6,7 +6,7 @@
  * collapsed floods to the panel_only target the notifications panel consumes:
  * each collapsed decision carries `target: 'panel_only'`, the `{domain}:{level}`
  * batchKey the panel groups by, and the `burst_collapsed` reason code it
- * renders. Quiet/minimal conversation flow stays clean — operational churn is
+ * renders. Quiet/minimal conversation flow stays clean, operational churn is
  * suppressed to the panel while critical and alert items keep their surface.
  */
 import { describe, expect, test } from 'bun:test';
@@ -119,7 +119,7 @@ describe('quiet/minimal conversation flow stays clean', () => {
     expect(warning.target).toBe('panel_only');
     expect(warning.reasonCode).toBe('mode_context_minimal');
 
-    // Critical still reaches the conversation — suppression never eats it.
+    // Critical still reaches the conversation, suppression never eats it.
     const critical = router.route(notify({ domain: 'tools', level: 'critical' }));
     expect(critical.target).toBe('conversation');
     expect(critical.reasonCode).toBe('allowed');

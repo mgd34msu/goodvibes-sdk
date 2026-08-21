@@ -1,5 +1,5 @@
 /**
- * Watcher domain state — managed sources that feed automation and routes.
+ * Watcher domain state, managed sources that feed automation and routes.
  */
 
 import type { AutomationSourceRecord } from '../../../automation/sources.js';

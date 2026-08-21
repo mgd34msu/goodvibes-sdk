@@ -1,5 +1,5 @@
 /**
- * client-seam-tasks-client.test.ts — a task list reads both registries, and
+ * client-seam-tasks-client.test.ts, a task list reads both registries, and
  * writes to the right one.
  *
  * Two distinct failures are pinned here, and the second is the dangerous one.
@@ -7,7 +7,7 @@
  * READ: a list showing only this surface's tasks would look complete while
  * omitting everything the daemon runs. So the union, deduped with the local
  * (live) copy winning, and an honest note when the daemon could not be reached
- * — carried ALONGSIDE the local rows, never instead of them.
+ *, carried ALONGSIDE the local rows, never instead of them.
  *
  * WRITE: an act aimed at a task the daemon owns must never be applied to a
  * local registry that has no such record. That path reports success and changes

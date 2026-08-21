@@ -1,5 +1,5 @@
 /**
- * Conversation domain state — tracks the active turn lifecycle,
+ * Conversation domain state, tracks the active turn lifecycle,
  * message buffer, streaming deltas, and tool dispatch state.
  */
 
@@ -82,7 +82,7 @@ export interface TurnReconciliationRecord {
 }
 
 /**
- * ConversationDomainState — turn lifecycle and streaming state.
+ * ConversationDomainState, turn lifecycle and streaming state.
  */
 export interface ConversationDomainState {
   // ── Domain metadata ────────────────────────────────────────────────────────

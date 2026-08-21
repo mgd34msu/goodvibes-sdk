@@ -1,5 +1,5 @@
 /**
- * money-parsing.ts — turning what a checkout page SAYS into an integer we own.
+ * money-parsing.ts, turning what a checkout page SAYS into an integer we own.
  *
  * Every amount on a checkout page is a string chosen by whoever runs that page.
  * It reaches us as text and it must never leave this module as text: the rule
@@ -16,7 +16,7 @@
  *
  *   - A scrubber that strips every non-digit turns "1.234,56" into 123456 and
  *     "1,234.56" into 123456 as well. Those are the same number by luck, and
- *     "1.234" versus "1,234" is where the luck runs out — a factor of a
+ *     "1.234" versus "1,234" is where the luck runs out, a factor of a
  *     thousand, silently, on the number a budget is checked against.
  *   - A parser that falls back to `Number(...)` accepts "1e6", "0x10",
  *     "Infinity" and " 12 " and produces a value for each. A page that wants to
@@ -66,7 +66,7 @@ export function minorUnitExponent(currency: string): number {
  * A hard ceiling well inside `Number.MAX_SAFE_INTEGER`, so arithmetic on parsed
  * amounts stays exact no matter what a page claims. A page asking for more than
  * this is refused at parse time rather than reaching a budget comparison that
- * would have handled it correctly anyway — the budget is the second line, and a
+ * would have handled it correctly anyway, the budget is the second line, and a
  * value that cannot be added without losing precision should never reach it.
  */
 export const MAX_PARSEABLE_MINOR_UNITS = 1_000_000_000_000;
@@ -77,7 +77,7 @@ const CURRENCY_ORNAMENT = /[\p{Sc}\s   ]/gu;
 /**
  * Read one amount off a page, or refuse.
  *
- * Returns null — never a fallback — when the text is empty, holds no number,
+ * Returns null, never a fallback, when the text is empty, holds no number,
  * holds more than one number, is negative, uses a separator layout that could
  * mean two different values, or exceeds the parse ceiling.
  *
@@ -103,7 +103,7 @@ export function parseMinorUnits(raw: string, currency: CurrencyCode | string): M
 
   // Exactly one numeric run. Two numbers in one string means the selector
   // picked up a range, a strikethrough price beside a sale price, or a whole
-  // summary block — none of which we may choose between.
+  // summary block, none of which we may choose between.
   const runs = text.match(/\d[\d.,]*/g);
   if (runs === null || runs.length !== 1) return null;
   const [number] = runs;
@@ -163,7 +163,7 @@ export function parseMinorUnits(raw: string, currency: CurrencyCode | string): M
  * Read a whole-number quantity off a page, or refuse.
  *
  * Separate from `parseMinorUnits` because a quantity has no currency and no
- * fraction, and reusing the money parser for it would accept "2.00" as two —
+ * fraction, and reusing the money parser for it would accept "2.00" as two,
  * which is probably right and is exactly the kind of probably we do not want
  * deciding how many of something to buy.
  */

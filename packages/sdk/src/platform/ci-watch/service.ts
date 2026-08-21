@@ -7,7 +7,7 @@
  * either starts a fix-session directly (the triggerFixSession opt-in) or
  * raises a "fix this?" offer through the approval machinery whose acceptance
  * starts the session, pre-briefed with the failing jobs' logs. A watch whose
- * terminal verdict has been delivered retires itself — checks come from the
+ * terminal verdict has been delivered retires itself, checks come from the
  * daemon poller (ci-watch/poller.ts) or the manual ci.watches.run verb.
  */
 import { randomUUID } from 'node:crypto';
@@ -32,9 +32,9 @@ export interface CiWatchServiceDeps {
   readonly source: CiStatusSource;
   /**
    * `load` and `save` are the only members CiWatchService calls. Declared as
-   * the whole class, every test double had to be cast through `unknown` —
+   * the whole class, every test double had to be cast through `unknown`,
    * CiWatchStore has a private field, so no object literal is structurally
-   * assignable to it — and the casts then accepted doubles carrying members the
+   * assignable to it, and the casts then accepted doubles carrying members the
    * class does not have.
    */
   readonly store: Pick<CiWatchStore, 'load' | 'save'>;
@@ -71,7 +71,7 @@ export interface CiWatchCheckResult {
   readonly notified: boolean;
   readonly notificationId?: string | undefined;
   readonly fixSessionTriggered: boolean;
-  /** The REAL spawned session's id (attach/resume-resolvable) — never a scheduling handle. */
+  /** The REAL spawned session's id (attach/resume-resolvable), never a scheduling handle. */
   readonly fixSessionId?: string | undefined;
   /** The honest failure when the auto-start fix-session did not produce an attachable session. */
   readonly fixSessionError?: string | undefined;
@@ -103,7 +103,7 @@ export class CiWatchService {
    * is requested long before it lands and routinely overlaps whatever an
    * operator did in the meantime. Unordered, a `deleteWatch` that had already
    * returned true could be undone by the in-flight check's older snapshot, and
-   * the deleted watch keeps polling and notifying — or, on the retirement path,
+   * the deleted watch keeps polling and notifying, or, on the retirement path,
    * a watch that had already delivered its one terminal verdict comes back and
    * delivers it again.
    *
@@ -173,7 +173,7 @@ export class CiWatchService {
   /**
    * Check one standing watch: poll its per-job status, and if the verdict has
    * transitioned to a terminal state (passed/failed) since last time, fire the
-   * channel notification — and, when failed AND the subscription opted in, start
+   * channel notification, and, when failed AND the subscription opted in, start
    * a fix-session pre-briefed with the failing jobs' logs.
    */
   async checkWatch(id: string): Promise<CiWatchCheckResult> {
@@ -196,7 +196,7 @@ export class CiWatchService {
       if (this.deps.notifier) {
         notificationId = await this.deps.notifier(
           subscription.deliveryChannel,
-          `CI ${report.overall} — ${report.repo}`,
+          `CI ${report.overall}, ${report.repo}`,
           renderCiReportLines(report),
         );
         notified = true;
@@ -213,13 +213,13 @@ export class CiWatchService {
               fixSessionId = started.sessionId;
               await this.notifyFixSessionStarted(subscription, report, started.sessionId);
             } else {
-              // The honest failure rides the verb result — never a dead id.
+              // The honest failure rides the verb result, never a dead id.
               fixSessionError = started.error;
               logger.warn('[ci-watch] auto-start fix-session failed', { repo: subscription.repo, error: started.error });
             }
           }
         } else if (this.deps.fixSessionOffer && this.deps.fixSessionStarter) {
-          // "Fix this?" — an actionable offer through the approval/attention
+          // "Fix this?", an actionable offer through the approval/attention
           // machinery. Fire-and-forget: a human decision must never block the
           // poll loop or the manual verb; acceptance starts the seeded session,
           // and the started id is delivered via the channel notification (the
@@ -237,7 +237,7 @@ export class CiWatchService {
               const started = normalizeStartOutcome(await starter(brief));
               // The accepting surface is attached NOW: stamp the outcome onto
               // the resolved approval record (published live through the
-              // broker) so it has an in-process handle to open the session —
+              // broker) so it has an in-process handle to open the session,
               // or the honest failure, never a dead id. The channel
               // notification below stays for paired channels.
               if (offerCallId && this.deps.stampFixSession) {
@@ -293,7 +293,7 @@ export class CiWatchService {
     try {
       await this.deps.notifier(
         subscription.deliveryChannel,
-        `CI fix session started — ${report.repo}`,
+        `CI fix session started, ${report.repo}`,
         [
           `A fix session is working on the failing jobs (${failingJobNames(report).join(', ') || 'unknown'}).`,
           `sessionId: ${sessionId}`,

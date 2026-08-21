@@ -8,7 +8,7 @@
  * gateway/brokers/router) from a `DaemonConfig`, and installs the network
  * transport + folds legacy session stores during `start()`. This factory just
  * threads the caller's overrides in, enables the daemon with the given token,
- * starts it, and hands back a stop handle — composition, not new behavior.
+ * starts it, and hands back a stop handle, composition, not new behavior.
  *
  * It exists so embedders and tests do not have to hand-mirror cli.ts's graph to
  * stand up a real daemon (isolated home, ephemeral port, auth round-trip).
@@ -19,7 +19,7 @@ import type { ApprovalBroker } from '../control-plane/index.js';
 import { DaemonServer } from './facade.js';
 
 export interface BootDaemonOptions {
-  /** Injected home directory — the daemon stays entirely inside it. */
+  /** Injected home directory, the daemon stays entirely inside it. */
   readonly homeDirectory: string;
   /** Working directory (project root) the daemon operates against. */
   readonly workingDir: string;
@@ -35,15 +35,15 @@ export interface BootDaemonOptions {
    * Optional preconfigured ConfigManager; otherwise one is built from the dirs.
    *
    * An embedder supplying one is composing a daemon and should construct it with
-   * `ownsDaemonTier: true` — that flag is read during the manager's own
+   * `ownsDaemonTier: true`, that flag is read during the manager's own
    * constructor load, so it cannot be applied here after the fact.
    */
   readonly configManager?: import('../config/manager.js').ConfigManager | undefined;
   /** Optional custom serve factory (tests inject Bun.serve stand-ins). */
   readonly serveFactory?: typeof Bun.serve | undefined;
   /**
-   * Identity of the RUNNING artifact for the auto-update loop. Absent — the
-   * default for embedded/test boots — means the host manages updates and no
+   * Identity of the RUNNING artifact for the auto-update loop. Absent, the
+   * default for embedded/test boots, means the host manages updates and no
    * loop starts; the SDK package version is never assumed to be the artifact.
    */
   readonly updateArtifact?: import('./facade-lifecycle.js').DaemonUpdateArtifact | undefined;
@@ -57,11 +57,11 @@ export interface BootedDaemon {
   /**
    * The daemon's shared approval broker (same instance the HTTP approvals routes
    * resolve through). Lets a proof test seed a pending approval and then exercise
-   * approve/deny — including per-hunk selection — over the live wire.
+   * approve/deny, including per-hunk selection, over the live wire.
    */
   readonly approvals: ApprovalBroker;
   /**
-   * The daemon's canonical memory registry — the same single-writer store the HTTP
+   * The daemon's canonical memory registry, the same single-writer store the HTTP
    * memory routes serve. A proof test adds a record over the wire and reads it back
    * here to confirm the write reached the canonical store, not a detached copy.
    */
@@ -86,7 +86,7 @@ export interface BootedDaemon {
  */
 export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaemon> {
   // Build a ConfigManager rooted at the injected dirs when the caller did not
-  // supply one — this is what makes the graph self-compose from just the dirs.
+  // supply one, this is what makes the graph self-compose from just the dirs.
   const configManager = options.configManager ?? new ConfigManager({
     workingDir: options.workingDir,
     homeDir: options.homeDirectory,
@@ -113,7 +113,7 @@ export async function bootDaemon(options: BootDaemonOptions): Promise<BootedDaem
   await server.start();
   // Startup announcements are collected inside the facade lifecycle
   // (onStarted) for every construction path, logged there and queued for
-  // surface delivery through the consuming /status receipts read — no
+  // surface delivery through the consuming /status receipts read, no
   // boot-side collection.
 
   const host = server.boundHost;

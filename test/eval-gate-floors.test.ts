@@ -1,5 +1,5 @@
 /**
- * EvalRunner.evaluateGate — floor enforcement + unbaselined surfacing.
+ * EvalRunner.evaluateGate, floor enforcement + unbaselined surfacing.
  *
  * Pins the corrected gate contract:
  *   - an absolute per-dimension floor failure fails the gate even with NO

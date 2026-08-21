@@ -31,7 +31,7 @@ const OPENAI_CODEX_PROVIDER_NAME = 'openai-subscriber';
  * Dated fallback model list for the ChatGPT/Codex subscription surface. This
  * backend (chatgpt.com/backend-api) has no public model-listing endpoint, so
  * unlike the direct OpenAI API key provider this is a dated-static list only
- * — docs-verified (no live subscription session was available in this
+ *, docs-verified (no live subscription session was available in this
  * environment to cross-check) against developers.openai.com Codex model
  * pages on 2026-07-12; update this list (and the date below) whenever it is
  * re-verified.

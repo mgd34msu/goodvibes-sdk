@@ -5,20 +5,20 @@
 // SDK overlay tool consolidated into one SDK-shipped script. Covers:
 //   - workspace enumeration (all 9 public packages incl. contracts; private/
 //     non-public packages excluded; a synthetic 10th package is picked up
-//     with zero code changes — the drift class this brief closes).
-//   - the pin reader (devDependencies before dependencies — the generalized
+//     with zero code changes, the drift class this brief closes).
+//   - the pin reader (devDependencies before dependencies, the generalized
 //     agent behavior, safe for TUI/webui too).
 //   - the three status states + the restore version-agreement check (ported
 //     from the agent's sdk-dev.test.ts, since this is now their only home).
 //   - overlayPackage's fs-copy contract (dist + package.json replaced, never
 //     written through in place) against fixture dirs.
 //   - CLI black-box behavior via subprocess (link fails fast when the SDK
-//     checkout is missing; status/restore/usage dispatch) — mirrors the
+//     checkout is missing; status/restore/usage dispatch), mirrors the
 //     pattern webui's sdk-dev.test.ts already used.
 //
 // The FULL link -> build -> overlay(9 pkgs incl. contracts) -> status ->
 // restore(byte-identical) cycle against a real SDK build and a real consumer
-// checkout is a manual proof (documented separately), not automated here —
+// checkout is a manual proof (documented separately), not automated here,
 // it requires a full `tsc -b` build of all 9 packages, which is too slow for
 // a unit-test loop and (per the existing webui/agent precedent) not
 // something CI can run without a local SDK checkout.
@@ -302,7 +302,7 @@ describe('full link/restore round-trip (real build, gated — slow)', () => {
     }));
     // Simulate an `npm install`-produced node_modules for every package the
     // real consumers install (the tool only overlays packages already
-    // installed — see overlayPackage's existsSync(installed) guard).
+    // installed, see overlayPackage's existsSync(installed) guard).
     for (const pkg of enumerateWorkspacePackages(SDK_ROOT)) {
       const dir = join(consumerRoot, 'node_modules/@pellux', pkg.nm);
       mkdirSync(join(dir, 'dist'), { recursive: true });

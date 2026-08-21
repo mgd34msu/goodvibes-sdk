@@ -1,10 +1,10 @@
 /**
- * facade-builtin-channels.ts — the builtin channel runtime and the inbound
+ * facade-builtin-channels.ts, the builtin channel runtime and the inbound
  * surfaces it owns.
  *
- * Split out of `facade-composition.ts` because it is one subsystem's wiring —
+ * Split out of `facade-composition.ts` because it is one subsystem's wiring,
  * every builtin channel's delivery callback, the Telegram poll cursor's
- * surface-scoped path, and now the inbound-mail supervisor — and because that
+ * surface-scoped path, and now the inbound-mail supervisor, and because that
  * file sits exactly on the repository's per-file line cap, where an addition
  * this size cannot land without pushing something else out.
  *
@@ -33,7 +33,7 @@ export interface BuiltinChannelRuntimeCompositionInput {
   readonly surfaceDeliveryHelper: DaemonSurfaceDeliveryHelper;
   /**
    * The ONE per-surface ingress alarm, built by the composition root and shared
-   * by every inbound path — the Telegram poller here, the shared webhook seam
+   * by every inbound path, the Telegram poller here, the shared webhook seam
    * in `ChannelPluginRegistry`, the three streaming surfaces in
    * `ChannelProviderRuntimeManager`, and the two detached slash-command paths.
    * One instance because the rate limit is per surface across all of them, not
@@ -47,12 +47,12 @@ export interface BuiltinChannelRuntimeCompositionInput {
  *
  * Inbound mail is composed first and handed in: the three persisted stores,
  * the expectation book with its real authority probe, the source factory and
- * the supervisor — plus the three expectation verbs and the status verb, which
+ * the supervisor, plus the three expectation verbs and the status verb, which
  * were cataloged with no production call site until this call existed. It is
  * `null` when this composition watches no mailbox, in which case
  * `BuiltinChannelRuntime` reports that at ERROR if the surface is enabled and
  * the cluster registration declines to contest a surface this node cannot
- * serve — a node that won that election would stand every other node down and
+ * serve, a node that won that election would stand every other node down and
  * then read nothing.
  */
 export function createBuiltinChannelRuntime(
@@ -66,7 +66,7 @@ export function createBuiltinChannelRuntime(
     routeBindings: runtime.routeBindings,
     gatewayMethods: runtime.gatewayMethods,
     deliverStructuredNotice: (binding, notice) => surfaceDeliveryHelper.deliverStructuredNotice(binding, notice),
-    // THE composition that has an adopted Google credential — the one the
+    // THE composition that has an adopted Google credential, the one the
     // Gmail arm's own comment claimed existed while nothing built it. Google
     // credentials resolve from the daemon's own config and secret tiers plus
     // this runtime's home directory, which is where `~/.gmail-mcp` adoption

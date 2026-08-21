@@ -1,5 +1,5 @@
 /**
- * telegram-bot-identity.test.ts — the bot's handle comes from its token.
+ * telegram-bot-identity.test.ts, the bot's handle comes from its token.
  *
  * `surfaces.telegram.botUsername` being blank never meant "this bot has no
  * username"; it meant nobody typed one in. Telegram's getMe returns the handle,
@@ -122,7 +122,7 @@ describe('telegram bot identity is discovered from the token', () => {
 
       expect(h.telegram.countOf('getMe')).toBe(1);
       expect(h.supervisor.identity).toEqual({ id: '123456', username: 'goodvibes_bot', displayName: 'GoodVibes' });
-      // The handle is written back, and so is the token id it belongs to —
+      // The handle is written back, and so is the token id it belongs to,
       // that pairing is what makes a rotation detectable later.
       expect(h.writes).toContainEqual({ key: 'surfaces.telegram.botUsername', value: 'goodvibes_bot' });
       expect(h.writes).toContainEqual({ key: 'surfaces.telegram.discoveredBotTokenId', value: '123456' });

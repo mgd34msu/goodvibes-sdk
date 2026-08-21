@@ -2,7 +2,7 @@
  * channel-profiles/types.ts
  *
  * The per-channel profile binding model. A channel (a surface kind, optionally
- * narrowed to one channel/account id within it) can bind a profile — the
+ * narrowed to one channel/account id within it) can bind a profile, the
  * model/provider and permission-mode defaults applied to sessions that channel
  * ORIGINATES (inbound messages turned into sessions). This is the model+
  * permission "profile" the ProfileManager deliberately does not carry

@@ -26,21 +26,21 @@ Runtime Zod v4 schemas derived from the GoodVibes contract definitions.
 | `PatchCurrentModelResponseSchema` | `PATCH /api/models/current` (response) | `providers.ts` |
 | `ModelChangedEventSchema` | `model.changed` SSE event | `providers.ts` |
 
-## Contract-Typed Surfaces
+## Contract-typed surfaces
 
 The following surfaces are validated through their generated TypeScript
 contract definitions and the transport envelope instead of dedicated reusable
 Zod exports:
 
-- `sessions.create` / `sessions.get` / `sessions.list` — session output
+- `sessions.create`, `sessions.get`, and `sessions.list`: session output
   shapes vary by surface configuration.
-- `control.snapshot` — large nested shape with many optional fields.
-- `control.contract` — describes the contract manifest itself.
-- `automation.*`, `knowledge.*`, and `channels.*` outputs — extension and
+- `control.snapshot`: large nested shape with many optional fields.
+- `control.contract`: describes the contract manifest itself.
+- `automation.*`, `knowledge.*`, and `channels.*` outputs: extension and
   plugin-driven shapes that stay aligned through the generated contract
   artifacts.
 
-## Import Path
+## Import path
 
 ```ts
 import { ControlAuthLoginResponseSchema } from '@pellux/goodvibes-contracts/zod-schemas/index';

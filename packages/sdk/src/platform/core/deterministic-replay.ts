@@ -6,7 +6,7 @@
  * positioning, and diff mode that reports expected-vs-replayed mismatches
  * with classifiers.
  *
- * The engine does not re-emit live runtime events through a separate bus — it maintains
+ * The engine does not re-emit live runtime events through a separate bus, it maintains
  * its own replay-local state tree built by folding ledger entries over the
  * initial snapshot. This isolation ensures replay never affects live state.
  */
@@ -68,7 +68,7 @@ export interface ReplayMismatch {
   readonly rev: number;
   /** Mismatch classifier. */
   readonly kind: MismatchClass;
-  /** Human-readable description — sufficient to act on without raw dumps. */
+  /** Human-readable description, sufficient to act on without raw dumps. */
   readonly description: string;
   /** The event name involved, if applicable. */
   readonly eventName?: string | undefined;
@@ -109,7 +109,7 @@ export interface ReplayFrame {
   readonly rev: number;
   /** The event that produced this frame (absent for the initial snapshot). */
   readonly entry?: LedgerEntry | undefined;
-  /** Domain state at this revision — merged from snapshot + events applied so far. */
+  /** Domain state at this revision, merged from snapshot + events applied so far. */
   readonly domains: Record<string, Record<string, unknown>>;
 }
 
@@ -298,7 +298,7 @@ export class DeterministicReplayEngine {
    * Run diff mode: compare each replayed frame against the recorded sequence.
    *
    * Produces a list of `ReplayMismatch` entries that identify divergences
-   * with actionable classifiers and descriptions — not raw payload dumps.
+   * with actionable classifiers and descriptions, not raw payload dumps.
    *
    * Diff analysis covers:
    * - Missing events (recorded entry has no corresponding replayed frame)
@@ -353,7 +353,6 @@ export class DeterministicReplayEngine {
       const frameEntry = frame.entry;
       if (!frameEntry) continue;
 
-      // Check event name ordering.
       if (recorded.eventName !== frameEntry.eventName) {
         mismatches.push({
           rev: recorded.rev,
@@ -369,7 +368,6 @@ export class DeterministicReplayEngine {
         continue;
       }
 
-      // Check payload key-level diff.
       const payloadMismatch = this._diffPayloads(
         recorded.rev,
         recorded.eventName,
@@ -403,7 +401,7 @@ export class DeterministicReplayEngine {
    * - `totalRevisions`
    * - `currentRev`
    * - `mismatches`
-   * - `frames` (condensed: rev, eventName, domainNames only — no full state)
+   * - `frames` (condensed: rev, eventName, domainNames only, no full state)
    *
    * @param filePath - Absolute path to write the JSON report.
    * @returns A promise that resolves when the file is written.
@@ -415,7 +413,7 @@ export class DeterministicReplayEngine {
     }
 
     const tempRoot = resolve(tmpdir());
-    // Path traversal guard — confine exports to the project directory or the active temp root.
+    // Path traversal guard, confine exports to the project directory or the active temp root.
     const resolved = resolve(this._projectRoot, normalize(filePath));
     if (!this._isInsideRoot(this._projectRoot, resolved) && !this._isInsideRoot(tempRoot, resolved)) {
       throw new Error(`Export path must be within project directory or the active temp root. Got: ${resolved}`);
@@ -468,7 +466,7 @@ export class DeterministicReplayEngine {
     return () => this._subscribers.delete(callback);
   }
 
-  /** Reset to idle — clears all loaded state. */
+  /** Reset to idle, clears all loaded state. */
   reset(): void {
     this._status = 'idle';
     this._runId = null;
@@ -572,7 +570,6 @@ export class DeterministicReplayEngine {
       };
     }
 
-    // Check value-level divergence for known scalar fields.
     const rec = recorded as Record<string, unknown>;
     const rep = replayed as Record<string, unknown>;
     for (const key of recKeys) {

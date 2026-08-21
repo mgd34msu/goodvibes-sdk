@@ -22,7 +22,7 @@ describe('driver resolution for a compiled binary', () => {
    * this keeps it honest against the dependency the package actually declares.
    *
    * The agent asserted this against its own package.json. The SDK is where the
-   * dependency now lives, so the SDK's manifest is what it must agree with —
+   * dependency now lives, so the SDK's manifest is what it must agree with,
    * and it is declared optional, alongside every other heavy runtime the SDK
    * loads only when a capability is used.
    */

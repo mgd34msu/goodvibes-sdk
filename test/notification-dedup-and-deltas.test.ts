@@ -77,7 +77,7 @@ function pipelineHarness(surfaceKind = 'ntfy') {
         agentId,
         // Owner-audience: these tests are about dedup and delta, and their
         // statuses are prose a reader can act on. Tool-activity progress is
-        // `operator` and never reaches this machinery — see
+        // `operator` and never reaches this machinery, see
         // channels/render-audience.ts.
       }, { agentId, progress: text, audience: 'owner' });
       // The bus dispatch is async; let the pipeline's handler settle.

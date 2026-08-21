@@ -1,9 +1,9 @@
 /**
- * Duplicate inbound delivery — the double-agent-spawn defect.
+ * Duplicate inbound delivery, the double-agent-spawn defect.
  *
  * One ntfy message produced two agent runs ("Agent completed in 20365ms" and
  * "in 28942ms"). The same message reaches handleNtfySurfacePayload from two
- * independent routes — the long-lived JSON subscription and the HTTP webhook —
+ * independent routes, the long-lived JSON subscription and the HTTP webhook,
  * and the subscription's own seen-id cache is scoped to a single subscribe
  * call, so it cannot see the other copy. Each delivery ran the full pipeline.
  *

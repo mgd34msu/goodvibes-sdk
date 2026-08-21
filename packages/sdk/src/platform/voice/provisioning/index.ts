@@ -1,5 +1,5 @@
 /**
- * voice/provisioning — SDK-owned managed provisioning of the local voice runtime
+ * voice/provisioning, SDK-owned managed provisioning of the local voice runtime
  * (piper TTS + a default voice), atomic + checksum-verified, resumable, with
  * honest states. Nothing downloads without the user asking.
  */

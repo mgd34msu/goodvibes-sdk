@@ -1,5 +1,5 @@
 /**
- * Three behaviours that were correct and unguarded — each proven by mutation:
+ * Three behaviours that were correct and unguarded, each proven by mutation:
  * revert the code, and the whole suite stayed green.
  *
  *   1. `record-store.ts` reads through `loadOrDiscard`, not `load`. Nothing
@@ -8,14 +8,14 @@
  *   2. `expectation-store.ts`, identically, for `expectations.json`.
  *   3. `housekeeping.ts` sweeps each store through `attempt()`, so one store's
  *      failure is not the other two's. `report.failures` was asserted NOWHERE,
- *      and came back `[]` in every corruption scenario the suite had — because
+ *      and came back `[]` in every corruption scenario the suite had, because
  *      a sweep that reads through `loadOrDiscard` cannot throw, so no test ever
  *      produced a failing sweep at all. `InboundMailSweepFailure`, `attempt()`,
  *      `failures` and `retention.lastSweep.failures` were collectively
  *      untested.
  *
  * The third needs a sweep that genuinely throws, and the honest way to get one
- * is not a stub that rejects — it is a store whose file cannot be WRITTEN. A
+ * is not a stub that rejects, it is a store whose file cannot be WRITTEN. A
  * directory where the JSON should be makes `persist()` fail with EISDIR inside
  * the real class, which is the same shape as the full disk and the
  * replaced-state-directory the design is written against.
@@ -238,7 +238,7 @@ describe('housekeeping sweeps each store independently and names the ones that f
 
 /**
  * The tests above force a sweep to throw by putting a directory where the JSON
- * belongs. That is EISDIR used as a MECHANISM — nothing above asserts what the
+ * belongs. That is EISDIR used as a MECHANISM, nothing above asserts what the
  * daemon then decides about it, so the errno set could be edited without a
  * single test noticing.
  *
@@ -246,7 +246,7 @@ describe('housekeeping sweeps each store independently and names the ones that f
  * gap rather than a blocker: `classifyLocalFailure` escalates on
  * `permanent || exhausted`, so an errno that falls out of the permanent set is
  * still escalated once the consecutive count reaches the ceiling. Slower, not
- * silent — the owner is still told, ten attempts later instead of at once.
+ * silent, the owner is still told, ten attempts later instead of at once.
  * These assertions pin the distinction so a change to it has to be deliberate.
  */
 describe('a local failure is classified by errno, and the set is not editable in silence', () => {

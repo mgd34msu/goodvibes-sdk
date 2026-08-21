@@ -17,13 +17,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 /** Correlation identifiers propagated via AsyncLocalStorage. */
 export interface CorrelationContext {
-  /** HTTP request ID — seeded by the HTTP listener on every inbound request. */
+  /** HTTP request ID, seeded by the HTTP listener on every inbound request. */
   readonly requestId?: string | undefined;
-  /** Session ID — seeded when a session starts or resumes. */
+  /** Session ID, seeded when a session starts or resumes. */
   readonly sessionId?: string | undefined;
-  /** Run ID — seeded when a run (multi-turn conversation) begins. */
+  /** Run ID, seeded when a run (multi-turn conversation) begins. */
   readonly runId?: string | undefined;
-  /** Turn ID — seeded when a turn starts within a run. */
+  /** Turn ID, seeded when a turn starts within a run. */
   readonly turnId?: string | undefined;
 }
 
@@ -32,7 +32,7 @@ export const correlationCtx = new AsyncLocalStorage<CorrelationContext>();
 
 /**
  * Get the current correlation context, or an empty object if none is active.
- * Safe to call from anywhere — returns {} when no context is running.
+ * Safe to call from anywhere, returns {} when no context is running.
  */
 export function getCorrelationContext(): Readonly<CorrelationContext> {
   return correlationCtx.getStore() ?? {};

@@ -76,7 +76,7 @@ export function readExternalContentSource(value: unknown): AutomationExternalCon
 
 /**
  * Read a response body to text with a hard byte ceiling. Returns
- * `{ ok:false }` (and cancels the body) when the ceiling is exceeded — the
+ * `{ ok:false }` (and cancels the body) when the ceiling is exceeded, the
  * caller aborts and reports a structured error instead of buffering forever.
  */
 export async function readBodyBounded(response: Response, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; bytesRead: number }> {

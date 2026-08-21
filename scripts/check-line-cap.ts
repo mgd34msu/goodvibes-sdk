@@ -7,27 +7,27 @@
 // Excluded from scanning:
 //   - dist/, node_modules/ (build output / vendored install)
 //   - any directory named "generated" at any depth (e.g.
-//     packages/contracts/src/generated/**) — generated code is not
+//     packages/contracts/src/generated/**), generated code is not
 //     hand-authored and isn't subject to hand-authored line-count discipline;
 //     this generalizes past the original contracts/generated/** example
 //     to also cover packages/sdk/src/platform/types/generated/, following
 //     the same convention no-todo-markers.ts already uses.
 //   - any directory named "vendor" at any depth (e.g.
-//     packages/sdk/src/platform/pairing/vendor/qrcodegen.ts) — vendored
+//     packages/sdk/src/platform/pairing/vendor/qrcodegen.ts), vendored
 //     third-party code we don't control and don't want to modify to satisfy
 //     an internal ratchet; also consistent with no-todo-markers.ts's
 //     existing vendor/ exemption.
 //   - *.d.ts (generated declaration files)
-//   - *.test.ts / *.spec.ts / __tests__/ / test/ (defensive — the SDK's own
+//   - *.test.ts / *.spec.ts / __tests__/ / test/ (defensive, the SDK's own
 //     tests live under root test/, not packages/*/src, but this guards
 //     against that changing silently)
 //
 // Test-harness overrides (mirrors version-consistency-check.ts):
-//   LINE_CAP_ROOT               — override the repo root directory
-//   LINE_CAP_PACKAGE_DIRS_JSON  — JSON array of dirs to scan, relative to
+//   LINE_CAP_ROOT              , override the repo root directory
+//   LINE_CAP_PACKAGE_DIRS_JSON , JSON array of dirs to scan, relative to
 //                                 LINE_CAP_ROOT (default: auto-discovered
 //                                 packages/*/src)
-//   LINE_CAP_GRANDFATHER_JSON   — JSON object overriding the grandfather map
+//   LINE_CAP_GRANDFATHER_JSON  , JSON object overriding the grandfather map
 //                                 (default: LINE_CAP_GRANDFATHER)
 //
 // Usage:
@@ -114,7 +114,7 @@ function discoverPackageSrcDirs(root: string): string[] {
         dirs.push(relative(root, srcDir));
       }
     } catch {
-      // no src dir for this package — skip
+      // no src dir for this package, skip
     }
   }
   return dirs.sort();

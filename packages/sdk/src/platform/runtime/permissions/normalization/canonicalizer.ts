@@ -1,7 +1,7 @@
 /** SDK-owned platform module. This implementation is maintained in goodvibes-sdk. */
 
 /**
- * Canonicalizer — resolves raw command tokens to their canonical command names.
+ * Canonicalizer, resolves raw command tokens to their canonical command names.
  *
  * Strips:
  *  - Absolute and relative path prefixes (e.g. /usr/bin/rm → rm)
@@ -49,7 +49,7 @@ export function canonicalize(raw: string): string {
 
   let value = stripQuotes(raw);
 
-  // Strip env var prefixes (e.g. "FOO=bar command" — take the last space-separated part)
+  // Strip env var prefixes (e.g. "FOO=bar command", take the last space-separated part)
   const parts = value.split(/\s+/);
   // Walk forward past any KEY=value segments
   let commandPart = parts[0]! ?? '';

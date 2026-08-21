@@ -6,7 +6,7 @@ import { HookDispatcher } from '../packages/sdk/src/platform/hooks/dispatcher.js
 import { logger } from '../packages/sdk/src/platform/utils/logger.js';
 
 /**
- * Missing hooks.json is the normal state for most installs — loadFromFile
+ * Missing hooks.json is the normal state for most installs, loadFromFile
  * must skip quietly instead of emitting a WARN (permission probe) + ERROR
  * (read failure) pair on every startup.
  */

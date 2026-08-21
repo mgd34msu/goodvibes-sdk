@@ -12,11 +12,11 @@
  * So nothing runs until this module has looked at what is already true. The
  * succession is fixed and it is short:
  *
- *   (a) A complete credential in the encrypted store — client, secret and
+ *   (a) A complete credential in the encrypted store, client, secret and
  *       refresh token. Use it. Refresh it. Zero user actions.
  *   (b) A client id and secret in the store with no refresh token. The only
  *       thing missing is a person's consent, so go STRAIGHT to a consent URL.
- *       Never to a project, a branding page or an audience setting — those
+ *       Never to a project, a branding page or an audience setting, those
  *       already exist or the client could not.
  *   (c) An authenticated gcloud CLI. It names the Google account, finds the
  *       project and enables the APIs with no clicking (see gcloud-posture.ts).
@@ -31,7 +31,7 @@
  * is doing something nobody asked it to, and an unprompted "I found some
  * credentials, shall I use them?" is a question rather than a connection.
  *
- * Credentials on disk are still fully supported — they are just USER-DIRECTED
+ * Credentials on disk are still fully supported, they are just USER-DIRECTED
  * rather than discovered. When someone names a path, adoption runs exactly as
  * it always did and says what it took up and where it now lives. That route
  * lives in setup-actions.ts, reached from an explicit command, and it is
@@ -59,7 +59,7 @@ export interface GoogleConnectionPlan {
   /**
    * How many things the person has to do, counted honestly.
    *
-   * The bar for this product is at most ONE — click a consent link and
+   * The bar for this product is at most ONE, click a consent link and
    * approve. Any route that reports more carries its reason in `whyExtraSteps`
    * and that reason has to be a fact about Google, not a convenience for us.
    */
@@ -125,7 +125,7 @@ export async function planGoogleConnection(
       setupPath: null,
       intendedAccount,
       gcloud: null,
-      detail: 'A complete Google credential is already in the encrypted store. Refreshing it and proving it works — nothing for you to do.',
+      detail: 'A complete Google credential is already in the encrypted store. Refreshing it and proving it works, nothing for you to do.',
     };
   }
 
@@ -139,7 +139,7 @@ export async function planGoogleConnection(
       setupPath: 'existing-client',
       intendedAccount,
       gcloud: null,
-      detail: 'An OAuth client is already configured, so the only thing missing is your consent. Opening a consent link — approve it and this is done.',
+      detail: 'An OAuth client is already configured, so the only thing missing is your consent. Opening a consent link, approve it and this is done.',
     };
   }
 
@@ -151,7 +151,7 @@ export async function planGoogleConnection(
       route: 'gcloud-assisted',
       userActionsRequired: 2,
       whyExtraSteps:
-        'Google offers no API and no gcloud command for creating a Desktop app OAuth client — only the Cloud console does it — so the client has to be created there once. '
+        'Google offers no API and no gcloud command for creating a Desktop app OAuth client, only the Cloud console does it, so the client has to be created there once. '
         + 'gcloud covers everything else: the account, the project and enabling the APIs.',
       setupPath: 'oauth',
       intendedAccount: intendedAccount ?? gcloud.account,
@@ -192,7 +192,7 @@ export function describeGoogleConnectionPlan(plan: GoogleConnectionPlan): readon
     plan.userActionsRequired === 0
       ? 'Steps for you: none.'
       : plan.userActionsRequired === 1
-        ? 'Steps for you: one — approve the consent link.'
+        ? 'Steps for you: one, approve the consent link.'
         : `Steps for you: ${plan.userActionsRequired}.`,
   );
 

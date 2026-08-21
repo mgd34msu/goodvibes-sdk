@@ -1,9 +1,9 @@
 /**
- * schema-domain-device.ts — paired-device capabilities (`device.*`).
+ * schema-domain-device.ts, paired-device capabilities (`device.*`).
  *
  * Configuration for using a paired phone's camera, screen, location, clipboard,
  * and device commands as agent tools. Every key here is a real, shaped choice
- * with a written purpose — there is no bare on/off toggle standing in for a
+ * with a written purpose, there is no bare on/off toggle standing in for a
  * feature.
  *
  * The stock values ARE the owner's rulings of 2026-07-25, not a conservative
@@ -86,7 +86,7 @@ export const deviceConfigSettings: ConfigSettingDefinition[] = [
     type: 'enum',
     default: 'honor-grants',
     enumValues: ['off', 'ask-every-time', 'honor-grants'],
-    description: 'How a paired phone\'s camera, screen, location, clipboard, and device commands are reached. honor-grants (stock): every capability asks the first time and every time after, unless you chose "always allow" for that one capability on that one phone. ask-every-time: the prompt appears on every single request and no durable grant is ever consulted or offered — use it when someone else is holding the phone. off: no capability request reaches any paired device at all.',
+    description: 'How a paired phone\'s camera, screen, location, clipboard, and device commands are reached. honor-grants (stock): every capability asks the first time and every time after, unless you chose "always allow" for that one capability on that one phone. ask-every-time: the prompt appears on every single request and no durable grant is ever consulted or offered, use it when someone else is holding the phone. off: no capability request reaches any paired device at all.',
   },
   {
     key: 'device.capabilities.allowAlwaysOffer',

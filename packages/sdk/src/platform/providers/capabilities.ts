@@ -14,7 +14,7 @@ import type { LLMProvider } from './interface.js';
 
 /**
  * Unified capability contract describing what a provider/model can do.
- * All fields are required — use `getCapability()` which always returns a
+ * All fields are required, use `getCapability()` which always returns a
  * fully-resolved record derived from provider defaults and model overrides.
  */
 export interface ProviderCapability {
@@ -40,7 +40,7 @@ export interface ProviderCapability {
 
 /**
  * A request profile describing what capabilities are needed to handle a
- * particular task. All fields are optional — omitted means "no requirement".
+ * particular task. All fields are optional, omitted means "no requirement".
  */
 export interface RequestProfile {
   /** Whether the request requires streaming output. */
@@ -122,7 +122,7 @@ export type RouteExplanation =
  * Baseline capability defaults per built-in provider.
  * Fields not listed fall back to `GLOBAL_DEFAULTS`.
  *
- * Note: All known providers intentionally specify every field — this makes each
+ * Note: All known providers intentionally specify every field, this makes each
  * provider's contract explicit and self-contained, at the cost of requiring all
  * entries to be updated when a new `ProviderCapability` field is added.
  * Unknown/custom providers fall back to `GLOBAL_DEFAULTS` for unspecified fields.
@@ -366,7 +366,7 @@ const GLOBAL_DEFAULTS: ProviderCapability = {
  * This is the layer that should carry the fleet. The model catalog already
  * publishes each model's context window, output cap and reasoning support
  * per model; restating those in a hand-maintained table means the table is
- * wrong for every model released after the last edit — which is what happened
+ * wrong for every model released after the last edit, which is what happened
  * (see MODEL_LIMIT_FALLBACKS below).
  *
  * A field left undefined means "this source has nothing to say", and the
@@ -385,7 +385,7 @@ export type ModelCapabilityFactsSource = (
 ) => ModelCapabilityFacts | undefined;
 
 /**
- * Behavioural exceptions that no catalog field expresses — a model that cannot
+ * Behavioural exceptions that no catalog field expresses, a model that cannot
  * call tools at all, or cannot do JSON mode.
  *
  * These are GENUINE exceptions, which is what an override map should hold, so
@@ -408,7 +408,7 @@ const MODEL_QUIRKS: Record<string, Partial<ProviderCapability>> = {
  * Deliberately demoted below `ModelCapabilityFacts`. As the top-precedence
  * override map this was stale in both directions: it capped Claude Opus 4.5 at
  * 32_000 output tokens against a real 64_000, and it carried no row at all for
- * any model released after it was written — so the whole current fleet fell
+ * any model released after it was written, so the whole current fleet fell
  * through to GLOBAL_DEFAULTS' 4_096 output / 32_768 context, and a stale row
  * beat live truth wherever a row did exist.
  *
@@ -453,10 +453,10 @@ const MODEL_LIMIT_FALLBACKS: Record<string, Partial<ProviderCapability>> = {
  * and provides explainable routing decisions.
  *
  * Merge order (lowest to highest priority):
- * 1. `GLOBAL_DEFAULTS` — conservative baseline
- * 2. `PROVIDER_DEFAULTS[providerId]` — provider-level defaults
- * 3. `LLMProvider.capabilities` — self-declared by the provider instance
- * 4. `MODEL_OVERRIDES` — static per-model overrides
+ * 1. `GLOBAL_DEFAULTS`, conservative baseline
+ * 2. `PROVIDER_DEFAULTS[providerId]`, provider-level defaults
+ * 3. `LLMProvider.capabilities`, self-declared by the provider instance
+ * 4. `MODEL_OVERRIDES`, static per-model overrides
  *
  * Exception: the `caching` field is always sourced from `getCacheCapability(providerId)`
  * (falling back to `MODEL_OVERRIDES.caching` if present), so self-declared caching
@@ -474,7 +474,7 @@ export class ProviderCapabilityRegistry {
    *
    * Invalidates the cache, because every resolved record was computed without
    * it. Passing `undefined` unwires the source and falls back to the static
-   * tables — which is the state a build with no catalog data is in.
+   * tables, which is the state a build with no catalog data is in.
    */
   setModelFactsSource(source: ModelCapabilityFactsSource | undefined): void {
     this._factsSource = source;
@@ -497,7 +497,7 @@ export class ProviderCapabilityRegistry {
     // Self-declared capabilities (custom/discovered providers) change the
     // resolved record, so they must participate in the cache key. Otherwise a
     // call WITHOUT a provider instance could poison the entry a later call WITH
-    // one — or with different declarations — reads back.
+    // one, or with different declarations, reads back.
     const key = `${providerId}::${modelId}::${this._selfCapabilitiesKey(provider?.capabilities)}`;
     const cached = this.cache.get(key);
     if (cached) return cached;
@@ -542,7 +542,7 @@ export class ProviderCapabilityRegistry {
 
   /**
    * Produce a structured routing explanation for a provider/model/request triple.
-   * Always returns a complete `RouteExplanation` — never throws.
+   * Always returns a complete `RouteExplanation`, never throws.
    *
    * @param providerId - The registered provider name.
    * @param modelId    - The model ID.
@@ -574,7 +574,7 @@ export class ProviderCapabilityRegistry {
       accepted: false,
       providerId,
       modelId,
-      summary: `Route rejected: ${providerId}/${modelId} — ${reasons}`,
+      summary: `Route rejected: ${providerId}/${modelId}, ${reasons}`,
       rejections,
       capability,
     };
@@ -611,7 +611,7 @@ export class ProviderCapabilityRegistry {
     //
     // Live facts outrank the static limits because they are the more current
     // answer to the same question. Quirks outrank live facts because they say
-    // something live data does not carry at all — a model with no tool-calling
+    // something live data does not carry at all, a model with no tool-calling
     // surface must not have it re-enabled by a generous limits record.
     return Object.freeze({
       ...GLOBAL_DEFAULTS,

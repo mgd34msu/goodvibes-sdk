@@ -1,13 +1,13 @@
 /**
- * keyless-default.test.ts — the keyless default actually works (or honestly
+ * keyless-default.test.ts, the keyless default actually works (or honestly
  * asks for a key).
  *
  * The shipped default model (`provider.model` = openrouter:openrouter/free)
  * was promised keyless by hand-written onboarding copy while openrouter is
- * registered auth-required (authEnvVars, no allowAnonymous) — a fresh
+ * registered auth-required (authEnvVars, no allowAnonymous), a fresh
  * install's first prompt died in a wire 401. Covers:
  *   - readiness DERIVED from the provider's registered auth state
- *   - copy GENERATED from readiness — the "no API key needed" promise is
+ *   - copy GENERATED from readiness, the "no API key needed" promise is
  *     structurally unwritable for an auth-required provider
  *   - RED TEST: a keyless-default claim pointing at an auth-required provider
  *     fails the pairing gate
@@ -190,7 +190,7 @@ describe('shipped default model × live builtin registration', () => {
     const copy = buildOnboardingModelCopy(readiness);
 
     // Live reality this cycle: openrouter 401s without a key. The generated
-    // copy must ask for the key — and the keyless promise must be absent.
+    // copy must ask for the key, and the keyless promise must be absent.
     expect(readiness.kind).toBe('needs-key');
     expect(copy.keyless).toBe(false);
     expect(`${copy.headline} ${copy.detail}`).not.toContain('no API key');

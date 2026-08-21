@@ -33,7 +33,7 @@ const NO_WRITE_RE =
  * parallel / one per unit of work. This is user intent, exactly like
  * userProhibitsDelegation is (see wrfc-routing.ts): when the user asks for a
  * parallel fan-out, the topology guard must not silently collapse it into one
- * chain. Conservative by design — a plain "build X" never matches; only phrasings
+ * chain. Conservative by design, a plain "build X" never matches; only phrasings
  * that name a parallel/per-item/separate-agent shape do.
  */
 const PARALLEL_FANOUT_REQUEST_RE =
@@ -41,7 +41,7 @@ const PARALLEL_FANOUT_REQUEST_RE =
 
 /**
  * Detects a constraint whose satisfaction depends on the agent TOPOLOGY the guard
- * just removed — parallelism, spawn count, or per-unit separate-agent shape. Used
+ * just removed, parallelism, spawn count, or per-unit separate-agent shape. Used
  * ONLY in combination with a recorded fanoutCollapse (never as a blanket drop): a
  * constraint matching this shape after a fan-out was collapsed cannot be satisfied
  * by any fix agent, because the system removed its precondition.
@@ -61,7 +61,7 @@ export function userRequestsParallelFanout(text: string | undefined): boolean {
 /**
  * True when a constraint's text describes the agent topology (parallelism /
  * spawn-count / separate-agent-per-unit) a fan-out collapse removes. Consulted by
- * the WRFC controller — only for chains created via a collapse — to mark such a
+ * the WRFC controller, only for chains created via a collapse, to mark such a
  * constraint system-unsatisfiable so it can never fail the review.
  */
 export function isFanoutShapeConstraintText(text: string | undefined): boolean {
@@ -100,7 +100,7 @@ export function isRootReviewRoleTemplate(template: string | undefined): boolean 
  * write-review-fix-confirm chain.
  *
  * Consulted by the ROOT-SPAWN normalization in AgentManager.spawn, and only
- * against the prose test below — never against a declared role template, and
+ * against the prose test below, never against a declared role template, and
  * never inside a batch (see evaluateWrfcBatchPolicy, where a role-labelled
  * fan-out is exactly the model behaviour the collapse exists to correct).
  *
@@ -120,8 +120,8 @@ export function callerSuppressedWrfcChain(
  * Separate from the template test on purpose. A template of `reviewer` is the
  * caller stating a role; this is a guess made from wording, and wording is not
  * always a task description. A continuation prompt carries the chat transcript
- * inside its task text, so one earlier assistant sentence — "I'll review the
- * route, timing, stops" — made a whole conversation read as a root review task.
+ * inside its task text, so one earlier assistant sentence, "I'll review the
+ * route, timing, stops", made a whole conversation read as a root review task.
  * See the caller of this function for what that guess is and is not allowed to
  * override.
  */
@@ -411,7 +411,7 @@ export function evaluateWrfcBatchPolicy(input: AgentInput): WrfcBatchPolicyDecis
     // Owner ruling: an explicit parallel / per-unit fan-out request is
     // user intent, exactly like userProhibitsDelegation. When the user explicitly
     // asked for separate agents in parallel and the batch is a set of independent
-    // implementation deliverables (NOT role-fragmentation — that branch is handled
+    // implementation deliverables (NOT role-fragmentation, that branch is handled
     // below), do NOT collapse: honour the request and let the deliverables fan out
     // (each keeps its own reviewMode). This prevents the unsatisfiable-constraint
     // billing loop at the source; the collapse paths below still carry a
