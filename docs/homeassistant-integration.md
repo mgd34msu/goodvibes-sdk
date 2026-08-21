@@ -638,39 +638,14 @@ can ingest selected candidates explicitly when full source content is needed.
 
 #### Node and relation types
 
-Supported Home Assistant node kinds:
-
-- `ha_home`
-- `ha_entity`
-- `ha_device`
-- `ha_area`
-- `ha_automation`
-- `ha_script`
-- `ha_scene`
-- `ha_label`
-- `ha_integration`
-- `ha_room`
-- `ha_device_passport`
-- `ha_maintenance_item`
-- `ha_troubleshooting_case`
-- `ha_purchase`
-- `ha_network_node`
-
-Supported relation names:
-
-- `controls`
-- `located_in`
-- `belongs_to_device`
-- `has_manual`
-- `has_receipt`
-- `has_warranty`
-- `has_issue`
-- `fixed_by`
-- `uses_battery`
-- `connected_via`
-- `part_of_network`
-- `mentioned_by`
-- `source_for`
+The graph vocabulary is fifteen node kinds (the nine registry kinds synced
+from Home Assistant, `ha_room`, the generated `ha_device_passport`, and the
+inventory kinds `ha_maintenance_item`, `ha_troubleshooting_case`,
+`ha_purchase`, and `ha_network_node`) plus fourteen relation names. What each
+kind represents, which relations the sync and auto-link pipeline creates on
+its own, and which exist only for caller-supplied links is documented once, in
+the authoritative tables under
+[Knowledge: Home Graph node kinds and relations](./knowledge.md#node-kinds-and-relations).
 
 #### Integration responsibilities
 

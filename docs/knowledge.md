@@ -464,15 +464,61 @@ The SDK-owned `HomeGraphService` supports:
 - integration documentation-candidate source discovery
 - source inventory, graph browse, export, and import
 
-Home Graph node kinds include `ha_home`, `ha_entity`, `ha_device`, `ha_area`,
-`ha_automation`, `ha_script`, `ha_scene`, `ha_label`, `ha_integration`,
-`ha_room`, `ha_device_passport`, `ha_maintenance_item`,
-`ha_troubleshooting_case`, `ha_purchase`, and `ha_network_node`.
+### Node kinds and relations
 
-Home Graph relation names include `controls`, `located_in`,
-`belongs_to_device`, `has_manual`, `has_receipt`, `has_warranty`, `has_issue`,
-`fixed_by`, `uses_battery`, `connected_via`, `part_of_network`,
-`mentioned_by`, and `source_for`.
+Every object in the Home Graph is a node with one of fifteen kinds, and every
+link between nodes (or from a stored source to a node) is an edge carrying a
+relation name. The SDK exports both vocabularies as constants, but the link
+verbs accept the relation as a plain string, so the lists below are the
+published vocabulary rather than a schema gate. Knowing which kinds and
+relations the pipeline creates on its own, and which exist only for
+caller-supplied links, is what makes the tables useful. This section is the
+authoritative reference; other docs link here instead of repeating it.
+
+| Node kind | What it represents | What creates or consumes it |
+| --- | --- | --- |
+| `ha_home` | The Home Assistant installation itself, one root node per synced home | Created on every snapshot sync; every synced node carries a membership edge back to it |
+| `ha_entity` | One entity from the Home Assistant entity registry, exposure-filtered on the Home Assistant side | Created by snapshot sync; objects with an unrecognized kind also fall back to this kind |
+| `ha_device` | A device from the device registry | Created by snapshot sync; auto-link attaches manuals, receipts, and warranties here, and device passports are generated from it |
+| `ha_area` | An area from the area registry | Created by snapshot sync; `located_in` edges point here and room pages are generated from areas |
+| `ha_automation` | An automation, captured from the automation domain snapshot | Created by snapshot sync |
+| `ha_script` | A script entity snapshot | Created by snapshot sync |
+| `ha_scene` | A scene entity snapshot | Created by snapshot sync |
+| `ha_label` | A label from the label registry | Created by snapshot sync |
+| `ha_integration` | An installed integration (config entry) | Created by snapshot sync; `connected_via` edges point here, and sync records the integration's documentation URLs as ingestable source candidates |
+| `ha_room` | A room recorded directly in the graph, distinct from a Home Assistant area | No automatic producer; recorded through the object surface and treated exactly like an area by auto-link, search, room-page generation, and map rendering |
+| `ha_device_passport` | The generated living device profile page for one device | Created and refreshed by passport generation; reindexing a manual-backed device refreshes its passport |
+| `ha_maintenance_item` | A maintenance task or schedule entry for something in the home | No automatic producer; recorded through the object surface and rendered as the map's Maintenance section |
+| `ha_troubleshooting_case` | A recorded troubleshooting episode | No automatic producer; recorded through the object surface and rendered as the map's Troubleshooting section |
+| `ha_purchase` | A purchase record for something in the home | No automatic producer; recorded through the object surface and rank-boosted in Home Graph search |
+| `ha_network_node` | A network infrastructure element such as a router, switch, or access point | No automatic producer; recorded through the object surface and rendered as the map's Network section |
+
+The relation vocabulary splits the same way. A few relations are written by the
+sync and auto-link pipeline itself; the rest exist so that a caller or the
+model can record a specific link through the link verbs, which default to
+`source_for` when no relation is given.
+
+| Relation | What it means | What creates or consumes it |
+| --- | --- | --- |
+| `source_for` | The general "this backs that" link, from a stored source to the node it documents, and from every synced node to the home root | Created by sync as the membership edge, by auto-link when no more specific kind applies, and as the link verbs' default; reindex follows it to find passport-relevant sources |
+| `has_manual` | The source is the node's manual | Assigned by auto-link when a source scores as manual-like; reindex follows it when refreshing device passports |
+| `has_receipt` | The source is a purchase receipt for the node | Assigned by auto-link when the source text mentions a receipt |
+| `has_warranty` | The source is warranty documentation for the node | Assigned by auto-link when the source text mentions a warranty |
+| `belongs_to_device` | The node, usually an entity, belongs to a device | Created during sync for any object carrying a device id; page generation and quality checks walk it to get from an entity to its device |
+| `located_in` | The node sits in an area or room | Created during sync for any object carrying an area id; drives area filtering, room pages, and map facets |
+| `connected_via` | The node reaches Home Assistant through an integration | Created during sync for any object carrying an integration id |
+| `has_issue` | The node has a recorded problem | Caller-supplied vocabulary; the issue renderer groups it with issue-like relations. Machine-detected problems live in the separate issues store, not as edges |
+| `fixed_by` | A recorded problem was resolved by a source or fact | Caller-supplied vocabulary; nothing creates it automatically today |
+| `controls` | One object drives another, such as an automation controlling a light | Caller-supplied vocabulary; nothing creates it automatically today |
+| `uses_battery` | The device runs on a battery worth tracking | Caller-supplied vocabulary; nothing creates it automatically today |
+| `part_of_network` | The node is part of the home network | Caller-supplied vocabulary; nothing creates it automatically today |
+| `mentioned_by` | A source mentions the node without being its subject | Caller-supplied vocabulary; nothing creates it automatically today |
+| `repairs_gap` | An ingested source repairs a recorded knowledge gap | Machine-created by semantic self-improvement, outside the published constant; reindex treats it like `has_manual` and `source_for` when deciding which device passports to refresh |
+
+Home Graph edges share their store with the general knowledge graph, so
+relations from that layer (`supports_fact`, `has_gap`, `describes`,
+`mentions`) also appear on Home Graph records; they are documented with the
+knowledge engine rather than here.
 
 Home Graph ask uses a namespace-filtered search state, batches extraction
 lookup by source id, and scores bounded document fields. It does not load the
