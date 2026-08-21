@@ -73,10 +73,17 @@ describe('WS call path retained-context caps', () => {
     expect(helper.wsCallStats().refused).toBe(refused);
     expect(helper.wsCallStats().inFlight).toBe(0);
 
-    // Nothing stays pinned after the drain.
-    await new Promise((r) => setTimeout(r, 20));
-    gc();
-    expect(refs.filter((r) => r.deref() !== undefined).length).toBe(0);
+    // Nothing stays pinned after the drain. Collection is eventual, not
+    // synchronous with gc(): a single collect-and-assert flakes under a
+    // loaded runner, so poll to a deadline and assert the final count.
+    let livePinned = refs.length;
+    const deadline = Date.now() + 5000;
+    while (livePinned > 0 && Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 20));
+      gc();
+      livePinned = refs.filter((r) => r.deref() !== undefined).length;
+    }
+    expect(livePinned).toBe(0);
   });
 
   test('a streaming (SSE) response is refused and torn down, never pinned by text()', async () => {
