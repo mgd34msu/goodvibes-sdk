@@ -1,7 +1,7 @@
 {
   "name": "goodvibes-sdk",
   "private": true,
-  "version": "2.0.18",
+  "version": "2.0.19",
   "type": "module",
   "packageManager": "bun@1.3.14",
   "engines": {
@@ -40,7 +40,7 @@
     "homeassistant-client:check": "bun scripts/generate-homeassistant-client.ts --check",
     "refresh:docs": "bun run refresh:contracts && bun run docs:generate",
     "docs:generate": "bun scripts/generate-api-docs.ts",
-    "api:extract": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && bunx api-extractor run --local --config api-extractor.terminal-shell.json",
+    "api:extract": "bunx api-extractor run --local && bunx api-extractor run --local --config api-extractor.embed.json && bunx api-extractor run --local --config api-extractor.terminal-shell.json && bun scripts/normalize-api-eol.ts",
     "sbom:generate": "bun scripts/sbom-generate.ts",
     "sbom:check": "bun scripts/sbom-check.ts",
     "pretest": "bun scripts/typecheck.ts",

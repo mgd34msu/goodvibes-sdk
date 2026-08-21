@@ -2,6 +2,21 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish, the changelog gate refuses a release the file does not describe.
 
+## [2.0.19] - 2026-08-21
+
+### Fixed
+
+- **Execution plans round-trip through their own markdown again.** 2.0.18's
+  prose cleanup changed `toMarkdown`'s status separator to a comma, but
+  `parseFromMarkdown` reads dash separators, so re-parsing a plan the sdk
+  itself wrote swallowed the status label, agent id, and dependency
+  parenthetical into the description. The separator is parser grammar, not
+  prose: the emitter now writes the ASCII double-hyphen the parser has always
+  accepted, old files with dash separators still parse, and a regression test
+  round-trips a plan whose descriptions contain commas. Files written by
+  2.0.18's emitter parse as description-only, exactly as they did before this
+  fix; their statuses cannot be recovered unambiguously and are not guessed.
+
 ## [2.0.18] - 2026-08-21
 
 ### Added

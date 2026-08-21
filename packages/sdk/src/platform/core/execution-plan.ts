@@ -370,7 +370,11 @@ export class ExecutionPlanManager {
       for (const item of items) {
         const cb = STATUS_CHECKBOX[item.status];
         const label = STATUS_LABEL[item.status];
-        let line = `- ${cb} ${item.description}, ${label}`;
+        // The separator is parser grammar, not prose: findLastSeparator reads
+        // it back, and a comma cannot serve because descriptions contain
+        // commas. The ASCII double-hyphen is the variant the parser has
+        // always accepted alongside the legacy dash forms.
+        let line = `- ${cb} ${item.description} -- ${label}`;
         if (item.agentId) line += ` (${item.agentId})`;
         if (item.dependencies && item.dependencies.length > 0) {
           const depDescs = item.dependencies
