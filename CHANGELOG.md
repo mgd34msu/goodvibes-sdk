@@ -1,5 +1,67 @@
 # Changelog
 
+## [2.0.20] - 2026-08-21
+
+### Breaking
+
+- **`registerPaymentsGatewayMethods` returns a promise and resolves after
+  boot recovery completes.** A composition must await it; an un-awaited
+  caller still works but serves 501 for the payment verbs during the
+  recovery sweep. The sweep itself is leadership-gated (a non-leader node
+  sweeps nothing), timeout-bounded per record (`RECOVERY_IO_TIMEOUT_MS`,
+  overridable through `PaymentsServiceDeps.recoveryIoTimeoutMs`), and
+  reports every settlement or skip through the new `onRecoverySettled`
+  and failures through `onRecoveryFailure`.
+
+### Added
+
+- **Interrupted checkouts recover at boot.** A journal record left by a
+  crash settles by phase: never-submitted work releases its budget hold
+  and closes with an owner notice; a record at the point of submitting is
+  held and reported honestly, and closes on a later boot when its
+  purchase record is verified on the ledger; a completed submission
+  closes only after that same verification. Interrupted approval and veto
+  windows settle by their own rules using the delivery report the journal
+  now persists (`windowDeliveries`, `windowDeadlineMs`, `windowKind` on
+  `InFlightCheckout`), naming backfillable channels when notices are
+  known to have landed and refusing conservatively when nothing can be
+  verified. Owner notices fire at most once per record across restarts.
+  New surface: optional `PaymentsGatewayService.recoverInterruptedCheckouts`,
+  `PurchaseLedger.has`, `PaymentsServiceDeps.armingPageCleanup` (identity
+  only; payments code cannot mint browser access).
+
+### Changed
+
+- **`checkOwnerApproval` compares content whenever the approval carries a
+  fingerprint and the caller names its payload**, independent of the
+  taint-clearing flag. Strictly narrowing: a swapped payload that
+  previously authorized by action id alone now refuses with
+  `different-content`.
+- The checkout submit flush is reordered after the purchase-record write,
+  so a crash in that span leaves the held possibly-submitted verdict
+  instead of a closed record nothing verified. `PaymentNotifier.deliver`'s
+  kind union gains `'notice'` for recovery settlements; kind-ignoring
+  implementations are unaffected. `PaymentNotifier` and `PurchaseLedger`
+  live in `payment-ports.ts` with compatible re-exports. `CheckoutPhase`
+  drops the never-written `'abandoned'` member.
+- The WebSocket upgrade's 401 body states the two supported upgrade-auth
+  paths (Bearer header or session cookie); the React Native and Expo
+  docs, examples, and the shipped JSDoc show the header-carrying socket
+  wrapper, which was previously absent and left examples that could
+  never connect.
+
+### Fixed
+
+- The wake, voice, and Google setup surfaces carry the corrections from
+  the source verification pass: the setup runbook names the real status
+  command, the OpenAPI generator's stale count comment is gone, the
+  Home Graph relation constants type the machine-written relation
+  distinctly (`MACHINE_WRITTEN_HOME_GRAPH_RELATIONS`), the root coverage
+  index is regenerated from its real producer, and gendered owner
+  pronouns that had crept back into emitted strings are purged with their
+  pins updated.
+
+
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish, the changelog gate refuses a release the file does not describe.
 
 ## [2.0.19] - 2026-08-21
