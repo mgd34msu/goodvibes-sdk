@@ -167,3 +167,13 @@ export {
 } from './routes/rewind-conversation-hosts.js';
 export { registerSkillsGatewayMethods } from './routes/skills.js';
 export type { SkillsGatewayService } from './routes/skills.js';
+
+export { registerPaymentsGatewayMethods } from './routes/payments.js';
+export type {
+  PaymentsGatewayService,
+  PaymentPurchaseView,
+  PaymentsBudgetView,
+  PaymentCardView,
+  PaymentBeginCheckoutInput,
+  PaymentBeginResultView,
+} from './routes/payments.js';

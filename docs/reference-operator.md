@@ -318,7 +318,7 @@ Return provider account posture.
 
 #### `acp.agents.list`
 
-READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories — no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.
+READ-ONLY discovery of installed ACP-capable third-party coding agents (Claude Code, Codex CLI, opencode): existence checks over $PATH and known install directories, no process is ever executed, no registration ceremony. Returns only what is present (id, title, resolved binary path, ACP launch args); absence is a quiet empty list, never a nag.
 
 - Title: `List Installed Third-Party Coding Agents`
 - Source: `builtin`
@@ -380,7 +380,7 @@ none
 
 #### `acp.sessions.create`
 
-Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record — which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state "failed" and a structured error (which binary, which stage, what happened) — an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.
+Spawn a discovered third-party agent into a working directory as a hosted daemon session in ONE act: the binary is launched in ACP stdio mode, the handshake and session creation run under a bound timeout, and the result is the hosted record, which appears as a steerable/stoppable fleet row (kind acp-agent) whose permission asks classify as waiting-on-human. A binary that fails the handshake returns the SAME record with state "failed" and a structured error (which binary, which stage, what happened), an honest outcome, never a hung row and never a bare string. An optional initial prompt starts the first turn.
 
 - Title: `Spawn a Third-Party Coding Agent Session`
 - Source: `builtin`
@@ -513,7 +513,7 @@ Spawn a discovered third-party agent into a working directory as a hosted daemon
 
 #### `approvals.approve`
 
-Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command's terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.
+Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval, e.g. the typed answer to a command's terminal prompt, to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.
 
 - Title: `Approve Approval`
 - Source: `builtin`
@@ -3224,7 +3224,7 @@ Return pending and historical approval records.
 
 #### `approvals.raise`
 
-Raise a permission ask INTO the shared broker from a surface that is not in the daemon's process — the write counterpart to approvals.list/claim/approve/deny/cancel, which could only ever act on asks the daemon's own in-process callers had created. The ask becomes a record every surface can see and decide, and the daemon's attention machinery (web push, blocked-on-user) fans it out. Returns the PENDING record immediately and does NOT block waiting for an answer: the decision arrives on the control.approval_update event (SSE/WS, `permissions` domain), which is the channel to watch using the returned id. An identical ask already in flight (same session, tool and args) coalesces onto the existing record — one prompt, one decision, `coalesced: true`, and the returned record is that earlier one. Optional timeoutMs expires the ask if nobody answers (clamped to 12h); optional waitMs waits inline for a decision for callers that want one round trip (clamped to 60s) and reports `decided: false` with the record still pending when it runs out, never a decision that was not made. ws-only invoke verb; no REST binding.
+Raise a permission ask INTO the shared broker from a surface that is not in the daemon's process, the write counterpart to approvals.list/claim/approve/deny/cancel, which could only ever act on asks the daemon's own in-process callers had created. The ask becomes a record every surface can see and decide, and the daemon's attention machinery (web push, blocked-on-user) fans it out. Returns the PENDING record immediately and does NOT block waiting for an answer: the decision arrives on the control.approval_update event (SSE/WS, `permissions` domain), which is the channel to watch using the returned id. An identical ask already in flight (same session, tool and args) coalesces onto the existing record, one prompt, one decision, `coalesced: true`, and the returned record is that earlier one. Optional timeoutMs expires the ask if nobody answers (clamped to 12h); optional waitMs waits inline for a decision for callers that want one round trip (clamped to 60s) and reports `decided: false` with the record still pending when it runs out, never a decision that was not made. ws-only invoke verb; no REST binding.
 
 - Title: `Raise Approval`
 - Source: `builtin`
@@ -8630,7 +8630,7 @@ Trigger an automation job immediately.
 
 #### `automation.jobs.update`
 
-Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
+Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)
 
 - Title: `Update Automation Job`
 - Source: `builtin`
@@ -12015,7 +12015,7 @@ Return a single automation run record.
 
 #### `automation.runs.list`
 
-Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set) — the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.
+Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set), the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.
 
 - Title: `List Automation Runs`
 - Source: `builtin`
@@ -23440,7 +23440,7 @@ Mirror a channel draft to the daemon-side store. Webhook values must be redacted
 
 #### `channels.inbox.list`
 
-Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host's synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers` — including the unconfigured and the failing ones — so a short list is never ambiguous, and `partial` is true whenever a configured provider's items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer's `cursor` watermark; ?provider=<id> narrows to one provider.
+Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host's synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers`, including the unconfigured and the failing ones, so a short list is never ambiguous, and `partial` is true whenever a configured provider's items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer's `cursor` watermark; ?provider=<id> narrows to one provider.
 
 - Title: `List Channel Inbox`
 - Source: `builtin`
@@ -24454,7 +24454,7 @@ Update ingress policy configuration for a channel surface.
 
 #### `channels.profiles.delete`
 
-Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed — an honest boolean, never a phantom removal.
+Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed, an honest boolean, never a phantom removal.
 
 - Title: `Unbind Channel Profile`
 - Source: `builtin`
@@ -25862,7 +25862,7 @@ Resolve a typed channel target for outbound delivery or routing.
 
 #### `channels.test.send`
 
-Send a real test message through a configured channel surface and report the actual delivery outcome. delivered:true means the daemon's delivery router accepted and sent it (with the surface's responseId when it returns one); a failed send is delivered:false with the real error (unconfigured/unsupported surface, provider/transport error) — never a fabricated success. Provide address to target a specific recipient/channel, or omit it to use the surface's configured default.
+Send a real test message through a configured channel surface and report the actual delivery outcome. delivered:true means the daemon's delivery router accepted and sent it (with the surface's responseId when it returns one); a failed send is delivered:false with the real error (unconfigured/unsupported surface, provider/transport error), never a fabricated success. Provide address to target a specific recipient/channel, or omit it to use the surface's configured default.
 
 - Title: `Send Channel Test Message`
 - Source: `builtin`
@@ -26588,7 +26588,7 @@ Trigger one check-in evaluation immediately (a manual run): assemble the briefin
 
 #### `checkpoints.create`
 
-Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint — no commit, ref, or manifest entry is created in that case.
+Create a new workspace checkpoint. Returns checkpoint:null, noop:true (not an error) when the workspace tree is identical to the most recent checkpoint, no commit, ref, or manifest entry is created in that case.
 
 - Title: `Create Workspace Checkpoint`
 - Source: `builtin`
@@ -26945,7 +26945,7 @@ Return workspace checkpoints (whole-workspace filesystem snapshots), newest firs
 
 #### `checkpoints.restore`
 
-DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.restorePreview. An unconfirmed call returns a structured refusal (result:null, refused:true, refusal naming both options) — not an error. An unknown/gc'd checkpoint id (once confirmed) is an honest 404, not a silent no-op.
+DESTRUCTIVE: restore the workspace to the state captured by a checkpoint (git-backed workspace rewrite). Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.restorePreview. An unconfirmed call returns a structured refusal (result:null, refused:true, refusal naming both options), not an error. An unknown/gc'd checkpoint id (once confirmed) is an honest 404, not a silent no-op.
 
 - Title: `Restore Workspace Checkpoint`
 - Source: `builtin`
@@ -27178,7 +27178,7 @@ Read-only: preview what a checkpoints.restore of this checkpoint would change (l
 
 #### `checkpoints.revertHunk`
 
-DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse — a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options) — not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.
+DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working tree, undoing exactly that hunk and nothing else. The hunk must still apply cleanly in reverse, a stale/drifted hunk is an honest 409 conflict, never a partial write. Refuses to run unconfirmed: pass confirm:true to execute immediately, OR a confirmToken from checkpoints.revertHunkPreview. An unconfirmed call returns a structured refusal (receipt:null, refused:true, refusal naming both options), not an error. Snapshots the whole tree (a manual checkpoint) before writing, so the revert is itself reversible; returns a receipt whose undo block carries that checkpoint id. Emits a HUNK_REVERTED receipt event.
 
 - Title: `Revert a Single Hunk`
 - Source: `builtin`
@@ -27341,7 +27341,7 @@ DESTRUCTIVE: reverse-apply ONE unified-diff hunk to its file in the live working
 
 #### `checkpoints.revertHunkPreview`
 
-Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token — an honest "this hunk no longer applies", not an error. No workspace mutation.
+Read-only: check whether reverse-applying ONE unified-diff hunk (copied from a checkpoints.diff / sessions.changes.get diff) to its file in the live working tree would apply cleanly right now, and mint a short-lived (~2 min), single-use confirmToken authorizing the matching checkpoints.revertHunk. A stale/drifted hunk returns applies:false with a human-readable conflict and a null token, an honest "this hunk no longer applies", not an error. No workspace mutation.
 
 - Title: `Preview a Single-Hunk Revert`
 - Source: `builtin`
@@ -28174,7 +28174,7 @@ Post a user message to a companion-chat session. Accepts either `body` or `conte
 
 #### `companion.chat.messages.edit`
 
-Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED — retained as history, never deleted — a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.
+Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED, retained as history, never deleted, a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.
 
 - Title: `Edit Companion Chat Message And Branch`
 - Source: `builtin`
@@ -28517,7 +28517,7 @@ Return the message list for a companion-chat session.
 
 #### `companion.chat.messages.retry`
 
-Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.
+Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED, kept in the message list and on disk, flagged as retained history, never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.
 
 - Title: `Regenerate Companion Chat Response`
 - Source: `builtin`
@@ -28577,7 +28577,7 @@ Regenerate an assistant response. Optional `messageId` targets a specific assist
 
 #### `companion.chat.messages.steer`
 
-Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: "cancelled"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: "queued"`, answered in order) — steer is the explicit jump-the-line verb.
+Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: "cancelled"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: "queued"`, answered in order), steer is the explicit jump-the-line verb.
 
 - Title: `Steer Companion Chat (Interrupt And Send)`
 - Source: `builtin`
@@ -28938,7 +28938,7 @@ Create a new companion-chat session. Optional `provider` / `model` override the 
 
 #### `companion.chat.sessions.delete`
 
-Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store — this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.
+Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store, this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.
 
 - Title: `Delete Companion Chat Session`
 - Source: `builtin`
@@ -29612,7 +29612,7 @@ Update companion-chat session metadata, including session-local `provider` and `
 
 #### `companion.chat.turns.cancel`
 
-Stop the in-flight turn for a companion chat session — a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: "cancelled"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note — later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.
+Stop the in-flight turn for a companion chat session, a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: "cancelled"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note, later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.
 
 - Title: `Cancel Companion Chat Turn`
 - Source: `builtin`
@@ -30070,7 +30070,7 @@ Set a config value through the daemon API.
 
 #### `credentials.delete`
 
-Remove a credential: the stored secret first, then the config reference pointing at it. That order is deliberate — clearing the config first would strand a secret nothing points at and nothing reaps, while this order leaves, for an instant, a reference resolving to nothing, which every reader already treats as configured-but-broken (the honest state for a credential mid-removal). `cleared: false` means nothing was stored under that key: a miss, not an error, because asking for a credential to be gone when it already is has succeeded. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.
+Remove a credential: the stored secret first, then the config reference pointing at it. That order is deliberate, clearing the config first would strand a secret nothing points at and nothing reaps, while this order leaves, for an instant, a reference resolving to nothing, which every reader already treats as configured-but-broken (the honest state for a credential mid-removal). `cleared: false` means nothing was stored under that key: a miss, not an error, because asking for a credential to be gone when it already is has succeeded. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.
 
 - Title: `Delete Credential`
 - Source: `builtin`
@@ -30222,7 +30222,7 @@ Return secret-free credential status (configured/usable) for the shared store. N
 
 #### `credentials.set`
 
-Store a credential for a secret-bearing config key THROUGH the daemon, so a surface no longer has to write it into its own on-disk secret store — the write counterpart to credentials.get, and the reason a client on another machine can now finish a settings modal at all. `key` is the config path (e.g. surfaces.telegram.botToken); the secret-store name is derived from it. The value goes into the encrypted store at the scope the ownership rules resolve (a daemon-needed credential lands in the daemon tier whoever asked), is read BACK and compared, and only then does the config key take its goodvibes://secrets/goodvibes/<KEY> reference. A read-back mismatch fails the call and leaves the setting exactly as it was, because a reference resolving to nothing reads as a configured-but-broken credential. The response is secret-free: key names, the resolved scope, the reference now in config, and two plain sentences about where the setting and the credential are filed — never the value. Refuses a key that is not credential-bearing (use config.set) and refuses a value that is itself a goodvibes:// reference. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.
+Store a credential for a secret-bearing config key THROUGH the daemon, so a surface no longer has to write it into its own on-disk secret store, the write counterpart to credentials.get, and the reason a client on another machine can now finish a settings modal at all. `key` is the config path (e.g. surfaces.telegram.botToken); the secret-store name is derived from it. The value goes into the encrypted store at the scope the ownership rules resolve (a daemon-needed credential lands in the daemon tier whoever asked), is read BACK and compared, and only then does the config key take its goodvibes://secrets/goodvibes/<KEY> reference. A read-back mismatch fails the call and leaves the setting exactly as it was, because a reference resolving to nothing reads as a configured-but-broken credential. The response is secret-free: key names, the resolved scope, the reference now in config, and two plain sentences about where the setting and the credential are filed, never the value. Refuses a key that is not credential-bearing (use config.set) and refuses a value that is itself a goodvibes:// reference. ws-only invoke verb; no REST binding. Mutating, so a relay call is covered by relay.requireStepUpForMutations exactly as config.set is.
 
 - Title: `Set Credential`
 - Source: `builtin`
@@ -32660,7 +32660,7 @@ Return the current control-plane gateway snapshot.
 
 #### `control.status`
 
-Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.
+Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version, what a person installed, and what the auto-update loop compares against release tags, and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered, exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.
 
 - Title: `Daemon Status`
 - Source: `builtin`
@@ -32785,7 +32785,7 @@ Return the built-in control-plane HTML shell for external clients.
 
 #### `relay.pairing.mint`
 
-Return the pairing payload a surface scans to reach this daemon through the relay: the relay URL to dial, the rendezvous id the daemon registered under, and the daemon's static public key. `pairing` is null — not an error — when there is no live registration to mint against, which is the honest answer for a daemon whose relay is off or has not connected yet, and is the same value the in-process capability returns. Minting does not create a second identity or a second registration; it describes the one that exists.
+Return the pairing payload a surface scans to reach this daemon through the relay: the relay URL to dial, the rendezvous id the daemon registered under, and the daemon's static public key. `pairing` is null, not an error, when there is no live registration to mint against, which is the honest answer for a daemon whose relay is off or has not connected yet, and is the same value the in-process capability returns. Minting does not create a second identity or a second registration; it describes the one that exists.
 
 - Title: `Mint A Relay Pairing Payload`
 - Source: `builtin`
@@ -32869,7 +32869,7 @@ Return the pairing payload a surface scans to reach this daemon through the rela
 
 #### `relay.reachability.get`
 
-Whether this daemon is registered with the relay, and what state its registration is in. `disabled` is a distinct answer from every other one and the distinction is the point: it means a gate is off — `relay.enabled`, the relay-connect capability, or an empty `relay.url` — rather than that a connection is failing. `idle` means the gates are open and nothing has started; `connecting`, `registered` and `reconnecting` are the live registration; `stopped` is a controller that was told to stop. `configured` says whether all three gates are open, so a caller can render "turn it on" instead of "it is broken". ws-only invoke verb; no REST binding.
+Whether this daemon is registered with the relay, and what state its registration is in. `disabled` is a distinct answer from every other one and the distinction is the point: it means a gate is off, `relay.enabled`, the relay-connect capability, or an empty `relay.url`, rather than that a connection is failing. `idle` means the gates are open and nothing has started; `connecting`, `registered` and `reconnecting` are the live registration; `stopped` is a controller that was told to stop. `configured` says whether all three gates are open, so a caller can render "turn it on" instead of "it is broken". ws-only invoke verb; no REST binding.
 
 - Title: `Relay Reachability`
 - Source: `builtin`
@@ -32922,7 +32922,7 @@ Whether this daemon is registered with the relay, and what state its registratio
 
 #### `update.check`
 
-Run one update check immediately instead of waiting for the next interval, and return the status afterwards. This is the same tick the schedule runs, so an on-demand check and the hourly one cannot reach different conclusions. It never forces an install: a downloaded-and-verified release still waits for a moment when no work is in flight, which the returned `pendingVersion` reports. A check that fails is reported in `failedCheckCount` and `lastCheckFailure` rather than refused — the caller asked what the state is, and "the check failed" is the answer. On a daemon with no loop armed this returns the same status `update.status` would, with `offReason` saying why nothing ran.
+Run one update check immediately instead of waiting for the next interval, and return the status afterwards. This is the same tick the schedule runs, so an on-demand check and the hourly one cannot reach different conclusions. It never forces an install: a downloaded-and-verified release still waits for a moment when no work is in flight, which the returned `pendingVersion` reports. A check that fails is reported in `failedCheckCount` and `lastCheckFailure` rather than refused, the caller asked what the state is, and "the check failed" is the answer. On a daemon with no loop armed this returns the same status `update.status` would, with `offReason` saying why nothing ran.
 
 - Title: `Check For An Update Now`
 - Source: `builtin`
@@ -33041,7 +33041,7 @@ Run one update check immediately instead of waiting for the next interval, and r
 
 #### `update.status`
 
-Whether this daemon is keeping itself current, and — when it is not — the reason in one line. `armed` is false whenever no loop is running and `offReason` says which gate stopped it: update.auto not set, no artifact identity (a host that manages its own updates), or no release URL to resolve tags from. `failedCheckCount` with `lastCheckFailure` is the case that used to be invisible: checks running on schedule and failing every time, which looks exactly like having nothing to update to. `pendingVersion` is a release already downloaded and verified, waiting for a moment when no work is in flight. `rejectedVersion` is a release that was installed here, failed to start, and was rolled back — it is deliberately not reinstalled.
+Whether this daemon is keeping itself current, and, when it is not, the reason in one line. `armed` is false whenever no loop is running and `offReason` says which gate stopped it: update.auto not set, no artifact identity (a host that manages its own updates), or no release URL to resolve tags from. `failedCheckCount` with `lastCheckFailure` is the case that used to be invisible: checks running on schedule and failing every time, which looks exactly like having nothing to update to. `pendingVersion` is a release already downloaded and verified, waiting for a moment when no work is in flight. `rejectedVersion` is a release that was installed here, failed to start, and was rolled back, it is deliberately not reinstalled.
 
 - Title: `Self-Update Status`
 - Source: `builtin`
@@ -34454,7 +34454,7 @@ Disclose the inbound-mail watcher: whether it is running and why, which source i
 
 #### `email.inbox.list`
 
-Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.
+Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so, an omitted message is not by itself evidence that it was deleted.
 
 - Title: `List Email Inbox`
 - Source: `builtin`
@@ -34726,7 +34726,7 @@ Send a composed email via the configured SMTP account. Irreversible external sen
 
 #### `flags.graduation.report`
 
-Return the feature defaults report: every platform capability with its current default, default-disposition state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a capability with no instrumentation reports "no evidence collected", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate entry — the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready default to flip on or record a dated blocker.
+Return the feature defaults report: every platform capability with its current default, default-disposition state (dark = default-off with no evidence, soaking = accumulating evidence, graduate-candidate = judged ready and awaiting a release decision, graduated = default on, blocked = held off with a dated reason), and its validation evidence. Evidence is real-only: a capability with no instrumentation reports "no evidence collected", never a fabricated readiness; the permissions divergence simulation is the one wired instrumentation today. releaseBlockers lists every graduate-candidate entry, the release policy (bun run flags:graduation) fails while that list is non-empty, forcing each ready default to flip on or record a dated blocker.
 
 - Title: `Feature Defaults Report`
 - Source: `builtin`
@@ -35451,7 +35451,7 @@ Archive every root subtree whose nodes are all terminal (done/failed/killed/inte
 
 #### `fleet.attempts.judge`
 
-Run the optional judge model over a best-of-N group's candidates and PROPOSE a winner, with reasons. The output is explicitly model judgment (scoredBy:"model") — it never auto-picks unless the source item opted into auto-accept; a human still confirms via fleet.attempts.pick. An engine with no judge configured returns an honest 501.
+Run the optional judge model over a best-of-N group's candidates and PROPOSE a winner, with reasons. The output is explicitly model judgment (scoredBy:"model"), it never auto-picks unless the source item opted into auto-accept; a human still confirms via fleet.attempts.pick. An engine with no judge configured returns an honest 501.
 
 - Title: `Propose a Best-of-N Winner (Model Judgment)`
 - Source: `builtin`
@@ -35824,7 +35824,7 @@ Return the best-of-N attempt groups whose siblings ran in isolated worktrees and
 
 #### `fleet.attempts.pick`
 
-Accept one attempt as the winner of its best-of-N group: its worktree branch is merged through the existing sequential integration lane and every losing sibling's worktree is cleaned. The winner must be a held (passed) candidate of a group whose siblings are all terminal — an unknown/not-ready group or an invalid winner is an honest 409, never a partial merge.
+Accept one attempt as the winner of its best-of-N group: its worktree branch is merged through the existing sequential integration lane and every losing sibling's worktree is cleaned. The winner must be a held (passed) candidate of a group whose siblings are all terminal, an unknown/not-ready group or an invalid winner is an honest 409, never a partial merge.
 
 - Title: `Pick a Best-of-N Winner`
 - Source: `builtin`
@@ -36292,7 +36292,7 @@ The conflict row's one action: spawn a resolution session INSIDE the kept worktr
 
 #### `fleet.graph.get`
 
-The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.
+The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this, the fleet/observability idiom. 404 when the workstream is unknown to this daemon.
 
 - Title: `Get Workstream Task Graph`
 - Source: `builtin`
@@ -36893,7 +36893,7 @@ Paginated, filtered (kinds/states) query over the live process registry. Cursor 
 
 #### `fleet.observed.steer`
 
-Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session's own control channel — for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row — observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node's observed.steerDrillInOnly), never a bulk affordance.
+Drill-in steer of an externally-launched coding-agent session goodvibes only OBSERVES (a Claude Code / Codex process it did not spawn or host). The steer rides the foreign session's own control channel, for a tmux-hosted session, the exact three-send recipe (message text, then two Enters) targeted at its pane. queued:false with an honest reason when the row exposes no channel (no controlling terminal / no tmux pane) or a send fails. STOP is never offered on an observed row, observing and steering is not owning the lifecycle. Weighted as a drill-in capability (see the node's observed.steerDrillInOnly), never a bulk affordance.
 
 - Title: `Steer an Observed Foreign Agent`
 - Source: `builtin`
@@ -36951,7 +36951,7 @@ Drill-in steer of an externally-launched coding-agent session goodvibes only OBS
 
 #### `fleet.snapshot`
 
-Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap) — use fleet.list to page through a larger fleet.
+Return a point-in-time capture of every live/completed runtime process (agents, WRFC chains/subtasks, workflow FSMs/triggers/schedules, watchers, background processes) as a flat, parentId-linked node list. Capped at 2000 nodes (truncated:true + totalCount when the live fleet exceeds the cap), use fleet.list to page through a larger fleet.
 
 - Title: `Fleet Snapshot`
 - Source: `builtin`
@@ -37879,7 +37879,7 @@ The MemoryGovernor snapshot: the current memory-pressure tier and budget, reside
 
 #### `power.keepAwake.set`
 
-Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options — the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.
+Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options, the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.
 
 - Title: `Set the Owner Keep-Awake Toggle`
 - Source: `builtin`
@@ -38053,7 +38053,7 @@ Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPE
 
 #### `power.status.get`
 
-The host sleep-ownership state: whether the automatic work inhibitor is held (and the live "held because X" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused — a refused lid-switch block is stated honestly ("idle sleep blocked; lid-close suspend is controlled by your OS here"), never papered over. Surfaces render the always-visible "sleep disabled" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.
+The host sleep-ownership state: whether the automatic work inhibitor is held (and the live "held because X" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused, a refused lid-switch block is stated honestly ("idle sleep blocked; lid-close suspend is controlled by your OS here"), never papered over. Surfaces render the always-visible "sleep disabled" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.
 
 - Title: `Get Sleep-Ownership State`
 - Source: `builtin`
@@ -38220,7 +38220,7 @@ The host sleep-ownership state: whether the automatic work inhibitor is held (an
 
 #### `voice.local.install`
 
-One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.
+One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install, never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.
 
 - Title: `Install the Managed Local-Voice Runtime`
 - Source: `builtin`
@@ -38418,7 +38418,7 @@ One-act setup: download + checksum-verify the piper TTS engine, a default voice,
 
 #### `voice.local.status`
 
-Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress — the live per-component progress (phase, byte sizes where known) of that run — so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.
+Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress, the live per-component progress (phase, byte sizes where known) of that run, so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.
 
 - Title: `Get Managed Local-Voice Runtime State`
 - Source: `builtin`
@@ -38611,7 +38611,7 @@ Whether the managed local voice runtime (piper TTS + a default voice) is install
 
 #### `voice.wake.model.get`
 
-Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Both classifier formats are served — "classifier" is the onnx build a browser tab loads, "tflite" the same classifier for a runtime that cannot — as is the speech gate voice.wake.vadThreshold runs ("vad"), and so is the attribution NOTICE of each redistributable artifact ("notice" for the classifier, "embedding-notice" for the front end, "vad-notice" for the gate), because a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it there, and voice.wake.provision is the recovery path when it is missing.
+Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself, a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Both classifier formats are served, "classifier" is the onnx build a browser tab loads, "tflite" the same classifier for a runtime that cannot, as is the speech gate voice.wake.vadThreshold runs ("vad"), and so is the attribution NOTICE of each redistributable artifact ("notice" for the classifier, "embedding-notice" for the front end, "vad-notice" for the gate), because a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it there, and voice.wake.provision is the recovery path when it is missing.
 
 - Title: `Read Wake-Word Model Bytes`
 - Source: `builtin`
@@ -38707,7 +38707,7 @@ Read one provisioned wake artifact in bounded chunks, for a surface that cannot 
 
 #### `voice.wake.provision`
 
-Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into the goodvibes-managed directory — about 6.1 MB. Installing goodvibes already does this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once — or a boot attempt and a user asking — join one download instead of racing for the same files.
+Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into the goodvibes-managed directory, about 6.1 MB. Installing goodvibes already does this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once, or a boot attempt and a user asking, join one download instead of racing for the same files.
 
 - Title: `Download the Wake-Word Models`
 - Source: `builtin`
@@ -38837,7 +38837,7 @@ Download and checksum-verify the pinned wake-word classifier in both runtime for
 
 #### `voice.wake.status`
 
-Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, the tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts (the classifier's, the front end's and the gate's). Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag covers the classifier, the front end and both of THEIR NOTICEs — an artifact whose attribution is missing is not one this daemon may serve — and excludes two things: the tflite twin, which nothing here loads, so a host missing just that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults to 0 and the detector runs without it. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
+Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the "hey goodvibes" classifier, the tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts (the classifier's, the front end's and the gate's). Each reports verified, corrupt (present but failing its checksum, a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag covers the classifier, the front end and both of THEIR NOTICEs, an artifact whose attribution is missing is not one this daemon may serve, and excludes two things: the tflite twin, which nothing here loads, so a host missing just that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults to 0 and the detector runs without it. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.
 
 - Title: `Get Wake-Word Model State`
 - Source: `builtin`
@@ -67077,7 +67077,7 @@ Remove a project/global MCP server config and disconnect it without daemon resta
 
 #### `mcp.servers.reveal`
 
-Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.
+Return effective MCP config with environment VALUES included, not just envKeys. Admin only, the redacted mcp.config.get view is what every other caller should use.
 
 - Title: `MCP Servers Reveal`
 - Source: `builtin`
@@ -69916,7 +69916,7 @@ Persist a multimodal analysis result as an artifact and ingest it into the struc
 
 #### `memory.consolidation.receipts`
 
-Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.
+Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates), the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.
 
 - Title: `Memory Consolidation Receipts`
 - Source: `builtin`
@@ -70493,7 +70493,7 @@ Set the active default memory embedding provider.
 
 #### `memory.projections.get`
 
-Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id — a session-scope or unknown id is an honest miss, never an empty projection.
+Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id, a session-scope or unknown id is an honest miss, never an empty projection.
 
 - Title: `Get Memory Projection`
 - Source: `builtin`
@@ -70622,7 +70622,7 @@ Return one standing record's projection by id: its metadata entry plus the exact
 
 #### `memory.projections.list`
 
-Return the live projection of standing (project/team-scope) memory records — one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:"expired" rather than silently dropped.
+Return the live projection of standing (project/team-scope) memory records, one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:"expired" rather than silently dropped.
 
 - Title: `List Memory Projections`
 - Source: `builtin`
@@ -70984,7 +70984,7 @@ Add a memory record to the daemon-owned canonical store. The daemon is the singl
 
 #### `memory.records.delete`
 
-Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.
+Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed, an honest boolean, never a 200 that pretends a phantom row was removed.
 
 - Title: `Delete Memory Record`
 - Source: `builtin`
@@ -71724,7 +71724,7 @@ Import a bundle into the canonical store as an id-keyed union: an id already pre
 
 #### `memory.records.links.add`
 
-Create a directed relation (e.g. "supersedes", "caused") from the path record to a target record. Returns 404 when either endpoint does not exist — never a 200 that pretends a link was made between records that do not both exist.
+Create a directed relation (e.g. "supersedes", "caused") from the path record to a target record. Returns 404 when either endpoint does not exist, never a 200 that pretends a link was made between records that do not both exist.
 
 - Title: `Link Memory Records`
 - Source: `builtin`
@@ -71801,7 +71801,7 @@ Create a directed relation (e.g. "supersedes", "caused") from the path record to
 
 #### `memory.records.links.list`
 
-Return every link where the record is the source or the target. Returns 404 when no record with that id exists — an honest not-found, distinct from a record that exists but has no links (an empty array).
+Return every link where the record is the source or the target. Returns 404 when no record with that id exists, an honest not-found, distinct from a record that exists but has no links (an empty array).
 
 - Title: `List Memory Record Links`
 - Source: `builtin`
@@ -72629,7 +72629,7 @@ Rank records by semantic similarity against the query, returning scored results 
 
 #### `memory.records.update`
 
-Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.
+Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself, e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.
 
 - Title: `Update Memory Record`
 - Source: `builtin`
@@ -73233,7 +73233,7 @@ Return the current sqlite-vec vector-store posture.
 
 #### `occasions.acknowledge`
 
-Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.
+Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.
 
 - Title: `Acknowledge An Occasion`
 - Source: `builtin`
@@ -73307,7 +73307,7 @@ Record that the owner has one occurrence in hand, so nothing is pushed at him ab
 
 #### `occasions.answer`
 
-Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.
+Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline, it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only "I have this in hand" without ending the question, use occasions.acknowledge instead.
 
 - Title: `Answer An Occasion Nudge`
 - Source: `builtin`
@@ -73583,7 +73583,7 @@ Write the confirmed occasion as one line in the owner profile, under Important d
 
 #### `occasions.conflict.resolve`
 
-Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically — two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.
+Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.
 
 - Title: `Close A Date Conflict`
 - Source: `builtin`
@@ -73714,7 +73714,7 @@ Return what the owner landed on for one occasion in previous years, newest first
 
 #### `occasions.interview.answer`
 
-Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift — that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.
+Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift, that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.
 
 - Title: `Answer A Gift Interview Question`
 - Source: `builtin`
@@ -74430,7 +74430,7 @@ Return every occasion declared in the owner profile, with its next occurrence, h
 
 #### `occasions.pending`
 
-Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.
+Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge, it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.
 
 - Title: `Pull Outstanding Occasions`
 - Source: `builtin`
@@ -74821,7 +74821,7 @@ Write the confirmed plan as one line in the owner profile, under Plans, carrying
 
 #### `occasions.plans.list`
 
-Return every plan declared in the owner profile — a dated range with attributes — plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.
+Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.
 
 - Title: `List Plans`
 - Source: `builtin`
@@ -75084,7 +75084,7 @@ Work out what would be written for a plan heard in conversation, and return the 
 
 #### `occasions.propose`
 
-Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath — the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.
+Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.
 
 - Title: `Propose An Important Date`
 - Source: `builtin`
@@ -75187,7 +75187,7 @@ Work out what would be written for a date heard in conversation, and return the 
 
 #### `occasions.remove`
 
-Remove one occasion and every record the machine kept against it — answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.
+Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.
 
 - Title: `Remove An Important Date`
 - Source: `builtin`
@@ -75266,7 +75266,7 @@ Remove one occasion and every record the machine kept against it — answers, gi
 
 #### `occasions.state`
 
-What the machine-owned store is holding — counts of answers, gift records, open items, interviews and calendar mirrors — plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.
+What the machine-owned store is holding, counts of answers, gift records, open items, interviews and calendar mirrors, plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.
 
 - Title: `Occasions State Disclosure`
 - Source: `builtin`
@@ -75386,7 +75386,7 @@ What the machine-owned store is holding — counts of answers, gift records, ope
 
 #### `occasions.sweep`
 
-Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel — a comma-separated list, so Telegram and the agent both get it — and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing — nothing is dropped, it waits.
+Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel, a comma-separated list, so Telegram and the agent both get it, and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:"quiet-hours" or hold:"disabled" when it deliberately said nothing, nothing is dropped, it waits.
 
 - Title: `Run The Approach Sweep Now`
 - Source: `builtin`
@@ -75780,7 +75780,7 @@ Apply the surface's per-offer decisions in ONE pass: an accepted notifications o
 
 #### `pairing.handoff.create`
 
-Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications — carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes — token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin's honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https — available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.
+Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisfy (notifications, carrying the VAPID public key; relay; passkey step-up), so a freshly-paired surface can complete them in one pass. Returns the offer set, the `#pair=<token>` deep-link fragment (the exact URL-fragment shape the web app consumes, token in `pair=`, offers in `offers=`), a full deep link when a web origin is configured, and that origin's honest TLS/capability POSTURE: the one plain-http-on-LAN notice line (stated here, never a nag) plus per-capability availability labels so surfaces render "needs https, available via tailscale" instead of dead buttons. The token secret is returned exactly once. Each offer is independently declinable at completion.
 
 - Title: `Create Pairing Hand-off`
 - Source: `builtin`
@@ -75935,7 +75935,7 @@ Mint a per-device token AND assemble the set-up OFFER SET this daemon can satisf
 
 #### `pairing.posture.get`
 
-The honest TLS/capability posture of a web origin — pass your surface's current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https — available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.
+The honest TLS/capability posture of a web origin, pass your surface's current origin (or omit it to read the configured web origin). Plain http on a private-network origin (LAN IP, .local, localhost) is a supported posture reported with its ONE notice line; browser-gated capabilities (service worker/PWA install, push, microphone) are each labeled available or "needs https, available via tailscale" so surfaces render labels instead of dead buttons. Localhost keeps all three. The daemon never mints certificates.
 
 - Title: `Get Origin TLS/Capability Posture`
 - Source: `builtin`
@@ -76210,7 +76210,7 @@ none
 
 #### `pairing.tokens.migrate`
 
-A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once — the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).
+A client currently authenticated with the legacy single shared token mints its OWN named per-device token and receives the plaintext secret once, the honest migration path. This does NOT revoke the shared token; that is a separate explicit step (pairing.tokens.revokeShared).
 
 - Title: `Migrate Off The Shared Token`
 - Source: `builtin`
@@ -76506,7 +76506,7 @@ Request that a panel be opened in the current TUI session.
 
 #### `payments.budget.status`
 
-Today's spending pools: the daily item budget, the separate overage budget that covers only unavoidable charges (tax, mandatory fees, and the delivery option actually used), and the tolerance allowance. Each reports its limit, what today has spent, what purchases in flight are holding, and what is left. Includes the calendar day and the timezone it was computed in — the day resets at midnight in daemon.timezone, UTC when unset — and whether this node is the one currently allowed to spend. Totals are recomputed from each spend record's UTC instant rather than counted, so changing the timezone cannot hand back a spent budget.
+Today's spending pools: the daily item budget, the separate overage budget that covers only unavoidable charges (tax, mandatory fees, and the delivery option actually used), and the tolerance allowance. Each reports its limit, what today has spent, what purchases in flight are holding, and what is left. Includes the calendar day and the timezone it was computed in, the day resets at midnight in daemon.timezone, UTC when unset, and whether this node is the one currently allowed to spend. Totals are recomputed from each spend record's UTC instant rather than counted, so changing the timezone cannot hand back a spent budget.
 
 - Title: `Payment Budget Status`
 - Source: `builtin`
@@ -76784,7 +76784,7 @@ Store a card. The number, expiry, CVV and cardholder name go to the daemon secre
 
 #### `payments.cards.delete`
 
-Delete a card: its config metadata and every secret derived from its config path, reporting how many secret entries were cleared so a partial deletion is visible rather than silent. Deleting the default card leaves payments.defaultCardId empty, which refuses purchases until another card is chosen — the safe direction.
+Delete a card: its config metadata and every secret derived from its config path, reporting how many secret entries were cleared so a partial deletion is visible rather than silent. Deleting the default card leaves payments.defaultCardId empty, which refuses purchases until another card is chosen, the safe direction.
 
 - Title: `Remove a Payment Card`
 - Source: `builtin`
@@ -76944,7 +76944,7 @@ Configured cards, as METADATA ONLY: id, label, brand, last four digits, whether 
 
 #### `payments.checkout.begin`
 
-Run a purchase against an open browser page, end to end: the caller reports the checkout's line items, tax, fees and delivery options AS STRINGS plus the refs of the card, address, delivery and place-order controls, and the daemon does the rest. It parses every amount into integer minor units with its own parser (refusing anything ambiguous rather than guessing), checks the cart against what was actually asked for, refuses a recurring charge, runs the taint gate, applies the daily item budget, the per-purchase ceiling and the overage pool, walks the shipping ladder down one rung at a time when the pool cannot cover the preferred tier, sends ONE notice to the configured command-authority channels and runs the window — above budget an approval where silence denies, within budget a veto where silence proceeds — then fills the stored shipping and billing addresses, types the stored card, submits once, records the purchase, debits the budget and reports the completed purchase. Nothing here knows any merchant's markup: the caller identifies the controls on whatever page it is looking at. Every number the owner is shown is re-rendered from the integers this daemon parsed, never from merchant text, and no response field can carry card material.
+Run a purchase against an open browser page, end to end: the caller reports the checkout's line items, tax, fees and delivery options AS STRINGS plus the refs of the card, address, delivery and place-order controls, and the daemon does the rest. It parses every amount into integer minor units with its own parser (refusing anything ambiguous rather than guessing), checks the cart against what was actually asked for, refuses a recurring charge, runs the taint gate, applies the daily item budget, the per-purchase ceiling and the overage pool, walks the shipping ladder down one rung at a time when the pool cannot cover the preferred tier, sends ONE notice to the configured command-authority channels and runs the window, above budget an approval where silence denies, within budget a veto where silence proceeds, then fills the stored shipping and billing addresses, types the stored card, submits once, records the purchase, debits the budget and reports the completed purchase. Nothing here knows any merchant's markup: the caller identifies the controls on whatever page it is looking at. Every number the owner is shown is re-rendered from the integers this daemon parsed, never from merchant text, and no response field can carry card material.
 
 - Title: `Buy What Is In This Checkout`
 - Source: `builtin`
@@ -77283,7 +77283,7 @@ Run a purchase against an open browser page, end to end: the caller reports the 
 
 #### `payments.checkout.fillCard`
 
-Have the daemon type the stored card into the payment fields of an open browser page. Takes the browser session, the page, and a list of {field, ref} targets naming where each part of the card goes — the caller identifies the fields on whatever checkout it is looking at, so the daemon needs no knowledge of any merchant. The response is the list of field NAMES that were filled plus a boolean; it never carries the value, its length, or a masked form, and a failure names the field that did not accept input rather than what was typed into it. Refused unless a purchase decision is already in flight on that exact page and the page is still on the registrable domain the purchase was decided against, so the card is typed as part of an approved checkout or not at all. Also refused when the browser has no card-material redaction installed, because a snapshot taken afterwards would otherwise hand back what was just typed.
+Have the daemon type the stored card into the payment fields of an open browser page. Takes the browser session, the page, and a list of {field, ref} targets naming where each part of the card goes, the caller identifies the fields on whatever checkout it is looking at, so the daemon needs no knowledge of any merchant. The response is the list of field NAMES that were filled plus a boolean; it never carries the value, its length, or a masked form, and a failure names the field that did not accept input rather than what was typed into it. Refused unless a purchase decision is already in flight on that exact page and the page is still on the registrable domain the purchase was decided against, so the card is typed as part of an approved checkout or not at all. Also refused when the browser has no card-material redaction installed, because a snapshot taken afterwards would otherwise hand back what was just typed.
 
 - Title: `Fill the Card into a Checkout`
 - Source: `builtin`
@@ -77399,7 +77399,7 @@ Have the daemon type the stored card into the payment fields of an open browser 
 
 #### `payments.purchases.list`
 
-The purchase audit ledger: what was bought, from which merchant registrable domain, how much (item, tax, fees and delivery separately), which budget pool each part drew on, which delivery tier was requested and which was actually used, whether the shipping ladder stepped it down, which window ran and how it ended, which command-authority channel answered, and the outcome. Reconcilable against a card statement. Never contains a card number, expiry or CVV. A refund is recorded here for reconciliation and credits no pool — a refund on day five refilling day five would be permission to buy again that nobody granted.
+The purchase audit ledger: what was bought, from which merchant registrable domain, how much (item, tax, fees and delivery separately), which budget pool each part drew on, which delivery tier was requested and which was actually used, whether the shipping ladder stepped it down, which window ran and how it ended, which command-authority channel answered, and the outcome. Reconcilable against a card statement. Never contains a card number, expiry or CVV. A refund is recorded here for reconciliation and credits no pool, a refund on day five refilling day five would be permission to buy again that nobody granted.
 
 - Title: `List Purchases`
 - Source: `builtin`
@@ -77612,7 +77612,7 @@ The purchase audit ledger: what was bought, from which merchant registrable doma
 
 #### `permissions.rules.delete`
 
-Delete one durable user-origin permission rule by id. The matching asks prompt again afterwards — deleting a grant is how a remembered decision is revoked. deleted:false when no rule with that id exists (an honest miss, not an error).
+Delete one durable user-origin permission rule by id. The matching asks prompt again afterwards, deleting a grant is how a remembered decision is revoked. deleted:false when no rule with that id exists (an honest miss, not an error).
 
 - Title: `Delete a Durable Permission Rule`
 - Source: `builtin`
@@ -77660,7 +77660,7 @@ Delete one durable user-origin permission rule by id. The matching asks prompt a
 
 #### `permissions.rules.list`
 
-List the durable user-origin permission rules written by remembered approval decisions (exact command / command class / path scope / whole tool), newest first — the persistent grants and denials the permission manager consults before ever prompting. Project-scoped.
+List the durable user-origin permission rules written by remembered approval decisions (exact command / command class / path scope / whole tool), newest first, the persistent grants and denials the permission manager consults before ever prompting. Project-scoped.
 
 - Title: `List Durable Permission Rules`
 - Source: `builtin`
@@ -77926,7 +77926,7 @@ Create a named principal from a name, kind, and optional channel identities. Fai
 
 #### `principals.delete`
 
-Permanently delete a principal. Returns { deleted: false } when no principal with that id existed — an honest boolean, never a 200 that pretends a phantom principal was removed.
+Permanently delete a principal. Returns { deleted: false } when no principal with that id existed, an honest boolean, never a 200 that pretends a phantom principal was removed.
 
 - Title: `Delete Principal`
 - Source: `builtin`
@@ -78226,7 +78226,7 @@ Return every named principal in the registry with its channel identities.
 
 #### `principals.resolve`
 
-Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false — the registry never guesses.
+Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false, the registry never guesses.
 
 - Title: `Resolve Sender Identity`
 - Source: `builtin`
@@ -78662,7 +78662,7 @@ Add one prose bullet to a section, carrying its provenance suffix. Same three-la
 
 #### `profile.forget`
 
-Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.
+Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window, delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.
 
 - Title: `Forget Profile Line`
 - Source: `builtin`
@@ -79443,7 +79443,7 @@ Record or correct one mechanical field, moving any previous value into a retaine
 
 #### `profile.status`
 
-Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value — that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.
+Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value, that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.
 
 - Title: `Owner Profile Status`
 - Source: `builtin`
@@ -79634,7 +79634,7 @@ Promote a field's most recent superseded value back to the active line, so a wro
 
 #### `models.current.get`
 
-The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.
+The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.
 
 - Title: `Current Model`
 - Source: `builtin`
@@ -79786,7 +79786,7 @@ The model this daemon would use for a turn right now, with whether its provider 
 
 #### `models.current.set`
 
-Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.
+Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened.
 
 - Title: `Switch the Current Model`
 - Source: `builtin`
@@ -81079,7 +81079,7 @@ Return usage and pricing posture for a single provider.
 
 #### `push.subscriptions.create`
 
-Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity — a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.
+Store a browser Push subscription (endpoint capability URL + p256dh/auth keys) for the authenticated operator so the daemon can deliver notifications to that device. When a stable deviceId is supplied the record reconciles on that device identity, a browser whose push endpoint rotated re-registers the same deviceId with a new endpoint and heals the one record in place rather than piling up a stale duplicate; without a deviceId it reconciles on the raw endpoint (legacy). The stored endpoint and keys are never returned over the wire; the response is the redacted subscription view.
 
 - Title: `Register Web Push Subscription`
 - Source: `builtin`
@@ -81311,7 +81311,7 @@ none
 
 #### `push.subscriptions.reconcile`
 
-Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place — updating a stale endpoint the daemon had been holding — then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.
+Reconcile-on-open: the client presents its device identity (deviceId) and its CURRENT endpoint + p256dh/auth keys, and the daemon heals the record for that device in place, updating a stale endpoint the daemon had been holding, then reports what drifted (created / endpoint-updated / keys-updated / unchanged) so the client learns whether the daemon was out of date. A live reconcile also clears the bounded-retry failure counter. The stored endpoint and keys are never returned; the response is the redacted subscription view plus the drift discriminant.
 
 - Title: `Reconcile Web Push Subscription`
 - Source: `builtin`
@@ -81529,7 +81529,7 @@ none
 
 #### `quota.fanout.get`
 
-Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on — an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed — never a fabricated certainty.
+Assess whether spawning N agents against a provider likely exhausts its quota window right now, grounded in observed rate-limit signals (429 retry-after, and limit/remaining when headers carry them). verdict is likely-exhausts (with the evidence it rests on, an active cooldown or an observed remaining below the fan-out), unlikely (with the evidence), or unknown when no signal has been observed, never a fabricated certainty.
 
 - Title: `Assess Fan-out Against Quota Window`
 - Source: `builtin`
@@ -81623,7 +81623,7 @@ Assess whether spawning N agents against a provider likely exhausts its quota wi
 
 #### `quota.snapshot.get`
 
-Return the most recent observed quota window for a provider — remaining, limit, reset, and any active cooldown — parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.
+Return the most recent observed quota window for a provider, remaining, limit, reset, and any active cooldown, parsed from rate-limit headers carried on ordinary (successful) responses, so a consumer can render remaining quota BEFORE hitting a limit. hasSignal is false (with the observed-* fields absent) when no rate-limit signal has been seen for the provider in the lookback window: an honest "no observation", never a fabricated full quota.
 
 - Title: `Get Observed Quota Snapshot`
 - Source: `builtin`
@@ -81755,7 +81755,7 @@ Issue a short-lived, single-use WebAuthn challenge bound to the calling session/
 
 #### `stepup.credentials.register`
 
-Store a WebAuthn (passkey) credential for relay step-up — its credentialId, COSE public key, and starting signature counter — and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).
+Store a WebAuthn (passkey) credential for relay step-up, its credentialId, COSE public key, and starting signature counter, and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).
 
 - Title: `Register Step-up Credential`
 - Source: `builtin`
@@ -85663,7 +85663,7 @@ Return queued and leased remote work items.
 
 #### `tailscale.get`
 
-READ-ONLY detection of a usable tailscale environment: binary present, logged-in status, MagicDNS name, and the https URL `tailscale serve` would yield. Never invokes a state-changing tailscale command. Where tailscale is absent the result says so once — surfaces offer the auto-wire affordance only when this reports a usable environment; nothing nags. Includes the most recent serve receipt, if any.
+READ-ONLY detection of a usable tailscale environment: binary present, logged-in status, MagicDNS name, and the https URL `tailscale serve` would yield. Never invokes a state-changing tailscale command. Where tailscale is absent the result says so once, surfaces offer the auto-wire affordance only when this reports a usable environment; nothing nags. Includes the most recent serve receipt, if any.
 
 - Title: `Detect Tailscale Environment`
 - Source: `builtin`
@@ -85739,7 +85739,7 @@ none
 
 #### `tailscale.serve.run`
 
-The one-action https affordance: run `tailscale serve --bg <web port>` so tailscale fronts the daemon's web surface at its https MagicDNS URL. This is the ONLY state-changing tailscale command the daemon ever runs, and only from this explicit user-initiated verb. The attempt is recorded with an honest receipt either way; on success web.publicBaseUrl is updated to the https URL from the same resolution. The daemon never mints certificates — TLS is terminated by tailscale.
+The one-action https affordance: run `tailscale serve --bg <web port>` so tailscale fronts the daemon's web surface at its https MagicDNS URL. This is the ONLY state-changing tailscale command the daemon ever runs, and only from this explicit user-initiated verb. The attempt is recorded with an honest receipt either way; on success web.publicBaseUrl is updated to the https URL from the same resolution. The daemon never mints certificates, TLS is terminated by tailscale.
 
 - Title: `Set Up Tailscale Serve For The Daemon`
 - Source: `builtin`
@@ -85877,7 +85877,7 @@ Return the integration review snapshot used by external helpers.
 
 #### `rewind.apply`
 
-Apply a unified rewind to a session turn anchor, restoring files and/or conversation. DESTRUCTIVE: requires confirmation — either the confirmToken minted by rewind.plan (single-use, ~2 min) or confirm:true. Called without either, it returns a non-error refusal (refused:true) naming rewind.plan, never a silent no-op; a bad token is a 400. Every apply records an undo point (the workspace restore takes a pre-restore safety checkpoint; the conversation store captures its pre-rewind snapshot) so the rewind is itself reversible, and returns a receipt whose `undo` block carries how to reverse it. Emits a REWIND_APPLIED receipt event.
+Apply a unified rewind to a session turn anchor, restoring files and/or conversation. DESTRUCTIVE: requires confirmation, either the confirmToken minted by rewind.plan (single-use, ~2 min) or confirm:true. Called without either, it returns a non-error refusal (refused:true) naming rewind.plan, never a silent no-op; a bad token is a 400. Every apply records an undo point (the workspace restore takes a pre-restore safety checkpoint; the conversation store captures its pre-rewind snapshot) so the rewind is itself reversible, and returns a receipt whose `undo` block carries how to reverse it. Emits a REWIND_APPLIED receipt event.
 
 - Title: `Apply a Unified Rewind`
 - Source: `builtin`
@@ -86163,7 +86163,7 @@ Apply a unified rewind to a session turn anchor, restoring files and/or conversa
 
 #### `rewind.conversation.host.register`
 
-Register the conversation this surface is running for a session, so a conversation-scope rewind of it can actually be served. Only the process holding the messages can count or drop them: without this, rewind.plan for a session hosted anywhere but the daemon reports the conversation half unavailable, and files rewind is unaffected either way. Re-registering with the hostId returned here RENEWS the offer; registering without one claims the session and replaces whoever held it, answering that surface's outstanding requests as unavailable. The registration is a lease, not a reservation — it lapses unless the surface keeps taking its requests, and nothing about it survives a daemon restart, because a claim about a live process is worthless once the process on either end may be gone.
+Register the conversation this surface is running for a session, so a conversation-scope rewind of it can actually be served. Only the process holding the messages can count or drop them: without this, rewind.plan for a session hosted anywhere but the daemon reports the conversation half unavailable, and files rewind is unaffected either way. Re-registering with the hostId returned here RENEWS the offer; registering without one claims the session and replaces whoever held it, answering that surface's outstanding requests as unavailable. The registration is a lease, not a reservation, it lapses unless the surface keeps taking its requests, and nothing about it survives a daemon restart, because a claim about a live process is worthless once the process on either end may be gone.
 
 - Title: `Offer This Surface's Live Conversation for Rewind`
 - Source: `builtin`
@@ -86257,7 +86257,7 @@ Register the conversation this surface is running for a session, so a conversati
 
 #### `rewind.conversation.host.release`
 
-Withdraw this surface's offer to serve a session's conversation — when the session ends, or the surface is going away. Outstanding requests put to it are answered unavailable rather than left to time out. Only the registered host may release its own session; anyone else is refused.
+Withdraw this surface's offer to serve a session's conversation, when the session ends, or the surface is going away. Outstanding requests put to it are answered unavailable rather than left to time out. Only the registered host may release its own session; anyone else is refused.
 
 - Title: `Withdraw a Conversation Rewind Offer`
 - Source: `builtin`
@@ -86407,7 +86407,7 @@ Which sessions have a surface offering their live conversation right now, how ea
 
 #### `rewind.conversation.requests.answer`
 
-Report what this surface found or did. Which fields are expected follows from the REQUEST, which already says whether it was a preview or a rewind — an answer that restated that could only disagree with it, silently. For a preview: messagesToDrop and messagesRemaining. For a rewind: droppedMessages and the undoSnapshotId that restores them. For either, a non-empty unavailableReason instead, which is the honest answer when the conversation is gone or this surface cannot serve it — and saying so beats staying silent, because silence becomes a timeout and a timed-out rewind cannot tell whether the messages were dropped. Only the surface a request was put to may answer it.
+Report what this surface found or did. Which fields are expected follows from the REQUEST, which already says whether it was a preview or a rewind, an answer that restated that could only disagree with it, silently. For a preview: messagesToDrop and messagesRemaining. For a rewind: droppedMessages and the undoSnapshotId that restores them. For either, a non-empty unavailableReason instead, which is the honest answer when the conversation is gone or this surface cannot serve it, and saying so beats staying silent, because silence becomes a timeout and a timed-out rewind cannot tell whether the messages were dropped. Only the surface a request was put to may answer it.
 
 - Title: `Answer a Conversation Rewind Request`
 - Source: `builtin`
@@ -86514,7 +86514,7 @@ Report what this surface found or did. Which fields are expected follows from th
 
 #### `rewind.conversation.requests.take`
 
-Collect the conversation questions waiting for this host — how many messages a rewind to an anchor would drop, or a request to actually drop them — and renew its lease, because a surface that is polling is a surface that is alive. With nothing waiting, pass waitMs to hold the call open until something arrives; an empty result is a normal answer, not an error. Answer each request with rewind.conversation.requests.answer before its expiresAt, or the caller waiting on it is told, honestly, that this surface did not answer in time.
+Collect the conversation questions waiting for this host, how many messages a rewind to an anchor would drop, or a request to actually drop them, and renew its lease, because a surface that is polling is a surface that is alive. With nothing waiting, pass waitMs to hold the call open until something arrives; an empty result is a normal answer, not an error. Answer each request with rewind.conversation.requests.answer before its expiresAt, or the caller waiting on it is told, honestly, that this surface did not answer in time.
 
 - Title: `Take Conversation Rewind Requests`
 - Source: `builtin`
@@ -86636,7 +86636,7 @@ Collect the conversation questions waiting for this host — how many messages a
 
 #### `rewind.plan`
 
-Dry-run preview of a unified rewind to a session turn anchor: exactly what restoring files (the nearest workspace checkpoint), conversation (truncating session state to the anchor), or both would change, and a short-lived single-use confirm token authorizing the matching rewind.apply. Read-only — nothing is changed. A part with no store wired on this runtime is reported unavailable in a warning, never faked.
+Dry-run preview of a unified rewind to a session turn anchor: exactly what restoring files (the nearest workspace checkpoint), conversation (truncating session state to the anchor), or both would change, and a short-lived single-use confirm token authorizing the matching rewind.apply. Read-only, nothing is changed. A part with no store wired on this runtime is reported unavailable in a warning, never faked.
 
 - Title: `Preview a Unified Rewind`
 - Source: `builtin`
@@ -87274,7 +87274,7 @@ Return configured route bindings.
 
 #### `routes.bindings.update`
 
-Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
+Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)
 
 - Title: `Update Route Binding`
 - Source: `builtin`
@@ -87803,7 +87803,7 @@ Return registered channel and control surfaces.
 
 #### `devices.artifacts.list`
 
-The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.
+The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed, retention is enforced by the store, not by this verb filtering them out of a longer list.
 
 - Title: `List Retained Device Captures`
 - Source: `builtin`
@@ -87907,7 +87907,7 @@ The camera and screen captures still inside their retention window, newest first
 
 #### `devices.artifacts.read`
 
-Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.
+Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone, expired, swept, missing, or corrupted, is an honest 404 naming which of those it was.
 
 - Title: `Read a Retained Device Capture`
 - Source: `builtin`
@@ -88004,7 +88004,7 @@ Return one retained capture's bytes, base64-encoded, for a caller that is not ru
 
 #### `devices.capability.request`
 
-Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.
+Ask one paired device node for one capability, a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz, and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code, it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.
 
 - Title: `Request a Capability From a Paired Device`
 - Source: `builtin`
@@ -88205,7 +88205,7 @@ Ask one paired device node for one capability — a photo, a screen capture, a l
 
 #### `devices.grants.list`
 
-The durable "always allow" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used — plus the recent ledger of grants given, used, revoked, and expired.
+The durable "always allow" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used, plus the recent ledger of grants given, used, revoked, and expired.
 
 - Title: `List Device Capability Grants`
 - Source: `builtin`
@@ -90764,7 +90764,7 @@ Uninstall the GoodVibes platform service.
 
 #### `sessions.changes.get`
 
-Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session's earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY") — an honest "nothing recorded", not an error.
+Return the aggregate workspace file changes a session made, joined over its sessionId-stamped checkpoints: the net diff (files, unified diff, --stat) from the state before the session's earliest checkpoint to its latest. A session with no stamped checkpoints returns checkpointCount:0 with an empty diff (from/to:"EMPTY"), an honest "nothing recorded", not an error.
 
 - Title: `Get Session Workspace Changes`
 - Source: `builtin`
@@ -91301,7 +91301,7 @@ Create a shared session for a surface, route, or web client.
 
 #### `sessions.delete`
 
-Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb — NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.
+Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb, NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.
 
 - Title: `Delete Shared Session`
 - Source: `builtin`
@@ -92450,7 +92450,7 @@ Return metadata for a shared session.
 
 #### `sessions.hosted.attach`
 
-Join a hosted session and receive its transcript so far, so a client that was never connected — or one reconnecting after the daemon restarted — renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. An attachment carries a LEASE — `hostedSessions.attachmentTtlMs`, ten minutes by default, or `leaseMs` for this attachment alone — because a client that crashed or closed its tab never calls detach, and a claim nothing expires would hold a kill-policy session open forever. Calling attach again with the same `clientId` renews it, and a client whose control-plane connection is still open renews automatically, so an attached client watching a long turn in silence is never reaped. When the last attachment lapses the session is treated as detached and its policy decides. ws-only invoke verb; no REST binding.
+Join a hosted session and receive its transcript so far, so a client that was never connected, or one reconnecting after the daemon restarted, renders what it missed instead of an empty screen. A session restored from disk has its loop rebuilt on this call, with a system line in the transcript stating that its in-flight turn did not survive the restart. Live output continues on the `turn` and `tools` event domains, filtered on this session id. Attaching is what keeps a `kill`-policy session alive: the policy is applied when the LAST client detaches. An attachment carries a LEASE, `hostedSessions.attachmentTtlMs`, ten minutes by default, or `leaseMs` for this attachment alone, because a client that crashed or closed its tab never calls detach, and a claim nothing expires would hold a kill-policy session open forever. Calling attach again with the same `clientId` renews it, and a client whose control-plane connection is still open renews automatically, so an attached client watching a long turn in silence is never reaped. When the last attachment lapses the session is treated as detached and its policy decides. ws-only invoke verb; no REST binding.
 
 - Title: `Attach to a Daemon-Hosted Session`
 - Source: `builtin`
@@ -92625,7 +92625,7 @@ Join a hosted session and receive its transcript so far, so a client that was ne
 
 #### `sessions.hosted.create`
 
-Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute — a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn — watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached. ws-only invoke verb; no REST binding.
+Compose a full conversation loop INSIDE the daemon for a workspace: the same orchestrator, tool registry and permission gate a terminal runs, hosted here so the conversation does not depend on the client that started it staying open. `workspaceRoot` must be absolute, a relative path would resolve against the daemon's own directory, which is never what the caller meant. `modelId` is resolved against this daemon's live model registry when given, so an unknown or ambiguous id is refused here rather than at the first turn; omitted, the session follows the daemon's current selection. `detachPolicy` overrides the `hostedSessions.detachPolicy` setting for this session alone. `initialPrompt` is submitted as the first user message and the call does NOT wait for that turn, watch the `turn` and `tools` event domains filtered on the returned session id. Refused with the live count and the setting named when `hostedSessions.maxSessions` is already reached. ws-only invoke verb; no REST binding.
 
 - Title: `Create a Daemon-Hosted Session`
 - Source: `builtin`
@@ -92783,7 +92783,7 @@ Compose a full conversation loop INSIDE the daemon for a workspace: the same orc
 
 #### `sessions.hosted.detach`
 
-Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is — never a guess by the caller. ws-only invoke verb; no REST binding.
+Leave a hosted session. When other clients are still attached, nothing else happens. When this was the LAST client, the effective detach policy decides: `kill` (the default, and what closing a client has always done) terminates the session with the reason `detached`; `survive` leaves it idle and reattachable. The policy is the session's own override when it was created with one and the `hostedSessions.detachPolicy` setting otherwise, and the returned record says which applied and what the session now is, never a guess by the caller. ws-only invoke verb; no REST binding.
 
 - Title: `Detach from a Daemon-Hosted Session`
 - Source: `builtin`
@@ -92926,7 +92926,7 @@ Leave a hosted session. When other clients are still attached, nothing else happ
 
 #### `sessions.hosted.kill`
 
-End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept — terminated, with the reason `killed` — until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done. ws-only invoke verb; no REST binding.
+End a hosted session regardless of who is attached or what its detach policy says: the in-flight turn is interrupted, its loop is taken apart, its workspace floor is released when it was the last session using it, and the record is kept, terminated, with the reason `killed`, until `hostedSessions.terminatedRetentionMs` retires it. Killing an already-terminated session returns that record unchanged rather than reporting an error for work that is already done. ws-only invoke verb; no REST binding.
 
 - Title: `End a Daemon-Hosted Session`
 - Source: `builtin`
@@ -93065,7 +93065,7 @@ End a hosted session regardless of who is attached or what its detach policy say
 
 #### `sessions.hosted.list`
 
-Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set — they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves. ws-only invoke verb; no REST binding.
+Every session this daemon hosts, most recently updated first. Terminated sessions are excluded unless `includeTerminated` is set, they are kept, with the reason they ended, until the retention window retires them, so a session that stopped can be asked about instead of having simply vanished. Each record carries the policy that would apply on the next detach, so a client can show what leaving will do before it leaves. ws-only invoke verb; no REST binding.
 
 - Title: `List Daemon-Hosted Sessions`
 - Source: `builtin`
@@ -93468,7 +93468,7 @@ Cancel a queued shared-session input before it is delivered or spawned.
 
 #### `sessions.inputs.deliver`
 
-A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with — the daemon writes it into the session and delivers it to the channel.
+A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session, where steer/follow-up inputs queue for the surface rather than spawn a daemon executor, closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with, the daemon writes it into the session and delivers it to the channel.
 
 - Title: `Mark Shared Session Input Delivered`
 - Source: `builtin`
@@ -95524,7 +95524,7 @@ Set a session's permission mode to plan, normal, accept-edits, or auto. Emits ru
 
 #### `sessions.queuedMessages.delete`
 
-Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed — deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
+Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed, deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
 
 - Title: `Delete a Queued Mid-Turn Message`
 - Source: `builtin`
@@ -95584,7 +95584,7 @@ Remove a message still waiting in the mid-turn queue so it is never delivered. A
 
 #### `sessions.queuedMessages.edit`
 
-Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable — editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
+Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable, editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.
 
 - Title: `Edit a Queued Mid-Turn Message`
 - Source: `builtin`
@@ -95720,7 +95720,7 @@ List the messages queued behind the current turn (submitted while the model was 
 
 #### `sessions.register`
 
-Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.
+Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it, the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.
 
 - Title: `Register Shared Session`
 - Source: `builtin`
@@ -96179,7 +96179,7 @@ Reopen a previously closed shared session.
 
 #### `sessions.search`
 
-Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default — pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.
+Paginated, filtered query over shared sessions: free-text query (matches id/title), project, kind, surfaceKind, and status. Closed sessions are EXCLUDED by default, pass includeClosed:true to include them, and a returned closed session always carries an honest status:"closed" (never hidden, never relabeled). Cursor pagination returns disjoint pages that union to the full matching set.
 
 - Title: `Search Shared Sessions`
 - Source: `builtin`
@@ -97032,7 +97032,7 @@ Deliver a live steering message to the active agent for a shared session, option
 
 #### `sessions.toolCalls.cancel`
 
-Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured "cancelled by user" tool result the model adapts to in the same turn — distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.
+Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured "cancelled by user" tool result the model adapts to in the same turn, distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.
 
 - Title: `Cancel One In-Flight Tool Call`
 - Source: `builtin`
@@ -97566,7 +97566,7 @@ Return the settings integration snapshot.
 
 #### `skills.create`
 
-Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists — use skills.update to change an existing one.
+Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists, use skills.update to change an existing one.
 
 - Title: `Create Skill`
 - Source: `builtin`
@@ -97697,7 +97697,7 @@ Create a new skill from a name, one-line description, and Markdown body (plus op
 
 #### `skills.delete`
 
-Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed — an honest boolean, never a 200 that pretends a phantom skill was removed.
+Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed, an honest boolean, never a 200 that pretends a phantom skill was removed.
 
 - Title: `Delete Skill`
 - Source: `builtin`
@@ -97845,7 +97845,7 @@ Return one skill in full, including its Markdown body. Returns 404 when no skill
 
 #### `skills.list`
 
-Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here — call skills.get for the one skill you decide to open.
+Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here, call skills.get for the one skill you decide to open.
 
 - Title: `List Skills`
 - Source: `builtin`
@@ -103960,7 +103960,7 @@ Stop a watcher instance.
 
 #### `watchers.update`
 
-Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)
+Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)
 
 - Title: `Update Watcher`
 - Source: `builtin`
@@ -104603,7 +104603,7 @@ Execute a provider-backed web search and return normalized ranked results.
 
 #### `workspaces.registrations.add`
 
-Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400 — coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.
+Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400, coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.
 
 - Title: `Register a Workspace`
 - Source: `builtin`
@@ -104772,7 +104772,7 @@ Return every registered workspace root (coverage flows down each root's subtree)
 
 #### `workspaces.registrations.remove`
 
-Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered — an honest boolean, never a 200 that pretends a phantom root was removed.
+Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered, an honest boolean, never a 200 that pretends a phantom root was removed.
 
 - Title: `Unregister a Workspace`
 - Source: `builtin`
@@ -104824,7 +104824,7 @@ Remove a registered workspace root. Returns { removed: false } when no root with
 
 #### `workspaces.resolve`
 
-Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root's subtree and is inherited through the git worktree→main-repo link — a linked worktree outside any registered root still resolves to the main repo's registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.
+Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root's subtree and is inherited through the git worktree→main-repo link, a linked worktree outside any registered root still resolves to the main repo's registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.
 
 - Title: `Resolve Workspace Coverage`
 - Source: `builtin`
@@ -105460,7 +105460,7 @@ Context compaction and summary events.
 
 #### `runtime.config`
 
-Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value — EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.
+Key-level settings-change notices (CONFIG_KEY_CHANGED), carrying the dotted key, its ownership scope (daemon/client/user) and the new value, EXCEPT for a secret-bearing key, which travels by name only with secret:true and no value field at all. The poll-free counterpart to config.get for a client whose settings live in the daemon: an in-process ConfigManager.subscribe cannot see a write that happened on another machine, so a client without this stream keeps running on whatever it read at startup.
 
 - Title: `config Domain Events`
 - Source: `builtin`
@@ -105580,7 +105580,7 @@ Delivery queue and outcome events.
 
 #### `runtime.fleet`
 
-Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked) — the poll-free counterpart to fleet.snapshot.
+Live process-registry node lifecycle events (started, state-changed, finished, blocked-on-user, unblocked), the poll-free counterpart to fleet.snapshot.
 
 - Title: `fleet Domain Events`
 - Source: `builtin`
@@ -106462,7 +106462,7 @@ Workspace swap lifecycle events (start, complete, refuse).
 
 #### `control.approval_update`
 
-Every approval record transition, pushed the moment the broker records it: an ask RAISED (status pending — this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, or updated in place (a started fix session stamped onto an accepted offer). The payload is the whole `approval` record plus the `createdAt` of the notice, so a subscriber renders the prompt from the event and never needs a follow-up read to draw it. This is the channel that makes approvals.raise usable from a surface that is not in the daemon process: raise returns the pending record and the DECISION arrives here, so a client gets keystroke-fast prompt delivery instead of polling approvals.list on a timer. Domain-tagged `permissions` (gateway-scope-enforcement.ts EVENT_DOMAIN), so a client that opened the stream with ?domains=… must include `permissions` to receive it; a client that opted into no domain narrowing receives it as before. The record is the daemon's, not the subscriber's: several surfaces see the same transition and the daemon remains the single source of the applied result — a surface renders what the record says rather than what it locally decided.
+Every approval record transition, pushed the moment the broker records it: an ask RAISED (status pending, this is the prompt arriving), claimed by a surface, approved, denied, cancelled, expired, or updated in place (a started fix session stamped onto an accepted offer). The payload is the whole `approval` record plus the `createdAt` of the notice, so a subscriber renders the prompt from the event and never needs a follow-up read to draw it. This is the channel that makes approvals.raise usable from a surface that is not in the daemon process: raise returns the pending record and the DECISION arrives here, so a client gets keystroke-fast prompt delivery instead of polling approvals.list on a timer. Domain-tagged `permissions` (gateway-scope-enforcement.ts EVENT_DOMAIN), so a client that opened the stream with ?domains=… must include `permissions` to receive it; a client that opted into no domain narrowing receives it as before. The record is the daemon's, not the subscriber's: several surfaces see the same transition and the daemon remains the single source of the applied result, a surface renders what the record says rather than what it locally decided.
 
 - Title: `Approval Record Update`
 - Source: `builtin`
@@ -106948,7 +106948,7 @@ Keepalive event emitted by the SSE control-plane transport.
 
 #### `control.hosted_session_update`
 
-Every lifecycle transition of a session whose loop runs INSIDE the daemon: created, attached, detached, turn started, turn ended, terminated, and restored after a restart. The payload carries the whole hosted-session record plus the transition name, the client it is about (attach/detach) and a short detail — so a subscriber renders the change from the event and needs no follow-up read. This channel is LIFECYCLE ONLY. The turn itself — streamed tokens, tool calls, tool results, turn transitions — is already on the `turn` and `tools` runtime domains, stamped with the hosted session id, because a hosted session runs the ordinary orchestrator; a client watches those exactly as it does for a local session and filters on the id it was handed. A second copy of that stream is not published here. Domain-tagged `session`, so a client narrowing with ?domains=… must include `session` to receive it. The record is the daemon's: `effectiveDetachPolicy` says what leaving would do right now, and `terminatedReason` says why a session ended — a hosted session never simply disappears.
+Every lifecycle transition of a session whose loop runs INSIDE the daemon: created, attached, detached, turn started, turn ended, terminated, and restored after a restart. The payload carries the whole hosted-session record plus the transition name, the client it is about (attach/detach) and a short detail, so a subscriber renders the change from the event and needs no follow-up read. This channel is LIFECYCLE ONLY. The turn itself, streamed tokens, tool calls, tool results, turn transitions, is already on the `turn` and `tools` runtime domains, stamped with the hosted session id, because a hosted session runs the ordinary orchestrator; a client watches those exactly as it does for a local session and filters on the id it was handed. A second copy of that stream is not published here. Domain-tagged `session`, so a client narrowing with ?domains=… must include `session` to receive it. The record is the daemon's: `effectiveDetachPolicy` says what leaving would do right now, and `terminatedReason` says why a session ended, a hosted session never simply disappears.
 
 - Title: `Hosted Session Lifecycle Update`
 - Source: `builtin`
@@ -107129,7 +107129,7 @@ Initial SSE/WebSocket handshake event emitted after a control-plane subscription
 
 #### `control.session_update`
 
-Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal — the record is gone, not merely closed). Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag control.hosted_session_update carries: both are session lifecycle, so a client that narrows with ?domains=… must include `session` to receive EITHER of them, and one that opted into no narrowing receives both. It is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
+Shared-session lifecycle broadcast. Every session created / closed / deleted / reopened / agent-bound / agent-completed / message-appended / message-forwarded / route-attached and every input & follow-up lifecycle transition is published on the single `session-update` wire event; the specific lifecycle name is the discriminated `payload.event` field. Cross-surface invalidation mapping (webui/TUI): created ⇐ session-created; updated ⇐ session-message-appended / session-agent-completed / session-route-attached / session-reopened; steered ⇐ session-input-delivered / session-message-forwarded; closed ⇐ session-closed; deleted ⇐ session-deleted (a hard removal, the record is gone, not merely closed). Domain-tagged `session` (gateway-scope-enforcement.ts EVENT_DOMAIN), the same tag control.hosted_session_update carries: both are session lifecycle, so a client that narrows with ?domains=… must include `session` to receive EITHER of them, and one that opted into no narrowing receives both. It is dropped entirely when the control-plane-gateway flag is turned off (no phantom buffering).
 
 - Title: `Session Lifecycle Update`
 - Source: `builtin`

@@ -50,4 +50,10 @@ export interface PurchaseRecord {
    */
   readonly merchantRecognised: boolean;
   readonly merchantQualifier: string | null;
+  /**
+   * Whether the owner NAMED this storefront or it was found while browsing.
+   * The purchases wire schema requires it; a ledger row without it cannot say
+   * which safeguard path (taint check vs judge) the purchase went through.
+   */
+  readonly merchantDiscovered: boolean;
 }

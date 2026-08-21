@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GoodVibes Operator API",
-    "version": "2.0.17",
+    "version": "2.0.18",
     "description": "Generated from the operator contract (packages/contracts/artifacts/operator-contract.json). 507 cataloged methods: 435 with dedicated REST bindings, 72 reachable only through the generic invoke endpoint. 0 methods lack typed SDK client IO and are marked with `x-typed-client-io: false` — they are represented honestly, never omitted. Regenerate with `bun run openapi:generate`; drift fails `contracts:check`."
   },
   "servers": [
@@ -299,7 +299,7 @@
       "post": {
         "operationId": "approvals.approve",
         "summary": "Approve Approval",
-        "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval — e.g. the typed answer to a command's terminal prompt — to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.",
+        "description": "Approve a pending approval. Optionally pass selectedHunks (edit-tool approvals only): the daemon filters the approval's own edit list to those hunk indices server-side, so every surface produces identical modified-edit args. Omitting selectedHunks approves the whole request (back-compat). An out-of-range index or a non-edit approval is rejected with a 400. rememberTier generalizes the decision (a generalizing tier persists a durable rule and sweeps queued asks it covers); modifiedArgs carries an argument-modifying approval, e.g. the typed answer to a command's terminal prompt, to the waiting call (selectedHunks supersedes it when both are present). The response's recorded block reports what the broker actually recorded.",
         "tags": [
           "approvals"
         ],
@@ -7724,7 +7724,7 @@
       "patch": {
         "operationId": "automation.jobs.update",
         "summary": "Update Automation Job",
-        "description": "Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
+        "description": "Update a durable automation job. (Renamed from automation.jobs.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)",
         "tags": [
           "automation"
         ],
@@ -11397,7 +11397,7 @@
       "get": {
         "operationId": "automation.runs.list",
         "summary": "List Automation Runs",
-        "description": "Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set) — the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.",
+        "description": "Return automation run history. Without ?limit/?cursor returns { runs: [...] } (backward compatible). With ?limit=N (1–500, default 100) and optional ?cursor=<opaque> returns a PaginatedResponse envelope { items, hasMore, nextCursor? }. Invalid cursors return HTTP 400. Optional ?since=<epoch-ms> returns only runs active on or after that time (by queuedAt, or endedAt when set), the host-side source an away-digest reads to report the failed, missed, completed, and delivered runs since the operator was last present.",
         "tags": [
           "automation"
         ],
@@ -23620,7 +23620,7 @@
       "get": {
         "operationId": "channels.inbox.list",
         "summary": "List Channel Inbox",
-        "description": "Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host's synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers` — including the unconfigured and the failing ones — so a short list is never ambiguous, and `partial` is true whenever a configured provider's items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer's `cursor` watermark; ?provider=<id> narrows to one provider.",
+        "description": "Return the merged inbound message feed (Slack DMs, Discord messages, email threads) from the host's synced provider mirror, newest first. Read-only; no provider write. Every known provider reports its own state in `providers`, including the unconfigured and the failing ones, so a short list is never ambiguous, and `partial` is true whenever a configured provider's items are missing because its last sync failed. Page with ?limit and ?cursor (opaque, from nextCursor); ?since=<epoch-ms> returns only items newer than a previous answer's `cursor` watermark; ?provider=<id> narrows to one provider.",
         "tags": [
           "channels"
         ],
@@ -24696,7 +24696,7 @@
       "delete": {
         "operationId": "channels.profiles.delete",
         "summary": "Unbind Channel Profile",
-        "description": "Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed — an honest boolean, never a phantom removal.",
+        "description": "Remove a channel profile binding. Returns { deleted: false } when no binding for that key existed, an honest boolean, never a phantom removal.",
         "tags": [
           "channels"
         ],
@@ -27916,7 +27916,7 @@
       "post": {
         "operationId": "companion.chat.messages.edit",
         "summary": "Edit Companion Chat Message And Branch",
-        "description": "Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED — retained as history, never deleted — a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.",
+        "description": "Edit a user message and branch the conversation from it. `messageId` (required) is the user message to edit; the edited text is passed as `body` or `content` (as message create accepts), with optional `attachments` referencing artifacts. The original message and everything after it are SUPERSEDED, retained as history, never deleted, a new user message carrying `revisionOf` back to the original is appended, and a fresh turn answers it. Returns the new message id and the superseded ids for honest lineage. Same closed/unknown-session refusals as companion.chat.messages.retry.",
         "tags": [
           "companion"
         ],
@@ -28103,7 +28103,7 @@
       "post": {
         "operationId": "companion.chat.messages.retry",
         "summary": "Regenerate Companion Chat Response",
-        "description": "Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED — kept in the message list and on disk, flagged as retained history — never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.",
+        "description": "Regenerate an assistant response. Optional `messageId` targets a specific assistant message; omitted, the latest assistant response is re-run. The prior response (and any turns after it) is SUPERSEDED, kept in the message list and on disk, flagged as retained history, never deleted, then a fresh turn re-runs from the preceding user message. Returns the superseded message ids so the caller can render the honest lineage. Rejected on a closed session (409 SESSION_CLOSED) or unknown session (404 SESSION_NOT_FOUND), and with an honest machine code (409 NO_ASSISTANT_MESSAGE) when there is nothing to regenerate.",
         "tags": [
           "companion"
         ],
@@ -28187,7 +28187,7 @@
       "post": {
         "operationId": "companion.chat.messages.steer",
         "summary": "Steer Companion Chat (Interrupt And Send)",
-        "description": "Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: \"cancelled\"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: \"queued\"`, answered in order) — steer is the explicit jump-the-line verb.",
+        "description": "Send a message that runs IMMEDIATELY, interrupting the in-flight turn if one is running. The message jumps to the front of the pending-turn queue; the active turn is cancelled through the same finalization path as companion.chat.turns.cancel (any non-empty partial reply is persisted with `deliveryState: \"cancelled\"` and the terminal `turn.cancelled` event reaches every subscriber), then the steered message's turn starts. Messages queued behind an active turn keep their places behind the steer. With no turn running this behaves as an ordinary send. Accepts the same payload as companion.chat.messages.create (`body`/`content`, `attachments`, `metadata`). Returns the new message id, `steered: true`, and `cancelledTurnId` when a turn was interrupted. Ordinary sends posted while a turn is running are QUEUED (transcript-visible immediately with `deliveryState: \"queued\"`, answered in order), steer is the explicit jump-the-line verb.",
         "tags": [
           "companion"
         ],
@@ -28777,7 +28777,7 @@
       "delete": {
         "operationId": "companion.chat.sessions.delete",
         "summary": "Delete Companion Chat Session",
-        "description": "Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store — this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.",
+        "description": "Permanently remove a companion-chat session: the on-disk record file is deleted and the session is dropped from the shared session store, this does NOT merely close it (use companion.chat.sessions.close for a soft close). Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop.",
         "tags": [
           "companion"
         ],
@@ -29325,7 +29325,7 @@
       "post": {
         "operationId": "companion.chat.turns.cancel",
         "summary": "Cancel Companion Chat Turn",
-        "description": "Stop the in-flight turn for a companion chat session — a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: \"cancelled\"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note — later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.",
+        "description": "Stop the in-flight turn for a companion chat session, a true server-side stop: the provider stream is aborted, any non-empty partial reply is persisted to the transcript with an explicit `deliveryState: \"cancelled\"` marker (an honest partial, never disguised as a complete reply) AND committed to the model-facing conversation history with an explicit interruption note, later turns can reason about what the user saw and stopped, which is usually what a follow-up or steer refers to, and the terminal `turn.cancelled` event is published to every subscriber of the session stream so a stop from one client converges on all others. Any announced tool call without a result is closed with a synthetic error `turn.tool_result` before the terminal event. Optional `turnId` guards against cancelling a newer turn a stale stop raced against (409 TURN_MISMATCH). No turn in flight is the benign 404 NO_ACTIVE_TURN (the turn finished before the stop landed). Repeat cancels are idempotent successes. The session stays open; the next message starts a fresh turn normally.",
         "tags": [
           "companion"
         ],
@@ -32332,7 +32332,7 @@
       "get": {
         "operationId": "control.status",
         "summary": "Daemon Status",
-        "description": "Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version — what a person installed, and what the auto-update loop compares against release tags — and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered — exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
+        "description": "Return daemon status and version. THREE version fields, because there are two versions and they are not the same number: `buildVersion` is the running artifact's own release version, what a person installed, and what the auto-update loop compares against release tags, and `platformVersion` is the SDK build it is composed from. `version` carries the build version and exists because every client already reads it; on an embedded daemon that ships no artifact of its own, all three are the platform build. Pass receipts=consume to also receive undelivered daemon receipts (update/crash/migration notices) and mark them delivered, exactly once across all consuming readers. Without the flag no receipts are returned or consumed, so identity probes and keepalives never eat them.",
         "tags": [
           "control-plane"
         ],
@@ -32862,7 +32862,7 @@
       "get": {
         "operationId": "email.inbox.list",
         "summary": "List Email Inbox",
-        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so — an omitted message is not by itself evidence that it was deleted.",
+        "description": "Return inbox message summaries fetched live from the configured IMAP account, newest first (ordered by server-assigned UID, never by the sender-written Date header). Read-only (EXAMINE / BODY.PEEK); never marks messages read. When the server answered for a message and the daemon could not read the answer, the page is short and `unreadable` says so, an omitted message is not by itself evidence that it was deleted.",
         "tags": [
           "email"
         ],
@@ -33170,7 +33170,7 @@
       "get": {
         "operationId": "fleet.graph.get",
         "summary": "Get Workstream Task Graph",
-        "description": "The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this — the fleet/observability idiom. 404 when the workstream is unknown to this daemon.",
+        "description": "The dependency-graph view of one workstream: nodes (id, title, state, cluster, files, merge state, blocked reason, orphaned flag, deepest-remaining-path depth, stalled tell, agent), edges (from depends on to), and the elastic-pool state (ready/running counts, at-cap, cap key + size, any spawn refusal). Surfaces render the task graph under the chain from this, the fleet/observability idiom. 404 when the workstream is unknown to this daemon.",
         "tags": [
           "fleet"
         ],
@@ -33806,7 +33806,7 @@
       "post": {
         "operationId": "power.keepAwake.set",
         "summary": "Set the Owner Keep-Awake Toggle",
-        "description": "Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options — the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.",
+        "description": "Turn the owner keep-awake toggle on or off: a daemon-held sleep inhibitor INDEPENDENT of work state, surviving surface closes, persisted as power.keepAwake. Covers idle + sleep + lid-switch classes where grantable; the returned state names any refused class honestly. No timers, no AC-only sub-options, the always-visible chip is the safety mechanism. Emits runtime.ops OPS_POWER_STATE_CHANGED so every attached surface updates its chip.",
         "tags": [
           "health"
         ],
@@ -33994,7 +33994,7 @@
       "get": {
         "operationId": "power.status.get",
         "summary": "Get Sleep-Ownership State",
-        "description": "The host sleep-ownership state: whether the automatic work inhibitor is held (and the live \"held because X\" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused — a refused lid-switch block is stated honestly (\"idle sleep blocked; lid-close suspend is controlled by your OS here\"), never papered over. Surfaces render the always-visible \"sleep disabled\" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.",
+        "description": "The host sleep-ownership state: whether the automatic work inhibitor is held (and the live \"held because X\" reasons, cap, and expiry), and the owner keep-awake toggle with the classes the OS actually granted vs refused, a refused lid-switch block is stated honestly (\"idle sleep blocked; lid-close suspend is controlled by your OS here\"), never papered over. Surfaces render the always-visible \"sleep disabled\" chip from this state and the runtime.ops OPS_POWER_STATE_CHANGED event.",
         "tags": [
           "health"
         ],
@@ -34163,7 +34163,7 @@
       "post": {
         "operationId": "voice.local.install",
         "summary": "Install the Managed Local-Voice Runtime",
-        "description": "One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install — never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
+        "description": "One-act setup: download + checksum-verify the piper TTS engine, a default voice, and (where a pinned goodvibes-built bundle exists) the whisper.cpp STT engine with its default model into the goodvibes-managed directory, then point the voice.local.* config keys at the managed install, never overwriting a key you already set to a custom value (skipped keys are reported). After this, local TTS works with zero further configuration. Downloads only when you ask; a failed or checksum-mismatched download keeps nothing.",
         "tags": [
           "health"
         ],
@@ -34375,7 +34375,7 @@
       "get": {
         "operationId": "voice.local.status",
         "summary": "Get Managed Local-Voice Runtime State",
-        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress — the live per-component progress (phase, byte sizes where known) of that run — so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.",
+        "description": "Whether the managed local voice runtime (piper TTS + a default voice) is installed: not-provisioned (with a size-labeled offer), partial, provisioned, or unsupported-platform. STT (whisper.cpp) reports its own managed state: goodvibes builds and pins the whisper.cpp bundle per platform (no official prebuilt exists; provisioning never compiles on your machine), so where a pinned bundle exists STT provisions like TTS, and elsewhere it reports unsupported honestly. While a voice.local.install run is active, the response also carries installInProgress, the live per-component progress (phase, byte sizes where known) of that run, so surfaces poll this read during the install to render real progress; the section is absent when no install is running. Read-only.",
         "tags": [
           "health"
         ],
@@ -34570,7 +34570,7 @@
       "get": {
         "operationId": "voice.wake.model.get",
         "summary": "Read Wake-Word Model Bytes",
-        "description": "Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself — a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Both classifier formats are served — \"classifier\" is the onnx build a browser tab loads, \"tflite\" the same classifier for a runtime that cannot — as is the speech gate voice.wake.vadThreshold runs (\"vad\"), and so is the attribution NOTICE of each redistributable artifact (\"notice\" for the classifier, \"embedding-notice\" for the front end, \"vad-notice\" for the gate), because a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it there, and voice.wake.provision is the recovery path when it is missing.",
+        "description": "Read one provisioned wake artifact in bounded chunks, for a surface that cannot fetch it itself, a browser tab, whose cross-origin fetch of the release asset is refused because that asset answers with no CORS header. Each chunk carries the offset, the whole artifact's size, and its PINNED sha256, so a client reassembles the file and verifies it against the pin: a truncated transfer fails at the consumer instead of loading as a model that silently never detects. Both classifier formats are served, \"classifier\" is the onnx build a browser tab loads, \"tflite\" the same classifier for a runtime that cannot, as is the speech gate voice.wake.vadThreshold runs (\"vad\"), and so is the attribution NOTICE of each redistributable artifact (\"notice\" for the classifier, \"embedding-notice\" for the front end, \"vad-notice\" for the gate), because a client that can fetch the bytes but not the NOTICE cannot satisfy the terms it received them under. Serves what is on disk and does not download; installation puts it there, and voice.wake.provision is the recovery path when it is missing.",
         "tags": [
           "health"
         ],
@@ -34681,7 +34681,7 @@
       "post": {
         "operationId": "voice.wake.provision",
         "summary": "Download the Wake-Word Models",
-        "description": "Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into the goodvibes-managed directory — about 6.1 MB. Installing goodvibes already does this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once — or a boot attempt and a user asking — join one download instead of racing for the same files.",
+        "description": "Download and checksum-verify the pinned wake-word classifier in both runtime formats (onnx and tflite), the speech-embedding front end, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE of each, into the goodvibes-managed directory, about 6.1 MB. Installing goodvibes already does this, and a daemon retries at boot, so this verb is the RECOVERY path: an install that was offline, an artifact that failed verification, or a re-provision after the pinned model changes. Resumable by re-running: an artifact that already matches its pin is skipped, and one that is present but fails verification is replaced rather than used. A failed or mismatched download keeps nothing at the destination. Single-flight: two surfaces asking at once, or a boot attempt and a user asking, join one download instead of racing for the same files.",
         "tags": [
           "health"
         ],
@@ -34825,7 +34825,7 @@
       "get": {
         "operationId": "voice.wake.status",
         "summary": "Get Wake-Word Model State",
-        "description": "Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the \"hey goodvibes\" classifier, the tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts (the classifier's, the front end's and the gate's). Each reports verified, corrupt (present but failing its checksum — a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag covers the classifier, the front end and both of THEIR NOTICEs — an artifact whose attribution is missing is not one this daemon may serve — and excludes two things: the tflite twin, which nothing here loads, so a host missing just that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults to 0 and the detector runs without it. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.",
+        "description": "Whether the pinned wake-word artifacts are on disk and VERIFIED BY CONTENT: the \"hey goodvibes\" classifier, the tflite form of the same classifier, the speech-embedding front end the classifier sits behind, the speech gate voice.wake.vadThreshold runs, and the attribution NOTICE belonging to each of the three redistributable artifacts (the classifier's, the front end's and the gate's). Each reports verified, corrupt (present but failing its checksum, a truncated or swapped file, distinct from missing) and its byte size, with the total a fresh provision would download. Installing goodvibes provisions these, and a daemon retries at boot whatever the install could not fetch, so on a normal machine this reads ready without anyone having run a setup command; an offline install reports not-provisioned here until it is retried. The overall ready flag covers the classifier, the front end and both of THEIR NOTICEs, an artifact whose attribution is missing is not one this daemon may serve, and excludes two things: the tflite twin, which nothing here loads, so a host missing just that can still detect; and the speech gate, reported as vadReady instead, because voice.wake.vadThreshold defaults to 0 and the detector runs without it. Also restates that the model's published recall figures are measured on synthesised speech only, which any surface describing the model must carry. Never downloads. Read-only.",
         "tags": [
           "health"
         ],
@@ -64574,7 +64574,7 @@
       "get": {
         "operationId": "mcp.servers.reveal",
         "summary": "MCP Servers Reveal",
-        "description": "Return effective MCP config with environment VALUES included, not just envKeys. Admin only — the redacted mcp.config.get view is what every other caller should use.",
+        "description": "Return effective MCP config with environment VALUES included, not just envKeys. Admin only, the redacted mcp.config.get view is what every other caller should use.",
         "tags": [
           "mcp"
         ],
@@ -67518,7 +67518,7 @@
       "get": {
         "operationId": "memory.consolidation.receipts",
         "summary": "Memory Consolidation Receipts",
-        "description": "Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates) — the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.",
+        "description": "Return the retained memory-consolidation run receipts (what each idle/scheduled pass scanned, merged, archived, decayed) and the pending judgment PROPOSALS they carry (contradictions, cross-scope duplicates), the records a proposal references are already marked into the review queue, and a human resolves them through the confirmation-gated review route. A runtime without the consolidation scheduler answers an honest 501.",
         "tags": [
           "memory"
         ],
@@ -68113,7 +68113,7 @@
       "get": {
         "operationId": "memory.projections.get",
         "summary": "Get Memory Projection",
-        "description": "Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id — a session-scope or unknown id is an honest miss, never an empty projection.",
+        "description": "Return one standing record's projection by id: its metadata entry plus the exact markdown the file projection would write (front-matter + content, with the live temporal status labelled). Returns 404 when no standing (project/team) record has that id, a session-scope or unknown id is an honest miss, never an empty projection.",
         "tags": [
           "memory"
         ],
@@ -68247,7 +68247,7 @@
       "get": {
         "operationId": "memory.projections.list",
         "summary": "List Memory Projections",
-        "description": "Return the live projection of standing (project/team-scope) memory records — one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:\"expired\" rather than silently dropped.",
+        "description": "Return the live projection of standing (project/team-scope) memory records, one metadata entry per record (id, filename, scope, class, summary, tags, confidence, review state, temporal validity + status), oldest first. This is the read view over the same standing memory the file projection writes as markdown; session-scope records are excluded (they are not standing memory). Computed live from the store, never read from disk, so it always matches the current records. An expired record is present with status:\"expired\" rather than silently dropped.",
         "tags": [
           "memory"
         ],
@@ -68625,7 +68625,7 @@
       "delete": {
         "operationId": "memory.records.delete",
         "summary": "Delete Memory Record",
-        "description": "Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed — an honest boolean, never a 200 that pretends a phantom row was removed.",
+        "description": "Permanently delete a memory record and its links from the canonical store. Delete means delete: the record is removed from the store and the semantic index, not merely flagged. Returns { deleted: false } when no record with that id existed, an honest boolean, never a 200 that pretends a phantom row was removed.",
         "tags": [
           "memory"
         ],
@@ -69401,7 +69401,7 @@
       "post": {
         "operationId": "memory.records.links.add",
         "summary": "Link Memory Records",
-        "description": "Create a directed relation (e.g. \"supersedes\", \"caused\") from the path record to a target record. Returns 404 when either endpoint does not exist — never a 200 that pretends a link was made between records that do not both exist.",
+        "description": "Create a directed relation (e.g. \"supersedes\", \"caused\") from the path record to a target record. Returns 404 when either endpoint does not exist, never a 200 that pretends a link was made between records that do not both exist.",
         "tags": [
           "memory"
         ],
@@ -69500,7 +69500,7 @@
       "get": {
         "operationId": "memory.records.links.list",
         "summary": "List Memory Record Links",
-        "description": "Return every link where the record is the source or the target. Returns 404 when no record with that id exists — an honest not-found, distinct from a record that exists but has no links (an empty array).",
+        "description": "Return every link where the record is the source or the target. Returns 404 when no record with that id exists, an honest not-found, distinct from a record that exists but has no links (an empty array).",
         "tags": [
           "memory"
         ],
@@ -70375,7 +70375,7 @@
       "post": {
         "operationId": "memory.records.update",
         "summary": "Update Memory Record",
-        "description": "Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself — e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.",
+        "description": "Edit a record's content fields (scope, summary, detail, tags) and its temporal validity window (validFrom, validUntil) in the canonical store. This is distinct from the review update: it changes the record itself, e.g. moving scope project→team promotes a record to the shared surface. For validFrom/validUntil a number sets the bound, null clears it, and an omitted field leaves it unchanged, so a proposal that changes only the window can be applied. Returns 404 when no record with that id exists.",
         "tags": [
           "memory"
         ],
@@ -71054,7 +71054,7 @@
       "post": {
         "operationId": "occasions.acknowledge",
         "summary": "Acknowledge An Occasion",
-        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it — under acknowledged[] rather than in the nudge — and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.",
+        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.",
         "tags": [
           "occasions"
         ],
@@ -71142,7 +71142,7 @@
       "post": {
         "operationId": "occasions.answer",
         "summary": "Answer An Occasion Nudge",
-        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline — it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only \"I have this in hand\" without ending the question, use occasions.acknowledge instead.",
+        "description": "Record yes, no or later for one occurrence. A no goes silent for the rest of this cycle and expires with the date, so next year asks fresh carrying no memory of the refusal. A later is NOT a decline, it comes back roughly halfway to the date. A yes on a gift-giving occasion opens the short interview and returns its first question. All three RESOLVE the open item and remove it; to say only \"I have this in hand\" without ending the question, use occasions.acknowledge instead.",
         "tags": [
           "occasions"
         ],
@@ -71446,7 +71446,7 @@
       "post": {
         "operationId": "occasions.conflict.resolve",
         "summary": "Close A Date Conflict",
-        "description": "Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically — two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.",
+        "description": "Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.",
         "tags": [
           "occasions"
         ],
@@ -71605,7 +71605,7 @@
       "post": {
         "operationId": "occasions.interview.answer",
         "summary": "Answer A Gift Interview Question",
-        "description": "Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift — that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.",
+        "description": "Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift, that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.",
         "tags": [
           "occasions"
         ],
@@ -72365,7 +72365,7 @@
       "get": {
         "operationId": "occasions.pending",
         "summary": "Pull Outstanding Occasions",
-        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge — it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
+        "description": "Return everything unresolved, without delivering anything: the batched nudge, any date conflict still open, and any interview left mid-thread. This is how a surface that is not a push destination receives a nudge, it pulls at the start of a turn rather than being pushed at, and a stored date is the prior scheduling that permits raising something unprompted. A nudge a push has already landed on the agent is left out while the agent is a configured push destination, so the push and the pull cannot raise the same thing twice; an item no push has ever landed there is still returned, so a missing sender or a failed send loses nothing. The nudge names the occasion and the person and NEVER the date: proximity is a word, not a count of days.",
         "tags": [
           "occasions"
         ],
@@ -72772,7 +72772,7 @@
       "get": {
         "operationId": "occasions.plans.list",
         "summary": "List Plans",
-        "description": "Return every plan declared in the owner profile — a dated range with attributes — plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.",
+        "description": "Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.",
         "tags": [
           "occasions"
         ],
@@ -73051,7 +73051,7 @@
       "post": {
         "operationId": "occasions.propose",
         "summary": "Propose An Important Date",
-        "description": "Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath — the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.",
+        "description": "Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.",
         "tags": [
           "occasions"
         ],
@@ -73168,7 +73168,7 @@
       "post": {
         "operationId": "occasions.remove",
         "summary": "Remove An Important Date",
-        "description": "Remove one occasion and every record the machine kept against it — answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.",
+        "description": "Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.",
         "tags": [
           "occasions"
         ],
@@ -73262,7 +73262,7 @@
       "get": {
         "operationId": "occasions.state",
         "summary": "Occasions State Disclosure",
-        "description": "What the machine-owned store is holding — counts of answers, gift records, open items, interviews and calendar mirrors — plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.",
+        "description": "What the machine-owned store is holding, counts of answers, gift records, open items, interviews and calendar mirrors, plus what the last housekeeping pass removed and why, and whether the file was found unreadable. Counts and reasons only: no answer, no gift and no date is returned, which is what makes this safe in a support bundle.",
         "tags": [
           "occasions"
         ],
@@ -73384,7 +73384,7 @@
       "post": {
         "operationId": "occasions.sweep",
         "summary": "Run The Approach Sweep Now",
-        "description": "Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel — a comma-separated list, so Telegram and the agent both get it — and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:\"quiet-hours\" or hold:\"disabled\" when it deliberately said nothing — nothing is dropped, it waits.",
+        "description": "Run one pass immediately: reap expired and orphaned state, find the occasions entering their lead window, batch them into a single message, mirror to the calendar if that is on, and deliver. Delivery goes to every destination in occasions.nudgeChannel, a comma-separated list, so Telegram and the agent both get it, and each is attempted independently, with deliveries[] naming per destination what landed and what did not. Housekeeping runs first and unconditionally, so a machine with nudging turned off still reaps. Returns hold:\"quiet-hours\" or hold:\"disabled\" when it deliberately said nothing, nothing is dropped, it waits.",
         "tags": [
           "occasions"
         ],
@@ -73812,7 +73812,7 @@
       "get": {
         "operationId": "payments.budget.status",
         "summary": "Payment Budget Status",
-        "description": "Today's spending pools: the daily item budget, the separate overage budget that covers only unavoidable charges (tax, mandatory fees, and the delivery option actually used), and the tolerance allowance. Each reports its limit, what today has spent, what purchases in flight are holding, and what is left. Includes the calendar day and the timezone it was computed in — the day resets at midnight in daemon.timezone, UTC when unset — and whether this node is the one currently allowed to spend. Totals are recomputed from each spend record's UTC instant rather than counted, so changing the timezone cannot hand back a spent budget.",
+        "description": "Today's spending pools: the daily item budget, the separate overage budget that covers only unavoidable charges (tax, mandatory fees, and the delivery option actually used), and the tolerance allowance. Each reports its limit, what today has spent, what purchases in flight are holding, and what is left. Includes the calendar day and the timezone it was computed in, the day resets at midnight in daemon.timezone, UTC when unset, and whether this node is the one currently allowed to spend. Totals are recomputed from each spend record's UTC instant rather than counted, so changing the timezone cannot hand back a spent budget.",
         "tags": [
           "payments"
         ],
@@ -74210,7 +74210,7 @@
       "delete": {
         "operationId": "payments.cards.delete",
         "summary": "Remove a Payment Card",
-        "description": "Delete a card: its config metadata and every secret derived from its config path, reporting how many secret entries were cleared so a partial deletion is visible rather than silent. Deleting the default card leaves payments.defaultCardId empty, which refuses purchases until another card is chosen — the safe direction.",
+        "description": "Delete a card: its config metadata and every secret derived from its config path, reporting how many secret entries were cleared so a partial deletion is visible rather than silent. Deleting the default card leaves payments.defaultCardId empty, which refuses purchases until another card is chosen, the safe direction.",
         "tags": [
           "payments"
         ],
@@ -74271,7 +74271,7 @@
       "post": {
         "operationId": "payments.checkout.begin",
         "summary": "Buy What Is In This Checkout",
-        "description": "Run a purchase against an open browser page, end to end: the caller reports the checkout's line items, tax, fees and delivery options AS STRINGS plus the refs of the card, address, delivery and place-order controls, and the daemon does the rest. It parses every amount into integer minor units with its own parser (refusing anything ambiguous rather than guessing), checks the cart against what was actually asked for, refuses a recurring charge, runs the taint gate, applies the daily item budget, the per-purchase ceiling and the overage pool, walks the shipping ladder down one rung at a time when the pool cannot cover the preferred tier, sends ONE notice to the configured command-authority channels and runs the window — above budget an approval where silence denies, within budget a veto where silence proceeds — then fills the stored shipping and billing addresses, types the stored card, submits once, records the purchase, debits the budget and reports the completed purchase. Nothing here knows any merchant's markup: the caller identifies the controls on whatever page it is looking at. Every number the owner is shown is re-rendered from the integers this daemon parsed, never from merchant text, and no response field can carry card material.",
+        "description": "Run a purchase against an open browser page, end to end: the caller reports the checkout's line items, tax, fees and delivery options AS STRINGS plus the refs of the card, address, delivery and place-order controls, and the daemon does the rest. It parses every amount into integer minor units with its own parser (refusing anything ambiguous rather than guessing), checks the cart against what was actually asked for, refuses a recurring charge, runs the taint gate, applies the daily item budget, the per-purchase ceiling and the overage pool, walks the shipping ladder down one rung at a time when the pool cannot cover the preferred tier, sends ONE notice to the configured command-authority channels and runs the window, above budget an approval where silence denies, within budget a veto where silence proceeds, then fills the stored shipping and billing addresses, types the stored card, submits once, records the purchase, debits the budget and reports the completed purchase. Nothing here knows any merchant's markup: the caller identifies the controls on whatever page it is looking at. Every number the owner is shown is re-rendered from the integers this daemon parsed, never from merchant text, and no response field can carry card material.",
         "tags": [
           "payments"
         ],
@@ -74624,7 +74624,7 @@
       "post": {
         "operationId": "payments.checkout.fillCard",
         "summary": "Fill the Card into a Checkout",
-        "description": "Have the daemon type the stored card into the payment fields of an open browser page. Takes the browser session, the page, and a list of {field, ref} targets naming where each part of the card goes — the caller identifies the fields on whatever checkout it is looking at, so the daemon needs no knowledge of any merchant. The response is the list of field NAMES that were filled plus a boolean; it never carries the value, its length, or a masked form, and a failure names the field that did not accept input rather than what was typed into it. Refused unless a purchase decision is already in flight on that exact page and the page is still on the registrable domain the purchase was decided against, so the card is typed as part of an approved checkout or not at all. Also refused when the browser has no card-material redaction installed, because a snapshot taken afterwards would otherwise hand back what was just typed.",
+        "description": "Have the daemon type the stored card into the payment fields of an open browser page. Takes the browser session, the page, and a list of {field, ref} targets naming where each part of the card goes, the caller identifies the fields on whatever checkout it is looking at, so the daemon needs no knowledge of any merchant. The response is the list of field NAMES that were filled plus a boolean; it never carries the value, its length, or a masked form, and a failure names the field that did not accept input rather than what was typed into it. Refused unless a purchase decision is already in flight on that exact page and the page is still on the registrable domain the purchase was decided against, so the card is typed as part of an approved checkout or not at all. Also refused when the browser has no card-material redaction installed, because a snapshot taken afterwards would otherwise hand back what was just typed.",
         "tags": [
           "payments"
         ],
@@ -74754,7 +74754,7 @@
       "get": {
         "operationId": "payments.purchases.list",
         "summary": "List Purchases",
-        "description": "The purchase audit ledger: what was bought, from which merchant registrable domain, how much (item, tax, fees and delivery separately), which budget pool each part drew on, which delivery tier was requested and which was actually used, whether the shipping ladder stepped it down, which window ran and how it ended, which command-authority channel answered, and the outcome. Reconcilable against a card statement. Never contains a card number, expiry or CVV. A refund is recorded here for reconciliation and credits no pool — a refund on day five refilling day five would be permission to buy again that nobody granted.",
+        "description": "The purchase audit ledger: what was bought, from which merchant registrable domain, how much (item, tax, fees and delivery separately), which budget pool each part drew on, which delivery tier was requested and which was actually used, whether the shipping ladder stepped it down, which window ran and how it ended, which command-authority channel answered, and the outcome. Reconcilable against a card statement. Never contains a card number, expiry or CVV. A refund is recorded here for reconciliation and credits no pool, a refund on day five refilling day five would be permission to buy again that nobody granted.",
         "tags": [
           "payments"
         ],
@@ -75296,7 +75296,7 @@
       "delete": {
         "operationId": "principals.delete",
         "summary": "Delete Principal",
-        "description": "Permanently delete a principal. Returns { deleted: false } when no principal with that id existed — an honest boolean, never a 200 that pretends a phantom principal was removed.",
+        "description": "Permanently delete a principal. Returns { deleted: false } when no principal with that id existed, an honest boolean, never a 200 that pretends a phantom principal was removed.",
         "tags": [
           "principals"
         ],
@@ -75483,7 +75483,7 @@
       "post": {
         "operationId": "principals.resolve",
         "summary": "Resolve Sender Identity",
-        "description": "Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false — the registry never guesses.",
+        "description": "Resolve a channel-specific sender identity ({channel, value}) to the named principal it belongs to. An unmapped identity resolves to the shared unknown principal with known:false, the registry never guesses.",
         "tags": [
           "principals"
         ],
@@ -75969,7 +75969,7 @@
       "post": {
         "operationId": "profile.forget",
         "summary": "Forget Profile Line",
-        "description": "Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window — delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.",
+        "description": "Delete a mechanical field and every retained history comment for it, or one prose line addressed by its section plus its exact text. Never by line position: the owner edits this file himself, so an index taken from an earlier read may name a different line by the time the delete arrives. Text that no longer matches removes nothing and says so, rather than deleting the nearest thing. No tombstone, no deleted flag, no retention window, delete means delete. Forgetting something that was not there reports that honestly instead of returning success. Authority-gated exactly like a write: an injection that cannot add a fact must not be able to remove one.",
         "tags": [
           "profile"
         ],
@@ -76805,7 +76805,7 @@
       "get": {
         "operationId": "profile.status",
         "summary": "Owner Profile Status",
-        "description": "Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value — that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.",
+        "description": "Diagnostics for the profile: whether it loaded, the file path, the section names, line/field/prose counts, and every mechanical value that did not validate WITH ITS REASON. It never returns a value, that is what makes it safe in a support bundle, and it is asserted by test. An unreadable file reports unavailable with the reason rather than an empty profile.",
         "tags": [
           "profile"
         ],
@@ -77010,7 +77010,7 @@
       "get": {
         "operationId": "models.current.get",
         "summary": "Current Model",
-        "description": "The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected — which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.",
+        "description": "The model this daemon would use for a turn right now, with whether its provider is actually configured and by which authentication route. `model` is null when nothing is selected, which is a real state, not an error, and a caller rendering a picker needs to tell it from a selection whose provider has lost its credentials.",
         "tags": [
           "providers"
         ],
@@ -77162,7 +77162,7 @@
       "patch": {
         "operationId": "models.current.set",
         "summary": "Switch the Current Model",
-        "description": "Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for — a caller must not have to guess which of the two happened.",
+        "description": "Switch the daemon's current model live, by the registry key `models.list` returns. The switch applies to the next turn on every surface this daemon serves and is persisted, so it survives a restart; `persisted` says whether the write to settings succeeded. An unknown key is refused with MODEL_NOT_FOUND and a provider with no usable credentials with PROVIDER_NOT_CONFIGURED, naming the environment variables it looked for, a caller must not have to guess which of the two happened.",
         "tags": [
           "providers"
         ],
@@ -78555,7 +78555,7 @@
       "post": {
         "operationId": "stepup.credentials.register",
         "summary": "Register Step-up Credential",
-        "description": "Store a WebAuthn (passkey) credential for relay step-up — its credentialId, COSE public key, and starting signature counter — and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).",
+        "description": "Store a WebAuthn (passkey) credential for relay step-up, its credentialId, COSE public key, and starting signature counter, and set the deployment policy (relying-party id, allowed origins, user-verification requirement). Admin/local-only: registering a step-up credential is itself a sensitive act. Self-hosted deployments register the credential directly ('none' attestation).",
         "tags": [
           "relay"
         ],
@@ -83209,7 +83209,7 @@
       "patch": {
         "operationId": "routes.bindings.update",
         "summary": "Update Route Binding",
-        "description": "Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
+        "description": "Update an existing route binding. (Renamed from routes.bindings.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)",
         "tags": [
           "routes"
         ],
@@ -83764,7 +83764,7 @@
       "get": {
         "operationId": "devices.artifacts.list",
         "summary": "List Retained Device Captures",
-        "description": "The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed — retention is enforced by the store, not by this verb filtering them out of a longer list.",
+        "description": "The camera and screen captures still inside their retention window, newest first, with when each was captured, when it will be deleted, and the reason the request stated. Expired captures are never listed, retention is enforced by the store, not by this verb filtering them out of a longer list.",
         "tags": [
           "runtime"
         ],
@@ -83881,7 +83881,7 @@
       "get": {
         "operationId": "devices.artifacts.read",
         "summary": "Read a Retained Device Capture",
-        "description": "Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone — expired, swept, missing, or corrupted — is an honest 404 naming which of those it was.",
+        "description": "Return one retained capture's bytes, base64-encoded, for a caller that is not running on the daemon host and so cannot open the file itself. The store re-hashes the bytes against the digest recorded when the capture was retained and refuses to serve a mismatch, so a torn or half-written file is never handed back as if it were the picture that was taken. A capture that is gone, expired, swept, missing, or corrupted, is an honest 404 naming which of those it was.",
         "tags": [
           "runtime"
         ],
@@ -83983,7 +83983,7 @@
       "post": {
         "operationId": "devices.capability.request",
         "summary": "Request a Capability From a Paired Device",
-        "description": "Ask one paired device node for one capability — a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz — and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code — it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.",
+        "description": "Ask one paired device node for one capability, a photo, a screen capture, a location fix, its clipboard, a notification, a link to open, a buzz, and return what came back. The reason is required and is shown VERBATIM on the confirmation prompt, so the person deciding sees what the caller said it was for. Every gate lives in the daemon-owned device runtime and this verb re-decides none of them: a durable grant is re-read from disk (never cached), a request with no grant asks the person on whatever surface they are looking at, a capability turned off by configuration is refused with the configuration key that turned it off, and a capture is retained under the configured retention window and disclosed. A refusal is returned as ok:false with the reason and a machine-readable refusal code, it is an answer, not an error. A capability that produces a capture returns an artifact REFERENCE; fetch the bytes with devices.artifacts.read.",
         "tags": [
           "runtime"
         ],
@@ -84198,7 +84198,7 @@
       "get": {
         "operationId": "devices.grants.list",
         "summary": "List Device Capability Grants",
-        "description": "The durable \"always allow\" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used — plus the recent ledger of grants given, used, revoked, and expired.",
+        "description": "The durable \"always allow\" grants a person gave, per capability and per device, with when each was granted, when it expires, and how often it has been used, plus the recent ledger of grants given, used, revoked, and expired.",
         "tags": [
           "runtime"
         ],
@@ -87578,7 +87578,7 @@
       "delete": {
         "operationId": "sessions.delete",
         "summary": "Delete Shared Session",
-        "description": "Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb — NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.",
+        "description": "Permanently remove a shared session record and its queued inputs/messages from the home-scoped store. A distinct, explicit hard-delete verb, NEVER triggered by close; closed sessions stay listable (includeClosed) and deletionRetentionMs semantics for non-deleted records are untouched. Requires the session to already be closed: deleting a still-active session is rejected with 409 SESSION_ACTIVE (close it, then delete). An unknown or already-deleted id is a 404 SESSION_NOT_FOUND, never a 200-noop. Emits control.session_update (session-deleted) so subscribers drop the row live.",
         "tags": [
           "sessions"
         ],
@@ -89079,7 +89079,7 @@
       "post": {
         "operationId": "sessions.inputs.deliver",
         "summary": "Mark Shared Session Input Delivered",
-        "description": "A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session — where steer/follow-up inputs queue for the surface rather than spawn a daemon executor — closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with — the daemon writes it into the session and delivers it to the channel.",
+        "description": "A live registered surface reports that it collected a queued input (moves it to `delivered`) or finished acting on it (`consumed:true` moves it to `completed`). This is how a surface-managed session, where steer/follow-up inputs queue for the surface rather than spawn a daemon executor, closes the input lifecycle honestly. Only queued/delivered inputs advance; others are returned unchanged. `agentId` names the agent the surface is running for this input: it binds the reply so a message that arrived over a channel gets its answer routed back to that conversation, the same binding the daemon makes for the executors it spawns itself. `answer` (sent with `consumed:true`, optionally with `status`) is the output that agent finished with, the daemon writes it into the session and delivers it to the channel.",
         "tags": [
           "sessions"
         ],
@@ -91044,7 +91044,7 @@
       "delete": {
         "operationId": "sessions.queuedMessages.delete",
         "summary": "Delete a Queued Mid-Turn Message",
-        "description": "Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed — deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "description": "Remove a message still waiting in the mid-turn queue so it is never delivered. A message already delivered to the model cannot be removed, deleting it is a 404 MESSAGE_NOT_QUEUED. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
         "tags": [
           "sessions"
         ],
@@ -91111,7 +91111,7 @@
       "post": {
         "operationId": "sessions.queuedMessages.edit",
         "summary": "Edit a Queued Mid-Turn Message",
-        "description": "Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable — editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
+        "description": "Replace the text of a message still waiting in the mid-turn queue. A message already delivered to the model is immutable, editing it is a 404 MESSAGE_NOT_QUEUED. Editing replaces any multimodal content with the new plain text. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL.",
         "tags": [
           "sessions"
         ],
@@ -91284,7 +91284,7 @@
       "post": {
         "operationId": "sessions.register",
         "summary": "Register Shared Session",
-        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it — the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
+        "description": "Idempotently register (or heartbeat) a session keyed on a caller-supplied id, carrying its kind, project, and participant identity. Re-calling with the same id advances the participant lastSeenAt (heartbeat). Registering against a CLOSED session does NOT silently reopen it, the heartbeat is recorded and the still-closed record is returned with reopened=false and conflict={status:closed}; pass reopen=true to reopen. A titled session is never renamed by the heartbeat. An unknown kind is rejected (400), not coerced. Prefer this over sessions.create for external runtimes that own their session id.",
         "tags": [
           "sessions"
         ],
@@ -92434,7 +92434,7 @@
       "post": {
         "operationId": "sessions.toolCalls.cancel",
         "summary": "Cancel One In-Flight Tool Call",
-        "description": "Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured \"cancelled by user\" tool result the model adapts to in the same turn — distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.",
+        "description": "Cancel a single running tool call by its callId, leaving the turn and any other running calls untouched. The cancelled call settles as a structured \"cancelled by user\" tool result the model adapts to in the same turn, distinct from a whole-turn interrupt. Only the daemon's live local runtime session is controllable; any other session id is a 404 SESSION_NOT_LOCAL, and an unknown or already-settled callId is a 404 TOOL_CALL_NOT_RUNNING.",
         "tags": [
           "sessions"
         ],
@@ -93000,7 +93000,7 @@
       "post": {
         "operationId": "skills.create",
         "summary": "Create Skill",
-        "description": "Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists — use skills.update to change an existing one.",
+        "description": "Create a new skill from a name, one-line description, and Markdown body (plus optional frontmatter metadata). Fails with a conflict when a skill of that name already exists, use skills.update to change an existing one.",
         "tags": [
           "skills"
         ],
@@ -93143,7 +93143,7 @@
       "get": {
         "operationId": "skills.list",
         "summary": "List Skills",
-        "description": "Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here — call skills.get for the one skill you decide to open.",
+        "description": "Return the index line (name, description, metadata) of every skill in the canonical store. Progressive disclosure: bodies are never returned here, call skills.get for the one skill you decide to open.",
         "tags": [
           "skills"
         ],
@@ -93233,7 +93233,7 @@
       "delete": {
         "operationId": "skills.delete",
         "summary": "Delete Skill",
-        "description": "Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed — an honest boolean, never a 200 that pretends a phantom skill was removed.",
+        "description": "Permanently delete a skill. Delete means delete: the document is removed, not tombstoned. Returns { deleted: false } when no skill with that name existed, an honest boolean, never a 200 that pretends a phantom skill was removed.",
         "tags": [
           "skills"
         ],
@@ -99692,7 +99692,7 @@
       "patch": {
         "operationId": "watchers.update",
         "summary": "Update Watcher",
-        "description": "Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename — canonical verb is update, not patch.)",
+        "description": "Update an existing watcher. (Renamed from watchers.patch in the 1.0.0 core-verb rename, canonical verb is update, not patch.)",
         "tags": [
           "watchers"
         ],
@@ -100953,7 +100953,7 @@
       "post": {
         "operationId": "workspaces.registrations.add",
         "summary": "Register a Workspace",
-        "description": "Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400 — coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.",
+        "description": "Register a workspace root so the whole subtree beneath it is covered. Refuses an absurdly broad root (the home directory, the filesystem root, or the daemon state directory) with a 400, coverage flows down the entire subtree, so a root that broad would sweep far more than a project. Idempotent: re-registering the same normalized root returns alreadyRegistered:true. Registering a root clears any remembered decline recorded at exactly that root.",
         "tags": [
           "workspaces"
         ],
@@ -101134,7 +101134,7 @@
       "delete": {
         "operationId": "workspaces.registrations.remove",
         "summary": "Unregister a Workspace",
-        "description": "Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered — an honest boolean, never a 200 that pretends a phantom root was removed.",
+        "description": "Remove a registered workspace root. Returns { removed: false } when no root with that normalized path was registered, an honest boolean, never a 200 that pretends a phantom root was removed.",
         "tags": [
           "workspaces"
         ],
@@ -101191,7 +101191,7 @@
       "post": {
         "operationId": "workspaces.resolve",
         "summary": "Resolve Workspace Coverage",
-        "description": "Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root's subtree and is inherited through the git worktree→main-repo link — a linked worktree outside any registered root still resolves to the main repo's registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.",
+        "description": "Resolve a path against the registry: covered (by which nearest registered root), declined (at which root), or unknown. Coverage flows DOWN a registered root's subtree and is inherited through the git worktree→main-repo link, a linked worktree outside any registered root still resolves to the main repo's registration. When mainWorktreeRoot is omitted the daemon probes the link itself. Read-only.",
         "tags": [
           "workspaces"
         ],

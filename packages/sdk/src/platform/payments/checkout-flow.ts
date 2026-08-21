@@ -737,6 +737,7 @@ export async function runCheckout(
     refundedAt: null,
     merchantRecognised: merchantVerdict.isMajor,
     merchantQualifier: merchantVerdict.basis,
+    merchantDiscovered: request.merchantDiscovered ?? false,
   };
   await deps.purchases.record(record);
   await registry.close(request.purchaseId);

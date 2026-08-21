@@ -2,6 +2,73 @@
 
 This file tracks breaking changes, additions, fixes, and migration steps for each release of `@pellux/goodvibes-sdk`. Every release **must** have a corresponding `## [x.y.z] - YYYY-MM-DD` section before it can publish, the changelog gate refuses a release the file does not describe.
 
+## [2.0.18] - 2026-08-21
+
+### Added
+
+- **The desktop companion app is a first-class wake surface.** `WakeSurface`
+  widens to `tui | agent | webui | app`, with a `voice.wake.surfaces.app`
+  config row (default off, like webui) so the app's webview runtime can gate
+  wake-word listening on a real setting instead of being permanently
+  inactive.
+- **`atomicWriteFileSync` accepts bytes.** The data parameter widens to
+  `string | Uint8Array` with the string path byte-identical, so binary
+  assets (WASM extractions, model files) get the same temp-then-rename and
+  fsync semantics instead of hand-rolled copies per surface.
+- **`goodvibes-train-status`, the release-train cycle at a glance.** A
+  read-only toolchain bin that renders one table across the family's local
+  checkouts: sdk pins vs the latest published version, unreleased and
+  unpushed commit counts, and a suggested action per repo. It mutates
+  nothing; the ship decision stays with each repo's own release machinery.
+- **`registerPaymentsGatewayMethods` is exported from the control-plane
+  barrel.** The registrar and its service types existed but no import path
+  reached them, which forced the standalone daemon to duplicate handler
+  bodies; compositions can now attach the payments verbs directly.
+- **`PurchaseRecord` carries `merchantDiscovered`.** The purchases wire
+  schema requires the field; the stored record type now matches it, so a
+  ledger row can say which safeguard path (taint check for a named
+  storefront, judge for a discovered one) the purchase went through.
+- **`latest` dist-tags are aligned after every publish.** A post-publish
+  pass converges each package's `latest` to its highest stable version, so
+  two interleaved releases of different versions can no longer leave the
+  monorepo's dist-tags pointing at mixed versions.
+
+### Changed
+
+- **A partial npm publish is now a resumable state, not a wedge.** The
+  prepublish registry check classifies per package and resumes a
+  same-version run, refusing only when a published package records a
+  `gitHead` from a different commit (another writer, or a force-moved tag).
+  Previously any partial state blocked every re-run of that version forever.
+- **Toolchain config is validated, not cast.** `parseToolchainConfig` checks
+  the types of present fields with schema errors naming the field path,
+  while resolvers keep owning requiredness and defaults, so partial
+  `sdkPin`/`perJobGreen` sections parse exactly as before.
+- **`per-job-green`'s fallback path matches its primary path.** The
+  check-suites fallback now scopes to check runs attributable to the target
+  workflow and treats a skipped job as a failure, so an Actions API brownout
+  can no longer produce a green verdict from foreign or skipped checks.
+
+### Fixed
+
+- **One bad SSE subscriber no longer kills the domain event feed for
+  everyone.** Listener exceptions are contained per listener, mirroring the
+  WebSocket path.
+- **A torn checkpoint manifest is quarantined instead of poisoning
+  `init()` forever**, and the JSON file store fsyncs both the temp file and
+  its directory.
+- **Retrying a runtime task reassigns ownership to the new agent**, so a
+  later cancel reaches the agent actually running it.
+- **Relay ephemeral ECDH keys are non-extractable as documented**; only the
+  persistent identity key remains exportable.
+- **`release-cut` converges on rerun.** A partially-completed prior cut is
+  detected and finished (missing tag created, complete cut a no-op,
+  conflicting tag refused) instead of double-bumping the version.
+- **`SHA256SUMS` manifests are verifiable where they land.** `--verify`
+  resolves recorded names against the manifest's own directory, matching
+  what `--out` writes and what `sha256sum -c` expects in a download
+  directory.
+
 ## [2.0.17] - 2026-08-15
 
 ### Fixed
