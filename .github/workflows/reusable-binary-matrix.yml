@@ -9,11 +9,16 @@
 #   Call it:
 #     jobs:
 #       binaries:
-#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@main
+#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-binary-matrix.yml@<commit-sha>
 #         with:
 #           targets: '[{"key":"linux-x64","runner":"ubuntu-latest","smoke":true,"binary":"dist/goodvibes-linux-x64"},
 #                      {"key":"darwin-arm64","runner":"macos-14","smoke":true,"binary":"dist/goodvibes-macos-arm64"}]'
 #           artifact-glob: "dist/goodvibes-* dist/lib"
+#
+#   Pin `<commit-sha>` to a full commit SHA, never `@main`; note alongside the
+#   pin which goodvibes-sdk version it corresponds to. Bumping the pin is a
+#   deliberate, reviewed change (its own commit/PR), not an automatic float
+#   onto whatever main has become.
 #
 #   Inputs:  targets (required JSON array of {key, runner, smoke, binary}),
 #            artifact-glob, artifact-prefix (default binaries), bun-version,

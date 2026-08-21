@@ -9,12 +9,17 @@
 #   Call it:
 #     jobs:
 #       publish:
-#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@main
+#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-npm-publish.yml@<commit-sha>
 #         with:
 #           package-name: "@pellux/goodvibes-tui"
 #           environment: production
 #         secrets:
 #           npm-token: ${{ secrets.NPM_TOKEN }}
+#
+#   Pin `<commit-sha>` to a full commit SHA, never `@main`; note alongside the
+#   pin which goodvibes-sdk version it corresponds to. Bumping the pin is a
+#   deliberate, reviewed change (its own commit/PR), not an automatic float
+#   onto whatever main has become.
 #
 #   Inputs:  package-name (required, for the environment URL + poll), environment
 #            (default production), registry, publish-command (how the repo

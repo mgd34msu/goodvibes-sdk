@@ -29,6 +29,9 @@ and a thin CLI (`bin` entry):
   validation check.
 - **changelog-gate.** Asserts CHANGELOG carries a section for a version.
 - **sha256sums.** Generate or verify a `SHA256SUMS` manifest over release assets.
+- **train-status.** Read-only: one table per release-train cycle across the
+  family's local checkouts (versions, SDK pin drift, unreleased/unpushed
+  commits, suggested action). Never mutates anything.
 
 ## Config
 

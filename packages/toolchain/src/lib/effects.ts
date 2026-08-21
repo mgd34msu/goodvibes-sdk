@@ -18,7 +18,7 @@ export interface ExecResult {
 }
 
 /** Runs a subprocess to completion and returns captured output. Never throws on non-zero exit. */
-export type Exec = (command: string, args: readonly string[], options?: { readonly cwd?: string; readonly env?: NodeJS.ProcessEnv }) => ExecResult;
+export type Exec = (command: string, args: readonly string[], options?: { readonly cwd?: string; readonly env?: NodeJS.ProcessEnv; readonly timeoutMs?: number }) => ExecResult;
 
 /** Minimal read-only filesystem seam. */
 export interface FsReader {
@@ -54,6 +54,7 @@ export const realExec: Exec = (command, args, options = {}) => {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
       maxBuffer: 64 * 1024 * 1024,
+      timeout: options.timeoutMs,
     });
     return { status: 0, stdout, stderr: '' };
   } catch (error) {

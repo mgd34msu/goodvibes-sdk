@@ -27,6 +27,7 @@ const TOOLS: Record<string, string> = {
   'per-job-green': './per-job-green.js',
   'changelog-gate': './changelog-gate.js',
   'sha256sums': './sha256sums.js',
+  'train-status': './train-status.js',
 };
 
 const [tool, ...rest] = process.argv.slice(2);

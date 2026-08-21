@@ -11,11 +11,16 @@
 #   Call it:
 #     jobs:
 #       release-verify:
-#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@main
+#         uses: mgd34msu/goodvibes-sdk/.github/workflows/reusable-release-verify.yml@<commit-sha>
 #         with:
 #           sha: ${{ github.sha }}
 #         secrets:
 #           token: ${{ secrets.GITHUB_TOKEN }}
+#
+#   Pin `<commit-sha>` to a full commit SHA, never `@main`; note alongside the
+#   pin which goodvibes-sdk version it corresponds to. Bumping the pin is a
+#   deliberate, reviewed change (its own commit/PR), not an automatic float
+#   onto whatever main has become.
 #
 #   Inputs:  sha (required), repository (default: caller repo), workflow
 #            (default ci.yml), event (default push), bun-version,

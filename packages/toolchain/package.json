@@ -32,7 +32,8 @@
     "goodvibes-publish-package": "./dist/bin/publish-package.js",
     "goodvibes-per-job-green": "./dist/bin/per-job-green.js",
     "goodvibes-changelog-gate": "./dist/bin/changelog-gate.js",
-    "goodvibes-sha256sums": "./dist/bin/sha256sums.js"
+    "goodvibes-sha256sums": "./dist/bin/sha256sums.js",
+    "goodvibes-train-status": "./dist/bin/train-status.js"
   },
   "files": [
     "dist"
