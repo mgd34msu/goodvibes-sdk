@@ -76,14 +76,14 @@ describe('what a conversational turn is spawned with', () => {
     const context = buildConversationalTurnContext({ sessionId: 's1', surfaceKind: 'telegram' });
     expect(context).toContain('Capture what the message implies, not only what it states.');
     // Inference has named examples, not vibes: the away-span and the people.
-    expect(context.toLowerCase()).toContain('he is away');
-    expect(context.toLowerCase()).toContain('people in his life');
+    expect(context.toLowerCase()).toContain('the owner is');
+    expect(context.toLowerCase()).toContain("people in the owner's life");
     // Use follows capture: the stored thing shapes the answer and the offers.
     expect(context).toContain('Then use it.');
     expect(context.toLowerCase()).toContain('reminder before departure');
     // The conversation-first boundary survives the ambition: anything beyond
     // the conversation is proposed, never started.
-    expect(context.toLowerCase()).toContain('waits for his yes');
+    expect(context.toLowerCase()).toContain("waits for the owner's yes");
   });
 
   it('says so in the context when this turn may not record', () => {
@@ -332,7 +332,7 @@ describe('the profile capture tool', () => {
     expect(payload.from).toBe('2026-08-06');
     expect(payload.to).toBe('2026-08-09');
     expect(payload.savedTo).toContain('Plans');
-    expect(payload.tellHim).toContain('2026-08-06');
+    expect(payload.tellOwner).toContain('2026-08-06');
     expect(plans).toHaveLength(1);
     expect((plans[0] as { details: string[] }).details).toEqual(ITINERARY_DETAILS);
   });

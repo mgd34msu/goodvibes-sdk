@@ -97,7 +97,7 @@ const ALLOWED_UNATTRIBUTED_REFUSALS: Readonly<Record<string, string>> = {
 
 let cachedResults: readonly VerbConformance[] | null = null;
 async function results(): Promise<readonly VerbConformance[]> {
-  cachedResults ??= await probeAllHandlerVerbs(buildProbeCatalog());
+  cachedResults ??= await probeAllHandlerVerbs(await buildProbeCatalog());
   return cachedResults;
 }
 
@@ -141,7 +141,12 @@ describe('gateway verb required-field conformance', () => {
     // The probe is only worth anything if it is actually reaching handlers.
     // A collapse here (a registrar quietly dropped, an import that stopped
     // attaching) would otherwise read as a clean green over an empty set.
-    expect(all.length).toBeGreaterThanOrEqual(130);
+    // 195: the measured floor after the payments registrar became async; a
+    // lost `await` in buildProbeCatalog would drop the seven payments verbs
+    // and land under it instead of reading as a clean green.
+    expect(all.length).toBeGreaterThanOrEqual(195);
+    const paymentsVerbs = all.filter((entry) => entry.id.startsWith('payments.'));
+    expect(paymentsVerbs.length).toBeGreaterThanOrEqual(7);
   });
 
   test('a handler verb with no inputSchema is a known, listed exception', async () => {
@@ -153,7 +158,7 @@ describe('gateway verb required-field conformance', () => {
     // The probe still covers them (an undeclared requirement on a verb with no
     // schema is reported like any other), so this is not a hole; it is a list
     // that should not grow silently.
-    const catalog = buildProbeCatalog();
+    const catalog = await buildProbeCatalog();
     const ungated = catalog.list()
       .filter((descriptor) => catalog.hasHandler(descriptor.id))
       .filter((descriptor) => classifyInputSchema(descriptor.inputSchema) !== 'validated')

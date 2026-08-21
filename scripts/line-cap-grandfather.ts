@@ -29,12 +29,9 @@ export const LINE_CAP_GRANDFATHER: Readonly<Record<string, GrandfatherEntry>> = 
     ceiling: 818,
     justification: 'browser capability: provisioning, sessions, every page operation; previously split via browser-engine-contract.ts, now over again; +9 for binding card-material lifetime to the page instead of to whichever flow last had an opinion about it (BLOCKING 1): navigate() and a navigating click() now disarm the card-field guard for that session/page, and close() calls the newly-wired CardMaterialRedactor.disarmSession so material cannot outlive the session it was typed in, with the doc explaining why each site is safe to disarm unconditionally; +9 for making armSubmitApproval one-shot (SF-7): requireOutwardEffectAllowed now consumes the owner\'s submit approval in a finally block on the first browser.submit check it clears, so an approval no longer sits on the engine blessing every submit for its whole TTL, plus the doc explaining why consumption is unconditional on the outcome',
   },
-  // checkout-flow.ts ~0.81k, the purchase, start to finish, with nothing
-  // merchant-specific in it.
-  'packages/sdk/src/platform/payments/checkout-flow.ts': {
-    ceiling: 808,
-    justification: 'the purchase orchestration, start to finish; +12 for the BLOCKING 1 disarm-lifecycle redesign: release() no longer disarms the card-material redactor at all (most of its callers run before anything is armed, and the ones that run after a fill are exactly the ones where the digits may still be on the page), the post-click ambiguous-failure exit no longer disarms either, and the successful-submit disarm moved to AFTER the challenge check so a pending 3-D Secure page stays armed while the owner is sent back to it; the doc comments on release() and at each exit explain why each site is now safe to leave armed, with disarming itself bound to the page\'s actual state in browser-engine.ts',
-  },
+  // checkout-flow.ts no longer has an entry: its PaymentNotifier and
+  // PurchaseLedger ports split to payment-ports.ts (re-exported for
+  // compatibility), taking the file back under the cap.
   // method-catalog-runtime.ts no longer has an entry: its justification named a
   // split to a sibling file as the next step, and that split has now happened,
   // on the mcp.* side rather than the memory.* side (method-catalog-runtime-mcp.ts).

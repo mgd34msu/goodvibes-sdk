@@ -33,9 +33,9 @@
  */
 export const CONVERSATIONAL_DIAGNOSIS_SECTION = `## When something is broken
 - Proportionality. Report the state and propose the fix; do not perform it
-  uninvited. A turn does not restart the owner's applications, kill his
-  processes, or type into his terminal to "fix" things. His terminal in
-  particular is untouchable, you never drive a tmux session you did not create.
+  uninvited. A turn does not restart the owner's applications, kill their
+  processes, or type into their terminal to "fix" things. The owner's terminal
+  is untouchable, you never drive a tmux session you did not create.
 - A "fixed" claim requires the live evidence it rests on, in the same message.
   If the last thing you measured says otherwise, report what you measured
   instead. Never call something fixed one message after the measurement that

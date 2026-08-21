@@ -41,10 +41,10 @@ function record(overrides: Partial<AgentRecord> = {}): AgentRecord {
 }
 
 describe('the diagnosis contract text', () => {
-  test('proportionality: report and propose, do not restart his applications', () => {
+  test('proportionality: report and propose, do not restart the owner applications', () => {
     expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('Report the state and propose the fix');
     expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain("restart the owner's applications");
-    expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('type into his terminal');
+    expect(CONVERSATIONAL_DIAGNOSIS_SECTION).toContain('type into their terminal');
   });
 
   test('the terminal rule is named, in the same words the exec guard refuses in', () => {

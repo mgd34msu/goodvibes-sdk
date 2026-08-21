@@ -50,6 +50,26 @@ export const HOME_GRAPH_RELATIONS = [
 
 export type HomeGraphRelation = typeof HOME_GRAPH_RELATIONS[number];
 
+/**
+ * Relations the pipeline writes on its own, never supplied on a link call.
+ * `repairs_gap` is minted by semantic self-improvement when an ingested source
+ * repairs a recorded knowledge gap; reindex and map rendering treat it as a
+ * passport-relevant, context-map relation. Kept separate from
+ * HOME_GRAPH_RELATIONS so the published caller vocabulary stays exactly what
+ * callers may send, while the machine-written set is still typed and
+ * discoverable. Same wire strings as before; this is a typing split only.
+ */
+export const REPAIRS_GAP_RELATION = 'repairs_gap' as const;
+
+export const MACHINE_WRITTEN_HOME_GRAPH_RELATIONS = [
+  REPAIRS_GAP_RELATION,
+] as const;
+
+export type HomeGraphMachineWrittenRelation = typeof MACHINE_WRITTEN_HOME_GRAPH_RELATIONS[number];
+
+/** Every relation a Home Graph edge may carry: caller vocabulary plus machine-written. */
+export type AnyHomeGraphRelation = HomeGraphRelation | HomeGraphMachineWrittenRelation;
+
 export const HOME_GRAPH_CAPABILITIES = [
   'knowledge-space-isolation',
   'snapshot-sync',

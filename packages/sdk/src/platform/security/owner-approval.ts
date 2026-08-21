@@ -174,12 +174,25 @@ export function checkOwnerApproval(input: {
   }
   if (input.clearingContentTaint) {
     // A derivation finding says THIS payload repeats what was read. Only an
-    // approval the owner gave while looking at THIS payload answers it.
+    // approval the owner gave while looking at THIS payload answers it, so
+    // here a binding must EXIST, not merely match when present.
     if (approval.contentFingerprint === null) {
       return { authorized: false, mismatch: 'no-content-binding' };
     }
     const fingerprint = fingerprintOutwardContent(input.contentInQuestion);
     if (fingerprint === null || fingerprint !== approval.contentFingerprint) {
+      return { authorized: false, mismatch: 'different-content' };
+    }
+  } else if (approval.contentFingerprint !== null && input.contentInQuestion !== undefined) {
+    // Content binding is the DEFAULT whenever both sides carry content. An
+    // approval minted over specific fields authorizes those fields; a caller
+    // that names its outgoing payload gets the comparison whether or not it
+    // remembered the taint flag. `clearingContentTaint` keeps its stricter
+    // extra meaning above (a binding must exist); it is not the on-switch
+    // for comparison. Forgetting it must never widen an approval to
+    // action-id-only.
+    const fingerprint = fingerprintOutwardContent(input.contentInQuestion);
+    if (fingerprint !== approval.contentFingerprint) {
       return { authorized: false, mismatch: 'different-content' };
     }
   }

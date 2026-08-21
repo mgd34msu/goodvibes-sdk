@@ -199,7 +199,9 @@ function buildDocument(contract: OperatorContractManifest, untyped: Set<string>)
   paths[INVOKE_PATH] = { post: buildInvokeOperation(invokeOnly) };
 
   // Every method, REST-bound or invoke-only, appears in this index with its
-  // honest coverage marking; the 97 untyped ids are visible, not omitted.
+  // honest coverage marking; any untyped ids are visible, not omitted. The
+  // typed-IO ratchet is pinned at zero untyped methods today, and this marking
+  // is what keeps a future regression visible rather than silent.
   const methodIndex = methods.map((m) => ({
     id: m.id,
     category: m.category,

@@ -124,7 +124,7 @@ function stubDeps(): never {
  * the conformance test red, which is the point: an unprobed family is an
  * unchecked family.
  */
-const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodCatalog) => void]> = [
+const ROUTE_REGISTRARS: ReadonlyArray<readonly [string, (catalog: GatewayMethodCatalog) => void | Promise<void>]> = [
   ['acp', (catalog) => registerAcpGatewayMethods(catalog, stubDeps())],
   ['approvals-raise', (catalog) => registerApprovalRaiseGatewayMethods(catalog, stubDeps())],
   ['credentials-write', (catalog) => registerCredentialWriteGatewayMethods(catalog, stubDeps())],
@@ -327,9 +327,11 @@ function buildProbeParams(descriptor: GatewayMethodDescriptor, required: readonl
 }
 
 /** Build the catalog every registrar has attached its handlers to. */
-export function buildProbeCatalog(): GatewayMethodCatalog {
+export async function buildProbeCatalog(): Promise<GatewayMethodCatalog> {
   const catalog = new GatewayMethodCatalog();
-  for (const [, register] of ROUTE_REGISTRARS) register(catalog);
+  // Awaited because async registrars (payments runs boot recovery first)
+  // attach their handlers after their first suspension point.
+  for (const [, register] of ROUTE_REGISTRARS) await register(catalog);
   return catalog;
 }
 

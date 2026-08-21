@@ -223,7 +223,7 @@ function refuse(detail: string): OwnerTerminalDecision {
       + `Creating and driving this platform's own sessions (named `
       + `${PLATFORM_TMUX_SESSION_PREFIX}…) is allowed, and so is reading tmux state `
       + '(list-sessions, list-panes, capture-pane). Report what you found and propose '
-      + 'what you would do, rather than doing it in his shell.',
+      + "what you would do, rather than doing it in the owner's shell.",
   };
 }
 

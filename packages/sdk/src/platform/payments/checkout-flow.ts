@@ -156,32 +156,8 @@ export interface PurchaseRequest {
 
 export type { PurchaseRecord } from './purchase-record.js';
 
-export interface PurchaseLedger {
-  record(entry: PurchaseRecord): Promise<void>;
-}
-
-/** Delivering a prompt and hearing back, over channels that carry authority. */
-export interface PaymentNotifier {
-  /** Send the rendered message. Reports per-channel whether it landed. */
-  deliver(input: {
-    readonly kind: 'approval' | 'veto';
-    readonly message: string;
-  }): Promise<readonly ChannelDelivery[]>;
-  /**
-   * Wait for an answer, or until the deadline.
-   *
-   * Resolves null on silence. The caller decides what silence MEANS, because
-   * the two windows mean opposite things by it and a notifier that decided
-   * would be one place where they could be accidentally unified.
-   */
-  awaitAnswer(input: {
-    readonly kind: 'approval' | 'veto';
-    readonly deadlineMs: number;
-  }): Promise<{
-    readonly answer: 'approve' | 'deny' | 'acknowledge' | 'object';
-    readonly channel: CommandAuthorityChannel;
-  } | null>;
-}
+export type { PurchaseLedger, PaymentNotifier } from './payment-ports.js';
+import type { PurchaseLedger, PaymentNotifier } from './payment-ports.js';
 
 export interface CheckoutFlowDeps {
   readonly registry: CheckoutRegistry;
@@ -525,11 +501,14 @@ export async function runCheckout(
       merchantReason: merchantVerdict.reason,
     });
     const deliveries = await notifier.deliver({ kind: 'approval', message });
+    const deadlineMs = windowDeadlineMs(now(), deps.approvalMinutes);
+    // Persisted so a restart can apply the delivery-keyed recovery rules.
+    await registry.advance(request.purchaseId, 'awaiting-window', { windowDeliveries: deliveries, windowDeadlineMs: deadlineMs, windowKind }, now());
     let state: ApprovalState = advanceApproval('pending-dispatch', { kind: 'dispatched', deliveries });
     if (state === 'awaiting-approval') {
       const answer = await notifier.awaitAnswer({
         kind: 'approval',
-        deadlineMs: windowDeadlineMs(now(), deps.approvalMinutes),
+        deadlineMs,
       });
       if (answer === null) {
         state = advanceApproval(state, { kind: 'deadline' });
@@ -588,11 +567,14 @@ export async function runCheckout(
       merchantReason: merchantVerdict.reason,
     });
     const deliveries = await notifier.deliver({ kind: 'veto', message });
+    const deadlineMs = windowDeadlineMs(now(), deps.vetoMinutes);
+    // Persisted so a restart can apply the delivery-keyed recovery rules.
+    await registry.advance(request.purchaseId, 'awaiting-window', { windowDeliveries: deliveries, windowDeadlineMs: deadlineMs, windowKind }, now());
     let state: VetoState = advanceVeto('pending-dispatch', { kind: 'dispatched', deliveries });
     if (state === 'open') {
       const answer = await notifier.awaitAnswer({
         kind: 'veto',
-        deadlineMs: windowDeadlineMs(now(), deps.vetoMinutes),
+        deadlineMs,
       });
       if (answer === null) {
         state = advanceVeto(state, { kind: 'deadline' });
@@ -733,7 +715,13 @@ export async function runCheckout(
   deps.redactor.disarm(identity.sessionId, identity.pageId);
 
   // ── 10. Record it ───────────────────────────────────────────────────────
-  await registry.advance(request.purchaseId, 'submitted', {}, now());
+  //
+  // The `submitted` phase is flushed AFTER the purchase record is written,
+  // never before. A crash anywhere in this section then leaves the journal at
+  // `submit-pending`, which recovery reads as possibly-submitted and HOLDS,
+  // the safe verdict. Flushing `submitted` first would let a crash strand a
+  // real charge with no purchase record while the journal claims it was
+  // recorded.
   const atMs = now();
   ledger.commit(reservation.id, atMs);
 
@@ -773,6 +761,7 @@ export async function runCheckout(
     merchantDiscovered: request.merchantDiscovered ?? false,
   };
   await deps.purchases.record(record);
+  await registry.advance(request.purchaseId, 'submitted', {}, now());
   await registry.close(request.purchaseId);
 
   // ── 11. Tell the owner it happened ──────────────────────────────────────

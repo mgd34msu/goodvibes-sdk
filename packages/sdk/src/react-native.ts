@@ -46,6 +46,10 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  * - Requires a `WebSocket` implementation (e.g. the global provided by the
  *   React Native runtime or the `react-native` package). Pass
  *   `options.WebSocketImpl` when the global is not available.
+ * - The daemon authenticates the upgrade request itself and answers 401 when
+ *   it carries no `Authorization` header, so realtime needs a wrapper
+ *   implementation that attaches the bearer token via React Native's
+ *   `(url, protocols, { headers })` constructor form (see the example).
  * - Returns `ReactNativeGoodVibesSdk` (extends `GoodVibesSdk` with a
  *   React-Native-specific `realtime` namespace).
  *
@@ -58,7 +62,15 @@ function requireReactNativeWebSocket(webSocketImpl?: typeof WebSocket): typeof W
  *   authToken: await SecureStore.getItemAsync('token'),
  * });
  *
- * const events = sdk.realtime.viaWebSocket();
+ * // The upgrade must carry the bearer token; RN's WebSocket accepts headers.
+ * const token = await SecureStore.getItemAsync('token');
+ * const AuthorizedWebSocket = function (url: string | URL): WebSocket {
+ *   return new (WebSocket as never)(String(url), [], {
+ *     headers: { Authorization: `Bearer ${token}` },
+ *   });
+ * } as unknown as typeof WebSocket;
+ *
+ * const events = sdk.realtime.viaWebSocket(AuthorizedWebSocket);
  * events.agents.on('AGENT_SPAWNING', ({ agentId }) => console.log(agentId));
  */
 export function createReactNativeGoodVibesSdk(

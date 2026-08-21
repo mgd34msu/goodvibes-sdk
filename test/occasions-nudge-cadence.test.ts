@@ -302,7 +302,7 @@ describe('the conversational turn can acknowledge, and is told to', () => {
     const context = buildConversationalTurnContext({ sessionId: 's1' });
     expect(context).toContain('acknowledge_occasion');
     // The failure mode being corrected: offering rather than doing.
-    expect(context).toContain('Do not ask him whether to record it');
+    expect(context).toContain('Do not ask whether to record it');
     for (const line of OCCASION_ACKNOWLEDGEMENT_INSTRUCTION) {
       expect(context).toContain(line);
     }
@@ -322,10 +322,10 @@ describe('the conversational turn can acknowledge, and is told to', () => {
 
     // Switching the feature off needs him to have named the feature, and
     // swearing is not consent to it. Both were the actual failure.
-    expect(text).toContain('ONLY when he has said so explicitly and named');
+    expect(text).toContain('ONLY when the owner has said so explicitly and');
     expect(text).toContain('neither is a complaint with swearing in it');
     // And whatever happens, he is told what stayed on.
-    expect(text).toContain('his other dates still run');
+    expect(text).toContain('the other dates still run');
   });
 });
 

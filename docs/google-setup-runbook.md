@@ -363,4 +363,4 @@ Before it opens, expect a red "Google hasn't verified this app" warning. That is
 
 ## Where credentials live
 
-Every secret is written to the encrypted secret store and referenced from config by name only: the app password, the OAuth client secret, the refresh token, and the private calendar address. No secret is written to config files, logs, transcripts, or `/status` output. The private calendar address is treated as a credential because anyone holding it can read the calendar.
+Every secret is written to the encrypted secret store and referenced from config by name only: the app password, the OAuth client secret, the refresh token, and the private calendar address. No secret is written to config files, logs, transcripts, or `goodvibes-agent status` output. The private calendar address is treated as a credential because anyone holding it can read the calendar.

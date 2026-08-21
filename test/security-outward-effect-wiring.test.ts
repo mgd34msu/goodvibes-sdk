@@ -425,3 +425,65 @@ describe('fingerprintOutwardContent — a digest of the fields, not just their b
     expect(withValueInA).not.toBe(withValueInB);
   });
 });
+
+describe('checkOwnerApproval — content binding is the default, not flag-gated', () => {
+  const ACTION_ID = 'channels.send';
+  const SHOWN = { body: 'the message the owner actually read' };
+  const SWAPPED = { body: 'a different message swapped in afterwards' };
+
+  test('a fingerprinted approval refuses a different payload even without the taint flag', () => {
+    const approval = grantOwnerApproval({ action: ACTION_ID, surface: 'owner-direct', content: SHOWN });
+    const result = checkOwnerApproval({
+      approval,
+      action: ACTION_ID,
+      contentInQuestion: SWAPPED,
+      // The footgun this pins: forgetting the flag used to skip the
+      // comparison entirely and authorize on the action id alone.
+      clearingContentTaint: false,
+    });
+    expect(result.authorized).toBe(false);
+    expect(result.mismatch).toBe('different-content');
+  });
+
+  test('the same payload still clears without the taint flag', () => {
+    const approval = grantOwnerApproval({ action: ACTION_ID, surface: 'owner-direct', content: SHOWN });
+    const result = checkOwnerApproval({
+      approval,
+      action: ACTION_ID,
+      contentInQuestion: SHOWN,
+      clearingContentTaint: false,
+    });
+    expect(result.authorized).toBe(true);
+  });
+
+  test('the coarse path (no content named) keeps its deliberate semantics', () => {
+    const approval = grantOwnerApproval({ action: ACTION_ID, surface: 'owner-direct', content: SHOWN });
+    const result = checkOwnerApproval({ approval, action: ACTION_ID, clearingContentTaint: false });
+    expect(result.authorized).toBe(true);
+  });
+
+  test('clearing content taint still requires a binding to EXIST', () => {
+    const weak = grantOwnerApproval({ action: ACTION_ID, surface: 'owner-direct' });
+    const result = checkOwnerApproval({
+      approval: weak,
+      action: ACTION_ID,
+      contentInQuestion: SHOWN,
+      clearingContentTaint: true,
+    });
+    expect(result.authorized).toBe(false);
+    expect(result.mismatch).toBe('no-content-binding');
+  });
+
+  test('a weak approval with content named but no fingerprint stays action-scoped without the flag', () => {
+    const weak = grantOwnerApproval({ action: ACTION_ID, surface: 'owner-direct' });
+    const result = checkOwnerApproval({
+      approval: weak,
+      action: ACTION_ID,
+      contentInQuestion: SHOWN,
+      clearingContentTaint: false,
+    });
+    // No fingerprint on the approval means there is nothing to compare; the
+    // taint path above is what refuses this shape when derivation is at stake.
+    expect(result.authorized).toBe(true);
+  });
+});

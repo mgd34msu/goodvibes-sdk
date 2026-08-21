@@ -800,30 +800,47 @@ used to describe), so a *tool-permission* approval built on the broker is
 restart-safe. That fix does not reach payments, because payments never routes
 through the broker in the first place.
 
-**What this means for a restart today:** a daemon that goes down mid-window
-abandons the in-flight `runCheckout()` call outright. The window does not
-resolve `denied` or `proceeds`, it simply never resolves; the answer, if one
-arrives after the restart, has nowhere left to be delivered to. The
-reservation taken at step 5 is not released by any window-specific recovery.
-It falls back on the ordinary reservation sweep described in §5.1, `RESERVATION_TTL_MS`,
-four hours, which eventually reclaims the held pool but does not settle the
-purchase record, write a `denied`/`cancelled` outcome, or run the backfill
-described below.
+**What this means for a restart today:** the in-flight `runCheckout()` call
+is still abandoned when the process dies, but the interruption no longer
+lingers. Registering the payment verbs runs `recoverInterruptedCheckouts()`
+to completion before any handler attaches, so no new checkout can start
+while the sweep reads the journal, and a record live in the current process
+is never treated as interrupted. Recovery settles every remaining record by
+its phase verdict. A checkout that had not submitted releases its budget
+hold, closes its record, and tells the owner what happened, with the message
+following the actual release result (a hold that did not survive the restart
+is reported as no longer held, not as released). A checkout that stopped at
+the point of submitting keeps its hold and its record, so a restart cannot
+buy the same thing twice. A `submitted` record is closed only after its
+purchase record is verified on the ledger; the submit flush is ordered after
+the record write for exactly this reason, and a journal entry whose record
+is missing is kept and reported honestly rather than declared recorded.
 
-The state machines this section documents (`advanceApproval`, `advanceVeto`,
-and `recoverInterruptedWindow` for exactly the delivery-keyed recovery in
-§8.6.1) are written, and `recoverInterruptedWindow` is exercised directly in
-`test/payments-adversarial.test.ts`. What is missing is the wiring: nothing
-in the daemon's startup path calls it, and nothing persists an open window's
-`ChannelDelivery` list anywhere it could be read back after a crash. The rule
-below is the intended behavior and the function that implements it exists;
-connecting it to daemon startup is the outstanding work.
+When a window opens, its per-channel delivery report, its deadline, and its
+kind are persisted with the journal record. A restart therefore applies
+`recoverInterruptedWindow`'s real delivery-keyed rules (§8.6.1): a delivered
+notice whose window elapsed settles under expiry-stands with its backfillable
+channels named; a delivered notice on a channel that cannot be re-read
+reports the re-open rule for that channel; a report where nothing was
+delivered, or a legacy record with no report at all, settles conservatively
+by refusal. The interrupted purchase itself can never resume after a restart,
+so every branch releases the hold and charges nothing; what the rules decide
+is what the owner is told and which channels still owe a read. A record
+recovery keeps notifies the owner once, ever; the notice is stamped back
+through the journal.
+
+Card material on a page that outlived the process is the composition's to
+clear: recovery calls a composition-supplied cleanup hook for checkouts
+interrupted while arming the payment, typed so payments code receives no
+browser authority, and without the hook it tells the owner plainly that it
+cannot reach the page rather than claiming a cleanup it did not perform.
 
 ### 8.6.1 A window interrupted by downtime is keyed on DELIVERY, not on uptime
 
 **The rule that follows is `recoverInterruptedWindow()`'s design, verified
-against its own unit tests. It is not yet reachable from a real restart; see
-§8.6.**
+against its own unit tests and applied by boot recovery to every interrupted
+window whose record carries a persisted delivery report. Records without one
+settle conservatively by refusal. See §8.6.**
 
 **Silence means the owner had the chance to object and did not.** Whether our
 process was alive is irrelevant to whether that chance existed. An earlier draft

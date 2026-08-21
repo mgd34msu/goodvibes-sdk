@@ -287,7 +287,11 @@ export class DaemonControlPlaneHelper {
     const token = this.extractAuthToken(req);
     const principal = resolveAuthenticatedPrincipal(req, this);
     if (!principal) {
-      return Response.json({ error: 'Unauthorized' }, { status: 401 });
+      const error = 'Unauthorized: the WebSocket upgrade request itself must authenticate. Send an '
+        + 'Authorization: Bearer token header on the upgrade (React Native and server runtimes support '
+        + 'WebSocket constructor headers) or present an operator session cookie (same-origin browser '
+        + 'session login). The in-band auth frame is only read after an authenticated upgrade.';
+      return Response.json({ error }, { status: 401 });
     }
     const rawDomains = url.searchParams.get('domains');
     const domains = parseRuntimeDomains(rawDomains);

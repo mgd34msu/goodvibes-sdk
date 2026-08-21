@@ -267,11 +267,13 @@ export type { MerchantJudgeModel } from './merchant-judge-model.js';
 // flow, and it was reachable from source but absent from the published surface
 //, the exact shape of gap that a subpath check keyed on the exports map
 // cannot see, since the subpath itself was declared correctly.
-export { PaymentsGatewayServiceImpl } from './payments-gateway-service.js';
+export { PaymentsGatewayServiceImpl, RECOVERY_IO_TIMEOUT_MS } from './payments-gateway-service.js';
 export type {
   PaymentsServiceConfig,
   PaymentsServiceDeps,
   BeginCheckoutInput,
   PaymentBeginResult,
+  InterruptedCheckoutRecovery,
+  CheckoutRecoverySweep,
   PaymentFillCardResult,
 } from './payments-gateway-service.js';

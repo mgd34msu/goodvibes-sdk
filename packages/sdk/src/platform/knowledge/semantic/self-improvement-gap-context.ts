@@ -1,4 +1,5 @@
 import type { KnowledgeObjectProfilePolicy } from '../extensions.js';
+import { REPAIRS_GAP_RELATION } from '../home-graph/types.js';
 import {
   DEFAULT_KNOWLEDGE_SPACE_ID,
   getKnowledgeSpaceId,
@@ -96,7 +97,7 @@ export function buildGapContext(
     .filter((edge) => edge.fromKind === 'source'
       && edge.toKind === 'node'
       && edge.toId === gap.id
-      && edge.relation === 'repairs_gap')
+      && edge.relation === REPAIRS_GAP_RELATION)
     .map((edge) => edge.fromId));
   return { gap, sources, linkedObjects, facts, repairSourceIds };
 }
@@ -150,7 +151,7 @@ export async function linkRepairSources(
         fromId: sourceId,
         toKind: 'node',
         toId: gap.id,
-        relation: 'repairs_gap',
+        relation: REPAIRS_GAP_RELATION,
         weight: 0.8,
         metadata: semanticMetadata(spaceId, {
           query,

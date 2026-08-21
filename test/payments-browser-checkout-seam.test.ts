@@ -635,7 +635,7 @@ describe('SF-5: a pre-click refusal never forwards the engine\'s own message tex
       `submit the form by activating button "${PAGE_AUTHORED_PAYLOAD}" is not available here.`,
     );
     untrustedError.name = 'UntrustedEffectError';
-    const harness = sevenVerbComposition({ clickThrows: untrustedError });
+    const harness = await sevenVerbComposition({ clickThrows: untrustedError });
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -797,7 +797,7 @@ interface SevenVerbCompositionOptions {
  * The daemon's own shape: five verbs answered from stores it owns, and the two
  * checkout verbs answered by the SDK service over the browser seam.
  */
-function sevenVerbComposition(options: SevenVerbCompositionOptions = {}): SevenVerbHarness {
+async function sevenVerbComposition(options: SevenVerbCompositionOptions = {}): Promise<SevenVerbHarness> {
   const guard = new CardMaterialRedactor();
   const engine = new ScriptedEngine({ guard, ...(options.clickThrows ? { clickThrows: options.clickThrows } : {}) });
   const ledger = new BudgetLedger();
@@ -889,7 +889,7 @@ function sevenVerbComposition(options: SevenVerbCompositionOptions = {}): SevenV
   } as unknown as PaymentsGatewayService;
 
   const catalog = new GatewayMethodCatalog();
-  registerPaymentsGatewayMethods(catalog, service);
+  await registerPaymentsGatewayMethods(catalog, service);
   return { catalog, engine, guard, ledger, recorded, sent };
 }
 
@@ -943,8 +943,8 @@ describe('a daemon-style composition can now serve all seven payments verbs', ()
     'payments.purchases.list',
   ] as const;
 
-  test('every one of them has a handler attached, checkout included', () => {
-    const { catalog } = sevenVerbComposition();
+  test('every one of them has a handler attached, checkout included', async () => {
+    const { catalog } = await sevenVerbComposition();
     for (const id of ALL_SEVEN) {
       expect(catalog.get(id)).toBeDefined();
       // The two that had to answer 501 are the two this seam is for.
@@ -953,7 +953,7 @@ describe('a daemon-style composition can now serve all seven payments verbs', ()
   });
 
   test('checkout.begin runs a whole purchase against the browser seam', async () => {
-    const harness = sevenVerbComposition();
+    const harness = await sevenVerbComposition();
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
       { body: beginParams() } as never,
@@ -999,7 +999,7 @@ describe('a daemon-style composition can now serve all seven payments verbs', ()
     // merchants opts back into "purchased" by wiring describeSubmission, the
     // same one the driver-level tests above exercise, threaded here through
     // the whole seven-verb composition instead of a bare driver factory.
-    const harness = sevenVerbComposition({
+    const harness = await sevenVerbComposition({
       async describeSubmission(submission) {
         return { orderId: submission.navigated ? 'BBY-01-556677' : null, challenge: null };
       },
@@ -1015,7 +1015,7 @@ describe('a daemon-style composition can now serve all seven payments verbs', ()
   });
 
   test('checkout.fillCard refuses with no decision in flight, and says so without a card in it', async () => {
-    const harness = sevenVerbComposition();
+    const harness = await sevenVerbComposition();
 
     let message = '';
     try {
@@ -1042,7 +1042,7 @@ describe('a submit failure releases or holds the reservation depending on which 
   test('a pre-click refusal is reported as not-submitted and the reservation is released', async () => {
     const staleError = new Error('the button ref no longer resolves');
     staleError.name = 'StaleElementError';
-    const harness = sevenVerbComposition({ clickThrows: staleError });
+    const harness = await sevenVerbComposition({ clickThrows: staleError });
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -1058,7 +1058,7 @@ describe('a submit failure releases or holds the reservation depending on which 
   });
 
   test('genuine post-click ambiguity is held, exactly as an unclassified submit failure always was', async () => {
-    const harness = sevenVerbComposition({ clickThrows: new Error('the connection dropped mid-click') });
+    const harness = await sevenVerbComposition({ clickThrows: new Error('the connection dropped mid-click') });
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -1093,7 +1093,7 @@ describe('BLOCKING 1: the redactor stays armed on every exit where card digits m
   test('a pre-click refusal (no click ever dispatched) leaves the redactor armed and still scrubbing', async () => {
     const staleError = new Error('the button ref no longer resolves');
     staleError.name = 'StaleElementError';
-    const harness = sevenVerbComposition({ clickThrows: staleError });
+    const harness = await sevenVerbComposition({ clickThrows: staleError });
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -1114,7 +1114,7 @@ describe('BLOCKING 1: the redactor stays armed on every exit where card digits m
   });
 
   test('genuine post-click ambiguity also leaves the redactor armed', async () => {
-    const harness = sevenVerbComposition({ clickThrows: new Error('the connection dropped mid-click') });
+    const harness = await sevenVerbComposition({ clickThrows: new Error('the connection dropped mid-click') });
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -1129,7 +1129,7 @@ describe('BLOCKING 1: the redactor stays armed on every exit where card digits m
   });
 
   test('a challenge response leaves the redactor armed: the owner is sent back to this very page', async () => {
-    const harness = sevenVerbComposition({
+    const harness = await sevenVerbComposition({
       async describeSubmission(submission) {
         return {
           orderId: null,
@@ -1155,7 +1155,7 @@ describe('BLOCKING 1: the redactor stays armed on every exit where card digits m
     // The control case: the redesign is "don't disarm while it might still be
     // on the page", not "never disarm". A submission that actually completed,
     // with nothing left pending, disarms exactly as before.
-    const harness = sevenVerbComposition();
+    const harness = await sevenVerbComposition();
 
     const response = await harness.catalog.invoke(
       'payments.checkout.begin',
@@ -1177,7 +1177,7 @@ describe('BLOCKING 1: the redactor stays armed on every exit where card digits m
 // explicit `confirmed: true`.
 describe('BLOCKING 2: verified requires evidence, not merely a describeSubmission wired', () => {
   test('describeSubmission wired but finding nothing still yields submitted-unverified', async () => {
-    const harness = sevenVerbComposition({
+    const harness = await sevenVerbComposition({
       async describeSubmission() {
         return { orderId: null, challenge: null };
       },
@@ -1195,7 +1195,7 @@ describe('BLOCKING 2: verified requires evidence, not merely a describeSubmissio
   });
 
   test('an explicit confirmed:true with no order id still verifies', async () => {
-    const harness = sevenVerbComposition({
+    const harness = await sevenVerbComposition({
       async describeSubmission() {
         return { orderId: null, challenge: null, confirmed: true };
       },
@@ -1210,7 +1210,7 @@ describe('BLOCKING 2: verified requires evidence, not merely a describeSubmissio
   });
 
   test('an order id alone is still sufficient evidence, unaffected by the fix', async () => {
-    const harness = sevenVerbComposition({
+    const harness = await sevenVerbComposition({
       async describeSubmission(submission) {
         return { orderId: submission.navigated ? 'BBY-01-556677' : null, challenge: null };
       },

@@ -97,7 +97,7 @@ interface Harness {
   readonly driver: FixtureCheckoutDriver;
 }
 
-function buildHarness(options: { readonly established?: boolean } = {}): Harness {
+async function buildHarness(options: { readonly established?: boolean } = {}): Promise<Harness> {
   const sent: { kind: string; message: string }[] = [];
   const recorded: PurchaseRecord[] = [];
   const driver = new FixtureCheckoutDriver({ merchant, pageUrl: `${RECOGNISED}/checkout` });
@@ -171,7 +171,7 @@ function buildHarness(options: { readonly established?: boolean } = {}): Harness
 
   const service = impl as unknown as PaymentsGatewayService;
   const catalog = new GatewayMethodCatalog();
-  registerPaymentsGatewayMethods(catalog, service);
+  await registerPaymentsGatewayMethods(catalog, service);
   return { catalog, service, sent, recorded, driver };
 }
 
@@ -234,7 +234,7 @@ describe('the verbs exist and are reachable', () => {
 
 describe("the owner's chain, driven through the real verbs", () => {
   test('open, judge, initiate, fill the address, complete, and tell him', async () => {
-    const harness = buildHarness();
+    const harness = await buildHarness();
     const handler = createPaymentsCheckoutBeginHandler(harness.service);
 
     // GatewayMethodHandler returns `unknown` by contract; this test asserts the
@@ -277,7 +277,7 @@ describe("the owner's chain, driven through the real verbs", () => {
   });
 
   test('an unrecognised merchant asks instead, and silence buys nothing', async () => {
-    const harness = buildHarness({ established: false });
+    const harness = await buildHarness({ established: false });
     const handler = createPaymentsCheckoutBeginHandler(harness.service);
 
     // GatewayMethodHandler returns `unknown` by contract; this test asserts the
@@ -295,7 +295,7 @@ describe("the owner's chain, driven through the real verbs", () => {
 
 describe('reading the store\'s email, and telling him about it', () => {
   test('the confirmation is recognised as the order he approved', async () => {
-    const harness = buildHarness();
+    const harness = await buildHarness();
     const handler = createPaymentsCheckoutBeginHandler(harness.service);
     await handler({ body: await beginParams() } as unknown as Parameters<typeof handler>[0]);
 
@@ -312,7 +312,7 @@ describe('reading the store\'s email, and telling him about it', () => {
   });
 
   test('a confirmation from a different domain is not his order', async () => {
-    const harness = buildHarness();
+    const harness = await buildHarness();
     const handler = createPaymentsCheckoutBeginHandler(harness.service);
     await handler({ body: await beginParams() } as unknown as Parameters<typeof handler>[0]);
 
@@ -324,7 +324,7 @@ describe('reading the store\'s email, and telling him about it', () => {
   });
 
   test('the report carries OUR total and never the email body', async () => {
-    const harness = buildHarness();
+    const harness = await buildHarness();
     const handler = createPaymentsCheckoutBeginHandler(harness.service);
     await handler({ body: await beginParams() } as unknown as Parameters<typeof handler>[0]);
     const record = harness.recorded[0];

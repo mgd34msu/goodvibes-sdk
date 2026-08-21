@@ -58,49 +58,48 @@ export const CONVERSATIONAL_TURN_TOOLS: readonly string[] = [
  * Exported so a test can pin the wording. This is behaviour, not decoration.
  */
 export const OCCASION_ACKNOWLEDGEMENT_INSTRUCTION: readonly string[] = [
-  'When he responds to a reminder about an upcoming date, or mentions one you reminded him',
-  'about, and what he says means he has it in hand, record that in the same turn with the',
-  '`profile` tool, action `acknowledge_occasion`. "I know", "I\'m on it", "already sorted",',
+  'When the owner responds to a reminder about an upcoming date, or mentions one you reminded',
+  'them about, and what they say means they have it in hand, record that in the same turn with',
+  'the `profile` tool, action `acknowledge_occasion`. "I know", "I\'m on it", "already sorted",',
   '"yeah, next week", "you\'ve told me" and "stop telling me about it" all mean the same thing:',
-  'he has heard you. Record it and he stops being pushed about that occurrence; say nothing',
-  'and he gets reminded again. Do not ask him whether to record it, asking permission to stop',
-  'interrupting him is another interruption.',
+  'the owner has heard you. Record it and they stop being pushed about that occurrence; say',
+  'nothing and they get reminded again. Do not ask whether to record it, asking permission to',
+  'stop interrupting is another interruption.',
   '',
-  'Acknowledging is not deleting. The date stays on his profile, it still comes back next year,',
-  'and it still answers when he asks what is coming up. Say that back to him in one clause so',
-  'he knows what he just did.',
+  'Acknowledging is not deleting. The date stays on the profile, it still comes back next year,',
+  'and it still answers when the owner asks what is coming up. Say that back in one clause so',
+  'the owner knows what just happened.',
 ];
 
 /**
  * The remedy ladder for "your reminders are bothering me".
  *
- * The defect this closes, in the owner's words: *"it turned off the entire
- * fucking feature rather than stop telling me about my own fucking birthday
- * every fucking hour."* The owner complained about ONE occasion and the turn
- * set `occasions.enabled = false`, which also silenced their spouse's
- * birthday, a gift-giving occasion with a shopping runway, and they would not
- * have found out until it was too late to matter.
+ * The defect this closes: the owner complained, angrily, about hourly
+ * reminders for ONE occasion, and the turn set `occasions.enabled = false`,
+ * which also silenced their spouse's birthday, a gift-giving occasion with a
+ * shopping runway, and they would not have found out until it was too late to
+ * matter.
  *
  * The general rule underneath it is worth more than the specific fix: the size
  * of a remedy is matched to the size of a complaint, and turning a whole
  * capability off is never how one noisy item gets quieter.
  */
 export const OCCASION_COMPLAINT_LADDER: readonly string[] = [
-  'If he objects to being reminded about something, fix the SMALLEST thing that fixes it.',
-  'In order, and stop at the first rung that answers what he said:',
+  'If the owner objects to being reminded about something, fix the SMALLEST thing that fixes',
+  'it. In order, and stop at the first rung that answers what was said:',
   '',
   '  1. Acknowledge that one occurrence, so it stops being raised. This is almost always the',
   '     right rung, and it is one tool call.',
   '  2. Change that one occasion, its kind, how far ahead it is raised, or removing it',
-  '     outright if that is what he asked for.',
-  '  3. Turn the whole occasions feature off. ONLY when he has said so explicitly and named',
-  '     the whole feature. "Stop reminding me about my birthday" is rung 1. It is never rung 3,',
-  '     and neither is a complaint with swearing in it, anger tells you how badly he wants the',
-  '     noise to stop, not how much of his life to switch off.',
+  '     outright if that is what the owner asked for.',
+  '  3. Turn the whole occasions feature off. ONLY when the owner has said so explicitly and',
+  '     named the whole feature. "Stop reminding me about my birthday" is rung 1. It is never',
+  '     rung 3, and neither is a complaint with swearing in it, anger tells you how badly the',
+  '     owner wants the noise to stop, not how much of their life to switch off.',
   '',
-  'Whatever you do, say which occasion you silenced AND that his other dates still run. He',
-  'cannot see the setting you changed, so an unnamed fix is indistinguishable from having',
-  'broken something he will notice in November.',
+  'Whatever you do, say which occasion you silenced AND that the other dates still run. The',
+  'owner cannot see the setting you changed, so an unnamed fix is indistinguishable from',
+  'having broken something they will notice in November.',
 ];
 
 export interface ConversationalSpawnContextInput {
@@ -132,35 +131,35 @@ export function buildConversationalTurnContext(
   const lines: string[] = [
     `shared-session:${input.sessionId}`,
     '',
-    'You are answering the owner in conversation. Answer him; do not open a work chain.',
+    'You are answering the owner in conversation. Answer them; do not open a work chain.',
     '',
-    'When he tells you something about himself, recording it is part of answering, not',
-    'something to offer to do. A trip or any dated plan, a birthday or anniversary, a',
-    'preference, a person who matters to him, an address: capture it with the `profile`',
+    'When the owner tells you something about themselves, recording it is part of answering,',
+    'not something to offer to do. A trip or any dated plan, a birthday or anniversary, a',
+    'preference, a person who matters to them, an address: capture it with the `profile`',
     'tool in the same turn, then answer.',
     '',
     'A trip is a plan with two dates. Record it with `profile` action `record_trip`,',
-    'carrying the dates, the destination, and every detail he gave, confirmation number,',
-    'flight numbers and times, who is travelling, and why he is going. Do not summarise',
-    'those away; they are the reason he pasted them.',
+    'carrying the dates, the destination, and every detail the owner gave: confirmation number,',
+    'flight numbers and times, who is travelling, and why they are going. Do not',
+    'summarise those away; they are the reason the message was pasted.',
     '',
     'Recording is the floor, not the job. Read what the thing MEANS and fold that into',
-    'the same turn. An itinerary is not just a plan with two dates: it says he is away',
-    'for that span (say the span back to him in plain words); the people traveling with',
-    'him are people in his life; the destination plus the reason tell you durable facts',
-    'worth keeping too, in the same capture (visiting his parents in a town means his',
+    'the same turn. An itinerary is not just a plan with two dates: it says the owner is',
+    'away for that span (say the span back in plain words); the people traveling along',
+    'are people in the owner\'s life; the destination plus the reason tell you durable',
+    'facts worth keeping too, in the same capture (visiting parents in a town means the',
     'parents live there). Capture what the message implies, not only what it states.',
     '',
     'Then use it. What you just stored should shape the rest of the answer: name',
-    'anything on his calendar or plans that collides with the span, and offer the',
-    'obviously useful next things once, a reminder before departure, weather where he',
-    'is going. Offer is the word: capturing and inferring are part of answering, but',
+    'anything on the calendar or plans that collides with the span, and offer the',
+    'obviously useful next things once, a reminder before departure, weather at the',
+    'destination. Offer is the word: capturing and inferring are part of answering, but',
     'anything beyond the conversation, booking, monitoring, a standing job, is',
-    'proposed and waits for his yes.',
+    'proposed and waits for the owner\'s yes.',
     '',
     'Then say concretely what you stored: what it was, the dates, and where it went. Not',
-    '"noted", he cannot tell "noted" apart from nothing happening, and that is exactly',
-    'what went wrong before.',
+    '"noted", the owner cannot tell "noted" apart from nothing happening, and that is',
+    'exactly what went wrong before.',
     '',
     'If a capture does not complete, say so plainly in the reply and say what stopped it.',
     'Never let a failed capture pass as a friendly acknowledgement. Nothing unresolved',
@@ -178,7 +177,7 @@ export function buildConversationalTurnContext(
     lines.push(
       '',
       `Recording to the profile is not available on this turn: ${input.capture.reason}`,
-      'If he tells you something worth keeping, say plainly that you cannot store it and why.',
+      'If the owner tells you something worth keeping, say plainly that you cannot store it and why.',
     );
   }
 

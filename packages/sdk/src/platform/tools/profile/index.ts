@@ -1,5 +1,5 @@
 /**
- * tools/profile, the agent tool that records what the owner says about himself.
+ * tools/profile, the agent tool that records what the owner says about themselves.
  *
  * ## Why the tool cannot be told its own authority
  *
@@ -103,7 +103,7 @@ function createInstance(
       if (!port) {
         return refused(
           'The owner profile is not available in this process, so nothing could be recorded. '
-          + 'Tell him plainly that you could not store it.',
+          + 'Tell the owner plainly that you could not store it.',
         );
       }
 
@@ -148,7 +148,7 @@ function createInstance(
         const occasionId = text(input.occasionId);
         if (occasionId.length === 0) {
           return refused(
-            'Which occasion? Call `list` for the ids, then acknowledge the one he meant. Nothing '
+            'Which occasion? Call `list` for the ids, then acknowledge the one the owner meant. Nothing '
             + 'was changed.',
           );
         }
@@ -168,7 +168,7 @@ function createInstance(
           // unsure whether the rest of their dates went quiet too, which is
           // exactly what happened the day the whole feature got switched off
           // to stop one reminder.
-          tellHim: outcome.reply,
+          tellOwner: outcome.reply,
         });
       }
 
@@ -179,8 +179,8 @@ function createInstance(
       const said = text(input.said);
       if (said.length === 0) {
         return refused(
-          'I need his own words for the record before I can store this. Call this again with `said` '
-          + 'set to what he actually wrote.',
+          'I need the owner\'s own words for the record before I can store this. Call this again with '
+          + '`said` set to what the owner actually wrote.',
         );
       }
 
@@ -221,11 +221,11 @@ function createInstance(
           details,
           savedTo: 'your profile, under Plans',
           disclosure: outcome.disclosure,
-          tellHim:
+          tellOwner:
             `Say you stored ${title}, ${from} to ${to}`
             + `${text(input.destination) ? ` in ${text(input.destination)}` : ''}`
             + `${details.length > 0 ? `, with ${details.length} detail(s)` : ''}`
-            + ', in his profile under Plans.',
+            + ', in the profile under Plans.',
         });
       }
 
@@ -237,8 +237,8 @@ function createInstance(
         if (date.length === 0) return refused('I need the date itself, MM-DD for a yearly one, YYYY-MM-DD for a single day.');
         if (kind.length === 0) {
           return refused(
-            'Ask him which kind this is, something to sort a gift for, something to just remember, '
-            + 'or neither. Nothing is recorded until he says, because that is not something to guess at.',
+            'Ask the owner which kind this is, something to sort a gift for, something to just remember, '
+            + 'or neither. Nothing is recorded until the owner says, because that is not something to guess at.',
           );
         }
         const outcome = await port.occasions.confirmOccasion({
@@ -260,7 +260,7 @@ function createInstance(
           kind,
           savedTo: 'your profile, under Important dates',
           disclosure: outcome.disclosure,
-          tellHim: `Say you stored ${title} on ${date} in his profile under Important dates.`,
+          tellOwner: `Say you stored ${title} on ${date} in the profile under Important dates.`,
         });
       }
 
@@ -282,7 +282,7 @@ function createInstance(
           fieldId,
           savedTo: 'your profile',
           disclosure: outcome.disclosure,
-          tellHim: `Say you saved his ${fieldId} to his profile.`,
+          tellOwner: `Say you saved the owner's ${fieldId} to the profile.`,
         });
       }
 
@@ -302,7 +302,7 @@ function createInstance(
           section,
           savedTo: `your profile, under ${section}`,
           disclosure: outcome.disclosure,
-          tellHim: `Say you noted it in his profile under ${section}.`,
+          tellOwner: `Say you noted it in the profile under ${section}.`,
         });
       }
 

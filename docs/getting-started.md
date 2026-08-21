@@ -71,14 +71,27 @@ For a React Native or Expo deep-dive, see [React Native integration](./react-nat
 ```ts
 import { createReactNativeGoodVibesSdk } from '@pellux/goodvibes-sdk/react-native';
 
+const token = await SecureStore.getItemAsync('gv-token');
+
 const sdk = createReactNativeGoodVibesSdk({
   baseUrl: 'https://goodvibes.example.com',
-  authToken: await SecureStore.getItemAsync('gv-token'),
+  authToken: token,
 });
 
-const stop = sdk.realtime.viaWebSocket().agents.on('AGENT_COMPLETED', (event) => {
-  console.log(event);
-});
+// The daemon authenticates the upgrade request itself, so the WebSocket must
+// carry the bearer token as a header. React Native's WebSocket accepts
+// (url, protocols, { headers }); hand the SDK a wrapper that attaches it.
+// The full typed wrapper is in docs/react-native-integration.md.
+const AuthorizedWebSocket = function (url: string | URL): WebSocket {
+  return new (WebSocket as never)(String(url), [], {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+} as unknown as typeof WebSocket;
+
+const stop = sdk.realtime.viaWebSocket(AuthorizedWebSocket)
+  .agents.on('AGENT_COMPLETED', (event) => {
+    console.log(event);
+  });
 ```
 
 ### Expo

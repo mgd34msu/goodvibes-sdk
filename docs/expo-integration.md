@@ -39,12 +39,18 @@ The Expo entrypoint wraps the React Native factory, so realtime is WebSocket-onl
 - `retry` (HTTP): `{ maxAttempts: 3, baseDelayMs: 250, maxDelayMs: 2000 }`
 - `realtime.onError`: called when the realtime transport hits an unrecoverable error
 
+The daemon authenticates the WebSocket upgrade request itself and answers 401
+when it carries no `Authorization` header. Pass a header-attaching wrapper as
+the `WebSocketImpl`, exactly as shown in
+[React Native integration](./react-native-integration.md#realtime); the Expo
+runtime's `WebSocket` supports the same headers option.
+
 Scope a feed to a single session with `forSession` (re-exported from `@pellux/goodvibes-sdk/expo`):
 
 ```ts
 import { createExpoGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk/expo';
 
-const sessionEvents = forSession(sdk.realtime.viaWebSocket(), sessionId);
+const sessionEvents = forSession(sdk.realtime.viaWebSocket(AuthorizedWebSocket), sessionId);
 sessionEvents.agents.on('AGENT_COMPLETED', (event) => console.log(event));
 ```
 

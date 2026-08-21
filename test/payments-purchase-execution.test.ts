@@ -214,9 +214,10 @@ interface Harness {
   readonly driver: FixtureCheckoutDriver;
   readonly redactor: CardMaterialRedactor;
   readonly registry: CheckoutRegistry;
+  readonly journal: MemoryCheckoutJournal;
   readonly ledger: BudgetLedger;
   readonly recorded: PurchaseRecord[];
-  readonly notices: { kind: 'approval' | 'veto'; message: string }[];
+  readonly notices: { kind: 'approval' | 'veto' | 'notice'; message: string }[];
   readonly request: PurchaseRequest;
   readonly controls: CheckoutControls;
   readonly origin: string;
@@ -259,10 +260,11 @@ function buildHarness(options: HarnessOptions): Harness {
     ...(options.throwOnField === undefined ? {} : { throwOnField: options.throwOnField }),
   });
   const redactor = new CardMaterialRedactor();
-  const registry = new CheckoutRegistry(new MemoryCheckoutJournal());
+  const journal = new MemoryCheckoutJournal();
+  const registry = new CheckoutRegistry(journal);
   const ledger = new BudgetLedger();
   const recorded: PurchaseRecord[] = [];
-  const notices: { kind: 'approval' | 'veto'; message: string }[] = [];
+  const notices: { kind: 'approval' | 'veto' | 'notice'; message: string }[] = [];
 
   const purchases: PurchaseLedger = {
     async record(entry) {
@@ -356,6 +358,7 @@ function buildHarness(options: HarnessOptions): Harness {
     driver,
     redactor,
     registry,
+    journal,
     ledger,
     recorded,
     notices,
@@ -1171,8 +1174,11 @@ describe('when the merchant interrupts or the process dies', () => {
     expect(outcome.reason).toContain('cannot tell whether');
     expect(outcome.reason).toContain('will not try again');
 
-    // The journal is the thing a restart reads, and it says the honest answer.
-    const interrupted = await harness.registry.interrupted();
+    // The journal is the thing a restart reads, and it says the honest
+    // answer. A restart holds a FRESH registry over the surviving journal;
+    // the live registry deliberately skips its own in-flight records.
+    expect((await harness.registry.interrupted()).length).toBe(0);
+    const interrupted = await new CheckoutRegistry(harness.journal).interrupted();
     expect(interrupted.length).toBe(1);
     expect(interrupted[0]?.verdict).toBe('possibly-submitted');
     // The budget stays held: it may well have been spent.
@@ -1196,10 +1202,19 @@ describe('when the merchant interrupts or the process dies', () => {
       shippingTierRequested: 'normal' as const, shippingTierUsed: null, stepDown: null,
       totalMinorUnits: null,
     };
+    // No reservation on the record: the message says nothing about a hold.
     expect(describeInterruption(record, 'not-submitted')).toContain('Nothing was charged');
+    expect(describeInterruption(record, 'not-submitted')).not.toContain('hold');
+    // With a reservation, the sentence follows the actual release result.
+    const held = { ...record, reservationId: 'res-h' };
+    expect(describeInterruption(held, 'not-submitted', { reservationReleased: true })).toContain('has been released');
+    expect(describeInterruption(held, 'not-submitted')).toContain('no longer holds it');
     expect(describeInterruption(record, 'possibly-submitted')).toContain('order history');
     expect(describeInterruption(record, 'possibly-submitted')).toContain('will not retry');
-    expect(describeInterruption(record, 'submitted')).toContain('recorded');
+    // 'submitted' claims a ledger record only when one was verified.
+    expect(describeInterruption(record, 'submitted', { recordVerified: true })).toContain('purchase record is on the ledger');
+    expect(describeInterruption(record, 'submitted', { recordVerified: false })).toContain('no purchase record exists');
+    expect(describeInterruption(record, 'submitted')).toContain('cannot verify');
   });
 
   test('two purchases cannot drive the same page at once', async () => {

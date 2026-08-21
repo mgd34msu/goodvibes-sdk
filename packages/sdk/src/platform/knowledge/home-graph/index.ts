@@ -7,6 +7,8 @@ export { HOME_GRAPH_KNOWLEDGE_EXTENSION } from './extension.js';
 export {
   HOME_GRAPH_NODE_KINDS,
   HOME_GRAPH_RELATIONS,
+  MACHINE_WRITTEN_HOME_GRAPH_RELATIONS,
+  REPAIRS_GAP_RELATION,
 } from './types.js';
 export type {
   HomeGraphAskInput,
@@ -35,6 +37,8 @@ export type {
   HomeGraphProjectionResult,
   HomeGraphReindexResult,
   HomeGraphRelation,
+  HomeGraphMachineWrittenRelation,
+  AnyHomeGraphRelation,
   HomeGraphResetInput,
   HomeGraphResetResult,
   HomeGraphReviewInput,

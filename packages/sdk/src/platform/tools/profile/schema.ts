@@ -3,10 +3,10 @@ import type { ToolDefinition } from '../../types/tools.js';
 export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
   name: 'profile',
   description:
-    'Record what the owner tells you about himself: trips and other dated plans, birthdays and '
+    'Record what the owner tells you about themselves: trips and other dated plans, birthdays and '
     + 'anniversaries, declared profile fields, and free-text facts. Also reads back what is stored, '
-    + 'and records that he has an upcoming occasion in hand so he stops being reminded about it. '
-    + 'Use it in the same turn he says the thing, recording is part of answering, not an offer to make.',
+    + 'and records that the owner has an upcoming occasion in hand so the reminders stop. '
+    + 'Use it in the same turn the thing is said, recording is part of answering, not an offer to make.',
   parameters: {
     type: 'object',
     properties: {
@@ -19,18 +19,18 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
           + 'set_field: one of the declared profile fields, by id. '
           + 'note: a free-text fact under a profile section. '
           + 'list: read back the dates and plans already stored. '
-          + 'acknowledge_occasion: he has this one in hand, so stop reminding him about it. Use it '
-          + 'whenever he responds to a reminder by saying he knows, he has it covered, he is already '
-          + 'sorting it, or that he does not want to hear about it again. It stops the reminders for '
-          + 'that occurrence only; the date stays on his profile, every other date is untouched, and '
-          + 'next year asks fresh.',
+          + 'acknowledge_occasion: the owner has this one in hand, so stop reminding them about it. '
+          + 'Use it whenever the owner responds to a reminder by saying they know, they have it '
+          + 'covered, they are already sorting it, or that they do not want to hear about it again. '
+          + 'It stops the reminders for that occurrence only; the date stays on the profile, every '
+          + 'other date is untouched, and next year asks fresh.',
       },
       said: {
         type: 'string',
         description:
           'The owner\'s own words that this came from, quoted verbatim. Required for every write. '
-          + 'This is what makes "where did you get that?" answerable later, so quote him rather than '
-          + 'paraphrasing.',
+          + 'This is what makes "where did you get that?" answerable later, so quote the owner '
+          + 'rather than paraphrasing.',
       },
       title: {
         type: 'string',
@@ -46,21 +46,21 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       },
       destination: {
         type: 'string',
-        description: '(record_trip) Where he is going, e.g. "Picayune MS".',
+        description: '(record_trip) Where the trip goes, e.g. "Picayune MS".',
       },
       away: {
         type: 'boolean',
         description:
-          '(record_trip) True when this takes him away from home. Travel is away; a week of building '
-          + 'work at the house is a real dated plan that is not. Default false.',
+          '(record_trip) True when this takes the owner away from home. Travel is away; a week of '
+          + 'building work at the house is a real dated plan that is not. Default false.',
       },
       details: {
         type: 'array',
         items: { type: 'string' },
         description:
-          '(record_trip) Everything else he gave, one detail per entry: confirmation number, each '
-          + 'flight with its number and times, who is travelling, and why he is going. Keep his '
-          + 'figures exactly; these are the reason he pasted the itinerary.',
+          '(record_trip) Everything else the owner gave, one detail per entry: confirmation number, '
+          + 'each flight with its number and times, who is travelling, and why they are going. Keep '
+          + 'the figures exactly; these are the reason the itinerary was pasted.',
       },
       date: {
         type: 'string',
@@ -72,8 +72,8 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
         enum: ['gift-giving', 'remember-only', 'neither'],
         description:
           '(record_date) Whether this is something to sort a gift for, something to simply remember, '
-          + 'or neither. Never guess it, no rule tells a birthday from a death anniversary. Ask him '
-          + 'if he did not say.',
+          + 'or neither. Never guess it, no rule tells a birthday from a death anniversary. Ask the '
+          + 'owner if they did not say.',
       },
       person: {
         type: 'string',
@@ -82,10 +82,10 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       self: {
         type: 'boolean',
         description:
-          '(record_date) True when the date is about the OWNER himself, his own birthday, his own '
-          + 'anniversary of something. He knows his own dates, so one he only has to remember is kept '
-          + 'and answerable but never pushed at him. Set it when he says "my birthday" rather than '
-          + 'putting his name in `person`.',
+          '(record_date) True when the date is about the OWNER: their own birthday, their own '
+          + 'anniversary of something. The owner knows their own dates, so one they only have to '
+          + 'remember is kept and answerable but never pushed at them. Set it when the owner says '
+          + '"my birthday" rather than putting their name in `person`.',
       },
       occasionId: {
         type: 'string',
@@ -96,8 +96,8 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       occurrence: {
         type: 'string',
         description:
-          '(acknowledge_occasion) The specific date as YYYY-MM-DD, when he means one that is not the '
-          + 'next one. Omit for the upcoming occurrence, which is almost always what he means.',
+          '(acknowledge_occasion) The specific date as YYYY-MM-DD, when the owner means one that is '
+          + 'not the next one. Omit for the upcoming occurrence, which is almost always what is meant.',
       },
       recurrence: {
         type: 'string',
@@ -106,7 +106,7 @@ export const PROFILE_TOOL_SCHEMA: ToolDefinition = {
       },
       leadDays: {
         type: 'number',
-        description: '(record_date) How many days ahead to raise it, when he asked for something other than the default.',
+        description: '(record_date) How many days ahead to raise it, when the owner asked for something other than the default.',
       },
       fieldId: {
         type: 'string',

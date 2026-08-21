@@ -6,6 +6,7 @@ import type {
   KnowledgeSourceRecord,
 } from '../types.js';
 import { renderKnowledgeMap } from '../map.js';
+import { REPAIRS_GAP_RELATION } from './types.js';
 import { countFacet, normalizeStringArray, readString } from '../map-filters.js';
 import { edgeIsActive, factSourceIds, isGeneratedPageSource, uniqueStrings } from './helpers.js';
 import type { HomeGraphMapHaFilterInput, HomeGraphMapInput, HomeGraphMapResult } from './types.js';
@@ -187,7 +188,7 @@ function isContextMapRelation(relation: string): boolean {
     || relation === 'has_manual'
     || relation === 'supports_fact'
     || relation === 'has_gap'
-    || relation === 'repairs_gap';
+    || relation === REPAIRS_GAP_RELATION;
 }
 
 function buildHomeAssistantMapFacets(state: HomeGraphRenderState): Record<string, readonly KnowledgeMapFacetValue[]> {

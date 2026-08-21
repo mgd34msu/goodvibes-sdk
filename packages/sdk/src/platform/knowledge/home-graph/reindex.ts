@@ -1,4 +1,5 @@
 import type { ArtifactStore } from '../../artifacts/index.js';
+import { REPAIRS_GAP_RELATION } from './types.js';
 import type { ArtifactDescriptor } from '../../artifacts/types.js';
 import type { KnowledgeStore } from '../store.js';
 import type { KnowledgeExtractionRecord, KnowledgeIssueRecord, KnowledgeNodeRecord, KnowledgeSourceRecord } from '../types.js';
@@ -242,7 +243,7 @@ function devicesLinkedToSources(
   for (const edge of state.edges) {
     if (edge.fromKind !== 'source' || !wantedSources.has(edge.fromId) || edge.toKind !== 'node') continue;
     const node = nodesById.get(edge.toId);
-    if ((edge.relation === 'source_for' || edge.relation === 'has_manual' || edge.relation === 'repairs_gap') && node?.kind === 'ha_device') {
+    if ((edge.relation === 'source_for' || edge.relation === 'has_manual' || edge.relation === REPAIRS_GAP_RELATION) && node?.kind === 'ha_device') {
       const deviceId = readHomeAssistantMetadataString(node, 'objectId', 'deviceId') ?? node.id;
       deviceIds.add(deviceId);
     }

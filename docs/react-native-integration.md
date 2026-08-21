@@ -27,8 +27,32 @@ See [Getting started](./getting-started.md#install) for the canonical install co
 
 The React Native realtime surface is WebSocket-only. `sdk.realtime` exposes `runtime()` and `viaWebSocket()`. There is no `viaSse()`. SSE is unavailable on this surface, so the inherited `realtime.sseReconnect` option is a no-op here. Only `webSocketReconnect` applies.
 
+The daemon authenticates the WebSocket upgrade request itself and answers 401
+when it carries neither an `Authorization` header nor an operator session
+cookie. The SDK's in-band auth frame is only read after an authenticated
+upgrade. React Native's `WebSocket` accepts a headers option, so pass a
+wrapper as the `WebSocketImpl` that attaches the bearer token to the upgrade:
+
 ```ts
-const events = sdk.realtime.viaWebSocket();
+const token = await SecureStore.getItemAsync('gv-token');
+
+// React Native's WebSocket accepts (url, protocols, { headers }); the DOM
+// types do not declare the third argument, hence the constructor cast.
+type RNWebSocketCtor = new (
+  url: string,
+  protocols: string[],
+  options: { headers: Record<string, string> },
+) => WebSocket;
+
+const AuthorizedWebSocket = function (url: string | URL): WebSocket {
+  return new (WebSocket as unknown as RNWebSocketCtor)(
+    String(url),
+    [],
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+} as unknown as typeof WebSocket;
+
+const events = sdk.realtime.viaWebSocket(AuthorizedWebSocket);
 const unsubscribe = events.agents.on('AGENT_COMPLETED', (event) => {
   console.log(event);
 });
@@ -45,7 +69,7 @@ To scope a feed to a single session, wrap it with `forSession` (re-exported from
 ```ts
 import { createReactNativeGoodVibesSdk, forSession } from '@pellux/goodvibes-sdk/react-native';
 
-const sessionEvents = forSession(sdk.realtime.viaWebSocket(), sessionId);
+const sessionEvents = forSession(sdk.realtime.viaWebSocket(AuthorizedWebSocket), sessionId);
 sessionEvents.agents.on('AGENT_COMPLETED', (event) => console.log(event));
 ```
 

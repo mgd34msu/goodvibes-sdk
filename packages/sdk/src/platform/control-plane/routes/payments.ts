@@ -97,6 +97,14 @@ export interface PaymentCardView extends CardMetadata {
 
 /** The narrow slice of the capability these handlers need. */
 export interface PaymentsGatewayService {
+  /**
+   * Settle checkouts a restart interrupted, per the journal's phase verdicts
+   * and the windows' documented silence rules, returning the sweep envelope
+   * (`CheckoutRecoverySweep`: swept or skipped, plus settlements). Optional
+   * so a narrower test double stays valid; when present, registration runs
+   * it to completion at attach time, before any checkout verb can be served.
+   */
+  recoverInterruptedCheckouts?(): Promise<unknown>;
   budgetStatus(): Promise<PaymentsBudgetView>;
   listCards(): Promise<{ cards: readonly PaymentCardView[]; defaultCardId: string }>;
   /**
@@ -516,11 +524,41 @@ export function createPaymentsPurchasesListHandler(service: PaymentsGatewayServi
   };
 }
 
-/** Attach the payment handlers to their registered descriptors (missing = no-op). */
-export function registerPaymentsGatewayMethods(
+/**
+ * Attach the payment handlers to their registered descriptors (missing = no-op).
+ *
+ * Boot recovery runs TO COMPLETION before any handler attaches, so no checkout
+ * verb can start a purchase the sweep would then read as interrupted. The
+ * promise resolves once the verbs are attached; a caller that does not await
+ * it serves the payment verbs a beat later, never a swept-mid-flight checkout.
+ * Recovery failure, thrown synchronously or rejected, is reported through
+ * `onRecoveryFailure` and does not withhold the verbs: the sweep is a
+ * disclosure duty, not a serving precondition once it has stopped running.
+ */
+export async function registerPaymentsGatewayMethods(
   catalog: GatewayMethodCatalog,
   service: PaymentsGatewayService,
-): void {
+  options: {
+    /** Reported when boot recovery itself fails; never carries a notice body. */
+    readonly onRecoveryFailure?: ((error: unknown) => void) | undefined;
+    /**
+     * Receives the sweep envelope every time recovery runs, including a
+     * skipped-not-leader boot, for the composition's audit log; disclosure
+     * of recoveries is the platform rule, and the envelope is the audit
+     * record.
+     */
+    readonly onRecoverySettled?: ((sweep: unknown) => void) | undefined;
+  } = {},
+): Promise<void> {
+  if (typeof service.recoverInterruptedCheckouts === 'function') {
+    try {
+      const sweep = await service.recoverInterruptedCheckouts();
+      options.onRecoverySettled?.(sweep);
+    } catch (error) {
+      // Covers both a rejected promise and a synchronous throw from the call.
+      options.onRecoveryFailure?.(error);
+    }
+  }
   const attach = (id: string, handler: GatewayMethodHandler): void => {
     const descriptor = catalog.get(id);
     if (descriptor) catalog.register(descriptor, handler, { replace: true });

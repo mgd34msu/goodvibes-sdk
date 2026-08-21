@@ -120,7 +120,7 @@ export type {
   KnowledgeSemanticServiceOptions,
   WebGapRepairOptions,
 } from './semantic/index.js';
-export { HomeGraphService, HOME_GRAPH_KNOWLEDGE_EXTENSION, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS } from './home-graph/index.js';
+export { HomeGraphService, HOME_GRAPH_KNOWLEDGE_EXTENSION, HOME_GRAPH_NODE_KINDS, HOME_GRAPH_RELATIONS, MACHINE_WRITTEN_HOME_GRAPH_RELATIONS, REPAIRS_GAP_RELATION } from './home-graph/index.js';
 export {
   ProjectPlanningService,
   evaluateProjectPlanningReadiness,
@@ -203,6 +203,8 @@ export type {
   HomeGraphProjectionResult,
   HomeGraphReindexResult,
   HomeGraphRelation,
+  HomeGraphMachineWrittenRelation,
+  AnyHomeGraphRelation,
   HomeGraphResetInput,
   HomeGraphResetResult,
   HomeGraphReviewInput,

@@ -40,6 +40,7 @@
  * did not go through" is not a thing this code is entitled to believe.
  */
 import type { BudgetDraw } from './decide.js';
+import type { ChannelDelivery } from './windows.js';
 import type { CurrencyCode, MinorUnits, OwnerSuppliedText, ShippingStepDown, ShippingTier } from './types.js';
 
 export type CheckoutPhase =
@@ -47,8 +48,7 @@ export type CheckoutPhase =
   | 'awaiting-window'
   | 'arming-payment'
   | 'submit-pending'
-  | 'submitted'
-  | 'abandoned';
+  | 'submitted';
 
 /** What a restart can conclude about a checkout it found mid-flight. */
 export type InterruptedVerdict = 'not-submitted' | 'possibly-submitted' | 'submitted';
@@ -78,6 +78,24 @@ export interface InFlightCheckout {
   readonly shippingTierUsed: ShippingTier | null;
   readonly stepDown: ShippingStepDown | null;
   readonly totalMinorUnits: MinorUnits | null;
+  /**
+   * Set by boot recovery after it has told the owner about this record once.
+   * A record recovery keeps (an unknowable submit, or a submitted record it
+   * could not verify) would otherwise re-notify on every boot forever.
+   * Optional so journals written before this field existed stay readable.
+   */
+  readonly recoveryNotifiedAtMs?: number | undefined;
+  /**
+   * The window notice's per-channel delivery report, persisted when the
+   * window opens so a restart can apply `recoverInterruptedWindow`'s
+   * delivery-keyed rules instead of guessing. Absent on records written
+   * before these fields existed; recovery then settles conservatively.
+   */
+  readonly windowDeliveries?: readonly ChannelDelivery[] | undefined;
+  /** The window's deadline instant, persisted alongside the deliveries. */
+  readonly windowDeadlineMs?: number | undefined;
+  /** Which window governed this checkout: approval (silence denies) or veto (silence proceeds). */
+  readonly windowKind?: 'approval' | 'veto' | undefined;
 }
 
 /**
@@ -188,10 +206,21 @@ export class CheckoutRegistry {
     await this.journal.remove(purchaseId);
   }
 
-  /** Every checkout still in flight, for a restart to reason about. */
+  /**
+   * Every checkout still in flight, for a restart to reason about.
+   *
+   * Records live in this process (present in the page map) are NOT
+   * interrupted, they are running, and are skipped. Without this filter a
+   * recovery sweep started while a checkout executes would settle the live
+   * purchase as interrupted, release its reservation mid-flight, and delete
+   * the registry entry out from under it.
+   */
   async interrupted(): Promise<readonly { record: InFlightCheckout; verdict: InterruptedVerdict }[]> {
     const records = await this.journal.list();
-    return records.map((record) => ({ record, verdict: verdictFor(record.phase) }));
+    const liveIds = new Set([...this.byPage.values()].map((record) => record.purchaseId));
+    return records
+      .filter((record) => !liveIds.has(record.purchaseId))
+      .map((record) => ({ record, verdict: verdictFor(record.phase) }));
   }
 }
 
@@ -224,20 +253,57 @@ export function verdictFor(phase: CheckoutPhase): InterruptedVerdict {
 export function describeInterruption(
   record: InFlightCheckout,
   verdict: InterruptedVerdict,
+  options: {
+    /** Whether the budget hold was actually released; the sentence follows the fact. */
+    readonly reservationReleased?: boolean | undefined;
+    /**
+     * `true`: the purchase record was found on the ledger. `false`: it was
+     * looked for and is missing. `undefined`: this composition cannot look.
+     */
+    readonly recordVerified?: boolean | undefined;
+  } = {},
 ): string {
   if (verdict === 'submitted') {
-    return `The order at ${record.merchantDomain} was submitted before the restart and is recorded.`;
+    if (options.recordVerified === true) {
+      return `The order at ${record.merchantDomain} was submitted before the restart and its purchase record is on the ledger.`;
+    }
+    if (options.recordVerified === false) {
+      return (
+        `The journal says an order at ${record.merchantDomain} was submitted before the restart, but no `
+        + 'purchase record exists for it. The card may have been charged without the ledger seeing it. '
+        + 'I am keeping the journal entry and any budget hold; check your order history at that merchant.'
+      );
+    }
+    return (
+      `The journal says an order at ${record.merchantDomain} was submitted before the restart. This `
+      + 'setup cannot verify the purchase record, so I am keeping the journal entry; check your order '
+      + 'history at that merchant.'
+    );
   }
   if (verdict === 'not-submitted') {
+    // The budget sentence follows what actually happened to the hold, and a
+    // record that never took one gets no hold sentence at all.
+    const budgetSentence = record.reservationId === null
+      ? 'Nothing was charged.'
+      : options.reservationReleased === true
+        ? 'Nothing was charged and the budget it was holding has been released.'
+        : 'Nothing was charged. The hold it took did not survive the restart, so the daily pool no longer holds it.';
     return (
       `A checkout at ${record.merchantDomain} was interrupted before anything was submitted. `
-      + 'Nothing was charged and the budget it was holding has been released.'
+      + budgetSentence
+    );
+  }
+  if (options.recordVerified === true) {
+    return (
+      `A checkout at ${record.merchantDomain} stopped at the point of submitting, but its purchase `
+      + 'record is on the ledger: the order completed and is recorded. Its journal entry is closed.'
     );
   }
   return (
-    `A checkout at ${record.merchantDomain} was interrupted AT THE MOMENT OF SUBMITTING, so I `
-    + 'cannot tell whether the order went through. Check your order history at that merchant. '
-    + 'I will not retry it and I have not released the budget it was holding, tell me which it '
-    + 'was and I will settle the record.'
+    `A checkout at ${record.merchantDomain} stopped at the point of submitting, either the process `
+    + 'ended there or the merchant was still verifying the order. I cannot tell whether the order '
+    + 'went through, so I am keeping its record and its budget hold and will not retry it. Check '
+    + `your order history at ${record.merchantDomain}; the purchase list here only shows it if it `
+    + 'completed before the stop.'
   );
 }
