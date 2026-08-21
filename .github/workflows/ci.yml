@@ -365,7 +365,11 @@ jobs:
     name: Auto-release (tag + dispatch on green)
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # RELEASE_ARMED holds the zero-touch release while a version accumulates
+    # work across multiple pushes. Unset or any value other than 'true' means
+    # CI runs green without tagging or publishing; setting the repo variable
+    # to 'true' is the deliberate act that lets the next green push release.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.RELEASE_ARMED == 'true'
     needs:
       - validate
       - eval-gate
