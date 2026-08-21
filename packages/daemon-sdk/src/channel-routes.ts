@@ -27,6 +27,26 @@ async function readOptionalChannelBody(
   return channelBodySchemas.optional.parse(body);
 }
 
+// Shared by patchChannelPolicy and postChannelPolicy. Excludes `metadata` so
+// each caller can place it after its own extra fields (postChannelPolicy
+// inserts `groupPolicies` between the fields below and `metadata`).
+function buildChannelPolicyPatchFields(body: JsonRecord): Record<string, unknown> {
+  return {
+    ...(body.enabled !== undefined ? { enabled: Boolean(body.enabled) } : {}),
+    ...(body.requireMention !== undefined ? { requireMention: Boolean(body.requireMention) } : {}),
+    ...(body.allowDirectMessages !== undefined ? { allowDirectMessages: Boolean(body.allowDirectMessages) } : {}),
+    ...(body.allowGroupMessages !== undefined ? { allowGroupMessages: Boolean(body.allowGroupMessages) } : {}),
+    ...(body.allowThreadMessages !== undefined ? { allowThreadMessages: Boolean(body.allowThreadMessages) } : {}),
+    ...(body.dmPolicy === 'allow' || body.dmPolicy === 'deny' || body.dmPolicy === 'inherit' ? { dmPolicy: body.dmPolicy } : {}),
+    ...(body.groupPolicy === 'allow' || body.groupPolicy === 'deny' || body.groupPolicy === 'inherit' ? { groupPolicy: body.groupPolicy } : {}),
+    ...(body.allowTextCommandsWithoutMention !== undefined ? { allowTextCommandsWithoutMention: Boolean(body.allowTextCommandsWithoutMention) } : {}),
+    ...(Array.isArray(body.allowlistUserIds) ? { allowlistUserIds: body.allowlistUserIds.filter((value): value is string => typeof value === 'string') } : {}),
+    ...(Array.isArray(body.allowlistChannelIds) ? { allowlistChannelIds: body.allowlistChannelIds.filter((value): value is string => typeof value === 'string') } : {}),
+    ...(Array.isArray(body.allowlistGroupIds) ? { allowlistGroupIds: body.allowlistGroupIds.filter((value): value is string => typeof value === 'string') } : {}),
+    ...(Array.isArray(body.allowedCommands) ? { allowedCommands: body.allowedCommands.filter((value): value is string => typeof value === 'string') } : {}),
+  };
+}
+
 export function createDaemonChannelRouteHandlers(
   context: DaemonChannelRouteContext,
 ): DaemonChannelRouteHandlers {
@@ -264,18 +284,7 @@ export function createDaemonChannelRouteHandlers(
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
       const updated = await context.channelPolicy.upsertPolicy(surface as ChannelSurface, {
-        ...(body.enabled !== undefined ? { enabled: Boolean(body.enabled) } : {}),
-        ...(body.requireMention !== undefined ? { requireMention: Boolean(body.requireMention) } : {}),
-        ...(body.allowDirectMessages !== undefined ? { allowDirectMessages: Boolean(body.allowDirectMessages) } : {}),
-        ...(body.allowGroupMessages !== undefined ? { allowGroupMessages: Boolean(body.allowGroupMessages) } : {}),
-        ...(body.allowThreadMessages !== undefined ? { allowThreadMessages: Boolean(body.allowThreadMessages) } : {}),
-        ...(body.dmPolicy === 'allow' || body.dmPolicy === 'deny' || body.dmPolicy === 'inherit' ? { dmPolicy: body.dmPolicy } : {}),
-        ...(body.groupPolicy === 'allow' || body.groupPolicy === 'deny' || body.groupPolicy === 'inherit' ? { groupPolicy: body.groupPolicy } : {}),
-        ...(body.allowTextCommandsWithoutMention !== undefined ? { allowTextCommandsWithoutMention: Boolean(body.allowTextCommandsWithoutMention) } : {}),
-        ...(Array.isArray(body.allowlistUserIds) ? { allowlistUserIds: body.allowlistUserIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowlistChannelIds) ? { allowlistChannelIds: body.allowlistChannelIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowlistGroupIds) ? { allowlistGroupIds: body.allowlistGroupIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowedCommands) ? { allowedCommands: body.allowedCommands.filter((value): value is string => typeof value === 'string') } : {}),
+        ...buildChannelPolicyPatchFields(body),
         ...(typeof body.metadata === 'object' && body.metadata !== null ? { metadata: body.metadata as Record<string, unknown> } : {}),
       });
       return Response.json(updated);
@@ -286,18 +295,7 @@ export function createDaemonChannelRouteHandlers(
       const body = await context.parseJsonBody(req);
       if (body instanceof Response) return body;
       const updated = await context.channelPolicy.upsertPolicy(surface as ChannelSurface, {
-        ...(body.enabled !== undefined ? { enabled: Boolean(body.enabled) } : {}),
-        ...(body.requireMention !== undefined ? { requireMention: Boolean(body.requireMention) } : {}),
-        ...(body.allowDirectMessages !== undefined ? { allowDirectMessages: Boolean(body.allowDirectMessages) } : {}),
-        ...(body.allowGroupMessages !== undefined ? { allowGroupMessages: Boolean(body.allowGroupMessages) } : {}),
-        ...(body.allowThreadMessages !== undefined ? { allowThreadMessages: Boolean(body.allowThreadMessages) } : {}),
-        ...(body.dmPolicy === 'allow' || body.dmPolicy === 'deny' || body.dmPolicy === 'inherit' ? { dmPolicy: body.dmPolicy } : {}),
-        ...(body.groupPolicy === 'allow' || body.groupPolicy === 'deny' || body.groupPolicy === 'inherit' ? { groupPolicy: body.groupPolicy } : {}),
-        ...(body.allowTextCommandsWithoutMention !== undefined ? { allowTextCommandsWithoutMention: Boolean(body.allowTextCommandsWithoutMention) } : {}),
-        ...(Array.isArray(body.allowlistUserIds) ? { allowlistUserIds: body.allowlistUserIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowlistChannelIds) ? { allowlistChannelIds: body.allowlistChannelIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowlistGroupIds) ? { allowlistGroupIds: body.allowlistGroupIds.filter((value): value is string => typeof value === 'string') } : {}),
-        ...(Array.isArray(body.allowedCommands) ? { allowedCommands: body.allowedCommands.filter((value): value is string => typeof value === 'string') } : {}),
+        ...buildChannelPolicyPatchFields(body),
         ...(Array.isArray(body.groupPolicies) ? {
           groupPolicies: body.groupPolicies
             .filter((value): value is Record<string, unknown> => typeof value === 'object' && value !== null)

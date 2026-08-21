@@ -145,12 +145,14 @@ function isStringArray(value: unknown): boolean {
 /**
  * Check the config's shape before anything is mutated.
  *
- * `parseToolchainConfig` validates only `packageName` and casts the rest, so a
- * hand-edited toolchain.config.json reached this tool as if it were typed. A
- * bad `commitPaths` used to surface as a TypeError at `git add`, after the
- * manifests were bumped, the sync commands ran, and CHANGELOG.md was rewritten,
- * leaving a dirty tree that the next run then refused as unclean. One named
- * failure up front is what the caller can act on.
+ * `parseToolchainConfig` now validates a loaded toolchain.config.json's field
+ * types with zod, but `runReleaseCut` also accepts a `ReleaseCutConfig` built
+ * directly by a caller that bypasses that parser (programmatic use, or the
+ * hand-built fixtures in this file's tests). A bad `commitPaths` used to
+ * surface as a TypeError at `git add`, after the manifests were bumped, the
+ * sync commands ran, and CHANGELOG.md was rewritten, leaving a dirty tree that
+ * the next run then refused as unclean. One named failure up front is what
+ * the caller can act on.
  */
 function requireReleaseCutConfig(config: ReleaseCutConfig): void {
   const problems: string[] = [];

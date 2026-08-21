@@ -42,14 +42,14 @@
     },
     "packages/contracts": {
       "name": "@pellux/goodvibes-contracts",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "zod": "^4.3.6",
       },
     },
     "packages/daemon-sdk": {
       "name": "@pellux/goodvibes-daemon-sdk",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "bin": {
         "goodvibes-relay": "./dist/relay-server-entry.js",
       },
@@ -61,11 +61,11 @@
     },
     "packages/errors": {
       "name": "@pellux/goodvibes-errors",
-      "version": "2.0.11",
+      "version": "2.0.17",
     },
     "packages/operator-sdk": {
       "name": "@pellux/goodvibes-operator-sdk",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -75,7 +75,7 @@
     },
     "packages/peer-sdk": {
       "name": "@pellux/goodvibes-peer-sdk",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -84,7 +84,7 @@
     },
     "packages/sdk": {
       "name": "@pellux/goodvibes-sdk",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-daemon-sdk": "workspace:*",
@@ -139,7 +139,7 @@
     },
     "packages/terminal-shell": {
       "name": "@pellux/goodvibes-terminal-shell",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-sdk": "workspace:*",
@@ -147,7 +147,7 @@
     },
     "packages/toolchain": {
       "name": "@pellux/goodvibes-toolchain",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "bin": {
         "goodvibes-toolchain": "./dist/bin/toolchain.js",
         "goodvibes-sdk-pin-gate": "./dist/bin/sdk-pin-gate.js",
@@ -162,17 +162,20 @@
         "goodvibes-changelog-gate": "./dist/bin/changelog-gate.js",
         "goodvibes-sha256sums": "./dist/bin/sha256sums.js",
       },
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
     },
     "packages/transport-core": {
       "name": "@pellux/goodvibes-transport-core",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-errors": "workspace:*",
       },
     },
     "packages/transport-http": {
       "name": "@pellux/goodvibes-transport-http",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",
@@ -182,7 +185,7 @@
     },
     "packages/transport-realtime": {
       "name": "@pellux/goodvibes-transport-realtime",
-      "version": "2.0.11",
+      "version": "2.0.17",
       "dependencies": {
         "@pellux/goodvibes-contracts": "workspace:*",
         "@pellux/goodvibes-errors": "workspace:*",

@@ -30,12 +30,14 @@ export interface AtomicWriteOptions {
  * If the write or fsync fails, the temp file is cleaned up before rethrowing.
  *
  * @param path   Destination file path.
- * @param data   UTF-8 string content to write.
+ * @param data   UTF-8 string content, or raw bytes, to write. A `Uint8Array`
+ *               is written as-is; a string is written with `writeFileSync`'s
+ *               default UTF-8 encoding, exactly as before this accepted bytes.
  * @param opts   Optional mode and mkdirp flags.
  */
 export function atomicWriteFileSync(
   path: string,
-  data: string,
+  data: string | Uint8Array,
   opts: AtomicWriteOptions = {},
 ): void {
   const mode = opts.mode ?? 0o600;

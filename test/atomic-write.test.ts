@@ -124,4 +124,43 @@ describe('atomicWriteFileSync', () => {
     const siblings = readdirSync(subDir).filter((f) => f.endsWith('.tmp'));
     expect(siblings).toHaveLength(0);
   });
+
+  test('writes Uint8Array content byte-for-byte, including non-UTF8 bytes', () => {
+    const path = join(tmpDir, 'binary.bin');
+    const bytes = new Uint8Array([0x00, 0xff, 0x10, 0x80, 0x7f, 0xde, 0xad, 0xbe, 0xef]);
+    atomicWriteFileSync(path, bytes);
+    expect(new Uint8Array(readFileSync(path))).toEqual(bytes);
+  });
+
+  test('Uint8Array write respects the mode option', () => {
+    const path = join(tmpDir, 'binary-mode.bin');
+    atomicWriteFileSync(path, new Uint8Array([1, 2, 3]), { mode: 0o644 });
+    const mode = statSync(path).mode & 0o777;
+    expect(mode).toBe(0o644);
+  });
+
+  test('no .tmp file left after a successful Uint8Array write', () => {
+    const path = join(tmpDir, 'binary-clean.bin');
+    atomicWriteFileSync(path, new Uint8Array([9, 9, 9]));
+    const siblings = readdirSync(tmpDir).filter((f) => f.endsWith('.tmp'));
+    expect(siblings).toHaveLength(0);
+  });
+
+  test('a failed Uint8Array write leaves no temp file and does not clobber the target', () => {
+    const path = join(tmpDir, 'binary-original.bin');
+    const original = new Uint8Array([1, 2, 3, 4]);
+    atomicWriteFileSync(path, original);
+
+    // Same ENOTDIR failure trigger as the string-write cases above: parent
+    // segment is a regular file, so the temp write fails before rename.
+    const blocker = join(tmpDir, 'binary-blocker');
+    writeFileSync(blocker, 'x');
+    const target = join(blocker, 'fail.bin');
+
+    expect(() => atomicWriteFileSync(target, new Uint8Array([5, 6, 7]))).toThrow();
+    expect(existsSync(target)).toBe(false);
+    expect(new Uint8Array(readFileSync(path))).toEqual(original);
+    const siblings = readdirSync(tmpDir).filter((f) => f.endsWith('.tmp'));
+    expect(siblings).toHaveLength(0);
+  });
 });

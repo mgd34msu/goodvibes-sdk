@@ -11,6 +11,8 @@
  * `docs/release-and-publishing.md` (SDK repo).
  */
 
+import { z } from 'zod/v4';
+
 /** Where the SDK dependency pin lives and how the pin gate is parameterized. */
 export interface SdkPinConfig {
   /** npm name of the pinned SDK package, e.g. `@pellux/goodvibes-sdk`. */
@@ -176,18 +178,117 @@ export function resolvePerJobGreenConfig(partial: Partial<PerJobGreenConfig> & P
   };
 }
 
+// Schemas below mirror the interfaces above field-for-field and validate the
+// TYPE of each field that is present. `.catchall(z.unknown())` at every level
+// keeps unrecognized keys in the parsed result, so a valid config still
+// carries whatever extra data the raw JSON contained (matching the old
+// cast-through behavior for well-formed input); it is this repo's house
+// pattern for "keep unknown keys" (see zod-schemas/events.ts's
+// RuntimeEventRecordSchema), preferred over the deprecated `.passthrough()`.
+//
+// sdkPin and perJobGreen are the two sections with a `resolve*Config`
+// function that fills every field from a `Partial<...>` plus defaults, so
+// requiredness for those two lives in the resolver, not here: every field
+// below is optional and the resolver decides what is missing. The other
+// sections (build, coverage, smoke, releaseCut, publish) have no resolver,
+// their consumers read the parsed fields directly, so their required fields
+// stay required here.
+const SdkPinConfigSchema = z.object({
+  sdkPackage: z.string().optional(),
+  pinSource: z.enum(['dependencies', 'devDependencies']).optional(),
+  lockfile: z.string().optional(),
+  overlayMarker: z.string().optional(),
+  sourceRoots: z.array(z.string()).optional(),
+  enforceExportsMap: z.boolean().optional(),
+}).catchall(z.unknown());
+
+const BinaryTargetSchema = z.object({
+  key: z.string(),
+  bunTarget: z.string(),
+  appArtifact: z.string(),
+  daemonArtifact: z.string().optional(),
+  nativeAddonPackage: z.string().optional(),
+  nativeAddonFile: z.string().optional(),
+}).catchall(z.unknown());
+
+const BuildConfigSchema = z.object({
+  appEntrypoint: z.string(),
+  daemonEntrypoint: z.string().optional(),
+  outDir: z.string(),
+  addonOutDir: z.string(),
+  targets: z.array(BinaryTargetSchema),
+  prebuild: z.array(z.array(z.string())),
+}).catchall(z.unknown());
+
+const CoverageConfigSchema = z.object({
+  funcsFloor: z.number(),
+  linesFloor: z.number(),
+  command: z.array(z.string()),
+}).catchall(z.unknown());
+
+const SmokeConfigSchema = z.object({
+  bannerPrefix: z.string(),
+  forbiddenStrings: z.array(z.string()),
+  binaryDefault: z.string(),
+}).catchall(z.unknown());
+
+const ReleaseCutConfigSchema = z.object({
+  branch: z.string(),
+  versionFiles: z.array(z.string()),
+  syncCommands: z.array(z.array(z.string())),
+  commitPaths: z.array(z.string()),
+  changelogHeading: z.enum(['bracket', 'plain']),
+  changelogInsertMarker: z.enum(['first-separator', 'top']),
+}).catchall(z.unknown());
+
+const PublishPackageConfigSchema = z.object({
+  packageName: z.string(),
+  defaultRegistry: z.string(),
+  requiredTarballPaths: z.array(z.string()),
+  forbiddenTarballPrefixes: z.array(z.string()),
+  maxTarballBytes: z.number(),
+}).catchall(z.unknown());
+
+const PerJobGreenConfigSchema = z.object({
+  owner: z.string().optional(),
+  repo: z.string().optional(),
+  workflow: z.string().optional(),
+  event: z.string().optional(),
+  pollIntervalMs: z.number().optional(),
+  deadlineMs: z.number().optional(),
+  retryAttempts: z.number().optional(),
+  retryDelayMs: z.number().optional(),
+}).catchall(z.unknown());
+
+const ToolchainConfigSchema = z.object({
+  packageName: z.string().min(1, 'must be a non-empty string'),
+  sdkPin: SdkPinConfigSchema.optional(),
+  build: BuildConfigSchema.optional(),
+  coverage: CoverageConfigSchema.optional(),
+  smoke: SmokeConfigSchema.optional(),
+  releaseCut: ReleaseCutConfigSchema.optional(),
+  publish: PublishPackageConfigSchema.optional(),
+  perJobGreen: PerJobGreenConfigSchema.optional(),
+}).catchall(z.unknown());
+
+/** Render a `ZodError` as one line per bad field, each naming its path. */
+function formatToolchainConfigError(error: z.ZodError): string {
+  const problems = error.issues.map((issue) => {
+    const field = issue.path.length > 0 ? issue.path.join('.') : '(root)';
+    return `${field}: ${issue.message}`;
+  });
+  return `toolchain.config is invalid:\n${problems.map((problem) => `  - ${problem}`).join('\n')}`;
+}
+
 /**
  * Parse a JSON toolchain config. Kept separate from disk I/O so callers can
  * validate a config object from any source (file, env, test fixture).
  */
 export function parseToolchainConfig(raw: string): ToolchainConfig {
   const value: unknown = JSON.parse(raw);
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error('toolchain.config must be a JSON object.');
+  const result = ToolchainConfigSchema.safeParse(value);
+  if (!result.success) {
+    throw new Error(formatToolchainConfigError(result.error));
   }
-  const record = value as Record<string, unknown>;
-  if (typeof record.packageName !== 'string' || record.packageName.length === 0) {
-    throw new Error('toolchain.config.packageName is required and must be a non-empty string.');
-  }
-  return value as ToolchainConfig;
+  return result.data as ToolchainConfig;
 }

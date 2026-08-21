@@ -85,6 +85,11 @@ function listenerFailure(error: unknown, domain: string): Error {
  * other subscriber. The WebSocket path contains listener errors the same way in
  * runtime-events.ts's onMessage. Catching per listener also keeps one bad
  * subscriber from starving the ones dispatched after it.
+ *
+ * This local delivery is not gated on the transport's own connection state, so
+ * it can still reach in-process subscribers after the transport has reported
+ * its terminal `failed` state; local delivery is intentionally allowed to
+ * outlive wire delivery.
  */
 function dispatchToListener<TValue, TDomain extends string>(
   listener: (value: TValue) => void,

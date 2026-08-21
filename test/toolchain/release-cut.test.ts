@@ -71,8 +71,9 @@ describe('release-cut against a temp git fixture', () => {
   test('names the bad config field before touching the tree', () => {
     const dir = makeRepo();
     try {
-      // What a hand-edited toolchain.config.json can hand this tool: the cast in
-      // parseToolchainConfig lets a missing array through as if it were typed.
+      // A caller that builds a ReleaseCutConfig directly, bypassing
+      // parseToolchainConfig's validation, can still hand this tool a missing
+      // array; requireReleaseCutConfig is the backstop for that path.
       const broken = { ...config, commitPaths: undefined } as unknown as ReleaseCutConfig;
 
       expect(() => runReleaseCut({ cwd: dir, bump: 'patch', config: broken })).toThrow(/commitPaths must be an array of strings/);
