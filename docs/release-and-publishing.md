@@ -43,8 +43,23 @@ work. Local release tooling never re-runs gates; it prepares, commits, and tags.
      fallback). This replaces the former 45-minute `validate-release` re-run.
    - `publish-npm`: restores the **CI build artifact for the recorded run id**,
      asserts the run's head SHA equals the tagged SHA (the artifact-integrity
-     handoff), verifies the registry is empty-or-complete, publishes with
-     provenance from the `production` environment, and polls propagation.
+     handoff), checks the registry state for this version, publishes with
+     provenance from the `production` environment, polls propagation, and
+     aligns the `latest` dist-tag.
+     The registry check proceeds on empty, complete, or a partial at exactly
+     this version (a mid-loop publish failure is resumable, the publish loop
+     skips what is already up). It refuses when an already-published package
+     records a `gitHead` that is a **different commit** than the one being
+     released, which is another run or a force-moved tag owning the version.
+     An absent `gitHead` (npm omits it when packing outside a git checkout,
+     the normal case here) warns and proceeds; a check that cannot see the
+     commit must not manufacture a refusal.
+     The dist-tag step exists because `npm publish` with no `--tag` moves
+     `latest` to whatever it just published, so two overlapping releases of
+     different versions leave `latest` pointing backward on whichever packages
+     the older run finished last. It states the property instead (`latest` is
+     the highest published version, stable preferred) and converges from any
+     interleaving. See `scripts/align-dist-tags.ts`.
    - `github-release`: SBOM asset plus the tag's `CHANGELOG.md` excerpt.
 
 Because tagging is gated on push-CI green, the tag-redo dance is structurally

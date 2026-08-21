@@ -15,6 +15,14 @@
  * "No run found yet" is never a failure, it waits and polls. Only an exhausted
  * retry budget on a needed endpoint, a non-green job, or the deadline produces
  * a failure, and each names its source honestly.
+ *
+ * The fallback answers the SAME question as the primary path or it answers
+ * nothing: `success` is the only green conclusion on both, the verdict covers
+ * only check runs attributable to the target workflow (a commit routinely
+ * carries sibling-workflow and third-party check runs, and neither may move the
+ * verdict in either direction), and at least one attributable check run must
+ * exist, so a commit carrying only some other workflow's green checks fails
+ * closed instead of borrowing their verdict.
  */
 
 import type { HttpGetJson, HttpResponse, Logger, Sleep } from './effects.js';
@@ -202,20 +210,44 @@ async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenCon
   const runsRes = await getWithRetry(deps, config, runsUrl, 'check-runs');
   if (runsRes.status !== 200) return null;
   const checks = asArray<{ name: string; conclusion?: string | null; details_url?: string }>(runsRes.body, 'check_runs');
-  const failures = checks
-    .filter((c) => c.conclusion !== 'success' && c.conclusion !== 'neutral' && c.conclusion !== 'skipped')
-    .map((c) => `${c.name} (${c.conclusion ?? 'unknown'})`);
-  // Downstream artifact restores need the Actions run id even on this path.
-  // Actions-created check runs carry it in details_url. Resolution must be
-  // workflow-filtered (a commit can carry check runs from several push
-  // workflows); see resolveFallbackRunId for the exact discriminator. When no
-  // candidate resolves to the target workflow, runId stays null and the caller
-  // must treat the handoff as unresolved (the bin surfaces run_id= empty;
-  // release pipelines hard-fail their artifact restore honestly instead of
-  // misdirecting it).
+  // Resolve the target workflow's run FIRST, because it is also the attribution
+  // key for the verdict below. Actions-created check runs carry the run id in
+  // details_url; see resolveFallbackRunId for the exact discriminator.
   const candidates = checks.map((c) => runIdFromDetailsUrl(c.details_url)).filter((id): id is number => id !== null);
   const runId = await resolveFallbackRunId(deps, config, candidates);
-  const runIdNote = runId === null ? '; run id UNRESOLVED from check-run details' : `; run id ${runId} resolved from check-run details`;
+  if (runId === null) {
+    // Nothing on this commit could be attributed to the workflow under
+    // verification. Every check run present might belong to some other
+    // workflow or app, so "all checks green" would be a statement about
+    // somebody else's checks: a commit carrying only a foreign green check and
+    // no CI run at all used to pass. Fail closed, and say why.
+    return {
+      ok: false,
+      runId: null,
+      headSha: sha,
+      failures: [`no-check-run-attributable-to-${config.workflow}`],
+      source: 'check-suites',
+      reason: `check-suites fallback: run id UNRESOLVED, none of the ${checks.length} check run(s) on ${sha} could be `
+        + `attributed to ${config.workflow}, so this commit has no verified run of it. Refusing to report green.`,
+    };
+  }
+
+  // The verdict covers the TARGET workflow's check runs and nothing else, which
+  // is the same population evaluateRunJobs enumerates on the primary path. A
+  // commit routinely carries check runs from sibling workflows and third-party
+  // apps; judging those here made an unrelated app's neutral or skipped check
+  // redden a perfectly green CI run, and made a foreign green check part of the
+  // reason a release was allowed.
+  const attributable = checks.filter((c) => runIdFromDetailsUrl(c.details_url) === runId);
+  // Green is `success` and nothing else, the same bar evaluateRunJobs applies.
+  // The fallback used to also pass `neutral` and `skipped`, so a commit whose CI
+  // jobs were skipped rather than run verified green here and failed there,
+  // from the same commit, depending only on whether the Actions API was up.
+  const failures = attributable
+    .filter((c) => c.conclusion !== 'success')
+    .map((c) => `${c.name} (${c.conclusion ?? 'unknown'})`);
+  const foreign = checks.length - attributable.length;
+  const foreignNote = foreign > 0 ? ` (${foreign} check run(s) from other workflows ignored)` : '';
   return {
     ok: failures.length === 0,
     runId,
@@ -223,8 +255,9 @@ async function evaluateCheckSuites(deps: PerJobGreenDeps, config: PerJobGreenCon
     failures,
     source: 'check-suites',
     reason: failures.length === 0
-      ? `check-suites fallback: all ${checks.length} checks green for ${sha}${runIdNote}`
-      : `check-suites fallback: ${failures.length} check(s) not green`,
+      ? `check-suites fallback: all ${attributable.length} ${config.workflow} check(s) green for ${sha}${foreignNote}; `
+        + `run id ${runId} resolved from check-run details`
+      : `check-suites fallback: ${failures.length} ${config.workflow} check(s) not green${foreignNote}`,
   };
 }
 

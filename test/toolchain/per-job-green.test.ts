@@ -109,7 +109,7 @@ describe('per-job-green', () => {
     expect(result.runId).toBe(222);
   });
 
-  test('a sole fallback candidate confirmed to belong to a DIFFERENT workflow is rejected as unresolved', async () => {
+  test('a sole fallback candidate confirmed to belong to a DIFFERENT workflow fails closed', async () => {
     const d = deps((url) => {
       if (url.includes('/actions/runs?')) return { status: 503, body: null };
       if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
@@ -120,12 +120,14 @@ describe('per-job-green', () => {
       return { status: 404, body: null };
     });
     const result = await verifyPerJobGreen(d, config, 'abc');
-    expect(result.ok).toBe(true);
+    // Green checks that all belong to another workflow say nothing about ci.yml.
+    expect(result.ok).toBe(false);
     expect(result.runId).toBeNull();
+    expect(result.failures).toContain('no-check-run-attributable-to-ci.yml');
     expect(result.reason).toContain('UNRESOLVED');
   });
 
-  test('check-suites fallback with no parseable details_url reports run id unresolved (null)', async () => {
+  test('check-suites fallback with no parseable details_url fails closed rather than passing with a null run id', async () => {
     const d = deps((url) => {
       if (url.includes('/actions/runs?')) return { status: 503, body: null };
       if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
@@ -133,9 +135,65 @@ describe('per-job-green', () => {
       return { status: 404, body: null };
     });
     const result = await verifyPerJobGreen(d, config, 'abc');
-    expect(result.ok).toBe(true);
+    expect(result.ok).toBe(false);
     expect(result.runId).toBeNull();
-    expect(result.reason).toContain('UNRESOLVED');
+    expect(result.failures).toContain('no-check-run-attributable-to-ci.yml');
+    expect(result.reason).toContain('attributed to ci.yml');
+  });
+
+  test('a skipped check is NOT green on the fallback path, matching the primary path', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9001' },
+              { name: 'CI / eval-gate', conclusion: 'skipped', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9002' },
+            ],
+          },
+        };
+      }
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(false);
+    expect(result.failures.some((f) => f.includes('eval-gate (skipped)'))).toBe(true);
+  });
+
+  test('a skipped job is not green on the primary path either (the bar the fallback now matches)', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 200, body: { workflow_runs: [{ ...RUN, status: 'completed', conclusion: 'success' }] } };
+      if (url.includes('/jobs')) return { status: 200, body: { jobs: [{ name: 'build', conclusion: 'success' }, { name: 'eval-gate', conclusion: 'skipped' }] } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(false);
+    expect(result.failures.some((f) => f.includes('eval-gate (skipped)'))).toBe(true);
+  });
+
+  test('a neutral check is not green on the fallback path either', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }] } };
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9001' },
+              { name: 'CI / publint', conclusion: 'neutral', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9003' },
+            ],
+          },
+        };
+      }
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(false);
+    expect(result.failures.some((f) => f.includes('publint (neutral)'))).toBe(true);
   });
 
   test('runIdFromDetailsUrl parses Actions job urls and rejects everything else', () => {
@@ -149,12 +207,79 @@ describe('per-job-green', () => {
     const d = deps((url) => {
       if (url.includes('/actions/runs?')) return { status: 503, body: null };
       if (url.includes('/check-suites')) return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'failure' }] } };
-      if (url.includes('/check-runs')) return { status: 200, body: { check_runs: [{ name: 'CI / test', conclusion: 'failure' }] } };
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: { check_runs: [{ name: 'CI / test', conclusion: 'failure', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/7331/job/9001' }] },
+        };
+      }
       return { status: 404, body: null };
     });
     const result = await verifyPerJobGreen(d, config, 'abc');
     expect(result.ok).toBe(false);
     expect(result.failures.some((f) => f.includes('test'))).toBe(true);
+  });
+
+  test('a foreign neutral check run does not redden a green target-workflow run', async () => {
+    // The tui repo lands action-self-test.yml check runs on the same commits as
+    // ci.yml. A sibling workflow's neutral or skipped check says nothing about
+    // whether ci.yml was green, and must not decide the release.
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) {
+        return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }, { status: 'completed', conclusion: 'neutral' }] } };
+      }
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              { name: 'action-self-test / probe', conclusion: 'neutral', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/1' },
+              { name: 'action-self-test / cleanup', conclusion: 'skipped', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/2' },
+              { name: 'dependabot', conclusion: 'neutral' },
+              { name: 'CI / build', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/222/job/3' },
+              { name: 'CI / test', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/222/job/4' },
+            ],
+          },
+        };
+      }
+      if (url.includes('/actions/runs/111')) return { status: 200, body: { id: 111, path: '.github/workflows/action-self-test.yml' } };
+      if (url.includes('/actions/runs/222')) return { status: 200, body: { id: 222, path: '.github/workflows/ci.yml' } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(true);
+    expect(result.runId).toBe(222);
+    expect(result.failures).toEqual([]);
+    // Judged on the two ci.yml checks, not on all five.
+    expect(result.reason).toContain('all 2 ci.yml check(s) green');
+    expect(result.reason).toContain('3 check run(s) from other workflows ignored');
+  });
+
+  test('a foreign GREEN check run cannot rescue a failing target-workflow run either', async () => {
+    const d = deps((url) => {
+      if (url.includes('/actions/runs?')) return { status: 503, body: null };
+      if (url.includes('/check-suites')) {
+        return { status: 200, body: { check_suites: [{ status: 'completed', conclusion: 'success' }, { status: 'completed', conclusion: 'failure' }] } };
+      }
+      if (url.includes('/check-runs')) {
+        return {
+          status: 200,
+          body: {
+            check_runs: [
+              { name: 'action-self-test / probe', conclusion: 'success', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/111/job/1' },
+              { name: 'CI / eval-gate', conclusion: 'failure', details_url: 'https://github.com/mgd34msu/goodvibes-sdk/actions/runs/222/job/2' },
+            ],
+          },
+        };
+      }
+      if (url.includes('/actions/runs/111')) return { status: 200, body: { id: 111, path: '.github/workflows/action-self-test.yml' } };
+      if (url.includes('/actions/runs/222')) return { status: 200, body: { id: 222, path: '.github/workflows/ci.yml' } };
+      return { status: 404, body: null };
+    });
+    const result = await verifyPerJobGreen(d, config, 'abc');
+    expect(result.ok).toBe(false);
+    expect(result.failures).toEqual(['CI / eval-gate (failure)']);
   });
 
   test('times out when no run ever appears', async () => {

@@ -39,9 +39,16 @@ on:
       - "v*"
 
 concurrency:
-  # Falls back to run_id (unique per run) for workflow_dispatch without a ref,
-  # so manual dry-runs never cancel each other. Push events use the tag name.
-  group: sdk-release-${{ github.event.inputs.ref || github.ref_name || github.run_id }}
+  # Keyed on the TAG being released, so the two paths that can release the same
+  # version serialize with each other: a v* tag push and ci.yml's auto-release
+  # dispatch both run at refs/tags/vX, so both produce sdk-release-vX. Different
+  # versions get different groups and never evict one another.
+  #
+  # A non-release dispatch (dry-run) is keyed on run_id instead: it writes
+  # nothing, so parallel manual dry-runs are fine and must not queue behind a
+  # real release. The `ref` input is deliberately NOT part of the key; it
+  # defaults to "main", which would collapse every dispatch into one group.
+  group: sdk-release-${{ (github.event_name == 'push' || github.event.inputs.mode == 'release') && github.ref_name || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -231,10 +238,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Restore workspace build output
         run: tar -xzf /tmp/workspace-build-output/workspace-build-output.tgz -C .
-      - name: Verify npm registry is empty or complete for this version
+      # Empty, complete, or a partial at exactly this version (the shape a
+      # mid-loop publish failure leaves, which the publish loop's per-package
+      # skip converges) all proceed. The stop condition is a published package
+      # whose recorded gitHead is a DIFFERENT commit than the one being
+      # released. See scripts/verify-published-packages.ts.
+      - name: Check the npm registry state for this version
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: bun scripts/verify-published-packages.ts --prepublish-empty-or-complete
+          GOODVIBES_RELEASE_SHA: ${{ github.sha }}
+        run: bun scripts/verify-published-packages.ts --prepublish-registry-state
       - name: Publish packages (with provenance)
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -244,6 +257,16 @@ jobs:
           GOODVIBES_VERIFY_ATTEMPTS: "48"
           GOODVIBES_VERIFY_DELAY_MS: "5000"
         run: bun run release:verify:published
+      # npm publish with no --tag moves `latest` to whatever it just published,
+      # so two releases of DIFFERENT versions that overlap leave `latest`
+      # pointing backward on every package where the older run landed last.
+      # This states the property instead (latest == highest version) and
+      # converges from any interleaving. Runs after the propagation poll so the
+      # versions it reads are the ones the registry serves.
+      - name: Align the latest dist-tag with the highest published version
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: bun scripts/align-dist-tags.ts
 
   github-release:
     # Create the GitHub release only after npm publish and SBOM generation succeed.
@@ -278,13 +301,30 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Release notes are extracted directly from CHANGELOG.md.
+          # Release notes are extracted directly from CHANGELOG.md. The heading
+          # pattern is kept IDENTICAL to reusable-gh-release.yml's so the two
+          # extractors cannot disagree about what a section heading is: this one
+          # matched the bracket form only, so a `## 1.2.3 - date` heading yielded
+          # an empty excerpt here and a full one there.
+          #
+          # The terminator must not accept a bare hyphen after the version: with
+          # a `-` in the class, cutting 2.0.1 matched `## [2.0.1-rc.1]` first and
+          # the body became the RC section CONCATENATED with the real one. The
+          # optional `\]` plus whitespace-or-EOL covers all three heading forms
+          # (`## [X] - date`, `## X - date`, `## [X]`) and matches a prerelease
+          # heading only when the prerelease is the version being cut.
           EXCERPT=$(awk -v version="$VERSION" '
-            $0 ~ "^## \\[" version "\\]([[:space:]]|-|$)" { in_section = 1; next }
+            $0 ~ "^## (\\[)?" version "(\\])?([[:space:]]|$)" { in_section = 1; next }
             in_section && /^## / { exit }
             in_section { print }
           ' CHANGELOG.md)
           if [ -z "$EXCERPT" ]; then
+            # Non-fatal by design (scripts/check-changelog.ts owns the hard gate,
+            # and it already passed for this version), but never silent: a
+            # one-line release body means the extraction missed a section that
+            # exists.
+            echo "::warning::No CHANGELOG.md section matched ${VERSION}; falling back to a bare 'Release ${VERSION}' body. Check the heading form for this version."
+            echo "WARNING: no CHANGELOG.md section matched ${VERSION}; release body falls back to 'Release ${VERSION}'." >&2
             EXCERPT="Release ${VERSION}"
           fi
           printf '%s\n' "$EXCERPT" > /tmp/release_notes.md

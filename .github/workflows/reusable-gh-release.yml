@@ -118,12 +118,20 @@ jobs:
             if [ -n "$notes_path" ]; then
               echo "Notes file $notes_path not found at this ref — falling back to the changelog excerpt."
             fi
+            # A bare `-` in the terminator class made `## [2.0.1-rc.1]` match a
+            # 2.0.1 cut, concatenating the RC section into the release body.
+            # Kept byte-identical to release.yml's pattern.
             excerpt="$(awk -v version="$version" '
-              $0 ~ "^## (\\[)?" version "([]) -]|$)" { in_section = 1; next }
+              $0 ~ "^## (\\[)?" version "(\\])?([[:space:]]|$)" { in_section = 1; next }
               in_section && /^## / { exit }
               in_section { print }
             ' "$CHANGELOG_PATH")"
-            if [ -z "$excerpt" ]; then excerpt="Release ${version}"; fi
+            if [ -z "$excerpt" ]; then
+              # Non-fatal (the changelog gate owns the hard refusal) but never
+              # silent: a one-line body means no section matched.
+              echo "::warning::No ${CHANGELOG_PATH} section matched ${version}; falling back to a bare 'Release ${version}' body."
+              excerpt="Release ${version}"
+            fi
             printf '%s\n' "$excerpt" > /tmp/release_notes.md
           fi
           echo "body=/tmp/release_notes.md" >> "$GITHUB_OUTPUT"
@@ -143,6 +151,9 @@ jobs:
       - name: Generate SHA256SUMS (missing asset is fatal)
         env:
           NORMALIZED_GLOBS: ${{ steps.globs.outputs.paths }}
+          ASSETS_GLOB: ${{ inputs.assets-glob }}
+          TOOLCHAIN_SPEC: ${{ inputs.toolchain-spec }}
+          SHA256_NAME: ${{ inputs.sha256-name }}
         run: |
           set -euo pipefail
           shopt -s nullglob
@@ -152,10 +163,10 @@ jobs:
             for match in $glob; do assets+=( "$match" ); done
           done <<< "$NORMALIZED_GLOBS"
           if [ ${#assets[@]} -eq 0 ]; then
-            echo "No assets matched ${{ inputs.assets-glob }}" >&2
+            echo "No assets matched $ASSETS_GLOB" >&2
             exit 1
           fi
-          bunx ${{ inputs.toolchain-spec }} goodvibes-sha256sums --out "${{ inputs.sha256-name }}" "${assets[@]}"
+          bunx "$TOOLCHAIN_SPEC" goodvibes-sha256sums --out "$SHA256_NAME" "${assets[@]}"
       - name: Create GitHub release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:

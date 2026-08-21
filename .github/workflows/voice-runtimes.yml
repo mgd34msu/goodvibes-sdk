@@ -54,24 +54,35 @@ jobs:
       - name: Install build toolchain
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake build-essential
       - name: Build the reproducible bundle
-        run: bun scripts/build-whisper-bundle.ts --version "${{ github.event.inputs.version }}" --out .tmp/voice-runtimes --tag "$VOICE_RUNTIMES_TAG" --repo "${{ github.repository }}"
+        env:
+          BUNDLE_VERSION: ${{ github.event.inputs.version }}
+          REPO: ${{ github.repository }}
+        run: |
+          bun scripts/build-whisper-bundle.ts \
+            --version "$BUNDLE_VERSION" \
+            --out .tmp/voice-runtimes \
+            --tag "$VOICE_RUNTIMES_TAG" \
+            --repo "$REPO"
       - name: Ensure the append-only release tag exists
         env:
           GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
-          if ! gh release view "$VOICE_RUNTIMES_TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+          if ! gh release view "$VOICE_RUNTIMES_TAG" --repo "$REPO" >/dev/null 2>&1; then
             gh release create "$VOICE_RUNTIMES_TAG" \
-              --repo "${{ github.repository }}" \
+              --repo "$REPO" \
               --title "Voice runtimes (append-only)" \
               --notes "Append-only host for goodvibes voice engine bundles. Assets are never re-uploaded in place or renamed; each carries a .sha256 sidecar."
           fi
       - name: Upload bundle + sidecar (append-only — fails if the asset already exists)
         env:
           GH_TOKEN: ${{ github.token }}
+          BUNDLE_VERSION: ${{ github.event.inputs.version }}
+          REPO: ${{ github.repository }}
         run: |
           # No --clobber: uploading a filename that already exists must FAIL so a
           # pinned asset is never silently replaced.
           gh release upload "$VOICE_RUNTIMES_TAG" \
-            .tmp/voice-runtimes/goodvibes-whisper-cpp-${{ github.event.inputs.version }}-linux-x64.tar.gz \
-            .tmp/voice-runtimes/goodvibes-whisper-cpp-${{ github.event.inputs.version }}-linux-x64.tar.gz.sha256 \
-            --repo "${{ github.repository }}"
+            ".tmp/voice-runtimes/goodvibes-whisper-cpp-${BUNDLE_VERSION}-linux-x64.tar.gz" \
+            ".tmp/voice-runtimes/goodvibes-whisper-cpp-${BUNDLE_VERSION}-linux-x64.tar.gz.sha256" \
+            --repo "$REPO"

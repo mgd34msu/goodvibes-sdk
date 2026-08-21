@@ -8,8 +8,10 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { readFileSync, readdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -41,6 +43,10 @@ function steps(job: Job): Array<Record<string, unknown>> {
 }
 function stepText(job: Job): string {
   return JSON.stringify(steps(job));
+}
+/** Raw concatenated `run:` bodies of a job, unescaped (stepText is JSON-encoded). */
+function runText(wf: Workflow, jobName: string): string {
+  return steps(wf.jobs![jobName]!).map((s) => String(s.run ?? '')).join('\n');
 }
 
 describe('all workflows: baseline hygiene', () => {
@@ -75,6 +81,10 @@ describe('all workflows: baseline hygiene', () => {
   });
 
   test('all uses: references are SHA-pinned or local paths', () => {
+    // A floating `@v4` used to satisfy this check, which is how
+    // public-suffix-drift.yml kept actions/checkout@v4 and setup-bun@v2 while
+    // every other workflow pinned the same two actions by SHA. Only a local
+    // path or a 40-char commit is a pin.
     for (const f of files) {
       const wf = load(f);
       for (const [, job] of jobs(wf)) {
@@ -82,8 +92,58 @@ describe('all workflows: baseline hygiene', () => {
         if (typeof job.uses === 'string') refs.push(job.uses);
         for (const step of steps(job)) if (typeof step.uses === 'string') refs.push(step.uses);
         for (const ref of refs) {
-          const ok = ref.startsWith('./') || /@[0-9a-f]{40}$/.test(ref) || /@(main|v\d)/.test(ref);
+          const ok = ref.startsWith('./') || /@[0-9a-f]{40}$/.test(ref);
           expect(ok, `unpinned action ref: ${ref} in ${f}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  test('a given action is pinned to ONE SHA across every workflow', () => {
+    const byAction = new Map<string, Map<string, string[]>>();
+    for (const f of files) {
+      const wf = load(f);
+      for (const [, job] of jobs(wf)) {
+        const refs = [job.uses, ...steps(job).map((s) => s.uses)].filter((r): r is string => typeof r === 'string');
+        for (const ref of refs) {
+          const m = /^([^@]+)@([0-9a-f]{40})$/.exec(ref);
+          if (!m) continue;
+          const shas = byAction.get(m[1]!) ?? new Map<string, string[]>();
+          shas.set(m[2]!, [...(shas.get(m[2]!) ?? []), f]);
+          byAction.set(m[1]!, shas);
+        }
+      }
+    }
+    for (const [action, shas] of byAction) {
+      const detail = [...shas].map(([sha, where]) => `${sha} (${where.join(', ')})`).join(' vs ');
+      expect([...shas.keys()].length, `${action} is pinned to more than one SHA: ${detail}`).toBe(1);
+    }
+  });
+
+  test('interpolated inputs are not spliced straight into run: blocks', () => {
+    // `${{ inputs.x }}` inside a run: body is substituted before the shell sees
+    // it, so the value becomes script text. Routing it through env: and reading
+    // "$X" keeps it a value. github.* fields that cannot carry caller-supplied
+    // text (repository, sha, ref_name, run_id, token) stay exempt.
+    const EXEMPT = /^(github\.(repository|sha|ref|ref_name|run_id|run_number|workflow|token|event_name|actor|server_url|api_url)|secrets\.|steps\.|needs\.|matrix\.|env\.|job\.|runner\.)/;
+    // reusable-npm-publish's publish-command IS a command, documented to carry
+    // shell (its tarball example uses a $(ls …) substitution). Routing it
+    // through env: would only move the same text into an eval.
+    const COMMAND_INPUTS = new Set(['inputs.publish-command']);
+    for (const f of files) {
+      const wf = load(f);
+      for (const [jobName, job] of jobs(wf)) {
+        for (const step of steps(job)) {
+          const body = typeof step.run === 'string' ? step.run : '';
+          if (!body) continue;
+          for (const m of body.matchAll(/\$\{\{\s*([^}]+?)\s*\}\}/g)) {
+            const expr = m[1]!;
+            if (COMMAND_INPUTS.has(expr)) continue;
+            expect(
+              EXEMPT.test(expr),
+              `${f}:${jobName} step "${String(step.name ?? '')}" splices ${m[0]} into its run: body; route it through env:`,
+            ).toBe(true);
+          }
         }
       }
     }
@@ -181,6 +241,44 @@ describe('ci.yml: zero-touch auto-release', () => {
     expect(text).toContain('--ref');
     expect(text).toContain('refs/tags/');
   });
+
+  test('the dispatch passes the tag as the ref INPUT as well as the dispatch ref', () => {
+    // --ref is what decides github.ref/github.sha for the release run. The
+    // input is belt-and-braces: release.yml's readers of inputs.ref all
+    // short-circuit on release mode today, so it is inert unless one of those
+    // expressions is reordered, and then it stops the "main" default landing in
+    // a release run.
+    const text = stepText(ci.jobs!['auto-release']!);
+    expect(text).toContain('-f ref=refs/tags/');
+  });
+
+  test('an existing tag is only a no-op once a release.yml run for it is confirmed', () => {
+    // Exiting 0 on "tag exists" without that check reported success over a
+    // release that was tagged and then never dispatched.
+    const text = stepText(ci.jobs!['auto-release']!);
+    expect(text).toContain('actions/workflows/release.yml/runs');
+    expect(text).toContain('head_branch');
+    // No release run for the tag re-dispatches rather than exiting green.
+    expect(text).toContain('NO release.yml run does');
+    // An unanswerable lookup fails loudly and names the manual command.
+    expect(text).toContain('could not determine whether release.yml ever ran');
+    expect(text).toContain('gh workflow run release.yml --repo');
+  });
+
+  test('the tag-exists exit never claims the release succeeded', () => {
+    // A run record can be a FAILED run (counted deliberately: a failed run is
+    // visible and a human re-runs it). The message must not read as
+    // release-succeeded, and must say where to look. Judged on what the step
+    // PRINTS, so a comment quoting the old wording is not a false failure.
+    const printed = runText(ci, 'auto-release')
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('#'))
+      .join('\n');
+    expect(printed).toContain('the release was started');
+    expect(printed).toContain('NOT a statement that the release succeeded');
+    expect(printed).toContain('actions/workflows/release.yml');
+    expect(printed).not.toContain('nothing to do');
+  });
 });
 
 describe('release.yml: by-reference release', () => {
@@ -233,7 +331,7 @@ describe('release.yml: by-reference release', () => {
     expect(text).toContain('head_sha'); // recorded SHA == tagged SHA assertion
     expect(text).toContain('run-id');   // cross-workflow artifact restore
     expect(text).toContain('release:publish:ci'); // provenance publish preserved
-    expect(text).toContain('prepublish-empty-or-complete'); // empty-or-complete preserved
+    expect(text).toContain('--prepublish-registry-state'); // registry-state precheck preserved
     expect(text).toContain('release:verify:published'); // propagation poll preserved
   });
 
@@ -273,6 +371,21 @@ describe('release.yml: by-reference release', () => {
     expect(rel.concurrency?.['cancel-in-progress']).toBe(false);
   });
 
+  test('the concurrency group is keyed on the tag, so both release paths for one version serialize', () => {
+    const group = String(rel.concurrency?.group ?? '');
+    // The `ref` input defaults to "main", so keying on it put EVERY dispatched
+    // release in one group (sdk-release-main) and put a tag push for the same
+    // version in a different group from its dispatch, letting the two race.
+    expect(group).not.toContain('inputs.ref');
+    expect(group).toContain('github.ref_name');
+    // Push and release-mode dispatch both run at refs/tags/vX, so both read
+    // ref_name and land in the same group.
+    expect(group).toContain("github.event_name == 'push'");
+    expect(group).toContain("mode == 'release'");
+    // A non-release dispatch writes nothing; run_id keeps dry-runs independent.
+    expect(group).toContain('github.run_id');
+  });
+
   test('dispatch is dry-run unless mode=release', () => {
     // A release-mode dispatch is now a first-class publish path (the zero-touch
     // auto-release job dispatches release.yml with mode=release), so publish-npm
@@ -297,6 +410,68 @@ describe('release.yml: by-reference release', () => {
     expect(inputs.mode?.options).toEqual(expect.arrayContaining(['dry-run', 'release']));
   });
 
+  test('release.yml and reusable-gh-release.yml extract changelog sections with the SAME pattern', () => {
+    // Two extractors that disagree about what a heading looks like give the
+    // same version two different release bodies. release.yml matched only the
+    // bracket form, so `## 1.2.3 - date` silently produced a one-line body.
+    const headingPattern = /\$0 ~ "([^"]+)" version "([^"]+)"/;
+    const relMatch = headingPattern.exec(runText(rel, 'github-release'));
+    const reusableMatch = headingPattern.exec(runText(load('reusable-gh-release.yml'), 'gh-release'));
+    expect(relMatch, 'release.yml has no recognizable changelog heading pattern').toBeTruthy();
+    expect(reusableMatch, 'reusable-gh-release.yml has no recognizable changelog heading pattern').toBeTruthy();
+    expect(relMatch![1]).toBe(reusableMatch![1]!);
+    expect(relMatch![2]).toBe(reusableMatch![2]!);
+  });
+
+  test('the changelog fallback body is a warning, never silent', () => {
+    const text = stepText(rel.jobs!['github-release']!);
+    expect(text).toContain('::warning::');
+    expect(text).toContain('Release ${VERSION}');
+  });
+
+  test('the shipped awk program extracts exactly one section, including next to a prerelease heading', () => {
+    // Runs the awk program lifted out of the workflow itself, so the fixture
+    // exercises what actually ships rather than a copy that can drift.
+    const fixture = [
+      '# Changelog',
+      '',
+      '## [2.0.1-rc.1] - 2026-01-02',
+      'RC BODY',
+      '',
+      '## [2.0.1] - 2026-01-05',
+      'FINAL BODY',
+      '',
+      '## 2.0.0 - 2026-01-01',
+      'BARE BODY',
+      '',
+      '## [1.9.9]',
+      'NODATE BODY',
+      '',
+    ].join('\n');
+    const path = join(tmpdir(), `changelog-fixture-${process.pid}.md`);
+    writeFileSync(path, fixture);
+    try {
+      for (const [wfName, jobName] of [['release.yml', 'github-release'], ['reusable-gh-release.yml', 'gh-release']] as const) {
+        const program = /awk -v version="\$\w+" '([\s\S]*?)'\s/.exec(runText(load(wfName), jobName))?.[1];
+        expect(program, `${wfName}: no awk program found`).toBeTruthy();
+        const extract = (version: string): string => {
+          const res = spawnSync('awk', ['-v', `version=${version}`, program!, path], { encoding: 'utf8', timeout: 30_000 });
+          expect(res.status, `${wfName}: awk failed: ${res.stderr}`).toBe(0);
+          return res.stdout.trim();
+        };
+        // The defect: a `-` terminator matched the RC heading first and the
+        // body became RC BODY plus FINAL BODY concatenated.
+        expect(extract('2.0.1'), `${wfName}: 2.0.1 must not absorb its RC section`).toBe('FINAL BODY');
+        expect(extract('2.0.1-rc.1'), `${wfName}: an RC cut still finds its own section`).toBe('RC BODY');
+        expect(extract('2.0.0'), `${wfName}: bare heading form`).toBe('BARE BODY');
+        expect(extract('1.9.9'), `${wfName}: bracket heading with no date`).toBe('NODATE BODY');
+        expect(extract('7.7.7'), `${wfName}: an absent version yields nothing (the warning path)`).toBe('');
+      }
+    } finally {
+      rmSync(path, { force: true });
+    }
+  });
+
   test('the tag-push publish path is preserved unchanged (manual redo)', () => {
     // Every release job that gates on a release-mode dispatch must still also
     // gate on a plain push, so pushing a v* tag by hand releases exactly as before.
@@ -318,6 +493,22 @@ describe('reusable workflows: workflow_call contracts', () => {
     const wf = load('reusable-release-verify.yml');
     const outputs = (wf.on as { workflow_call?: { outputs?: Record<string, unknown> } }).workflow_call?.outputs ?? {};
     expect(Object.keys(outputs)).toEqual(expect.arrayContaining(['run_id', 'head_sha', 'ok']));
+  });
+
+  test('reusable-release-verify fails when it verifies green but resolves no run_id', () => {
+    // Consumers inherit the guard release.yml already had: an empty run_id fed
+    // to download-artifact stops targeting the verified run and downloads from
+    // the caller's own run instead.
+    const verify = load('reusable-release-verify.yml').jobs!['verify']!;
+    const guard = steps(verify).find((s) => (s.env as Record<string, string> | undefined)?.RUN_ID !== undefined);
+    expect(guard, 'reusable-release-verify must guard an unresolved run_id').toBeTruthy();
+    const runId = String((guard!.env as Record<string, string>).RUN_ID);
+    expect(runId).toContain('pjg-workspace');
+    expect(runId).toContain('pjg-registry');
+    expect(String(guard!.run)).toContain('-z');
+    expect(String(guard!.run)).toContain('exit 1');
+    // Unconditioned, so it applies to both toolchain-source modes.
+    expect(guard!.if).toBeUndefined();
   });
 
   test('reusable-release-verify supports both toolchain sources, defaulting to registry', () => {

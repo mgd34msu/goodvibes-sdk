@@ -17,6 +17,11 @@ run('bun', ['scripts/generate-api-docs.ts', '--check'], 'api-docs:check');
 run('bun', ['scripts/docs-completeness-check.ts'], 'docs:completeness');
 run('bun', ['run', 'error:check'], 'error:check');
 run('bun', ['run', 'line:check'], 'line:check');
+// Beside line:check for the same reason: a source-only scan with no build
+// dependency (~0.6s over 2181 files). It ran only in the local pre-commit hook,
+// so a push that bypassed the hook reached CI with an unclassified credential
+// write and every one of the ten CI jobs stayed green.
+run('bun', ['run', 'credential-scope:check'], 'credential-scope:check');
 run('bun', ['run', 'changelog:check'], 'changelog:check');
 run('bun', ['run', 'version:check'], 'version:check');
 run('bun', ['run', 'todo:check'], 'todo:check');

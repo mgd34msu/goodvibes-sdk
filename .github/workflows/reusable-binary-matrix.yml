@@ -80,21 +80,26 @@ jobs:
         with:
           bun-version: ${{ inputs.bun-version }}
       - name: Build target
-        run: bunx ${{ inputs.toolchain-spec }} goodvibes-build-binaries --target ${{ matrix.target.key }}
+        env:
+          TOOLCHAIN_SPEC: ${{ inputs.toolchain-spec }}
+          TARGET_KEY: ${{ matrix.target.key }}
+        run: bunx "$TOOLCHAIN_SPEC" goodvibes-build-binaries --target "$TARGET_KEY"
       - name: Post-build smoke (the leg's own binary)
         if: matrix.target.smoke
         env:
           LEG_BINARY: ${{ matrix.target.binary }}
+          TOOLCHAIN_SPEC: ${{ inputs.toolchain-spec }}
+          TARGET_KEY: ${{ matrix.target.key }}
         run: |
           set -euo pipefail
           # Every leg builds only its own suffixed artifact, so the smoke must
           # target THIS leg's binary. A shared smoke.binaryDefault cannot serve
           # heterogeneous matrix legs; require the explicit path.
           if [ -z "$LEG_BINARY" ]; then
-            echo "targets[].binary is required when smoke is true (the leg's own built artifact, e.g. dist/goodvibes-${{ matrix.target.key }})." >&2
+            echo "targets[].binary is required when smoke is true (the leg's own built artifact, e.g. dist/goodvibes-${TARGET_KEY})." >&2
             exit 1
           fi
-          bunx ${{ inputs.toolchain-spec }} goodvibes-post-build-smoke --binary "$LEG_BINARY"
+          bunx "$TOOLCHAIN_SPEC" goodvibes-post-build-smoke --binary "$LEG_BINARY"
       - name: Normalize artifact globs (spaces -> newlines)
         id: globs
         env:

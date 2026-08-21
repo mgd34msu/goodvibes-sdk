@@ -21,6 +21,11 @@
 #            (default ci.yml), event (default push), bun-version,
 #            toolchain-source (registry|workspace), toolchain-spec.
 #   Outputs: run_id, head_sha, ok.
+#            The job FAILS when it verifies green but cannot resolve run_id (the
+#            check-suites fallback can). run_id is what an artifact restore keys
+#            on, and an empty one silently redirects the download to the caller's
+#            own run, so an unresolved id is reported as a failure, not passed on
+#            as an empty output.
 #   Secrets: token — a GITHUB_TOKEN with actions:read on the target repo.
 #
 #   toolchain-source:
@@ -106,8 +111,10 @@ jobs:
     steps:
       - name: Reject an unknown toolchain-source
         if: inputs.toolchain-source != 'registry' && inputs.toolchain-source != 'workspace'
+        env:
+          TOOLCHAIN_SOURCE: ${{ inputs.toolchain-source }}
         run: |
-          echo "toolchain-source must be 'registry' or 'workspace' (got '${{ inputs.toolchain-source }}')." >&2
+          echo "toolchain-source must be 'registry' or 'workspace' (got '$TOOLCHAIN_SOURCE')." >&2
           exit 1
       # ── workspace mode: the SDK verifies itself with the toolchain at the
       #    verified commit (self-hosting; no registry dependency). ────────────
@@ -129,15 +136,19 @@ jobs:
         id: pjg-workspace
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
+          TARGET_REPO: ${{ inputs.repository || github.repository }}
+          TARGET_SHA: ${{ inputs.sha }}
+          TARGET_WORKFLOW: ${{ inputs.workflow }}
+          TARGET_EVENT: ${{ inputs.event }}
         run: |
           # --deadline-ms 17m, sized under this job's 20m timeout-minutes cap so
           # an exhausted wait yields the tool's honest deadline-exceeded verdict
           # instead of a raw job kill.
           bun packages/toolchain/dist/bin/per-job-green.js \
-            --repo "${{ inputs.repository || github.repository }}" \
-            --sha "${{ inputs.sha }}" \
-            --workflow "${{ inputs.workflow }}" \
-            --event "${{ inputs.event }}" \
+            --repo "$TARGET_REPO" \
+            --sha "$TARGET_SHA" \
+            --workflow "$TARGET_WORKFLOW" \
+            --event "$TARGET_EVENT" \
             --deadline-ms "1020000"
       # ── registry mode: consumer repos bunx the published toolchain. ────────
       - name: Setup Bun (registry toolchain)
@@ -150,13 +161,36 @@ jobs:
         id: pjg-registry
         env:
           GH_TOKEN: ${{ secrets.token || github.token }}
+          TOOLCHAIN_SPEC: ${{ inputs.toolchain-spec }}
+          TARGET_REPO: ${{ inputs.repository || github.repository }}
+          TARGET_SHA: ${{ inputs.sha }}
+          TARGET_WORKFLOW: ${{ inputs.workflow }}
+          TARGET_EVENT: ${{ inputs.event }}
         run: |
           # --deadline-ms 17m, sized under this job's 20m timeout-minutes cap so
           # an exhausted wait yields the tool's honest deadline-exceeded verdict
           # instead of a raw job kill.
-          bunx ${{ inputs.toolchain-spec }} goodvibes-per-job-green \
-            --repo "${{ inputs.repository || github.repository }}" \
-            --sha "${{ inputs.sha }}" \
-            --workflow "${{ inputs.workflow }}" \
-            --event "${{ inputs.event }}" \
+          bunx "$TOOLCHAIN_SPEC" goodvibes-per-job-green \
+            --repo "$TARGET_REPO" \
+            --sha "$TARGET_SHA" \
+            --workflow "$TARGET_WORKFLOW" \
+            --event "$TARGET_EVENT" \
             --deadline-ms "1020000"
+      # The per-job-green check-suites fallback can report green without
+      # resolving an Actions run id. An empty run id fed to download-artifact
+      # stops targeting the verified run and silently downloads from the caller's
+      # own run instead, so every consumer of this workflow gets the same
+      # fail-fast the SDK's release.yml already had.
+      - name: Require a resolved run id
+        env:
+          RUN_ID: ${{ steps.pjg-workspace.outputs.run_id || steps.pjg-registry.outputs.run_id }}
+          TARGET_SHA: ${{ inputs.sha }}
+          TARGET_WORKFLOW: ${{ inputs.workflow }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            echo "release-verify reported green for $TARGET_SHA but could not resolve the $TARGET_WORKFLOW run id." >&2
+            echo "Artifact restores keyed on run_id would misdirect, so this is a failure, not a warning." >&2
+            echo "Re-run once the Actions API resolves the run id." >&2
+            exit 1
+          fi
+          echo "run id resolved: $RUN_ID"

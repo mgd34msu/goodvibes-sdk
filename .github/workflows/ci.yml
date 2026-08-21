@@ -357,7 +357,9 @@ jobs:
   # documented exception is that a workflow_dispatch API call made with
   # GITHUB_TOKEN DOES create a run — so we push the tag (for provenance + the
   # manual redo path) and then explicitly dispatch the release at that tag ref.
-  # Idempotent: an already-existing tag is a logged no-op.
+  # Idempotent, but not blindly: an already-existing tag is a no-op only when
+  # release.yml actually has a run for that tag. A tag with no release run is
+  # the tagged-then-dispatch-failed state, and it gets re-dispatched.
   # ---------------------------------------------------------------------------
   auto-release:
     name: Auto-release (tag + dispatch on green)
@@ -388,15 +390,109 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
-          # Idempotent no-op if the tag already exists on the remote (a re-run,
-          # or a manual tag already pushed): do not re-tag or re-dispatch.
+          MANUAL_REDO="gh workflow run release.yml --repo ${REPO} --ref refs/tags/${TAG} -f mode=release -f ref=refs/tags/${TAG}"
+
+          # Dispatch release.yml AT THE TAG REF. A workflow_dispatch API call
+          # under GITHUB_TOKEN does create a run (the documented exception to
+          # token-driven events not triggering workflows), which is why the tag
+          # push alone is not enough.
+          #
+          # `--ref` is the part that matters: it decides what github.ref and
+          # github.sha are for the whole release run. The `-f ref=` INPUT is
+          # inert today, since every expression in release.yml that reads
+          # inputs.ref short-circuits on mode == 'release' before reaching it.
+          # It is passed anyway so the input never carries its "main" default
+          # into a release run if one of those expressions is ever reordered.
+          dispatch_release() {
+            for attempt in 1 2 3 4 5 6 7 8; do
+              if gh workflow run release.yml --ref "refs/tags/${TAG}" -f mode=release -f "ref=refs/tags/${TAG}"; then
+                echo "Dispatched release.yml for ${TAG} (mode=release)."
+                return 0
+              fi
+              echo "gh workflow run failed (attempt ${attempt}/8); retrying in 7s…" >&2
+              sleep 7
+            done
+            return 1
+          }
+
+          # How many release.yml runs exist for this tag, in ANY state. Queued,
+          # running, and FAILED all count: this job's question is "was the
+          # release ever started", not "did it succeed". A failed run is a
+          # visible thing an operator re-runs by hand, whereas a tag with no run
+          # at all is invisible, and only the second one is this job's to fix.
+          #
+          # Two queries because neither alone is sufficient: the server-side
+          # `branch` filter is unbounded in history but its tag semantics are
+          # not contractual, and the recent-runs scan reads head_branch
+          # directly but only sees the last 100 runs. Prints a count, or
+          # nothing at all when the API could not answer.
+          release_run_count() {
+            local filtered scanned
+            filtered=$(gh api "repos/${REPO}/actions/workflows/release.yml/runs?branch=${TAG}&per_page=1" \
+              --jq '.total_count' 2>/dev/null) || filtered=""
+            scanned=$(gh api "repos/${REPO}/actions/workflows/release.yml/runs?per_page=100" \
+              --jq "[.workflow_runs[] | select(.head_branch == \"${TAG}\")] | length" 2>/dev/null) || scanned=""
+            [[ "$filtered" =~ ^[0-9]+$ ]] || filtered=""
+            [[ "$scanned" =~ ^[0-9]+$ ]] || scanned=""
+            if [ -z "$filtered" ] && [ -z "$scanned" ]; then
+              return 1
+            fi
+            # The larger of the two, never the sum: a run both queries see must
+            # not be reported twice.
+            if [ "${filtered:-0}" -ge "${scanned:-0}" ]; then echo "${filtered:-0}"; else echo "${scanned:-0}"; fi
+          }
+
           if git ls-remote --tags origin "refs/tags/${TAG}" | grep -q "refs/tags/${TAG}"; then
-            echo "Tag ${TAG} already exists on origin — nothing to do."
-            exit 0
+            # The tag exists (a re-run of this job, a manually pushed tag, or an
+            # earlier run that tagged and then failed to dispatch). That is only
+            # a no-op if release.yml actually ran for the tag; exiting 0 without
+            # checking reported a green "nothing to do" over a release that was
+            # never started.
+            echo "Tag ${TAG} already exists on origin; checking whether release.yml ran for it."
+            COUNT=""
+            for attempt in 1 2 3 4 5; do
+              if COUNT=$(release_run_count); then
+                break
+              fi
+              COUNT=""
+              if [ "$attempt" -lt 5 ]; then
+                echo "release.yml run lookup failed (attempt ${attempt}/5); retrying in 7s…" >&2
+                sleep 7
+              fi
+            done
+            if [ -z "$COUNT" ]; then
+              echo "ERROR: could not determine whether release.yml ever ran for ${TAG}." >&2
+              echo "Refusing to report success over an unknown release state. Check the Actions tab," >&2
+              echo "and if no release run exists for ${TAG}, run:" >&2
+              echo "  ${MANUAL_REDO}" >&2
+              exit 1
+            fi
+            if [ "$COUNT" -gt 0 ]; then
+              # Deliberately NOT a claim that the release succeeded. This job
+              # only guarantees a release run was started for the tag; the run
+              # may have failed, and if it did, re-running it is a human
+              # decision, not something to re-dispatch automatically.
+              echo "release.yml has ${COUNT} run record(s) for ${TAG}, so the release was started; this job is done."
+              echo "That is NOT a statement that the release succeeded. If ${TAG} is not on npm, check the run at"
+              echo "  ${GITHUB_SERVER_URL:-https://github.com}/${REPO}/actions/workflows/release.yml"
+              echo "and re-run it from the Actions tab, or dispatch a fresh one with:"
+              echo "  ${MANUAL_REDO}"
+              exit 0
+            fi
+            echo "Tag ${TAG} exists but NO release.yml run does; re-dispatching." >&2
+            if dispatch_release; then
+              exit 0
+            fi
+            echo "ERROR: failed to dispatch release.yml for ${TAG} after 8 attempts." >&2
+            echo "Redo it manually with:" >&2
+            echo "  ${MANUAL_REDO}" >&2
+            exit 1
           fi
+
           git config user.name "GoodVibes CI"
           git config user.email "ci@goodvibes.local"
           git tag -a "${TAG}" -m "release ${VERSION}" "${SHA}"
@@ -404,15 +500,10 @@ jobs:
           # pushes never trigger workflows), which is why we dispatch below.
           git push origin "refs/tags/${TAG}"
           echo "Created and pushed ${TAG} at ${SHA}."
-          # Dispatch release.yml at the tag ref. workflow_dispatch via the API
-          # under GITHUB_TOKEN DOES create a run (the documented exception).
-          for attempt in 1 2 3 4 5 6 7 8; do
-            if gh workflow run release.yml --ref "refs/tags/${TAG}" -f mode=release; then
-              echo "Dispatched release.yml for ${TAG} (mode=release)."
-              exit 0
-            fi
-            echo "gh workflow run failed (attempt ${attempt}/8); retrying in 7s…" >&2
-            sleep 7
-          done
+          if dispatch_release; then
+            exit 0
+          fi
           echo "ERROR: failed to dispatch release.yml for ${TAG} after 8 attempts." >&2
+          echo "The tag is pushed; redo the dispatch manually with:" >&2
+          echo "  ${MANUAL_REDO}" >&2
           exit 1
