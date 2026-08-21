@@ -107,12 +107,12 @@ async function invokeAndCheck(
 // ---------------------------------------------------------------------------
 
 const PROFILE_FIXTURE = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '## Identity',
   '',
-  'name: Mike Davis',
-  'goes by: Mike',
+  'name: Avery Chen',
+  'goes by: Avery',
   '',
   '## Contact',
   '',
@@ -274,7 +274,7 @@ describe('profile.* responses conform to the published contract', () => {
 // ---------------------------------------------------------------------------
 
 const OCCASIONS_FIXTURE = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '## People',
   '',

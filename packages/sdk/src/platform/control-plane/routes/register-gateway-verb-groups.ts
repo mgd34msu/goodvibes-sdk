@@ -95,7 +95,7 @@ import { registerDevicesGatewayMethods, type DevicesGatewayService } from './dev
 import { registerMemoryGatewayMethods, type MemoryGatewayService } from './memory.js';
 import { registerVoiceSetupGatewayMethods, type VoiceSetupGatewayService } from './voice-setup.js';
 import { registerBrowserGatewayMethods } from './browser.js';
-import { createDaemonBrowserGatewayService, type BrowserCompositionDeps } from './browser-composition.js';
+import { composeDaemonBrowser, type BrowserCompositionDeps } from './browser-composition.js';
 import { registerCalendarGatewayMethods, type CalendarGatewayService } from './calendar.js';
 import { createDaemonCalendarGatewayService } from './calendar-composition.js';
 import { registerEmailGatewayMethods, type EmailGatewayService } from './email.js';
@@ -119,7 +119,7 @@ import type { FleetEvent } from '../../../events/fleet.js';
 import { controlPlaneStorePath } from '../control-plane-store-paths.js';
 import { legacyWorkspaceRegisterPath, sharedWorkspaceRegisterPath } from '../../workspace/registration/shared-register-path.js';
 
-export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps {
+export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps, BrowserCompositionDeps {
   /** SecretsManager (get/set), VAPID keypair custody lives here, never in config. */
   readonly secretsManager: VapidSecretStore;
   /** Filled with the owner profile store and occasions service below, which is what lets the `profile` capture tool write. Absent in a host with no agent tools. */
@@ -242,12 +242,6 @@ export interface GatewayVerbGroupDeps extends FleetCheckpointsSearchGatewayDeps 
    * route, is what made those five methods `invokable: false` for so long.
    */
   readonly calendarGateway?: CalendarGatewayService | undefined;
-  /** Optional browser backend; absent ⇒ composed over the daemon's own storage root (routes/browser-composition.ts). */
-  readonly browserGateway?: BrowserCompositionDeps['browserGateway'];
-  /** Test seam: the untrusted-content port the browser engine records page reads into. */
-  readonly browserUntrusted?: BrowserCompositionDeps['browserUntrusted'];
-  /** The daemon's home directory; the credential-adoption probe needs a real one. */
-  readonly homeDirectory?: string | undefined;
   /**
    * Optional mail backend. When present, email.inbox.* / email.draft.create /
    * email.send serve real mail; absent they stay cataloged-but-unhandled.
@@ -594,7 +588,7 @@ export function registerGatewayVerbGroups(catalog: GatewayMethodCatalog, deps: G
   const calendarGateway = createDaemonCalendarGatewayService(deps);
   if (calendarGateway) registerCalendarGatewayMethods(catalog, calendarGateway);
   registerDaemonEmailVerbs(catalog, { ...deps, configManager: deps.configManager });
-  const browserGateway = createDaemonBrowserGatewayService(deps);
+  const browserGateway = composeDaemonBrowser(deps);
   if (browserGateway) registerBrowserGatewayMethods(catalog, browserGateway);
   if (browserGateway) deps.disposal?.add('browser sessions', () => void browserGateway.shutdown());
   registerSessionRuntimeGatewayMethods(

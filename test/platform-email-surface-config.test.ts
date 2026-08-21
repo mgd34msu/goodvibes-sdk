@@ -49,7 +49,7 @@ function secrets(values: Record<string, string>) {
 
 const NESTED: Record<string, unknown> = {
   'surfaces.email.host': 'mail.example.com',
-  'surfaces.email.user': 'mike@example.com',
+  'surfaces.email.user': 'avery@example.com',
   'surfaces.email.imap.host': 'imap.example.com',
   'surfaces.email.imap.port': 1993,
   'surfaces.email.imap.mailbox': 'Archive',
@@ -57,7 +57,7 @@ const NESTED: Record<string, unknown> = {
   'surfaces.email.smtp.host': 'smtp.example.com',
   'surfaces.email.smtp.port': 587,
   'surfaces.email.smtp.secure': false,
-  'surfaces.email.from': 'Mike <mike@example.com>',
+  'surfaces.email.from': 'Avery <avery@example.com>',
 };
 
 const FLAT: Record<string, unknown> = {
@@ -79,8 +79,8 @@ describe('surfaces.email config precedence', () => {
     expect(settings.smtpHost).toBe('smtp.example.com');
     expect(settings.smtpPort).toBe(587);
     expect(settings.smtpSecure).toBe(false);
-    expect(settings.username).toBe('mike@example.com');
-    expect(settings.fromAddress).toBe('Mike <mike@example.com>');
+    expect(settings.username).toBe('avery@example.com');
+    expect(settings.fromAddress).toBe('Avery <avery@example.com>');
     expect(settings.mailbox).toBe('Archive');
     expect(settings.draftsMailbox).toBe('[Gmail]/Drafts');
   });
@@ -88,7 +88,7 @@ describe('surfaces.email config precedence', () => {
   test('the shared host serves both protocols when neither is overridden', () => {
     const settings = readSurfaceEmailSettings(reader({
       'surfaces.email.host': 'mail.example.com',
-      'surfaces.email.user': 'mike@example.com',
+      'surfaces.email.user': 'avery@example.com',
     }));
     expect(settings.imapHost).toBe('mail.example.com');
     expect(settings.smtpHost).toBe('mail.example.com');
@@ -110,10 +110,10 @@ describe('surfaces.email config precedence', () => {
     const settings = readSurfaceEmailSettings(reader({
       ...FLAT,
       'surfaces.email.host': 'mail.example.com',
-      'surfaces.email.user': 'mike@example.com',
+      'surfaces.email.user': 'avery@example.com',
     }));
     expect(settings.imapHost).toBe('mail.example.com');
-    expect(settings.username).toBe('mike@example.com');
+    expect(settings.username).toBe('avery@example.com');
   });
 
   test('username falls back to the alternate spelling, and from falls back to the account', () => {
@@ -149,10 +149,10 @@ describe('surfaces.email as an email.* config reader', () => {
       smtpPort: 587,
       imapSecurity: 'tls',
       smtpSecurity: 'starttls',
-      username: 'mike@example.com',
+      username: 'avery@example.com',
       passwordRef: SURFACE_EMAIL_PASSWORD_REF,
       smtpPasswordRef: SURFACE_EMAIL_SMTP_PASSWORD_REF,
-      fromAddress: 'Mike <mike@example.com>',
+      fromAddress: 'Avery <avery@example.com>',
       mailbox: 'Archive',
       draftsMailbox: '[Gmail]/Drafts',
     });
@@ -317,11 +317,11 @@ describe('unfinished mailbox setup', () => {
 
 describe('addresses in log fields', () => {
   test('the digest is stable, normalised, and not the address', () => {
-    const digest = addressDigest('Mike@Example.com ');
-    expect(digest).toBe(addressDigest('mike@example.com'));
+    const digest = addressDigest('Avery@Example.com ');
+    expect(digest).toBe(addressDigest('avery@example.com'));
     expect(digest).toHaveLength(16);
     expect(/^[0-9a-f]{16}$/.test(digest)).toBe(true);
-    expect(digest).not.toContain('mike');
+    expect(digest).not.toContain('avery');
     expect(digest).not.toContain('@');
     expect(addressDigest('someone-else@example.com')).not.toBe(digest);
   });

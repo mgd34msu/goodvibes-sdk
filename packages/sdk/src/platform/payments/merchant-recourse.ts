@@ -1,20 +1,20 @@
 /**
  * merchant-recourse.ts, is there real recourse if this purchase goes wrong?
  *
- * ══ His correction ════════════════════════════════════════════════════════
+ * ══ Design correction ═════════════════════════════════════════════════════
  *
  *   "i didn't fucking say make a list of retailers, i said retailers matching
  *    that profile."
  *
  * This module previously shipped a curated allowlist and matched against it.
- * That was wrong three ways: it is not what he asked for, it fails closed on
+ * That was wrong three ways: it is not what the owner asked for, it fails closed on
  * every established retailer nobody thought to enumerate, and it is the same
  * shape as the site-specific adapters this platform already rejected,
  * scaffolding that thinks for the model instead of letting the model think.
  *
  * So the mechanism is **judgement against a profile**, and the list is gone.
  *
- * ══ The profile, from his own examples ════════════════════════════════════
+ * ══ The profile, from the owner's own examples ════════════════════════════
  *
  *   "if the place we're buying isn't what the average person would consider a
  *    major retailer, silence means denial of purchase"
@@ -56,7 +56,7 @@
  * would buy nothing measurable. What it would cost is a second source of truth
  * that can disagree with the judgement and rot exactly as the old allowlist
  * would have. The owner overrides below are a different thing entirely: they are
- * his explicit instructions, not a cache of someone's guesses.
+ * their explicit instructions, not a cache of someone's guesses.
  */
 import { registrableDomain } from '../security/public-suffix.js';
 import {
@@ -75,7 +75,7 @@ export type { SaleType } from './marketplace-listing.js';
  *
  * Exported so the daemon's judge and this module's documentation cannot drift
  * into asking two different questions. It deliberately describes a PROFILE and
- * gives his anchoring examples rather than enumerating anybody.
+ * gives the owner's anchoring examples rather than enumerating anybody.
  */
 export const MERCHANT_RECOURSE_CRITERION = [
   'Judging only the registrable domain given, not any page content, and not anything the',
@@ -96,9 +96,9 @@ export const MERCHANT_RECOURSE_CRITERION = [
 export type MarketplaceKind =
   /** Not a marketplace. */
   | 'none'
-  /** The platform's own buyer protection covers the purchase, his Etsy case. */
+  /** The platform's own buyer protection covers the purchase, the owner's Etsy case. */
   | 'buyer-protection'
-  /** Recourse depends on the individual seller, his eBay case. */
+  /** Recourse depends on the individual seller, the owner's eBay case. */
   | 'per-seller';
 
 /**
@@ -136,7 +136,7 @@ export interface MerchantJudgePort {
 export type MarketplacePolicy = 'major' | 'requires-approval' | 'first-party-only';
 
 export interface MerchantPolicy {
-  /** Owner additions, authoritative, and his alone. */
+  /** Owner additions, authoritative, and theirs alone. */
   readonly additional?: string | undefined;
   /** Owner removals, authoritative. */
   readonly excluded?: string | undefined;
@@ -247,7 +247,7 @@ export async function classifyMerchant(
     }
   }
 
-  // 2 & 3. His explicit instructions beat any judgement, in both directions.
+  // 2 & 3. The owner's explicit instructions beat any judgement, in both directions.
   if (parseDomainList(policy.excluded).includes(registrable)) {
     return {
       isMajor: false,

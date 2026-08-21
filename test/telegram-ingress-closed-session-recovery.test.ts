@@ -72,7 +72,7 @@ describe('an inbound Telegram message whose bound session is closed is answered,
         surfaceId: 'goodvibes_bot',
         externalId: '4242',
         channelId: '4242',
-        title: 'Mike',
+        title: 'Avery',
       });
       const dead = await broker.createSession({ id: 'sess-4ca358a3' });
       await routeBindings.patchBinding(binding.id, { sessionId: dead.id });
@@ -102,7 +102,7 @@ describe('an inbound Telegram message whose bound session is closed is answered,
 
       const response = await processTelegramUpdate({
         update_id: 882095266,
-        message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'mike' }, text: 'any update?' },
+        message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'avery' }, text: 'any update?' },
       }, context);
 
       expect(response.status).toBe(200);
@@ -187,7 +187,7 @@ function okResult(result: unknown): () => Response {
 function textUpdate(updateId: number, text: string): Record<string, unknown> {
   return {
     update_id: updateId,
-    message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'mike' }, text },
+    message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'avery' }, text },
   };
 }
 
@@ -227,7 +227,7 @@ describe('a skipped update advances the cursor LOUDLY', () => {
           serviceRegistry: { resolveSecret: async () => null },
           configManager: { get: (key: string) => config[key] },
           routeBindings: {
-            upsertBinding: async () => ({ id: 'binding-1', surfaceId: 'goodvibes_bot', externalId: '4242', channelId: '4242', title: 'Mike' }),
+            upsertBinding: async () => ({ id: 'binding-1', surfaceId: 'goodvibes_bot', externalId: '4242', channelId: '4242', title: 'Avery' }),
           },
           sessionBroker: {
             submitMessage: async (input: { body: string }) => {

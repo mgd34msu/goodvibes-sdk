@@ -174,8 +174,8 @@ export type InboundMailRecord = ImapInboundMailRecord | GmailInboundMailRecord;
  * `imap:<uidValidity>:<uid>` / `gmail:<resourceId>`. Never a key and never
  * parsed back apart, a sweep report exists to tell the owner WHICH message
  * went, and a report that carried `uid: 0` for every Gmail record (which is
- * what an IMAP-shaped field would have to do) tells him nothing while looking
- * like it told him something.
+ * what an IMAP-shaped field would have to do) tells the owner nothing while
+ * looking like it told them something.
  */
 export function describeRecordIdentity(record: InboundMailRecord): string {
   return record.source === 'gmail'
@@ -387,7 +387,7 @@ export class InboundMailStore {
    * `list()` filters by age and by count, so a caller counting its result was
    * counting a VIEW: with `maxRecords: 2`, ten writes left ten records on disk
    * and `list()` answered 2. `email.inbound.status` computed its
-   * `retention.records.kept` that way, so the owner was told his store was
+   * `retention.records.kept` that way, so the owner was told their store was
    * bounded while the file grew without limit, a disclosure that reads as
    * reassurance and is not one.
    *

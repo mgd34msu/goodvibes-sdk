@@ -189,7 +189,23 @@ export type {
   InterruptedVerdict,
 } from './checkout-registry.js';
 
+export { CheckoutSubmitRefused } from './checkout-page.js';
 export type { CheckoutPageDriver, PageIdentity, CheckoutChallenge } from './checkout-page.js';
+
+// The one implementation of that port over a real browser. Exported because a
+// consumer that cannot build a page driver cannot begin a checkout at all, and
+// because this is the module the single-typing-path rule points at: it hands
+// values fill-card.ts read to the engine's fillSecretBatch and produces none
+// itself.
+export { createBrowserCheckoutDriverFactory, CheckoutDriverRefusal } from './browser-checkout-driver.js';
+export type {
+  BrowserCheckoutDriverDeps,
+  CheckoutBrowserEngine,
+  CheckoutEngineTarget,
+  CheckoutGuardHandle,
+  CheckoutSubmission,
+  CheckoutSubmissionDescription,
+} from './browser-checkout-driver.js';
 
 export { fillCard, FillCardRefusal } from './fill-card.js';
 export type { CardFieldTarget, FillCardRequest, FillCardResult, FillCardDeps } from './fill-card.js';

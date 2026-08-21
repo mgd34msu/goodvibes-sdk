@@ -167,8 +167,26 @@ export interface FixtureDriverOptions {
   readonly failSubmit?: boolean;
   /** Return a challenge instead of an order, to exercise the pause. */
   readonly challenge?: CheckoutChallenge;
-  /** Make one named field reject input, to exercise the fill failure path. */
+  /**
+   * Make one named field reject input STRUCTURALLY: `fillSecrets` returns
+   * `failedTarget` naming it, exactly as `CheckoutPageDriver.fillSecrets`'s
+   * contract (checkout-page.ts) documents for both an unresolvable ref and an
+   * ordinary page-level rejection. This is the path every compliant driver
+   * takes today; see `throwOnField` for the one a driver is not supposed to.
+   */
   readonly rejectField?: string;
+  /**
+   * Make one named field throw INSTEAD of reporting `failedTarget`, with the
+   * value quoted in the thrown message, exactly as a raw browser fill error
+   * can. The documented port contract says a driver should never do this, a
+   * per-target failure is always supposed to come back as `failedTarget`, so
+   * this models the driver that violates that contract (or an entirely
+   * unattributable failure) rather than the ordinary rejection `rejectField`
+   * models. It exists to prove fill-card.ts's catch still discards whatever a
+   * driver hands it, value included, even though no compliant driver should
+   * ever reach that branch.
+   */
+  readonly throwOnField?: string;
 }
 
 /**
@@ -206,15 +224,32 @@ export class FixtureCheckoutDriver implements CheckoutPageDriver {
     this.fillLog.push({ target, kind: 'plain' });
   }
 
-  async fillSecret(target: string, value: string, kind: CardFieldKind): Promise<void> {
-    if (this.options.rejectField === target) {
-      // Deliberately quotes the value in the message. A real browser's fill
-      // error does exactly this, and the point of the test is that fill-card.ts
-      // discards the driver's message rather than wrapping it.
-      throw new Error(`could not type "${value}" into ${target}`);
+  async fillSecrets(
+    fields: readonly { readonly target: string; readonly value: string; readonly kind: CardFieldKind }[],
+  ): Promise<{ readonly filledTargets: readonly string[]; readonly failedTarget: string | null }> {
+    const filledTargets: string[] = [];
+    for (const field of fields) {
+      if (this.options.throwOnField === field.target) {
+        // A driver that violates its own port contract: instead of reporting
+        // `failedTarget`, it throws, with the value quoted in the message,
+        // exactly as a raw browser fill error can. fill-card.ts's catch must
+        // discard this regardless, which is the only thing this branch exists
+        // to prove; see `throwOnField`'s doc comment above.
+        throw new Error(`could not type "${field.value}" into ${field.target}`);
+      }
+      if (this.options.rejectField === field.target) {
+        // Stops here, having typed nothing for this field and reporting
+        // everything typed before it, without ever quoting the value: this is
+        // the documented, structural path every compliant driver takes for a
+        // page-level rejection, an unresolvable ref included; see
+        // checkout-page.ts's `fillSecrets` contract.
+        return { filledTargets, failedTarget: field.target };
+      }
+      this.formState.set(field.target, field.value);
+      this.fillLog.push({ target: field.target, kind: field.kind });
+      filledTargets.push(field.target);
     }
-    this.formState.set(target, value);
-    this.fillLog.push({ target, kind });
+    return { filledTargets, failedTarget: null };
   }
 
   async choose(target: string, value: string): Promise<void> {
@@ -225,16 +260,20 @@ export class FixtureCheckoutDriver implements CheckoutPageDriver {
     readonly url: string;
     readonly orderId: string | null;
     readonly challenge?: CheckoutChallenge | null | undefined;
+    readonly verified: boolean;
   }> {
     if (this.options.failSubmit === true) {
       throw new Error('the connection dropped while submitting');
     }
     if (this.options.challenge !== undefined) {
-      return { url: this.options.pageUrl, orderId: null, challenge: this.options.challenge };
+      return { url: this.options.pageUrl, orderId: null, challenge: this.options.challenge, verified: true };
     }
     const fields: Record<string, string> = { submitTarget: target };
     for (const [key, value] of this.formState.entries()) fields[key] = value;
     const result = await this.options.merchant.submit(fields);
-    return { url: result.url, orderId: result.orderId };
+    // This fixture always reads the real fixture merchant's own response, the
+    // real orderId above, so it models a composition WITH describeSubmission
+    // wired: the purchase this produces is a verified one.
+    return { url: result.url, orderId: result.orderId, verified: true };
   }
 }

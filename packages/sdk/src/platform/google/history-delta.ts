@@ -180,8 +180,8 @@ export type GmailHistoryType = 'messageAdded' | 'messageDeleted' | 'labelAdded' 
  * Not a boolean, and not inferred. The two answers are genuinely different
  * products, one is "inbound mail does not run", the other is "inbound mail
  * runs and can never satisfy a verification", and which one the owner gets is
- * a setting he chose, so the call that acts on it says which one it is asking
- * for.
+ * a setting they chose, so the call that acts on it says which one it is
+ * asking for.
  */
 export type MetadataOnlyGrantPolicy = 'refuse' | 'fetch-metadata';
 
@@ -221,7 +221,7 @@ export interface GmailFetchProblem {
    *
    * Carried because a caller turning this into an owner-facing verdict needs
    * it and has nowhere else to get it. On a 401/403 the remedy IS the message
-   *, "re-authorize", and a verdict that reached the owner saying his mail
+   *, "re-authorize", and a verdict that reached the owner saying their mail
    * had stopped without saying what to do about it would be this module's own
    * failure mode one layer further out.
    */

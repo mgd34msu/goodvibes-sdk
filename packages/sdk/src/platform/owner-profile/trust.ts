@@ -25,9 +25,10 @@
  * declined propose-first, so no API lets a non-owner source stage a fact for
  * later approval: a queue an untrusted source can write to is a write.
  *
- * What this does not claim: a reworded injection the owner then repeats in his
- * own words is indistinguishable from him saying it. That is the residual risk
- * of the autonomous model he chose, and provenance is what makes it recoverable.
+ * What this does not claim: a reworded injection the owner then repeats in
+ * their own words is indistinguishable from them saying it. That is the
+ * residual risk of the autonomous model they chose, and provenance is what
+ * makes it recoverable.
  */
 import {
   describeContentTaint,

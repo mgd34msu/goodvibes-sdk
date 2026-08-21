@@ -159,7 +159,7 @@ const EMAIL_INBOUND_RETENTION_SCHEMA = objectSchema({
   }, ['kept', 'maxCursors']),
   // `kept` is what a read serves; `stored` is what the file holds. Both,
   // because `kept` alone was computed from a filtered view and so told the
-  // owner his store was bounded while it was not. `reapedOnWrite` discloses
+  // owner their store was bounded while it was not. `reapedOnWrite` discloses
   // the records write-time bounding removed, which no sweep report can itemise.
   records: objectSchema({
     kept: NUMBER_SCHEMA,

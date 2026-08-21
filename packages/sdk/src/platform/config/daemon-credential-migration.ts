@@ -3,8 +3,8 @@
  * surface silo up into the daemon tier.
  *
  * Routing new writes correctly fixes nothing for the person who already ran
- * setup. The owner did: he ran `/google adopt` in the agent, it reported
- * success, and the credential landed where that build put it. Telling him to
+ * setup. The owner did: they ran `/google adopt` in the agent, it reported
+ * success, and the credential landed where that build put it. Telling them to
  * run it again is not a fix, and neither is a daemon that starts up next to a
  * working credential it cannot see.
  *
@@ -269,11 +269,11 @@ export async function migrateDaemonNeededCredentials(
  * A durable record of what this migration did, written beside the daemon's own
  * state.
  *
- * The owner authorized this migration to run against his live tree, and part of
- * that authorization is that he never has to guess whether it ran. A log line
- * scrolls; this does not. It answers "did it run, when, and what moved" from
- * disk, months later, and it carries key NAMES, tiers and outcomes, never a
- * value.
+ * The owner authorized this migration to run against their live tree, and
+ * part of that authorization is that they never have to guess whether it
+ * ran. A log line scrolls; this does not. It answers "did it run, when, and
+ * what moved" from disk, months later, and it carries key NAMES, tiers and
+ * outcomes, never a value.
  *
  * Rewritten on every run that changed something, so it always describes the
  * latest move rather than accumulating a history nobody reaps. A run that

@@ -231,6 +231,8 @@ export interface CardFieldGuard {
   redact: (sessionId: string, pageId: string, text: string) => string;
   /** Forget a page's material. Called when a page or a session closes. */
   disarm: (sessionId: string, pageId: string) => void;
+  /** Forget every page's material in a session. Called when a session closes. */
+  disarmSession?: (sessionId: string) => void;
 }
 
 export interface BrowserSnapshot {

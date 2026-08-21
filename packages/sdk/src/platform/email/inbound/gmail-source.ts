@@ -581,8 +581,8 @@ export class GmailMailSource implements InboundMailSource {
       reason,
       // The SAME detail the verdict carries, policy sentence included. The
       // terminal notice is the surface the owner actually reads when mail
-      // stops, so a sentence that reached only the status line would reach him
-      // in the place he is not looking.
+      // stops, so a sentence that reached only the status line would reach
+      // them in the place they are not looking.
       detail: verdict.detail,
       fix: result.fix,
       at: new Date(this.deps.clock.now()).toISOString(),

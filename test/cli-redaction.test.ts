@@ -241,7 +241,7 @@ describe('a support bundle never carries card material', () => {
       cardNumber: '4111111111111111',
       cardExpiry: '12/29',
       cardCvv: '123',
-      cardholderName: 'M Davis',
+      cardholderName: 'A Chen',
       currency: 'USD',
     },
   };
@@ -258,7 +258,7 @@ describe('a support bundle never carries card material', () => {
   test('the card number never survives anywhere in the serialised bundle', () => {
     const { value } = redactConfig(CARD_CONFIG);
     expect(JSON.stringify(value)).not.toContain('4111111111111111');
-    expect(JSON.stringify(value)).not.toContain('M Davis');
+    expect(JSON.stringify(value)).not.toContain('A Chen');
   });
 
   test('an ordinary payments setting is left alone, so this is not blanket masking', () => {

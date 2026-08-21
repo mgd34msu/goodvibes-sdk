@@ -49,7 +49,7 @@ async function loadedStore(path: string): Promise<OwnerProfileStore> {
  * field, a deeply indented child bullet, and a section he invented.
  */
 const HAZARDS = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '<!-- my own note, not machinery -->',
   '',

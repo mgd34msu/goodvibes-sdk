@@ -37,9 +37,9 @@ export const GOODVIBES_RUNTIME_AWARENESS_PROMPT = [
   // The previous wording here was "use goodvibes_settings only when the user
   // explicitly asks you to change a setting". A user who said "telegram bot id
   // is goodvibes_agent_bot" was read as not having explicitly asked, so the
-  // value was noted in the reply and never written. He believed his system was
-  // configured for hours. Supplying a value IS the ask. Kept terse on purpose:
-  // this prompt is paid on every turn and competes with injected context.
+  // value was noted in the reply and never written. They believed their system
+  // was configured for hours. Supplying a value IS the ask. Kept terse on
+  // purpose: this prompt is paid on every turn and competes with injected context.
   'A configuration value the user states, bot name, chat id, token, host, port, model, path, is a request to set it: call goodvibes_settings, then report the key and its persistedTo store. A value only repeated back in prose is not set.',
   'If the key or the intent is unclear, ask one short question; never write config the user did not ask for. Report settings from goodvibes_context with the store each came from; a value its owning runtime could not supply is unavailable, not unset.',
   'Never reveal raw secrets; report only redacted credential posture.',

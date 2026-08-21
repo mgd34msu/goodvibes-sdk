@@ -157,8 +157,8 @@ export interface DaemonLifecycleRuntimeOptions {
    * running, wrote its own scratchpad `ExecStart` into
    * `~/.config/systemd/user/goodvibes.service`, and exited. systemd then
    * supervised the throwaway daemon as the machine's daemon, which is how it
-   * came to be reading the owner's real credentials and long-polling his real
-   * Telegram bot, producing the 409 that killed inbound messages.
+   * came to be reading the owner's real credentials and long-polling their
+   * real Telegram bot, producing the 409 that killed inbound messages.
    *
    * Promotion means "this process should be the machine's daemon forever".
    * A process running from a directory that may not exist tomorrow cannot
@@ -716,7 +716,7 @@ export class DaemonLifecycleRuntime {
     // A daemon running out of an overridden home is a throwaway by definition,
     // and a throwaway must not become the machine's daemon. See
     // `hasOverriddenHome`, this exact promotion put a scratchpad daemon in
-    // charge of the owner's machine and his real Telegram bot.
+    // charge of the owner's machine and their real Telegram bot.
     //
     // Checked BEFORE `service.enabled`, deliberately: that key is client-owned
     // and therefore read from the REAL home, so a test tree's own opt-out was

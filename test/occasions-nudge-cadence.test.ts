@@ -72,8 +72,8 @@ const PROFILE = `# Owner profile
 
 ## Identity
 
-name: Mike Davis
-goes by: Mike
+name: Avery Chen
+goes by: Avery
 
 ## Location
 
@@ -85,7 +85,7 @@ timezone: Europe/London
 
 ## Important dates
 
-- Mike's birthday · 08-06 · annual · remember-only
+- Avery's birthday · 08-06 · annual · remember-only
 - Natalie Sons's birthday · 08-20 · annual · gift-giving · for Natalie Sons
 `;
 
@@ -374,7 +374,7 @@ describe('an occasion about him that he only has to remember is never pushed', (
     // sweeps is 154 passes, the exact scenario that produced five pushes.
     await sweepHourly(h, '2026-07-27', 11);
     const aboutHim = h.pushes.filter((push) =>
-      push.nudge.subjects.some((subject) => subject.occasionId === "mike's birthday"));
+      push.nudge.subjects.some((subject) => subject.occasionId === "avery's birthday"));
     expect(aboutHim).toHaveLength(0);
   });
 
@@ -386,7 +386,7 @@ describe('an occasion about him that he only has to remember is never pushed', (
       ...(pending.nudge?.subjects ?? []),
       ...pending.acknowledged,
     ].map((entry) => entry.title);
-    expect(titles).toContain("Mike's birthday");
+    expect(titles).toContain("Avery's birthday");
   });
 
   test('his wife\'s gift-giving birthday is unaffected by his going quiet', async () => {
@@ -398,9 +398,9 @@ describe('an occasion about him that he only has to remember is never pushed', (
   });
 
   test('the subject is resolved from his declared names, not from a name literal', () => {
-    const his = occasionLine("Mike's birthday · 08-06 · annual · remember-only");
+    const his = occasionLine("Avery's birthday · 08-06 · annual · remember-only");
     const hers = occasionLine("Natalie Sons's birthday · 08-20 · annual · gift-giving · for Natalie Sons");
-    const names = ['Mike Davis', 'Mike'];
+    const names = ['Avery Chen', 'Avery'];
 
     expect(resolveOccasionSubject(his, names)).toBe('owner');
     expect(resolveOccasionSubject(hers, names)).toBe('other');
@@ -420,10 +420,10 @@ describe('an occasion about him that he only has to remember is never pushed', (
   test('an unattributed line is never treated as his', () => {
     const ours = occasionLine('Our anniversary · 09-12 · annual · gift-giving');
     const dad = occasionLine('Dad · 11-02 · annual · remember-only');
-    expect(resolveOccasionSubject(ours, ['Mike Davis', 'Mike'])).toBe('unattributed');
-    expect(resolveOccasionSubject(dad, ['Mike Davis', 'Mike'])).toBe('unattributed');
+    expect(resolveOccasionSubject(ours, ['Avery Chen', 'Avery'])).toBe('unattributed');
+    expect(resolveOccasionSubject(dad, ['Avery Chen', 'Avery'])).toBe('unattributed');
     expect(possessiveSubject('Our anniversary')).toBe('');
-    expect(possessiveSubject("Mike's birthday")).toBe('Mike');
+    expect(possessiveSubject("Avery's birthday")).toBe('Avery');
     expect(possessiveSubject("Natalie Sons's birthday")).toBe('Natalie Sons');
   });
 
@@ -445,9 +445,9 @@ describe('an occasion about him that he only has to remember is never pushed', (
 describe('a machine already in the bad state settles on load', () => {
   /** The owner's own item, exactly as his state file held it. */
   const LIVE_ITEM = {
-    id: "nudge:mike's birthday@2026-08-06",
+    id: "nudge:avery's birthday@2026-08-06",
     kind: 'nudge',
-    occasionId: "mike's birthday",
+    occasionId: "avery's birthday",
     occurrence: '2026-08-06',
     openedAt: 1,
     lastRaisedAt: 2,
@@ -473,7 +473,7 @@ describe('a machine already in the bad state settles on load', () => {
     const items = await store.openItems();
     expect(items).toHaveLength(1);
     // Kept open. Not deleted, not resolved, nothing about it was resolved.
-    expect(items[0]?.id).toBe("nudge:mike's birthday@2026-08-06");
+    expect(items[0]?.id).toBe("nudge:avery's birthday@2026-08-06");
     expect(items[0]?.servedBoundaries).toEqual(['lead', 'day-of']);
   });
 
@@ -520,15 +520,15 @@ describe('a nudge landed in the agent conversation says what it is', () => {
     id: 'n1',
     raisedAt: 0,
     subjects: [{
-      occasionId: "mike's birthday",
-      title: "Mike's birthday",
+      occasionId: "avery's birthday",
+      title: "Avery's birthday",
       person: '',
       kind: 'remember-only',
       proximity: 'imminent',
       subject: 'owner',
       acknowledged: false,
     }],
-    message: "Mike's birthday is very close now.",
+    message: "Avery's birthday is very close now.",
     answerable: false,
   };
 

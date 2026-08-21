@@ -10,7 +10,7 @@
  *
  * That layering is what keeps the profile's guarantee intact. Nothing in this
  * file edits a line; it reads one and reports what it found, including what it
- * could not make sense of. A line this parser dislikes is still his line.
+ * could not make sense of. A line this parser dislikes is still the owner's line.
  *
  * ── The format ────────────────────────────────────────────────────────────
  *
@@ -23,13 +23,14 @@
  *
  * `for me`, and a bare `mine`, `myself` or `self`, says the occasion is about
  * the OWNER. It is the one attribution the parser can settle by itself, and it
- * matters because something he only has to remember about himself is something
- * he already knows: see subject.ts. Every other attribution is reported as
- * written and resolved by the reader, which can see what he calls himself.
+ * matters because something the owner only has to remember about themselves is
+ * something they already know: see subject.ts. Every other attribution is
+ * reported as written and resolved by the reader, which can see what the owner
+ * calls themselves.
  *
  * Segments after the title are classified BY SHAPE rather than by position, so
- * he can write them in whatever order he thinks of them and a line stays valid
- * when he adds one later. Anything unrecognised is kept in `extras` and written
+ * the owner can write them in whatever order they think of them and a line
+ * stays valid when they add one later. Anything unrecognised is kept in `extras` and written
  * back unchanged, dropping a segment because this module did not know it would
  * be the profile's cardinal sin arriving by a side door.
  *
@@ -116,8 +117,8 @@ export type OccasionLineResult =
  * than `null`:
  *
  *  - **No date.** There is nothing to approach, so there is nothing to raise.
- *  - **No kind.** The kind is his choice, made at capture, and is never
- *    inferred. A line without one is recorded and answerable, he can still ask
+ *  - **No kind.** The kind is the owner's choice, made at capture, and is never
+ *    inferred. A line without one is recorded and answerable, the owner can still ask
  *    when the date is, and is never raised, because guessing whether a date
  *    wants a cheerful gift prompt is exactly the guess that gets a death
  *    anniversary wrong.
@@ -158,7 +159,7 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
       leadDays = Number(lead[1]);
       continue;
     }
-    // `for me` and a bare `mine` both say the occasion is about HIM. Checked
+    // `for me` and a bare `mine` both say the occasion is about THE OWNER. Checked
     // before the general `for <name>` branch so "me" never lands in `person`
     // as if it were somebody's name.
     if (isSelfAttribution(segment)) {
@@ -211,8 +212,9 @@ export function parseOccasionLine(lineIndex: number, text: string): OccasionLine
       person,
       selfDeclared,
       // The parser reads ONE LINE and has never seen the Identity section, so
-      // it cannot know whether "Mike" is him. It reports what the line says and
-      // leaves the conclusion to `readOccasions`, which has his declared names.
+      // it cannot know whether a name on the line is the owner's own. It reports
+      // what the line says and leaves the conclusion to `readOccasions`, which
+      // has the owner's declared names.
       // Unattributed is the safe default: it behaves exactly as before.
       subject: selfDeclared ? 'owner' : 'unattributed',
       leadDays,
@@ -263,7 +265,7 @@ export type PlanLineResult =
  *
  * A plan needs a range and nothing else. `away` is opt-in rather than assumed:
  * a plan can be "the kitchen is being redone, 3rd to the 10th", which is a real
- * dated range he wants known and is not him leaving the house.
+ * dated range the owner wants known and not them leaving the house.
  */
 export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
   const { title, segments } = splitSegments(text);
@@ -310,7 +312,7 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
       },
     };
   }
-  // A range written backwards is his typo, not a reason to drop the line. It is
+  // A range written backwards is the owner's typo, not a reason to drop the line. It is
   // ordered so nothing downstream has to ask which end is which.
   const ordered = from <= to ? { from, to } : { from: to, to: from };
 
@@ -334,7 +336,7 @@ export function parsePlanLine(lineIndex: number, text: string): PlanLineResult {
  * Make one free-text detail safe to carry as a segment on a plan line.
  *
  * A plan's details, a confirmation number, a flight and its times, who is
- * travelling, why he is going, are the reason he pasted the itinerary, so they
+ * travelling, why the owner is going, are the reason they pasted the itinerary, so they
  * are kept verbatim wherever verbatim is possible. Three things would corrupt
  * the line if they went through untouched, and each is handled rather than
  * refused:

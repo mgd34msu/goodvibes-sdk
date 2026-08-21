@@ -364,7 +364,7 @@ function attributeUnreadable(unreadable: readonly ImapFetchProblem[]): {
  * way it was reached, and the sentence says so, because "the server answered
  * for UID 307 and we could not read it" and "one of the answers was
  * unreadable and none of them said which message it was about" are different
- * things to tell an owner who is trying to work out what his mail server is
+ * things to tell an owner who is trying to work out what their mail server is
  * doing.
  *
  * The wording is deliberately the owner's, not a stack trace: this reaches

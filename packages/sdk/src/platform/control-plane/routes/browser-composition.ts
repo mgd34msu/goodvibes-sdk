@@ -26,6 +26,29 @@
  *
  * Returns `null` when the composition is too narrow to have a home directory,
  * so the verbs stay unregistered rather than half-wired.
+ *
+ * ── The checkout seam ─────────────────────────────────────────────────────
+ *
+ * `payments.checkout.begin` and `payments.checkout.fillCard` both need a page
+ * driver bound to an open page of a browser engine, and that engine has to be
+ * THIS one: the model snapshots a checkout through `browser.*`, and a purchase
+ * driving a second engine would be typing into a page nobody is looking at.
+ * The engine also has to carry the card-material guard the payments service
+ * arms, or it scrubs page output against an empty set while a card sits on the
+ * form.
+ *
+ * Both follow from one callback. `onBrowserCheckout` receives a guard this
+ * module minted and a driver factory over the engine that guard was built into,
+ * bound together in one object. A composition cannot supply a guard, so it
+ * cannot supply the wrong one, and if it arms some other redactor anyway the
+ * driver refuses to type rather than typing unprotected.
+ *
+ * The seam also carries `armSubmitApproval`, a composition-only path onto the
+ * engine's `setOwnerApproval` (see browser-checkout-driver.ts's header for why
+ * this is deliberately not reachable from `platform/payments/`), and the
+ * driver factory is built with whatever `describeSubmission` this composition
+ * supplies, absent by default, which is what makes an unverified submission
+ * the honest default rather than a claimed purchase nothing here confirmed.
  */
 import {
   BrowserEngine,
@@ -33,8 +56,16 @@ import {
   browserProfileRoot,
   browserScreenshotRoot,
 } from '../../browser/index.js';
-import type { UntrustedContentPort } from '../../browser/index.js';
+import type { BrowserEngineOptions, UntrustedContentPort } from '../../browser/index.js';
 import { createUntrustedContentPort } from '../../security/untrusted-content.js';
+import { CardMaterialRedactor } from '../../payments/card-redaction.js';
+import { createBrowserCheckoutDriverFactory } from '../../payments/browser-checkout-driver.js';
+import type {
+  CheckoutSubmission,
+  CheckoutSubmissionDescription,
+} from '../../payments/browser-checkout-driver.js';
+import type { CheckoutPageDriver } from '../../payments/checkout-page.js';
+import type { OwnerApproval } from '../../browser/index.js';
 import type { BrowserGatewayService } from './browser.js';
 
 /**
@@ -63,6 +94,36 @@ export interface BrowserCompositionDeps {
    * mail verbs also write to.
    */
   readonly browserUntrusted?: UntrustedContentPort | undefined;
+  /**
+   * Receives the checkout seam, once, at composition time.
+   *
+   * Present: the engine is built WITH a card-material guard this function mints,
+   * and the same object is handed back alongside a page-driver factory over that
+   * same engine. That is the whole reason the callback exists rather than a
+   * `cardFieldGuard` input. A consumer cannot supply a guard, so it cannot supply
+   * a different one than the engine holds; the only object that works is the one
+   * it is given, and the driver refuses if the payments service ever arms
+   * another (see payments/browser-checkout-driver.ts).
+   *
+   * Absent: no guard is minted and the engine is exactly what it was before,
+   * which is what every browser-only composition should get. A browser used for
+   * ordinary automation needs no card redaction, and building one with a guard
+   * nothing arms would only make `cardFieldGuardInstalled()` lie.
+   */
+  readonly onBrowserCheckout?: ((seam: BrowserCheckoutSeam) => void) | undefined;
+  /**
+   * Reads a merchant order id or a verification step off a submitted
+   * checkout's landing page.
+   *
+   * Absent by default, which is honest: reading a merchant's own confirmation
+   * page is site-specific knowledge this SDK does not carry. Without it, a
+   * submitted purchase is recorded and reported as unverified rather than as
+   * an indistinguishable-from-confirmed "purchased", see checkout-flow.ts and
+   * browser-checkout-driver.ts's header for what that changes.
+   */
+  readonly describeSubmission?:
+    | ((submission: CheckoutSubmission) => Promise<CheckoutSubmissionDescription>)
+    | undefined;
 }
 
 /** The gateway slice plus the teardown the daemon's disposal scope runs. */
@@ -74,16 +135,48 @@ export interface DaemonBrowserGatewayService extends BrowserGatewayService {
   shutdown(): Promise<void>;
 }
 
-export function createDaemonBrowserGatewayService(
+/**
+ * The two halves a checkout needs, minted together so they cannot come apart.
+ *
+ * `cardFieldGuard` is what `PaymentsGatewayServiceImpl` must be constructed
+ * with, and `driverFor` is what its `driverFor` dependency must be. Both are
+ * bound to ONE engine, which is the engine the `browser.*` verbs also drive, so
+ * a page the model snapshotted is the page the purchase runs on.
+ */
+export interface BrowserCheckoutSeam {
+  /** Hand this to `PaymentsServiceDeps.cardFieldGuard`, unchanged. */
+  readonly cardFieldGuard: CardMaterialRedactor;
+  /** Hand this to `PaymentsServiceDeps.driverFor`, unchanged. */
+  driverFor(sessionId: string, pageId: string): CheckoutPageDriver;
+  /**
+   * Arms the owner's approval for ONE outward submit, directly on the engine
+   * this seam's driver runs against.
+   *
+   * Composition-only, and deliberately so: this seam is handed to whoever
+   * composes the daemon's browser, never to anything in `platform/payments/`,
+   * so payments code has no path that could mint its own approval and spend
+   * against it. See browser-checkout-driver.ts's header for when the
+   * untrusted-effect guard actually needs one, most invocations clear it a
+   * different way (the turn-boundary reset), and this exists as the honest
+   * fallback for when they do not.
+   */
+  armSubmitApproval(approval: OwnerApproval | null): Promise<void>;
+}
+
+/**
+ * The daemon's engine, built once on first use.
+ *
+ * The promise itself is the single-flight guard: two concurrent verbs share one
+ * engine rather than racing to launch two browsers. Returns null when the
+ * composition is too narrow to have a home directory.
+ */
+function daemonEngineFactory(
   deps: BrowserCompositionDeps,
-): DaemonBrowserGatewayService | null {
-  if (deps.browserGateway) return deps.browserGateway;
+  cardFieldGuard: BrowserEngineOptions['cardFieldGuard'],
+): { readonly engineFor: () => Promise<BrowserEngine>; readonly shutdown: () => Promise<void> } | null {
   const homeDirectory = deps.homeDirectory;
   if (homeDirectory === undefined) return null;
 
-  // Built once, on the first verb that needs it. The promise itself is the
-  // single-flight guard: two concurrent verbs share one engine rather than
-  // racing to launch two browsers.
   let pending: Promise<BrowserEngine> | null = null;
   const engineFor = async (): Promise<BrowserEngine> => {
     pending ??= (async (): Promise<BrowserEngine> => new BrowserEngine(
@@ -99,11 +192,91 @@ export function createDaemonBrowserGatewayService(
           surface: 'web-page',
           toolName: 'browser',
         }),
+        ...(cardFieldGuard === undefined ? {} : { cardFieldGuard }),
       },
     ))();
     return pending;
   };
 
+  return {
+    engineFor,
+    async shutdown() {
+      // Never builds an engine in order to tear one down: a daemon that never
+      // browsed has nothing to close, and constructing one here would resolve
+      // a driver during shutdown.
+      if (!pending) return;
+      await (await pending).shutdown();
+    },
+  };
+}
+
+/**
+ * Compose the daemon browser, and the checkout seam when one was asked for.
+ *
+ * This is the entry `registerGatewayVerbGroups` calls.
+ * `createDaemonBrowserGatewayService` remains the browser-only entry and is
+ * unchanged in signature and in behavior; a caller that passes no
+ * `onBrowserCheckout` gets exactly the engine it got before.
+ */
+export function composeDaemonBrowser(
+  deps: BrowserCompositionDeps,
+): DaemonBrowserGatewayService | null {
+  // A supplied gateway is an override of the whole service, so there is no
+  // engine here to bind a page driver to. `onBrowserCheckout` asked for a
+  // guard bound to THIS composition's own engine, and an overridden gateway
+  // has no such engine, so honouring both silently would mean the caller's
+  // seam callback simply never fires, with no signal that it was dropped. A
+  // caller that wired a checkout seam onto an overridden gateway almost
+  // certainly meant to override the checkout seam too (a test double that
+  // also drives payments), which this composition cannot do, so it says so
+  // rather than composing a gateway with a payments capability quietly
+  // missing.
+  if (deps.browserGateway && deps.onBrowserCheckout) {
+    throw new Error(
+      'composeDaemonBrowser was given both browserGateway and onBrowserCheckout: an overridden gateway '
+      + 'has no engine of its own to build the checkout seam on, so onBrowserCheckout would never fire. '
+      + 'Pass browserGateway alone for a browser-only test double, or drop it and let this composition '
+      + 'build its own engine so the checkout seam has something real to bind to.',
+    );
+  }
+  if (deps.browserGateway) return deps.browserGateway;
+
+  const onCheckout = deps.onBrowserCheckout;
+  const cardFieldGuard = onCheckout === undefined ? undefined : new CardMaterialRedactor();
+  const built = daemonEngineFactory(deps, cardFieldGuard);
+  if (built === null) return null;
+
+  if (onCheckout !== undefined && cardFieldGuard !== undefined) {
+    onCheckout({
+      cardFieldGuard,
+      driverFor: createBrowserCheckoutDriverFactory({
+        engineFor: built.engineFor,
+        cardFieldGuard,
+        ...(deps.describeSubmission === undefined ? {} : { describeSubmission: deps.describeSubmission }),
+      }),
+      armSubmitApproval: async (approval) => {
+        (await built.engineFor()).setOwnerApproval(approval);
+      },
+    });
+  }
+
+  return gatewayOverEngine(built.engineFor, built.shutdown);
+}
+
+/**
+ * The name every pre-existing caller uses. One implementation, so a caller that
+ * DID pass `onBrowserCheckout` here cannot silently get a browser with no seam.
+ */
+export function createDaemonBrowserGatewayService(
+  deps: BrowserCompositionDeps,
+): DaemonBrowserGatewayService | null {
+  return composeDaemonBrowser(deps);
+}
+
+function gatewayOverEngine(
+  engineFor: () => Promise<BrowserEngine>,
+  shutdown: () => Promise<void>,
+): DaemonBrowserGatewayService {
   return {
     async status() {
       return (await engineFor()).status();
@@ -177,12 +350,6 @@ export function createDaemonBrowserGatewayService(
     async goForward(target) {
       return (await engineFor()).goForward(target);
     },
-    async shutdown() {
-      // Never builds an engine in order to tear one down: a daemon that never
-      // browsed has nothing to close, and constructing one here would resolve
-      // a driver during shutdown.
-      if (!pending) return;
-      await (await pending).shutdown();
-    },
+    shutdown,
   };
 }

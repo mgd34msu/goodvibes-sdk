@@ -5,7 +5,7 @@
  * snapshotted at construction, so each one is a real toggle instead of a
  * restart-only one. That is the same treatment the owner-profile composition
  * gives its switches, and for the same reason: a setting that needs a daemon
- * restart to take effect is a setting he will believe he changed.
+ * restart to take effect is a setting the owner will believe they changed.
  *
  * The accessor is string-keyed. The `occasions.*` keys live in the config
  * defaults tree and the flat settings surface, and the daemon adapts its

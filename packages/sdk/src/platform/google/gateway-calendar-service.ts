@@ -57,7 +57,7 @@ export interface GoogleCalendarGatewayServiceOptions {
    * that somebody, and reading it is the same exposure as reading their mail.
    * Recorded from the READ paths, `listEvents`, `getEvent`, `exportIcs` and
    * `importIcs`, each of which runs because a caller asked. An event Google
-   * says the owner organized (`organizer.self`) records nothing: he wrote it.
+   * says the owner organized (`organizer.self`) records nothing: the owner wrote it.
    * See calendar/untrusted-events.ts.
    */
   readonly recordUntrustedIngest?: CalendarUntrustedIngestRecorder | undefined;

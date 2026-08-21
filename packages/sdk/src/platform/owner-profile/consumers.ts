@@ -104,12 +104,12 @@ export const CONSUMER_FALLBACKS: readonly ConsumerFallbackRow[] = [
   {
     configKey: 'checkin.quietHours',
     fieldId: 'contactMe.quietHours',
-    note: 'the hours he does not want to be pinged are a fact about him, not a property of the check-in feature',
+    note: 'the owner\'s do-not-ping hours are a fact about the owner, not a property of the check-in feature',
   },
   {
     configKey: 'checkin.deliveryChannel',
     fieldId: 'contactMe.channel',
-    note: 'how he prefers to be reached is the same fact whether a check-in, an alert or a question is doing the reaching',
+    note: 'the owner\'s preferred way to be reached is the same fact whether a check-in, an alert or a question is doing the reaching',
   },
   {
     configKey: 'daemon.timezone',
@@ -259,7 +259,7 @@ export function profileFallbackStatus(
  * except `Style` closed, including ones the owner invented, and an earlier
  * version of this function collected prose from only the four canonical
  * prose-only sections, so `note: Home is the blue house on the corner of Elm`
- * under a heading of his own left a session export in the clear while `People`
+ * under a heading of their own left a session export in the clear while `People`
  * lines beside it were redacted. Closed means closed; the length and
  * distinctiveness floor in `utils/redaction.ts` is what stops an ordinary short
  * sentence becoming a corpus-wide pattern, and that floor is the right place

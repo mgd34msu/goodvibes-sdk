@@ -41,6 +41,11 @@ const service: VoiceSetupGatewayService = {
   wakeModelChunk: () => stubChunk,
 };
 
+/** A REST invocation as the gateway actually builds one: params under `query`. */
+function restInvocation(query: Record<string, unknown>): Parameters<ReturnType<typeof createWakeModelHandler>>[0] {
+  return { query, body: undefined, context: {} } as Parameters<ReturnType<typeof createWakeModelHandler>>[0];
+}
+
 describe('voice.local provisioning verbs are wired', () => {
   test('handlers return the provisioner service output', async () => {
     expect(createVoiceStatusHandler(service)({} as never)).toEqual(stubStatus);
@@ -115,7 +120,18 @@ describe('the wake-word verbs ride the same registered group', () => {
   test('handlers return the wake service output', async () => {
     expect(createWakeStatusHandler(service)({} as never)).toEqual(stubWakeStatus);
     expect(await createWakeProvisionHandler(service)({} as never)).toEqual(stubWakeProvision);
-    expect(createWakeModelHandler(service)({ component: 'classifier' } as never)).toEqual(stubChunk);
+    expect(createWakeModelHandler(service)(restInvocation({ component: 'classifier' }))).toEqual(stubChunk);
+  });
+
+  test('a REST GET delivers its params under `query`, not at the top of the envelope (regression)', () => {
+    // createWakeModelHandler used to read `input.component` directly. A real
+    // REST invocation is `{ query, body, context }`, so that path always saw an
+    // empty component and 500'd "component must be one of ... (got \"\")" on
+    // every GET /api/voice/wake/model call. readInvocationParams is what makes
+    // the query-shaped envelope resolve at all.
+    expect(createWakeModelHandler(service)(restInvocation({ component: 'classifier' }))).toEqual(stubChunk);
+    expect(() => createWakeModelHandler(service)({ query: {}, body: undefined, context: {} } as never))
+      .toThrow(/component must be one of classifier, tflite, embedding, notice, embedding-notice, vad, vad-notice \(got ""\)/);
   });
 
   test('a GET verb\'s numbers arrive as strings, and the handler must not read them as 0', () => {
@@ -131,24 +147,24 @@ describe('the wake-word verbs ride the same registered group', () => {
         return stubChunk;
       },
     };
-    createWakeModelHandler(capturing)({ component: 'classifier', offset: '524288', maxBytes: '1024' } as never);
+    createWakeModelHandler(capturing)(restInvocation({ component: 'classifier', offset: '524288', maxBytes: '1024' }));
     expect(seen[0]).toEqual({ offset: 524288, maxBytes: 1024 });
     // Absent stays absent rather than becoming 0-with-intent.
-    createWakeModelHandler(capturing)({ component: 'classifier' } as never);
+    createWakeModelHandler(capturing)(restInvocation({ component: 'classifier' }));
     expect(seen[1]).toEqual({ offset: undefined, maxBytes: undefined });
   });
 
   test('a nonsense offset is refused loudly instead of read as the start of the file', () => {
-    expect(() => createWakeModelHandler(service)({ component: 'classifier', offset: 'abc' } as never))
+    expect(() => createWakeModelHandler(service)(restInvocation({ component: 'classifier', offset: 'abc' })))
       .toThrow(/offset must be a non-negative number/);
-    expect(() => createWakeModelHandler(service)({ component: 'classifier', offset: '-5' } as never))
+    expect(() => createWakeModelHandler(service)(restInvocation({ component: 'classifier', offset: '-5' })))
       .toThrow(/offset must be a non-negative number/);
   });
 
   test('an unrecognised component is refused with a written reason, not turned into a path', () => {
-    expect(() => createWakeModelHandler(service)({ component: '../../etc/passwd' } as never))
+    expect(() => createWakeModelHandler(service)(restInvocation({ component: '../../etc/passwd' })))
       .toThrow(/component must be one of classifier, tflite, embedding, notice, embedding-notice, vad, vad-notice/);
-    expect(() => createWakeModelHandler(service)({} as never))
+    expect(() => createWakeModelHandler(service)(restInvocation({})))
       .toThrow(/component must be one of classifier, tflite, embedding, notice, embedding-notice, vad, vad-notice/);
   });
 
@@ -160,9 +176,9 @@ describe('the wake-word verbs ride the same registered group', () => {
     // satisfy the terms it received them under, so the front end's and the gate's
     // NOTICEs are components here too, not just the classifier's.
     for (const component of ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice']) {
-      expect(() => createWakeModelHandler(service)({ component } as never)).not.toThrow();
+      expect(() => createWakeModelHandler(service)(restInvocation({ component }))).not.toThrow();
     }
-    expect(createWakeModelHandler(service)({ component: 'vad' } as never)).toEqual(stubChunk);
+    expect(createWakeModelHandler(service)(restInvocation({ component: 'vad' }))).toEqual(stubChunk);
   });
 
   test('all three verbs are in the live catalog with REST bindings, and register without throwing', () => {

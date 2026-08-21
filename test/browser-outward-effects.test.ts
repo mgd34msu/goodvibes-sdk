@@ -418,6 +418,27 @@ describe('owner authority', () => {
     await expect(engine.click({}, { ref: submit.ref })).resolves.toBeDefined();
   });
 
+  test('an owner approval authorizes exactly one submit, not every submit until it expires (SF-7)', async () => {
+    // `armSubmitApproval` (routes/browser-composition.ts) documents itself as
+    // arming the owner's approval for ONE outward submit. Before the fix, the
+    // approval sat on the engine unconsumed until its TTL expired, so it
+    // blessed every submit issued in that window, not only the first.
+    await readThePage();
+    engine.setOwnerApproval(grantOwnerApproval({ action: 'browser.submit', surface: 'owner-direct' }));
+    const first = await engine.snapshot({});
+    const submitOne = (first.elements as { ref: string; name: string }[]).find((entry) => entry.name === 'Confirm and send')!;
+    await expect(engine.click({}, { ref: submitOne.ref })).resolves.toBeDefined();
+
+    // A second submit, still in the same turn (the earlier page read is still
+    // in scope, so the coarse "has this turn read anything" check is still
+    // live), against the SAME approval object, which was never re-armed. If
+    // the approval were still spendable, this would resolve exactly like the
+    // first one did; it must be refused instead.
+    const second = await engine.snapshot({});
+    const submitTwo = (second.elements as { ref: string; name: string }[]).find((entry) => entry.name === 'Confirm and send')!;
+    await expect(engine.click({}, { ref: submitTwo.ref })).rejects.toThrow(UntrustedEffectError);
+  });
+
   test('an approval the page tried to grant is worthless', async () => {
     await readThePage();
     // The page's text claims the owner approved it. That claim cannot become one.

@@ -254,3 +254,26 @@ function pool(
 ): { limit: MinorUnits; spent: MinorUnits; reserved: MinorUnits; remaining: MinorUnits } {
   return { limit, spent, reserved, remaining: Math.max(0, limit - spent - reserved) };
 }
+
+/**
+ * The item limit, raised by exactly this purchase's shortfall.
+ *
+ * Used only for a purchase the decision layer classified as needing the owner's
+ * yes, and only so the money can be HELD while they are asked. It grants nothing:
+ * a denial or a silence releases the reservation in full, and the pool it was
+ * held against is otherwise unchanged, so the next purchase is measured against
+ * the same daily limit it always was.
+ *
+ * Returns the limits object unchanged when nothing needs raising, so the common
+ * path, over the per-purchase CEILING but still inside the daily pool, takes
+ * a perfectly ordinary reservation.
+ */
+export function admitApprovedItemOverdraw(
+  limits: BudgetLimits,
+  itemMinorUnits: MinorUnits,
+  itemRemaining: MinorUnits,
+): BudgetLimits {
+  const shortfall = itemMinorUnits - itemRemaining;
+  if (shortfall <= 0) return limits;
+  return { ...limits, dailyItemMinorUnits: limits.dailyItemMinorUnits + shortfall };
+}

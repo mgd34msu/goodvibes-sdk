@@ -12,6 +12,7 @@
  */
 import type { GatewayMethodCatalog } from '../method-catalog.js';
 import type { GatewayMethodHandler } from '../method-catalog-shared.js';
+import { readInvocationParams } from './invocation-params.js';
 
 /** One-act install outcome served by voice.local.install. */
 export interface VoiceLocalInstallResult {
@@ -97,17 +98,17 @@ function readOptionalCount(value: unknown, field: string): number | undefined {
  * out of whatever arrived.
  */
 export function createWakeModelHandler(service: VoiceSetupGatewayService): GatewayMethodHandler {
-  return (input) => {
-    const params = (input ?? {}) as { component?: unknown; offset?: unknown; maxBytes?: unknown };
-    const component = typeof params.component === 'string' ? params.component : '';
+  return (invocation) => {
+    const params = readInvocationParams(invocation);
+    const component = typeof params['component'] === 'string' ? params['component'] : '';
     const known = ['classifier', 'tflite', 'embedding', 'notice', 'embedding-notice', 'vad', 'vad-notice'];
     if (!known.includes(component)) {
       throw new Error(`voice.wake.model.get: component must be one of ${known.join(', ')} (got "${component}")`);
     }
     return service.wakeModelChunk({
       component,
-      offset: readOptionalCount(params.offset, 'offset'),
-      maxBytes: readOptionalCount(params.maxBytes, 'maxBytes'),
+      offset: readOptionalCount(params['offset'], 'offset'),
+      maxBytes: readOptionalCount(params['maxBytes'], 'maxBytes'),
     });
   };
 }

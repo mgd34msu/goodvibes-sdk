@@ -204,6 +204,7 @@ interface HarnessOptions {
   readonly failSubmit?: boolean;
   readonly challenge?: { kind: '3d-secure' | 'captcha' | 'otp' | 'unknown'; step: string; url: string };
   readonly rejectField?: string;
+  readonly throwOnField?: string;
   readonly storefrontHost?: string;
   readonly material?: CardMaterial | null;
 }
@@ -255,6 +256,7 @@ function buildHarness(options: HarnessOptions): Harness {
     ...(options.failSubmit === undefined ? {} : { failSubmit: options.failSubmit }),
     ...(options.challenge === undefined ? {} : { challenge: options.challenge }),
     ...(options.rejectField === undefined ? {} : { rejectField: options.rejectField }),
+    ...(options.throwOnField === undefined ? {} : { throwOnField: options.throwOnField }),
   });
   const redactor = new CardMaterialRedactor();
   const registry = new CheckoutRegistry(new MemoryCheckoutJournal());
@@ -476,15 +478,35 @@ describe('the card never comes back', () => {
     expectNoCardMaterial('the sanitized route response', JSON.stringify(response));
   });
 
-  test('a fill failure names the field, and discards the driver error that quoted the value', async () => {
-    // The fixture driver deliberately puts the value into its thrown message,
-    // exactly as a real browser fill error does.
+  test('a structural fill rejection names the field, exactly as the port contract documents', async () => {
+    // The fixture's rejectField models the path every compliant driver takes
+    // today (checkout-page.ts's fillSecrets contract): a page-level rejection
+    // is reported as failedTarget, never thrown, so fill-card.ts can name the
+    // TRUE field that failed without ever holding what was meant for it.
     const harness = buildHarness({ merchant: alpha, rejectField: 'cccvv' });
     const outcome = await runOn(harness, alpha);
 
     expect(outcome.kind).toBe('refused');
     if (outcome.kind !== 'refused') throw new Error('unreachable');
     expect(outcome.reason).toContain('cvv');
+    expectNoCardMaterial('the fill failure reason', outcome.reason);
+    expect(alpha.submissions.length).toBe(0);
+  });
+
+  test('a fill failure that could not be attributed to one field discards the driver error, value included', async () => {
+    // The fixture driver deliberately puts the value into its thrown message,
+    // exactly as a real browser fill error can, and exactly as the port
+    // contract says a driver should NOT do (a per-target failure belongs in
+    // failedTarget). fill-card.ts's catch must still discard whatever a
+    // driver hands it here: the value never survives, and since a throw
+    // carries no target this module can attribute, the reason names no field
+    // it cannot actually vouch for.
+    const harness = buildHarness({ merchant: alpha, throwOnField: 'cccvv' });
+    const outcome = await runOn(harness, alpha);
+
+    expect(outcome.kind).toBe('refused');
+    if (outcome.kind !== 'refused') throw new Error('unreachable');
+    expect(outcome.reason).not.toContain('cvv');
     expectNoCardMaterial('the fill failure reason', outcome.reason);
     expect(alpha.submissions.length).toBe(0);
   });
@@ -1115,8 +1137,19 @@ describe('when the merchant interrupts or the process dies', () => {
     // order may still complete once he answers.
     expect(harness.recorded.length).toBe(0);
     expect(harness.ledger.state().reservations.length).toBe(1);
-    // The material is off the page's read paths either way.
-    expect(harness.redactor.hasLiveMaterial('session-1', 'page-1')).toBe(false);
+    // BLOCKING 1 regression: the redactor stays ARMED, not disarmed, while a
+    // challenge is pending. He is about to be sent back to this very page to
+    // finish 3-D Secure, and the typed card digits are still sitting in its
+    // DOM (no click ever reached the merchant to clear them). Disarming here,
+    // as this used to, would leave a screenshot, an extract, or a readText of
+    // that same page free to hand the card straight back out while the owner
+    // is looking at it.
+    expect(harness.redactor.hasLiveMaterial('session-1', 'page-1')).toBe(true);
+    // The literal digits are still recoverable from live material only
+    // through the redactor's own guarded read paths (never bare storage), so
+    // the property under test is that `redact()` still finds something to
+    // remove, not that the digits leaked into this assertion.
+    expect(harness.redactor.containsLiveMaterial('session-1', 'page-1', SENTINEL.number)).toBe(true);
   });
 
   test('a CAPTCHA pauses the same way, without anything trying to answer it', async () => {

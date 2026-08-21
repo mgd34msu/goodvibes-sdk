@@ -42,13 +42,13 @@
  * announce, and `resolveInboundCapabilityPolicy` returns the SENTENCE that
  * says the setting did not apply. That sentence rides on the capability
  * verdict's `detail`, which the supervisor's status and the terminal notice
- * both already render, so the owner reads it on the surface he was going to
+ * both already render, so the owner reads it on the surface they were going to
  * look at anyway.
  *
  * A silent degrade is the failure mode here, not a wrong one. An owner who set
  * `notice-only` and then heard nothing would conclude no mail arrived. What
- * actually happened is that his mailbox stopped for a reason his setting could
- * not soften, and the setting is not the thing to go and check.
+ * actually happened is that their mailbox stopped for a reason their setting
+ * could not soften, and the setting is not the thing to go and check.
  *
  * ── Why this is a function and not a branch at the call site ──────────────
  *

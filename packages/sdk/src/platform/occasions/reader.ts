@@ -3,14 +3,14 @@
  *
  * One direction only. This module reads the owner's file and types what it
  * finds; nothing here writes, and nothing here takes a date from anywhere other
- * than his file. That is the §6 rule made structural: a calendar entry is a
+ * than the owner's file. That is the §6 rule made structural: a calendar entry is a
  * single occurrence of an ephemeral thing, and sourcing an occasion from one
  * would give the wrong recurrence and lose the fact the moment the event passed.
  * There is no calendar-shaped input to this module, so there is no path to get
  * it wrong later.
  *
  * The reader is also where CONFLICTS are found. The profile already preserves
- * every line he wrote, so two different dates for the same thing are both
+ * every line the owner wrote, so two different dates for the same thing are both
  * sitting in the document; taking the newer one silently would be the one
  * behaviour explicitly ruled out. Both are reported, and the conflict becomes an
  * open item that is raised now and raised again if it is ignored.
@@ -42,16 +42,16 @@ export interface OccasionProfileSource {
   /** Profile lines mentioning one person, by name. Opens the interview. */
   person(name: string): readonly ProfileLine[];
   /**
-   * What the owner calls HIMSELF: `identity.name` and `identity.goesBy`.
+   * What the owner calls THEMSELVES: `identity.name` and `identity.goesBy`.
    *
-   * The linkage that lets "Mike's birthday" be recognised as being about the
-   * person whose file this is, without any name literal living in the code.
-   * Values he has not declared are simply absent from the list.
+   * The linkage that lets an entry using the owner's own name be recognised as
+   * being about the person whose file this is, without any name literal living
+   * in the code. Values they have not declared are simply absent from the list.
    *
    * OPTIONAL, and absent means "no names known" rather than "no match". A
    * narrow embed that does not supply it gets `unattributed` for everything,
-   * which is the ordinary cadence, the failure direction that costs him a
-   * nudge he did not need rather than one he did.
+   * which is the ordinary cadence, the failure direction that costs the owner a
+   * nudge they did not need rather than one they did.
    */
   ownerNames?(): readonly string[];
 }
@@ -94,7 +94,7 @@ export function readOccasions(source: OccasionProfileSource): OccasionReadResult
       continue;
     }
     // Attribution is settled HERE because this is the first layer that has both
-    // the line and his declared names. The parser has only the line.
+    // the line and the owner's declared names. The parser has only the line.
     const parsed = result.occasion;
     const occasion: Occasion = {
       ...parsed,
@@ -137,7 +137,7 @@ export function readPlans(source: OccasionProfileSource): PlanReadResult {
   return { plans, unparsed };
 }
 
-/** The plan covering `date` that takes him away from home, if there is one. */
+/** The plan covering `date` that takes the owner away from home, if there is one. */
 export function awayPlanOn(plans: readonly Plan[], date: IsoDate): Plan | undefined {
   return plans.find((plan) => plan.away && plan.from <= date && date <= plan.to);
 }
@@ -145,10 +145,10 @@ export function awayPlanOn(plans: readonly Plan[], date: IsoDate): Plan | undefi
 /**
  * The next away plan that STARTS on or after `date`, if there is one.
  *
- * Used to move a nudge earlier so it reaches him before he leaves rather than
- * while he is standing in an airport. Ordered by start date because two
+ * Used to move a nudge earlier so it reaches the owner before they leave rather
+ * than while they are standing in an airport. Ordered by start date because two
  * overlapping trips would otherwise resolve by document order, which is the
- * order he happened to type them in.
+ * order they happened to type them in.
  */
 export function nextAwayPlanFrom(plans: readonly Plan[], date: IsoDate): Plan | undefined {
   return plans
@@ -156,7 +156,7 @@ export function nextAwayPlanFrom(plans: readonly Plan[], date: IsoDate): Plan | 
     .sort((left, right) => (left.from < right.from ? -1 : left.from > right.from ? 1 : 0))[0];
 }
 
-/** True when he is away on `date`. */
+/** True when the owner is away on `date`. */
 export function isAwayOn(plans: readonly Plan[], date: IsoDate): boolean {
   return awayPlanOn(plans, date) !== undefined;
 }

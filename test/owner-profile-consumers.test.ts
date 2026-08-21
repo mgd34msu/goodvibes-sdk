@@ -45,7 +45,7 @@ import { registerProfileRedactionValues } from '../packages/sdk/src/platform/uti
 import { registerOpenTierContextBlock } from '../packages/sdk/src/platform/owner-profile/context-block.ts';
 
 const FIXTURE = [
-  '# Mike\'s profile',
+  '# Avery\'s profile',
   '',
   '## Contact',
   '',

@@ -102,11 +102,11 @@ describe('channel intake enrichment', () => {
 
   test('attribution resolves a known sender and stamps honest unknown otherwise', async () => {
     const principals = new PrincipalRegistry(new PrincipalStore(':memory:'));
-    await principals.create({ name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U1' }] });
+    await principals.create({ name: 'Avery', kind: 'user', identities: [{ channel: 'slack', value: 'U1' }] });
 
     const known = await attributeInboundSession(principals, { surfaceKind: 'slack', userId: 'U1' });
     expect(known.metadata.attributedPrincipalKnown).toBe(true);
-    expect(known.metadata.attributedPrincipalName).toBe('Mike');
+    expect(known.metadata.attributedPrincipalName).toBe('Avery');
 
     const unknown = await attributeInboundSession(principals, { surfaceKind: 'slack', userId: 'U-nobody' });
     expect(unknown.metadata.attributedPrincipalKnown).toBe(false);
@@ -118,7 +118,7 @@ describe('channel intake enrichment', () => {
 
   test('buildInboundIntakeEnrichment combines attribution + profile in one call', async () => {
     const principals = new PrincipalRegistry(new PrincipalStore(':memory:'));
-    await principals.create({ name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U1' }] });
+    await principals.create({ name: 'Avery', kind: 'user', identities: [{ channel: 'slack', value: 'U1' }] });
     const channelProfiles = makeRegistry();
     await channelProfiles.set({ surfaceKind: 'slack', channelId: 'C1', model: 'm', permissionMode: 'accept-edits' });
 
@@ -126,7 +126,7 @@ describe('channel intake enrichment', () => {
       { principals, channelProfiles },
       { surfaceKind: 'slack', userId: 'U1', channelId: 'C1' },
     );
-    expect(enrichment.sessionMetadata.attributedPrincipalName).toBe('Mike');
+    expect(enrichment.sessionMetadata.attributedPrincipalName).toBe('Avery');
     expect(enrichment.spawnOverrides).toEqual({ model: 'm' });
     expect(enrichment.permissionMode).toBe('accept-edits');
     expect(enrichment.principal?.known).toBe(true);

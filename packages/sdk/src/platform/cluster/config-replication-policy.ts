@@ -70,7 +70,7 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // Spending limits belong to the OPERATOR, not to whichever machine is holding
   // the surface. A node that takes over a handover without them would either
   // refuse every purchase or, far worse, fall back to defaults, and the whole
-  // safety story here is that a number he set is the number that binds.
+  // safety story here is that a number the operator set is the number that binds.
   //
   // What crosses the wire is the budget, the windows, the shipping preference
   // and card METADATA (label, brand, last4). Card material is not config: the
@@ -99,10 +99,10 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // How the owner profile behaves, whether it is loaded, whether facts are
   // recorded autonomously, whether writes and closed-tier reads are announced,
   // whether the open tier reaches model context, whether unset consumer keys
-  // fall back to it. These are decisions about how the platform treats HIM, and
-  // a group where one node recorded facts silently while another asked would be
-  // the same assistant behaving two different ways depending on which machine
-  // answered.
+  // fall back to it. These are decisions about how the platform treats the
+  // operator, and a group where one node recorded facts silently while
+  // another asked would be the same assistant behaving two different ways
+  // depending on which machine answered.
   //
   // What does NOT cross the wire here: the profile document. This replicates
   // the eight policy keys and nothing else; `profile.path` is ruled node-local
@@ -114,17 +114,18 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // length and the gift-history retention.
   //
   // Replicated for the same reason `profile.` is, one step further along. These
-  // are decisions about how the platform treats HIM, and the occasions
-  // themselves live in the profile document, which is his and is the same
-  // wherever he reads it. A group where one node raised his wife's birthday at
-  // ten days and another at three, or where one had gone quiet after a "no" the
-  // other never saw, would be the same assistant behaving two different ways
-  // depending on which machine answered, and, worse, would nudge him twice.
+  // are decisions about how the platform treats the operator, and the occasions
+  // themselves live in the profile document, which is theirs and is the same
+  // wherever they read it. A group where one node raised the operator's wife's
+  // birthday at ten days and another at three, or where one had gone quiet after
+  // a "no" the other never saw, would be the same assistant behaving two
+  // different ways depending on which machine answered, and, worse, would
+  // nudge them twice.
   //
   // `occasions.nudgeChannel` crosses too, and deliberately: a channel target is
-  // a decision about where he wants to hear about this, not a property of one
-  // machine's hardware. The channel credentials it resolves through are a
-  // separate concern with their own replication rules.
+  // a decision about where the operator wants to hear about this, not a
+  // property of one machine's hardware. The channel credentials it resolves
+  // through are a separate concern with their own replication rules.
   'occasions.',
 
   // Whether a daemon-hosted session outlives the client that opened it, how
@@ -134,13 +135,13 @@ export const REPLICATED_CONFIG_DOMAINS: readonly string[] = [
   // Replicated for the reason `conversationGate.` is: these decide what the
   // PLATFORM does with the operator's work, and a group where one node ended a
   // session on detach while another kept it running would be the same
-  // assistant behaving two different ways depending on which machine he
-  // happened to be talking to, with the difference showing up as work that
-  // silently stopped.
+  // assistant behaving two different ways depending on which machine the
+  // operator happened to be talking to, with the difference showing up as
+  // work that silently stopped.
   //
   // `hostedSessions.maxSessions` is the exception and is ruled node-local
   // below: how many conversation loops a machine can hold at once is a fact
-  // about that machine's memory, not a decision about him.
+  // about that machine's memory, not a decision about the operator.
   'hostedSessions.',
 ];
 

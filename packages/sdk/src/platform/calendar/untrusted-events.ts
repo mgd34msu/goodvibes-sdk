@@ -28,7 +28,7 @@
  * happened to be open, and would refuse that turn's outward action on the
  * basis of an event no turn read and nobody asked for. Anyone who knew the feed
  * URL, or could get an event onto a calendar the owner subscribes to, would own
- * a remote off switch for his agent's outward actions.
+ * a remote off switch for the owner's agent's outward actions.
  *
  * So: **every call site of `recordCalendarEventIngest` is a READ.**
  * `SubscriptionStore.readEvents()` / `readAllEvents()` record; the plain
@@ -153,11 +153,11 @@ export type CalendarUntrustedIngestRecorder = (ingest: {
  *    carries any statement about who the account is.
  *  - A **provider** event is external unless the provider itself says the
  *    owner organized it (`organizer.self`, `isOrganizer`).
- *  - A **CalDAV** collection is the owner's OWN server, holding both his own
- *    entries and invitations delivered to him, so it is narrowed the same way
+ *  - A **CalDAV** collection is the owner's OWN server, holding both their own
+ *    entries and invitations delivered to them, so it is narrowed the same way
  *    a provider account is: external unless the caller established that the
  *    organizer is the configured account. It used to be unconditional, which
- *    meant the owner reading his own calendar recorded an ingest and every
+ *    meant the owner reading their own calendar recorded an ingest and every
  *    later outward action in that turn was refused, `evaluateOutwardEffect`
  *    is called by `createUntrustedContentPort` with no `content` at all, so
  *    port consumers take the coarse "any origin -> refuse" branch and no

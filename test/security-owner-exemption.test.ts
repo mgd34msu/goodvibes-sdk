@@ -26,7 +26,7 @@ import {
 } from '../packages/sdk/src/platform/security/untrusted-content.ts';
 import { createEmailSendHandler } from '../packages/sdk/src/platform/control-plane/routes/email.ts';
 
-const OWNER = 'mike@example.com';
+const OWNER = 'avery@example.com';
 const OVERNIGHT = 'the quarterly figures are attached and the board meeting moves to Thursday morning';
 
 function configWith(values: Readonly<Record<string, unknown>>) {
@@ -61,7 +61,7 @@ describe('the owner identity comes from configuration and nowhere else', () => {
   });
 
   test('a configured address is found, display-name wrapping and case included', () => {
-    const owners = resolveOwnerAddresses(configWith({ 'surfaces.email.from': 'GoodVibes <Mike@Example.COM>' }));
+    const owners = resolveOwnerAddresses(configWith({ 'surfaces.email.from': 'GoodVibes <Avery@Example.COM>' }));
     expect(owners.has(OWNER)).toBe(true);
   });
 
@@ -74,7 +74,7 @@ describe('the owner identity comes from configuration and nowhere else', () => {
   });
 
   test('a non-address value is not an identity', () => {
-    expect(resolveOwnerAddresses(configWith({ 'email.username': 'mike' })).size).toBe(0);
+    expect(resolveOwnerAddresses(configWith({ 'email.username': 'avery' })).size).toBe(0);
     expect(resolveOwnerAddresses(configWith({ 'email.fromAddress': '' })).size).toBe(0);
   });
 
@@ -103,12 +103,12 @@ describe('attacks on the exemption — every one must fail', () => {
 
   test('a plus-alias of the owner is not exempt', () => {
     // Not a pattern rule. An alias minted for a signup is not a reporting channel.
-    expect(isSendToOwnerOnly('mike+gv-github-com-k3n9x2p4@example.com', owners)).toBe(false);
+    expect(isSendToOwnerOnly('avery+gv-github-com-k3n9x2p4@example.com', owners)).toBe(false);
   });
 
   test('a lookalike domain is not exempt', () => {
-    expect(isSendToOwnerOnly('mike@examp1e.com', owners)).toBe(false);
-    expect(isSendToOwnerOnly('mike@example.com.evil.example', owners)).toBe(false);
+    expect(isSendToOwnerOnly('avery@examp1e.com', owners)).toBe(false);
+    expect(isSendToOwnerOnly('avery@example.com.evil.example', owners)).toBe(false);
   });
 
   test('an empty recipient list is not exempt', () => {

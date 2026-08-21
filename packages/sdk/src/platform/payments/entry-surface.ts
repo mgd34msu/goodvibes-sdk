@@ -16,8 +16,8 @@
  *
  * OWNER, verbatim, on the webui, asked directly after the above, given a
  * two-option choice with the exposure stated (PAN on a browser page, form
- * autofill, password managers, browser history, XSS in our own UI). He selected
- * the option labelled:
+ * autofill, password managers, browser history, XSS in our own UI). The owner
+ * selected the option labelled:
  *
  *   "Card entry in webui too"
  *
@@ -25,9 +25,9 @@
  *
  *   "so is the webui getting card input? i said yes..."
  *
- * The option he selected carried the browser-side conditions in
- * `WEBUI_CARD_ENTRY_CONDITIONS` below. They are part of what he chose, not a
- * gloss added afterwards.
+ * The option the owner selected carried the browser-side conditions in
+ * `WEBUI_CARD_ENTRY_CONDITIONS` below. Those conditions are part of what the
+ * owner chose, not a gloss added afterwards.
  *
  * COORDINATOR ruling, that card details are refused on remote messaging
  * surfaces, with the reasoning below. Recorded as the coordinator's because no
@@ -158,7 +158,7 @@ export interface CardDetailScan {
  * three-digit message would be unusable.
  *
  * Luhn is deliberately NOT used to narrow this. A number that fails Luhn is
- * still a number he typed into a chat surface, and the point is to stop that
+ * still a number the owner typed into a chat surface, and the point is to stop that
  * happening at all rather than to grade the quality of what leaked.
  */
 export function scanForCardDetails(text: string, options: { readonly expectingCvv?: boolean } = {}): CardDetailScan {
@@ -173,7 +173,7 @@ export function scanForCardDetails(text: string, options: { readonly expectingCv
 }
 
 /**
- * The reply he gets when card details arrive somewhere they cannot be accepted.
+ * The reply the owner gets when card details arrive somewhere they cannot be accepted.
  *
  * Built from the surface name and the matched SHAPES only. It never quotes,
  * echoes, partially masks or summarizes the value it just refused, a masked

@@ -1,5 +1,5 @@
 /**
- * interview.ts, a few questions that guide HIM to a good idea.
+ * interview.ts, a few questions that guide the owner to a good idea.
  *
  * *"if yes, ask me a few questions to guide me into a good gift idea. i feel
  * like a short interview section would be very useful here."*
@@ -8,17 +8,17 @@
  *
  *  1. **It does not recommend.** The original framing was *"it doesn't need to
  *     make a recommendation"*, and nothing here proposes a gift. It asks
- *     questions. Judgement stays with him, which is also why the outcome is
- *     recorded as what HE landed on rather than what was suggested.
+ *     questions. Judgement stays with the owner, which is also why the outcome
+ *     is recorded as what THEY landed on rather than what was suggested.
  *  2. **It opens from what the profile already knows.** People and Notes are
- *     prose preserved verbatim; if he has mentioned she is into something, the
- *     first question starts there. That is the difference between useful and
- *     generic, and it is why {@link openInterview} takes profile lines rather
- *     than a name.
+ *     prose preserved verbatim; if the owner has mentioned she is into
+ *     something, the first question starts there. That is the difference
+ *     between useful and generic, and it is why {@link openInterview} takes
+ *     profile lines rather than a name.
  *  3. **It is genuinely short.** The question count is a setting with a default
- *     of three. A long one is a form, and he will stop answering it.
+ *     of three. A long one is a form, and the owner will stop answering it.
  *
- * A thread he walks away from is a DROPPED thread, not a completion. The steps
+ * A thread the owner walks away from is a DROPPED thread, not a completion. The steps
  * and the answers so far persist, so resuming picks up at the next unanswered
  * question rather than starting again, that is what makes the open-item loop's
  * third case work.
@@ -59,7 +59,7 @@ export interface OpenInterviewInput {
   readonly now: number;
   /** Profile lines mentioning the person, from `profile.person`. */
   readonly personLines: readonly ProfileLine[];
-  /** What he landed on in previous years, newest first. */
+  /** What the owner landed on in previous years, newest first. */
   readonly history: readonly GiftRecord[];
   /** How many questions to ask. Clamped to at least one. */
   readonly maxQuestions: number;
@@ -74,7 +74,7 @@ function subjectOf(occasion: Occasion): string {
 /**
  * Build the questions.
  *
- * Order matters: the one grounded in something he already told the system comes
+ * Order matters: the one grounded in something the owner already told the system comes
  * first, because it is the question that proves the thing was listening. A blank
  * opening question is what makes an interview feel like a form.
  */
@@ -136,10 +136,10 @@ export function openInterview(input: OpenInterviewInput): Interview {
 /**
  * The next unanswered question, or `undefined` when they are all answered.
  *
- * Resumption is exactly this call: an interview reloaded from disk after he
- * went quiet mid-thread returns the question he did not get to, not the first
- * one. Re-asking answered questions is how a resumed thread turns into a
- * restarted one.
+ * Resumption is exactly this call: an interview reloaded from disk after the
+ * owner went quiet mid-thread returns the question they did not get to, not
+ * the first one. Re-asking answered questions is how a resumed thread turns
+ * into a restarted one.
  */
 export function nextStep(interview: Interview): InterviewStep | undefined {
   const answered = new Set(interview.answers.map((answer) => answer.stepId));
@@ -160,11 +160,11 @@ export function answerStep(
 }
 
 /**
- * Close the interview with what he landed on.
+ * Close the interview with what the owner landed on.
  *
- * Recording the OUTCOME rather than merely that he said yes is the whole point
- * of the history: year three should not steer where year one did, and "he said
- * yes in 2026" cannot tell it anything.
+ * Recording the OUTCOME rather than merely that the owner said yes is the
+ * whole point of the history: year three should not steer where year one
+ * did, and "the owner said yes in 2026" cannot tell it anything.
  */
 export function completeInterview(interview: Interview, landedOn: string, now: number): Interview {
   return { ...interview, landedOn, completedAt: now };

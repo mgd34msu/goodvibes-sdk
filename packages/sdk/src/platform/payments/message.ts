@@ -3,7 +3,7 @@
  * influence a single character of it.
  *
  * The attack this exists to stop: if merchant page text can reach the message,
- * whoever controls that page writes what the owner reads on his phone.
+ * whoever controls that page writes what the owner reads on their phone.
  * "Approve $12 for coffee?" attached to a $1,200 order is a complete compromise
  * of the human check, and it looks perfectly normal.
  *
@@ -51,7 +51,7 @@ function renderMerchant(domain: string): string {
  * The item line.
  *
  * `OwnerSuppliedText` is only constructible from an owner-direct turn, so this
- * should already be his words rather than a product title off a page. It is
+ * should already be the owner's words rather than a product title off a page. It is
  * still neutralised: the branded type is a compile-time guarantee, and a
  * compile-time guarantee does not survive a call site that threads provenance
  * wrongly. Underscore is kept for legibility since it cannot build a link.
@@ -77,7 +77,7 @@ export interface PurchaseFacts {
    * Where it is going, rendered from the STORED address.
    *
    * A correct total to the wrong address is still a wrong order, and the veto
-   * notice is the last point at which he can catch it. Null only when the
+   * notice is the last point at which the owner can catch it. Null only when the
    * checkout asked for no address at all.
    */
   readonly destination?: string | null | undefined;
@@ -116,8 +116,8 @@ export function formatMinorUnits(amount: MinorUnits, currency: CurrencyCode): st
 /**
  * The approval prompt, ABOVE budget, silence DENIES.
  *
- * States the silence rule in the message. He should never have to remember which
- * kind of window he is looking at, and the two say opposite things.
+ * States the silence rule in the message. The owner should never have to remember
+ * which kind of window they are looking at, and the two say opposite things.
  */
 export function renderApprovalMessage(facts: PurchaseFacts, expiresInMinutes: number): string {
   const lines = [
@@ -141,7 +141,7 @@ export function renderApprovalMessage(facts: PurchaseFacts, expiresInMinutes: nu
  * The veto prompt, WITHIN budget, silence PROCEEDS.
  *
  * Also states its silence rule, and states it as the opposite of the approval's,
- * because the whole design rests on him knowing which one he is holding.
+ * because the whole design rests on the owner knowing which one they are holding.
  */
 export function renderVetoMessage(facts: PurchaseFacts, expiresInMinutes: number): string {
   const lines = [
@@ -175,7 +175,7 @@ function amountLines(facts: PurchaseFacts): string[] {
   );
   if (facts.stepDown !== null) {
     // Surfaced rather than buried: a step-down needs no approval because it is
-    // within budget, but he must not learn about it from a late package.
+    // within budget, but the owner must not learn about it from a late package.
     lines.push(
       `            stepped down from ${facts.stepDown.from} to fit the overage budget, `
       + `saving ${formatMinorUnits(facts.stepDown.savedMinorUnits, facts.currency)}`,
@@ -191,9 +191,9 @@ function amountLines(facts: PurchaseFacts): string[] {
 /**
  * The report after an objection.
  *
- * One word cancels, and then he is told what was stopped and the state it was
- * left in, never a silent abandonment that leaves him wondering whether a cart
- * is sitting somewhere half-driven.
+ * One word cancels, and then the owner is told what was stopped and the state
+ * it was left in, never a silent abandonment that leaves them wondering
+ * whether a cart is sitting somewhere half-driven.
  */
 export function renderCancellationReport(facts: PurchaseFacts): string {
   return [
@@ -210,9 +210,9 @@ export function renderCancellationReport(facts: PurchaseFacts): string {
 /**
  * The ONE purchase notice, and the only send site.
  *
- * The owner collapsed "show it to him" and "alert him if it is not a major
- * retailer" into a single step, "2 and 3 are basically the same step". So there
- * is one message, sent once, when the item is chosen and the final total is
+ * Design rule: showing the purchase to the owner and alerting them when it is
+ * not a major retailer collapse into a single step, since both notify at the
+ * same point. So there is one message, sent once, when the item is chosen and the final total is
  * known, before payment. The retailer only changes what SILENCE means.
  *
  * Both branches carry identical content: what was found, the validated
@@ -234,8 +234,8 @@ export function renderPurchaseNotice(input: {
    * Why this merchant qualified, or why it did not, from `classifyMerchant`.
    *
    * Always rendered when present, because the verdict alone is not useful to
-   * him. "Etsy, buyer protection applies" is something he can weigh at a
-   * glance; "on your approved list" sends him off to go check a list. On the
+   * the owner. "Etsy, buyer protection applies" is something they can weigh at a
+   * glance; "on your approved list" sends them off to go check a list. On the
    * other side it reads as a checkpoint, not on the list, so I am asking,
    * and never implies anything is wrong with the seller.
    *
@@ -260,25 +260,36 @@ export function renderPurchaseNotice(input: {
  * The daemon knows it charged the card. It does not need a store to tell it,
  * and it must not wait for one: a confirmation can take minutes or hours, some
  * stores send nothing at all, and mail can be broken independently of payments.
- * A report that depended on any of that would leave him with a veto notice, ten
+ * A report that depended on any of that would leave the owner with a veto notice, ten
  * minutes of silence, a charge, and then nothing.
  *
  * So this fires at the moment the submit is confirmed, from facts this process
  * already holds, and every number in it is re-rendered from our own integers.
  *
  * The shipping tier is reported as the one ACTUALLY used, with the step-down
- * spelled out when there was one. He approved a purchase; a delivery option was
- * then chosen inside the budget he set, and he should not learn which from the
- * parcel arriving later than he expected.
+ * spelled out when there was one. The owner approved a purchase; a delivery
+ * option was then chosen inside the budget they set, and they should not learn
+ * which from the parcel arriving later than expected.
  */
 export function renderPurchaseReport(input: {
   readonly facts: PurchaseFacts;
   /** The merchant's own order reference, when the page showed one. */
   readonly merchantOrderId: string | null;
+  /**
+   * Whether a composition read the merchant's own response to the submit.
+   *
+   * False means the click was issued and the card was charged as a
+   * conservative default against a double-spend, but nothing here confirmed
+   * the merchant actually accepted the order. The headline and the closing
+   * line say so plainly rather than reading as a confirmed purchase.
+   */
+  readonly verified: boolean;
 }): string {
   const { facts } = input;
   const lines = [
-    `Bought it.`,
+    input.verified
+      ? `Bought it.`
+      : `Submitted the order, but I could not confirm it went through.`,
     ``,
     `  ${renderItem(facts.item)}`,
     `  from ${renderMerchant(facts.merchantDomain)}`,
@@ -293,6 +304,9 @@ export function renderPurchaseReport(input: {
     lines.push(`  Their order number: ${sanitizeNoticeField(input.merchantOrderId, 40)}`);
   }
   lines.push(`  Daily item budget left: ${formatMinorUnits(facts.poolsAfter.item.remaining, facts.currency)}`);
+  if (!input.verified) {
+    lines.push(``, `  I did not read a confirmation from the merchant. Check your order history there.`);
+  }
   return lines.join('\n');
 }
 
@@ -301,16 +315,16 @@ export function renderPurchaseReport(input: {
  *
  * ══ The body is never in here ═════════════════════════════════════════════
  *
- * A confirmation email arrives from outside, at the exact moment he is
+ * A confirmation email arrives from outside, at the exact moment the owner is
  * expecting one, which makes it the single most attractive thing for an
  * attacker to forge. Its body is not rendered, not quoted, and not summarised.
- * What reaches him is a small set of STRUCTURED fields, an order number, a
+ * What reaches the owner is a small set of STRUCTURED fields, an order number, a
  * ship date, a tracking reference, each neutralised, plus our own record of
  * what was bought, which the email cannot influence at all.
  *
  * The email also carries no authority. It cannot confirm that a purchase
  * happened; our ledger already knows that. All it can do is add a reference
- * number to a message he was going to get anyway.
+ * number to a message the owner was going to get anyway.
  */
 export function renderConfirmationReport(input: {
   readonly facts: PurchaseFacts;

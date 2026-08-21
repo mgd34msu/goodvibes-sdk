@@ -139,7 +139,7 @@ describe('the healed seam is shared: a non-Telegram surface behaves identically'
             changes: [{
               value: {
                 metadata: { phone_number_id: '15550002222' },
-                contacts: [{ wa_id: '15551234567', profile: { name: 'Mike' } }],
+                contacts: [{ wa_id: '15551234567', profile: { name: 'Avery' } }],
                 messages: [{ from: '15551234567', id: `wamid-${text}`, type: 'text', text: { body: text } }],
               },
             }],

@@ -126,7 +126,7 @@ export async function sweepPreSplitDaemonControlPlaneStore(input: {
     });
     // Gated on there being something to SAY, not on a particular status: a pass
     // that only had to leave something alone still owes the owner the sentence
-    // explaining why his two directories are still two.
+    // explaining why their two directories are still two.
     if (report.receipt !== null) {
       logger.warn('DaemonServer: swept a pre-split control-plane store', {
         legacyDirectory: report.legacyDirectory,

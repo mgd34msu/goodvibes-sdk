@@ -98,6 +98,18 @@ export interface PaymentsServiceDeps {
   readonly gates: () => GateInput;
   readonly config: () => PaymentsServiceConfig;
   readonly now?: (() => number) | undefined;
+  /**
+   * The redactor this service arms, supplied rather than minted.
+   *
+   * Absent, one is constructed here and the service is self-contained, which is
+   * what every existing caller and every containment test does. Present, it is
+   * the guard the browser engine was built with, and passing the SAME object is
+   * the whole point: the engine scrubs page output against what this service
+   * armed, and two instances would leave the engine scrubbing an empty set
+   * while a card sat on the page. The browser-backed driver refuses rather than
+   * types if the two ever come apart (see browser-checkout-driver.ts).
+   */
+  readonly cardFieldGuard?: CardMaterialRedactor | undefined;
 }
 
 /** The input a `begin` call carries, already shape-checked by the route. */
@@ -139,7 +151,7 @@ export class PaymentsGatewayServiceImpl {
 
   constructor(private readonly deps: PaymentsServiceDeps) {
     this.registry = new CheckoutRegistry(deps.journal);
-    this.redactor = new CardMaterialRedactor();
+    this.redactor = deps.cardFieldGuard ?? new CardMaterialRedactor();
   }
 
   /**
@@ -168,7 +180,7 @@ export class PaymentsGatewayServiceImpl {
 
     // The item is the OWNER's words. `ownerSuppliedText` refuses anything not
     // from an owner-direct turn, and a null here is a refusal rather than a
-    // cast: the branded type is what stops page text reaching his phone.
+    // cast: the branded type is what stops page text reaching their phone.
     const item = ownerSuppliedText(input.item, 'owner-direct');
     if (item === null) {
       return this.refused('The item has to be described in your own words, from your own request.');
@@ -329,7 +341,11 @@ export class PaymentsGatewayServiceImpl {
       };
     }
     return {
-      outcome: 'purchased',
+      // The record's own outcome carries the verified/unverified truth
+      // (checkout-flow.ts); forwarded rather than hardcoded so a caller with
+      // no describeSubmission wired sees "submitted-unverified" instead of a
+      // claim indistinguishable from a confirmed purchase.
+      outcome: outcome.record.outcome,
       purchaseId: outcome.record.purchaseId,
       reason: null,
       merchantOrderId: outcome.record.merchantOrderId,

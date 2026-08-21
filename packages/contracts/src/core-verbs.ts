@@ -205,7 +205,7 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //  - `propose` is not `create`: it writes NOTHING and returns the line that
     //    WOULD be written plus the one sentence to put to the owner. The whole
     //    point of the pair is that a date heard in conversation is confirmed
-    //    once, at the moment he can still catch a mishearing.
+    //    once, at the moment the owner can still catch a mishearing.
     //  - `confirm` is not `update`: it is the second half of that pair, and it
     //    refuses without a kind rather than defaulting one.
     //  - `answer` is not `set`: it records yes, no or LATER, and "later" is a
@@ -215,14 +215,14 @@ export const EXEMPT_VERB_CATEGORIES: Readonly<Record<string, readonly string[]>>
     //    whole reason it has its own verb: yes, no and later all RESOLVE the
     //    open item and remove it, while this one leaves it standing. It means
     //    "heard you", the occasion stays open, stays enumerable and still
-    //    answers when he asks what is coming up; only the push stops. "Stop
+    //    answers when the owner asks what is coming up; only the push stops. "Stop
     //    telling me about this" and "forget about this" are different
     //    instructions, and the feature had no way to hear the first one.
     //  - `sweep` is not `run`: it is the housekeeping-plus-approach pass, and
     //    it reaps even when it is not allowed to speak.
     //  - `pending` is not `list`: it returns what is UNRESOLVED, composed as it
     //    would be delivered, rather than the records.
-    //  - `gifts` is the history of what he landed on, named for what it holds.
+    //  - `gifts` is the history of what the owner landed on, named for what it holds.
     //  - `state` is the persisted-state disclosure, counts and reasons, never
     //    a date or an answer, distinct from a generic `status`.
     'propose', 'confirm', 'answer', 'acknowledge', 'sweep', 'pending', 'gifts', 'state',

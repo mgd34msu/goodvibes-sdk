@@ -24,7 +24,7 @@
  * latch lives here as well, keyed on the condition rather than on the wording:
  * a server that phrases the same refusal differently each hour must not become
  * an hourly alarm. Recovering to any non-`insufficient` state re-arms it, so
- * the SECOND time the credential is refused he is told again.
+ * the SECOND time the credential is refused the owner is told again.
  *
  * **Structure, never rendered text.** The notice is built from structured
  * fields by `renderInboundMailStoppedNotice`: our reason and our fix as
@@ -80,8 +80,8 @@ export interface InboundTerminalFailureAnnouncerOptions {
    * configured, the ordinary state of a fresh install, the owner was not
    * told, the latch was set anyway, every later occurrence was suppressed, and
    * the log line recorded `announced: true`. A log asserting the owner was told
-   * when he was not, for the one condition that means no mail will ever arrive
-   * again.
+   * when they were not, for the one condition that means no mail will ever
+   * arrive again.
    *
    * The send is still not awaited by the observer, which stays synchronous: the
    * result is inspected in a continuation, so a status transition is never
@@ -203,7 +203,7 @@ export function createInboundTerminalFailureAnnouncer(
           inFlight.delete(key);
           // A port that answered with something other than a delivery verdict
           //, an untyped embedder returning `undefined`, say. It has not said
-          // the owner was reached, so he was not reached. Reading `.delivered`
+          // the owner was reached, so they were not reached. Reading `.delivered`
           // off it unguarded would throw inside this handler, where the
           // rejection arm below cannot catch it.
           if (result === null || typeof result !== 'object' || !('delivered' in result)) {

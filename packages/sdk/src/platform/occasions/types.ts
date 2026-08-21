@@ -8,12 +8,12 @@
  *  - A **plan** is a dated range with attributes and is AMBIENT. "Vacation,
  *    12–19 September, Lisbon." There is nothing to decide; the system needs to
  *    know so it can stop suggesting things into that window, and so it can move
- *    a nudge that would otherwise land while he is away.
+ *    a nudge that would otherwise land while the owner is away.
  *
- * Both are declarations the owner owns, so both live as prose lines in his
+ * Both are declarations the owner owns, so both live as prose lines in their
  * profile file. Nothing machine-written goes there, the acknowledgement state
  * below is a separate machine-owned store, because the profile design's whole
- * guarantee is that a validator never rewrites a line he wrote.
+ * guarantee is that a validator never rewrites a line they wrote.
  */
 import type { IsoDate, OccasionDate, OccasionRecurrence } from './dates.js';
 
@@ -30,7 +30,7 @@ export type { IsoDate, OccasionDate, OccasionRecurrence } from './dates.js';
  *  - `gift-giving` , raise it, and a yes opens the gift interview.
  *  - `remember-only`— raise it, and never mention a gift.
  *  - `neither`     , never raise it. It is recorded so the date can be
- *                     answered when he asks, and for nothing else.
+ *                     answered when the owner asks, and for nothing else.
  */
 export type OccasionKind = 'gift-giving' | 'remember-only' | 'neither';
 
@@ -43,21 +43,21 @@ export function isOccasionKind(value: string): value is OccasionKind {
 /**
  * Who the occasion is ABOUT, as distinct from who declared it.
  *
- * The owner does not need to be told when his own birthday is, and being told
+ * The owner does not need to be told when their own birthday is, and being told
  * hourly is worse than not being told at all. That rule needs a subject, so the
  * subject is modelled rather than guessed:
  *
- *  - `owner`       , it is about him. Either the line says so (`for me`), or its
- *                     attribution resolves to a name he declared for HIMSELF in
- *                     `Identity` (`identity.name`, `identity.goesBy`).
+ *  - `owner`       , it is about them. Either the line says so (`for me`), or its
+ *                     attribution resolves to a name they declared for THEMSELVES
+ *                     in `Identity` (`identity.name`, `identity.goesBy`).
  *  - `other`       , it is about a named someone else.
  *  - `unattributed`, the line names nobody resolvable. "Our anniversary", "Dad".
  *                     Treated as normal, because guessing that an unattributed
- *                     line is about him is how his wife's birthday goes quiet.
+ *                     line is about them is how their spouse's birthday goes quiet.
  *
  * There is no name literal anywhere in this module. The comparison is against
- * what HIS FILE says his name is, so it is right on a machine belonging to
- * anyone, and it stays right when he changes what he goes by.
+ * what THE OWNER'S FILE says their name is, so it is right on a machine
+ * belonging to anyone, and it stays right when they change what they go by.
  */
 export type OccasionSubject = 'owner' | 'other' | 'unattributed';
 
@@ -69,8 +69,8 @@ export const OCCASION_SUBJECTS: readonly OccasionSubject[] = ['owner', 'other', 
  * `id` is derived from the title rather than minted, so the same line reloaded
  * after a hand edit is the same occasion and its acknowledgement state survives.
  * Editing the TITLE does orphan the state, and orphaned state is reaped, which
- * is the honest outcome: he renamed the thing, and last year's "no" was about
- * something with a different name.
+ * is the honest outcome: the owner renamed the thing, and last year's "no" was
+ * about something with a different name.
  */
 export interface Occasion {
   /** Normalised title. Stable across date, kind and lead edits. */
@@ -83,20 +83,20 @@ export interface Occasion {
   /** The person it is about, as a plain label. Empty when the title carries it. */
   readonly person: string;
   /**
-   * True when the LINE ITSELF says this one is about him, `for me`, `mine`.
+   * True when the LINE ITSELF says this one is about the owner, `for me`, `mine`.
    *
    * Separate from {@link subject} because the grammar can see this and cannot
-   * see his name: the parser reads one line and knows nothing about the
+   * see the owner's name: the parser reads one line and knows nothing about the
    * `Identity` section. This is what the parser found; `subject` is what the
-   * reader concluded once it also had his declared names in hand.
+   * reader concluded once it also had their declared names in hand.
    */
   readonly selfDeclared: boolean;
   /**
    * Who it is about, resolved. See {@link OccasionSubject}.
    *
-   * `unattributed` until a reader with access to his declared names resolves
-   * it, the safe direction, because an unresolved subject gets the ordinary
-   * cadence rather than silence.
+   * `unattributed` until a reader with access to the owner's declared names
+   * resolves it, the safe direction, because an unresolved subject gets the
+   * ordinary cadence rather than silence.
    */
   readonly subject: OccasionSubject;
   /** Per-occasion lead override in days, or `null` for the configured default. */
@@ -115,7 +115,7 @@ export interface Occasion {
  * A line under the dates heading that did not parse as an occasion.
  *
  * Reported, never rewritten and never dropped, the same contract the profile's
- * mechanical fields have. A line the parser dislikes is still his line.
+ * mechanical fields have. A line the parser dislikes is still the owner's line.
  */
 export interface UnparsedOccasionLine {
   readonly lineIndex: number;
@@ -131,7 +131,7 @@ export interface Plan {
   readonly to: IsoDate;
   /** True when the owner is away from home for this plan. Feeds nudge timing. */
   readonly away: boolean;
-  /** Where, when he said. Empty when he did not. */
+  /** Where, when the owner said. Empty when they did not. */
   readonly destination: string;
   readonly extras: readonly string[];
   readonly lineIndex: number;
@@ -149,7 +149,8 @@ export interface UnparsedPlanLine {
  * Two declarations of the same occasion that disagree about the date.
  *
  * Raised immediately and re-raised if ignored. The newer value is NEVER taken
- * silently: he said two different things and only he knows which was right.
+ * silently: the owner said two different things and only they know which was
+ * right.
  */
 export interface OccasionConflict {
   readonly occasionId: string;
@@ -165,11 +166,11 @@ export interface OccasionConflict {
  * `acknowledged` is not a fourth flavour of `no`. The other three END the
  * question, a `no` and a `yes` resolve the open item and it is gone. This one
  * says only *"heard you"*: the item STAYS OPEN and stays enumerable, and what
- * changes is that nothing is pushed at him about this occurrence again. That
- * distinction is the whole point of having it. He answered a nudge about his
- * wife's birthday with "yeah I know, I'm on it", that is not a decline, it is
- * not a yes that should open a gift interview, and it is certainly not a reason
- * to keep pinging him.
+ * changes is that nothing is pushed at the owner about this occurrence again.
+ * That distinction is the whole point of having it. They answered a nudge
+ * about their spouse's birthday with "yeah I know, I'm on it", that is not a
+ * decline, it is not a yes that should open a gift interview, and it is
+ * certainly not a reason to keep pinging them.
  */
 export type OccasionAnswer = 'yes' | 'no' | 'later' | 'acknowledged';
 
@@ -182,10 +183,10 @@ export function isOccasionAnswer(value: string): value is OccasionAnswer {
 /**
  * How an acknowledgement came to be recorded.
  *
- * Kept because "why did this go quiet" is a question he will ask, and the three
- * paths are genuinely different promises: one is a sentence in a conversation,
- * one is a button, and one is inferred from him working on the gift. Recorded,
- * never inferred after the fact.
+ * Kept because "why did this go quiet" is a question the owner will ask, and
+ * the three paths are genuinely different promises: one is a sentence in a
+ * conversation, one is a button, and one is inferred from them working on the
+ * gift. Recorded, never inferred after the fact.
  */
 export type OccasionAckSource = 'conversation' | 'explicit' | 'gift-flow';
 
@@ -225,7 +226,7 @@ export interface OccasionAcknowledgement {
 }
 
 /**
- * What he landed on, not merely that he said yes.
+ * What the owner landed on, not merely that they said yes.
  *
  * Kept so year three does not steer where year one did. It outlives the
  * acknowledgement deliberately: the answer expires with its occurrence, the
@@ -235,7 +236,7 @@ export interface GiftRecord {
   readonly occasionId: string;
   readonly occurrence: IsoDate;
   readonly recordedAt: number;
-  /** What he settled on, in his words. */
+  /** What the owner settled on, in their words. */
   readonly landedOn: string;
   readonly notes?: string | undefined;
 }
@@ -268,9 +269,9 @@ export type OpenItemKind = 'nudge' | 'conflict' | 'interview';
  *  - `day-of`, the occasion itself.
  *
  * There is no third. "Nothing unresolved drops" was read for a while as "raise
- * it again every pass until he answers", which on an hourly sweep meant the
- * owner was told about his own birthday five times in a day and counting. It
- * never meant that. It means the OPEN ITEM persists and stays enumerable until
+ * it again every pass until the owner answers", which on an hourly sweep meant
+ * the owner was told about their own birthday five times in a day and counting.
+ * It never meant that. It means the OPEN ITEM persists and stays enumerable until
  * it is resolved or expires, that is a property of the record, not a licence
  * to repeat the push. Between the two boundaries the item sits open and quiet:
  * ask "anything coming up?" and it is there; say nothing and it says nothing.
@@ -298,8 +299,8 @@ export const MAX_NUDGE_RAISES = RAISE_BOUNDARIES.length;
  *
  * The governing principle is that nothing unresolved is ever dropped, and this
  * is the one mechanism behind all three of its cases: an unanswered nudge, a
- * conflict he ignored, and an interview he walked away from mid-thread. Silence
- * ends nothing; it only moves `dueAt`.
+ * conflict the owner ignored, and an interview they walked away from
+ * mid-thread. Silence ends nothing; it only moves `dueAt`.
  */
 export interface OpenItem {
   readonly id: string;
@@ -317,9 +318,9 @@ export interface OpenItem {
    * The gate on a nudge, and the reason the two-raise ceiling cannot be lost:
    * the sweep asks which boundary TODAY is, and raises only if that boundary is
    * absent from this list. Empty for a conflict or an interview, which keep the
-   * older repeating cadence, a conflict is a fact about his FILE that stays
-   * wrong until he fixes it, and an interview is a conversation he walked out
-   * of, and neither is the class of thing that was drowning him.
+   * older repeating cadence, a conflict is a fact about the owner's FILE that
+   * stays wrong until they fix it, and an interview is a conversation they
+   * walked out of, and neither is the class of thing that was drowning them.
    */
   readonly servedBoundaries: readonly RaiseBoundary[];
   /** The calendar day this may be raised again. */
@@ -335,7 +336,7 @@ export interface OpenItem {
    * an item that has already been landed there. Absent means no push has landed
    * on the agent, because none was configured, or because the one attempted
    * failed, and the pull is then how the item gets raised, so a failed push
-   * never costs him the nudge.
+   * never costs the owner the nudge.
    */
   readonly agentPushedOn?: IsoDate | undefined;
 }
@@ -351,11 +352,11 @@ export interface NudgeSubject {
   /** Who it is about. Drives whether it may be pushed at all. */
   readonly subject: OccasionSubject;
   /**
-   * True when he has already said he has this one in hand.
+   * True when the owner has already said they have this one in hand.
    *
    * Carried on the PULL and never on a push, because an acknowledged occurrence
    * is not pushed. A surface listing what is coming up shows it and shows that
-   * he acknowledged it; nothing sends it to him again.
+   * they acknowledged it; nothing sends it to them again.
    */
   readonly acknowledged: boolean;
 }
@@ -395,7 +396,7 @@ export interface Interview {
   readonly steps: readonly InterviewStep[];
   /** Answers keyed by step id, in the order they were given. */
   readonly answers: readonly InterviewAnswer[];
-  /** Set when he landed on something; the interview is then complete. */
+  /** Set when the owner landed on something; the interview is then complete. */
   readonly landedOn?: string | undefined;
   readonly completedAt?: number | undefined;
 }

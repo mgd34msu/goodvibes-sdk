@@ -101,7 +101,7 @@ export const DAEMON_OWNED_CONFIG_PREFIXES: readonly string[] = [
   // file, serves the profile.* verbs and decides whether a fact gets recorded,
   // kept reading the default. That is the reported-success-configured-nothing
   // failure the daemon tier exists for, and this instance would be a bad one:
-  // the operator would believe he had stopped autonomous recording.
+  // the operator would believe they had stopped autonomous recording.
   'profile.',
   // The occasions sweep runs IN the daemon, on a timer, with every surface
   // closed. Its lead time, its quiet window, its cadence and its delivery
@@ -139,8 +139,8 @@ export const DAEMON_OWNED_CONFIG_KEYS: readonly string[] = [
   // Left client-owned it would land in whichever surface the operator happened
   // to set it from, and the daemon, the process that actually rolls the budget
   // over at midnight, would never see it and would keep resetting in UTC. The
-  // operator would have picked a zone, been shown that zone, and had his money
-  // reset in a different one.
+  // operator would have picked a zone, been shown that zone, and had their
+  // money reset in a different one.
   'daemon.timezone',
 ];
 

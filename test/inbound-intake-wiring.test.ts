@@ -52,8 +52,8 @@ function makeBroker(): SharedSessionBroker {
 
 async function makeRegistries() {
   const principals = new PrincipalRegistry(new PrincipalStore(':memory:'));
-  const mike = await principals.create({
-    name: 'Mike',
+  const avery = await principals.create({
+    name: 'Avery',
     kind: 'user',
     identities: [{ channel: 'slack', value: 'U123' }],
   });
@@ -64,18 +64,18 @@ async function makeRegistries() {
     provider: 'anthropic',
     permissionMode: 'auto',
   });
-  return { principals, channelProfiles, mikeId: mike.id };
+  return { principals, channelProfiles, averyId: avery.id };
 }
 
 describe('inbound-intake enrichment — pure metadata mapping', () => {
   test('a mapped identity produces principal attribution + the applied channel profile', async () => {
-    const { principals, channelProfiles, mikeId } = await makeRegistries();
+    const { principals, channelProfiles, averyId } = await makeRegistries();
     const metadata = await enrichInboundSubmitMetadata(
       { principals, channelProfiles },
       { surfaceKind: 'slack', surfaceId: 'T1', userId: 'U123', body: 'hi' },
     );
-    expect(metadata[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(mikeId);
-    expect(metadata[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Mike');
+    expect(metadata[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(averyId);
+    expect(metadata[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Avery');
     expect(metadata[ATTRIBUTED_PRINCIPAL_KNOWN_KEY]).toBe(true);
     expect(metadata[CHANNEL_PROFILE_MODEL_KEY]).toBe('claude-profile-model');
     expect(metadata[CHANNEL_PROFILE_PROVIDER_KEY]).toBe('anthropic');
@@ -107,7 +107,7 @@ describe('inbound-intake enrichment — pure metadata mapping', () => {
 
 describe('inbound-intake enrichment — wired at the broker submitMessage seam', () => {
   test('installInboundIntakeEnrichment attributes an originated session and applies the profile', async () => {
-    const { principals, channelProfiles, mikeId } = await makeRegistries();
+    const { principals, channelProfiles, averyId } = await makeRegistries();
     const broker = makeBroker();
     await broker.start();
     installInboundIntakeEnrichment(broker, { principals, channelProfiles });
@@ -117,13 +117,13 @@ describe('inbound-intake enrichment — wired at the broker submitMessage seam',
       surfaceId: 'T1',
       externalId: 'C-general',
       userId: 'U123',
-      displayName: 'mike',
+      displayName: 'avery',
       body: 'ship it',
     });
 
     const meta = submission.session.metadata ?? {};
-    expect(meta[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(mikeId);
-    expect(meta[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Mike');
+    expect(meta[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(averyId);
+    expect(meta[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Avery');
     expect(meta[ATTRIBUTED_PRINCIPAL_KNOWN_KEY]).toBe(true);
     expect(meta[CHANNEL_PROFILE_MODEL_KEY]).toBe('claude-profile-model');
     expect(meta[CHANNEL_PROFILE_PROVIDER_KEY]).toBe('anthropic');

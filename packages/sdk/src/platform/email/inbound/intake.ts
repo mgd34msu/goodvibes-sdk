@@ -101,7 +101,7 @@
  * with the grant already gone: the sink released its claim, the cursor stayed
  * put, the message was redelivered exactly as intended, and pass 2 found an
  * empty book and recorded `no-expectation`. The retry recovered the notice and
- * destroyed the thing the notice was about. The owner was told his own
+ * destroyed the thing the notice was about. The owner was told their own
  * verification mail was unsolicited.
  *
  * Nothing between the match and the end of the handler may mutate the

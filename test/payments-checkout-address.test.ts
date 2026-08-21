@@ -28,7 +28,7 @@ const USD = 'USD' as CurrencyCode;
 
 /** A deliberately awkward address: punctuation, a unit number, a hyphen. */
 const STORED_SHIPPING: PostalAddress = {
-  name: "Mike O'Brien-Davis",
+  name: "Avery O'Brien-Chen",
   line1: '1194 Rue Saint-Denis, Apt 4B',
   line2: 'Buzzer 12',
   city: 'Montréal',
@@ -38,7 +38,7 @@ const STORED_SHIPPING: PostalAddress = {
 };
 
 const STORED_BILLING: PostalAddress = {
-  name: 'Mike Davis',
+  name: 'Avery Chen',
   line1: '87 Corporate Way',
   line2: '',
   city: 'Lansing',
@@ -84,7 +84,7 @@ describe('the stored address reaches the page', () => {
     const result = await fillAddresses(shippingTargets(), { store: store(), fill: page.fill });
 
     expect(result.ok).toBe(true);
-    expect(page.written.get('ship-name')).toBe("Mike O'Brien-Davis");
+    expect(page.written.get('ship-name')).toBe("Avery O'Brien-Chen");
     expect(page.written.get('ship-line1')).toBe('1194 Rue Saint-Denis, Apt 4B');
     expect(page.written.get('ship-city')).toBe('Montréal');
     expect(page.written.get('ship-postal')).toBe('H2X 3J4');

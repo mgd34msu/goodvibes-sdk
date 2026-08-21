@@ -207,6 +207,17 @@ function readInteger(value: unknown, field: string): number {
 }
 
 /**
+ * A GET's `limit` arrives as a query string ("100", not 100). A numeric string
+ * parses the same as the number it names; anything else, including a
+ * non-digit string, is treated as absent and the caller falls back to the
+ * default, exactly as a wrong-typed value does today.
+ */
+function readOptionalPositiveInteger(value: unknown): number | undefined {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  return typeof parsed === 'number' && Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+/**
  * The exact set of card fields that may leave this process.
  *
  * Built by naming what is ALLOWED rather than by deleting what is forbidden.
@@ -260,18 +271,29 @@ export function createPaymentsCardsCreateHandler(service: PaymentsGatewayService
     if (kind !== 'virtual' && kind !== 'real') {
       throw new GatewayVerbError("kind must be 'virtual' or 'real'.", 'INVALID_ARGUMENT', 400);
     }
+    // Field reading happens BEFORE the storage try/catch below, on purpose: a
+    // validation failure here must surface as the field-named 400 these
+    // readers throw, not get swallowed into the storage handler's blanket 500.
     const issuerCap = params['issuerCapMinorUnits'];
+    const label = readString(params['label'], 'label');
+    const number = readString(params['number'], 'number');
+    const expiryMonth = readInteger(params['expiryMonth'], 'expiryMonth');
+    const expiryYear = readInteger(params['expiryYear'], 'expiryYear');
+    const cvv = readString(params['cvv'], 'cvv');
+    const cardholderName = readString(params['cardholderName'], 'cardholderName');
+    const issuerCapMinorUnits = typeof issuerCap === 'number' ? issuerCap : null;
+
     let card: PaymentCardView;
     try {
       card = await service.createCard({
-        label: readString(params['label'], 'label'),
+        label,
         kind,
-        number: readString(params['number'], 'number'),
-        expiryMonth: readInteger(params['expiryMonth'], 'expiryMonth'),
-        expiryYear: readInteger(params['expiryYear'], 'expiryYear'),
-        cvv: readString(params['cvv'], 'cvv'),
-        cardholderName: readString(params['cardholderName'], 'cardholderName'),
-        issuerCapMinorUnits: typeof issuerCap === 'number' ? issuerCap : null,
+        number,
+        expiryMonth,
+        expiryYear,
+        cvv,
+        cardholderName,
+        issuerCapMinorUnits,
       });
     } catch (error) {
       // Deliberately does not forward the underlying message: the failing call
@@ -483,10 +505,8 @@ export function createPaymentsCheckoutFillCardHandler(service: PaymentsGatewaySe
 export function createPaymentsPurchasesListHandler(service: PaymentsGatewayService): GatewayMethodHandler {
   return async (invocation) => {
     const params = readInvocationParams(invocation);
-    const rawLimit = params['limit'];
-    const limit = typeof rawLimit === 'number' && Number.isInteger(rawLimit) && rawLimit > 0
-      ? Math.min(rawLimit, 500)
-      : 100;
+    const parsedLimit = readOptionalPositiveInteger(params['limit']);
+    const limit = parsedLimit !== undefined ? Math.min(parsedLimit, 500) : 100;
     const rawDay = params['dayKey'];
     const result = await service.listPurchases({
       limit,

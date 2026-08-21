@@ -69,8 +69,8 @@ export type InboundCapabilityReason =
    * insufficient: no credential is stored where the daemon reads secrets.
    *
    * Distinct from a refused one because the fix is different, the secret is
-   * missing rather than wrong, and telling an owner to replace a password he
-   * never stored sends him looking for the wrong thing.
+   * missing rather than wrong, and telling an owner to replace a password
+   * they never stored sends them looking for the wrong thing.
    */
   | 'credentials-missing'
   /** insufficient: the credential was refused. */
@@ -142,8 +142,8 @@ export type InboundCapabilityReason =
    * the two ends do not agree on the wire format, and so every retry produces
    * the same unreadable response. One of those is a permission problem at the
    * provider and one is a protocol problem between us and the provider; an
-   * owner sent to check his IMAP access over a malformed FETCH response would
-   * find nothing wrong and conclude the daemon is lying to him.
+   * owner sent to check their IMAP access over a malformed FETCH response
+   * would find nothing wrong and conclude the daemon is lying to them.
    *
    * A single unreadable answer is NOT this. The cursor stays below the message
    * and the batch is fetched again, because an answer that could not be read
@@ -168,7 +168,7 @@ export type InboundCapabilityReason =
    * re-delivers the same message forever) or advances in memory only (and
    * loses everything at the next restart). Both are silent. A named reason on
    * the local disk is something the owner can act on; `mailbox-unreadable`
-   * would send him to the mail provider for a full filesystem.
+   * would send them to the mail provider for a full filesystem.
    */
   | 'local-store-unwritable'
   /**

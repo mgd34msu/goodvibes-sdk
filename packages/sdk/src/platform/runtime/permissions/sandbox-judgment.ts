@@ -10,10 +10,10 @@
  * human, or, only when the operator has opted into auto-approve mode,
  * auto-approves the ask.
  *
- * FROZEN CATASTROPHIC BLOCK / ALLOW→DENY INVARIANT. Recorded doctrine, verbatim:
+ * FROZEN CATASTROPHIC BLOCK / ALLOW→DENY INVARIANT. Recorded doctrine:
  * "permission settings are the sole authority for command-class risk; the
  * exec-layer unconditional block is a frozen catastrophic-only list (rm -rf /,
- * dd to devices, mkfs, fork bomb…) that must NEVER expand without Mike's
+ * dd to devices, mkfs, fork bomb…) that must NEVER expand without the owner's
  * explicit approval." Accordingly this tier NEVER converts an allow into a deny
  * and NEVER inspects, relaxes, or re-implements the frozen catastrophic block
  * (that block is enforced independently, at exec time, and stays in force

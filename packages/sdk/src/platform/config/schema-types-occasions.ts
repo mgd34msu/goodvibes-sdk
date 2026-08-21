@@ -33,7 +33,7 @@ export interface OccasionsConfig {
   suppressMirroredNudges: boolean;
   /** How many questions the gift interview asks. */
   interviewQuestions: number;
-  /** How long the record of what he landed on is kept, in years. */
+  /** How long the record of what the owner landed on is kept, in years. */
   giftHistoryYears: number;
   /** How often the approach sweep runs, in minutes. */
   sweepIntervalMinutes: number;

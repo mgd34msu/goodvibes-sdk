@@ -72056,7 +72056,7 @@
       {
         "id": "occasions.acknowledge",
         "title": "Acknowledge An Occasion",
-        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.",
+        "description": "Record that the owner has one occurrence in hand, so nothing is pushed at them about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when the owner said so in a reply, explicit when a surface offered the action, gift-flow when the owner is already answering gift questions about it.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72289,7 +72289,7 @@
       {
         "id": "occasions.confirm",
         "title": "Record A Confirmed Important Date",
-        "description": "Write the confirmed occasion as one line in the owner profile, under Important dates, carrying its provenance. This is the ONE confirmation: nothing re-confirms at nudge time, because for an annual date a silent write means the mistake surfaces up to eleven months later. Refused without a kind rather than defaulting one. Goes through the owner-profile write gate, so authority, surface and a verbatim quote of what he said are all required.",
+        "description": "Write the confirmed occasion as one line in the owner profile, under Important dates, carrying its provenance. This is the ONE confirmation: nothing re-confirms at nudge time, because for an annual date a silent write means the mistake surfaces up to eleven months later. Refused without a kind rather than defaulting one. Goes through the owner-profile write gate, so authority, surface and a verbatim quote of what the owner said are all required.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72394,7 +72394,7 @@
       {
         "id": "occasions.conflict.resolve",
         "title": "Close A Date Conflict",
-        "description": "Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.",
+        "description": "Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only the owner knows which was right, and silently taking the newer value is the behaviour this exists to prevent.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72517,7 +72517,7 @@
       {
         "id": "occasions.interview.answer",
         "title": "Answer A Gift Interview Question",
-        "description": "Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift, that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.",
+        "description": "Record one answer and return the next question, if there is one. The interview guides the owner to their own idea and never recommends a gift, that judgement is the owner's, which is also why the outcome recorded is what the owner landed on rather than what was suggested.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72664,7 +72664,7 @@
       {
         "id": "occasions.interview.get",
         "title": "Get Gift Interview",
-        "description": "Return one gift interview and the question that has not been answered yet. A thread the owner walked away from resumes here rather than restarting: the next step is the one he did not get to. Over a channel the steps are asked one at a time; in the agent they can be one exchange.",
+        "description": "Return one gift interview and the question that has not been answered yet. A thread the owner walked away from resumes here rather than restarting: the next step is the one the owner did not get to. Over a channel the steps are asked one at a time; in the agent they can be one exchange.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72802,8 +72802,8 @@
       },
       {
         "id": "occasions.interview.record",
-        "title": "Record What He Landed On",
-        "description": "Close the interview with what he settled on and write it to the gift history. Recording the outcome rather than merely that he said yes is the point: \"he said yes in 2026\" cannot stop year three steering where year one did.",
+        "title": "Record What The Owner Landed On",
+        "description": "Close the interview with what the owner settled on and write it to the gift history. Recording the outcome rather than merely that the owner said yes is the point: \"said yes in 2026\" cannot stop year three steering where year one did.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -72946,7 +72946,7 @@
       {
         "id": "occasions.list",
         "title": "List Important Dates",
-        "description": "Return every occasion declared in the owner profile, with its next occurrence, how many days away it is, the lead it uses, whether it is inside its lead window, and what was answered for that occurrence. Also returns lines under the heading that could not be typed, each with the reason, and any occasion that has two different dates recorded. This carries the dates: it is the owner asking his own system what it holds, which is the explicit ask that unlocks a closed-tier read. A nudge never does.",
+        "description": "Return every occasion declared in the owner profile, with its next occurrence, how many days away it is, the lead it uses, whether it is inside its lead window, and what was answered for that occurrence. Also returns lines under the heading that could not be typed, each with the reason, and any occasion that has two different dates recorded. This carries the dates: it is the owner asking their own system what it holds, which is the explicit ask that unlocks a closed-tier read. A nudge never does.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -73600,7 +73600,7 @@
       {
         "id": "occasions.plans.list",
         "title": "List Plans",
-        "description": "Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.",
+        "description": "Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has the owner away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while the owner is abroad moves to the day before they leave.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -73767,7 +73767,7 @@
       {
         "id": "occasions.plans.propose",
         "title": "Propose A Plan",
-        "description": "Work out what would be written for a plan heard in conversation, and return the one-line confirmation. Writes nothing. Away is opt-in rather than assumed: \"the kitchen is being redone, 3rd to the 10th\" is a real dated range that is not him leaving the house.",
+        "description": "Work out what would be written for a plan heard in conversation, and return the one-line confirmation. Writes nothing. Away is opt-in rather than assumed: \"the kitchen is being redone, 3rd to the 10th\" is a real dated range that is not the owner leaving the house.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -73855,7 +73855,7 @@
       {
         "id": "occasions.propose",
         "title": "Propose An Important Date",
-        "description": "Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.",
+        "description": "Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is the owner's choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",
@@ -73954,7 +73954,7 @@
       {
         "id": "occasions.remove",
         "title": "Remove An Important Date",
-        "description": "Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.",
+        "description": "Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to the owner and removes nothing.",
         "category": "occasions",
         "source": "builtin",
         "access": "authenticated",

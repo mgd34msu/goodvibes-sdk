@@ -233,8 +233,8 @@ export function registerSignupBaseAddressFallback(source: SignupBaseAddressSourc
  * A configured mail account always wins. The profile's `contact.email` fills the
  * gap, which is the point of wiring it: without it, an autonomous signup on a
  * machine with no mail account configured has nowhere to send the confirmation
- * and cannot proceed, even though the owner told the runtime his address weeks
- * ago.
+ * and cannot proceed, even though the owner told the runtime their address
+ * weeks ago.
  *
  * `signup-address.ts` is untouched by this. It is alias-minting machinery, not a
  * store of owner facts, and it stays a pure function of the base address it is

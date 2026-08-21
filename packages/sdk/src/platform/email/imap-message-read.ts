@@ -15,7 +15,7 @@
  * is in the mailbox, it may have been moved or deleted since it was listed",
  * which is true for an expunge and a false statement about the owner's mailbox
  * for an unreadable answer: the message is sitting in it, and we have just told
- * him it is gone. Same shape as `ImapEnvelopeBatch.unreadable` draws for a
+ * them it is gone. Same shape as `ImapEnvelopeBatch.unreadable` draws for a
  * batch fetch, drawn here for a single one.
  */
 

@@ -1,28 +1,28 @@
 /**
- * cart.ts, the cart must contain what he asked for and nothing else.
+ * cart.ts, the cart must contain what the owner asked for and nothing else.
  *
  * ── Never add filler items ────────────────────────────────────────────────
  *
- * Owner ruling, and an invariant rather than a preference: never add items to
- * cross a free-shipping threshold. Buying something he did not ask for in order
- * to make the delivery line look better is still buying something he did not ask
- * for, and "it was cheaper overall" is the argument every version of this
- * mistake makes.
+ * Design rule, and an invariant rather than a preference: never add items to
+ * cross a free-shipping threshold. Buying something the owner did not ask for
+ * in order to make the delivery line look better is still buying something
+ * they did not ask for, and "it was cheaper overall" is the argument every
+ * version of this mistake makes.
  *
  * There is deliberately no free-shipping-threshold logic anywhere in this
  * capability. Its ABSENCE is the design, and absence is hard to test, so the
  * enforcement is positive: the cart is compared against the request immediately
- * before payment and any line he did not ask for aborts the purchase.
+ * before payment and any line the owner did not ask for aborts the purchase.
  *
  * ── Subscriptions and recurring charges ───────────────────────────────────
  *
  * Refused. A daily budget cannot describe a charge that renews unattended next
- * month; nothing here would notice a renewal, let alone stop one. Enrolling him
- * in a recurring charge on a capability whose entire safety story is a daily
- * limit is the most expensive kind of silent hole.
+ * month; nothing here would notice a renewal, let alone stop one. Enrolling
+ * the owner in a recurring charge on a capability whose entire safety story is
+ * a daily limit is the most expensive kind of silent hole.
  *
- * Detection errs toward refusing, on purpose: a false refusal costs him a manual
- * purchase, a false accept costs him a charge nobody is watching.
+ * Detection errs toward refusing, on purpose: a false refusal costs the owner
+ * a manual purchase, a false accept costs them a charge nobody is watching.
  */
 import { sanitizeNoticeField } from '../security/notice-text.js';
 import type { MinorUnits } from './types.js';
@@ -43,7 +43,7 @@ export interface CartCheck {
   readonly ok: boolean;
   /** Lines present in the cart that the owner did not ask for. */
   readonly unexpected: readonly CartLine[];
-  /** Lines he asked for that are missing. */
+  /** Lines the owner asked for that are missing. */
   readonly missing: readonly RequestedLine[];
   readonly reason: string | null;
 }

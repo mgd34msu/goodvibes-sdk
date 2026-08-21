@@ -383,7 +383,7 @@ export function validatePersistedExpectation(value: unknown, now: Date = new Dat
   // record at this layer as well would be strictly stronger and was the first
   // thing I wrote, but it takes the `expired` classification away from
   // `sweep()`, which then reports a merely-spent record as malformed. The
-  // owner would be told his store was corrupt when a signup simply timed out,
+  // owner would be told their store was corrupt when a signup simply timed out,
   // and §9's disclosure is worth more than a redundant check: a past-expiry
   // record is already caught by the sweep and by `hydrateExpectation`.
   //

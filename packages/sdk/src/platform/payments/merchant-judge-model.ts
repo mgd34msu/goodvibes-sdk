@@ -34,8 +34,8 @@
  * approval window where silence denies.
  *
  * That direction is not arbitrary. Being unable to judge a legitimate small
- * retailer costs him one question he answers in a second; treating an
- * unjudgeable domain as established costs him a silent purchase from a
+ * retailer costs the owner one question they answer in a second; treating an
+ * unjudgeable domain as established costs them a silent purchase from a
  * storefront nobody vouched for. A model outage must never be able to make
  * spending MORE automatic.
  */
@@ -129,7 +129,7 @@ function parseVerdict(raw: string): MerchantJudgement | null {
  * `intent_classify` is the routing task: this IS a classification, one short
  * input, one closed verdict, and it inherits that route's model and limits
  * rather than introducing a payment-specific route the owner would have to
- * configure separately before he could buy anything.
+ * configure separately before they could buy anything.
  */
 export function createModelMerchantJudge(model: MerchantJudgeModel): MerchantJudgePort {
   return {

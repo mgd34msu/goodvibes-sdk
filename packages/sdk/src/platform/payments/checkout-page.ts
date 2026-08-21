@@ -47,17 +47,31 @@ export interface CheckoutPageDriver {
   fill(target: string, value: string): Promise<void>;
 
   /**
-   * Type CARD MATERIAL into a field.
+   * Type every CARD MATERIAL field in one motion.
    *
-   * Separate from `fill` on purpose. An implementation is expected to treat
-   * this as the moment page content becomes unreportable, and the flow arms the
-   * redactor before the first call. `kind` is carried so a failure can name the
-   * field without the failure path ever holding the value.
+   * Batched rather than one call per field: an implementation resolves page
+   * elements against a snapshot that typing can invalidate, and a driver that
+   * resolved field two only after field one was typed is how a real checkout
+   * lost every field after the first. Every target here is resolved before any
+   * value is typed. `kind` travels with each field so a failure can name it
+   * without the failure path ever holding the value.
    *
-   * Implementations must not log the value, include it in a thrown error, or
-   * return it in any form.
+   * `filledTargets` lists the targets typed, in order, up to and including a
+   * stopping point; `failedTarget` names the one target that stopped it, or is
+   * null on full success. An implementation must not log a value, include one
+   * in a thrown error, or return one in any form.
+   *
+   * An unresolvable ref, anywhere in the batch, is reported as `failedTarget`,
+   * never thrown: the caller needs the target name to report which field
+   * failed, and a throw cannot carry it back. A throw from this method means a
+   * failure the implementation could not attribute to any one target at all,
+   * a caller catching one has no more specific field to report than "the card
+   * fields".
    */
-  fillSecret(target: string, value: string, kind: CardFieldKind): Promise<void>;
+  fillSecrets(fields: readonly { readonly target: string; readonly value: string; readonly kind: CardFieldKind }[]): Promise<{
+    readonly filledTargets: readonly string[];
+    readonly failedTarget: string | null;
+  }>;
 
   /** Choose one of a set of options, a delivery tier, usually. */
   choose(target: string, value: string): Promise<void>;
@@ -69,6 +83,11 @@ export interface CheckoutPageDriver {
    * one. A null order id is not a failure, plenty of merchants show a
    * confirmation page with the number somewhere the model has to go read, it
    * just means the audit record carries no merchant reference.
+   *
+   * Throws `CheckoutSubmitRefused` for a failure BEFORE the click reached the
+   * merchant, a typed refusal, an untrusted-effect refusal, a stale ref. Any
+   * other throw means the click may have reached the merchant and the caller
+   * cannot tell; only that case is genuinely ambiguous.
    */
   submitOrder(target: string): Promise<{
     readonly url: string;
@@ -83,7 +102,31 @@ export interface CheckoutPageDriver {
      * submit afterwards.
      */
     readonly challenge?: CheckoutChallenge | null | undefined;
+    /**
+     * Whether a composition read the merchant's own response to this submit.
+     *
+     * False means: the click was issued and the reservation is being committed
+     * as a conservative default against a double-spend, but nothing here
+     * confirmed the merchant actually accepted the order. The record and the
+     * owner report must say so; neither may claim a verified purchase off a
+     * false value.
+     */
+    readonly verified: boolean;
   }>;
+}
+
+/**
+ * Thrown by `submitOrder` for a refusal that happened BEFORE any click reached
+ * the merchant: a typed refusal, an untrusted-effect refusal, a stale ref, a
+ * guard error. The flow treats this as "not submitted" and releases the held
+ * budget; every other throw from `submitOrder` is genuine post-click ambiguity
+ * and keeps the reservation held.
+ */
+export class CheckoutSubmitRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CheckoutSubmitRefused';
+  }
 }
 
 /** A verification step the merchant put in the way, described for the owner. */

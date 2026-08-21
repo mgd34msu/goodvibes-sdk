@@ -236,8 +236,8 @@ export interface WakeEnablementCompanion {
  *
  * Turning `voice.wake.enabled` on while `voice.wake.surfaces.<surface>` is off
  * is a silent no-op: the setting reports success, the value really is stored,
- * and no microphone ever opens. That cost the owner an entire session, he
- * enabled the feature, was told it was enabled, and nothing listened.
+ * and no microphone ever opens. That cost the owner an entire session, they
+ * enabled the feature, were told it was enabled, and nothing listened.
  *
  * A master switch whose delivery row is off is not a configuration the user
  * meant. So enabling the master on an opted-out surface SAYS so and sets the

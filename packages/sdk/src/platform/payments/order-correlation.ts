@@ -20,8 +20,8 @@
  * Telling the owner that a piece of mail arrived requires no authorization at
  * all. The general inbound path already records unexpected mail and reports it.
  * All this module adds is recognition: when mail arrives from a domain we
- * bought something at moments ago, he should read "this is the order you
- * approved" rather than an unrelated receipt he has to place himself.
+ * bought something at moments ago, the owner should read "this is the order you
+ * approved" rather than an unrelated receipt they have to place themselves.
  *
  * So: no registration, no interception, no expiry, nothing held. A lookup
  * against the purchase records that are being written anyway.
@@ -40,10 +40,37 @@
  * from, `order-update.example.com` for a purchase at `www.example.com`, so
  * subdomains of the same registrable domain match, and a different registrable
  * domain does not, however similar it looks.
+ *
+ * ══ Which OUTCOMES are eligible, and why a match never rewrites one ═══════
+ *
+ * A record only correlates when the click was actually issued: `purchased` and
+ * `submitted-unverified` both mean the submit reached the driver, and only
+ * those two are checked below. Every refused or cancelled outcome never
+ * clicked submit, so mail from that domain arriving afterward is not that
+ * purchase's confirmation, whatever it claims; it is unrelated mail, which the
+ * general inbound path still records and reports on its own.
+ *
+ * `submitted-unverified` is deliberately INCLUDED rather than treated as not
+ * yet a real purchase. It is exactly the outcome whose report already tells
+ * the owner "check your order history at this merchant", and a piece of mail
+ * from that same merchant arriving inside the window is the single strongest
+ * signal available that it went through, so it is the case where recognition
+ * is most worth doing, not least.
+ *
+ * What a match does NOT do is rewrite the stored record. This module recognises
+ * mail; it does not re-verify a purchase after the fact. A `matched` result
+ * against a `submitted-unverified` record still carries that record with its
+ * `outcome` untouched, `verified` was decided once, at submit time, from what
+ * the driver itself saw, and a later email is evidence for the OWNER to read,
+ * not evidence this module is positioned to fold back into the audit trail.
+ * The caller renders the outcome it finds on `result.record` however it likes;
+ * recognising the mail and describing what it recognised are different jobs.
  */
 import { registrableDomain } from '../security/public-suffix.js';
 import { sanitizeNoticeField } from '../security/notice-text.js';
 import type { PurchaseRecord } from './checkout-flow.js';
+
+const CORRELATABLE_OUTCOMES: ReadonlySet<string> = new Set(['purchased', 'submitted-unverified']);
 
 /**
  * How long after a purchase a confirmation is still recognisably ITS
@@ -95,7 +122,7 @@ export function correlatePurchaseMail(
 
   const candidates = records.filter((record) => {
     if (record.merchantDomain !== senderDomain) return false;
-    if (record.outcome !== 'purchased') return false;
+    if (!CORRELATABLE_OUTCOMES.has(record.outcome)) return false;
     const purchasedAtMs = Date.parse(record.atUtc);
     if (Number.isNaN(purchasedAtMs)) return false;
     const age = mail.receivedAtMs - purchasedAtMs;
@@ -125,10 +152,10 @@ export function correlatePurchaseMail(
  *
  * ── Why extraction rather than quoting ────────────────────────────────────
  *
- * The body arrives from outside at the exact moment he is expecting it, which
- * makes it the most attractive thing on this whole path for an attacker to
- * forge. Rendering any span of it into a message he reads on his phone hands
- * whoever wrote it a channel to him.
+ * The body arrives from outside at the exact moment the owner is expecting it,
+ * which makes it the most attractive thing on this whole path for an attacker
+ * to forge. Rendering any span of it into a message the owner reads on their
+ * phone hands whoever wrote it a channel to them.
  *
  * So three narrow patterns run over the text, each yielding a short token, and
  * each token is neutralised before it can be rendered. Nothing else survives.

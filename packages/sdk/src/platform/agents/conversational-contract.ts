@@ -12,8 +12,8 @@
  * answered by acting:
  *
  *  1. It "fixed" a stalled agent by driving the owner's tmux pane, send-keys
- *     into his shell, escape-sequence garbage across his prompt, and a relaunch
- *     typed into the terminal he was using. Nobody asked for a restart. The
+ *     into their shell, escape-sequence garbage across their prompt, and a relaunch
+ *     typed into the terminal they were using. Nobody asked for a restart. The
  *     question was what was wrong.
  *  2. It declared the wake word fixed ONE MESSAGE after measuring -90 dB, that
  *     is silence, from the same microphone. The claim rested on nothing, and

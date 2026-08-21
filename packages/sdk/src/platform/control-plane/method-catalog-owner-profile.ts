@@ -264,8 +264,8 @@ export const PROFILE_APPEND_INPUT_SCHEMA = objectSchema({
  * other verb.
  *
  * §3: the owner is a concurrent writer. An index is only valid against the file
- * state that produced it, and between his `profile.read` and his
- * `profile.forget` he can add a line in his editor and shift everything below
+ * state that produced it, and between a `profile.read` and a
+ * `profile.forget` the owner can add a line in their editor and shift everything below
  * it. The positional delete then removes the wrong line and reports success,
  * the false-receipt class §9.2 exists to prevent, arriving through the front
  * door. No validation can catch it, because a stale index is perfectly

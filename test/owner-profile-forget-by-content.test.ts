@@ -32,7 +32,7 @@ import { OwnerProfileStore } from '../packages/sdk/src/platform/owner-profile/in
 import type { ProfileWriteResult } from '../packages/sdk/src/platform/owner-profile/index.ts';
 
 const FIXTURE = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '## Commerce',
   '',
@@ -254,7 +254,7 @@ describe('content addressing across the closed sections it has to serve', () => 
 
   test('two identical lines refuse rather than remove one and report success', async () => {
     const { catalog, path } = await harness([
-      "# Mike's profile",
+      "# Avery's profile",
       '',
       '## Notes',
       '',
@@ -328,7 +328,7 @@ describe('§9.2 — the list marker is syntax, not content', () => {
     async (stored) => {
       const bare = stored.replace(/^(?:[-*+]|\d+[.)])\s+/, '');
       const { catalog, path } = await harness([
-        "# Mike's profile", '', '## Notes', '', stored, '',
+        "# Avery's profile", '', '## Notes', '', stored, '',
       ].join('\n'));
       const result = await catalog.invoke('profile.forget', {
         ...ctx,
@@ -342,7 +342,7 @@ describe('§9.2 — the list marker is syntax, not content', () => {
   test('a leading minus that is NOT a marker is preserved', async () => {
     // `-5 degrees` has no space after the minus, so it is content, not syntax.
     const { catalog, path } = await harness([
-      "# Mike's profile", '', '## Notes', '', '- Freezer runs at -5 degrees', '',
+      "# Avery's profile", '', '## Notes', '', '- Freezer runs at -5 degrees', '',
     ].join('\n'));
     const result = await catalog.invoke('profile.forget', {
       ...ctx,
@@ -357,7 +357,7 @@ describe('§9.2 — the list marker is syntax, not content', () => {
     // matches, which is a refusal, not a guess. Deleting the wrong one of two
     // identical lines is unrecoverable; asking is not.
     const { catalog, path } = await harness([
-      "# Mike's profile", '', '## Notes', '', '- Allergic to shellfish', 'Allergic to shellfish', '',
+      "# Avery's profile", '', '## Notes', '', '- Allergic to shellfish', 'Allergic to shellfish', '',
     ].join('\n'));
     const before = readFileSync(path);
     const result = await catalog.invoke('profile.forget', {

@@ -12,20 +12,21 @@
  *  1. **Turned off** → nothing, stated as a reason rather than an empty result.
  *  2. **Quiet hours** → nothing, and NOTHING IS DROPPED. An item due at 3am is
  *     still due at 8am; the sweep simply does not speak outside 08:00–22:00 in
- *     his own timezone.
+ *     the owner's own timezone.
  *  3. **Kind `neither`** → never raised. Recorded so the date can be answered
- *     when he asks, and for nothing else.
+ *     when the owner asks, and for nothing else.
  *  4. **Outside the lead window** → not yet. Ten days by default, overridable
  *     per occasion, because "order something and have it arrive" is not the
  *     same runway for everything.
- *  5. **About HIM, and only to be remembered** → never pushed, ever. He knows
- *     when his own birthday is. The item is opened anyway, already spent, so it
- *     answers "anything coming up?" and can never speak. See subject.ts.
+ *  5. **About THE OWNER, and only to be remembered** → never pushed, ever. The
+ *     owner knows when their own birthday is. The item is opened anyway, already
+ *     spent, so it answers "anything coming up?" and can never speak. See
+ *     subject.ts.
  *  6. **Already answered for THIS occurrence** → a `no` is silent for the rest
  *     of this cycle, a `yes` has moved on to the interview, a `later` comes
  *     back on its own date, and an `acknowledged` is muted for good while
  *     staying open and enumerable.
- *  7. **Mirrored to a calendar** → suppressed, when he has asked for that. The
+ *  7. **Mirrored to a calendar** → suppressed, when the owner has asked for that. The
  *     calendar's own reminder plus ours is two pings for one occasion.
  *  8. **Its boundary is already spent** → a nudge speaks at the top of its lead
  *     window and on the day itself. Twice, total, and the record of which
@@ -69,7 +70,7 @@ export interface OccasionsPolicy extends CadencePolicy {
   readonly leadDays: number;
   /** The hours it may speak, `HH:MM-HH:MM`, in `daemon.timezone`. */
   readonly activeHours: string;
-  /** Whether a plan that takes him away moves a nudge earlier. */
+  /** Whether a plan that takes the owner away moves a nudge earlier. */
   readonly awayAdjust: boolean;
   /** Whether an occasion mirrored to a calendar is left to the calendar. */
   readonly suppressMirroredNudges: boolean;
@@ -100,7 +101,7 @@ export interface DueOccasion {
 export interface SweepContext {
   readonly now: number;
   readonly today: IsoDate;
-  /** Minutes past midnight where he is. */
+  /** Minutes past midnight where the owner is. */
   readonly minutesOfDay: number;
   readonly occasions: readonly Occasion[];
   readonly conflicts: readonly OccasionConflict[];
@@ -119,7 +120,7 @@ export interface SweepDecision {
   readonly hold: SweepHold;
   readonly due: readonly DueOccasion[];
   readonly conflicts: readonly OccasionConflict[];
-  /** Interviews he walked away from that are due to be picked up again. */
+  /** Interviews the owner walked away from that are due to be picked up again. */
   readonly resumeInterviews: readonly Interview[];
   /** Open items to create or replace, already carrying their next due date. */
   readonly openItemWrites: readonly OpenItem[];
@@ -139,7 +140,7 @@ const EMPTY: SweepDecision = {
  * The owner's words were *"8am to 10pm are generally fine, anything outside of
  * that probably not, so quiet outside of that range"*, so the setting names the
  * ACTIVE window rather than the quiet one, a setting whose value is the thing
- * he said. The parse is the check-in's, so the two cannot disagree about what
+ * the owner said. The parse is the check-in's, so the two cannot disagree about what
  * `HH:MM-HH:MM` means; the evaluation is not, because the check-in reads the
  * host's local clock and this has to read `daemon.timezone`.
  */
@@ -195,8 +196,8 @@ export function decideSweep(context: SweepContext): SweepDecision {
     const itemId = nudgeItemId(occasion.id, occurrence);
     const existing = itemsById.get(itemId);
 
-    // Something he only has to REMEMBER about HIMSELF is never sent to him: he
-    // knows when his own birthday is. The item is still opened, and opened
+    // Something the owner only has to REMEMBER about THEMSELF is never sent to
+    // them: the owner knows when their own birthday is. The item is still opened, and opened
     // already spent, so it is there for anything that ASKS what is coming up
     // and there is no state from which it could later decide to speak. Silence
     // by construction rather than by a branch that has to be got right on every
@@ -218,9 +219,9 @@ export function decideSweep(context: SweepContext): SweepDecision {
 
     const answer = answerFor(context.acknowledgements, occasion.id, occurrence);
     if (answer?.answer === 'no' || answer?.answer === 'yes') continue;
-    // He said he has this one. The item stays open and stays enumerable, the
-    // pull still shows it, and shows that he acknowledged it, and nothing is
-    // pushed at him about this occurrence again.
+    // The owner said they have this one. The item stays open and stays
+    // enumerable, the pull still shows it, and shows that they acknowledged it,
+    // and nothing is pushed at them about this occurrence again.
     if (answer?.answer === 'acknowledged') continue;
     if (answer?.answer === 'later' && (answer.returnOn ?? occurrence) > today) continue;
     if (occasion.mirrored && policy.suppressMirroredNudges) continue;
@@ -254,7 +255,7 @@ export function decideSweep(context: SweepContext): SweepDecision {
     const existing = itemsById.get(itemId);
     if (existing !== undefined && !isDue(existing, today)) continue;
     // A conflict has no occurrence: it is a fact about the record, not about
-    // this year, and it stays open until he fixes the file.
+    // this year, and it stays open until the owner fixes the file.
     const nextDue = addDaysClamped(today, Math.max(1, Math.round(policy.cadenceDays)));
     writes.push(existing === undefined
       ? openItemFor({
@@ -298,8 +299,8 @@ export function decideSweep(context: SweepContext): SweepDecision {
  * An open nudge that exists to be FOUND, never to be sent.
  *
  * Both boundaries spent from the moment it is written. This is how an occasion
- * about him that he only has to remember stays enumerable, "anything coming
- * up?" answers with it, while having no reachable state in which it speaks.
+ * about the owner that they only have to remember stays enumerable, "anything
+ * coming up?" answers with it, while having no reachable state in which it speaks.
  */
 function quietOpenItem(input: {
   readonly id: string;
@@ -316,7 +317,7 @@ function quietOpenItem(input: {
     openedAt: input.now,
     // It has never been raised, and the record says so. `lastRaisedAt` matches
     // `openedAt` because there is no other honest value; the raise count is the
-    // number of times he was spoken to, which is none.
+    // number of times the owner was spoken to, which is none.
     lastRaisedAt: input.now,
     raiseCount: 0,
     servedBoundaries: [...RAISE_BOUNDARIES],

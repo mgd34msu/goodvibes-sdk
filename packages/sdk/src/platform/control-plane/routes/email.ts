@@ -287,17 +287,17 @@ function refuseTaintedSend(
   replyToEnvelopeSenders: readonly string[] = [],
   ownerAddresses: ReadonlySet<string> = new Set(),
 ): void {
-  // The one exemption: a send whose EVERY recipient is the owner himself.
+  // The one exemption: a send whose EVERY recipient is the owner alone.
   //
-  // He is the trust root, not a third party, and telling him what arrived is
-  // the point of an assistant reading his mail. "What came in overnight" is a
-  // summary that necessarily reuses the words of what came in, so without this
-  // the feature is refused in its most ordinary use.
+  // The owner is the trust root, not a third party, and telling them what
+  // arrived is the point of an assistant reading their mail. "What came in
+  // overnight" is a summary that necessarily reuses the words of what came in,
+  // so without this the feature is refused in its most ordinary use.
   //
-  // Deliberately narrow: his configured addresses only, not a domain, not a
-  // pattern, and not partial. A send to the owner AND anyone else is not
-  // exempt, because naming him first and slipping a second recipient in beside
-  // him is exactly how this would be abused. Identity comes from configuration
+  // Deliberately narrow: the owner's configured addresses only, not a domain,
+  // not a pattern, and not partial. A send to the owner AND anyone else is not
+  // exempt, because naming them first and slipping a second recipient in
+  // beside them is exactly how this would be abused. Identity comes from configuration
   // and never from anything a message can influence; see
   // security/owner-identity.ts for what an attacker would have to control.
   //

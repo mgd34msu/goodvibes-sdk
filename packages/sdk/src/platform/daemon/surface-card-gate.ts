@@ -3,9 +3,9 @@
  * messaging channel (docs/inbound-email.md §11.0).
  *
  * **Provenance, stated plainly: §11.0 is a coordinator ruling, not an owner
- * quote.** The owner's ruling it enforces is his own, card details are entered
- * only at a local terminal or in the webui, never over a remote messaging
- * channel. This is the daemon-side enforcement of that.
+ * quote.** Design rule it enforces: card details are entered only at a local
+ * terminal or in the webui, never over a remote messaging channel. This is the
+ * daemon-side enforcement of that.
  *
  * ## The distinction that must not be collapsed
  *
@@ -13,8 +13,8 @@
  * the owner's explicit ruling and it stays. Remote surfaces have authority to
  * **say yes or no about a purchase**; they have **no path for entering the
  * instrument**. Authority over a decision is not a channel for a secret. A
- * later reader will be tempted to unify the two, "if he can approve a payment
- * from Telegram, why not enter the card there", and must not.
+ * later reader will be tempted to unify the two, "if the owner can approve a
+ * payment from Telegram, why not enter the card there", and must not.
  *
  * This is also why the refusal reply is delivered rather than dropped silently:
  * the message being refused may itself have BEEN a veto, and an unheard
@@ -88,8 +88,8 @@ export async function refuseCardShapedIngress(
     policy: deps.channelPolicy.getPolicy(input.surface),
   };
 
-  // Tell him, on the channel he sent from, through the same delivery path the
-  // conversation gate uses for its proposals. He can resend without the digits
+  // Tell the owner, on the channel they sent from, through the same delivery path
+  // the conversation gate uses for its proposals. They can resend without the digits
   //, including resending a veto, which is the case that makes silence costly.
   const binding = resolveOriginBinding(deps, {
     surface: input.surface,

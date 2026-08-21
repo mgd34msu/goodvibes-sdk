@@ -3,12 +3,12 @@
  *
  * docs/owner-profile.md §11.2 splits the profile in two. The OPEN tier is
  * useless if it has to be asked for and harmless in context, so it is rendered
- * here as a short block and injected once per turn. The CLOSED tier, his name,
- * every contact detail, his home address, everything commercial, how to reach
- * him, his defaults, and the People / Places / Work / Notes sections entirely,
- * is NEVER bulk-injected. That is what makes "an outbound message cannot leak
- * his home address" a structural fact rather than a hope: the address was never
- * in context to leak.
+ * here as a short block and injected once per turn. The CLOSED tier, the
+ * owner's name, every contact detail, their home address, everything
+ * commercial, how to reach them, their defaults, and the People / Places /
+ * Work / Notes sections entirely, is NEVER bulk-injected. That is what makes
+ * "an outbound message cannot leak the owner's home address" a structural
+ * fact rather than a hope: the address was never in context to leak.
  *
  * `location.city` is open on purpose and `location.homeAddress` is closed. The
  * failure that prompted this whole feature was the agent guessing a metro area
@@ -83,7 +83,7 @@ export function renderOpenTierBlock(source: OpenTierProfileSource): string {
   if (entries.length === 0) return '';
   return [
     '## About the person you are working for',
-    'From his profile. Apply it; do not read it back to him unless he asks.',
+    'From the owner\'s profile. Apply it; do not read it back to the owner unless asked.',
     ...entries,
   ].join('\n');
 }

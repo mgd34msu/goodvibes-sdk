@@ -79,7 +79,7 @@ function channelSubmit(binding: AutomationRouteBinding, body: string) {
     externalId: binding.externalId,
     threadId: binding.threadId ?? binding.channelId,
     userId: '678',
-    displayName: 'mike',
+    displayName: 'avery',
     title: binding.title ?? 'Telegram',
     body,
   };
@@ -95,7 +95,7 @@ async function bindChat(
     surfaceId: 'goodvibes_bot',
     externalId: '12345',
     channelId: '12345',
-    title: 'Mike',
+    title: 'Avery',
     ...(sessionPolicy ? { sessionPolicy } : {}),
   });
 }

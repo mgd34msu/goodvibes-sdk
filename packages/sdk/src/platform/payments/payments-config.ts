@@ -5,8 +5,9 @@
  *
  * `PaymentsServiceDeps.config` is called once per purchase, not once at
  * construction, and that is deliberate. A budget the owner raised five minutes
- * ago has to apply to the purchase happening now; a timezone he corrected has
- * to move the daily reset before the next order, not after a restart. Capturing
+ * ago has to apply to the purchase happening now; a timezone the owner
+ * corrected has to move the daily reset before the next order, not after a
+ * restart. Capturing
  * these at startup would mean the settings UI wrote values that quietly did
  * nothing until the daemon was bounced, which is the failure that makes a
  * settings screen untrustworthy.
@@ -17,7 +18,7 @@
  *
  * `daemon.timezone` is the key, and it is not a second source of truth: the
  * owner profile maps `location.timezone` onto it (owner-profile/consumers.ts),
- * so setting his location updates the key this reads. Reading the KEY rather
+ * so setting their location updates the key this reads. Reading the KEY rather
  * than reaching into the profile keeps one consumer and means a machine with no
  * profile still has a working daily reset.
  *
@@ -100,7 +101,7 @@ function readTier(config: PaymentsConfigReader): ShippingTier {
  * unattended at all.
  *
  * `'prompt'` means every purchase stops and waits for a human to type it, the
- * veto window still runs, but nothing completes while he is away. Exposed here
+ * veto window still runs, but nothing completes while the owner is away. Exposed here
  * so the daemon can report that honestly rather than a purchase mysteriously
  * hanging.
  */
@@ -167,14 +168,14 @@ export function readPaymentsServiceConfig(config: PaymentsConfigReader): Payment
     limits: readBudgetLimits(config, currency),
     budgetCurrency: currency,
     // Unset resolves to UTC, matching day.ts. The owner profile maps
-    // location.timezone onto this key, so his location drives the daily reset.
+    // location.timezone onto this key, so the owner's location drives the daily reset.
     timezone: readString(config, 'daemon.timezone', 'UTC'),
     preferredTier: readTier(config),
     // An hour survives a meeting; denial is the recoverable outcome, so
     // too-short costs friction and too-long holds a cart against a drifting
     // price.
     approvalMinutes: readInteger(config, 'payments.windows.approvalMinutes', 60),
-    // His number: "say 10 minutes, to say so".
+    // Design default: 10 minutes, enough time to just say so.
     vetoMinutes: readInteger(config, 'payments.windows.vetoMinutes', 10),
   };
 }

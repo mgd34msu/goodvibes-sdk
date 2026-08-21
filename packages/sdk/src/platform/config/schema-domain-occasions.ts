@@ -8,21 +8,21 @@
  *
  * Every key here is a real configurable feature, not an enable/disable stub.
  * `occasions.enabled = false` is a stated state, the dates are still held,
- * still readable, still answerable when he asks, and it is the honest "stop
- * raising these at me" mode rather than a dead feature. The rest describe the
- * rhythm, the runway, the hours and the retention, each of which he can move
- * without a release.
+ * still readable, still answerable when the owner asks, and it is the honest
+ * "stop raising these at me" mode rather than a dead feature. The rest
+ * describe the rhythm, the runway, the hours and the retention, each of which
+ * they can move without a release.
  *
  * Every default in this file was confirmed by the owner key by key on
- * 2026-07-28. Two were his own words from the outset, the ten-day lead and the
- * 08:00–22:00 window, and one he changed at that point: `nudgeChannel` ships as
- * `telegram` rather than empty, so a nudge pushes out of the box instead of
- * waiting to be pulled.
+ * 2026-07-28. Two matched the original design from the outset, the ten-day
+ * lead and the 08:00–22:00 window, and one changed at that point:
+ * `nudgeChannel` ships as `telegram` rather than empty, so a nudge pushes out
+ * of the box instead of waiting to be pulled.
  *
- * `nudgeChannel` is a comma-separated LIST, because his ruling on where these go
- * was Telegram AND the agent, and a single-valued key would have made that a
+ * `nudgeChannel` is a comma-separated LIST. Design rule: where these go was
+ * Telegram AND the agent, and a single-valued key would have made that a
  * choice between them. The shipped default is still exactly `telegram`, the
- * value he confirmed, and adding `agent` to it is his to do.
+ * value the owner confirmed, and adding `agent` to it is the owner's to do.
  */
 import { type ConfigSettingDefinition, intRange } from './schema-shared.js';
 import type { OccasionsConfig } from './schema-types-occasions.js';

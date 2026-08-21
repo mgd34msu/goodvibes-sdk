@@ -3,7 +3,7 @@
  *
  * Split out of service.ts, which owns the SEQUENCE of a sweep rather than the
  * mechanics of a send. Both functions here are about the same honesty problem:
- * what actually reached him, as opposed to what was attempted.
+ * what actually reached the owner, as opposed to what was attempted.
  */
 import { summarizeError } from '../utils/error-display.js';
 import type { IsoDate } from './dates.js';
@@ -22,7 +22,7 @@ export interface OccasionNudgeDeliverer {
  *
  * Per destination rather than one verdict for the batch, because with two
  * channels configured "delivered: false" would say nothing about WHICH one went
- * quiet, and a channel he believes is reaching him and is not is the failure
+ * quiet, and a channel the owner believes is reaching them and is not is the failure
  * this whole feature exists to avoid.
  */
 export interface NudgeDelivery {
@@ -39,7 +39,7 @@ export interface NudgeDelivery {
  *
  * A destination that throws is RECORDED and the next one is still tried. The
  * alternative, letting the first failure escape, means an expired Telegram
- * token stops the agent hearing about his wife's birthday, and the two have
+ * token stops the agent hearing about the owner's wife's birthday, and the two have
  * nothing to do with each other. Nothing is swallowed: each failure comes back
  * in the outcome, the router has already logged it against its surface and
  * strategy, and the sweep's caller logs the count.

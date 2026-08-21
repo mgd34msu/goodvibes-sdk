@@ -10,13 +10,13 @@
  *
  * ── The midnight split is accepted, not smoothed ──────────────────────────
  *
- * Owner ruled it explicitly: $100 at 23:59 and $100 at 00:00 both go through.
+ * Design rule, ruled explicitly: $100 at 23:59 and $100 at 00:00 both go through.
  * A daily budget has a boundary and a boundary can be sat on. Anything that
  * "fixed" this, a rolling 24-hour window, a cooldown either side of midnight,
- * would be a different feature than the one he asked for, and the rolling
- * version is worse in the ordinary case because he could not predict when his
- * budget refreshed. There is a test that asserts the split behaves this way, so
- * a later round cannot quietly close it.
+ * would be a different feature than the one the owner asked for, and the
+ * rolling version is worse in the ordinary case because they could not
+ * predict when their budget refreshed. There is a test that asserts the
+ * split behaves this way, so a later round cannot quietly close it.
  *
  * ── Why totals are recomputed rather than counted ─────────────────────────
  *

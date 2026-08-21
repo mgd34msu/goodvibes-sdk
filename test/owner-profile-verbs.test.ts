@@ -51,12 +51,12 @@ const UNTRUSTED: ('web-page' | 'email' | 'channel-message' | 'document')[] = [
 ];
 
 const FIXTURE = [
-  '# Mike\'s profile',
+  '# Avery\'s profile',
   '',
   '## Identity',
   '',
-  'name: Mike Davis',
-  'goes by: Mike',
+  'name: Avery Chen',
+  'goes by: Avery',
   '',
   '## Contact',
   '',
@@ -212,7 +212,7 @@ describe('profile.status — §14 #11: counts, names and reasons, never a value'
     // The whole response, flattened: not one profile VALUE may appear in it.
     const serialized = JSON.stringify(status);
     for (const value of [
-      'Mike Davis',
+      'Avery Chen',
       'owner@example.com',
       '401 Home St',
       'Mars/Olympus',
@@ -337,9 +337,9 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
       ...ctx,
       body: {
         fieldId: 'identity.goesBy',
-        value: 'Mikey',
+        value: 'Ave',
         surface: 'tui',
-        said: 'call me Mikey',
+        said: 'call me Ave',
         authority: 'trusted-ish',
       },
     })).rejects.toThrow(/authority is required and must be one of/);
@@ -414,9 +414,9 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
           ? { fieldId: 'commerce.shippingAddress', authority: 'owner-direct' }
           : {
             fieldId: 'identity.goesBy',
-            value: 'Mikey',
+            value: 'Ave',
             surface: 'tui',
-            said: 'call me Mikey',
+            said: 'call me Ave',
             authority: 'owner-direct',
           };
 
@@ -434,9 +434,9 @@ describe('profile.* write verbs — the gates, at the verb layer', () => {
       context: { admin: true },
       body: {
         fieldId: 'identity.goesBy',
-        value: 'Mikey',
+        value: 'Ave',
         surface: 'tui',
-        said: 'call me Mikey',
+        said: 'call me Ave',
         authority: 'owner-direct',
       },
     }) as ProfileWriteResult;
@@ -522,9 +522,9 @@ describe('profile.* verbs — a disabled or unreadable profile is a stated state
       ...ctx,
       body: {
         fieldId: 'identity.goesBy',
-        value: 'Mikey',
+        value: 'Ave',
         surface: 'tui',
-        said: 'call me Mikey',
+        said: 'call me Ave',
         authority: 'owner-direct',
       },
     }) as ProfileWriteResult;

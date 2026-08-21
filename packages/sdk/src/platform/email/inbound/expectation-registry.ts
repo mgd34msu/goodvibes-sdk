@@ -42,7 +42,7 @@
  * An expectation that runs out is a signup whose verification never arrived,
  * which is a fact the workstream and the owner need. `sweep()` reports every
  * expiry through `onExpired` with a named reason. The same rule as a terminal
- * capability failure: tell him rather than go quiet.
+ * capability failure: tell them rather than go quiet.
  *
  * And a report nothing asks for is that silence with more code in it.
  * `sweep()` had exactly one caller repo-wide, its own test, while `onExpired`

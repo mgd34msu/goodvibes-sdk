@@ -115,7 +115,7 @@ export interface ProfileSection {
  *
  * `rawLines` is the authority: every write is a surgical edit to it and the
  * projection is rebuilt from the result. Nothing is ever re-serialised from the
- * maps, which is what makes "his edits are authoritative" true rather than
+ * maps, which is what makes "the owner's edits are authoritative" true rather than
  * aspirational.
  */
 export interface ProfileProjection {

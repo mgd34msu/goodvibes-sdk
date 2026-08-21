@@ -1,9 +1,9 @@
 /**
  * occasions/, dated things that need an action, and dated ranges that do not.
  *
- * The daemon holds durable facts about the owner's life, his wife's birthday,
+ * The daemon holds durable facts about the owner's life, a spouse's birthday,
  * an anniversary, a friend's birthday, and raises them ON ITS OWN, before they
- * matter, without being asked. It remembers what he answered so it does not keep
+ * matter, without being asked. It remembers what the owner answered so it does not keep
  * asking, and not forever, because the occasions recur.
  *
  * See `docs/occasions.md` for the decision record.

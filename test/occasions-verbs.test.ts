@@ -47,7 +47,7 @@ const VERB_IDS = [
 ] as const;
 
 const FIXTURE = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '## People',
   '',

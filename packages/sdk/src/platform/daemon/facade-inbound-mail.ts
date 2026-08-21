@@ -51,7 +51,7 @@
  * `surfaces.email.inbound.accounts` is read as a filter over that rather than
  * as the evidence for it. Making the config key the evidence is what let this
  * path stay dead for an owner who filled the key in the way its own description
- * tells him to.
+ * tells the owner to.
  */
 
 import {
@@ -171,9 +171,9 @@ type NoticeRouteAnswer =
  * Where the owner is told about inbound mail (§8), or why there is nowhere.
  *
  * A named binding id wins. `default`, the shipped value, means "inherit
- * whatever he already uses", and with no separate owner-notice-route concept
- * in the platform, the honest reading of that is the route binding most
- * recently seen: the one he last reached the daemon on.
+ * whatever the owner already uses", and with no separate owner-notice-route
+ * concept in the platform, the honest reading of that is the route binding
+ * most recently seen: the one the owner last reached the daemon on.
  *
  * Every arm that cannot produce a binding names ITSELF rather than collapsing
  * to one `null`, and that is the fix rather than a nicety. Three genuinely
@@ -188,7 +188,7 @@ type NoticeRouteAnswer =
  *
  * All three were recorded as `no-route-binding` and none of them was reported
  * as anything, so a message the owner never heard about looked the same as a
- * message he had never configured a route for. The record still says
+ * message the owner had never configured a route for. The record still says
  * `no-route-binding`, that is the delivery layer's vocabulary and the store's
  *, while the condition surfaced through `email.inbound.status` and the health
  * entry carries the reason and its own remedial step.
@@ -342,7 +342,7 @@ export function composeInboundMail(
   });
 
   // ONE instance, shared by the intake that writes it and the supervisor that
-  // reports it. Two instances would be two answers to "is he being told", and
+  // reports it. Two instances would be two answers to "is the owner being told", and
   // the one the status verb read would be the one nothing wrote to.
   const noticeHealth = createInboundNoticeHealth();
 
@@ -419,7 +419,7 @@ export function composeInboundMail(
       // never arrived expired without anybody being told. See
       // `InboundExpectationRegistry.hasOpen`.
       expectationOpen: () => expectations.hasOpen(),
-      // The owner's own cadence, read from his two Gmail poll settings by
+      // The owner's own cadence, read from their two Gmail poll settings by
       // `source-factory.ts` at CREATE time and handed in here. Not re-read:
       // one key, one reader. A second read in this file would be a second
       // answer to the same question, and the config gate cannot see the
@@ -537,10 +537,10 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
  * `surfaces.email.inbound.accounts` equalled that address, which made a
  * configuration convention the source of truth, and the convention does not
  * hold. The schema calls that key a list of "mailbox account identifiers, e.g.
- * `["primary"]`", its description is what the owner reads when he sets it, and
- * `sameAddress('primary', 'owner@gmail.com')` is false. So an owner who
+ * `["primary"]`", its description is what the owner reads when they set it,
+ * and `sameAddress('primary', 'owner@gmail.com')` is false. So an owner who
  * connected Google, turned inbound mail on and filled the key in the way its
- * own description tells him to got `mailAccountIsGmail: false`, `auto` chose
+ * own description tells them to got `mailAccountIsGmail: false`, `auto` chose
  * IMAP, and, with no IMAP host configured, which is the whole premise of this
  * path, the factory answered `null`: the exact end state the Gmail
  * construction fix was written to close. Only a key holding a full Gmail
@@ -558,8 +558,8 @@ function readInboundMode(configManager: ConfigManager): 'idle' | 'poll' | 'auto'
  * names another mailbox, and a working Google credential does name one. True.
  * This is the owner's machine.
  *
- * **The account is an identifier and an IMAP host IS configured.** He has
- * pointed this watcher at a specific server; whether it is a Gmail mailbox is
+ * **The account is an identifier and an IMAP host IS configured.** The owner
+ * has pointed this watcher at a specific server; whether it is a Gmail mailbox is
  * that host's domain to answer, exactly as before.
  *
  * The IMAP-host test is unchanged and still right when it fires: an address at

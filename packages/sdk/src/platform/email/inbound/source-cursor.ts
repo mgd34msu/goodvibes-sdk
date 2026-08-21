@@ -20,7 +20,7 @@
  * read one shape as the other. A Gmail cursor asked for as an IMAP cursor is
  * DISCARDED, not coerced: a coerced cursor is a wrong position, and a wrong
  * position either replays the mailbox at the owner or silently skips the
- * message he was waiting for.
+ * message they were waiting for.
  *
  * The one tolerated leniency, stated rather than hidden: a stored record with
  * NO `source` field at all is read as IMAP. That is the only shape that ever

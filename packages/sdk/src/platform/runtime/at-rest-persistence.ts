@@ -21,11 +21,12 @@
  *     Credentials ONLY, deliberately. utils/redaction.ts also carries
  *     home-path anonymisation, and the egress helper (redactSensitiveData)
  *     applies both, correctly, because a session export goes to someone who
- *     is not the owner. These files do not go anywhere: they sit on his disk,
- *     inside the very directory those patterns rewrite. Anonymising him from
- *     himself turned `/home/mike/Projects/x` into `/home/[REDACTED]/Projects/x`
- *     at write time and irreversibly, which costs the journal the one detail
- *     that makes a stale entry worth reading and protects nobody.
+ *     is not the owner. These files do not go anywhere: they sit on the
+ *     owner's disk, inside the very directory those patterns rewrite.
+ *     Anonymising the owner from themselves turned `/home/owner/Projects/x`
+ *     into `/home/[REDACTED]/Projects/x` at write time and irreversibly, which
+ *     costs the journal the one detail that makes a stale entry worth reading
+ *     and protects nobody.
  *   - enforceFileRetention: an age + total-size cap over a set of append-only
  *     files, deleting oldest-first. A production caller invokes it at a natural
  *     lifecycle point (the checkpoint-gc lesson: retention that is defined but

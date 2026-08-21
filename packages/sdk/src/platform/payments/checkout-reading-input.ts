@@ -32,8 +32,8 @@
  *                     card and records the purchase.
  *
  * Every number the owner reads is one the daemon computed. A string the model
- * reported never reaches his phone, and a number it reported never reaches a
- * budget comparison without being re-parsed here first.
+ * reported never reaches the owner's phone, and a number it reported never
+ * reaches a budget comparison without being re-parsed here first.
  *
  * ══ Why these numbers are not taint-checked ═══════════════════════════════
  *
@@ -48,8 +48,8 @@
  *
  * What IS taint-checked stays taint-checked: the merchant, the checkout url,
  * the item and any stated limit come from the owner or the purchase is refused.
- * He names what he wants and where from; the page only gets to say what it
- * costs, and only within a limit he set.
+ * The owner names what they want and where from; the page only gets to say
+ * what it costs, and only within a limit they set.
  */
 import type { RawCheckoutReading } from './checkout-extraction.js';
 

@@ -44,7 +44,7 @@ const DELIVERABLE_ALERT_SURFACES = new Set<string>([
  *
  * When nothing survives, the alert is stated at ERROR in the daemon log and
  * nowhere else, and it says so, an owner reading that line later learns both
- * that a channel died and that he was never told.
+ * that a channel died and that they were never told.
  */
 export function buildDaemonChannelHealthWatcher(runtime: ResolvedDaemonFacadeRuntime): ChannelHealthWatcher {
   const deliveryRouter = runtime.deliveryManager.getDeliveryRouter();

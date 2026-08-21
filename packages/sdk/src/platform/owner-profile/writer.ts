@@ -1,13 +1,14 @@
 /**
  * writer.ts, surgical line edits, never a re-serialisation.
  *
- * This is the file that makes "his edits are authoritative" true rather than
- * aspirational. Every operation here computes a small set of index-addressed
- * edits against the RAW LINE ARRAY and leaves every other line byte-identical.
- * Nothing is ever regenerated from the projection, so the writer cannot
- * normalise his prose, re-order his sections, re-wrap his lines, convert a
- * bullet to a field, or reformat a table it did not understand, not because it
- * chooses not to, but because it never holds a rendering of the whole document.
+ * This is the file that makes "the owner's edits are authoritative" true
+ * rather than aspirational. Every operation here computes a small set of
+ * index-addressed edits against the RAW LINE ARRAY and leaves every other
+ * line byte-identical. Nothing is ever regenerated from the projection, so
+ * the writer cannot normalise the owner's prose, re-order their sections, or
+ * re-wrap their lines, convert a bullet to a field, or reformat a table it
+ * did not understand, not because it chooses not to, but because it never
+ * holds a rendering of the whole document.
  *
  * The projection is read-only input: it says WHERE things are. Edits are
  * computed in the original index space and applied from the highest index down,
@@ -103,8 +104,8 @@ function isBlank(line: string | undefined): boolean {
  * The strip is belt and braces against stacking: a caller handing back a value
  * it read off a line would otherwise produce a line with two provenance tails,
  * and the older one would sit inside the newer one's quote. Exactly one suffix
- * is removed, if he hand-typed something that looks like an old suffix, that is
- * his text and it stays.
+ * is removed, if the owner hand-typed something that looks like an old
+ * suffix, that is their text and it stays.
  */
 function sanitizeForLine(value: string): string {
   return splitProvenanceSuffix(value.replace(/[\r\n]+/g, ' ').trim()).text.trim();
@@ -146,8 +147,8 @@ function sanitizeSaid(said: string): string {
  * that the closing `"` then completes. Rather than reason about that case, the
  * rendered line is checked: if reading it back does not return the provenance
  * just written, the marker inside the quote is downgraded to a plain hyphen so
- * no suffix can form. His words survive and stay readable; only the em dash
- * that would have been parsed as machinery changes.
+ * no suffix can form. The owner's words survive and stay readable; only the
+ * em dash that would have been parsed as machinery changes.
  */
 function renderVerifiedLine(
   prefix: string,
@@ -299,11 +300,12 @@ export interface SetFieldInput {
 /**
  * Write a mechanical field.
  *
- * Existing field: its line is rewritten IN PLACE, keeping the label exactly as he
- * capitalised it, and the previous line, provenance suffix and all, moves into
- * a history comment. Missing field: one line is inserted into the field block.
- * Missing section: the canonical heading is appended at the end of the document,
- * because guessing which of his own headings he meant is worse than adding one.
+ * Existing field: its line is rewritten IN PLACE, keeping the label exactly
+ * as the owner capitalised it, and the previous line, provenance suffix and
+ * all, moves into a history comment. Missing field: one line is inserted into
+ * the field block. Missing section: the canonical heading is appended at the
+ * end of the document, because guessing which of the owner's own headings
+ * they meant is worse than adding one.
  */
 export function setField(projection: ProfileProjection, input: SetFieldInput): ProfileEditResult {
   const def = profileFieldById(input.fieldId);
@@ -357,7 +359,7 @@ export function setField(projection: ProfileProjection, input: SetFieldInput): P
 // ---------------------------------------------------------------------------
 
 export interface AppendProseInput {
-  /** A heading, canonical or one of his own. */
+  /** A heading, canonical or one of the owner's own. */
   readonly section: string;
   readonly text: string;
   readonly provenance: ProfileProvenance | null;
@@ -366,8 +368,9 @@ export interface AppendProseInput {
 /**
  * Add a prose bullet at the end of a section.
  *
- * Prose is never superseded: a new bullet is a new bullet, and he removes the
- * old one if he wants it gone. Nothing here turns a notes section into records.
+ * Prose is never superseded: a new bullet is a new bullet, and the owner
+ * removes the old one if they want it gone. Nothing here turns a notes
+ * section into records.
  */
 export function appendProse(projection: ProfileProjection, input: AppendProseInput): ProfileEditResult {
   const heading = input.section.trim();
@@ -401,7 +404,7 @@ export function appendProse(projection: ProfileProjection, input: AppendProseInp
   return { ok: true, reason: null, lines: applyLineEdits(projection.rawLines, [edit]), changes: [change] };
 }
 
-/** Same as {@link appendNewSection} for a heading he named that does not exist yet. */
+/** Same as {@link appendNewSection} for a heading the owner named that does not exist yet. */
 function appendNewSectionNamed(
   projection: ProfileProjection,
   heading: string,
@@ -444,9 +447,9 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   if (input.fieldId === undefined) {
     const at = input.lineIndex;
     // `NaN` fails BOTH bounds comparisons, so a range check alone waves it
-    // through and `splice(NaN, 1)` removes index 0, his title. A fraction
-    // splices at its floor, so `4.9` deletes line 4. Integrality is the check
-    // that actually holds.
+    // through and `splice(NaN, 1)` removes index 0, the owner's title. A
+    // fraction splices at its floor, so `4.9` deletes line 4. Integrality is
+    // the check that actually holds.
     if (at === undefined || !Number.isInteger(at) || at < 0 || at >= projection.rawLines.length) {
       return refuse(projection, 'There is no such line in your profile.');
     }
@@ -483,8 +486,9 @@ export function forget(projection: ProfileProjection, input: ForgetInput): Profi
   //  - a DUPLICATE further down is prose to the parser but still the value in
   //    the file, so removing only the active line reports success while the
   //    value survives, a false receipt on a delete;
-  //  - a line under a heading he RENAMED is not in the model at all, so the
-  //    old code said "nothing to forget" about a value `read()` still served.
+  //  - a line under a heading the owner RENAMED is not in the model at all,
+  //    so the old code said "nothing to forget" about a value `read()` still
+  //    served.
   const strays = [
     ...(projection.duplicateFieldLines.get(def.id) ?? []),
     ...unrecognisedSectionFieldLines(projection, def.id),
@@ -533,8 +537,8 @@ export function mostRecentSuperseded(
  * The promoted line is restored EXACTLY as it read, provenance suffix included,
  * and its history comment is removed. The value being undone is not itself
  * recorded as history: undo exists to reverse a wrong correction, and a version
- * that wrote a new comment every time would make repeated undo oscillate between
- * two values instead of getting back to where he was.
+ * that wrote a new comment every time would make repeated undo oscillate
+ * between two values instead of getting back to where the owner was.
  */
 export function undo(projection: ProfileProjection, fieldId: string): ProfileEditResult {
   const def = profileFieldById(fieldId);
@@ -649,15 +653,16 @@ function sectionContaining(
  * Lines that read as `<label>: value` for this field under a heading the parser
  * does not recognise as a section.
  *
- * This is the `## Shopping` case: he renamed `## Commerce`, so `shipping
- * address:` under it is prose to the model while `read()` still shows it and the
- * file still holds it. Saying "nothing to forget" there is honest about the
- * model and dishonest about the document, and the document is what he asked
- * about.
+ * This is the `## Shopping` case: the owner renamed `## Commerce`, so
+ * `shipping address:` under it is prose to the model while `read()` still
+ * shows it and the file still holds it. Saying "nothing to forget" there is
+ * honest about the model and dishonest about the document, and the document
+ * is what they asked about.
  *
- * Scoped to UNRECOGNISED headings on purpose. A `shipping address:` line under a
- * known prose section like `Notes` is his own prose in a section that means
- * something else, and reaching into it would widen a delete past what he named.
+ * Scoped to UNRECOGNISED headings on purpose. A `shipping address:` line
+ * under a known prose section like `Notes` is the owner's own prose in a
+ * section that means something else, and reaching into it would widen a
+ * delete past what they named.
  */
 function unrecognisedSectionFieldLines(
   projection: ProfileProjection,
@@ -692,19 +697,19 @@ export { parseFieldLine };
  * Delete one prose line, matched by its exact text within one section.
  *
  * End whitespace and the leading LIST MARKER are ignored on both sides; nothing
- * else is. The marker is syntax, not content: he says "forget that I'm allergic
- * to shellfish", and the `- ` in front of it is a Markdown artefact he never
- * uttered. Requiring it back would be asking a model to guess at our storage
- * format, and it would fail closed in the least useful direction, a delete
- * that silently matches nothing.
+ * else is. The marker is syntax, not content: the owner says "forget that I'm
+ * allergic to shellfish", and the `- ` in front of it is a Markdown artefact
+ * they never uttered. Requiring it back would be asking a model to guess at
+ * our storage format, and it would fail closed in the least useful direction,
+ * a delete that silently matches nothing.
  *
  * Normalising cannot widen a match onto the WRONG line, because ambiguity is
  * refused rather than resolved: if both `- Foo` and a bare `Foo` sit in the
  * same section they now both match, and that is two matches, which is a
- * refusal. A near-miss delete on the file that holds his address is worse than
- * a refusal, so an unmatched text removes nothing and says the line is not
- * there any more, which is true, and the useful thing to tell him: his file
- * changed under the answer he was working from.
+ * refusal. A near-miss delete on the file that holds the owner's address is
+ * worse than a refusal, so an unmatched text removes nothing and says the
+ * line is not there any more, which is true, and the useful thing to tell
+ * them: their file changed under the answer they were working from.
  *
  * Two byte-identical lines in one section refuse rather than guess. Removing
  * "one of them" would report a deletion while the same text stayed in the file,

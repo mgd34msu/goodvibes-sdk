@@ -5,7 +5,7 @@
  * live in the daemon secret store under keys derived by `daemonSecretKeyFor`,
  * and are write-only across every wire. What lives here is the budget, the
  * windows, the shipping preference and the non-secret card metadata a surface
- * needs in order to show him which card is configured.
+ * needs in order to show the owner which card is configured.
  *
  * ── Why every money default is 0 and `enabled` is false ──────────────────
  *
@@ -15,11 +15,11 @@
  *
  * Zero is the most safe number. The capability can be fully configured, card
  * entered, addresses set, channels chosen, and still buy nothing at all until
- * he affirmatively names an amount. A refusal against a zero budget reads "the
- * daily item budget is 0, set one" rather than failing somewhere obscure.
+ * the owner affirmatively names an amount. A refusal against a zero budget reads
+ * "the daily item budget is 0, set one" rather than failing somewhere obscure.
  *
- * The two toggles he ruled on directly keep his values: the per-purchase ceiling
- * defaults ON, overage tolerance defaults OFF.
+ * Design rule: the two toggles below keep the owner's values directly, the
+ * per-purchase ceiling defaults ON, overage tolerance defaults OFF.
  *
  * See docs/payments.md for the decision order these numbers feed.
  */

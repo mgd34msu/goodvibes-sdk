@@ -382,7 +382,7 @@ export interface QueuedCompanionTurn {
   readonly userMessageId: string;
   /**
    * True when the transport that posted this message can honestly attest the
-   * OWNER sent it, it authenticated him over the daemon's bearer-token API.
+   * OWNER sent it, it authenticated them over the daemon's bearer-token API.
    *
    * It rides the queue entry rather than being read at turn-start because a
    * message can wait here behind an active turn, and by then the call that

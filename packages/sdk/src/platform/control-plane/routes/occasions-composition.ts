@@ -90,10 +90,10 @@ export function composeOccasions(
       importantDates: () => profile.importantDates(),
       plans: () => profile.plans(),
       person: (name) => profile.person(name),
-      // What he calls HIMSELF, so an occasion about him can be told apart from
-      // one about anyone else. Two declared fields and nothing inferred: this
-      // is the linkage that lets his own birthday stop being pushed at him
-      // without a name literal existing anywhere in the code.
+      // What the owner calls THEMSELVES, so an occasion about them can be told
+      // apart from one about anyone else. Two declared fields and nothing
+      // inferred: this is the linkage that lets their own birthday stop being
+      // pushed at them without a name literal existing anywhere in the code.
       ownerNames: () => [
         profile.get('identity.name')?.value ?? '',
         profile.get('identity.goesBy')?.value ?? '',
@@ -181,8 +181,8 @@ export function composeOccasions(
     dispose: async (): Promise<void> => {
       ticker.stop();
       // Let every queued write finish before the process tears down. An
-      // acknowledgement lost at shutdown means he is asked again about
-      // something he already answered.
+      // acknowledgement lost at shutdown means the owner is asked again about
+      // something they already answered.
       await state.drain();
     },
   };

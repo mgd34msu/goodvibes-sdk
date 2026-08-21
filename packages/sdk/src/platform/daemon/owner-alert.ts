@@ -34,7 +34,7 @@ import { logger } from '../utils/logger.js';
  * at a stroke), the three streaming surfaces in
  * `ChannelProviderRuntimeManager`, and the two detached slash-command paths.
  *
- * One instance, because "have I already told him Telegram is failing" is a
+ * One instance, because "have I already told the owner Telegram is failing" is a
  * question about the SURFACE, not about which of those mechanisms noticed.
  */
 export function createChannelIngressAlarm(

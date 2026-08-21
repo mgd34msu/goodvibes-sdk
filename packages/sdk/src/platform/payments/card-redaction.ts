@@ -103,17 +103,37 @@ interface LiveSecret {
 }
 
 /**
- * Normalise a run of digits that a page may have spaced or dashed apart.
+ * The separator characters a page's input mask might place between digit
+ * groups: the plain hyphen and every Unicode dash in the same block (en
+ * dash, em dash, minus sign and the rest), the underscore, and the dot used
+ * by masks like `4539.5787.6362.1486`. Whitespace is handled by `\s` plus a
+ * literal non-breaking space, which together cover the regular space, the
+ * tab, the newline and every Unicode space separator a mask is likely to
+ * use.
+ *
+ * Deliberately not "any non-digit character": a mask that inserts a letter
+ * or a currency symbol between digit groups is not a spelling of the number
+ * we typed, and treating it as one would start bridging unrelated digits
+ * across a page for no reason.
+ */
+const MASK_SEPARATOR = String.raw`[\s\xa0.\-\u2010-\u2015\u2212_]`;
+
+/**
+ * Normalise a run of digits that a page may have spaced, dashed (plain or
+ * Unicode), dotted, or underscored apart.
  *
  * Only separators that appear INSIDE a number are removed. Removing every
  * non-digit from the whole text would join unrelated numbers across a page,
  * a price and an order id becoming one long run that then matches a card by
  * coincidence, which produces redaction where there is nothing to redact and
- * hides the page from the model for no reason.
+ * hides the page from the model for no reason. Restricting the separator set
+ * to what an input mask plausibly inserts (`MASK_SEPARATOR`) keeps that
+ * property while catching every reformatting an ordinary checkout mask
+ * actually uses, not only the handful this module happened to test first.
  */
 function digitRuns(text: string): { readonly run: string; readonly digits: string }[] {
   const runs: { run: string; digits: string }[] = [];
-  const pattern = /\d(?:[\d  -]*\d)?/g;
+  const pattern = new RegExp(`\\d(?:${MASK_SEPARATOR}*\\d)*`, 'g');
   let match = pattern.exec(text);
   while (match !== null) {
     const run = match[0];
@@ -158,7 +178,7 @@ export class CardMaterialRedactor {
       existing.push({
         kind: secret.kind,
         literal,
-        digits: /^[\d  -]+$/.test(literal) ? literal.replace(/[^\d]/g, '') : '',
+        digits: new RegExp(`^(?:\\d|${MASK_SEPARATOR})+$`).test(literal) ? literal.replace(/[^\d]/g, '') : '',
       });
     }
     // Longest first, so a full number is removed before a substring of it is.

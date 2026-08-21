@@ -2,14 +2,14 @@
  * render-audience.ts, the one gate between machine diagnostics and a reply.
  *
  * The owner received these as Telegram messages, interleaved with an exchange
- * he was having with the bot:
+ * they were having with the bot:
  *
  *     registry, email send
  *     fetch, standard
  *     find
  *     exec, standard
  *
- * Every one of those is a tool-selection diagnostic. They reached him because
+ * Every one of those is a tool-selection diagnostic. They reached the owner because
  * `eventLine()` in reply-render.ts renders a `ChannelRenderEvent` by KIND, and
  * every kind had a rendering, including `tool_start`, `tool_result` and the
  * `status` line built from `AgentRecord.progress`, which the orchestrator fills
@@ -28,7 +28,7 @@
  * The default per kind DENIES. A new render event kind is operator-only until
  * someone adds it to `OWNER_FACING_RENDER_EVENT_KINDS` on purpose, so the cost
  * of forgetting is an operator detail the owner never sees, not a diagnostic
- * pushed to his lock screen.
+ * pushed to their lock screen.
  */
 
 import type { ChannelRenderEventKind } from './types.js';

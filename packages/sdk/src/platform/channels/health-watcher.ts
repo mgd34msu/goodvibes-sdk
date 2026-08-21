@@ -14,7 +14,7 @@
  *    in the alert so the announcer can exclude it; announcing a dead Telegram
  *    over Telegram is how this class of bug hides.
  * 2. It announces recoveries too. An owner who was told a channel was dead is
- *    owed the other half of that sentence, or the next alert is one he has
+ *    owed the other half of that sentence, or the next alert is one they have
  *    learned to ignore.
  * 3. It repeats while a channel stays dead, on a long interval. A one-shot
  *    alert that arrives while nobody is looking has not told anyone anything.
@@ -76,7 +76,7 @@ export class ChannelHealthWatcher {
    *
    * A watcher with no announcer says so at WARN and keeps running: the state it
    * records is still worth having, but an embedder must not be able to believe
-   * the owner is being told when nothing is wired to tell him. That belief is
+   * the owner is being told when nothing is wired to tell them. That belief is
    * precisely what shipped.
    */
   start(): void {

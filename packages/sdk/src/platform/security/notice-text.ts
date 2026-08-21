@@ -21,7 +21,7 @@
  *
  * Payment notices are a strictly worse version of the same surface: a merchant
  * page controls the item title, the seller name and the shipping labels, the
- * owner reads them on his phone under a ten-minute clock, and his reply
+ * owner reads them on their phone under a ten-minute clock, and their reply
  * authorises a charge.
  *
  * ── Where per-channel escaping lives, and why this is not it ──────────────
@@ -126,7 +126,7 @@ export function sanitizeNoticeField(raw: string, maxLength = 120): string {
  * keeping for legibility.
  *
  * Still sanitized rather than trusted: threading provenance correctly is a thing
- * code gets wrong, and neutralising his own text costs nothing but the
+ * code gets wrong, and neutralising the owner's own text costs nothing but the
  * underscore exemption. A guarantee that holds only while every call site stays
  * correct is not a guarantee.
  */

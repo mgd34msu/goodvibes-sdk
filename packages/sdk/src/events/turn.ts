@@ -19,7 +19,7 @@ export interface TurnInputOrigin {
   readonly metadata?: Readonly<Record<string, unknown>> | undefined;
   /**
    * True when the transport that produced this input can honestly attest the
-   * OWNER sent it, it authenticated him, or it read his local terminal.
+   * OWNER sent it, it authenticated the owner, or it read their local terminal.
    *
    * This is what starts a new untrusted-content turn (see
    * platform/security/turn-boundary.ts), so it is a claim about the caller,

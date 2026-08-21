@@ -11,11 +11,12 @@
  *
  *   - FENCES. A fenced code block may contain a line that looks like a heading
  *     or a field. Reading those as real would let a later write edit a line
- *     inside the owner's code block, which is silent corruption of his content
+ *     inside the owner's code block, which is silent corruption of their content
  *     and the worst failure this design can have. Fence state is tracked and
  *     nothing inside a fence is ever typed.
- *   - EM DASHES. The provenance suffix is em-dash delimited and he writes em
- *     dashes in prose. The suffix is therefore recognised only when the WHOLE
+ *   - EM DASHES. The provenance suffix is em-dash delimited and the owner
+ *     writes em dashes in prose. The suffix is therefore recognised only when
+ *     the WHOLE
  *     shape matches at end of line, and it is matched from the RIGHT so a line
  *     carrying two suffix-shaped tails resolves to the newest one instead of
  *     swallowing the tail into the quote.
@@ -94,7 +95,7 @@ export function fenceMarkerOf(line: string): FenceMarker | null {
  * ordinary content inside a backtick block. Getting this wrong does not merely
  * mis-parse: the scanner desynchronises, so real content after the block is read
  * as fenced and sample content inside it is read as real, which is how a line
- * in his code block became a live field and a later write landed inside it.
+ * in the owner's code block became a live field and a later write landed inside it.
  */
 export function fenceCloses(open: FenceMarker, marker: FenceMarker): boolean {
   return marker.char === open.char && marker.length >= open.length;
@@ -119,8 +120,8 @@ export interface ProvenanceSplit {
  * the left instead swallows everything after the first suffix into the quote,
  * which produces a provenance record that is quietly wrong.
  *
- * Anything that is not a complete, well-formed suffix is text: an em dash in his
- * own prose, a malformed date, a surface name outside the set, a bare trailing
+ * Anything that is not a complete, well-formed suffix is text: an em dash in
+ * the owner's own prose, a malformed date, a surface name outside the set, a bare trailing
  * quote. Such a line is preserved whole and reports no provenance.
  */
 export function splitProvenanceSuffix(line: string): ProvenanceSplit {
@@ -335,8 +336,9 @@ function dominantLineEnding(rawLines: readonly string[]): '\n' | '\r\n' {
  * Record a `<!-- was: … -->` comment as history for the field it names.
  *
  * A comment whose content does not name a known field of the enclosing section
- * is not history, it is one of his own HTML comments, and it falls through to
- * prose so it is still served rather than silently classified as machinery.
+ * is not history, it is one of the owner's own HTML comments, and it falls
+ * through to prose so it is still served rather than silently classified as
+ * machinery.
  */
 function recordWasComment(
   line: string,
@@ -419,9 +421,10 @@ function recordField(
 /**
  * The section a write to `canonical` should target.
  *
- * A heading he renamed still matches when it normalises to a known section name;
- * anything else means the section is absent and the caller creates the canonical
- * one rather than guessing which of his headings was meant.
+ * A heading the owner renamed still matches when it normalises to a known
+ * section name; anything else means the section is absent and the caller
+ * creates the canonical one rather than guessing which of their headings was
+ * meant.
  */
 export function findProfileSection(
   projection: ProfileProjection,

@@ -8,11 +8,11 @@
  *
  * ## Confirm once, at the time
  *
- * *"Noted your anniversary as 12 September, right?"* One line, at the moment he
- * can still catch a mishearing, and silent afterwards, no re-confirmation at
- * nudge time. The reason is arithmetic rather than politeness: for an annual
- * date a silent write means he discovers the error up to eleven months later,
- * when it is far too late to matter.
+ * *"Noted your anniversary as 12 September, right?"* One line, at the moment
+ * the owner can still catch a mishearing, and silent afterwards, no
+ * re-confirmation at nudge time. The reason is arithmetic rather than
+ * politeness: for an annual date a silent write means they discover the
+ * error up to eleven months later, when it is far too late to matter.
  *
  * ## The kind is asked in the same interaction, and never inferred
  *
@@ -65,9 +65,9 @@ export interface OccasionProposal {
   readonly reason: string | null;
   /** The line that would be written, exactly. */
   readonly line: string;
-  /** The one-line confirmation to put to him. Empty when `ok` is false. */
+  /** The one-line confirmation to put to the owner. Empty when `ok` is false. */
   readonly confirmation: string;
-  /** True when he still has to choose the kind. Never guessed. */
+  /** True when the owner still has to choose the kind. Never guessed. */
   readonly needsKind: boolean;
   /** Dates already recorded for this title that disagree with the new one. */
   readonly conflictsWith: readonly string[];
@@ -91,13 +91,14 @@ export interface ProposeOccasionInput {
   readonly recurrence?: string | undefined;
   readonly leadDays?: number | undefined;
   /**
-   * True when the occasion is about the OWNER himself.
+   * True when the occasion is about the OWNER's own occasion.
    *
    * Written onto the line as `for me`, and the reason it is captured rather
-   * than worked out later: he knows when his own birthday is, so an occasion
-   * about him that he only has to remember is never pushed at him. Stating it
-   * at capture is the reliable path; the reader can also resolve a possessive
-   * title against his declared name, but only he can settle the ambiguous ones.
+   * than worked out later: the owner knows when their own birthday is, so an
+   * occasion about them that they only have to remember is never pushed at
+   * them. Stating it at capture is the reliable path; the reader can also
+   * resolve a possessive title against the owner's declared name, but only
+   * they can settle the ambiguous ones.
    */
   readonly self?: boolean | undefined;
 }
@@ -119,11 +120,12 @@ function readRecurrenceWord(value: string | undefined, dated: boolean): Occasion
 }
 
 /**
- * Work out what would be written, and the one line to put to him.
+ * Work out what would be written, and the one line to put to the owner.
  *
  * Nothing is written. A conflict with something already recorded is REPORTED
- * here rather than resolved: he said two different things, only he knows which
- * was right, and silently taking the newer value is the one behaviour ruled out.
+ * here rather than resolved: the owner said two different things, only they
+ * know which was right, and silently taking the newer value is the one
+ * behaviour ruled out.
  */
 export function proposeOccasion(
   source: OccasionProfileSource,
@@ -153,14 +155,14 @@ export function proposeOccasion(
     title,
     date,
     recurrence: readRecurrenceWord(input.recurrence, date.kind === 'dated'),
-    // Rendered with the kind he has chosen so he sees exactly what will be
-    // written. When he has not chosen one, `needsKind` is true and `confirm`
-    // refuses rather than writing this placeholder.
+    // Rendered with the kind the owner has chosen so they see exactly what
+    // will be written. When they have not chosen one, `needsKind` is true and
+    // `confirm` refuses rather than writing this placeholder.
     kind: kind ?? 'remember-only',
     person: input.self === true ? '' : (input.person ?? '').trim(),
     selfDeclared: input.self === true,
     // The proposal is not read back through the reader, so nothing here can
-    // resolve a possessive title against his name. `for me` is the only
+    // resolve a possessive title against the owner's name. `for me` is the only
     // attribution a capture settles by itself; everything else resolves the
     // first time the written line is read.
     subject: input.self === true ? 'owner' : 'unattributed',
@@ -227,8 +229,9 @@ export interface ProposePlanInput {
   readonly away?: boolean | undefined;
   readonly destination?: string | undefined;
   /**
-   * Everything else he said about it, one detail per entry: a confirmation
-   * number, a flight and its times, who is travelling, why he is going.
+   * Everything else the owner said about it, one detail per entry: a
+   * confirmation number, a flight and its times, who is travelling, why
+   * they are going.
    *
    * Kept because a trip stripped to its dates answers "am I away" and nothing
    * else, and the itinerary was pasted precisely so the details would be
@@ -270,7 +273,7 @@ export function proposePlan(input: ProposePlanInput): OccasionProposal {
   // The details are the point of recording the trip, so prove they survived
   // rather than assuming it. A detail that came back changed or missing means
   // the line grammar ate it, and writing the line anyway would lose the very
-  // thing he pasted while reporting success.
+  // thing the owner pasted while reporting success.
   if (reread.extras.length !== details.length
     || details.some((detail, index) => reread.extras[index] !== detail)) {
     return refuse(
@@ -338,7 +341,7 @@ export async function removeOccasion(
   }
   const occasion = readOccasions(source).occasions.find((entry) => entry.id === input.occasionId);
   if (occasion === undefined) {
-    // Still drop any state, so a line he deleted by hand does not leave the
+    // Still drop any state, so a line the owner deleted by hand does not leave the
     // machine holding an answer about something that is no longer there.
     const dropped = await dropState(input.occasionId);
     return {

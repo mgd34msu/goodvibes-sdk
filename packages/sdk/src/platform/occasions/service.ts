@@ -21,7 +21,7 @@
  *
  * ## Telegram and the agent, and one thing said once
  *
- * `occasions.nudgeChannel` is a LIST, so his ruling, Telegram and the agent,
+ * `occasions.nudgeChannel` is a LIST, so the owner's ruling, Telegram and the agent,
  * is expressible rather than a choice between them. Each destination is pushed
  * independently and a failure on one is recorded rather than thrown, so a dead
  * Telegram token cannot silence the agent and a missing agent sender cannot
@@ -117,7 +117,7 @@ export type { NudgeDelivery, OccasionNudgeDeliverer } from './push.js';
  *
  * There is no read counterpart and there never will be: a calendar entry is a
  * single occurrence of an ephemeral thing, and feed content from outside the
- * owner is untrusted content. Sourcing a durable fact about his life from one
+ * owner is untrusted content. Sourcing a durable fact about their life from one
  * would be wrong twice over.
  *
  * Implementations must be idempotent for a given `(occasionId, occurrence)`.
@@ -169,7 +169,7 @@ export interface PlanListResult {
   readonly today: IsoDate;
   readonly plans: readonly Plan[];
   readonly unparsed: readonly UnparsedPlanLine[];
-  /** The plan that has him away today, if there is one. */
+  /** The plan that has the owner away today, if there is one. */
   readonly awayNow: Plan | null;
 }
 
@@ -243,7 +243,7 @@ export class OccasionsService {
    *
    * This is the answer a surface renders. It DOES carry the date and the day
    * count, and that is not a contradiction of the never-the-date rule: this is
-   * the owner asking his own system what it holds, over an authenticated verb,
+   * the owner asking their own system what it holds, over an authenticated verb,
    * which is exactly the explicit ask that unlocks a closed-tier read. The rule
    * is about what an unprompted message pushes onto a channel.
    */
@@ -274,7 +274,7 @@ export class OccasionsService {
     return { today, timezone: this.timezone(), occasions: views, unparsed, conflicts };
   }
 
-  /** Every declared plan, and whether one has him away right now. */
+  /** Every declared plan, and whether one has the owner away right now. */
   listPlans(): PlanListResult {
     const today = this.today();
     const { plans, unparsed } = readPlans(this.deps.profile);
@@ -287,7 +287,7 @@ export class OccasionsService {
     return this.deps.state.disclose();
   }
 
-  /** What he landed on before, for one occasion. */
+  /** What the owner landed on before, for one occasion. */
   async giftHistory(occasionId: string): Promise<readonly GiftRecord[]> {
     return this.deps.state.giftHistory(occasionId);
   }
@@ -296,7 +296,7 @@ export class OccasionsService {
   // Capture, proposed, confirmed once, then silent (see capture.ts)
   // -------------------------------------------------------------------------
 
-  /** What would be written, and the one line to put to him. Writes nothing. */
+  /** What would be written, and the one line to put to the owner. Writes nothing. */
   proposeOccasion(input: ProposeOccasionInput): OccasionProposal {
     return proposeOccasion(this.deps.profile, input);
   }
@@ -377,8 +377,8 @@ export class OccasionsService {
       // moment, not to the question.
       //
       // It also RETURNS THE LEAD BOUNDARY, and that is not a hole in the
-      // two-raise ceiling. The ceiling exists to stop an item he has ignored
-      // from repeating at him; "come back nearer the time" is the opposite of
+      // two-raise ceiling. The ceiling exists to stop an item the owner has ignored
+      // from repeating at them; "come back nearer the time" is the opposite of
       // ignoring it, it is an instruction, and a system that took the
       // instruction and then stayed silent because it had used up its two
       // turns would be worse than one that never offered "later" at all.
@@ -426,7 +426,7 @@ export class OccasionsService {
     return interview;
   }
 
-  /** The interview for one occasion, resumed at the question he did not answer. */
+  /** The interview for one occasion, resumed at the question the owner did not answer. */
   async interview(interviewId: string): Promise<InterviewProgress | null> {
     const found = await this.deps.state.interview(interviewId);
     return found === undefined ? null : progressOf(found);
@@ -442,16 +442,16 @@ export class OccasionsService {
     if (found === undefined) return null;
     const updated = answerStep(found, input.stepId, input.text, this.now());
     await this.deps.state.putInterview(updated);
-    // Working on the gift IS acknowledging the occasion. Being asked whether he
-    // has thought about a birthday while he is in the middle of answering
+    // Working on the gift IS acknowledging the occasion. Being asked whether the
+    // owner has thought about a birthday while they are in the middle of answering
     // questions about what to buy for it would be the feature interrupting its
     // own interview, so engagement here mutes the push by itself, no verb, no
-    // extra sentence from him, nothing to remember to do.
+    // extra sentence from them, nothing to remember to do.
     await this.autoAcknowledgeFromGiftFlow(updated.occasionId, updated.occurrence);
     return progressOf(updated);
   }
 
-  /** Mute the push for an occurrence he is actively choosing a gift for. */
+  /** Mute the push for an occurrence the owner is actively choosing a gift for. */
   private async autoAcknowledgeFromGiftFlow(
     occasionId: string,
     occurrence: IsoDate,
@@ -476,9 +476,9 @@ export class OccasionsService {
   }
 
   /**
-   * Close the interview with what he landed on, and write the gift history.
+   * Close the interview with what the owner landed on, and write the gift history.
    *
-   * Recording the OUTCOME is the point: "he said yes in 2026" cannot stop year
+   * Recording the OUTCOME is the point: "the owner said yes in 2026" cannot stop year
    * three steering where year one did, and a history that only holds answers is
    * a history of questions.
    */
@@ -505,7 +505,7 @@ export class OccasionsService {
    *
    * Housekeeping runs FIRST and unconditionally, before the enabled check and
    * before quiet hours, because a store that only reaps when the feature is
-   * allowed to speak is a store that never reaps on a machine where he turned
+   * allowed to speak is a store that never reaps on a machine where the owner turned
    * nudging off.
    */
   async sweep(): Promise<SweepOutcome> {
@@ -695,7 +695,7 @@ export class OccasionsService {
   }
 
   /**
-   * Record that he has one occurrence in hand. See acknowledge.ts.
+   * Record that the owner has one occurrence in hand. See acknowledge.ts.
    *
    * Deliberately NOT a fourth value routed through {@link answer}: a `yes` or a
    * `no` resolves the open item and removes it, and this one must leave it

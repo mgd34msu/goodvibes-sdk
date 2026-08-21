@@ -9,32 +9,34 @@
  * (owner-profile/trust.ts, layer 1). Every other authority, `web-page`,
  * `email`, `channel-message`, `document`, is refused by construction, because
  * text the owner did not write must never be able to edit what the system
- * believes about him.
+ * believes about them.
  *
- * That rule is right, and it left a real gap: the owner talking to his own
- * assistant over his own Telegram bot is not a stranger, but the message
- * arrives on a channel, and "arrived on a channel" was the whole test. So he
- * pasted a flight itinerary, nothing was recorded, and when he asked whether
- * his trip was being tracked the honest answer was no.
+ * That rule is right, and it left a real gap: the owner talking to their own
+ * assistant over their own Telegram bot is not a stranger, but the message
+ * arrives on a channel, and "arrived on a channel" was the whole test. So the
+ * owner pasted a flight itinerary, nothing was recorded, and when they asked
+ * whether their trip was being tracked the honest answer was no.
  *
  * The fix is more precision, not a softer tier, which is the standing
  * instruction in security/untrusted-content.ts. The precision available is
  * WHICH channel: the owner has already named, in settings, the channels that
- * reach him privately. A message arriving on one of those is him. A message
- * arriving anywhere else is not, and is refused exactly as before.
+ * reach them privately. A message arriving on one of those is the owner. A
+ * message arriving anywhere else is not, and is refused exactly as before.
  *
- * ## What counts as one of his channels
+ * ## What counts as one of the owner's channels
  *
  * `profile.ownerChannels` when it is set. When it is empty, the shipped
  * default, the channels fall back to `occasions.nudgeChannel`, which is where
- * the system already pushes his private occasion reminders. A channel trusted
- * to carry "your mother's birthday is coming up" outbound is a channel he has
- * claimed as his own; reading his own words back off it is the same
- * conversation in the other direction. That default is why the reported
- * Telegram case works without anyone editing a setting first.
+ * the system already pushes the owner's private occasion reminders. A channel
+ * trusted to carry "your mother's birthday is coming up" outbound is a
+ * channel the owner has claimed as their own; reading their own words back
+ * off it is the same conversation in the other direction. That default is
+ * why the reported Telegram case works without anyone editing a setting
+ * first.
  *
- * A turn with no channel at all is a local surface, he typed it himself into
- * the TUI, the agent or the web UI, and carries his authority directly.
+ * A turn with no channel at all is a local surface, the owner typed it
+ * directly into the TUI, the agent or the web UI, and it carries their
+ * authority directly.
  */
 import { parseChannelDeliveryTarget } from '../channels/delivery/types.js';
 import type { AuthoritySurface } from '../security/untrusted-content.js';
@@ -51,8 +53,8 @@ export interface CaptureChannelIdentity {
    * turn whatever else the record says.
    *
    * Without this, a channel message that arrived with its `surfaceKind` missing
-   * would be indistinguishable from the owner typing at his own keyboard, and
-   * would be handed his authority by default. That is the wrong way for this to
+   * would be indistinguishable from the owner typing at their own keyboard, and
+   * would be handed their authority by default. That is the wrong way for this to
    * fail: an absent surface on a routed turn means "I do not know where this
    * came from", and not knowing is a refusal.
    */
@@ -63,7 +65,7 @@ export interface CaptureAuthorityInput {
   readonly channel?: CaptureChannelIdentity | undefined;
   /** `profile.ownerChannels`, verbatim. Empty ⇒ fall back to the nudge channels. */
   readonly ownerChannels?: string | undefined;
-  /** `occasions.nudgeChannel`, verbatim, the channels already reaching him. */
+  /** `occasions.nudgeChannel`, verbatim, the channels already reaching the owner. */
   readonly nudgeChannels?: string | undefined;
 }
 
@@ -151,7 +153,7 @@ export function resolveCaptureAuthority(
     };
   }
 
-  // No channel: the owner typed this himself on a surface he is sitting at.
+  // No channel: the owner typed this directly on a surface they are sitting at.
   if (kind.length === 0) {
     return {
       authority: 'owner-direct',
@@ -183,7 +185,7 @@ export function resolveCaptureAuthority(
     };
   }
 
-  // Empty setting: the channels already carrying his private reminders.
+  // Empty setting: the channels already carrying the owner's private reminders.
   const inherited = parseOwnerChannelList(input.nudgeChannels);
   if (listNames(inherited, input.channel ?? {})) {
     return {

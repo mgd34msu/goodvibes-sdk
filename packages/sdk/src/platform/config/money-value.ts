@@ -3,12 +3,12 @@
  *
  * ── What a money setting is now ───────────────────────────────────────────
  *
- * An amount setting holds the number the owner would say out loud. He writes
- * `100` and the file reads `100`. He writes `19.99` and the file reads `19.99`.
+ * An amount setting holds the number the owner would say out loud. They write
+ * `100` and the file reads `100`. They write `19.99` and the file reads `19.99`.
  * There is no second representation to keep straight, no suffix on the key
- * telling him which one he is in, and nothing here rewrites what he typed into
- * a "canonical" form, a whole number stays whole, and a decimal keeps exactly
- * the decimal he entered.
+ * telling them which one they are in, and nothing here rewrites what they
+ * typed into a "canonical" form, a whole number stays whole, and a decimal
+ * keeps exactly the decimal they entered.
  *
  * These keys used to be named for, and stored in, the currency's smallest
  * division, so `100` in the file meant one dollar and buying something for a

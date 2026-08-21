@@ -2,10 +2,10 @@
  * What the gcloud CLI on this machine can tell us, and what it cannot do.
  *
  * The defect this exists to fix, in the owner's words: "it REFUSED to use the
- * google cli, completely... this could have been solved very easily." He was
- * signed in to gcloud in the same terminal, and the connector walked him
- * through creating a Cloud project anyway. An authenticated CLI sitting right
- * there is a first-class source of truth about who this person is and what
+ * google cli, completely... this could have been solved very easily." The
+ * owner was signed in to gcloud in the same terminal, and the connector
+ * walked them through creating a Cloud project anyway. An authenticated CLI
+ * sitting right there is a first-class source of truth about who this person is and what
  * their project already has, and ignoring it is how a two-minute job became
  * twenty.
  *

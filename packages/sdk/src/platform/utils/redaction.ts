@@ -22,10 +22,11 @@ const CREDENTIAL_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
  * Identity: the owner's account name, as it appears inside a home path.
  *
  * This is ANONYMISATION, not secret-hiding, and it only earns its keep on text
- * that is about to leave the machine, a session export he hands to someone, a
- * telemetry payload. Applied to a file that lives on his own disk it destroys
- * information he needs (which directory the work happened in) in order to hide
- * his username from himself, and the substitution cannot be undone.
+ * that is about to leave the machine, a session export the owner hands to
+ * someone, a telemetry payload. Applied to a file that lives on their own disk
+ * it destroys information they need (which directory the work happened in) in
+ * order to hide their username from themselves, and the substitution cannot
+ * be undone.
  *
  * Kept as a separate list rather than folded in with the credential patterns
  * because the two answer different questions and therefore have different
@@ -147,7 +148,7 @@ export function registerProfileRedactionValues(reader: ProfileRedactionValueRead
  * Recompiled only when the set of values actually changes, because this runs on
  * every at-rest write and every exported message, not once per process, the
  * profile is reloaded whenever the owner edits the file, so a
- * compile-once-at-startup cache would go stale the first time he did.
+ * compile-once-at-startup cache would go stale the first time they did.
  */
 function currentProfilePatterns(): readonly RegExp[] {
   if (profileValueReader === null) return [];
@@ -215,8 +216,8 @@ function applyPatterns(
  * Credentials AND home-path anonymisation.
  *
  * For text that is LEAVING the machine, session exports, telemetry. Both
- * halves are wanted there: the reader is not the owner, so his username is
- * not theirs to have.
+ * halves are wanted there: the reader is not the owner, so the owner's username
+ * is not theirs to have.
  */
 export function redactSensitiveData(text: string): string {
   return applyPatterns(text, REDACT_PATTERNS);
@@ -227,7 +228,7 @@ export function redactSensitiveData(text: string): string {
  *
  * For text that STAYS on the owner's machine, the at-rest journal, whose file
  * lives inside the very directory the identity patterns would rewrite. There
- * is no one to anonymise him from in his own files, and `/home/[REDACTED]/…`
+ * is no one to anonymise them from in their own files, and `/home/[REDACTED]/…`
  * makes a journal entry unusable for the debugging it exists for.
  */
 export function redactCredentialsOnly(text: string): string {

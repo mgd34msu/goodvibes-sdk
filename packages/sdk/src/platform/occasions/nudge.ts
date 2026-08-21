@@ -14,15 +14,15 @@
  * file. There is no code path from an occurrence date to a rendered nudge, so a
  * later edit cannot reintroduce one by being helpful.
  *
- * The property worth preserving beyond his stated preference: a reminder
+ * The property worth preserving beyond the owner's stated preference: a reminder
  * delivered to Telegram never puts a family member's birth date into a message
  * channel.
  *
  * ## The message does not recommend anything
  *
  * *"it doesn't need to make a recommendation, just needs to know that it would
- * be something that needs to happen."* A gift-giving occasion asks whether he
- * wants to sort something. It does not suggest what.
+ * be something that needs to happen."* A gift-giving occasion asks whether the
+ * owner wants to sort something. It does not suggest what.
  */
 import type { NudgeSubject, Occasion, OccasionNudge } from './types.js';
 
@@ -90,7 +90,7 @@ function urgencyPhrase(subjects: readonly NudgeSubject[]): string {
  * Several occasions inside one window batch into a single message rather than
  * one ping each, my decision, stated so it can be overridden. The alternative
  * is that a week holding three birthdays produces three separate interruptions
- * on the same day, which is how a useful feature becomes one he mutes.
+ * on the same day, which is how a useful feature becomes one the owner mutes.
  */
 export function composeNudgeMessage(subjects: readonly NudgeSubject[]): string {
   if (subjects.length === 0) return '';
@@ -134,7 +134,7 @@ export const AGENT_NOTICE_HEADING = 'Occasion reminder';
  * ## The defect this closes
  *
  * A push to the agent surface used to land `nudge.message` as a bare body, so
- * the sentence *"Mike's birthday is very close now."* arrived unlabelled in the
+ * the sentence *"Sarah's birthday is very close now."* arrived unlabelled in the
  * middle of a session about wake-word debugging, and the model, given a bare
  * sentence with no frame, did the only thing a bare sentence permits: it said
  * it out loud, twice, woven into troubleshooting that had nothing to do with
@@ -150,10 +150,10 @@ export const AGENT_NOTICE_HEADING = 'Occasion reminder';
  *     closed-tier rule is unchanged and is the reason this composes from
  *     {@link composeNudgeMessage} rather than writing its own sentence.
  *  3. That it is unrelated to whatever is happening in the conversation.
- *  4. How he makes it stop, one sentence from him, recorded as an
- *     acknowledgement. An affordance he can use, not a fact he must act on.
+ *  4. How the owner makes it stop, one sentence from them, recorded as an
+ *     acknowledgement. An affordance they can use, not a fact they must act on.
  *
- * It does NOT tell the model to relay it verbatim. He may be mid-something; the
+ * It does NOT tell the model to relay it verbatim. The owner may be mid-something; the
  * turn decides when a reminder is worth raising, which is what the last line
  * is for.
  */
@@ -170,9 +170,9 @@ export function composeAgentNotice(nudge: OccasionNudge): string {
     'Raise it as its own point when there is a natural moment, or hold it until the current',
     'thread finishes.',
     '',
-    'If he says he already has this one in hand, in any words, record that with the',
-    '`profile` tool, action `acknowledge_occasion`, in the same turn. He will not be sent',
-    'this reminder again for this occurrence once you do. He will be sent it at most once',
+    'If the owner says this one is already in hand, in any words, record that with the',
+    '`profile` tool, action `acknowledge_occasion`, in the same turn. The owner will not be sent',
+    'this reminder again for this occurrence once you do. The owner will be sent it at most once',
     'more regardless, on the day itself.',
   ].join('\n');
 }
@@ -183,9 +183,9 @@ export function composeAgentNotice(nudge: OccasionNudge): string {
  * The dates are NOT printed, and that is deliberate rather than an oversight of
  * a message whose subject is dates. This goes to the same channels a nudge does,
  * and the closed-tier rule is about the channel, not about the message's
- * purpose. He can answer it by saying which date is right, that is one
- * sentence, and it is also the explicit ask that unlocks reading them back to
- * him if he would rather see both first.
+ * purpose. The owner can answer it by saying which date is right, that is one
+ * sentence, and it is also the explicit ask that unlocks reading the dates
+ * back to them if they would rather see both first.
  *
  * `dates` is carried in the structured payload beside this string, so a surface
  * that IS a direct owner interface can lay both out. What never happens is a

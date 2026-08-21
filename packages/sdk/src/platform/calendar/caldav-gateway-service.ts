@@ -250,9 +250,10 @@ export function createCalDavCalendarGatewayService(
    * and never reaches a gateway response, which continues to carry display
    * names only.
    *
-   * A CalDAV collection is the owner's own server: it holds both the entries he
-   * created and the invitations delivered to him. Recording every event on it
-   * would mark the ordinary act of reading his own calendar as untrusted ingest
+   * A CalDAV collection is the owner's own server: it holds both the entries
+   * they created and the invitations delivered to them. Recording every event
+   * on it would mark the ordinary act of reading their own calendar as
+   * untrusted ingest
    * and refuse every outward action for the rest of the turn, and refuse it
    * COARSELY, because `createUntrustedContentPort` calls `evaluateOutwardEffect`
    * with `request`, `ledger` and `approval` only, no `content`, so a port

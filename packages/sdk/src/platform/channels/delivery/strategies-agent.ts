@@ -94,7 +94,7 @@ export class AgentDeliveryRegistry {
    *
    * A second registration is refused rather than silently winning, because two
    * agent conversations both claiming to be THE conversation is how a nudge
-   * lands in the one he is not reading. `replace` is the explicit takeover for a
+   * lands in the one the owner is not reading. `replace` is the explicit takeover for a
    * product that genuinely swaps its sender at runtime.
    */
   register(

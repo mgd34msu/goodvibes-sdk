@@ -47,13 +47,13 @@ export const CONVERSATIONAL_TURN_TOOLS: readonly string[] = [
 ];
 
 /**
- * What to do when he answers a reminder.
+ * What to do when the owner answers a reminder.
  *
  * The gap this closes: occasion nudges are pushed to Telegram and to the agent's
  * own conversation, so the reply to one is a SENTENCE. Nothing ever turned a
  * sentence into a record, the only thing that could write an acknowledgement
  * was a CLI/webui verb, so the owner could answer a nudge, and answer it again,
- * and from the sweep's side he had said nothing at all. It kept asking.
+ * and from the sweep's side the owner had said nothing at all. It kept asking.
  *
  * Exported so a test can pin the wording. This is behaviour, not decoration.
  */
@@ -76,10 +76,10 @@ export const OCCASION_ACKNOWLEDGEMENT_INSTRUCTION: readonly string[] = [
  *
  * The defect this closes, in the owner's words: *"it turned off the entire
  * fucking feature rather than stop telling me about my own fucking birthday
- * every fucking hour."* He complained about ONE occasion and the turn set
- * `occasions.enabled = false`, which also silenced his wife's birthday, a
- * gift-giving occasion with a shopping runway, and he would not have found out
- * until it was too late to matter.
+ * every fucking hour."* The owner complained about ONE occasion and the turn
+ * set `occasions.enabled = false`, which also silenced their spouse's
+ * birthday, a gift-giving occasion with a shopping runway, and they would not
+ * have found out until it was too late to matter.
  *
  * The general rule underneath it is worth more than the specific fix: the size
  * of a remedy is matched to the size of a complaint, and turning a whole

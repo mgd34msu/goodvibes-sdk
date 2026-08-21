@@ -11,7 +11,7 @@
  * afterwards, which is right for a terminal (a person asked for it and is
  * reading the answer) and wrong for a turn nobody is watching. A daemon-hosted
  * conversational turn used that path to reach the whole process table, the
- * owner's `/proc`, and his tmux session, where it typed.
+ * owner's `/proc`, and their tmux session, where it typed.
  *
  * ── The two postures ───────────────────────────────────────────────────────
  *

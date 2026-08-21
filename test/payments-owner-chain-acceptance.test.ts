@@ -65,11 +65,11 @@ const SENTINEL = {
   expiryMonth: '07',
   expiryYear: '2029',
   cvv: 'CVVSENTINEL7731',
-  cardholderName: 'Mike Davis',
+  cardholderName: 'Avery Chen',
 };
 
 const SHIPPING: PostalAddress = {
-  name: 'Mike Davis',
+  name: 'Avery Chen',
   line1: '1194 Rue Saint-Denis',
   line2: '',
   city: 'Montréal',

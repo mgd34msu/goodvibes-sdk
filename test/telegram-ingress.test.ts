@@ -78,7 +78,7 @@ function apiError(code: number, description: string, retryAfter?: number): Respo
 function textUpdate(updateId: number, text: string): Record<string, unknown> {
   return {
     update_id: updateId,
-    message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'mike' }, text },
+    message: { chat: { id: 4242, type: 'private' }, from: { id: 7, username: 'avery' }, text },
   };
 }
 
@@ -135,7 +135,7 @@ function makeHarness(options: {
     buildSurfaceAdapterContext: () => ({
       serviceRegistry: { resolveSecret: async () => null },
       configManager: { get: (key: string) => config[key] },
-      routeBindings: { upsertBinding: async () => ({ id: 'binding-1', surfaceId: 'goodvibes_bot', externalId: '4242', channelId: '4242', threadId: undefined, title: 'Mike' }) },
+      routeBindings: { upsertBinding: async () => ({ id: 'binding-1', surfaceId: 'goodvibes_bot', externalId: '4242', channelId: '4242', threadId: undefined, title: 'Avery' }) },
       sessionBroker: {
         submitMessage: async () => ({ mode: 'spawn', task: { prompt: 'x' }, session: { id: 'session-1' } }),
         bindAgent: async () => { /* no-op */ },

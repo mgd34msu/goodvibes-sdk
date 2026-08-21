@@ -82,7 +82,7 @@ async function bindTelegram(routeBindings: RouteBindingManager): Promise<Automat
     surfaceId: 'goodvibes_bot',
     externalId: '12345',
     channelId: '12345',
-    title: 'Mike',
+    title: 'Avery',
   });
 }
 
@@ -93,7 +93,7 @@ function telegramSubmit(binding: AutomationRouteBinding, body: string, userId = 
     surfaceId: binding.surfaceId,
     externalId: binding.externalId,
     userId,
-    displayName: 'mike',
+    displayName: 'avery',
     title: binding.title ?? 'Telegram',
     body,
   };
@@ -299,12 +299,12 @@ describe('a channel-policy-authorized owner sender is attributed as the known ow
     const policy = makePolicy();
     await policy.evaluateIngress({ surface: 'telegram', userId: '678', conversationKind: 'direct', text: 'hi' });
     const principals = new PrincipalRegistry(new PrincipalStore(':memory:'));
-    const mike = await principals.create({ name: 'Mike', kind: 'user', identities: [{ channel: 'telegram', value: '678' }] });
+    const avery = await principals.create({ name: 'Avery', kind: 'user', identities: [{ channel: 'telegram', value: '678' }] });
 
     const result = await attributeInboundSession(principals, { surfaceKind: 'telegram', userId: '678' }, policy);
 
-    expect(result.metadata[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(mike.id);
-    expect(result.metadata[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Mike');
+    expect(result.metadata[ATTRIBUTED_PRINCIPAL_ID_KEY]).toBe(avery.id);
+    expect(result.metadata[ATTRIBUTED_PRINCIPAL_NAME_KEY]).toBe('Avery');
   });
 
   test('a stranger not on the owner allowlist stays the honest unknown principal', async () => {

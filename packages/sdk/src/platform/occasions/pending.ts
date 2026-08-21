@@ -5,16 +5,17 @@
  * considerably more weight than it used to. A nudge now pushes twice: at the
  * top of its lead window and on the day itself. For the whole stretch between
  * those two moments the occasion is open, quiet, and reachable only through
- * here, "anything coming up?" is the way he finds out, and that is the design
- * rather than a gap in it. Nothing unresolved drops; it simply stops shouting.
+ * here, "anything coming up?" is the way the owner finds out, and that is the
+ * design rather than a gap in it. Nothing unresolved drops; it simply stops
+ * shouting.
  *
- * Three things are enumerated that a push would never send him:
+ * Three things are enumerated that a push would never send the owner:
  *
- *  - Occurrences he has ACKNOWLEDGED. Muted for push, still listed, and listed
- *    as acknowledged so a surface can show him that he is the reason it is
- *    quiet rather than leaving him to wonder.
- *  - Occurrences about HIM that he only has to remember. Never pushed at all;
- *    always here.
+ *  - Occurrences the owner has ACKNOWLEDGED. Muted for push, still listed, and
+ *    listed as acknowledged so a surface can show them that they are the
+ *    reason it is quiet rather than leaving them to wonder.
+ *  - Occurrences about THE OWNER that they only have to remember. Never pushed
+ *    at all; always here.
  *  - Occurrences between their two boundaries, which is most of them, most of
  *    the time.
  */
@@ -35,12 +36,12 @@ export interface PendingResult {
   /** What is coming up and has NOT been acknowledged. */
   readonly nudge: OccasionNudge | null;
   /**
-   * Open occurrences he has already acknowledged.
+   * Open occurrences the owner has already acknowledged.
    *
    * Kept out of `nudge` on purpose. The nudge is composed as something to say
-   * to him, and saying an acknowledged occasion back at him is the badgering
-   * this whole round exists to stop, but he asked what is coming up, and an
-   * honest answer includes the one he told us he has in hand.
+   * to the owner, and saying an acknowledged occasion back at them is the
+   * badgering this whole round exists to stop, but they asked what is coming
+   * up, and an honest answer includes the one they told us they have in hand.
    */
   readonly acknowledged: readonly NudgeSubject[];
   readonly conflicts: readonly { readonly occasionId: string; readonly message: string }[];

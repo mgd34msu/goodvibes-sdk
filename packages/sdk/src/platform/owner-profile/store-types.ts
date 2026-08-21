@@ -63,7 +63,7 @@ export interface ProfileProvenanceReport {
   readonly fieldId: string;
   readonly present: boolean;
   readonly provenance: ProfileProvenance | null;
-  /** True when the field is there but carries no suffix: he wrote or edited it. */
+  /** True when the field is there but carries no suffix: the owner wrote or edited it. */
   readonly handEdited: boolean;
   /** Every `<!-- was: … -->` predecessor, oldest first. */
   readonly superseded: readonly ProfileSupersededLine[];
@@ -103,9 +103,10 @@ export interface ForgetProfileInput {
    *
    * Content rather than position, because the owner is a concurrent writer
    * (docs/owner-profile.md §3, §9.2): an index is only valid against the exact
-   * file state that produced it, and between his `profile.read` and his
-   * `profile.forget` he can insert a line in his editor and shift everything
-   * below. A positional delete then removes the wrong line and reports success.
+   * file state that produced it, and between the owner's `profile.read` and
+   * their `profile.forget` they can insert a line in their editor and shift
+   * everything below. A positional delete then removes the wrong line and
+   * reports success.
    * Resolution happens inside the commit callback, against the projection the
    * edit is actually computed from, so a replay after a concurrent edit
    * re-resolves rather than reusing a stale answer.

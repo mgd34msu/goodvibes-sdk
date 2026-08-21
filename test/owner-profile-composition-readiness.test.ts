@@ -38,11 +38,11 @@ import { registerOpenTierContextBlock } from '../packages/sdk/src/platform/owner
 import { registerSignupBaseAddressFallback } from '../packages/sdk/src/platform/google/account-registry.ts';
 
 const FIXTURE = [
-  "# Mike's profile",
+  "# Avery's profile",
   '',
   '## Identity',
   '',
-  'goes by: Mike',
+  'goes by: Avery',
   '',
   '## Location',
   '',
@@ -175,7 +175,7 @@ describe('§13 — the consumer half, which no readiness promise could have fixe
     const { dispose } = compose();
     try {
       const block = openTierContextBlock();
-      expect(block).toContain('Goes by: Mike');
+      expect(block).toContain('Goes by: Avery');
       expect(block).toContain('City: Lansing, MI');
       // And never a closed-tier value, window or no window.
       expect(block).not.toContain('owner@example.com');

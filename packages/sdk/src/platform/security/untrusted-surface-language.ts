@@ -3,7 +3,7 @@
  *
  * ── Why this is not cosmetic ──────────────────────────────────────────────
  *
- * The refusal the owner met said his Gmail was controlled by "anyone able to
+ * The refusal the owner met said their Gmail was controlled by "anyone able to
  * write to those pages". A mailbox is not a page and nobody writes to it; they
  * send to it. Reading that sentence, the honest conclusion is that the boundary
  * does not know what it just looked at, and a boundary that visibly does not

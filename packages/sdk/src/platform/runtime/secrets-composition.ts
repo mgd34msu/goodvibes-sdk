@@ -15,8 +15,8 @@
  * under the owner's home, reaches the owner's real project secret store.
  *
  * A throwaway daemon therefore held the owner's real credentials. One of them
- * long-polled his real Telegram bot, collided with the production daemon on
- * the same token, and inbound messages stopped.
+ * long-polled the owner's real Telegram bot, collided with the production
+ * daemon on the same token, and inbound messages stopped.
  *
  * Passing the override through is the fix, and it belongs in one named place
  * rather than repeated at each composition root, because the failure mode is

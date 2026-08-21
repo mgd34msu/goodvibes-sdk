@@ -137,8 +137,8 @@ describe('the widened window must not start refusing ordinary work', () => {
     const decision = evaluateProfileWrite({
       authority: 'owner-direct',
       fieldId: 'identity.goesBy',
-      value: 'Mikey',
-      said: 'call me Mikey',
+      value: 'Ave',
+      said: 'call me Ave',
       ledger,
     });
     expect(decision.allowed).toBe(true);

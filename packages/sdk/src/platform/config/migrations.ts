@@ -643,15 +643,15 @@ export const RETIRED_OCCASIONS_FINAL_STRETCH_KEY = 'occasions.finalStretchDays';
  *
  * The rhythm it described is the one the owner ended: with an hourly sweep, "go
  * daily near the date" plus a due date that could never move past the occurrence
- * meant he was told about his own birthday every hour. Nothing unresolved was
- * dropped in the fix, an occasion still gets its two touches and still answers
- * when he asks what is coming up, so there is no behaviour left for this
- * setting to govern and no value worth carrying to a new name.
+ * meant they were told about their own birthday every hour. Nothing unresolved
+ * was dropped in the fix, an occasion still gets its two touches and still
+ * answers when they ask what is coming up, so there is no behaviour left for
+ * this setting to govern and no value worth carrying to a new name.
  *
  * The value is not moved anywhere. There is no setting that means what it meant,
  * and inventing one to receive it would recreate the thing that was removed. The
  * receipt says what was set, what replaced the rhythm, and that nothing about
- * his dates changed.
+ * the owner's dates changed.
  *
  * Idempotent; a file with no such key is returned untouched.
  */

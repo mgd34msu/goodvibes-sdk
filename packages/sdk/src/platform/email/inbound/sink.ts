@@ -68,7 +68,7 @@ export const DEFAULT_INBOUND_MAIL_DEDUP_TTL_MS = 60 * 60_000;
  *
  * What covers the restart is the record store, not this. `intake.ts` asks
  * `findByMessage` whether the owner was already told about a message before it
- * tells him, and that answer is on disk, so a message redelivered because the
+ * tells them, and that answer is on disk, so a message redelivered because the
  * cursor had not advanced when the daemon restarted is recorded again and
  * announced once. See §6.
  */

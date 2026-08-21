@@ -18,7 +18,7 @@
  * normally", and returning normally is indistinguishable from success
  * everywhere upstream: the cursor advanced, the sink kept its claim, the
  * supervisor went on reporting `idle`, and the health entry went on saying
- * `healthy`. The owner had mail arriving that he was never told about, and
+ * `healthy`. The owner had mail arriving that they were never told about, and
  * nothing anywhere said so.
  *
  * So a permanent refusal is not merely recorded. It is latched here, counted,
@@ -28,7 +28,7 @@
  *
  * Why the announcement is not itself a notice
  * ───────────────────────────────────────────
- * `terminal-notice.ts` reaches the owner by SENDING him one. That is not
+ * `terminal-notice.ts` reaches the owner by SENDING them one. That is not
  * available here and it is worth being explicit about why rather than leaving
  * the asymmetry to look like an oversight: the thing being reported IS the
  * notice route refusing. A "your notice route is refusing" notice would be sent
@@ -98,7 +98,7 @@ export interface InboundNoticeHealth {
    *
    * Clears the latch and re-arms the log, which is the same discipline
    * `terminal-notice.ts` applies on recovery: the SECOND time notices start
-   * failing, he is told again.
+   * failing, they are told again.
    */
   announced(at: string): void;
   /** The live condition, or null when nothing is being refused. */
@@ -151,7 +151,7 @@ export function createInboundNoticeHealth(
         action: next.fix,
         since: next.since,
         // Never phrased as a claim about the owner. This line says what the
-        // daemon did, recorded, did not announce, and nothing about what he
+        // daemon did, recorded, did not announce, and nothing about what they
         // has or has not seen, which is the wording fault §13.8 records.
         announcedToOwner: false,
       });

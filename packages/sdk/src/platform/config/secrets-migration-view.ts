@@ -8,7 +8,7 @@
  * same set, for the same reason.
  *
  * Migration is the single exception, and the owner's machine is why it has to
- * exist. His Telegram token sat in `~/.goodvibes/agent/secrets.enc` while the
+ * exist. Their Telegram token sat in `~/.goodvibes/agent/secrets.enc` while the
  * daemon booted rooted at `daemon` and enumerated only its own store. The
  * credential was one directory away, perfectly readable, and invisible to the
  * only code that could have lifted it, so nothing ever lifted it.

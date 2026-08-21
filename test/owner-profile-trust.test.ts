@@ -32,7 +32,7 @@ const DOC = [
   '',
   '## Contact',
   '',
-  'email: mgd34msu@gmail.com',
+  'email: owner@example.com',
   '',
 ].join('\n');
 

@@ -83,7 +83,7 @@ export interface PaymentReplySource {
    * Resolve with the first answer that arrives before the deadline, or null.
    *
    * Null must mean SILENCE and nothing else. An implementation that resolved
-   * null on its own internal error would convert a failure into "he did not
+   * null on its own internal error would convert a failure into "the owner did not
    * object", which on the veto path buys something.
    */
   waitForAnswer(input: {

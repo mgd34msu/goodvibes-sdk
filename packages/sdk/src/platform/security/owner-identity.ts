@@ -1,5 +1,5 @@
 /**
- * owner-identity.ts, who "the owner" is, for the one exemption that names him.
+ * owner-identity.ts, who "the owner" is, for the one exemption that names them.
  *
  * ── Why an exemption exists at all ────────────────────────────────────────
  *
@@ -9,11 +9,11 @@
  * "What came in overnight" is a summary that NECESSARILY reuses the words of
  * what came in, so it trips the check every time.
  *
- * The owner is the trust root, not a third party. Sending him a summary is not
- * an outward effect in the sense the rule guards, it is the assistant
- * reporting, which is the point of it reading his mail at all.
+ * The owner is the trust root, not a third party. Sending them a summary is
+ * not an outward effect in the sense the rule guards, it is the assistant
+ * reporting, which is the point of it reading their mail at all.
  *
- * So exactly one exemption: a send whose every recipient is the owner himself.
+ * So exactly one exemption: a send whose every recipient is the owner alone.
  *
  * ── What the exemption is NOT ─────────────────────────────────────────────
  *
@@ -24,7 +24,7 @@
  *  - Not "internal". There is no such tier; see security/untrusted-content.ts.
  *  - Not partial. A send addressed to the owner AND anyone else is NOT exempt,
  *    because that is precisely how an attacker would use it: name the owner
- *    first and slip a second recipient in beside him.
+ *    first and slip a second recipient in beside them.
  *
  * ── Where the identity comes from, and what it would take to spoof ────────
  *
@@ -117,7 +117,7 @@ export function splitRecipients(recipientField: string): readonly string[] {
 }
 
 /**
- * True when EVERY recipient is the owner himself.
+ * True when EVERY recipient is the owner alone.
  *
  * `false` for an empty recipient list and for an empty owner set: an exemption
  * that fires on "nothing configured" or "nobody addressed" is an exemption

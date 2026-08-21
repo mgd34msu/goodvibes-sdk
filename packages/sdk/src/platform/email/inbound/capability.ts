@@ -9,7 +9,7 @@
  *
  * The third one is the reason this file exists. A capability that cannot work
  * and does not say so is worse than one that is switched off, because the
- * owner believes he has a channel. So `insufficient` does not degrade
+ * owner believes they have a channel. So `insufficient` does not degrade
  * silently: the watcher does not run, and the condition is surfaced with the
  * one step that would fix it.
  *
@@ -18,7 +18,7 @@
  * The notification fires ONCE PER TRANSITION. Re-probing on an hourly timer
  * and announcing the same refused credential every hour trains the owner to
  * ignore the exact channel this capability depends on being read; by the third
- * night it is noise, and the message that mattered arrives in a stream he has
+ * night it is noise, and the message that mattered arrives in a stream they have
  * learned to swipe away. So a verdict identical to the one before it changes
  * nothing and says nothing, but the re-probe still runs, so fixing a scope or
  * a password recovers without a restart.

@@ -208,34 +208,66 @@ export async function fillCard(
     { kind: 'expiry', value: cardFieldValue(material, 'expiry', options) },
   ]);
 
-  const filled: CardFieldName[] = [];
+  // Every field's value is computed FIRST, so an incomplete stored card
+  // refuses before anything is typed rather than after some fields already
+  // are. `request.targets` and `values` stay in the same order throughout,
+  // which is what lets the driver's per-batch result be zipped back onto
+  // field names below without either side needing to name the other's
+  // vocabulary.
+  const values: string[] = [];
   for (const target of request.targets) {
     const value = cardFieldValue(material, target.field, options);
     if (value.trim().length === 0) {
       return {
         ok: false,
-        filled,
+        filled: [],
         failedField: target.field,
         reason: `The stored card has nothing for the ${target.field} field.`,
       };
     }
-    try {
-      await driver.fillSecret(target.target, value, kindOf(target.field));
-    } catch (error) {
-      // The driver's own message is discarded rather than wrapped. A fill error
-      // from a browser can quote the string it was asked to type, and an error
-      // is a read path like any other. What is reported is the field name,
-      // which this module chose.
-      void error;
-      return {
-        ok: false,
-        filled,
-        failedField: target.field,
-        reason: `The ${target.field} field could not be filled on this checkout.`,
-      };
-    }
-    filled.push(target.field);
+    values.push(value);
   }
 
+  // Field names are looked up by TARGET rather than by position. The driver
+  // resolves every ref before typing any of them, so a ref that fails to
+  // resolve partway through the batch is not necessarily the first one; a
+  // `filled`/`failedTarget` read back by array index would then name field one
+  // regardless of which field actually stopped it.
+  const fieldByTarget = new Map(request.targets.map((target) => [target.target, target.field]));
+
+  let outcome: { readonly filledTargets: readonly string[]; readonly failedTarget: string | null };
+  try {
+    outcome = await driver.fillSecrets(
+      request.targets.map((target, index) => ({ target: target.target, value: values[index]!, kind: kindOf(target.field) })),
+    );
+  } catch (error) {
+    // The driver's own message is discarded rather than wrapped. A fill error
+    // from a browser can quote the string it was asked to type, and an error
+    // is a read path like any other. `fillSecrets` is documented to report an
+    // unresolvable ref as `failedTarget` rather than throw (checkout-page.ts),
+    // so a throw reaching here is the genuinely unexpected case: something
+    // failed before the driver could even name which target it concerned, and
+    // this module has no more specific field to report than that.
+    void error;
+    return {
+      ok: false,
+      filled: [],
+      failedField: null,
+      reason: 'The card fields could not be filled on this checkout.',
+    };
+  }
+
+  const filled = outcome.filledTargets
+    .map((target) => fieldByTarget.get(target))
+    .filter((field): field is CardFieldName => field !== undefined);
+  if (outcome.failedTarget !== null) {
+    const failedField = fieldByTarget.get(outcome.failedTarget) ?? null;
+    return {
+      ok: false,
+      filled,
+      failedField,
+      reason: `The ${failedField ?? 'card'} field could not be filled on this checkout.`,
+    };
+  }
   return { ok: true, filled, failedField: null, reason: null };
 }

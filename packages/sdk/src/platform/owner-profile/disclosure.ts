@@ -3,7 +3,7 @@
  *
  * The owner chose autonomous learning over propose-first, and two conditions
  * travelled with that choice: untrusted sources stay barred (trust.ts), and it
- * TELLS HIM WHAT IT RECORDED. This file is the second one.
+ * TELLS THEM WHAT IT RECORDED. This file is the second one.
  *
  * The rules, from design §8.2 and §10:
  *
@@ -11,7 +11,7 @@
  *   - It names WHAT was recorded and never quotes the value back. "Saved your
  *     office address" is a receipt; "saved your office address as 200 Office
  *     Way" repeats a closed-tier value into a transcript for no benefit.
- *   - It is a receipt, not a confirmation prompt, he declined those.
+ *   - It is a receipt, not a confirmation prompt, that option was declined.
  *
  * The SDK produces the string so the TUI, the agent and the webui all say the
  * same thing; a second copy of this wording in a surface would drift within a
@@ -68,9 +68,9 @@ export function describeProfileWrite(changes: readonly ProfileChange[]): string 
 /**
  * The receipt for a closed-tier read.
  *
- * Using his address on an order should be visible, so every named-accessor read
- * is disclosed in the same one-line form. Field names only, the point is that
- * he can see it was used, not to print it again.
+ * Using the owner's address on an order should be visible, so every named-accessor
+ * read is disclosed in the same one-line form. Field names only, the point is that
+ * they can see it was used, not to print it again.
  */
 export function describeProfileRead(fieldIds: readonly string[]): string {
   const names = [...new Set(fieldIds.map((fieldId) => profileFieldById(fieldId)?.label ?? fieldId))];
@@ -83,8 +83,8 @@ export function describeProfileRead(fieldIds: readonly string[]): string {
  *
  * Separate from {@link describeProfileRead} because a person is reached by NAME,
  * not by field id, and the name is the only thing worth saying: "Used Sarah's
- * details from your profile." The lookup itself is only reachable when he named
- * that person in the instruction for this turn.
+ * details from your profile." The lookup itself is only reachable when the owner
+ * named that person in the instruction for this turn.
  */
 export function describeProfilePersonRead(name: string): string {
   const trimmed = name.trim();

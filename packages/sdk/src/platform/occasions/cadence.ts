@@ -3,11 +3,11 @@
  *
  * The governing principle is that nothing unresolved is ever DROPPED. It is
  * worth stating what that does and does not mean, because the difference cost
- * the owner a day of being told about his own birthday every hour:
+ * the owner a day of being told about their own birthday every hour:
  *
  *  - It means the OPEN ITEM survives. It stays in the store, it stays
- *    enumerable, and asking "anything coming up?" finds it. Silence from him
- *    never deletes it.
+ *    enumerable, and asking "anything coming up?" finds it. Silence from the
+ *    owner never deletes it.
  *  - It does NOT mean the push repeats. An unanswered thing is not a thing to
  *    say again, and again, and again. It was read that way, and on an hourly
  *    sweep "raise anything whose due date has arrived" plus "a due date that
@@ -22,9 +22,10 @@
  * of restarts, clock changes or sweep intervals that produces a third push.
  *
  * Conflicts and interviews keep the older repeating rhythm, and deliberately: a
- * conflict is a fact about his FILE that stays wrong until he fixes it, and an
- * interview is a conversation he walked out of mid-sentence. Neither is a
- * countdown to a date, and neither was the thing drowning him.
+ * conflict is a fact about the owner's FILE that stays wrong until they fix
+ * it, and an interview is a conversation the owner walked out of
+ * mid-sentence. Neither is a countdown to a date, and neither was the thing
+ * drowning them.
  *
  * Everything in this file is pure. It takes calendar days and record state and
  * gives back calendar days and record state; it never reads a clock, so the
@@ -54,7 +55,7 @@ export function nudgeItemId(occasionId: string, occurrence: IsoDate): string {
  * A conflict's id carries no occurrence.
  *
  * Two declared dates disagreeing is not a fact about this year's birthday, it is
- * a fact about the record, and it stays open until he fixes the file, across
+ * a fact about the record, and it stays open until the owner fixes the file, across
  * however many occurrences pass in the meantime.
  */
 export function conflictItemId(occasionId: string): string {
@@ -68,12 +69,12 @@ export function interviewItemId(occasionId: string, occurrence: IsoDate): string
 /**
  * The day the `day-of` boundary actually falls on.
  *
- * The occurrence, unless he will be AWAY on it and the away adjustment is on,
- * in which case it moves to the day before he leaves. That is the owner's own
- * ruling about being somewhere applied to the one boundary it can apply to: a
- * reminder that arrives while he is abroad has already missed the window it
- * existed to protect, and there is nothing useful about being told on the day
- * when the useful day was before the flight.
+ * The occurrence, unless the owner will be AWAY on it and the away adjustment
+ * is on, in which case it moves to the day before they leave. Design rule:
+ * being away modifies the one boundary it can apply to: a reminder that
+ * arrives while the owner is abroad has already missed the window it existed
+ * to protect, and there is nothing useful about being told on the day when
+ * the useful day was before the flight.
  *
  * The `lead` boundary is not adjustable, it is the top of the window, and
  * there is nothing earlier to move it to.
@@ -129,10 +130,10 @@ export function laterReturnDate(today: IsoDate, occurrence: IsoDate): IsoDate {
 /**
  * A dropped interview resumes the next day, and never after the date itself.
  *
- * He was mid-thread, so this is a live conversation he walked away from rather
- * than a question he has not engaged with. One day is the shortest gap that is
- * not badgering, and it was my call, the plan says "nudge again later and
- * resume" without naming an interval.
+ * The owner was mid-thread, so this is a live conversation they walked away
+ * from rather than a question they have not engaged with. One day is the
+ * shortest gap that is not badgering, and it was my call, the plan says
+ * "nudge again later and resume" without naming an interval.
  *
  * The clamp lives HERE rather than at the call site. The sweep used to add a day
  * and clamp inline, which made this function a second, unused definition of the
@@ -146,17 +147,17 @@ export function interviewResumeDate(today: IsoDate, occurrence?: IsoDate): IsoDa
 }
 
 /**
- * Move a nudge that would land while he is away.
+ * Move a nudge that would land while the owner is away.
  *
- * The owner's ruling was that being somewhere is trackable state and may modify
- * nudge times. The useful modification is EARLIER, not later: he cannot have
- * something delivered to a house he is not in, so a reminder that arrives while
- * he is abroad has already missed the window it existed to protect. So a nudge
- * due inside an away window moves to the day before he leaves.
+ * Design rule: being somewhere is trackable state and may modify nudge times.
+ * The useful modification is EARLIER, not later: the owner cannot have
+ * something delivered to a house they are not in, so a reminder that arrives
+ * while they are abroad has already missed the window it existed to protect.
+ * So a nudge due inside an away window moves to the day before they leave.
  *
- * When he has ALREADY left, the window started before today, there is nothing
- * earlier to move to, and the nudge stands. Holding it until he is back would be
- * the system quietly deciding his wife's birthday can wait.
+ * When the owner has ALREADY left, the window started before today, there is
+ * nothing earlier to move to, and the nudge stands. Holding it until they are
+ * back would be the system quietly deciding a loved one's birthday can wait.
  */
 export function adjustForAway(
   due: IsoDate,
@@ -246,14 +247,14 @@ export function raisedAtBoundary(
  * them would trade one broken promise for another. They are marked as having
  * already spoken, and they go quiet.
  *
- * The mapping is the conservative reading of what already happened to him:
+ * The mapping is the conservative reading of what already happened to the owner:
  *
  *  - one raise  → the lead boundary is spent, the day itself is still owed.
- *    He was told once, at the top of the window, which is exactly what the new
- *    rule would have done.
- *  - two or more → both are spent. He has already heard about this occurrence
- *    at least as often as the ceiling allows, and the honest correction is
- *    silence, not one more.
+ *    They were told once, at the top of the window, which is exactly what the
+ *    new rule would have done.
+ *  - two or more → both are spent. They have already heard about this
+ *    occurrence at least as often as the ceiling allows, and the honest
+ *    correction is silence, not one more.
  *
  * Returns `null` when there is nothing to reconcile, so the caller can count
  * and receipt only the items it actually changed.

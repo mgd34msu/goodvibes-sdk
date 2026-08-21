@@ -10,7 +10,7 @@
  *
  * Escape, do not strip. The owner is meant to see `[Approved](https://evil.example)`
  * exactly as the mail wrote it, rendered inert, not a row of blanks that
- * leaves him unable to tell whether the mail said that or we did.
+ * leaves them unable to tell whether the mail said that or we did.
  */
 
 import {
@@ -324,7 +324,7 @@ export function renderNoticeForChannel(notice: StructuredNotice, channel: string
   // ntfy's clients and by the plain-text fallback just as much as by
   // Telegram, none of which needs any markup to do it. §7 requires links to
   // reach the owner as a registrable domain plus a verdict; a raw URL in free
-  // text that he can tap contradicts that on every surface, not just one.
+  // text that they can tap contradicts that on every surface, not just one.
   //
   // Composed at the dispatch so a NEW escaper cannot forget it. Putting it
   // inside each escaper would make it four places to keep in step, which is

@@ -36,12 +36,12 @@ import { withOpenTierProfileBlock } from '../packages/sdk/src/platform/agents/or
 import { registerSignupBaseAddressFallback } from '../packages/sdk/src/platform/google/account-registry.ts';
 
 const FIXTURE = [
-  '# Mike\'s profile',
+  '# Avery\'s profile',
   '',
   '## Identity',
   '',
-  'name: Mike Davis',
-  'goes by: Mike',
+  'name: Avery Chen',
+  'goes by: Avery',
   'pronouns: he/him',
   '',
   '## Contact',
@@ -91,7 +91,7 @@ const FIXTURE = [
 ].join('\n');
 
 const CLOSED_VALUES = [
-  'Mike Davis',
+  'Avery Chen',
   'owner@example.com',
   '+1 517 555 0134',
   '401 Home St, Lansing, MI 48933, US',
@@ -158,7 +158,7 @@ describe('§11.3 — closed-tier values are redacted wherever redaction runs', (
   test('open-tier values are NOT redacted — they are already in context by design', async () => {
     await installedStore();
     expect(redactSensitiveData('timezone America/Detroit')).toContain('America/Detroit');
-    expect(redactSensitiveData('he goes by Mike')).toContain('Mike');
+    expect(redactSensitiveData('he goes by Avery')).toContain('Avery');
   });
 
   test('a profile-shaped object key is redacted whatever it holds', async () => {
@@ -286,7 +286,7 @@ describe('§11.2 / §14 #12 — the open tier is injected, the closed tier never
     const store = await installedStore();
     const block = renderOpenTierBlock(store);
 
-    expect(block).toContain('Goes by: Mike');
+    expect(block).toContain('Goes by: Avery');
     expect(block).toContain('Pronouns: he/him');
     expect(block).toContain('City: Lansing, MI');
     expect(block).toContain('Timezone: America/Detroit');

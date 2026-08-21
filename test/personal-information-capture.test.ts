@@ -1,8 +1,8 @@
 /**
  * personal-information-capture.test.ts
  *
- * The owner told the assistant over Telegram that he was flying Dallas to
- * Picayune on the Thursday to see his parents, and pasted the whole itinerary.
+ * The owner told the assistant over Telegram that they were flying Dallas to
+ * Picayune on the Thursday to see their parents, and pasted the whole itinerary.
  * Nothing was written anywhere. These tests pin each of the four reasons it
  * could not have been, so none of them can come back quietly.
  */
@@ -20,12 +20,12 @@ import { proposePlan, confirmPlan } from '../packages/sdk/src/platform/occasions
 import { normalizePlanDetail, parsePlanLine } from '../packages/sdk/src/platform/occasions/grammar.js';
 import { createProfileTool } from '../packages/sdk/src/platform/tools/profile/index.js';
 
-/** The itinerary as he actually pasted it. */
+/** The itinerary as the owner actually pasted it. */
 const ITINERARY_DETAILS = [
   'confirmation B79YKY',
   'flight 995 DAL 07:55 to MSY 09:20 on Thu Aug 06',
   'flight 3175 MSY 15:40 to DAL 17:10 on Sun Aug 09',
-  'travellers Michael Davis and Natalie Sons',
+  'travellers Avery Chen and Natalie Sons',
   'to see my parents',
 ];
 

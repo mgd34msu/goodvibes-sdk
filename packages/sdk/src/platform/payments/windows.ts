@@ -19,7 +19,7 @@
  * They answer different questions. The approval asks *may this happen at all*,
  * and an unanswered question about money above the limit must resolve to no. The
  * veto announces *this is about to happen*, and an unanswered announcement about
- * money inside a limit he already set must resolve to yes, otherwise the limit
+ * money inside a limit the owner already set must resolve to yes, otherwise the limit
  * does nothing and every purchase is an approval.
  *
  * Collapsing them means picking one silence rule for both. Either every
@@ -32,7 +32,7 @@
  *
  * ══ Presence is not attention ═════════════════════════════════════════════
  *
- * The window runs its full configured duration regardless of where he is. No
+ * The window runs its full configured duration regardless of where the owner is. No
  * presence, focus, idle or activity signal shortens, skips or extends it, the
  * deadline is a function of the start instant and the configured duration and
  * nothing else. Owner's reasoning:
@@ -154,7 +154,7 @@ export type VetoEvent =
  * The approval gate. SILENCE DENIES.
  *
  * Note `undeliverable` → `denied-undeliverable`. An above-budget purchase whose
- * notification could not reach him does not happen: there is nobody to put it in
+ * notification could not reach the owner does not happen: there is nobody to put it in
  * front of, and the whole point of the above-budget branch is that a human
  * decides.
  */
@@ -185,7 +185,7 @@ export function advanceApproval(state: ApprovalState, event: ApprovalEvent): App
  *
  * Note `undeliverable` → `proceeding-undelivered`. Owner ruling: under or at
  * budget, items get through. This is the exact mirror of the approval's
- * undeliverable edge, and that pair of edges is his undeliverable ruling in its
+ * undeliverable edge, and that pair of edges is the owner's undeliverable ruling in its
  * entirety.
  */
 export function advanceVeto(state: VetoState, event: VetoEvent): VetoState {
@@ -218,15 +218,15 @@ export function advanceVeto(state: VetoState, event: VetoEvent): VetoState {
  *
  * ── Keyed on DELIVERY, not on uptime ──────────────────────────────────────
  *
- * Silence means "he had the chance to object and did not." Whether OUR process
- * was alive has nothing to do with whether he had that chance. An earlier draft
- * keyed this on uptime and re-opened every interrupted window; that is wrong,
- * because it re-pings him about something he deliberately ignored, and a system
- * that repeats itself is one he stops reading.
+ * Silence means "the owner had the chance to object and did not." Whether OUR
+ * process was alive has nothing to do with whether they had that chance. An
+ * earlier draft keyed this on uptime and re-opened every interrupted window;
+ * that is wrong, because it re-pings them about something they deliberately
+ * ignored, and a system that repeats itself is one they stop reading.
  *
  *  - delivered, then expired  → the expiry STANDS. Backfill each live channel
  *    for the downtime span and honour any objection found there before charging.
- *    Do not re-notify: he already saw it.
+ *    Do not re-notify: the owner already saw it.
  *  - never delivered          → the undeliverable rule governs, unchanged.
  *  - cannot be backfilled     → re-open on THAT CHANNEL ONLY, because only that
  *    channel cannot distinguish silence from an objection we dropped.
@@ -250,7 +250,7 @@ export function recoverInterruptedWindow(input: {
       outcome: 'undeliverable-rule',
       backfillChannels: [],
       reopenChannels: [],
-      reason: 'The notification never reached him, so the undeliverable rule decides this, not the clock.',
+      reason: 'The notification never reached the owner, so the undeliverable rule decides this, not the clock.',
     };
   }
   if (!input.deadlinePassed) {
@@ -278,6 +278,6 @@ export function recoverInterruptedWindow(input: {
     outcome: 'expiry-stands',
     backfillChannels: delivered.map((entry) => entry.channel),
     reopenChannels: [],
-    reason: 'He was notified and the window elapsed. Backfill first, then settle, but do not ask him twice.',
+    reason: 'The owner was notified and the window elapsed. Backfill first, then settle, but do not ask twice.',
   };
 }

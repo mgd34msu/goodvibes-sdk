@@ -105,7 +105,7 @@ describe('§4.4 — everything is preserved and nothing is an error', () => {
     '',
     '## Identity',
     '',
-    'name: Mike Davis',
+    'name: Avery Chen',
     'nickname: not a field',
     '',
   ].join('\n');
@@ -137,7 +137,7 @@ describe('§4.4 — everything is preserved and nothing is an error', () => {
 
   test('an unknown key under a known heading is prose, not an error', () => {
     const projection = parse(ODD);
-    expect(projection.fields.get('identity.name')?.value).toBe('Mike Davis');
+    expect(projection.fields.get('identity.name')?.value).toBe('Avery Chen');
     const identity = projection.sections.find((section) => section.heading === 'Identity');
     expect(identity?.prose.map((line) => line.text)).toEqual(['nickname: not a field']);
   });
@@ -257,7 +257,7 @@ describe('§14.13 — an unreadable file degrades loudly, never to an empty prof
     // The realistic accident: an editor mis-save. A lenient decoder would turn
     // this into plausible-looking mojibake and the profile would load
     // "successfully" full of garbage.
-    const utf16 = new Uint8Array([0xff, 0xfe, ...[...'## Identity\n\nname: Mike\n'].flatMap((ch) => [ch.charCodeAt(0), 0x00])]);
+    const utf16 = new Uint8Array([0xff, 0xfe, ...[...'## Identity\n\nname: Avery\n'].flatMap((ch) => [ch.charCodeAt(0), 0x00])]);
     const store = await loadBytes(utf16);
 
     const state = store.status();
@@ -286,7 +286,7 @@ describe('§14.13 — an unreadable file degrades loudly, never to an empty prof
     // And a write refuses with that same reason rather than creating a fresh file.
     const result = await store.set({
       authority: 'owner-direct', surface: 'tui', said: 'x',
-      fieldId: 'identity.name', value: 'Mike',
+      fieldId: 'identity.name', value: 'Avery',
     });
     expect(result.ok).toBe(false);
     expect(result.reason).toContain('could not be read');
@@ -330,7 +330,7 @@ describe('§14.13 — an unreadable file degrades loudly, never to an empty prof
   test('a disabled profile is a stated state, not an empty one', async () => {
     const dir = tempDir();
     const path = join(dir, 'owner-profile.md');
-    writeFileSync(path, ['## Identity', '', 'name: Mike Davis', ''].join('\n'), 'utf-8');
+    writeFileSync(path, ['## Identity', '', 'name: Avery Chen', ''].join('\n'), 'utf-8');
     const store = new OwnerProfileStore({ path, enabled: false });
     await store.load();
 

@@ -6,12 +6,12 @@
  *
  *   0  GATES              enabled, card, address, owner-direct, leader
  *   0b TAINT              the purchase must be owner-initiated; the item and any
- *                        stated limit must be his. The MERCHANT may be one he
- *                        found while browsing, see below.
+ *                        stated limit must be the owner's. The MERCHANT may be one
+ *                        the owner found while browsing, see below.
  *   0c LINK               the checkout url must resolve to a registrable domain
  *   0d RECOURSE           who takes the card, and what silence will mean
  *   1  EXTRACT            page strings → integers WE parsed
- *   2  CART               what is in it is what he asked for, nothing added
+ *   2  CART               what is in it is what the owner asked for, nothing added
  *   3  RECURRING          a subscription is refused outright
  *   4  DECIDE             budget, ceiling, overage pool, shipping ladder
  *   5  RESERVE            money is held before any window opens
@@ -23,16 +23,16 @@
  *
  * Extraction comes before the cart check because the check compares parsed
  * lines; the cart check comes before the decision because a cart containing
- * something he did not ask for should never reach a budget question; and the
+ * something the owner did not ask for should never reach a budget question; and the
  * reservation comes before the window because a window is minutes wide and two
  * purchases decided in the same minute would otherwise each fit what remains
  * and together exceed it.
  *
- * ══ The merchant he named, and the merchant class ════════════════════════
+ * ══ The merchant the owner named, and the merchant class ═════════════════
  *
  * The taint gate stands as written: the merchant, the checkout url, the item
- * and any stated limit come from the owner or the purchase is refused. He names
- * the merchant, or there is no purchase. Buying "the cheapest X you can find
+ * and any stated limit come from the owner or the purchase is refused. The owner
+ * names the merchant, or there is no purchase. Buying "the cheapest X you can find
  * online" is therefore refused, and taint-gate.ts documents that as a designed
  * consequence rather than a gap.
  *
@@ -43,8 +43,8 @@
  *
  * ══ ONE notification, and the merchant decides what silence means ═════════
  *
- * He collapsed "show it to me" and "alert me if it is not a major retailer" into
- * a single step. There is one message, sent once, when the item is chosen and
+ * Design rule: "show it to me" and "alert me if it is not a major retailer" collapse
+ * into a single step. There is one message, sent once, when the item is chosen and
  * the final total is known, before payment. Both modes carry the same content;
  * the merchant only changes the RULE:
  *
@@ -88,7 +88,7 @@ import {
   type ChannelDelivery,
   type VetoState,
 } from './windows.js';
-import { BudgetLedger, type BudgetLimits } from './budget.js';
+import { admitApprovedItemOverdraw, BudgetLedger, type BudgetLimits } from './budget.js';
 import { fillCard, type CardFieldTarget } from './fill-card.js';
 import {
   checkAddress,
@@ -99,7 +99,7 @@ import {
 } from './address.js';
 import type { CardMaterialStore } from './card-material.js';
 import type { CardMaterialRedactor } from './card-redaction.js';
-import type { CheckoutChallenge, CheckoutPageDriver } from './checkout-page.js';
+import { CheckoutSubmitRefused, type CheckoutChallenge, type CheckoutPageDriver } from './checkout-page.js';
 import type { PurchaseRecord } from './purchase-record.js';
 import type { CheckoutRegistry } from './checkout-registry.js';
 import type { UntrustedContentLedger } from '../security/untrusted-content.js';
@@ -107,14 +107,13 @@ import { dayKey } from './day.js';
 import type {
   CommandAuthorityChannel,
   CurrencyCode,
-  MinorUnits,
   OwnerSuppliedText,
   RefusalCode,
   ShippingStepDown,
   ShippingTier,
 } from './types.js';
 
-/** What the owner asked for, in his own words, from an owner-direct turn. */
+/** What the owner asked for, in their own words, from an owner-direct turn. */
 export interface PurchaseRequest {
   readonly purchaseId: string;
   readonly merchantDomain: string;
@@ -125,14 +124,14 @@ export interface PurchaseRequest {
   /**
    * Whether the owner NAMED this storefront or we found it while browsing.
    *
-   * `false` puts the merchant and the checkout url through the taint check, he
-   * named them, so they have to be his. `true` skips that check by design and
-   * hands the domain to the judge instead, which is the safeguard he asked for:
-   * "alert me prior to purchasing if it is not a major retailer".
+   * `false` puts the merchant and the checkout url through the taint check, the owner
+   * named them, so they have to be the owner's. `true` skips that check by design and
+   * hands the domain to the judge instead, which is the safeguard for a request phrased
+   * like: "alert me prior to purchasing if it is not a major retailer".
    */
   readonly merchantDiscovered?: boolean | undefined;
   readonly preferredTier: ShippingTier;
-  /** A limit he stated in the request, if any. Taint-checked, never page text. */
+  /** A limit the owner stated in the request, if any. Taint-checked, never page text. */
   readonly requestedMax?: string | undefined;
 
   /**
@@ -148,9 +147,9 @@ export interface PurchaseRequest {
   /**
    * The specific listing, on marketplaces where recourse is per-seller.
    *
-   * eBay is the ruled case: Buy It Now only, and a seller-side selling record.
+   * eBay's ruled behavior: Buy It Now only, and a seller-side selling record.
    * An auction is refused structurally, there is no final total before it ends,
-   * so the "show him the total, then wait" flow cannot run at all.
+   * so the "show the total, then wait" flow cannot run at all.
    */
   readonly listing?: MarketplaceListing | undefined;
 }
@@ -191,7 +190,7 @@ export interface CheckoutFlowDeps {
    * The stored shipping and billing addresses.
    *
    * The address on the order comes from here, never from the model's memory of
-   * what he said and never from anything on the page.
+   * what the owner said and never from anything on the page.
    */
   readonly addresses: AddressStore;
   readonly redactor: CardMaterialRedactor;
@@ -208,7 +207,7 @@ export interface CheckoutFlowDeps {
   readonly vetoMinutes: number;
   readonly now: () => number;
   /**
-   * His additions and removals to the recognised-retailer list, and the
+   * The owner's additions and removals to the recognised-retailer list, and the
    * per-listing bar for marketplaces that carry one.
    *
    * Curated data, read at decision time. The judgement about what counts as
@@ -253,7 +252,7 @@ export interface CheckoutControls {
  * facts: a listing format we will not buy, and an approval window that closed
  * for a reason that had nothing to do with the budget. Folding them into the
  * budget codes would make `payments.purchases.list` report "over budget" for a
- * purchase that was well within it and simply happened at a merchant he had not
+ * purchase that was well within it and simply happened at a merchant the owner had not
  * vouched for.
  */
 export type ExecutionRefusalCode =
@@ -297,7 +296,7 @@ export async function runCheckout(
   const gateRefusal = checkPaymentGates(deps.gates);
   if (gateRefusal !== null) return refused(gateRefusal.code, gateRefusal.reason);
 
-  // ── 0b. Taint: what he named must come from him ─────────────────────────
+  // ── 0b. Taint: what is named must trace back to the owner ───────────────
   //
   // The merchant, the checkout url, the item and any stated limit are checked
   // against everything untrusted this turn has read. The merchant's own quoted
@@ -349,7 +348,7 @@ export async function runCheckout(
   );
   if (merchantVerdict.refused === true) {
     // Terminal, and deliberately not an approval: there is no final total to
-    // show him, so the flow he authorised has nothing to run on.
+    // show the owner, so the flow the owner authorised has nothing to run on.
     return refused('listing-not-purchasable', merchantVerdict.reason);
   }
 
@@ -358,7 +357,7 @@ export async function runCheckout(
   if (!extraction.ok) return refused('extraction-failed', extraction.reason);
   const checkout: ExtractedCheckout = extraction.checkout;
 
-  // ── 2. The cart holds what he asked for and nothing else ────────────────
+  // ── 2. The cart holds what the owner asked for and nothing else ─────────
   const cartCheck = assertCartMatchesRequest(checkout.lines, request.requestedLines);
   if (!cartCheck.ok) return refused('cart-mismatch', cartCheck.reason ?? 'Refused: the cart does not match the request.');
 
@@ -393,16 +392,16 @@ export async function runCheckout(
   //
   // An over-budget purchase does not fit the item pool, that is what makes it
   // over budget, so reserving it against the ordinary limits returns null and
-  // the purchase dies before he is ever asked. That would make the approval
+  // the purchase dies before the owner is ever asked. That would make the approval
   // window unreachable for the one case it exists for, so the reservation for a
   // needs-approval purchase is taken against a limit raised by exactly this
-  // purchase's shortfall, and released in full if he says no or says nothing.
+  // purchase's shortfall, and released in full if the owner says no or says nothing.
   //
   // Narrow on purpose: only the ITEM limit is raised, and only for a purchase
-  // the decision layer has already classified as needing his yes. The overage
-  // and tolerance allowances are untouched, so `overage-pool-exhausted` still
-  // refuses exactly as before rather than being quietly funded by an approval
-  // he gave for the item price.
+  // the decision layer has already classified as needing the owner's yes. The
+  // overage and tolerance allowances are untouched, so `overage-pool-exhausted`
+  // still refuses exactly as before rather than being quietly funded by an
+  // approval the owner gave for the item price.
   const reservationLimits = decision.kind === 'needs-approval'
     ? admitApprovedItemOverdraw(deps.limits, draw.itemMinorUnits, pools.item.remaining)
     : deps.limits;
@@ -442,18 +441,30 @@ export async function runCheckout(
     totalMinorUnits: draw.totalMinorUnits,
   });
 
-  /** Give the money back and close the record. Used by every non-buying exit. */
+  /**
+   * Give the money back and close the record. Used by every non-buying exit.
+   *
+   * Deliberately does NOT disarm the redactor. Most callers of `release` run
+   * before `fillCard` ever arms anything, so there would be nothing to disarm;
+   * the callers that run AFTER it (a fill that failed partway, a pre-click
+   * submit refusal) are exactly the ones where card digits may still be sitting
+   * in the page's DOM with no click having dispatched them anywhere. Disarming
+   * there would stop redacting a page that still holds the card. Material
+   * lifetime is bound to the PAGE instead: the browser engine disarms on
+   * navigate, on a navigating click, and on close (browser-engine.ts), so a
+   * guard that is never told the digits are gone stays armed, which is the
+   * safe default, until the page itself proves they are.
+   */
   const release = async (): Promise<void> => {
     ledger.release(reservation.id);
     await registry.close(request.purchaseId);
-    deps.redactor.disarm(identity.sessionId, identity.pageId);
   };
 
-  // ── The address goes on the order, and it is the one he stored ──────────
+  // ── The address goes on the order, and it is the one the owner stored ───
   //
   // Checked BEFORE the window: a purchase that cannot be delivered must not
-  // reach the point of asking him about it, and a half-filled address form is
-  // worse than a refusal because it can succeed.
+  // reach the point of asking the owner about it, and a half-filled address form
+  // is worse than a refusal because it can succeed.
   const addressFields = controls.addressFields ?? [];
   const addressKinds = [...new Set(addressFields.map((entry) => entry.kind))];
   for (const kind of addressKinds) {
@@ -490,10 +501,10 @@ export async function runCheckout(
 
   // ── 6. ONE notification, and the window its mode implies ────────────────
   //
-  // Sent once, here, because this is the first moment both halves of what he
-  // asked to see are known: WHAT was chosen, and what it will actually cost.
-  // Earlier would be a message without a total; a second message later would be
-  // the two-step he explicitly collapsed into one.
+  // Sent once, here, because this is the first moment both halves of what the
+  // owner asked to see are known: WHAT was chosen, and what it will actually
+  // cost. Earlier would be a message without a total; a second message later
+  // would restore the two-step flow this design deliberately collapsed into one.
   await registry.advance(request.purchaseId, 'awaiting-window', {}, now());
 
   const aboveBudget = decision.kind === 'needs-approval';
@@ -506,7 +517,7 @@ export async function runCheckout(
 
   if (windowKind === 'approval') {
     // Silence DENIES. Undeliverable DENIES. Either because it is over budget,
-    // or because nobody can tell him what recourse he would have here.
+    // or because nobody can tell the owner what recourse they would have here.
     const message = renderPurchaseNotice({
       facts,
       mode: 'approval',
@@ -536,7 +547,7 @@ export async function runCheckout(
     if (state !== 'approved') {
       await release();
       // The code says WHY the window was an approval, because the ledger row is
-      // the only place he can later reconstruct that. "Over budget" on a
+      // the only place the owner can later reconstruct that. "Over budget" on a
       // purchase that was comfortably within it, and merely at a shop nobody
       // could vouch for, is a lie the audit trail would keep repeating.
       const code: RefusalCode | ExecutionRefusalCode = aboveBudget
@@ -598,8 +609,8 @@ export async function runCheckout(
     windowOutcome = state;
     if (state === 'cancelled') {
       await release();
-      // An objection stops AND reports. A silently abandoned cart leaves him
-      // wondering whether something is sitting half-driven somewhere.
+      // An objection stops AND reports. A silently abandoned cart leaves the
+      // owner wondering whether something is sitting half-driven somewhere.
       return {
         kind: 'cancelled',
         reason: 'You said stop, so nothing was charged.',
@@ -673,13 +684,28 @@ export async function runCheckout(
     readonly url: string;
     readonly orderId: string | null;
     readonly challenge?: CheckoutChallenge | null | undefined;
+    readonly verified: boolean;
   };
   try {
     submission = await driver.submitOrder(controls.placeOrderTarget);
-  } catch {
-    // The submit threw. It may still have reached the merchant, so the record
-    // STAYS in submit-pending and the budget STAYS reserved. Never retried.
-    deps.redactor.disarm(identity.sessionId, identity.pageId);
+  } catch (error) {
+    if (error instanceof CheckoutSubmitRefused) {
+      // Refused BEFORE the click reached the merchant (a typed refusal, the
+      // untrusted-effect guard, a stale ref): nothing was sent, so `release`
+      // gives the reservation back and closes the journal rather than
+      // holding it against a submit that never happened.
+      await release();
+      return refused(
+        'submit-not-attempted',
+        `Refused: the order could not be submitted (${error.message}). Nothing was sent to the merchant.`,
+      );
+    }
+    // Any other throw is genuine ambiguity: the click may have reached the
+    // merchant. STAYS submit-pending, budget STAYS reserved, never retried.
+    // Not disarmed: whether the click reached the merchant is exactly what is
+    // unknown here, so whether the page still shows the card is unknown too.
+    // The engine disarms on its own once the page actually navigates or closes
+    // (browser-engine.ts); nothing here claims to know that already happened.
     return refused(
       'challenge-abandoned',
       'The order was submitted but I did not see a response, so I cannot tell whether it went through. '
@@ -687,13 +713,12 @@ export async function runCheckout(
     );
   }
 
-  // The card is off the page's usefulness to us either way now.
-  deps.redactor.disarm(identity.sessionId, identity.pageId);
-
   if (submission.challenge !== undefined && submission.challenge !== null) {
-    // 3-D Secure, a CAPTCHA, a one-time code. Pause cleanly and hand him the
-    // exact step. The reservation is held, because the order may complete once
-    // he answers, and the record stays in submit-pending for the same reason.
+    // 3-D Secure, a CAPTCHA, a one-time code. Pause cleanly and hand the owner the
+    // exact step. The reservation is held, because the order may complete once the
+    // owner answers, and the record stays in submit-pending for the same reason. NOT
+    // disarmed: the owner is about to be sent back to this very page to complete it,
+    // so the redactor must still be watching whatever it shows.
     return {
       kind: 'challenge',
       challenge: submission.challenge,
@@ -702,6 +727,10 @@ export async function runCheckout(
         + `Nothing further happens until you do it: ${submission.challenge.step}`,
     };
   }
+
+  // No challenge: the submit ran its course. The card's usefulness to us on
+  // this page ends here, whatever the merchant's response actually was.
+  deps.redactor.disarm(identity.sessionId, identity.pageId);
 
   // ── 10. Record it ───────────────────────────────────────────────────────
   await registry.advance(request.purchaseId, 'submitted', {}, now());
@@ -731,7 +760,11 @@ export async function runCheckout(
     windowKind,
     windowOutcome,
     answeredBy,
-    outcome: 'purchased',
+    // Committed below either way (conservative against a double-spend), but
+    // only a composition that read the merchant's own response earns
+    // 'purchased'; otherwise the record says so rather than claiming a
+    // purchase indistinguishable from a verified one.
+    outcome: submission.verified ? 'purchased' : 'submitted-unverified',
     refusalReason: null,
     merchantOrderId: submission.orderId,
     refundedAt: null,
@@ -742,11 +775,11 @@ export async function runCheckout(
   await deps.purchases.record(record);
   await registry.close(request.purchaseId);
 
-  // ── 11. Tell him it happened ────────────────────────────────────────────
+  // ── 11. Tell the owner it happened ──────────────────────────────────────
   //
-  // At charge time, not when the store gets round to emailing. He would
-  // otherwise get a veto notice, ten minutes of silence, a charge, and nothing
-  //, with the store's receipt later landing as mail he has to place himself.
+  // At charge time, not when the store gets round to emailing. The owner would
+  // otherwise get a veto notice, ten minutes of silence, a charge, and nothing,
+  // with the store's receipt later landing as mail the owner has to place themself.
   //
   // Sent through the same router as the notice. A delivery failure here is
   // reported and does NOT unwind the purchase: the card has been charged, and
@@ -755,7 +788,7 @@ export async function runCheckout(
   try {
     await notifier.deliver({
       kind: 'veto',
-      message: renderPurchaseReport({ facts, merchantOrderId: submission.orderId }),
+      message: renderPurchaseReport({ facts, merchantOrderId: submission.orderId, verified: submission.verified }),
     });
   } catch {
     // Nothing to unwind and nothing to retry. The purchase is recorded, and
@@ -763,29 +796,6 @@ export async function runCheckout(
   }
 
   return { kind: 'purchased', record, orderId: submission.orderId };
-}
-
-/**
- * The item limit, raised by exactly this purchase's shortfall.
- *
- * Used only for a purchase the decision layer classified as needing the owner's
- * yes, and only so the money can be HELD while he is asked. It grants nothing:
- * a denial or a silence releases the reservation in full, and the pool it was
- * held against is otherwise unchanged, so the next purchase is measured against
- * the same daily limit it always was.
- *
- * Returns the limits object unchanged when nothing needs raising, so the common
- * path, over the per-purchase CEILING but still inside the daily pool, takes
- * a perfectly ordinary reservation.
- */
-function admitApprovedItemOverdraw(
-  limits: BudgetLimits,
-  itemMinorUnits: MinorUnits,
-  itemRemaining: MinorUnits,
-): BudgetLimits {
-  const shortfall = itemMinorUnits - itemRemaining;
-  if (shortfall <= 0) return limits;
-  return { ...limits, dailyItemMinorUnits: limits.dailyItemMinorUnits + shortfall };
 }
 
 /** The merchant identity for a url, computed by us. Null when it has none. */

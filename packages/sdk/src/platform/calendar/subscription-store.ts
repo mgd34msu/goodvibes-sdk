@@ -10,7 +10,7 @@
  * feed URL via its secret manager and the rest of the metadata in its config);
  * `snapshot()` / `restore()` move that metadata across restarts, events re-fetched.
  *
- * UX shape (per Mike's least-friction rule): `add({ url })` is paste-URL-and-done,
+ * UX shape (per the owner's least-friction rule): `add({ url })` is paste-URL-and-done,
  * it validates by fetching, auto-derives the subscription name from the feed's
  * X-WR-CALNAME (falling back to the URL host) when the caller gives no name, and
  * applies a sensible default refresh interval with no mandatory knobs. Every status

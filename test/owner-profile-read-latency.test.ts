@@ -41,14 +41,14 @@ afterEach(() => {
  */
 function buildRealisticProfile(): string {
   const lines: string[] = [
-    '# Mike\'s profile',
+    '# Avery\'s profile',
     '',
     '<!-- GoodVibes keeps this file. Edit it by hand whenever you like. -->',
     '',
     '## Identity',
     '',
-    'name: Mike Davis',
-    'goes by: Mike',
+    'name: Avery Chen',
+    'goes by: Avery',
     'pronouns: he/him',
     '',
     '## Contact',

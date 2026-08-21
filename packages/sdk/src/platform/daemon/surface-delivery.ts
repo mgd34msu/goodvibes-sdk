@@ -770,7 +770,7 @@ export class DaemonSurfaceDeliveryHelper {
     // ntfy used to take a branch of its own here that never looked at the
     // agent's output at all: a completed run was announced as
     // `Agent agent-1a2b3c completed.`, an id and a past-tense verb, on the
-    // owner's primary surface, in place of the answer he asked for. Every
+    // owner's primary surface, in place of the answer they asked for. Every
     // other surface was already handed `record.fullOutput`. There is no reason
     // for the answer to depend on which app is displaying it, so the branch is
     // gone and ntfy renders what everyone else renders.

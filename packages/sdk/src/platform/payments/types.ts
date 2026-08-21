@@ -9,7 +9,7 @@
  *    or veto message is typed as one, so assigning text that came off a merchant
  *    page is a COMPILE error rather than a review finding. See docs/payments.md
  *    §9.3 for what goes wrong without it: an attacker who can write page text
- *    can otherwise write what the owner reads on his phone.
+ *    can otherwise write what the owner reads on their phone.
  *
  *  - `CommandAuthorityChannel` has no `'email'` member. Approval and veto answers
  *    arrive over the TUI, the agent terminal, or a channel like Telegram, and
@@ -79,8 +79,8 @@ const COMMAND_AUTHORITY_CHANNELS: readonly string[] = ['tui', 'agent-terminal', 
  * Parse a configured channel name, rejecting anything unknown.
  *
  * Rejects rather than ignores: a config that names a channel we do not
- * understand is a config the owner believes will reach him, and silently
- * dropping it produces an undeliverable prompt he was never told about.
+ * understand is a config the owner believes will reach them, and silently
+ * dropping it produces an undeliverable prompt they were never told about.
  */
 export function parseCommandAuthorityChannel(raw: string): CommandAuthorityChannel | null {
   const value = raw.trim().toLowerCase();
@@ -151,4 +151,11 @@ export type RefusalCode =
   | 'zero-budget'
   | 'total-changed'
   | 'challenge-abandoned'
+  /**
+   * The submit refused before any click reached the merchant: a typed
+   * refusal, an untrusted-effect refusal, a stale ref, a driver guard error.
+   * Distinct from `challenge-abandoned`, which stays for the genuinely
+   * ambiguous case, a submit that MAY have reached the merchant.
+   */
+  | 'submit-not-attempted'
   | 'cart-mismatch';

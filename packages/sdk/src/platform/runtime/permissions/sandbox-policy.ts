@@ -17,7 +17,7 @@
  * time, and stays in force identically inside the sandbox, a boundary never
  * buys a catastrophic command an allow. Doctrine: "permission settings are the
  * sole authority for command-class risk; the exec-layer unconditional block is a
- * frozen catastrophic-only list … that must NEVER expand without Mike's explicit
+ * frozen catastrophic-only list … that must NEVER expand without the owner's explicit
  * approval." This layer only ever RELAXES an ask to an allow for boundary-safe
  * commands; it can never turn a deny into an allow.
  */

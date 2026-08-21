@@ -14,7 +14,7 @@
  *
  * For a turn that nobody is sitting in front of it is exactly wrong. A
  * conversational turn hosted by the daemon reached a full host process table,
- * the owner's `/proc`, and his terminal multiplexer, because the boundary was
+ * the owner's `/proc`, and their terminal multiplexer, because the boundary was
  * not applied and the fallback was silent. Nothing in the composition said the
  * boundary was REQUIRED, so nothing refused when it was absent.
  *

@@ -93,7 +93,7 @@ export function observedRuntime(
  * to know.
  *
  * `unresolved` counts: the operator switched the surface on and put a
- * credential reference in its config, so he believes it works, and it cannot
+ * credential reference in its config, so they believe it works, and it cannot
  * send a byte. `unconfigured` does not, nobody believes an unconfigured
  * surface is working. `unknown` does not either: it is not evidence of failure,
  * and treating it as one would make every webhook-delivered surface cry wolf on

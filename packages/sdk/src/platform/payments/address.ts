@@ -1,5 +1,5 @@
 /**
- * address.ts, the address on the order is the one he stored.
+ * address.ts, the address on the order is the one the owner stored.
  *
  * ══ The defect this closes ════════════════════════════════════════════════
  *
@@ -34,7 +34,7 @@
  * not assumed. Absent an explicit instruction from the owner that they are the
  * same, they are two addresses, and a checkout asking for both requires both to
  * be stored. Defaulting billing to shipping would be this module inventing a
- * preference he never expressed, and on a card payment a wrong billing address
+ * preference they never expressed, and on a card payment a wrong billing address
  * is a declined transaction at best and a fraud flag at worst.
  */
 import { sanitizeOwnerNoticeField } from '../security/notice-text.js';
@@ -97,8 +97,8 @@ export function addressFieldValue(address: PostalAddress, field: AddressFieldNam
 /**
  * Whether a stored address is complete enough to put on an order.
  *
- * Names every missing field rather than the first, so one refusal tells him
- * everything he has to go and set.
+ * Names every missing field rather than the first, so one refusal tells the
+ * owner everything they have to go and set.
  */
 export function checkAddress(address: PostalAddress | null, kind: AddressKind): AddressCheck {
   if (address === null) {
@@ -180,14 +180,14 @@ export async function fillAddresses(
 }
 
 /**
- * The destination, for the message he is being asked to veto.
+ * The destination, for the message the owner is being asked to veto.
  *
- * He should be able to see WHERE it is going in the notice, not only what it
- * costs, a correct total to the wrong address is still a wrong order, and this
- * is the last point at which he can catch it.
+ * The owner should be able to see WHERE it is going in the notice, not only
+ * what it costs, a correct total to the wrong address is still a wrong
+ * order, and this is the last point at which they can catch it.
  *
  * Rendered from the STORED value and sanitized like every other notice field.
- * The address is his own text, so it goes through the owner-field sanitize
+ * The address is the owner's own text, so it goes through the owner-field sanitize
  * which keeps underscores, but it is still neutralised rather than trusted:
  * a guarantee that holds only while every call site threads provenance
  * correctly is not a guarantee.

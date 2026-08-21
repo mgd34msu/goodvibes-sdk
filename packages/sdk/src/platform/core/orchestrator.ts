@@ -625,7 +625,7 @@ export class Orchestrator {
     // previous untrusted-content window, a channel- or schedule-started one
     // deliberately does not. Here rather than in handleUserInput so a message
     // queued mid-thinking gets its own turn, and ahead of the config and
-    // provider lookups because a turn the owner started is his whether or not
+    // provider lookups because a turn the owner started is the owner's whether or not
     // this runtime can resolve a model for it, a boundary that depends on
     // unrelated resolution succeeding silently stops moving when it fails.
     // Reasoning and classification: security/turn-boundary.ts.

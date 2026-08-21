@@ -16,7 +16,7 @@
  *
  * An unbound instance, a local surface, a turn nobody resolved a channel for,
  * keeps the default the composition root gave it, which is the owner's own
- * authority for a surface he is sitting at.
+ * authority for a surface the owner is sitting at.
  *
  * ## Refusals are spoken, never swallowed
  *
@@ -24,7 +24,7 @@
  * a plain sentence naming what stopped it. That is deliberate: a tool error
  * tends to be summarised away as "something went wrong", and the standing rule
  * for this subsystem is that nothing unresolved drops silently. The agent is
- * told, in the same structure as a success, exactly what to repeat to him.
+ * told, in the same structure as a success, exactly what to repeat to the owner.
  */
 import type { Tool, ToolResult } from '../../types/tools.js';
 import { PROFILE_TOOL_SCHEMA, type ProfileToolInput } from './schema.js';
@@ -139,7 +139,7 @@ function createInstance(
       }
 
       // Acknowledging sits ABOVE the capture gate on purpose. It writes to the
-      // machine's own occasions state and never to his profile document, and
+      // machine's own occasions state and never to the owner's profile document, and
       // "stop reminding me about this" is the one instruction that must never
       // be refused because profile capture happens to be off. A person telling
       // the thing to be quiet and being told it cannot comply is the whole
@@ -164,8 +164,8 @@ function createInstance(
           what: 'acknowledgement',
           id: occasionId,
           savedTo: 'your occasions state',
-          // Both halves, every time. Saying only "muted" is how he ends up
-          // unsure whether the rest of his dates went quiet too, which is
+          // Both halves, every time. Saying only "muted" is how the owner ends up
+          // unsure whether the rest of their dates went quiet too, which is
           // exactly what happened the day the whole feature got switched off
           // to stop one reminder.
           tellHim: outcome.reply,

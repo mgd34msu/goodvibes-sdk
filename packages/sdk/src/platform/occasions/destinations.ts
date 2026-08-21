@@ -37,7 +37,7 @@ export function nudgeDestinationSurface(destination: string): string {
  * owner's ruling generalises beyond this feature: the TUI is a work interface,
  * and life-admin belongs on Telegram and the agent. A list that names the TUI
  * alongside real destinations loses the TUI entry and keeps the rest, the
- * exclusion is structural, not a reason to drop everything he asked for.
+ * exclusion is structural, not a reason to drop everything the owner asked for.
  */
 export function resolveNudgeDestinations(channel: string): readonly string[] {
   const destinations: string[] = [];
@@ -65,7 +65,7 @@ export interface NudgeDeliveryText {
  * self-evidently a new message and `nudge.message` needs no frame. The agent's
  * own conversation is not a message channel: text placed into it is
  * indistinguishable from the conversation unless it says what it is. Delivered
- * bare, "Mike's birthday is very close now." arrived mid-way through a session
+ * bare, "Your mother's birthday is very close now." arrived mid-way through a session
  * about wake-word debugging and was simply spoken aloud, twice, as though it
  * were a thought the assistant had just had.
  *

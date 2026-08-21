@@ -7,8 +7,8 @@
  * The delivery entry point, `DaemonSurfaceDeliveryHelper.deliverSurfaceNotice`
  * (platform/daemon/surface-delivery.ts), takes a PLAIN STRING and hands it to
  * whichever channel the owner's notice route binding points at, Telegram,
- * Slack, Discord, ntfy, a webhook, whatever he has configured. Whatever
- * reaches that string is what he reads on his phone. Inbound mail is written
+ * Slack, Discord, ntfy, a webhook, whatever the owner has configured. Whatever
+ * reaches that string is what the owner reads on their phone. Inbound mail is written
  * entirely by strangers, so the SDK, not the adapter, not the daemon, not a
  * convention documented somewhere, owns turning one arriving message into
  * that string.
@@ -347,7 +347,7 @@ function safeRegistrableDomain(rawHost: string): ValidatedRegistrableDomain {
  *
  * Redaction is not only the record store's job. That store keeps the digits
  * off disk; this keeps them out of what the owner actually reads, and the two
- * are separate exposures, a notice goes to whichever surface his route
+ * are separate exposures, a notice goes to whichever surface the owner's route
  * binding names, and on most of them it lands in a message history the daemon
  * does not control and cannot later redact.
  *
@@ -546,7 +546,7 @@ export function renderInboundMailStoppedNotice(
         label: 'Mailbox',
         value: [
           // Owner-written config, not attacker text, but escaped anyway,
-          // because an account id that renders as markup on his phone is a
+          // because an account id that renders as markup on the owner's phone is a
           // display bug either way and escaping costs nothing.
           untrusted(stripControlAndLineBreaks(input.account)),
           literal(' / '),

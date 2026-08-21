@@ -45,8 +45,8 @@ export interface PurchaseRecord {
    * Whether the merchant carried established recourse, and on what grounds.
    *
    * Recorded because it is the fact that decided what SILENCE meant on this
-   * purchase, and a ledger that showed the outcome without it would leave him
-   * unable to reconstruct why one purchase asked and another did not.
+   * purchase, and a ledger that showed the outcome without it would leave the
+   * owner unable to reconstruct why one purchase asked and another did not.
    */
   readonly merchantRecognised: boolean;
   readonly merchantQualifier: string | null;

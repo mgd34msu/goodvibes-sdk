@@ -3,8 +3,8 @@
  *
  * The presentation contract, the four genuinely-duplicated presentation
  * tables named by the renderer/input parity audit (see CHANGELOG 1.0.0; goodvibes-tui vs
- * goodvibes-agent), hoisted into one pure, dependency-free module per Mike's
- * SDK-boundary rule (machinery needed by 2+ surfaces => SDK):
+ * goodvibes-agent), hoisted into one pure, dependency-free module per the
+ * SDK-boundary design rule (machinery needed by 2+ surfaces => SDK):
  *
  *  - GLYPHS / STATE_GLYPHS , the glyph registry + semantic status-glyph alias.
  *  - TONE_TOKENS / resolveTones / DIFF_TONES / SPINNER_FRAMES, the chrome

@@ -171,7 +171,7 @@ function createStatusHandler(service: OwnerProfileGatewayService): GatewayMethod
  * carries `additionalProperties: false` and the client validates against it, so
  * the extras were not tolerated and ignored, they were a hard failure, and no
  * profile field could be read from a strict client at all. It cost the owner
- * his shipping address on a live agent turn.
+ * their shipping address on a live agent turn.
  *
  * `section` is genuinely useful and is now DECLARED, in
  * `method-catalog-owner-profile.ts`. `lineIndex` is not, and does not go on the
@@ -203,10 +203,10 @@ function createGetHandler(
     const fieldId = requireFieldId(readInvocationParams(invocation).fieldId);
     const field = service.get(fieldId);
     const def = profileFieldById(fieldId);
-    // A closed-tier read is disclosed unless he turned the receipts off; an
-    // open-tier one never is, because the open tier is already in context and a
-    // receipt for it would be noise. The VALUE is returned either way, the
-    // setting governs whether he is told, not whether the consumer is served.
+    // A closed-tier read is disclosed unless the owner turned the receipts off;
+    // an open-tier one never is, because the open tier is already in context and
+    // a receipt for it would be noise. The VALUE is returned either way, the
+    // setting governs whether they are told, not whether the consumer is served.
     const disclose = field !== undefined
       && def?.tier === 'closed'
       && policy.discloseClosedTierReads();

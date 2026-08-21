@@ -309,7 +309,7 @@ export const PAYMENTS_CHECKOUT_BEGIN_INPUT_SCHEMA = objectSchema(
     pageId: STRING_SCHEMA,
     merchantDomain: STRING_SCHEMA,
     checkoutUrl: STRING_SCHEMA,
-    /** The owner's own words for what he asked to buy. Never a page title. */
+    /** The owner's own words for what they asked to buy. Never a page title. */
     item: STRING_SCHEMA,
     cardId: STRING_SCHEMA,
     requestedLines: { ...arraySchema(REQUESTED_LINE_SCHEMA), minItems: 1 },

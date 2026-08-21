@@ -219,7 +219,7 @@ export function verdictFor(phase: CheckoutPhase): InterruptedVerdict {
  *
  * Rendered from the record's own typed fields, never from anything the merchant
  * page said, for the same reason every other payment notice is
- * (message.ts), a page that can write this text writes what he reads.
+ * (message.ts), a page that can write this text writes what the owner reads.
  */
 export function describeInterruption(
   record: InFlightCheckout,

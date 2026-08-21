@@ -7,8 +7,8 @@
  *    Ebay, but only if the seller has a solid reputation from selling, not just
  *    buying"
  *
- * Two conditions, both required, or the listing is not recognised and he is
- * asked. This is a **per-listing** determination rather than a per-domain one:
+ * Two conditions, both required, or the listing is not recognised and the
+ * owner is asked. This is a **per-listing** determination rather than a per-domain one:
  * ebay.com is necessary and not sufficient, and that shape will fit other
  * marketplaces.
  *
@@ -17,10 +17,10 @@
  * An auction is refused OUTRIGHT, regardless of seller reputation or price, and
  * this is structural rather than a preference.
  *
- * The flow the owner designed is: know the final total → notify him → run the
+ * The flow the owner designed is: know the final total → notify them → run the
  * window → pay. An auction has no final total until it ends, so that flow cannot
  * execute at all. Bidding is also an open-ended commitment rather than a
- * purchase, the thing he authorised was buying an item at a price, not entering
+ * purchase, the thing they authorised was buying an item at a price, not entering
  * a contest whose cost is decided later by strangers.
  *
  * The same reasoning covers Best Offer and anything else where the price is not
@@ -49,7 +49,7 @@
  *    reputation figure promotes a domain that was not already recognised.
  *  - **Unreadable means not-major.** Missing, ambiguous, an unexpected page
  *    shape, or a number that cannot be attributed specifically to selling, all
- *    fail closed and he is asked.
+ *    fail closed and the owner is asked.
  *  - A figure from a seller-controlled region of the page is not accepted.
  *    Sellers control listing descriptions; they do not control eBay's feedback
  *    widget. **If the region cannot be told apart, the figure is unreadable.**
@@ -150,7 +150,7 @@ export type ListingVerdictOutcome =
 
 export interface MarketplaceListingVerdict {
   readonly outcome: ListingVerdictOutcome;
-  /** Stated for the notification, so he sees the reasoning and not just a verdict. */
+  /** Stated for the notification, so the owner sees the reasoning and not just a verdict. */
   readonly reason: string;
 }
 

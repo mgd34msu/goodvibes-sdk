@@ -58,7 +58,7 @@ export function isNotFound(error: unknown): boolean {
  * `missing` is separate from `error` because the two mean opposite things to
  * the owner: a file that is not there yet is an honest empty profile, "you
  * have not told me anything", while a file that cannot be read is a failure
- * he needs to be told about, with the reason.
+ * they need to be told about, with the reason.
  */
 export type ProfileReadResult =
   | { readonly kind: 'text'; readonly text: string; readonly seen: FileStat }
@@ -75,7 +75,7 @@ export type ProfileReadResult =
  *
  * The cause is stated here rather than passed through from the runtime: Node
  * says "The encoded data was not valid for encoding utf-8" and Bun says
- * "invalid byte sequence", and he should read the same sentence either way,
+ * "invalid byte sequence", and the owner should read the same sentence either way,
  * one that names the encoding, since "saved as UTF-16" is the accident behind
  * almost every occurrence.
  */

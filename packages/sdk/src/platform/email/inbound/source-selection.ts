@@ -19,11 +19,11 @@
  *
  * **Forcing `gmail` where Gmail cannot work is REFUSED, not quietly served
  * over IMAP.** That is already the shipped contract: the description on
- * `surfaces.email.inbound.source` says so in the words the owner reads in his
- * settings, "Forcing 'gmail' without adopted Google credentials, or on an
- * account that is not a Gmail account, is refused rather than quietly served
- * over IMAP." Silently substituting the other source would leave him with a
- * setting that says one thing while the daemon does another, which is the same
+ * `surfaces.email.inbound.source` says so in the words the owner reads in
+ * their settings, "Forcing 'gmail' without adopted Google credentials, or on
+ * an account that is not a Gmail account, is refused rather than quietly
+ * served over IMAP." Silently substituting the other source would leave them
+ * with a setting that says one thing while the daemon does another, which is the same
  * silent-degradation failure §3.4b refuses everywhere else. So the refusal is
  * a result shape the caller must handle, carrying the step that fixes it.
  */
@@ -52,7 +52,7 @@ export interface InboundSourceSelectionInput {
    * `options.gmail !== undefined`, the presence of an injected Gmail source
    * BUILDER, and no composition passed one, so it was permanently false and
    * an owner who had connected Google was told "no Google credentials have
-   * been adopted", which sent him to look for a credential that was already
+   * been adopted", which sent them to look for a credential that was already
    * there.
    *
    * It is now the answer from a composition that actually opened the
@@ -78,7 +78,7 @@ export interface InboundSourceSelectionInput {
    *
    * Separate from `googleAdopted` because the two genuinely come apart: an
    * owner can have adopted Google for calendar and drive while the mailbox the
-   * inbound watcher is pointed at lives on his own domain, and Gmail's history
+   * inbound watcher is pointed at lives on their own domain, and Gmail's history
    * API cannot read that mailbox.
    */
   readonly mailAccountIsGmail: boolean;

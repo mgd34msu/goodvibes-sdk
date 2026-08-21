@@ -221,7 +221,7 @@ describe('defect 4 — a duplicated field line must not survive its own deletion
     '## Contact',
     '',
     'phone: +1 517 555 0134',
-    'email: mgd34msu@gmail.com',
+    'email: owner@example.com',
     'phone: +1 517 555 9999',
     '',
   ].join('\n');
@@ -238,7 +238,7 @@ describe('defect 4 — a duplicated field line must not survive its own deletion
     expect(after).not.toContain('555 9999');
     expect(store.get('contact.phone')).toBeUndefined();
     // The neighbour is untouched.
-    expect(after).toContain('email: mgd34msu@gmail.com');
+    expect(after).toContain('email: owner@example.com');
   });
 
   test('the duplicate is tracked without being silently preferred or dropped', () => {
@@ -251,7 +251,7 @@ describe('defect 4 — a duplicated field line must not survive its own deletion
 
 describe('defect 5 — a duplicate heading must not put history outside every section', () => {
   const DOC = [
-    "# Mike's profile",
+    "# Avery's profile",
     '',
     '## Commerce',
     '',
@@ -271,7 +271,7 @@ describe('defect 5 — a duplicate heading must not put history outside every se
     const comment = lines.findIndex((line) => line.startsWith('<!-- was:'));
     expect(comment).toBeGreaterThan(0);
     // Never above his title, which is outside every section.
-    expect(lines[0]).toBe("# Mike's profile");
+    expect(lines[0]).toBe("# Avery's profile");
 
     // The real test of "inside a section": it is re-tracked as history on reload.
     const report = store.provenance('commerce.shippingAddress');
@@ -296,7 +296,7 @@ describe('defect 5 — a duplicate heading must not put history outside every se
 });
 
 describe('defect 6 — a suffix-shaped quote must not forge provenance', () => {
-  const DOC = ['## Contact', '', 'email: mgd34msu@gmail.com', ''].join('\n');
+  const DOC = ['## Contact', '', 'email: owner@example.com', ''].join('\n');
 
   test('a quote ending in a well-formed suffix does not become the provenance', async () => {
     const { store, path } = await storeFor(DOC);
@@ -364,7 +364,7 @@ describe('defect 6 — a suffix-shaped quote must not forge provenance', () => {
 
 describe('defect 7 — a positional delete must be an in-range integer and not a heading', () => {
   const DOC = [
-    "# Mike's profile",
+    "# Avery's profile",
     '',
     '## Commerce',
     '',

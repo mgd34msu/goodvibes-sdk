@@ -6,9 +6,9 @@
  *
  *  - **Remote messaging channels** (`daemon/surface-card-gate.ts`), a message
  *    carrying card shapes is REFUSED at `authorizeSurfaceIngress`, before
- *    anything downstream can store, log or transcribe it. The owner's ruling
- *    this enforces is his own: card details are entered at a local terminal or
- *    in the webui, never over a remote messaging channel.
+ *    anything downstream can store, log or transcribe it. Design rule this
+ *    enforces: card details are entered at a local terminal or in the webui,
+ *    never over a remote messaging channel.
  *  - **Inbound mail** (`email/inbound/record-store.ts`), mail is REDACTED, not
  *    refused. Order confirmations legitimately carry long digit runs and they
  *    are the consumer the inbound-mail capability exists to serve; refusing
@@ -216,7 +216,7 @@ function panCandidates(groups: readonly DigitGroup[]): PanCandidate[] {
  * number is reported once as its longest matching span rather than several
  * times as nested fragments. A card number buried inside a LONGER unbroken
  * digit string is deliberately not caught: the threat model here is the owner
- * pasting his own card, not an adversary evading the check.
+ * pasting their own card, not an adversary evading the check.
  */
 function findPans(text: string): CardShapeFinding[] {
   const accepted: CardShapeFinding[] = [];
@@ -301,7 +301,7 @@ export function cardShapeKinds(findings: readonly CardShapeFinding[]): readonly 
 }
 
 /**
- * The reply the owner gets on the channel he sent from.
+ * The reply the owner gets on the channel they sent from.
  *
  * Composed entirely from `describeCardShapes`, which reads only `kind`, so it
  * cannot quote the digits even if someone later edits this string carelessly.

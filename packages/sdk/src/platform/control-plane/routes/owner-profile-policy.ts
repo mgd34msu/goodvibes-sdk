@@ -4,16 +4,17 @@
  * `schema-domain-owner-profile.ts` declares eight settings and tells the owner
  * in each description what turning it off will do. Three of them,
  * `autonomousWrites`, `discloseWrites`, `discloseClosedTierReads`, had nothing
- * reading them, so the runtime kept recording and kept announcing after he
- * turned them off. A setting whose description promises a behaviour change and
- * delivers none is worse than no setting: he believes he has stopped autonomous
- * recording and he has not. This module is where those three become real.
+ * reading them, so the runtime kept recording and kept announcing after the
+ * owner turned them off. A setting whose description promises a behaviour
+ * change and delivers none is worse than no setting: the owner believes they
+ * have stopped autonomous recording and they have not. This module is where
+ * those three become real.
  *
  * ## Why a wrapper rather than checks inside the store
  *
  * `OwnerProfileStore` is mechanism: it parses, edits lines, and runs the §7
  * trust gate, which is about who may write at all. These three are POLICY,
- * what the owner has asked the platform to do on his behalf, and policy is
+ * what the owner has asked the platform to do on their behalf, and policy is
  * resolved from live config, which the store deliberately has no access to.
  * The wrapper implements the same `OwnerProfileGatewayService` the handlers
  * consume, so it sits on the one path a surface can reach and cannot be
@@ -40,7 +41,7 @@ import type { OwnerProfileGatewayService } from './owner-profile.js';
  */
 export const SETTINGS_EDIT_UTTERANCE = '(edited in settings)';
 
-/** True when this write is the owner editing his own file through a UI. */
+/** True when this write is the owner editing their own file through a UI. */
 export function isSettingsEdit(said: string): boolean {
   return said.trim() === SETTINGS_EDIT_UTTERANCE;
 }
@@ -70,7 +71,7 @@ function refused(reason: string): ProfileWriteResult {
   return { ok: false, reason, changes: [], disclosure: '' };
 }
 
-/** Strip the receipt when he has asked not to be told. Never changes the outcome. */
+/** Strip the receipt when the owner has asked not to be told. Never changes the outcome. */
 function applyDisclosurePolicy(result: ProfileWriteResult, disclose: boolean): ProfileWriteResult {
   return disclose || result.disclosure === '' ? result : { ...result, disclosure: '' };
 }
@@ -83,7 +84,7 @@ function applyDisclosurePolicy(result: ProfileWriteResult, disclose: boolean): P
  *  - `autonomousWrites: false` is the "I will curate this myself" mode, and
  *    curating requires being able to delete. Blocking removals when the owner
  *    switched off autonomous LEARNING would turn a preference about what the
- *    machine writes into a lock on his own file.
+ *    machine writes into a lock on their own file.
  *  - `discloseWrites` governs the receipt for a fact the runtime recorded on its
  *    own. §8.3 makes the confirmation of a deletion a separate promise,
  *    "forget that" answers with what went, so it is not silenced here.

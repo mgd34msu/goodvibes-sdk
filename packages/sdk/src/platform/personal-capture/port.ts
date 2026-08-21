@@ -17,14 +17,15 @@ import type { OwnerProfileStore } from '../owner-profile/index.js';
 
 /**
  * The occasions operations capture needs: record a dated thing, record a plan,
- * read both back, and record that he has one in hand.
+ * read both back, and record that the owner has one in hand.
  *
  * `acknowledge` belongs here rather than only on the control plane because of
  * where the answer to a reminder actually arrives. The nudge is pushed to
- * Telegram and to the agent's conversation; the reply to it is a sentence he
- * types there. Before this, the only thing that could write an acknowledgement
- * was a CLI/webui verb, so every reply he ever gave to a nudge landed in a
- * conversation and nowhere else, and the sweep, seeing no answer, kept going.
+ * Telegram and to the agent's conversation; the reply to it is a sentence the
+ * owner types there. Before this, the only thing that could write an
+ * acknowledgement was a CLI/webui verb, so every reply they ever gave to a
+ * nudge landed in a conversation and nowhere else, and the sweep, seeing no
+ * answer, kept going.
  */
 export type CaptureOccasionsAccess = Pick<
   OccasionsService,

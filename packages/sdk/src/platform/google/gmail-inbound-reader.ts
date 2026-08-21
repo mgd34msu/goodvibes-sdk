@@ -8,7 +8,7 @@
  * that has an adopted Google credential." No such composition existed. So
  * `deps.gmail` was `undefined` on every machine, the factory answered `null`
  * for `kind: 'gmail'`, and an owner who had connected Google and never set up
- * IMAP had no inbound mail at all, while `source-selection.ts` told him "no
+ * IMAP had no inbound mail at all, while `source-selection.ts` told them "no
  * Google credentials have been adopted on this machine".
  *
  * What a caller gets back is deliberately NOT a source
@@ -74,7 +74,7 @@ export interface GmailInboundReader {
    * answered on the machine this exists to serve. The existing test reads the
    * configured IMAP host and concludes from its domain, which answers `false`
    * for an owner who has Google connected and has never configured IMAP at all,
-   * sending automatic selection to the source he does not have.
+   * sending automatic selection to the source they do not have.
    */
   readonly address: string;
   /** The `collectHistoryDelta` I/O slice, over the same client that refreshed the token. */

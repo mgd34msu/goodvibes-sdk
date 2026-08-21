@@ -171,7 +171,7 @@ function projectStore(layout: SecretStoreLayout, root: string, medium: SecretSto
  * the TUI's silo at read time, and a daemon that did would be reading a value
  * nobody asked it to.
  *
- * Migration is the exception, and the owner's machine is why. His Telegram
+ * Migration is the exception, and the owner's machine is why. Their Telegram
  * token sat in `~/.goodvibes/agent/secrets.enc` while the daemon booted rooted
  * at `daemon` and enumerated only its own store. The credential was one
  * directory away, readable, and invisible to the only code that could have

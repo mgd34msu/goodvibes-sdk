@@ -3,7 +3,7 @@
  *
  * Everything here works on CALENDAR DATES (`YYYY-MM-DD`) rather than instants.
  * A birthday is not a moment in time: it is a day, and the only instant-shaped
- * question this feature asks, "what day is it where he is, and is it a
+ * question this feature asks, "what day is it where the owner is, and is it a
  * reasonable hour to say something", is answered once, at the edge, by
  * {@link todayInZone} and {@link minutesOfDayInZone}. Everything downstream is
  * string dates and whole days, so nothing in the sweep can be off by an hour

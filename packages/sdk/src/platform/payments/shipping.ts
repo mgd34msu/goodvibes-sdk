@@ -16,18 +16,18 @@
  * The preferred tier draws on the overage pool. When the pool cannot cover it,
  * step down ONE tier at a time until it fits, stopping at the cheapest. Not
  * straight to the cheapest: with tiers at $15 / $9 / $5 and $9 available, the
- * one-rung rule gets him $9 delivery and the shortcut gets him $5 delivery he
- * did not ask for.
+ * one-rung rule gets the owner $9 delivery and the shortcut gets them $5
+ * delivery they did not ask for.
  *
  * A step-down needs no approval, it is within budget by construction, but it
- * IS recorded and surfaced, because he must not learn about it from a late
- * package.
+ * IS recorded and surfaced, because the owner must not learn about it from a
+ * late package.
  *
  * ── Filler items ──────────────────────────────────────────────────────────
  *
  * There is no free-shipping-threshold logic in this file, and there must never
- * be. Adding an item he did not ask for in order to save on delivery is buying
- * something on his behalf to make a number look better. `assertCartMatchesRequest`
+ * be. Adding an item the owner did not ask for in order to save on delivery is
+ * buying something on their behalf to make a number look better. `assertCartMatchesRequest`
  * in cart.ts is the enforcement; its absence here is the design.
  */
 import type { MinorUnits, ShippingOption, ShippingStepDown, ShippingTier } from './types.js';

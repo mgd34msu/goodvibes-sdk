@@ -41,21 +41,21 @@ describe('principals.* gateway verbs', () => {
 
     const created = await catalog.invoke('principals.create', {
       ...ctx,
-      body: { name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }] },
+      body: { name: 'Avery', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }] },
     }) as { principal: PrincipalShape };
-    expect(created.principal.name).toBe('Mike');
+    expect(created.principal.name).toBe('Avery');
     expect(created.principal.id.startsWith('principal:')).toBe(true);
     const id = created.principal.id;
 
     const listed = await catalog.invoke('principals.list', { ...ctx, body: {} }) as { principals: PrincipalShape[] };
-    expect(listed.principals.map((p) => p.name)).toEqual(['Mike']);
+    expect(listed.principals.map((p) => p.name)).toEqual(['Avery']);
 
     const got = await catalog.invoke('principals.get', { ...ctx, body: { principalId: id } }) as { principal: PrincipalShape };
     expect(got.principal.identities).toEqual([{ channel: 'slack', value: 'U123' }]);
 
     const updated = await catalog.invoke('principals.update', {
       ...ctx,
-      body: { principalId: id, identities: [{ channel: 'slack', value: 'U123' }, { channel: 'email', value: 'mike@example.com' }] },
+      body: { principalId: id, identities: [{ channel: 'slack', value: 'U123' }, { channel: 'email', value: 'avery@example.com' }] },
     }) as { principal: PrincipalShape };
     expect(updated.principal.identities).toHaveLength(2);
 
@@ -67,16 +67,16 @@ describe('principals.* gateway verbs', () => {
     const catalog = makeCatalog();
     await catalog.invoke('principals.create', {
       ...ctx,
-      body: { name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }, { channel: 'email', value: 'mike@example.com' }] },
+      body: { name: 'Avery', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }, { channel: 'email', value: 'avery@example.com' }] },
     });
 
     // Same principal reached from a different channel, continuity survives the hop.
     const viaEmail = await catalog.invoke('principals.resolve', {
       ...ctx,
-      body: { channel: 'email', value: 'mike@example.com' },
+      body: { channel: 'email', value: 'avery@example.com' },
     }) as { principal: PrincipalShape; known: boolean };
     expect(viaEmail.known).toBe(true);
-    expect(viaEmail.principal.name).toBe('Mike');
+    expect(viaEmail.principal.name).toBe('Avery');
 
     // Channel is matched case-insensitively (normalizeIdentity lowercases channel).
     const viaSlackUpper = await catalog.invoke('principals.resolve', {
@@ -99,7 +99,7 @@ describe('principals.* gateway verbs', () => {
     const catalog = makeCatalog();
     await catalog.invoke('principals.create', {
       ...ctx,
-      body: { name: 'Mike', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }] },
+      body: { name: 'Avery', kind: 'user', identities: [{ channel: 'slack', value: 'U123' }] },
     });
     const error = await catalog.invoke('principals.create', {
       ...ctx,

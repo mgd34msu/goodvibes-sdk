@@ -334,12 +334,12 @@ export class OwnerProfileStore {
    * boundary, because the model's judgement is the thing an injection attacks.
    *
    * Everything closed is still reachable, by a route that is either named or
-   * addressed to him:
-   *   - `People`             → {@link person}, by a name he used this turn
+   * addressed to the owner:
+   *   - `People`             → {@link person}, by a name they used this turn
    *   - a mechanical field   → {@link get}, by field id
    *   - the whole document   → {@link read}, the owner-disclosure verb
    *
-   * A heading he invented is treated as closed. His own sections can hold
+   * A heading they invented is treated as closed. Their own sections can hold
    * anything, and defaulting them open would mean a section named by nobody in
    * particular became bulk-readable from a composition path.
    */
@@ -372,8 +372,8 @@ export class OwnerProfileStore {
    * rule is that the only lookup available takes a name.
    *
    * An empty or whitespace-only name returns nothing rather than everything,
-   * "he named nobody" must not degrade into "give me all of them", which is the
-   * shape this kind of guard usually fails in.
+   * "the owner named nobody" must not degrade into "give me all of them",
+   * which is the shape this kind of guard usually fails in.
    *
    * Two things make that hold rather than nearly hold:
    *
@@ -449,9 +449,9 @@ export class OwnerProfileStore {
    * `People` section.
    *
    * The asymmetry with {@link section} is deliberate, not an inconsistency.
-   * `read()` answers "what do you know about me?": it is him asking about
-   * himself, and an answer that silently omitted the section holding facts
-   * about the people around him would be a dishonest disclosure, the one place
+   * `read()` answers "what do you know about me?": it is the owner asking
+   * about themselves, and an answer that silently omitted the section holding
+   * facts about the people around them would be a dishonest disclosure, the one place
    * where withholding is the wrong behaviour. `section()` serves a consumer
    * assembling something, where bulk access to that same content is exactly the
    * hole §10 closes.
@@ -563,7 +563,7 @@ export class OwnerProfileStore {
     if (!decision.allowed) return refusal(decision.reason ?? 'Refused.');
 
     // A prose line addressed by CONTENT resolves inside the callback, so a
-    // replay after his concurrent edit re-resolves against the new document
+    // replay after the owner's concurrent edit re-resolves against the new document
     // instead of reusing an answer computed from the old one. That is the whole
     // reason the verb takes content rather than a position: a stale index is
     // perfectly well-formed, so no validation can catch it.
@@ -622,26 +622,26 @@ export class OwnerProfileStore {
    *
    * §3 says the daemon is the single writer, and that is what makes a
    * rename-based atomic write sufficient with no lock. It is not true. The
-   * OWNER is a second writer by design, §4.5 exists precisely so he can open
+   * OWNER is a second writer by design, §4.5 exists precisely so they can open
    * the file and change it, and a write computed from a projection loaded
-   * minutes ago joins the whole document, so every line he changed in between is
-   * overwritten by a stale copy. It is silent: he gets a success receipt and his
-   * edits are simply gone, which is the worst failure this design can have in a
-   * file whose entire premise is that his edits win.
+   * minutes ago joins the whole document, so every line they changed in between
+   * is overwritten by a stale copy. It is silent: they get a success receipt and
+   * their edits are simply gone, which is the worst failure this design can have
+   * in a file whose entire premise is that their edits win.
    *
    * ## The rule
    *
    * Detect, reload, REPLAY, do not clobber, and do not merely refuse. The
    * file's stat is compared against what this store last saw; if it moved, the
    * document is re-read, re-projected, and the operation is re-run against the
-   * fresh projection so his edit and this write both survive. The stat is
+   * fresh projection so the owner's edit and this write both survive. The stat is
    * re-checked immediately before the rename, and a write that keeps losing the
    * race is refused rather than forced.
    *
    * This is not a lock and does not claim to be. It closes the minutes-wide
    * window (a stale projection) and narrows the remaining one to the few
    * milliseconds between the final stat and the rename. Two DAEMONS writing
-   * concurrently would still need a real lock; the owner editing his own file
+   * concurrently would still need a real lock; the owner editing their own file
    * while the daemon runs is the case this design actually has, and it is now
    * handled rather than assumed away.
    */
@@ -661,7 +661,7 @@ export class OwnerProfileStore {
       const onDisk = statOf(this.filePath);
       if (this.matchesLastSeen(onDisk)) break;
 
-      // Someone else, him, wrote to this file since the projection was built.
+      // Someone else, the owner, wrote to this file since the projection was built.
       const reloaded = await this.load();
       if (reloaded.kind !== 'loaded' || this.projection === null) {
         return refusal(

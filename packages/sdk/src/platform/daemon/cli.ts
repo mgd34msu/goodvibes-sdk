@@ -115,7 +115,7 @@ async function main(): Promise<void> {
     // daemon-scoped secret tier too. runtime/secrets-composition.ts records
     // what happened while no composition root passed it: a throwaway daemon
     // given `--daemon-home /tmp/...` kept reading the owner's real secret
-    // store, long-polled his real bot token, and stopped his inbound messages.
+    // store, long-polled their real bot token, and stopped their inbound messages.
     daemonHome: daemonHomeDir,
     // The real standalone daemon observes externally-launched coding-agent
     // sessions on the host read-only (fleet visibility + steer; never counted,

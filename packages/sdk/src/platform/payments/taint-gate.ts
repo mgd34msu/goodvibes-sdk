@@ -1,20 +1,20 @@
 /**
  * taint-gate.ts, who may INITIATE a purchase, and who may choose the merchant.
  *
- * These are two different questions and the owner ruled them differently. This
- * module used to conflate them, refusing any purchase whose merchant came from
- * page content and documenting that as a feature. He overrode that:
- *
- *   "the taint gate is wrong. if i tell you to buy the cheapest X you find
- *    online, you will 1) find it, 2) show it to me, and then 3) alert me prior
- *    to purchasing if it is not a major retailer - use your best judgement on
- *    what you consider a major retailer"
+ * These are two different questions and the design rule treats them
+ * differently. This module used to conflate them, refusing any purchase whose
+ * merchant came from page content and documenting that as a feature. Design
+ * rule that overrides it: the taint gate was too strict, because asking the
+ * agent to buy the cheapest match of something found online should let it
+ * find the item, show it to the owner, and then alert the owner before
+ * purchasing when the merchant is not a major retailer, using its own
+ * judgement of what counts as major.
  *
  * ══ What relaxed, and what did not ════════════════════════════════════════
  *
- * RELAXED, **who chooses the merchant** on a purchase he initiated. "Buy the
- * cheapest X you can find" is his instruction; the item and the intent are his,
- * and only the storefront was found on a page. That now proceeds, with the
+ * RELAXED, **who chooses the merchant** on a purchase the owner initiated.
+ * "Buy the cheapest X you can find" is the owner's instruction; the item and
+ * the intent are theirs, and only the storefront was found on a page. That now proceeds, with the
  * merchant graded by `merchant-recourse.ts` into a veto (silence proceeds) or an
  * approval (silence denies).
  *
@@ -42,12 +42,12 @@
  *
  * ══ Which fields are checked ══════════════════════════════════════════════
  *
- * ALWAYS, `item` and `requestedMax`. These come from him or the purchase does
- * not exist. A page that supplies the thing to buy, or the ceiling to buy it
+ * ALWAYS, `item` and `requestedMax`. These come from the owner or the purchase
+ * does not exist. A page that supplies the thing to buy, or the ceiling to buy it
  * under, is initiating a purchase whatever else is true.
  *
- * CONDITIONALLY, `merchant` and `checkoutUrl`. Checked when he NAMED the
- * merchant, because then it has to be his. Not checked when
+ * CONDITIONALLY, `merchant` and `checkoutUrl`. Checked when the owner NAMED
+ * the merchant, because then it has to be theirs. Not checked when
  * `merchantDiscovered` is set, because there the storefront came off a page by
  * design, and grading it, not refusing it, is the safeguard.
  *
@@ -67,7 +67,7 @@ import type { UntrustedContentLedger } from '../security/untrusted-content.js';
  * A purchase the OWNER asked for.
  *
  * `merchantDiscovered` says whether the storefront was found while browsing
- * rather than named by him. It lives only on this variant, a content-origin
+ * rather than named by the owner. It lives only on this variant, a content-origin
  * intent never reaches the point of choosing a merchant.
  */
 export interface OwnerOriginIntent {
@@ -104,7 +104,7 @@ export interface PaymentTaintDecision {
 }
 
 /**
- * The refusal for a purchase nothing of his initiated.
+ * The refusal for a purchase the owner did not initiate.
  *
  * Terminal. No approval, no downgrade, no notification-based rescue.
  */
@@ -141,7 +141,7 @@ export function evaluatePaymentTaint(input: {
   const intent = input.intent;
   const sources = input.ledger.taintSourcesThisTurn();
 
-  // What must be his, always. A page supplying the thing to buy, or the
+  // What must be the owner's, always. A page supplying the thing to buy, or the
   // ceiling to buy it under, is initiating a purchase whatever else is true.
   const fields: Record<string, string | undefined> = {
     item: intent.item,
@@ -149,7 +149,7 @@ export function evaluatePaymentTaint(input: {
   };
   const exactMatchFields: string[] = [];
 
-  // Where the money goes only has to be his when HE chose it. When the merchant
+  // Where the money goes only has to be the owner's when THEY chose it. When the merchant
   // was discovered it came off a page by design, and merchant-recourse.ts grades
   // it into a veto or an approval rather than refusing it.
   if (!intent.merchantDiscovered) {
@@ -174,7 +174,7 @@ export function evaluatePaymentTaint(input: {
 }
 
 /**
- * The refusal he reads.
+ * The refusal the owner reads.
  *
  * Names the field, the surface and the origin and shows the overlapping text,
  * because "refused: untrusted content" with no evidence is indistinguishable

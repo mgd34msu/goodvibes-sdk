@@ -168,6 +168,17 @@ export {
 export { registerSkillsGatewayMethods } from './routes/skills.js';
 export type { SkillsGatewayService } from './routes/skills.js';
 
+// The checkout seam: what `GatewayVerbGroupDeps.onBrowserCheckout` hands a
+// composition so it can construct a PaymentsGatewayServiceImpl over the SAME
+// browser engine the `browser.*` verbs drive, holding the SAME card-material
+// guard the engine scrubs against (see routes/browser-composition.ts).
+export { composeDaemonBrowser, createDaemonBrowserGatewayService } from './routes/browser-composition.js';
+export type {
+  BrowserCheckoutSeam,
+  BrowserCompositionDeps,
+  DaemonBrowserGatewayService,
+} from './routes/browser-composition.js';
+
 export { registerPaymentsGatewayMethods } from './routes/payments.js';
 export type {
   PaymentsGatewayService,

@@ -5,13 +5,13 @@
  * ── The failure this replaces ─────────────────────────────────────────────
  *
  * The refusal used to tell the owner: reply "send it now" and it will be
- * resent. He replied, and it refused again with the same message. Two things
+ * resent. The owner replied, and it refused again with the same message. Two things
  * were wrong at once and either alone would have been a defect:
  *
  *  - Nothing in production ever minted an `OwnerApproval`. `grantOwnerApproval`
  *    had test callers only, so the advice named a mechanism with no
  *    implementation behind it. Advice that cannot work is worse than no advice:
- *    it spends the owner's trust and teaches him the boundary is broken.
+ *    it spends the owner's trust and teaches them the boundary is broken.
  *  - Had a typed phrase minted one, that would have been the WORSE outcome. A
  *    security boundary cleared by three words of chat text is cleared by
  *    anything that can get those words into the chat, and steering the

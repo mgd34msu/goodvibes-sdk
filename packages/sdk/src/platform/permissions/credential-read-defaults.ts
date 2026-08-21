@@ -3,11 +3,11 @@
  * well-known credential files/directories.
  *
  * These are ORDINARY permission-settings defaults the user can override, NOT
- * additions to the frozen exec-layer unconditional block. Doctrine (verbatim):
- * "permission settings are the sole authority for command-class risk; the
+ * additions to the frozen exec-layer unconditional block. Design doctrine:
+ * permission settings are the sole authority for command-class risk; the
  * exec-layer unconditional block is a frozen catastrophic-only list (rm -rf /,
- * dd to devices, mkfs, fork bomb…) that must NEVER expand without Mike's
- * explicit approval." This module touches neither that list nor the exec guard.
+ * dd to devices, mkfs, fork bomb…) that must NEVER expand without the owner's
+ * explicit approval. This module touches neither that list nor the exec guard.
  *
  * Two shipped surfaces, both overridable:
  *   1. Default posture (any mode that auto-allows reads): a read whose path

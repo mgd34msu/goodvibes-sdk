@@ -2,9 +2,10 @@
  * state-store.ts, everything the MACHINE knows about occasions.
  *
  * The split this file exists for: an occasion declaration is a durable fact
- * about the owner's life, so it lives in his profile where he can hand-edit it.
- * "Asked on the 3rd, he said no" is machine-written bookkeeping, and the profile
- * design's whole guarantee is that nothing rewrites a line he wrote. Putting
+ * about the owner's life, so it lives in their profile where they can
+ * hand-edit it. "Asked on the 3rd, they said no" is machine-written
+ * bookkeeping, and the profile design's whole guarantee is that nothing
+ * rewrites a line they wrote. Putting
  * acknowledgement state in that file would break the guarantee to save one file,
  * so it does not go there. It goes here.
  *
@@ -17,7 +18,7 @@
  *    long-lived daemon cannot grow this file without limit.
  *  - **Validated by content.** Records are checked one at a time and a bad one
  *    is DROPPED AND COUNTED rather than throwing the file away. A single
- *    malformed record must not cost him a decade of gift history.
+ *    malformed record must not cost the owner a decade of gift history.
  *  - **Reaped on schedule.** An answer dies with its occurrence, which is what
  *    makes "declining goes silent until the date passes, then asks fresh next
  *    year" a property of the data rather than a rule someone must remember.
@@ -35,8 +36,9 @@
  * concurrent writers: the sweep runs on a timer while an answer arrives over a
  * channel and an interview step lands from the agent. Unordered, the sweep's
  * snapshot, taken before the answer existed, can land second and put the file
- * back without it. The owner then gets asked again about something he already
- * answered, which is the exact failure the acknowledgement store was built to
+ * back without it. The owner then gets asked again about something they
+ * already answered, which is the exact failure the acknowledgement store was
+ * built to
  * stop.
  */
 import { PersistentStore } from '../state/persistent-store.js';
@@ -125,7 +127,7 @@ function validAcknowledgement(value: unknown): OccasionAcknowledgement | null {
     answeredAt,
     // An unrecognised source is dropped and the ANSWER IS KEPT. The source
     // explains a mute; the answer is the mute. Losing the whole record over a
-    // provenance label would start pushing at him again to punish a typo.
+    // provenance label would start pushing at the owner again to punish a typo.
     ...(source !== null && isOccasionAckSource(source) ? { source } : {}),
     ...(expiresAfter !== null && isIsoDate(expiresAfter) ? { expiresAfter } : {}),
     ...(returnOn !== null && isIsoDate(returnOn) ? { returnOn } : {}),
@@ -221,7 +223,7 @@ function validInterview(value: unknown): Interview | null {
     .map(validInterviewAnswer)
     .filter((answer): answer is InterviewAnswer => answer !== null);
   // An interview with no questions left cannot be resumed and is not a thread
-  // he can be asked to continue, so it does not survive the read.
+  // the owner can be asked to continue, so it does not survive the read.
   if (steps.length === 0) return null;
   const landedOn = str(value['landedOn']);
   const completedAt = num(value['completedAt']);
@@ -268,7 +270,7 @@ function validSweepReport(value: unknown): OccasionSweepReport | null {
  *
  * Nothing throws. A file that is JSON but holds the wrong shape yields whatever
  * of it was well formed, and the count of what was not is logged, so a
- * half-corrupt file costs him the corrupt half, not the whole history.
+ * half-corrupt file costs the owner the corrupt half, not the whole history.
  */
 export function validateOccasionState(
   raw: unknown,
@@ -289,7 +291,7 @@ export function validateOccasionState(
   // before any sweep can act on one. A machine mid-way through the old
   // repeating cadence therefore goes quiet the moment the fixed daemon boots,
   // rather than one sweep later, which on an hourly sweep would have been one
-  // more push about his own birthday, and one more is the whole complaint.
+  // more push about the owner's own birthday, and one more is the whole complaint.
   let reconciled = 0;
   const openItems = take('openItems', validOpenItem).map((item) => {
     const settled = reconcileRaiseLedger(item);
@@ -376,7 +378,7 @@ export class OccasionStateStore {
         { path: this.filePath, reconciled },
       );
       // Written back immediately rather than left to the next write. The
-      // rebuilt ledger IS the thing that keeps him from being pushed at again,
+      // rebuilt ledger IS the thing that keeps the owner from being pushed at again,
       // and a correction that only exists in memory is one crash away from
       // undoing itself.
       await this.persist(snapshot);
@@ -435,7 +437,7 @@ export class OccasionStateStore {
   // Gift history
   // -------------------------------------------------------------------------
 
-  /** What he landed on for this occasion before, newest first. */
+  /** What the owner landed on for this occasion before, newest first. */
   async giftHistory(occasionId: string): Promise<readonly GiftRecord[]> {
     const snapshot = await this.state();
     return snapshot.gifts
@@ -503,7 +505,7 @@ export class OccasionStateStore {
     return (await this.state()).interviews.find((entry) => entry.id === id);
   }
 
-  /** The unfinished interview for one occurrence, if he walked away from one. */
+  /** The unfinished interview for one occurrence, if the owner walked away from one. */
   async activeInterview(occasionId: string, occurrence: IsoDate): Promise<Interview | undefined> {
     return (await this.state()).interviews.find(
       (entry) => entry.occasionId === occasionId
@@ -559,10 +561,10 @@ export class OccasionStateStore {
   /**
    * Drop every record belonging to one occasion.
    *
-   * Called when he removes an occasion. People divorce and people die; removing
-   * an occasion takes one sentence and one confirm, and it must not leave last
-   * year's "no" and a gift history for a person who is no longer in his life
-   * sitting in a file he cannot see.
+   * Called when the owner removes an occasion. People divorce and people die;
+   * removing an occasion takes one sentence and one confirm, and it must not
+   * leave last year's "no" and a gift history for a person who is no longer in
+   * their life sitting in a file they cannot see.
    */
   async dropOccasion(occasionId: string): Promise<number> {
     const snapshot = await this.state();
@@ -588,8 +590,8 @@ export class OccasionStateStore {
    *    fresh and carries no memory of the refusal. A one-off answer has no
    *    expiry and stays: "handled" is permanent for something that happens once.
    *  - State for an occasion no longer declared is orphaned and dropped. This is
-   *    the safety net behind the explicit removal path, for the case where he
-   *    deleted the line in his editor rather than through a verb.
+   *    the safety net behind the explicit removal path, for the case where the
+   *    owner deleted the line in their editor rather than through a verb.
    *  - An open item whose occurrence has passed stops being raised. Nothing
    *    unresolved is ever dropped WHILE IT CAN STILL MATTER; a birthday that
    *    was three weeks ago cannot.

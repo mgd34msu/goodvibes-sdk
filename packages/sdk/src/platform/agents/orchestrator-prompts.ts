@@ -432,7 +432,7 @@ export function buildLayeredOrchestratorSystemPrompt(
  *    deliberately no "profile unavailable" placeholder: that would put a file
  *    path in front of the model on every single turn and buy nothing.
  *
- * The CLOSED tier, his name, contact details, home address, everything
+ * The CLOSED tier, the owner's name, contact details, home address, everything
  * commercial, and the People / Places / Work / Notes sections, is never
  * injected by this or any other path. See docs/owner-profile.md §11.2.
  */

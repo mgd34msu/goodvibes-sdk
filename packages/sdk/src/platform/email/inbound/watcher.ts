@@ -669,7 +669,7 @@ export class InboundMailboxWatcher {
    *
    * Deliberately not a tight loop: re-probing a refused credential every
    * second is how an account gets locked, and re-probing it once an hour is
-   * enough for "he fixed it and did not restart the daemon" to just work.
+   * enough for "the owner fixed it and did not restart the daemon" to just work.
    */
   private async waitForRecheck(): Promise<void> {
     const wake = new AbortController();

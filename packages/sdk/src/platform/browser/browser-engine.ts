@@ -5,7 +5,7 @@ import { BrowserSessionError, BrowserSessionManager, hasDisplay } from './browse
 import type { BrowserAttachOptions, BrowserLaunchOptions } from './browser-sessions.js';
 import { describeProvisionWork } from './browser-provisioning.js';
 import { resolveRef, SnapshotStore, StaleElementError, takeSnapshot } from './browser-snapshot.js';
-import { assertCaptureAllowed, fillSecretIntoPage } from './browser-secret-fill.js';
+import { assertCaptureAllowed, fillSecretsIntoPage } from './browser-secret-fill.js';
 import type {
   BrowserProvisionReport,
   BrowserSnapshot,
@@ -127,14 +127,24 @@ export class BrowserEngine {
     description: string,
     content?: Readonly<Record<string, string | undefined>>,
   ): Promise<void> {
-    const decision = this.untrusted.evaluateOutwardEffect({
-      action,
-      description,
-      approval: this.approval,
-      ...(content === undefined ? {} : { content }),
-    });
-    if (decision.allowed) return;
-    throw new UntrustedEffectError(decision.reason ?? 'This action is not available here.', decision.fix ?? 'Ask the owner.');
+    const hadApproval = this.approval !== null;
+    try {
+      const decision = this.untrusted.evaluateOutwardEffect({
+        action,
+        description,
+        approval: this.approval,
+        ...(content === undefined ? {} : { content }),
+      });
+      if (decision.allowed) return;
+      throw new UntrustedEffectError(decision.reason ?? 'This action is not available here.', decision.fix ?? 'Ask the owner.');
+    } finally {
+      // `armSubmitApproval` (routes/browser-composition.ts) documents itself as
+      // covering exactly ONE outward submit. A TTL alone does not enforce that,
+      // an approval that sits unconsumed authorises every submit until it
+      // expires, so it is spent here, on the first submit check it was live
+      // for, whatever that check decided.
+      if (hadApproval && action === 'browser.submit') this.approval = null;
+    }
   }
 
   /**
@@ -246,6 +256,10 @@ export class BrowserEngine {
 
   async close(sessionId: string): Promise<Record<string, unknown>> {
     const session = await this.sessions.closeSession(sessionId);
+    // Every page's material in this session is gone with the browser that held
+    // it. Material bound to a page that outlives the session it was typed in
+    // would be material with no page left to be redacted out of.
+    this.cardGuard?.disarmSession?.(sessionId);
     return { closed: session };
   }
 
@@ -298,6 +312,10 @@ export class BrowserEngine {
       timeout: args.timeoutMs ?? DEFAULT_NAVIGATION_TIMEOUT_MS,
     });
     this.snapshots.clear(sessionId, pageId);
+    // A navigation replaces the whole document, so whatever card material was
+    // typed into the previous DOM is gone with it. Material lifetime is bound
+    // to the page it is on, not to whichever flow last had an opinion about it.
+    this.cardGuard?.disarm(sessionId, pageId);
     return {
       sessionId,
       pageId,
@@ -394,13 +412,17 @@ export class BrowserEngine {
     });
     await page.waitForLoadState('domcontentloaded', { timeout: DEFAULT_ACTION_TIMEOUT_MS }).catch(() => undefined);
     this.snapshots.clear(sessionId, pageId);
+    const navigated = page.url() !== urlBefore;
+    // A navigating click replaces the DOM exactly as an explicit navigate does,
+    // so whatever card material was on the page it left is gone with it.
+    if (navigated) this.cardGuard?.disarm(sessionId, pageId);
     return {
       sessionId,
       pageId,
       clicked: { ref: args.ref, role: element.role, name: element.name },
       urlBefore,
       url: page.url(),
-      navigated: page.url() !== urlBefore,
+      navigated,
       next: 'Refs are cleared after a click. Call action:"snapshot" for current refs.',
     };
   }
@@ -459,41 +481,39 @@ export class BrowserEngine {
   }
 
   /**
-   * Type a value the DAEMON holds into a field, reporting only whether it worked.
+   * Type several DAEMON-held values in one motion, every ref resolved against
+   * the snapshot in place before any of them is typed. Values never come from
+   * the model. The mechanics live in browser-secret-fill.ts.
    *
-   * The counterpart to `type` for card material, and deliberately not a flag on
-   * it. `value` never came from the model: it is read from the daemon's secret
-   * store in-process and passed here directly, and nothing on the control plane
-   * can supply one or observe one. The mechanics, refusing without a guard,
-   * and discarding the driver's error because it quotes what it tried to type,
-   * live in browser-secret-fill.ts.
+   * The caller arms the guard once before calling this, for the whole batch.
    *
-   * The caller arms the guard before calling this. Not done here because a fill
-   * of several fields arms once for all of them, and arming per field would
-   * leave the earlier ones unprotected while the later ones are typed.
+   * A field-by-field version of this cleared the snapshot after every field,
+   * so the second field's ref pointed at nothing by the time its turn came.
+   * This clears it once, only on failure: nothing then types into a page
+   * nobody will click. A full success leaves the snapshot in place, still
+   * fresh since nothing here navigates, so the submit click a filled card is
+   * always followed by still resolves; that click clears it, as every click
+   * already does.
    */
-  async fillSecret(
+  async fillSecretBatch(
     target: BrowserTarget,
-    args: { readonly ref: string; readonly value: string; readonly timeoutMs?: number | undefined },
+    args: { readonly fills: readonly { readonly ref: string; readonly value: string }[]; readonly timeoutMs?: number | undefined },
   ): Promise<Record<string, unknown>> {
     const { sessionId, pageId, page } = await this.target(target);
-    const { element } = await fillSecretIntoPage({
+    const outcome = await fillSecretsIntoPage({
       page,
       snapshot: this.currentSnapshot(sessionId, pageId),
-      ref: args.ref,
-      value: args.value,
+      fills: args.fills,
       guard: this.cardGuard,
       timeoutMs: args.timeoutMs ?? DEFAULT_ACTION_TIMEOUT_MS,
     });
-    // The stored snapshot still holds this element's pre-fill value, and the
-    // next snapshot suppresses it, clearing here means no path can serve a
-    // cached one from before the guard was armed.
-    this.snapshots.clear(sessionId, pageId);
+    if (!outcome.ok) this.snapshots.clear(sessionId, pageId);
     return {
       sessionId,
       pageId,
-      filledInto: { ref: args.ref, role: element.role, name: element.name },
       url: page.url(),
+      filled: outcome.filled,
+      failedRef: outcome.failedRef,
     };
   }
 
