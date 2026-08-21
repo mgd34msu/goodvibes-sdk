@@ -30,25 +30,35 @@ primary path:
    `controlPlane.webui.bundleDir` points at the build directory. Because the bundle
    and the API share an origin, the browser's same-origin policy is a non-issue. The
    loopback default is preserved: serving is an explicit opt-in, never auto-enabled by
-   network host mode. Static assets serve with correct content types and caching
+   network host mode.
+
+   Static assets serve with correct content types and caching
    (hashed `/assets/*` immutable, the `index.html` shell `no-cache`), with SPA
    fallback to `index.html` for unknown navigation routes. API routes keep precedence:
    any `/api/*` (and `/login`, `/webhook/*`, `/task`, the OpenAI-compatible prefix) is
-   dispatched to the API and never served as a static file. The bundle is public
-   (served without a token); the app itself token-authenticates its API calls, so no
-   wire data leaks from serving static files.
+   dispatched to the API and never served as a static file.
+
+   The bundle is public (served without a token); the app itself
+   token-authenticates its API calls, so no wire data leaks from serving static
+   files.
 
 2. **SECONDARY, OPTIONS preflight + `Access-Control-Allow-*` gated by an explicit
    allowlist.** When `controlPlane.cors.enabled` is on, the daemon answers OPTIONS
    preflight and emits `Access-Control-Allow-Origin` / `-Methods` / `-Headers` /
-   `-Credentials` ONLY for origins listed in `controlPlane.cors.allowedOrigins`. There
-   is no wildcard: the matched origin is echoed back, `Access-Control-Allow-Credentials`
-   rides only with a specific origin, `Authorization` is included in the allowed
-   headers so the bearer-token flow works cross-origin, and `Vary: Origin` is always
-   set so caches never serve an allow-origin to the wrong origin. A non-allowlisted
-   origin is refused honestly (403 on preflight with no allow-origin; an actual request
-   is processed server-side but carries no allow-origin, so the browser blocks the
-   read). This path is for the Vite dev server (`localhost:5173` → daemon) and any
+   `-Credentials` ONLY for origins listed in `controlPlane.cors.allowedOrigins`.
+
+   There is no wildcard:
+
+   - the matched origin is echoed back;
+   - `Access-Control-Allow-Credentials` rides only with a specific origin;
+   - `Authorization` is included in the allowed headers so the bearer-token flow
+     works cross-origin;
+   - `Vary: Origin` is always set so caches never serve an allow-origin to the
+     wrong origin.
+
+   A non-allowlisted origin is refused honestly (403 on preflight with no
+   allow-origin; an actual request is processed server-side but carries no
+   allow-origin, so the browser blocks the read). This path is for the Vite dev server (`localhost:5173` → daemon) and any
    deliberately separate-origin / reverse-proxy topology.
 
 Both are wire-compatible with `tailscale serve`: it fronts the single daemon origin

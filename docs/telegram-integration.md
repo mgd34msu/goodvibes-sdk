@@ -55,7 +55,7 @@ firewall rule, no tunnel, and no certificate.
 1. Open Telegram and start a chat with [@BotFather](https://t.me/BotFather).
 2. Send `/newbot`.
 3. Give it a display name (anything) and then a username, which must end in
-   `bot`: for example `mikes_goodvibes_bot`.
+   `bot`: for example `my_goodvibes_bot`.
 4. BotFather replies with a token that looks like
    `123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw`.
 
@@ -128,7 +128,7 @@ messages, set the token in the daemon's own settings, or via
       "enabled": true,
       "mode": "polling",
       "botToken": "goodvibes://secrets/goodvibes/GOODVIBES_SURFACES_TELEGRAM_BOT_TOKEN",
-      "botUsername": "mikes_goodvibes_bot"
+      "botUsername": "my_goodvibes_bot"
     }
   }
 }
@@ -207,7 +207,7 @@ In a **group**, the bot only acts on messages addressed to it:
 
 - `/goodvibes check the build`: the `/goodvibes` prefix is stripped, and
   `check the build` becomes the task.
-- `@mikes_goodvibes_bot check the build`
+- `@my_goodvibes_bot check the build`
 
 Standard Telegram commands are handled as onboarding and never dispatched as
 work:

@@ -1,20 +1,20 @@
 # Occasions and plans
 
-The daemon holds durable facts about the owner's life, his wife's birthday, an
-anniversary, a friend's birthday, and **raises them on its own, before they
-matter**, without being asked. It remembers what he answered so it does not keep
-asking, but not forever, because the occasions recur.
+The daemon holds durable facts about the owner's life, a partner's birthday,
+an anniversary, a friend's birthday, and **raises them on its own, before they
+matter**, without being asked. It remembers the owner's answer so it does not
+keep asking, but not forever, because the occasions recur.
 
-His framing, verbatim:
+The design contract, in requirements form:
 
-> I'd like for example the agent to know it is my wife's birthday in the next week
-> or so and for it to suggest (proactively suggest, on its own) buying something
-> for the occasion. it doesn't need to make a recommendation, just needs to know
-> that it would be something that needs to happen. and then it should remember
-> that i said yes or no to make sure it doesn't keep asking (but not forever
-> because birthdays are annual)... something like that. ditto anniversary or
-> friend's birthday... or if I tell it i'm planning a vacation it will remember
-> the dates and where i'm going etc.
+- The agent knows an occasion is approaching and proactively suggests acting
+  on it. It does not need to recommend a specific gift; it needs to surface
+  that something needs to happen, ahead of the date.
+- A yes or no is remembered so the same occasion is not raised again, and
+  that memory expires on the occasion's own cycle, because an annual date
+  comes back.
+- Stated plans (a trip with dates and a destination) are captured the same
+  way and recalled when they become relevant.
 
 ---
 
@@ -28,14 +28,14 @@ anniversaries. These prompt, and they remember the answer.
 **Plans.** A dated range with attributes, ambient rather than prompting.
 "Vacation, 12–19 September, Lisbon." There is nothing to decide; the system just
 needs to know, so it can stop suggesting things into that window and so it can
-move a nudge that would otherwise land while he is abroad.
+move a nudge that would otherwise land while the owner is abroad.
 
 ## 2. The governing principle
 
 **Nothing unresolved is ever dropped.**
 
 One principle behind three cases, an unanswered nudge, a conflicting date, and
-an interview he walked away from, and therefore ONE mechanism: the open item
+an interview the owner walked away from, and therefore ONE mechanism: the open item
 (`occasions/cadence.ts`, `OccasionStateStore.openItems`). Silence never ends
 anything. It only moves a date.
 
@@ -43,15 +43,15 @@ anything. It only moves a date.
 
 | Thing | Lives in | Why |
 |---|---|---|
-| Occasion declarations (what, whose, date, kind, lead override) | The owner's profile file | A durable fact about his life that he owns and can hand-edit. |
+| Occasion declarations (what, whose, date, kind, lead override) | The owner's profile file | A durable fact about the owner's life that they own and can hand-edit. |
 | Plans | The owner's profile file | Same. |
-| Acknowledgement state (asked when, answered what, expires when) | A separate machine-owned store | Machine-written state has no business in a file he owns. |
-| Gift history (what he landed on) | Machine-owned store | Same reason. |
-| Calendar mirror records | Machine-owned store | Bookkeeping about a copy, not a fact about him. |
+| Acknowledgement state (asked when, answered what, expires when) | A separate machine-owned store | Machine-written state has no business in a file the owner owns. |
+| Gift history (what the owner landed on) | Machine-owned store | Same reason. |
+| Calendar mirror records | Machine-owned store | Bookkeeping about a copy, not a fact about the owner. |
 
-The owner-profile design is explicit that **a validator never rewrites a line he
-wrote**. Writing "asked on the 3rd, he said no" into that file would break that
-guarantee, so the two are kept apart:
+The owner-profile design is explicit that **a validator never rewrites a line the
+owner wrote**. Writing "asked on the 3rd, answered no" into that file would break
+that guarantee, so the two are kept apart:
 `~/.goodvibes/daemon/owner-profile.md` and the control-plane state directory's
 `occasions-state.json`.
 
@@ -71,8 +71,8 @@ make sense of is reported with a reason and never rewritten.
 - Lisbon · 2026-09-12..2026-09-19 · away · in Lisbon
 ```
 
-Segments after the title are classified by SHAPE, not position, so he can write
-them in any order and add one later. Anything unrecognised is kept verbatim.
+Segments after the title are classified by SHAPE, not position, so the owner can
+write them in any order and add one later. Anything unrecognised is kept verbatim.
 `·` is canonical and `|` is accepted, because a middot is awkward to type.
 
 ### 3.2 The persisted-state treatment
@@ -83,23 +83,25 @@ reaped on schedule (an answer expires with its occurrence), swept (orphans and
 aged gift history), and it discloses what it holds through `occasions.state`.
 Every write is ordered through `StoreWriteQueue`: the sweep runs on a timer while
 an answer arrives over a channel, and an unordered write would put the file back
-without the answer, so he would be asked again about something he had answered.
+without the answer, so the owner would be asked again about something they had
+already answered.
 
 ## 4. Owner rulings
 
-Each of these was decided by the owner. They are not to be quietly revised.
+These behaviors are contractual. Do not revise them silently.
 
 ### 4.1 Lead time: 10 days, with a per-occasion override
 Enough runway to order something and have it arrive. `occasions.leadDays`, and a
 line carrying `lead 21` overrides it for that occasion alone.
 
 ### 4.2 Channel: Telegram **and** the agent. Never the TUI
-His reason, verbatim: *"that's more of a 'get work done' kind of interface."*
+The TUI is a get-work-done interface; an occasion nudge belongs on the channels
+that reach the owner away from work.
 
-**And** rather than **or**: `occasions.nudgeChannel` is a comma-separated list, so
-`telegram,agent` is what his ruling actually says. Each destination is pushed on
-its own and a failure on one is recorded rather than thrown, so an expired
-Telegram token cannot stop the agent hearing about his wife's birthday.
+**And** rather than **or**: `occasions.nudgeChannel` is a comma-separated list,
+and `telegram,agent` is the shipped default. Each destination is pushed on its
+own and a failure on one is recorded rather than thrown, so an expired
+Telegram token cannot stop the agent hearing about an approaching occasion.
 
 Telegram is a transport the daemon can reach by itself, a bot token and an HTTP
 call. The agent is not: landing a message in an agent conversation means taking a
@@ -124,34 +126,34 @@ configured push destination the pull leaves stamped items out.
 The condition is the push that LANDED, not the one that was configured. An item
 no push has ever landed on the agent carries no stamp, so it still comes back
 through the pull, that covers `agent` configured with no sender registered, and
-a send that failed, neither of which may cost him the nudge. Once an item HAS
+a send that failed, neither of which may cost the owner the nudge. Once an item HAS
 been landed there, the stamp stays for the life of the item: the agent has
 already raised that occasion, and a later failed re-push on its cadence is a
 channel fault to report rather than a reason to say the same thing again from the
 other direction. An answer resolves the item from either side, exactly as before.
 
 ### 4.3 A nudge names the occasion but **never the date**
-His words: *"it only needs to tell me a birthday date if i ask it what it is,
-same for other dates."*
+The ruling: a nudge may name the occasion, but the date itself is disclosed
+only when the owner explicitly asks for it.
 
 Stronger than "do not print the date": "in 10 days" is the date with arithmetic
 applied. So proximity is a WORD, approaching, soon, or imminent, chosen from a
 day count that never leaves `occasions/nudge.ts`. Side effect worth preserving:
 a reminder delivered to Telegram never puts family birth dates into a message
-channel. `occasions.list` does return the dates, because that is him asking his
+channel. `occasions.list` does return the dates, because that is the owner asking their
 own system over an authenticated verb, the explicit ask that unlocks a
 closed-tier read.
 
-### 4.4 Occasion **kind** is chosen by him at capture time, never inferred
+### 4.4 Occasion **kind** is chosen by the owner at capture time, never inferred
 Kinds: **gift-giving**, **remember-only**, and **neither**. `occasions.confirm`
 refuses without one. A parent's death anniversary might well be worth
 remembering, and a cheerful "you'll probably want to sort something" against it
 would be genuinely bad. Never guess.
 
 ### 4.5 A date captured from conversation is confirmed **once**, at the time
-*"Noted your anniversary as 12 September — right?"* One line, at the moment he
-can still catch a mishearing. Silent afterwards; no re-confirmation at nudge
-time. For an annual date a silent write means he discovers the error up to
+*"Noted your anniversary as 12 September, right?"* One line, at the moment the
+owner can still catch a mishearing. Silent afterwards; no re-confirmation at
+nudge time. For an annual date a silent write means the error surfaces up to
 eleven months later.
 
 ### 4.6 Silence does not end anything, but the push does not repeat
@@ -160,24 +162,28 @@ is resolved or its date passes, so asking "anything coming up?" always finds it.
 That is what "nothing unresolved drops" means, and it is not a licence to say the
 same thing again.
 
-**Owner ruling, 2026-08-05**, after being told about his own birthday five times
-in one day: an occasion is raised ONCE when it enters its lead window, and at
-most once more on the day itself. Between those it stays open and quiet. The
-ceiling is structural: each raise records which of the two boundaries it served,
-and a served boundary is never served again, so no sweep interval, restart or
-clock change can produce a third push.
+**Two touches is the ceiling** (contractual, 2026-08-05, after a single occasion
+was raised five times in one day). An occasion is raised ONCE when it enters its
+lead window, and at most once more on the day itself. Between those it stays open
+and quiet. The ceiling is structural: each raise records which of the two
+boundaries it served, and a served boundary is never served again, so no sweep
+interval, restart or clock change can produce a third push.
 
-The earlier rhythm here (every `occasions.cadenceDays` days, then daily for the
-last `occasions.finalStretchDays`) was **my choice, not his**, flagged and not
-objected to at the time. It is what an hourly sweep turned into an hourly
-reminder. `occasions.cadenceDays` now governs only conflict re-raise (§4.14);
-`occasions.finalStretchDays` is REMOVED, with a load-time migration that strips
-it from existing settings files and files a receipt, a count of two has nothing
-to tune, and a setting that changes nothing is worse than no setting.
+The earlier rhythm here was every `occasions.cadenceDays` days, then daily for
+the last `occasions.finalStretchDays`. That was an implementation choice rather
+than a ruling, flagged as such and not objected to at the time, and it is what
+turned an hourly sweep into an hourly reminder.
 
-### 4.7 Quiet hours: 8am to 10pm, in his timezone
-*"8am to 10pm are generally fine, anything outside of that probably not, so
-quiet outside of that range."* `occasions.activeHours`, reckoned in
+Two keys change as a result:
+
+- `occasions.cadenceDays` now governs only conflict re-raise (§4.14).
+- `occasions.finalStretchDays` is REMOVED, with a load-time migration that strips
+  it from existing settings files and files a receipt. A count of two has nothing
+  to tune, and a setting that changes nothing is worse than no setting.
+
+### 4.7 Quiet hours: 8am to 10pm, in the owner's timezone
+Hours inside that range are fine to nudge in; anything outside it is not, so the
+system stays quiet outside the range. `occasions.activeHours`, reckoned in
 `daemon.timezone`. Outside the window nothing is dropped. It waits.
 
 ### 4.8 Declining goes silent until the date passes, then asks fresh next year
@@ -190,12 +196,12 @@ permanent.
 date.
 
 ### 4.10 Yes opens a **short interview**, not a shopping trip
-*"if yes, ask me a few questions to guide me into a good gift idea."* The agent
-does **not** make the recommendation. It opens from what the profile already
-knows (People and Notes prose, verbatim), records **what he landed on** rather
-than merely that he said yes, and keeps it to `occasions.interviewQuestions`
-questions. A thread he goes quiet on is a dropped thread, not a completion: it
-resumes at the question he did not answer.
+A yes opens a few questions whose job is to guide the owner towards a good gift
+idea. The agent does **not** make the recommendation. It opens from what the
+profile already knows (People and Notes prose, verbatim), records **what the
+owner landed on** rather than merely that they said yes, and keeps it to
+`occasions.interviewQuestions` questions. A thread the owner goes quiet on is a
+dropped thread, not a completion: it resumes at the unanswered question.
 
 ### 4.11 Removal takes one confirmation
 Not unquestioned, and not an argument. People divorce and people die. Orphaned
@@ -206,21 +212,19 @@ Two different dates for one thing are both reported. The newer value is never
 taken silently.
 
 ### 4.13 Travel and away state feeds nudge timing
-*"if you know i'm going to be somewhere, then sure, you can modify things like
-nudge times."* A nudge due inside an away window moves EARLIER, to the day before
-he leaves, he cannot have something delivered to a house he is not in. Once he
-has already left there is nothing earlier to move to and the nudge stands.
+A known future location for the owner is licence to modify timing such as when a
+nudge lands. A nudge due inside an away window moves EARLIER, to the day before
+departure, because nothing can be delivered to a house the owner is not in. Once
+they have already left there is nothing earlier to move to and the nudge stands.
 
 ### 4.14 Bulk entry is not needed in v1
 Skipped.
 
 ## 5. Calendar: the profile is the record, the calendar is a mirror
 
-His ruling, verbatim:
-
-> these are permanent dates, not ephemeral dates like exist on the google
-> calendar — and while you can feel free to put the dates there, dates from the
-> google calendar will (normally) not persist for multiple occurrances
+The design rule: profile dates are permanent records; calendar entries are
+ephemeral, normally not persisting across occurrences. The calendar may carry a
+mirror of the profile, never the other way around.
 
 - **Profile → calendar: allowed**, behind `occasions.calendarMirror` (off by
   default).
@@ -235,7 +239,7 @@ His ruling, verbatim:
 - **The mirror is idempotent**: keyed by occasion AND occurrence, so re-writing
   the same occasion each year adds one record and never accumulates duplicates.
 
-## 6. Decisions I took, stated so they can be overridden
+## 6. Implementation decisions, stated so they can be overridden
 
 - Several occasions inside one window **batch into a single message**.
 - A **29 February** occasion fires on the 28th in non-leap years. Skipping it is
@@ -246,14 +250,14 @@ His ruling, verbatim:
 - Nudge cadence as in §4.6.
 - Nudges push to Telegram by default (`occasions.nudgeChannel = telegram`), the
   owner's ruling. The key takes a **list**, so `telegram,agent` pushes to both,
-  his ruling in §4.2, and each entry may carry an address
+  the ruling in §4.2, and each entry may carry an address
   (`telegram:12345,agent`). Setting the key to empty makes the feature
   **pull-only** instead: nothing is pushed, and `occasions.pending` is how a
   surface sees what is outstanding.
 - The list is not restricted to those two. Any channel surface the delivery
-  router can reach is a valid entry, because "where he wants to hear about this"
-  is his call and not a shortlist. What is fixed is the exclusion: the TUI is
-  refused whatever is set.
+  router can reach is a valid entry, because where the owner wants to hear about
+  this is the owner's call and not a shortlist. What is fixed is the exclusion:
+  the TUI is refused whatever is set.
 - A dropped interview resumes the **next day**.
 
 ## 7. The control-plane surface
@@ -272,12 +276,12 @@ carries the date.
 | `occasions.answer` | `write:occasions` | yes / no / later. A yes opens the interview. |
 | `occasions.interview.get` | `read:occasions` | Resume at the unanswered question. |
 | `occasions.interview.answer` | `write:occasions` | Record one answer, return the next question. |
-| `occasions.interview.record` | `write:occasions` | Close with what he landed on; writes gift history. |
-| `occasions.gifts` | `read:occasions` | What he landed on in previous years. |
+| `occasions.interview.record` | `write:occasions` | Close with what the owner landed on; writes gift history. |
+| `occasions.gifts` | `read:occasions` | What the owner landed on in previous years. |
 | `occasions.pending` | `read:occasions` | Everything outstanding, delivered to nobody. Leaves out a nudge a push has already landed on the agent, while the agent is a push destination (§4.2). |
 | `occasions.sweep` | `write:occasions` | Run one pass now. |
-| `occasions.conflict.resolve` | `write:occasions` | Stop re-raising a conflict he has dealt with. |
-| `occasions.plans.list` | `read:occasions` | Plans, and whether one has him away today. |
+| `occasions.conflict.resolve` | `write:occasions` | Stop re-raising a conflict the owner has dealt with. |
+| `occasions.plans.list` | `read:occasions` | Plans, and whether one has the owner away today. |
 | `occasions.plans.propose` | `write:occasions` | Same two-step capture, for a plan. |
 | `occasions.plans.confirm` | `write:occasions` | Write the confirmed plan. |
 | `occasions.state` | `read:occasions` | What the machine-owned store holds; counts and reasons only. |
@@ -300,8 +304,8 @@ came from originally.
 | `occasions.enabled` | `true` | Not pinned by the plan; a feature that ships off ships dark. |
 | `occasions.leadDays` | `10` | Owner ruling §4.1. |
 | `occasions.activeHours` | `08:00-22:00` | Owner ruling §4.7. |
-| `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. A comma-separated list, so `telegram,agent` is his §4.2 ruling in full; empty makes it pull-only. |
-| `occasions.cadenceDays` | `3` | My choice, flagged (§4.6). Conflict re-raise only since the two-touch ruling. |
+| `occasions.nudgeChannel` | `telegram` | Owner ruling, 2026-07-28: nudges push to Telegram out of the box. A comma-separated list, so `telegram,agent` is the §4.2 ruling in full; empty makes it pull-only. |
+| `occasions.cadenceDays` | `3` | Implementation choice, flagged (§4.6). Conflict re-raise only since the two-touch ruling. |
 | `occasions.awayAdjust` | `true` | Owner ruling §4.13. |
 | `occasions.calendarMirror` | `false` | Not pinned; §5 permits mirroring, it does not require it. |
 | `occasions.suppressMirroredNudges` | `true` | Owner ruling §5. |

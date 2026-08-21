@@ -34,23 +34,28 @@ smaller than any distributed alternative.
   the strict transport set. This is the brief's TRANSPORT ⊂ CANONICAL split, reality required
   the narrow route enum (channel delivery has exhaustive switches), so product surfaces were
   NOT widened into `AutomationSurfaceKind`.
+
 - **`SharedSessionKind` (origin) expanded** to `tui|agent|webui|companion-task|companion-chat|automation`,
   in lockstep across the type (`session-types.ts`), the runtime validator (`SESSION_KINDS`),
   the wire enum (`SHARED_SESSION_KIND_SCHEMA`), and the daemon-sdk response reader.
+
 - **Project-as-data.** `SharedSessionRecord.project` (required on new records, backfilled to
   `'unknown'` on load). The broker store moved from the project-scoped path
   (`<cwd>/.goodvibes/<surface>/control-plane/sessions.json`) to the ONE home-scoped path
   (`~/.goodvibes/control-plane/sessions.json`), overridable via `sessionStorePath`. `listSessions`
   gained a `{project, kind, includeClosed}` filter; the default is the cross-project union.
+
 - **Closed-skip data-loss fix** (`companion-chat-manager.ts` init): closed companion sessions now
   load into memory in a lightweight terminal state (meta + messages retained, no history replay),
   so they are listable AND importable. GC (`_gcSweep`, 5-min grace after `closedAt`) remains the
   sole deletion authority.
+
 - **`sessions.register`** wire method: idempotent upsert keyed on a caller-supplied `sessionId`,
   carrying `{kind, project, participant, title?}`. Maps to `ensureSession` + participant merge;
   re-calling advances `participant.lastSeenAt` (the heartbeat). Wired through the full pipeline
   (schema, method catalog, facade route dispatch, DirectTransport via the operator client, HTTP
   client). Broker-level events are emitted; SSE realtime wiring belongs to S2.
+
 - **Migration importer** (`session-store-importer.ts`): folds companion files + per-project broker
   snapshots + the stale agent store into the one home store at daemon boot, BEFORE the broker
   serves. Idempotent (id-keyed merge, newer-`updatedAt` wins); no session dropped (closed included);
@@ -72,12 +77,15 @@ lightweight `sessions.heartbeat` is left as an optional follow-on if register's 
   across watchers), non-atomic across files, and it cannot produce a single authoritative list
   without a merge policy that re-invents the broker. It also keeps the closed-skip and
   scope-mismatch bugs alive per surface.
+
 - **Multi-broker gossip.** Distributed consensus for a single-user, single-host tool, enormous
   complexity (membership, conflict resolution, partition handling) for zero benefit.
+
 - **Keep project-scoping (project as a path prefix).** It is the direct cause of "a daemon in
   project A cannot see project B". Encoding project in the path means the store's identity is its
   location, so the union view the charter demands is structurally impossible. Project must be a
   queryable FIELD.
+
 - **Broaden `sessions.create` to adopt.** Turns one verb into two behaviors and leaks create
   semantics; `register` is the honest verb.
 
@@ -122,17 +130,20 @@ the chat host are clients.
   `GOODVIBES_DAEMON_SURFACE_ROOT` is still the string `tui`
   (`goodvibes-daemon/src/config/surface.ts`) because that is where every installed machine's state
   already sits; that file records the rename as a receipted migration, not a constant edit.
+
 - **Surfaces receive dispatch over the wire instead of owning it.**
   `platform/runtime/client/session-dispatch.ts` (`createWireSessionDispatch`) satisfies the same
   `setContinuationRunner` seam by polling `sessions.inputs.list` for the sessions a surface hosts
   and acknowledging with `sessions.inputs.deliver`. Both surfaces use it: terminal app
   `src/runtime/services.ts:286`, chat host `src/runtime/services.ts:829`.
+
 - **No surface hosts a daemon.** Both pass `adoptOnly: true`
   (`goodvibes-tui/src/runtime/bootstrap.ts:441`,
   `goodvibes-agent/src/runtime/bootstrap-external-services.ts:168`), and
   `decideDaemonAdoption` checks `adoptOnly` before `embedInProcess`
   (`platform/runtime/daemon-adoption-policy.ts:121-127`), so the `embed` action is unreachable
   from a surface.
+
 - **The dual-writer hazard is closed by separation of files, not by removing the local brokers.**
   Each product's broker writes under its own surface root: the terminal app at
   `<workspace>/.goodvibes/tui/control-plane/sessions.json`
@@ -156,12 +167,14 @@ the chat host are clients.
   is off unless the product supplies a workspace floor factory, the daemon supplies its
   workspace trust gate (`goodvibes-daemon/src/runtime/hosted-session-composition.ts`, passed at
   `src/daemon/cli.ts:536`).
+
 - **A hosted session joins this record's register rather than a parallel one.**
   `hosted-sessions-composition.ts:151` passes `runtimeServices.sessionBroker` as the hosted
   engine's spine, and `spine-intake.ts` registers each hosted session and heartbeats it, so it
   appears in `sessions.list` beside every other kind and `sessions.steer` / `sessions.followUp`
   drive it through the routing that already existed. That is `sessions.register` from this record
   being used by the daemon's own sessions.
+
 - **The verbs** are exactly five: `sessions.hosted.create`, `.attach`, `.detach`, `.kill`,
   `.list` (`packages/contracts/src/generated/operator-method-ids.ts:425-429`; descriptors in
   `platform/control-plane/method-catalog-hosted-sessions.ts`; handlers in
@@ -169,6 +182,7 @@ the chat host are clients.
   verb, and no hosted token-stream verb, the hosted loop is the ordinary `Orchestrator`, so its
   deltas and tool events reach the existing `turn` and `tools` SSE domains stamped with the
   hosted session's id.
+
 - **The detach toggle, with the owner-confirmed default:**
   `platform/config/schema-domain-hosted-sessions.ts` ships `hostedSessions.detachPolicy`
   (`kill` | `survive`), default **`kill`**, stated in the module header as deliberate, because
@@ -186,11 +200,13 @@ the chat host are clients.
   continuation runner spawning through its own `agentManager` at `:294`. Chat host:
   `src/runtime/services.ts:1083` for automation, and its inbound continuation runner spawns
   locally unless promotion is on.
+
 - **Adoption mirrors identity, not execution.** `platform/runtime/client/spine-adoption.ts`
   states it in its header, "Session IDENTITY, not session execution. The conversation itself
   still runs in the surface; what the daemon holds is the register", and wires exactly
   `sessions.register` / `sessions.close`, `sessions.inputs.list` / `.deliver`, `sessions.list`,
   and the memory transport.
+
 - **Hosted execution is opt-in in both directions.** A terminal asks for it explicitly
   (`/hosted new` or `/hosted attach`, `goodvibes-tui/src/input/commands/hosted-runtime.ts`); a
   channel conversation is handed over only when `hostedSessions.promoteInboundConversations` is

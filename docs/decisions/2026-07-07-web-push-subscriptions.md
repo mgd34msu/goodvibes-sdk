@@ -107,16 +107,22 @@ ephemeral port, token auth) against a **local fake push sink** (never a real
 push service, never the external network):
 
 - `push.vapid.get` returns a 65-byte public key and no private material.
+
 - subscribe stores a device and `list` shows it; both wire views are redacted
   (no capability URL, no key material).
+
 - `verify` produces a real encrypted delivery: correct `aes128gcm` body shape +
   `TTL`/`Urgency`/VAPID headers, and the ciphertext **decrypts** back to the test
   payload (RFC 8291 round trip proven by a receiver-side decrypt in the test).
+
 - a created approval fans out as a high-urgency push that decrypts to the
   approval summary.
+
 - a `410`-gone endpoint is pruned with a `pruned` receipt and vanishes from the
   list.
+
 - unsubscribe removes the record; a second delete is an honest `404`.
+
 - the VAPID private key is retrievable only through the SecretsManager, never
   appears in any config/settings file, and is never returned by a read verb.
 

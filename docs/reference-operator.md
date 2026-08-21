@@ -73233,7 +73233,7 @@ Return the current sqlite-vec vector-store posture.
 
 #### `occasions.acknowledge`
 
-Record that the owner has one occurrence in hand, so nothing is pushed at him about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when he said so in a reply, explicit when a surface offered the action, gift-flow when he is already answering gift questions about it.
+Record that the owner has one occurrence in hand, so nothing is pushed at them about it again. This is not a yes and not a no: the open item STAYS OPEN and stays enumerable, so occasions.pending still lists it, under acknowledged[] rather than in the nudge, and asking what is coming up still answers with it. Only the push stops. The record expires with its occurrence, so next year asks fresh. source names how it was recorded: conversation when the owner said so in a reply, explicit when a surface offered the action, gift-flow when the owner is already answering gift questions about it.
 
 - Title: `Acknowledge An Occasion`
 - Source: `builtin`
@@ -73474,7 +73474,7 @@ Record yes, no or later for one occurrence. A no goes silent for the rest of thi
 
 #### `occasions.confirm`
 
-Write the confirmed occasion as one line in the owner profile, under Important dates, carrying its provenance. This is the ONE confirmation: nothing re-confirms at nudge time, because for an annual date a silent write means the mistake surfaces up to eleven months later. Refused without a kind rather than defaulting one. Goes through the owner-profile write gate, so authority, surface and a verbatim quote of what he said are all required.
+Write the confirmed occasion as one line in the owner profile, under Important dates, carrying its provenance. This is the ONE confirmation: nothing re-confirms at nudge time, because for an annual date a silent write means the mistake surfaces up to eleven months later. Refused without a kind rather than defaulting one. Goes through the owner-profile write gate, so authority, surface and a verbatim quote of what the owner said are all required.
 
 - Title: `Record A Confirmed Important Date`
 - Source: `builtin`
@@ -73583,7 +73583,7 @@ Write the confirmed occasion as one line in the owner profile, under Important d
 
 #### `occasions.conflict.resolve`
 
-Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only he knows which was right, and silently taking the newer value is the behaviour this exists to prevent.
+Stop re-raising a conflict the owner has dealt with. The conflict itself is never resolved automatically, two different dates for one thing means only the owner knows which was right, and silently taking the newer value is the behaviour this exists to prevent.
 
 - Title: `Close A Date Conflict`
 - Source: `builtin`
@@ -73714,7 +73714,7 @@ Return what the owner landed on for one occasion in previous years, newest first
 
 #### `occasions.interview.answer`
 
-Record one answer and return the next question, if there is one. The interview guides the owner to his own idea and never recommends a gift, that judgement is his, which is also why the outcome recorded is what he landed on rather than what was suggested.
+Record one answer and return the next question, if there is one. The interview guides the owner to their own idea and never recommends a gift, that judgement is the owner's, which is also why the outcome recorded is what the owner landed on rather than what was suggested.
 
 - Title: `Answer A Gift Interview Question`
 - Source: `builtin`
@@ -73865,7 +73865,7 @@ Record one answer and return the next question, if there is one. The interview g
 
 #### `occasions.interview.get`
 
-Return one gift interview and the question that has not been answered yet. A thread the owner walked away from resumes here rather than restarting: the next step is the one he did not get to. Over a channel the steps are asked one at a time; in the agent they can be one exchange.
+Return one gift interview and the question that has not been answered yet. A thread the owner walked away from resumes here rather than restarting: the next step is the one the owner did not get to. Over a channel the steps are asked one at a time; in the agent they can be one exchange.
 
 - Title: `Get Gift Interview`
 - Source: `builtin`
@@ -74008,9 +74008,9 @@ Return one gift interview and the question that has not been answered yet. A thr
 
 #### `occasions.interview.record`
 
-Close the interview with what he settled on and write it to the gift history. Recording the outcome rather than merely that he said yes is the point: "he said yes in 2026" cannot stop year three steering where year one did.
+Close the interview with what the owner settled on and write it to the gift history. Recording the outcome rather than merely that the owner said yes is the point: "said yes in 2026" cannot stop year three steering where year one did.
 
-- Title: `Record What He Landed On`
+- Title: `Record What The Owner Landed On`
 - Source: `builtin`
 - Access: `authenticated`
 - Transport: `http`, `ws`
@@ -74155,7 +74155,7 @@ Close the interview with what he settled on and write it to the gift history. Re
 
 #### `occasions.list`
 
-Return every occasion declared in the owner profile, with its next occurrence, how many days away it is, the lead it uses, whether it is inside its lead window, and what was answered for that occurrence. Also returns lines under the heading that could not be typed, each with the reason, and any occasion that has two different dates recorded. This carries the dates: it is the owner asking his own system what it holds, which is the explicit ask that unlocks a closed-tier read. A nudge never does.
+Return every occasion declared in the owner profile, with its next occurrence, how many days away it is, the lead it uses, whether it is inside its lead window, and what was answered for that occurrence. Also returns lines under the heading that could not be typed, each with the reason, and any occasion that has two different dates recorded. This carries the dates: it is the owner asking their own system what it holds, which is the explicit ask that unlocks a closed-tier read. A nudge never does.
 
 - Title: `List Important Dates`
 - Source: `builtin`
@@ -74821,7 +74821,7 @@ Write the confirmed plan as one line in the owner profile, under Plans, carrying
 
 #### `occasions.plans.list`
 
-Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has him away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while he is abroad moves to the day before he leaves.
+Return every plan declared in the owner profile, a dated range with attributes, plus whichever one has the owner away today. Plans are ambient: they never prompt. They exist so the system knows not to suggest things into that window, and so a nudge that would land while the owner is abroad moves to the day before they leave.
 
 - Title: `List Plans`
 - Source: `builtin`
@@ -74992,7 +74992,7 @@ Return every plan declared in the owner profile, a dated range with attributes, 
 
 #### `occasions.plans.propose`
 
-Work out what would be written for a plan heard in conversation, and return the one-line confirmation. Writes nothing. Away is opt-in rather than assumed: "the kitchen is being redone, 3rd to the 10th" is a real dated range that is not him leaving the house.
+Work out what would be written for a plan heard in conversation, and return the one-line confirmation. Writes nothing. Away is opt-in rather than assumed: "the kitchen is being redone, 3rd to the 10th" is a real dated range that is not the owner leaving the house.
 
 - Title: `Propose A Plan`
 - Source: `builtin`
@@ -75084,7 +75084,7 @@ Work out what would be written for a plan heard in conversation, and return the 
 
 #### `occasions.propose`
 
-Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is his choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.
+Work out what would be written for a date heard in conversation, and return the one-line confirmation to put to the owner. WRITES NOTHING. When no kind was given, needsKind is true and the confirmation asks for it in the same breath, the kind is the owner's choice and is never inferred, because no rule that reads a label tells a birthday from a death anniversary. Any date already recorded for the same name that disagrees comes back in conflictsWith.
 
 - Title: `Propose An Important Date`
 - Source: `builtin`
@@ -75187,7 +75187,7 @@ Work out what would be written for a date heard in conversation, and return the 
 
 #### `occasions.remove`
 
-Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to him and removes nothing.
+Remove one occasion and every record the machine kept against it, answers, gift history, open items, interviews and calendar mirrors. Takes exactly one confirmation: not unquestioned, and not an argument. People divorce and people die. A confirmed:false call returns the sentence to put to the owner and removes nothing.
 
 - Title: `Remove An Important Date`
 - Source: `builtin`

@@ -91,6 +91,7 @@ shapes are correct.
   instead of the generic fallback. `approvals.*` typing is unchanged
   (regression-checked: `contracts:check` passed with the full existing test
   suite green, 3376 tests, 0 failures).
+
 - The consistency check is scoped to these eight methods only, not a general
   replacement for `export-foundation-artifacts.ts`. If a future method
   needs `foundation-client-types.ts` entries added by hand again, either
@@ -99,17 +100,21 @@ shapes are correct.
   decision does not claim the generator problem is solved project-wide, only
   that this file's four target families cannot silently drift from their
   schemas going forward.
+
 - Per the ship-vehicle note in the Wave-5 brief meta
   (`scripts/sdk-dev.ts:42-80` never overlays `node_modules/@pellux/goodvibes-contracts`
  , only the SDK dist), these generated shapes reach the webui's dev overlay
   only at the real `0.38.0 -> 1.0.0` npm pin-bump, not before. W5-TC's local
   bridge-type seam is the intended decoupling; this work does not change
   that.
+
 - **W5-S1 delete-honesty verbs covered at the serialized land** (addendum,
   same day). This change originally branched from SDK main @ `01ee9b3a`,
   before W5-S1, when `sessions.delete` and the companion close/delete split
   did not exist in the catalog, the first cut deliberately did not invent
-  shapes for methods that did not exist yet. At the rebase onto `192ef2eb`
+  shapes for methods that did not exist yet.
+
+  At the rebase onto `192ef2eb`
   (W5-S1 landed), the planned follow-up was executed: `sessions.delete`,
   `companion.chat.sessions.close`, and `companion.chat.sessions.delete` were
   added to the checker's `ENTRIES` and to both maps. Since these verbs
@@ -119,6 +124,7 @@ shapes are correct.
   `builtinGatewayControlCompanionMethodDescriptors`), the same objects the
   daemon registers, and `sessions.detach`'s previously hand-mirrored inline
   schema was replaced with the descriptor-sourced one at the same time.
+
   Notably, the check caught a REAL stale entry on arrival:
   `OperatorMethodOutputMap["companion.chat.sessions.delete"]` still carried
   the pre-S1 soft-close shape `{ sessionId; status }` while S1 had changed
@@ -131,9 +137,11 @@ shapes are correct.
   ruling requires all four consumers to validate a fully-typed operator
   surface; the generic fallback is exactly the gap this brief exists to
   close.
+
 - **Hand-authoring without a consistency check.** Rejected, hand types
   drift from schemas silently and exactly reproduce the "trust me" problem
   the missing generator already caused once.
+
 - **Blocking on restoring/rewriting the full `export-foundation-artifacts.ts`
   generator.** Rejected as in-scope for this change, its surface (every
   method in the catalog, plus events, plus peer endpoints) is much larger

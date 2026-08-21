@@ -113,15 +113,21 @@ credential**: whoever holds one can reach the daemon through the relay.
     prerequisite for producing an assertion, so requiring one would deadlock.
     Credential registration is **not** exempt.
   - **Verify.** The daemon's `StepUpAssertionVerifier` (node/Web Crypto only)
-    checks, in order: `clientDataJSON` type is `webauthn.get`, its challenge is a
-    live+unconsumed one we minted, its origin is allowed; the `rpIdHash` equals
-    SHA-256(rpId); the user-presence flag is set (and user-verification when the
-    policy requires it, default required); the P-256 ECDSA signature over
-    `authenticatorData || SHA-256(clientDataJSON)` is valid; and the signature
-    counter has not gone backwards (a cloned-authenticator signal). Only a
-    complete pass consumes the challenge and advances the stored counter. Every
-    other path **fails closed**. It denies rather than allowing or faking a
-    pass, and nothing ever reports an unverified assertion as verified.
+    checks, in order:
+    1. `clientDataJSON` type is `webauthn.get`, its challenge is a
+       live+unconsumed one we minted, its origin is allowed.
+    2. The `rpIdHash` equals SHA-256(rpId).
+    3. The user-presence flag is set (and user-verification when the policy
+       requires it, default required).
+    4. The P-256 ECDSA signature over
+       `authenticatorData || SHA-256(clientDataJSON)` is valid.
+    5. The signature counter has not gone backwards (a cloned-authenticator
+       signal).
+
+    Only a complete pass consumes the challenge and advances the stored
+    counter. Every other path **fails closed**. It denies rather than
+    allowing or faking a pass, and nothing ever reports an unverified
+    assertion as verified.
 
   **Threat model: 'none' attestation.** Registration accepts the credential's
   COSE public key directly and does **not** verify an attestation certificate

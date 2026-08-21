@@ -33,9 +33,11 @@ before the 1.0.0 compatibility guarantee starts. Renames here are breaking-by-de
   search, snapshot, status, create, update, delete, upsert, set, enable, disable,
   close, reopen, cancel, run, retry, invoke, stream, register). Every method whose
   action is a generic lifecycle operation must use one of these words.
+
 - **`BANNED_VERBS`**: `patch`, `pause`, `resume`, retired verbs that must never
   reappear as a tail, even if someone re-adds a similarly-named method later without
   knowing the history.
+
 - **`EXEMPT_VERB_CATEGORIES`**: ~9 categories (external-api-mirror,
   media-and-voice-io, transport-and-protocol, ingest-and-content,
   approval-and-routing, session-and-work-lifecycle, reporting-and-diagnostics,
@@ -45,6 +47,7 @@ before the 1.0.0 compatibility guarantee starts. Renames here are breaking-by-de
   coherence bug. One outlier (`mcp.servers.remove`, a `delete` synonym) is flagged
   under `legacy-verb-aliases` as a KNOWN, explicitly out-of-scope inconsistency
   rather than silently exempted or force-renamed, see risk #6 below.
+
 - **Namespace rule**: a resource family name is the plural noun it manages; verbs
   attach directly. The one reusable exception, a family gets BOTH a singular
   per-item action surface and a plural collection surface only when the plural name
@@ -52,6 +55,7 @@ before the 1.0.0 compatibility guarantee starts. Renames here are breaking-by-de
   (singular, single-record actions) beside `knowledge.schedules.list` (plural,
   collection) is the canonical, pre-existing example this wave found and kept,
   not a new pattern invented for the schedule rename.
+
 - **Conformance test** (`test/core-verbs-conformance.test.ts`): lints every id in
   `OPERATOR_METHOD_IDS` against the spec, a verb tail must be core, exempt-with-
   documented-reason, or the test fails and names the offending id(s). A separate
@@ -113,7 +117,9 @@ reminder/routine framing collapse into the TUI's job model, or stay a distinct
 front-end over the same resource?) that belongs to a product ruling, not a naming
 pass, and risks silently changing agent capability. The E8 mandate is that *shared*
 verbs mean the same thing everywhere; it does not require collapsing two products'
-distinct front-ends over a shared resource into one. **REJECTED** renaming
+distinct front-ends over a shared resource into one.
+
+**REJECTED** renaming
 `knowledge.schedule(s).*`, it was never the source of the ambiguity (it was already
 correctly namespaced); the ambiguity was the *bare* family colliding with it and with
 the agent's tooling, which the rename above resolves without touching a family that
@@ -150,16 +156,20 @@ into the durable `MemoryStore`, that is W6-C2's canonical-store design question
 family (`list`/`get`/`create`/`cancel`/`retry`/`status`, "submit a task to the daemon
 or a shared session") are legitimately different resources that share a name: one is
 local in-process subtask tracking, the other is cross-surface daemon-mediated
-submission, not itself a bug. TUI's `/tasks` command exposes the full local write
+submission, not itself a bug.
+
+TUI's `/tasks` command exposes the full local write
 surface (`create`/`update`/`complete`/`fail`/`cancel`/`pause`/`resume`/`retry`);
 agent's `/tasks` (`input/commands/tasks-runtime.ts`) is read-only (`list`/`show`/
 `output`/`open`/`panel`). The first pass over this (grep-only) treated the asymmetry
 as an accidental gap and planned to add the missing write subcommands to the agent.
+
 **Reading the actual file disproves that**: agent's `/tasks` has an explicit
 `BLOCKED_TASK_MUTATIONS` set and a `printTaskMutationBlocked` message, *"policy connected-host tasks are read-only from the Agent TUI; normal work stays in
 the main conversation... build/fix/review use /delegate \<task\> to hand explicit
 implementation work to GoodVibes TUI"*, and the whole command is `hidden: true` with
 its own note that `/workplan` is agent's recommended, visible durable-task surface.
+
 This is the SAME deliberate policy already established for `/session`
 (`printSessionGraphMutationBlocked`: *"explicit build/fix/review handoff must use
 /delegate so GoodVibes TUI owns execution"*), the agent is a planning/conversation
@@ -173,7 +183,7 @@ didn't read closely enough to catch.
 `output`) already matches TUI's naming exactly for the shared read-only subset; there
 is no actual vocabulary inconsistency to fix, only a deliberate capability boundary
 that predates this wave and belongs to the one-platform division-of-responsibility
-ruling, not a naming/collision pass. Per Mike's no-deferral rule, ruling a "fix" a
+ruling, not a naming/collision pass. Per the owner's no-deferral rule, ruling a "fix" a
 no-op requires a real, checked reason, this is that reason, not convenience: forcing
 write capability into the agent here would reverse an existing, actively-documented
 architectural decision without a mandate to do so.
@@ -230,12 +240,15 @@ the same arg-forwarding TUI has, for identical behavior on both surfaces.
    dev overlay before landing, per file ownership). No deprecation aliases were kept
    for the renamed/retired ids, this is the wave built for clean breaks, and the
    release train ships SDK + all three consumers together.
+
 2. The tasks and session-orphan rulings are recorded above with their real reasons,
    not by convenience.
+
 3. Scope was held to the worst-class items, see the explicit REJECTED entries above
    for what was deliberately NOT re-touched (the `mcp.servers.remove` outlier, the
    TUI/agent tasks-domain naming overlap, the automation.jobs/schedules resource
    merge question).
+
 4. The `/memory` surface was coordinated with, not owned ahead of, W6-C2's canonical
    memory-store design.
 

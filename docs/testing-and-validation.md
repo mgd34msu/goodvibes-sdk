@@ -169,7 +169,13 @@ Maintainer-facing guidance for the most common release-gate failures:
 
 ## Workers runtime verification
 
-The `./browser` companion entry point (`createBrowserGoodVibesSdk`) is Workers-ready (the `./web` entry is an equivalent alias, use `./browser` for new projects). (Cloudflare Workers / Miniflare 4 / `workerd`). CI verifies this three ways: (1) `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`); (2) `platform-matrix (workers)` boots the `./web` entry (the `./web` alias of the Workers-ready `./browser`) under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests; (3) `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries). The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`. SDK-owned Cloudflare provisioning is covered without live Cloudflare calls by `test/cloudflare-control-plane.test.ts` using an injected fake Cloudflare API client.
+The `./browser` companion entry point (`createBrowserGoodVibesSdk`) is Workers-ready for Cloudflare Workers / Miniflare 4 / `workerd` (the `./web` entry is an equivalent alias, use `./browser` for new projects). CI verifies this three ways:
+
+1. `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`).
+2. `platform-matrix (workers)` boots the `./web` entry (the `./web` alias of the Workers-ready `./browser`) under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests.
+3. `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries).
+
+The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`. SDK-owned Cloudflare provisioning is covered without live Cloudflare calls by `test/cloudflare-control-plane.test.ts` using an injected fake Cloudflare API client.
 
 ## Type-level tests
 

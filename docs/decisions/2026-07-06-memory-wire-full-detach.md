@@ -70,12 +70,15 @@ Every op the consumers named is ruled explicitly; nothing is silently omitted.
 - **WIRE (read):** `list`/getAll, `search-semantic`, `linksFor`, `export`,
   `vectorStats`, `doctor`, `reviewQueue`. These read the daemon's OWN canonical
   store/index, honest to serve, and the whole point of detaching.
+
 - **WIRE (write, single-writer daemon applies it):** `update`, `link`, `import`.
   A client sends the intent; the daemon is the sole process that touches the file.
+
 - **`promote` → NOT a distinct verb.** "Promote" is expressed through verbs that
   now exist: a scope promotion (session→project→team) is `update({ scope })`; a
   review promotion (fresh→reviewed) is `updateReview({ state: 'reviewed' })`. No
   new endpoint; ruled here so the gap is closed on purpose, not by omission.
+
 - **HOST-ONLY, `rebuildVectors` / `rebuildVectorsAsync`.** Rebuilding the vector
   index is maintenance a store performs on its OWN index. The daemon keeps its
   canonical index current on every add/import and exposes an admin-gated
@@ -84,6 +87,7 @@ Every op the consumers named is ruled explicitly; nothing is silently omitted.
   against a store it does not own, it stays out of band and is deliberately NOT on
   `MemoryAccess`. A client that needs a forced canonical rebuild calls the existing
   admin route.
+
 - **HOST-SIDE PROJECTION, `explain`.** `MemoryApi.explain` composes
   `selectKnowledgeForTask` over the store's reads; it is a client-side projection,
   not a store operation. It runs over whatever read surface is active (a snapshot or
@@ -141,13 +145,16 @@ awaiting `refreshRecallSnapshot` in their existing async pre-turn path and readi
   memory-spine CLIENT types (`MemoryCoreAccess`/`MemoryExtendedAccess`/
   `MemoryRecallSnapshot` etc.) live in the `platform/runtime/memory-spine` subpath
   export, outside the api-extractor rollup, so they do NOT appear in the report, `api:check` is satisfied by regenerating the report for the two constant changes.
+
 - One-writer invariant holds throughout: a wire client routes EVERY op (core and
   extended) through the transport and structurally cannot reach the local file; an
   unsupported extended verb rejects rather than falling back to the file.
+
 - Consumer rewiring (agent `agent-local-registry-memory.ts` list/update/semantic
   paths onto the spine; TUI `getMemoryApi`/`/recall` and knowledge-injection onto
   the spine + snapshot) is SDK-dependent and staged on the consumer branches until
   this SDK ships, per the sibling convention.
+
 - Follow-on still tracked: the daemon becoming the DEFAULT single writer at boot
   (canonical placement TARGET) remains sequenced separately; this step delivers the
   wire it needs.

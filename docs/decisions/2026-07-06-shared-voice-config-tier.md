@@ -10,9 +10,12 @@
 
 Config is one SDK engine (`platform/config/manager.ts` `ConfigManager`) fanned into per-surface
 silos by a `surfaceRoot` string: each surface reads/writes `~/.goodvibes/<surface>/settings.json`.
-The voice settings, `tts.provider`, `tts.voice`, `tts.speed`, `tts.llmProvider`, `tts.llmModel`, lived in those silos, so a value set on one surface did not reach another. The TUI and daemon
+The voice settings, `tts.provider`, `tts.voice`, `tts.speed`, `tts.llmProvider`, `tts.llmModel`, lived in those silos, so a value set on one surface did not reach another.
+
+The TUI and daemon
 both run under `surfaceRoot: 'tui'`, so terminal + desktop + daemon already shared a file; the
 **agent** runs under `surfaceRoot: 'agent'` and read its voice from `~/.goodvibes/agent/settings.json`.
+
 Result: setting a voice in the webui (which writes through the daemon's `'tui'` store) left the
 agent's spoken voice unchanged, while the surface labeled the voice "one voice across terminal,
 desktop, and agent." The label named the agent as a party to a sharing guarantee that did not

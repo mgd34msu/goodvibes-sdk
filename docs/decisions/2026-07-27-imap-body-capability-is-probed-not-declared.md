@@ -131,7 +131,7 @@ through a connection not yet declared healthy. The bound is the point.
 **Probe with `BODY[]` instead of `BODY.PEEK[]`.** Would mark the owner's mail
 read as a side effect of a health check. The entire inbound design is
 `EXAMINE` + `BODY.PEEK` so the daemon never changes the mailbox; a probe that
-broke that would be a visible change to his mailbox nobody asked for.
+broke that would be a visible change to the owner's mailbox nobody asked for.
 
 **Treat any empty body as a failure.** A message with a legitimately zero-octet
 body exists, and stopping a working watcher over one trades a real defect for a
@@ -234,7 +234,7 @@ fact in two shapes, and a connection carried both. There is now one
 `unreadable` carries an `evidence` union naming which of the two ways it was
 learned (`withheld`, or `refused` with the server's own wording). One reason
 code reaches the owner, `bodies-unfetchable`, because both evidences mean the
-same thing to him and carry the same remedy.
+same thing to the reader and carry the same remedy.
 
 One consequence worth naming: a refusal of the probe that no classifier can
 place now reports `bodies-unfetchable` rather than `fetch-refused`. Both are

@@ -91,11 +91,13 @@ every id in the map, and all 464 are in the map. No consumer call site changes.
   branch's requiredness was dropped and the path helpers accepted `{}` again.
   This is the same trap `RequiredNamedKeys` is homomorphic to avoid, arriving
   from the other side. Guarded by `test/types/typed-client-wrong-body.ts`.
+
 - The open-envelope enforcement is unchanged and still proven by
   `test/types/open-envelope-key-helpers.ts`. Verified by mutation: regressing
   `RequiredNamedKeys` to map over `keyof T` reddens it at line 36; regressing
   `OmitNamed` to a plain `Omit` reddens lines 25 and 29 plus two directives in
   `typed-client-wrong-body.ts` and five call sites in `browser-knowledge.ts`.
+
 - `IndexPart`, `NamedProps`, `OmitNamed` and `RequiredNamedKeys` are now exported
   from the SDK entry point, because the public `RequiredKeys` and `WithoutKeys`
   are written in terms of them (previously `ae-forgotten-export`).

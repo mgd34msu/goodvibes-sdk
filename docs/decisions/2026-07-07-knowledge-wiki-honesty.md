@@ -90,26 +90,33 @@ re-processes the retained lake through the existing per-source recompile job.
 - **mergeNodes** (5): a real `store.mergeNodes(loser, winner)` re-points every edge onto
   the survivor (deduping, dropping self-loops), records a `merged_into` edge, and marks the
   loser stale with a `mergedInto` stamp.
+
 - **Honest hard delete + GraphQL filter** (6): `deleteNode`/`deleteSource` exposed via the
   service/API; `queryNodes` (which backs the GraphQL `node`/`nodes` and the
   `/api/knowledge/nodes` route) now hides `stale` nodes by default, with an explicit
   `includeStale` opt-out, a forgotten node is no longer served over the wire.
+
 - **Refinement-task cascade** (7): single-record node/source deletes now also delete the
   `knowledge_refinement_tasks` that referenced them (the space-level delete already did).
+
 - **Packet truncation disclosure** (9): `KnowledgePacket` carries `truncated`,
   `totalCandidates`, `droppedCount`, mirroring the home-graph packet.
+
 - **Enrichment off the source row** (10): the semantic-enrichment cache stamp moved from
   `knowledge_sources.metadata` to its own derived `knowledge_semantic_enrichment_state`
   record; sources stay append-only.
+
 - **Unlink is a real reversal** (home-graph): `unlinkHomeGraphKnowledge` now removes the
   link edge (and, if the link itself materialized the target node and nothing else
   references it, that node too), and is an honest no-op on a never-linked target, no
   phantom records. It returns a `HomeGraphUnlinkResult` (`reversed`, `removedEdgeId`,
   `removedNodeId`).
+
 - **Shared-artifact reset (Hazard H1)**: home-graph reset now scope-checks deletions, a
   blob explicitly owned by another knowledge family is preserved rather than deleted, so a
   reset cannot orphan another family's artifact reference. (Blobs are per-creation ids
   today, so this is defensive; the guard closes the documented hazard.)
+
 - **Constructor family assert**: `KnowledgeStore` accepts a `family` (`wiki` /
   `home-graph` / `agent`) and asserts the resolved db file matches it, so a cross-family
   mis-wire fails loudly. The three SDK construction sites declare their family.

@@ -12,21 +12,25 @@ and their deterministic test suites. The freshest copy (the TUI's) had grown a
 substantial behavioral contract that the agent's copy tracked by hand:
 
 - a sentence-boundary chunker with a max-length cut and a latency flush;
+
 - a bounded **2-slot** synthesis window that never bursts more than two
   concurrent requests at the voice provider (ElevenLabs plans allow as few as 3
   concurrent, an unbounded burst 429s the whole turn);
+
 - aggressive **merge-pending coalescing** with a 1,500-char cap, so a
   multi-paragraph answer folds into one or two requests instead of one per
   sentence;
+
 - **bounded backoff retry** for transient failures (429 / transient 5xx /
   network drops) with an **honest skip-and-continue**, a gap in speech beats
   losing the whole response;
+
 - **drain-vs-interrupt** semantics: a natural end plays the tail out fully; a
   deliberate interrupt (Ctrl+C, /tts stop, turn cancel, preemption) cuts
   instantly; and a `stopForExit` path that lets the audio already playing drain
   inside a bounded window before teardown.
 
-Mike's standing rule: shared behavioral contracts hoist into the SDK. The webui
+The owner's standing rule: shared behavioral contracts hoist into the SDK. The webui
 voice build needs this exact policy behind a Web Audio sink, and keeping three
 copies in sync by hand is a defect source.
 

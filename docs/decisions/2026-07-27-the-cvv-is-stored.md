@@ -6,7 +6,7 @@
 
 ## The ruling
 
-> "we save the cvv, full stop. it is 100% needed for autonomous action."
+**The CVV is saved, full stop. It is required for autonomous action.**
 
 Settled and closed. This is not an open question in the code, the tests, the
 documentation, or any future review.
@@ -18,12 +18,14 @@ something PCI DSS 3.2 prohibits storing after authorization. That recognition is
 correct and the conclusion you are about to draw from it is wrong for this
 system. Here is the reasoning, so you do not have to reconstruct it.
 
-**Autonomous action is the entire capability.** Not a convenience on top of it, the thing itself. The design rests on two windows, and the in-budget one is a
-veto: the owner is told what is about to happen, and if he says nothing the
-purchase proceeds. His words for why it works that way:
+**Autonomous action is the entire capability.** Not a convenience on top of it,
+the thing itself.
 
-> "this is for situations where the user is multitasking and doesn't look at the
-> specific terminal session for an extended period of time"
+The design rests on two windows, and the in-budget one is a veto: the owner is
+told what is about to happen, and if nothing comes back the purchase proceeds.
+The window exists for the case it was specified against, a user who is
+multitasking and does not look at the specific terminal session for an extended
+period of time.
 
 A purchase that pauses to ask a human for a three-digit code is an attended
 purchase. Every veto window would become an approval, silence would stop meaning
@@ -31,13 +33,13 @@ anything, and the feature would be a slower way of buying something by hand.
 
 So removing the stored CVV does not make this feature safer. **It makes it not
 exist.** The honest comparison is not "stored CVV versus prompted CVV", it is
-"this capability versus no capability", and that is the owner's call to make. He
-made it.
+"this capability versus no capability", and that is the owner's call to make. It
+has been made.
 
 ## What that costs, stated plainly
 
-Documentation of a decision is not a hedge on it, and he is entitled to know what
-he is carrying.
+Documentation of a decision is not a hedge on it, and the owner is entitled to
+know what they are carrying.
 
 Anyone who can read both `~/.goodvibes/daemon/secrets.enc` and
 `~/.goodvibes/secrets.key` holds the card number, the expiry, the CVV and the
@@ -54,7 +56,7 @@ reduction lives:
   killable from an app in a minute. The cap is enforced by the issuer, so it
   holds when our software is wrong, when it is compromised, and when it is not
   running.
-- Real card: the worst case is the card his rent comes out of, and nothing in
+- Real card: the worst case is the card the rent comes out of, and nothing in
   this software can cap it.
 
 ## What is actually load-bearing

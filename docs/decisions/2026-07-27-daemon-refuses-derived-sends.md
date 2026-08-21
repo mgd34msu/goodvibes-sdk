@@ -16,16 +16,16 @@ went: an unattended daemon has nobody to take a refusal to, so a refusal there
 is a dead end, whereas a disclosure travels with the receipt and lets a reader
 weigh it.
 
-The owner ruled the other way, and the reason is the threat model rather than
-the ergonomics:
-
-> "i don't want to get into a situation where someone prompt injects my daemon
-> via email"
+The ruling went the other way, and the reason is the threat model rather than
+the ergonomics: the situation to be designed out is a prompt injection reaching
+the daemon through inbound email.
 
 A disclosure is a note in a receipt nobody reads, on the one surface with no
 human watching. An unattended daemon is precisely where a prompt injection pays
-off best, because there is nobody to notice. Ranking the daemon as the most
-permissive surface, a product with a human attached refuses the same send, is backwards for this threat.
+off best, because there is nobody to notice.
+
+Ranking the daemon as the most permissive surface is backwards for this threat:
+a product with a human attached refuses the same send.
 
 **Your disclosure is kept**, for the sends that now pass. It stops being the
 only protection; it does not stop being useful.
@@ -56,26 +56,29 @@ paraphrase is not caught and no non-classifier could catch it. The remaining
 defences are that untrusted content carries no authority at all, and that
 outward actions still require confirmation.
 
-## The one exemption: a send to the owner himself
+## The one exemption: a send to the owner
 
-Owner ruling. He is the trust root, not a third party, and telling him what
-arrived is the point of an assistant reading his mail, "what came in
+Owner ruling. The owner is the trust root, not a third party, and reporting what
+arrived is the point of an assistant reading the owner's mail. "What came in
 overnight" is a summary that necessarily reuses the words of what came in, so
 without an exemption the feature is refused in its most ordinary use.
 
 Deliberately narrow, and each narrowing is tested:
 
-- His configured addresses only. **Not a domain** (that would exempt every
+- The owner's configured addresses only. **Not a domain** (that would exempt every
   colleague, and a forward to a colleague is a third-party disclosure), **not a
   pattern** (no plus-address folding), **not "internal"** (there is no such
   tier).
+
 - **Not partial.** A send to the owner AND anyone else is refused, because
-  naming him first and slipping a second recipient in beside him is exactly how
-  this would be abused.
+  naming the owner first and slipping a second recipient in alongside is exactly
+  how this would be abused.
+
 - Identity comes from configuration, `email.fromAddress`, `email.username`,
   `surfaces.email.from`/`.user`/`.username`, and never from a `From:` header,
   `Reply-To:`, delivery evidence, the ledger, or the body. A recipient the
   content chose is the attack, so content is not consulted.
+
 - Nothing configured means no identity, so the exemption cannot fire and the
   refusal stays. That is the correct failure direction.
 

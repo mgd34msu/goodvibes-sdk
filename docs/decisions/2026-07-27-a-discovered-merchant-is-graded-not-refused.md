@@ -14,44 +14,50 @@ The taint gate refused any purchase whose merchant came from page content, and
 > the merchant, or there is no purchase. This is a feature of the design and is
 > tested as one.
 
-The owner overrode it. This record exists because a later reader will find a
-relaxed money gate and a deleted "this is a feature" paragraph, and that pattern
-normally means someone worked around a safeguard. It was not worked around. It
-was ruled on, and the ruling is narrower than it looks.
+That refusal was overridden. This record exists because a later reader will find
+a relaxed money gate and a deleted "this is a feature" paragraph, and that
+pattern normally means someone worked around a safeguard. It was not worked
+around. It was ruled on, and the ruling is narrower than it looks.
 
-## His rulings, verbatim, in the order he gave them
+## The rulings, in the order they were given
 
-> "the taint gate is wrong. if i tell you to buy the cheapest X you find online,
-> you will 1) find it, 2) show it to me, and then 3) alert me prior to purchasing
-> if it is not a major retailer - use your best judgement on what you consider a
-> major retailer"
+These are contractual. Do not revise them silently.
 
-> "2 and 3 are basically the same step"
+1. **The blanket taint refusal is wrong.** An owner instruction to buy the
+   cheapest X findable online must be carried out: find the item, and alert the
+   owner before purchasing when the merchant is not a major retailer, using
+   judgement about what counts as major.
 
-> "if the place we're buying isn't what the average person would consider a major
-> retailer, silence means denial of purchase"
+2. **Showing the find and alerting before purchase are one step, not two.**
 
-> "even smaller specialty retailers like microcenter would be considered major,
-> unlike something like www.jeffsgadgets.biz"
+3. **Silence means denial.** When the merchant is not what an average person
+   would consider a major retailer, no answer is a refusal to purchase, never a
+   default to proceed.
 
-> "something of a grey area is Ebay - i would allow buy it now purchases on Ebay,
-> but only if the seller has a solid reputation from selling, not just buying"
+4. **Size is not the criterion.** A smaller specialty retailer such as Micro
+   Center counts as major; a storefront such as `www.jeffsgadgets.biz` does not.
 
-> "even etsy is fine, mainly because they have consumer protections. so yeah, use
-> judgement in situations like ebay, try to buy from established retailers --
-> even established online-only retailers like redbubble etc, but be wary of
-> storefronts like jeffsgadgets.biz"
+5. **eBay is a grey area with one opening.** Buy It Now purchases are allowed,
+   and only when the seller has a solid reputation earned from selling rather
+   than from buying.
+
+6. **Consumer protections are what qualify a marketplace.** Etsy is acceptable
+   mainly because it carries them. Apply the same judgement to eBay-shaped cases:
+   prefer established retailers, including established online-only ones such as
+   Redbubble, and treat storefronts of the `jeffsgadgets.biz` kind with
+   suspicion.
 
 ## The distinction the old design missed
 
 **Who initiates** and **who chooses the merchant** are two different questions.
 The old gate answered both with one rule and refused both cases.
 
-"Buy the cheapest X you can find" is *his* instruction. The item is his, the
-intent is his, the budget is his, only the storefront was found on a page.
-Refusing that does not stop an attack; it stops the feature, and it leaves the
-actual risk (money going somewhere with no recourse) unaddressed, because a
-merchant *he* names is not automatically one he can get his money back from.
+"Buy the cheapest X you can find" is the *owner's* instruction. The item, the
+intent and the budget are all owner-supplied; only the storefront was found on a
+page. Refusing that does not stop an attack; it stops the feature, and it leaves
+the actual risk (money going somewhere with no recourse) unaddressed, because a
+merchant the *owner* names is not automatically one the owner can get their
+money back from.
 
 ## What did not move
 
@@ -72,8 +78,8 @@ Two properties defend it:
   can refuse it is the origin rule, a text-match refusal would let the
   structural rule be deleted while the test still passed.
 
-`item` and `requestedMax` are still always checked. They come from him or the
-purchase does not exist.
+`item` and `requestedMax` are still always checked. They come from the owner or
+the purchase does not exist.
 
 ## How the type carries it
 
@@ -84,10 +90,10 @@ later edit can forget to check.
 
 ## The standard: recourse, not recognisability
 
-The organizing principle is **recourse**. He named it when he said Etsy is fine
-"mainly because they have consumer protections", and that established
-online-only retailers like Redbubble count. Recognisability was the proxy;
-recourse is the thing it stood for.
+The organizing principle is **recourse**. It is what ruling 6 turns on: Etsy
+qualifies because it carries consumer protections, and established online-only
+retailers like Redbubble count for the same reason. Recognisability was the
+proxy; recourse is the thing it stood for.
 
 `jeffsgadgets.biz` fails not because it is small or obscure but because **there
 is nobody to go to.** Micro Center qualifies at two dozen stores; Redbubble
@@ -95,14 +101,9 @@ qualifies with no stores at all.
 
 ## Judgement against a profile: NOT a curated list
 
-The first implementation shipped a hardcoded allowlist of retailer domains. He
-rejected it:
-
-> "i didn't fucking say make a list of retailers, i said retailers matching that
-> profile."
-
-He is right, and the list was wrong on its own terms as well as against his
-instruction:
+The first implementation shipped a hardcoded allowlist of retailer domains. That
+was rejected: the requirement was retailers *matching the profile*, not a list of
+retailers. The list was also wrong on its own terms:
 
 - It **fails closed on every established retailer nobody enumerated.** A real
   merchant with real recourse would be treated exactly like `jeffsgadgets.biz`
@@ -145,21 +146,21 @@ If a future change wants to widen that input, that is a signal to stop.
 
 Unchanged and load-bearing. A judgement that is not confident has the same
 effect on spending as a negative one. The cost of asking about a real retailer
-is one message he answers; the cost of the reverse is money spent somewhere he
-never approved.
+is one message the owner answers; the cost of the reverse is money spent
+somewhere the owner never approved.
 
 ## The owner's overrides stay authoritative
 
 `payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` beat
 the judgement in both directions. An exclusion short-circuits before the judge
-is consulted at all. Additions remain his alone, nothing learned, nothing
+is consulted at all. Additions remain the owner's alone, nothing learned, nothing
 inferred from a page, nothing added by an agent, because anything that could
 argue itself onto that list could buy from itself unattended.
 
 ## eBay: per-listing, and auctions refused structurally
 
 **Auctions are refused as a structural impossibility, not a policy preference.**
-The flow he designed is: know the final total → notify him → run the window →
+The designed flow is: know the final total → notify the owner → run the window →
 pay. An auction has no final total until it ends, so that flow cannot execute at
 all. This is recorded explicitly because "make auctions configurable" is an
 obvious-looking future request, and it is not a configuration question. Best
@@ -172,7 +173,7 @@ Defaults ≥98% positive as a seller and ≥100 seller ratings, both configurabl
 The check is a **ratchet**: it may only ever make the outcome stricter. No
 reputation figure promotes a domain that was not already recognised. Unreadable
 figures, or figures from a seller-controlled region of the page rather than
-eBay's own widget, mean not-major and he is asked. If the region cannot be told
+eBay's own widget, mean not-major and the owner is asked. If the region cannot be told
 apart, the figure is unreadable.
 
 ## Recourse must survive the checkout

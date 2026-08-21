@@ -4,23 +4,20 @@
 **Status:** Accepted (owner ruling)
 **Applies to:** `platform/payments/entry-surface.ts`, `docs/payments.md` §8.2.2–§8.2.3
 
-This record exists so the ruling can be checked without trusting any agent's
-account of it. It is committed as ordinary history and predates the work it
-authorizes.
+This record exists so the sequence can be checked against ordinary commit history
+rather than an agent's later account of it. It predates the work it authorizes.
 
-## 1. What the owner originally said
+## 1. What the original requirement named
 
-Verbatim:
+- Payment details, card information and shipping and billing addresses among
+  them, must be enterable in the **TUI**.
+- Everything entered that way is saved to the **shared configs**, not to
+  surface-local storage.
+- The same entry is exposed in the **agent**: the UI offers it in both places.
 
-> "i need to be able to enter payment details (card info and shipping/billing
-> address etc) in the tui too, and it all needs to be saved to the shared
-> configs"
+## 2. That requirement named two surfaces, and a third was added by someone else
 
-> "and in the agent - basically ui should expose it in both."
-
-## 2. Those words named two surfaces, and a third was added by someone else
-
-Read plainly, that names the **TUI** and the **agent**. It does not name the
+Read plainly, it names the **TUI** and the **agent**. It does not name the
 webui.
 
 The **coordinator** extended it to the webui on its own judgment. That extension
@@ -36,39 +33,41 @@ the webui"*, removed the webui from the card-entry allowlist and corrected the
 attribution throughout the code, the tests and the design document. **That commit
 was correct** and remains correct for the moment it describes.
 
-## 3. The question was then put to the owner, and he ruled
+## 3. The question was then put to the owner and answered
 
-He was given a two-option choice with the exposure stated in front of him, a
-PAN on a browser page, form autofill, password managers, browser history, and
-XSS in our own UI.
+The choice offered was two options with the exposure stated up front: a PAN on a
+browser page, form autofill, password managers, browser history, and XSS in our
+own UI.
 
-He selected the option labelled:
-
-> **"Card entry in webui too"**
-
-and then typed:
-
-> **"so is the webui getting card input? i said yes..."**
+The option selected was **card entry in the webui too**, and that answer was
+confirmed a second time when the question was put again.
 
 So: **full parity across the TUI, the agent and the webui**, card number,
 expiry, CVV, cardholder name, billing and shipping addresses, and every
 `payments.*` setting, enterable from all three.
 
-## 4. The conditions carried by the option he chose
+## 4. The conditions carried by the chosen option
 
-These came attached to the option he selected. They are part of the ruling, not
-a gloss added afterwards, and they ship from the SDK as
+These came attached to the option that was selected. They are part of the ruling,
+not a gloss added afterwards, and they ship from the SDK as
 `WEBUI_CARD_ENTRY_CONDITIONS` so a surface cannot implement a weaker version.
 
 1. Card fields are posted over the **authenticated daemon channel**, the same
    path as any other secret.
+
 2. Card values **never appear in a URL**, not a query parameter, not a
    fragment, not a path segment. URLs reach browser history, referrer headers
    and server logs.
+
 3. Card values are **never rendered back after entry**: no response returns
    them, and no field is repopulated from the server.
+
 4. Every card field carries **`autocomplete="off"`**.
-5. Card fields **must not present as ones a password manager offers to save**, a manager copies the value into storage this system cannot reach or clear.
+
+5. Card fields **must not present as ones a password manager offers to save**,
+   because a manager copies the value into storage this system cannot reach or
+   clear.
+
 6. **No card value is retained in DOM state**, cleared from component state
    after submit, never left in a store, a form-library cache, or state that
    survives navigation.
@@ -78,9 +77,9 @@ conditions arrived with the ruling rather than after it.
 
 ## 5. Both commits are correct in sequence: do not squash them
 
-`8c8589bc` closed webui card entry because, at that moment, the owner had named
-only the TUI and the agent and the third surface was a coordinator decision
-relayed as his. The reversal on top of it opens webui card entry because the
+`8c8589bc` closed webui card entry because, at that moment, only the TUI and the
+agent had been named and the third surface was a coordinator decision relayed as
+an owner ruling. The reversal on top of it opens webui card entry because the
 question was then actually asked and answered.
 
 The correction and the ruling are each worth keeping. Squashing them would erase

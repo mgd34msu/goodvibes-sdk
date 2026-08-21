@@ -73,7 +73,7 @@ whose code has a rule are triaged.
 
 ### 6. The family wall holds by construction and by scoping
 
-Mike's ruling: the home-graph must stay a separate part of the knowledge/wiki function so Home
+Owner ruling: the home-graph must stay a separate part of the knowledge/wiki function so Home
 Assistant never bleeds into tui/agent knowledge. Two independent guarantees:
 
 - **By construction:** the home-graph, general wiki, and agent-ops knowledge are separate
@@ -119,17 +119,21 @@ with a single call:
 - `POST /api/homeassistant/home-graph/refinement/run?installationId=<id>` with body
   `{ "triage": { "minConfidence": 85, "limit": 25, "chunkSize": 25, "force": false,
   "skipIssueIds": [], "reviewer": "homeassistant:auto-triage" }, "skipGapRefinement": true }`.
+
 - Response `triage`: `{ ok, spaceId, configured, processed, skipped, applied, reviewed,
   decisions[], remaining, minConfidence, reason? }`. `configured:false` +
   `reason:"triage-llm-not-configured"` means the daemon has no semantic LLM, keep the local
   engine as fallback until the daemon capability is default.
+
 - The following Python can then be deleted: the prompt (`_triage_prompt`), decision parsing
   (`_parse_triage_decisions`), the confidence gate + `facts/review` auto-apply loop, the
   `_semantic_review_value` fact special-casing (the SDK's `deriveIssueFacts` covers it), and the
   entire Store-backed triage fingerprint cache (`_async_load/save_triage_cache`,
   `_triage_cache_matches`, `_remember_triage_decisions`), the SDK now owns the decision cache.
+
 - Retain only the Home-Assistant-surface glue: reading HA registries for entity/device/area ids
   and syncing them into `node.metadata.homeAssistant` (the SDK stores, but does not read, HA
   registries).
+
 - Gate the switch behind a daemon capability check so older daemons keep working; the daemon
   advertises triage via the `refinement/run` `triage` input.

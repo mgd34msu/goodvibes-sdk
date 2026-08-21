@@ -18,6 +18,7 @@ Hoisted, with the TUI's CURRENT source as the reference for every value:
 1. **`THINKING_PHRASES`** (`thinking-phrases.ts`), the 20-phrase rotation pool.
    Verbatim-identical in both repos today (TUI `ui-factory.ts:489-510` vs agent
    `ui-factory.ts:281-302`), a pure move, no reconciliation.
+
 2. **`GLYPHS` / `STATE_GLYPHS`** (`glyphs.ts`), the glyph registry (frame/surface/
    navigation/status/meter groups) plus the 4-state semantic alias map. The status
    group DIVERGED between repos (TUI `ui-primitives.ts:1-58` vs agent `:1-57`): the
@@ -27,6 +28,7 @@ Hoisted, with the TUI's CURRENT source as the reference for every value:
    mechanism); the agent's twin hardcoded its own literals instead of aliasing a
    shared registry, hoisting the alias pattern here makes drift structurally
    impossible going forward.
+
 3. **`TONE_TOKENS` / `resolveTones` / `DIFF_TONES` / `SPINNER_FRAMES`** (`tones.ts`), mirrors the TUI's `UI_TONES` shape byte-for-byte (`ui-primitives.ts:65-138` +
    chrome group `:124-137`, plus `DIFF_TONES:149-157` and `SPINNER_FRAMES:160`),
    including the chrome group the agent's copy was missing entirely (agent
@@ -37,6 +39,7 @@ Hoisted, with the TUI's CURRENT source as the reference for every value:
    returns `TONE_TOKENS` itself (same object reference, byte-identical, zero-cost),
    `resolveTones('light')` returns the inverted chrome/accent variant tuned for a
    light terminal background.
+
 4. **`waitingPhrase` / `WaitingState`** (`waiting-wording.ts`), a typed, pure
    state→wording function extracted from TUI `ui-factory.ts:554-584` (the
    phrase-selection branch inside `createThinkingFragment`). `WaitingState` is
@@ -45,7 +48,7 @@ Hoisted, with the TUI's CURRENT source as the reference for every value:
    renderers call, not two divergent copies, the agent's twin (`ui-factory.ts:308-313`)
    was rotating-only, with no honest stall/reconnect/approval split at all.
 
-Chosen per Mike's SDK-boundary ruling (plan 2026-07-04:345-352, Wave 4 = the
+Chosen per the owner's SDK-boundary ruling (plan 2026-07-04:345-352, Wave 4 = the
 presentation contract) and the move-to-SDK authority: machinery needed by 2+ surfaces
 belongs in the SDK. The drift was already visible before this hoist (GLYPHS idle/info
 diverged; the agent's UI_TONES was a stale subset missing the whole chrome group), exactly the failure mode the SDK boundary exists to prevent.
@@ -61,12 +64,14 @@ diverged; the agent's UI_TONES was a stale subset missing the whole chrome group
   recent comparable extraction, isn't listed there either); `check:metadata`'s
   capabilities-coverage check only requires that entries WHICH EXIST there have a
   matching export, not that every subpath appears.
+
 - **`resolveTones(mode)`**, `'dark'` returns the exact `TONE_TOKENS` object
   (reference-identical); `'light'` returns a derived variant that only overrides the
   roles with a light-appropriate value today (`state.info`/`state.reasoning`,
   `accent.brand`/`gradientStart`/`gradientEnd`, and the full `chrome` group), every
   other role carries the dark value forward unchanged, matching the TUI's
   `UI_TONES_LIGHT` exactly, including which roles it deliberately leaves untouched.
+
 - **`waitingPhrase(state, ctx)`**, pure, five-branch, returns the TUI's exact
   strings: `'Waiting for your approval'`, `` `Reconnecting (attempt ${n}/${m})...` ``,
   `` `Waiting for model ${n}s...` ``, `` `Stalled ${n}s...` ``, and a
@@ -79,7 +84,7 @@ This is the one real content choice in this hoist. The TUI's `idle='◌'`/`info=
 `warn='⚠'` wins over the agent's `idle='○'`/`info='•'`/no-`warn`. Rationale: the TUI is
 the more-recently-fixed, more-complete copy (its `status-glyphs.ts` comment records that
 it already resolved an internal `info`/`pending` collision the agent's copy still
-carries), and Mike's ruling designates the TUI as the reference substrate for this wave.
+carries), and that ruling designates the TUI as the reference substrate for this wave.
 **Effect when the agent adopts this (R4, a later wave, not this one):** the agent's
 `idle` and `info` status glyphs will VISIBLY change on render, this is an intentional
 convergence to the reference, not a regression, and should be called out in that wave's
@@ -89,20 +94,24 @@ notes so it isn't mistaken for a defect.
 
 - **Leaving the four tables duplicated with a "keep in sync" convention/lint.** The
   drift had already started (GLYPHS status group diverged; the agent's UI_TONES was
-  missing the entire chrome group), Mike's ruling is machinery-needed-by-2+-surfaces
+  missing the entire chrome group), the owner's ruling is machinery-needed-by-2+-surfaces
   => SDK, and a lint cannot un-diverge already-shipped literal tables.
+
 - **Hoisting `status-token.ts` / `tool-labels.ts`.** Agent-only (the TUI has neither), not cross-repo duplication, and pulling them in would pollute the SDK with
   agent-specific presentation the TUI has no use for. Explicitly excluded per the
   W4-R1 audit's candidate list.
+
 - **Swapping the TUI onto this contract in the same wave.** The TUI is the reference
   and is already correct; rewriting its renderer to import from the SDK here would be
   blast-radius for zero honesty gain. Deferred to a Wave-6 coherence pass (see Flag,
   below).
+
 - **A runtime theme SERVICE (subscribe/notify, mode-change events, etc).** The contract
   is data plus pure functions; painting and mode-change propagation stay
   renderer-owned. `resolveTones`/`waitingPhrase` are called per-render by whichever
   renderer holds the active mode/state, exactly like the TUI's own
   `resolveUiTones`/`createThinkingFragment` do today.
+
 - **Hoisting `computeStallInfo`/`computeRenderStallInfo` (ui-factory.ts:522-552)
   alongside `waitingPhrase`.** These derive a `WaitingState` from a renderer's own
   live stream metrics (`lastDeltaAtMs`, `activeToolName`, reconnect counters), a

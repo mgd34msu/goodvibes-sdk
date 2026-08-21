@@ -16,11 +16,11 @@ anything was ingested since that watermark.
 
 Those two facts do not compose. A watcher that records ingest at the moment mail
 arrives writes into whatever turn window happens to be open at that moment. Mail
-landing at 03:00 while the owner is mid-request would refuse his outward action
+landing at 03:00 while the owner is mid-request would refuse that outward action
 on the basis of a message no turn read, no model saw, and nobody asked for.
 
 The consequence is not friction. It is that anyone who knows the owner's email
-address could disable his agent's outward actions on demand, by sending him
+address could disable the agent's outward actions on demand simply by sending
 mail, and could do it repeatedly, at will, from anywhere, with no access to
 anything. A defense against injected instructions would have become a remote
 off switch operated by strangers.
@@ -66,12 +66,14 @@ watermark exists to stop.
 - The taint round and this round must not both add `ledger.record()` calls to
   the arrival path. Neither list of owned files overlaps; this is the one
   semantic boundary between them.
+
 - Inbound mail must never be treated as owner-direct.
   `inputOriginIsOwnerDirect(origin)` returns `true` when `origin === undefined`
  , "nothing routed it in, that is the keyboard". Inbound mail *is* routed in,
   so every inbound-originated invocation must supply an origin carrying
   `ownerDirect: false` **explicitly**, never omit it and never rely on its
   source name being absent from a list.
+
 - The rule generalizes beyond email, and should be applied to any future
   background reader, a calendar sync, a feed poller, a webhook receiver. The
   question to ask is not "is this content untrusted" (it always is) but "did a

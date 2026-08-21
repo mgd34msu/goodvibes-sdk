@@ -28,13 +28,16 @@ The wire READERS degrade honestly instead of hard-failing:
    - an unknown `kind` → `'tui'` (documented fallback), with the raw wire value
      preserved under `metadata.wireKind` so nothing is silently lost;
    - unknown extra fields are carried through untouched (spread), never rejected.
+
 2. **Register response is envelope-tolerant**: `reopened` defaults to `false`
    and `conflict` is only surfaced when the daemon sent it, so an OLD daemon that
    returns just `{ session }` still yields a valid `SharedSessionRegisterResult`.
+
 3. **New discriminants are additive**: `session-input-completed` /
    `session-input-failed` join the enum; an old consumer that switches on
    `payload.event` simply ignores names it does not know (it already had to
    tolerate the un-exhaustive set).
+
 4. **Producers stay strict on INPUT**: `sessions.register` rejects an unknown
    `kind` with 400 rather than coercing it (honest write path). Leniency is a
    READER stance, not a writer one.

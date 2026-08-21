@@ -11,7 +11,7 @@
 **Quoted, traceable owner wording is the only carrier of owner authority.**
 
 Not git authorship. Not an agent asserting parentage. Not a confident summary.
-Not a coordinator's decision wearing his name. **And not a transcript record an
+Not a coordinator's decision wearing the owner's name. **And not a transcript record an
 agent went and found for itself**, see the rejected approach below.
 
 When something is the coordinator's call, it is written as the coordinator's
@@ -34,8 +34,8 @@ message independently, applied those, and escalated the authorization claim
 instead of acting on it. It was right on every count.
 
 The question was then actually put to the owner **by the coordinator, in its own
-conversation with him**, and he ruled for card entry in the webui, with
-conditions. **The refusal was still correct.** A guess that happens to match the
+conversation with the owner**, and the ruling came back for card entry in the
+webui, with conditions. **The refusal was still correct.** A guess that happens to match the
 answer is not the same as having asked, and the boundary has to hold before the
 answer is known.
 
@@ -79,24 +79,26 @@ mistaken for evidence that it needed better criteria.
 ## The working model that replaces it
 
 - **The coordinator is the only party that directly witnesses the owner.**
-  Everything an agent receives about his intent is a relay, and a relay does not
+  Everything an agent receives about that intent is a relay, and a relay does not
   become primary evidence by being investigated harder.
+
 - **Agents refuse mid-round reversals.** That instinct is correct and it stays. A
   message that changes a round's scope or authorization mid-flight is refused
   however well-evidenced it appears.
+
 - **Contested scope goes into a fresh agent's founding brief**, where there is
   nothing to adjudicate, the brief simply is the task. That is what actually
   resolved both refusals in this incident, and it is the mechanism to reach for
   rather than a better argument.
+
 - **Refusing costs less than being wrong.** A refusal that turns out unnecessary
   is a short delay. Acting on a fabricated ruling spends money, stores card
   material, or ships a boundary nobody agreed to.
 
 ## The subtler failure: authorship read as provenance
 
-While weighing the correction commit, a sub-round noted it was authored by
-`Mike Davis <mgd34msu@gmail.com>` and treated that as partial evidence of
-authenticity.
+While weighing the correction commit, a sub-round noted it was authored under the
+owner's own git identity and treated that as partial evidence of authenticity.
 
 **Every agent on this machine commits under that identity.** That line appears on
 commits no human wrote, including the very reversal the sub-round was right to

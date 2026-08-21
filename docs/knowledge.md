@@ -24,16 +24,20 @@ Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Co
 
 Knowledge records can carry `metadata.knowledgeSpaceId` to isolate a feature or
 client domain from the default GoodVibes knowledge space. Records without this
-metadata are treated as the default space. The regular wiki is stored in the
-default knowledge store (`knowledge-wiki.sqlite`). Home Assistant Home Graph
-uses a separate store instance (`knowledge-home-graph.sqlite`) while preserving
-the same base knowledge engine and namespace semantics inside that store. Space
-helpers live in `knowledge/spaces.ts` and normalize the default space plus Home
-Assistant spaces such as `homeassistant:<installationId>`.
+metadata are treated as the default space.
+
+The regular wiki is stored in the default knowledge store
+(`knowledge-wiki.sqlite`). Home Assistant Home Graph uses a separate store
+instance (`knowledge-home-graph.sqlite`) while preserving the same base
+knowledge engine and namespace semantics inside that store. Space helpers live
+in `knowledge/spaces.ts` and normalize the default space plus Home Assistant
+spaces such as `homeassistant:<installationId>`.
+
 For generic Knowledge Ask calls, `knowledgeSpaceId: "homeassistant"` is a
 virtual namespace alias that searches all `homeassistant:*` spaces. Use the
 fully scoped `homeassistant:<installationId>` id when a client should stay tied
 to one Home Assistant installation.
+
 Project Planning uses `project:<projectId>` spaces for project-specific
 planning state, project language, and decision records. Clients should pass a
 stable `projectId` for the current workspace so planning memory does not leak
@@ -131,12 +135,15 @@ Semantic enrichment runs from the shared knowledge ingest path, can be refreshed
 with the `knowledge-semantic-enrichment` job, and is also run by
 `KnowledgeService.reindex()`. Enrichment is hash-aware: if the source and
 extraction have not changed, the SDK skips the source instead of reprocessing it
-on every run. Deterministic enrichment is a lower-quality fallback, not a final
+on every run.
+
+Deterministic enrichment is a lower-quality fallback, not a final
 interpretation: when an LLM becomes available later, ask/reindex can upgrade
 deterministic semantic records for the matched source. Replacement semantic
 records supersede stale facts/pages for that source so weaker deterministic
-fragments do not remain in maps, pages, or answers beside upgraded facts. Broad
-reindex uses a small provider-backed LLM budget and then continues
+fragments do not remain in maps, pages, or answers beside upgraded facts.
+
+Broad reindex uses a small provider-backed LLM budget and then continues
 deterministically, so a large knowledge space can refresh without opening
 unbounded provider requests. Existing uploads can therefore be repaired and
 enriched by reindexing; users do not need to reupload documents.
@@ -153,32 +160,46 @@ Home Assistant extensions reuse the base knowledge/retrieval system even though
 their rows live in the Home Graph store.
 
 Self-improvement is not limited to Ask. After ingest, reindex, and Home Graph
-snapshot sync, the SDK runs bounded semantic maintenance. The pass looks for
-concrete subjects such as devices, services, providers, products, and
-capabilities, asks what intrinsic feature/specification knowledge should exist
-for that subject, creates durable `knowledge_gap` nodes when coverage is weak,
-classifies whether those gaps are applicable, and only then tries external
-repair. Home Graph snapshot sync uses a tiny delayed repair pass so Home
-Assistant service calls can return quickly while automatic source-backed repair
-still starts after new objects land. Deeper repair continues through Ask,
-explicit refinement runs, reindex, or scheduled jobs. Non-applicable gaps, such
-as battery questions for nodes already known to be mains-powered or not
-battery-powered, are suppressed before any web search is attempted. The
-`knowledge-semantic-self-improvement` job runs the same maintenance loop on a
-default one-hour schedule and can be run manually through the jobs API.
+snapshot sync, the SDK runs bounded semantic maintenance. The pass:
+
+- looks for concrete subjects such as devices, services, providers, products,
+  and capabilities
+- asks what intrinsic feature/specification knowledge should exist for that
+  subject
+- creates durable `knowledge_gap` nodes when coverage is weak
+- classifies whether those gaps are applicable
+- only then tries external repair
+
+Home Graph snapshot sync uses a tiny delayed repair pass so Home Assistant
+service calls can return quickly while automatic source-backed repair still
+starts after new objects land. Deeper repair continues through Ask, explicit
+refinement runs, reindex, or scheduled jobs.
+
+Non-applicable gaps, such as battery questions for nodes already known to be
+mains-powered or not battery-powered, are suppressed before any web search is
+attempted.
+
+The `knowledge-semantic-self-improvement` job runs the same maintenance loop on
+a default one-hour schedule and can be run manually through the jobs API.
+
 Repair idempotency is gap-specific: a previously discovered repair source for
 the same object does not suppress another gap unless it is linked to that exact
 gap through `repairs_gap`.
+
 External repair sources are accepted into the graph only after confidence
 scoring. The repairer compares already-indexed sources and web-search results
 against the concrete subject, model/manufacturer hints, the gap wording, and
-the current query. Already-indexed official/vendor sources are usable repair
-evidence; the SDK links and promotes them instead of blocking only because the
-source was not newly fetched. One official/vendor source can close a gap when
-it is strong enough, while non-official evidence still needs corroboration
-across distinct domains. Repair does not stop after one broad search: it tries
-progressively more targeted queries for the subject and gap, then accepts at
-most five high-confidence sources for that gap. The SDK stores accepted and
+the current query.
+
+Already-indexed official/vendor sources are usable repair evidence; the SDK
+links and promotes them instead of blocking only because the source was not
+newly fetched. One official/vendor source can close a gap when it is strong
+enough, while non-official evidence still needs corroboration across distinct
+domains.
+
+Repair does not stop after one broad search: it tries progressively more
+targeted queries for the subject and gap, then accepts at most five
+high-confidence sources for that gap. The SDK stores accepted and
 rejected source assessments, confidence reasons, selected URLs, search queries,
 original source IDs, gap IDs, and linked object IDs in `metadata.sourceDiscovery`,
 so the graph can explain why automatic source evidence was trusted.
@@ -201,30 +222,39 @@ were applied. Clients can inspect and run this pipeline through:
 The same endpoints are exposed as operator methods under
 `knowledge.refinement.*`. Refinement counters distinguish detected, repairable,
 blocked, suppressed, closed, queued, searched, ingested, and linked gaps so a UI
-does not have to infer progress from issue counts or logs. Run results also
-include operational guardrails: `candidateGaps` is the number of matching gaps
-found, `requestedLimit` is the caller's requested batch size, `effectiveLimit`
-is the SDK cap applied to the run, `processedGaps` is the count actually
-attempted, `truncated` is true when more work remains after this foreground
-batch, and `budgetExhausted` is true when the configured run window expired.
+does not have to infer progress from issue counts or logs.
+
+Run results also include operational guardrails:
+
+- `candidateGaps` is the number of matching gaps found
+- `requestedLimit` is the caller's requested batch size
+- `effectiveLimit` is the SDK cap applied to the run
+- `processedGaps` is the count actually attempted
+- `truncated` is true when more work remains after this foreground batch
+- `budgetExhausted` is true when the configured run window expired
+
 `POST /api/knowledge/refinement/run` accepts `maxRunMs` for shorter foreground
 runs, but the SDK still caps broad requests internally. Clients should repeat
 or schedule refinement runs instead of using one unbounded call for an entire
 large knowledge space. The foreground cap is currently 24 gaps per run.
+
 If a host previously ran refinement before wiring a semantic gap repairer,
 historical `No semantic gap repairer is configured` task records are reopened
 automatically once a repairer is present so clients do not keep showing stale
 configuration failures.
+
 The semantic service also coalesces overlapping non-deferred repair runs per
 service instance. A second manual run, reindex repair, or Ask-triggered repair
 request made while another repair run is active returns a bounded skipped
 result instead of launching another batch of search/LLM work.
+
 Repair tasks that exhaust their current run budget are not left as dead
 failures. The SDK marks them blocked with retry metadata, updates the gap with
 `repairStatus: "deferred"` and `nextRepairAttemptAt`, and lets a later
 scheduled/manual run continue. If a repair pass accepts source evidence but
 does not have enough corroboration to close the gap, those accepted sources are
 still linked/promoted and the task is deferred rather than discarded.
+
 Refinement task responses expose `nextRepairAttemptAt` as a top-level field as
 well as in metadata, so UI clients do not need to parse task traces for retry
 timing.
@@ -233,100 +263,139 @@ The base ask route is `POST /api/knowledge/ask` and the operator method is
 `knowledge.ask`. It retrieves source and graph evidence, prefers durable
 semantic facts when available, asks the current LLM to synthesize an answer from
 that evidence, and falls back to fact/snippet rendering when no LLM is
-available. When no provider answer is available but usable semantic facts are
-present, the fallback is still synthesized into prose rather than returned as
-raw snippet bullets. When matched evidence exists but fact extraction has not
-finished yet, the fallback still returns a synthesized evidence summary plus
-the missing gap instead of raw bullet snippets. Responses include answer text,
-confidence, sources, linked objects, facts, gaps, and ranked search results.
-This is the generic layer used by Home Graph and other knowledge spaces, so
-clients should not implement their own snippet-to-answer logic. Answer
-synthesis has an SDK-owned hard
-timeout; if a provider ignores its own timeout or abort signal, Ask falls back
-instead of pinning the daemon. If Ask identifies answer gaps and semantic gap
-repair is configured, the SDK queues refinement tasks and starts repair. For
-concrete Home Assistant object questions with weak or missing evidence, Ask
+available.
+
+When no provider answer is available but usable semantic facts are present, the
+fallback is still synthesized into prose rather than returned as raw snippet
+bullets. When matched evidence exists but fact extraction has not finished yet,
+the fallback still returns a synthesized evidence summary plus the missing gap
+instead of raw bullet snippets.
+
+Responses include answer text, confidence, sources, linked objects, facts, gaps,
+and ranked search results. This is the generic layer used by Home Graph and
+other knowledge spaces, so clients should not implement their own
+snippet-to-answer logic.
+
+Answer synthesis has an SDK-owned hard timeout; if a provider ignores its own
+timeout or abort signal, Ask falls back instead of pinning the daemon.
+
+If Ask identifies answer gaps and semantic gap repair is configured, the SDK
+queues refinement tasks and starts repair.
+
+For concrete Home Assistant object questions with weak or missing evidence, Ask
 also performs one bounded foreground repair/re-answer pass. That pass is still
 capped by the caller timeout and the SDK's source limits, but it lets direct
 feature/specification questions use newly repaired official/vendor evidence
 immediately when extraction and promotion finish in time. If the bounded pass
 cannot produce usable facts, Ask returns the current best answer plus
 `refinementTaskIds` so clients can show repair progress and ask again after the
-graph improves. When callers use the generic `knowledgeSpaceId: "homeassistant"`
-alias, answer-gap tasks are written to the concrete
-`homeassistant:<installationId>` space inferred from linked objects or
-evidence, rather than to the alias itself.
+graph improves.
+
+When callers use the generic `knowledgeSpaceId: "homeassistant"` alias,
+answer-gap tasks are written to the concrete `homeassistant:<installationId>`
+space inferred from linked objects or evidence, rather than to the alias itself.
+
 For concrete feature/specification questions, Ask also checks whether the
 matched evidence is strong enough to answer the user's intent. If the object is
 identified but the evidence is only a weak profile/generated-page match, the SDK
 adds an answer gap explaining that more source-backed feature or specification
 facts are needed. That gap becomes a normal refinement task instead of forcing
 clients to infer from a low-confidence answer with no repair trail.
+
 Semantic reindex follows the same pattern with an additional daemon-safety
 guard: foreground source enrichment is capped by a run budget, then the SDK
 queues repairable gaps and starts only a small delayed background repair pass.
 Large spaces should use explicit `/api/knowledge/refinement/run` calls or a
 schedule for deeper repair instead of expecting reindex to perform every web
 search and LLM repair inline.
+
 Home Graph reindex adds one more guardrail for generated wiki material: it
 does not reprocess generated-page artifacts, only semantically re-enriches
 changed or explicitly forced sources, and regenerates device pages for devices
 touched by changed/newly linked evidence or by an older generated-page policy.
+
 Snapshot-time Home Graph page generation is also bounded by default. Sync
 prioritizes likely real-world devices and rooms, reports deferred page counts
 through `generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
 `generated.truncated`, and leaves the rest for explicit page generation,
 reindex, or refinement runs.
+
 Normal changed-only reindex only auto-links sources that were reparsed during
 that run. A forced reindex can still scan all stored sources when a host needs a
-full link audit.
-That keeps "reindex uploads" focused on repairing uploaded manuals/documents
-and refreshing stale pages without treating generated pages as source material.
+full link audit. That keeps "reindex uploads" focused on repairing uploaded
+manuals/documents and refreshing stale pages without treating generated pages as
+source material.
+
 Clients that already performed object-scoped retrieval can pass
 `candidateSourceIds`, `candidateNodeIds`, and `strictCandidates: true` so answer
 synthesis stays inside that candidate set instead of re-scanning unrelated
-sources in the same knowledge space. Answer evidence distinguishes subject
-tokens from broad intent tokens such as "features", "supports", and "specs";
-sources that only match those generic words are not answer evidence for
-object-specific questions. Feature/spec answers filter deterministic
-manual-boilerplate facts such as "items may vary", "specifications may change",
-"new features may be added", recommended cable-type fragments, remote
-button-map noise, remote battery-low notes, optional accessory/setup fragments,
-Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
-compatibility, remote infrared/sensor instructions, generic "may not work
-properly" setup fragments, Crutchfield/SpeakerCompare shopping snippets,
-equal-power/equal-volume speaker comparison copy, generic product-listing price
-snippets, and safety/service/handling warnings unless those facts are the
-actual query intent. Truncated deterministic fragments are dropped instead of
-presented as specifications. Answer synthesis runs before background semantic enrichment so
-a single-concurrency provider wrapper answers the user first and does not time
-out behind enrichment work. `linkedObjects` is reserved for real graph objects
-supplied by the caller or retrieved from the graph; semantic extraction
-artifacts such as fact nodes, generated wiki pages, and knowledge gaps stay in
-the `facts`/`gaps` fields instead of being reported as linked objects. Source
-records in Ask responses keep the canonical source shape and also expose
+sources in the same knowledge space.
+
+Answer evidence distinguishes subject tokens from broad intent tokens such as
+"features", "supports", and "specs"; sources that only match those generic words
+are not answer evidence for object-specific questions.
+
+Feature/spec answers filter deterministic manual-boilerplate facts such as the
+following, unless those facts are the actual query intent:
+
+- "items may vary"
+- "specifications may change"
+- "new features may be added"
+- recommended cable-type fragments
+- remote button-map noise
+- remote battery-low notes
+- optional accessory/setup fragments
+- Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
+  compatibility
+- remote infrared/sensor instructions
+- generic "may not work properly" setup fragments
+- Crutchfield/SpeakerCompare shopping snippets
+- equal-power/equal-volume speaker comparison copy
+- generic product-listing price snippets
+- safety/service/handling warnings
+
+Truncated deterministic fragments are dropped instead of presented as
+specifications.
+
+Answer synthesis runs before background semantic enrichment so a
+single-concurrency provider wrapper answers the user first and does not time out
+behind enrichment work.
+
+`linkedObjects` is reserved for real graph objects supplied by the caller or
+retrieved from the graph; semantic extraction artifacts such as fact nodes,
+generated wiki pages, and knowledge gaps stay in the `facts`/`gaps` fields
+instead of being reported as linked objects.
+
+Source records in Ask responses keep the canonical source shape and also expose
 `sourceId` and `url` aliases for thin UI clients.
 
 When self-improvement or Ask finds explicit gaps for a concrete subject, the
-daemon can run source-backed gap repair in the background. The repair path
-builds a narrow query from the linked object, source titles, and gap text;
-checks already-indexed official/vendor sources first; searches the web through
-the configured GoodVibes web-search service when more evidence is needed;
-ingests accepted URLs into the same `knowledgeSpaceId`; and links accepted
-sources to the gap with `repairs_gap` edges. Accepted repair sources are then
-semantically re-enriched under the same run budget, and promoted fact nodes are
-linked back to the concrete subject with `describes` edges. Gap repair does not
-invent facts from search snippets. It gives the normal ingest, extraction,
-semantic enrichment, review, and later ask paths more source evidence to work
-with. When useful extracted evidence is available from an accepted official or
-vendor source, the SDK promotes typed feature/capability/specification facts so
-the official evidence can drive follow-up answers and generated pages instead
-of remaining a passive URL.
+daemon can run source-backed gap repair in the background. The repair path:
+
+- builds a narrow query from the linked object, source titles, and gap text
+- checks already-indexed official/vendor sources first
+- searches the web through the configured GoodVibes web-search service when
+  more evidence is needed
+- ingests accepted URLs into the same `knowledgeSpaceId`
+- links accepted sources to the gap with `repairs_gap` edges
+
+Accepted repair sources are then semantically re-enriched under the same run
+budget, and promoted fact nodes are linked back to the concrete subject with
+`describes` edges.
+
+Gap repair does not invent facts from search snippets. It gives the normal
+ingest, extraction, semantic enrichment, review, and later ask paths more source
+evidence to work with. When useful extracted evidence is available from an
+accepted official or vendor source, the SDK promotes typed
+feature/capability/specification facts so the official evidence can drive
+follow-up answers and generated pages instead of remaining a passive URL.
+
 Existing `repairs_gap` edges suppress repeated searches only when they are
 paired with promoted source-backed repair facts. A weak historical repair edge
 without usable facts is retriable, so the graph can recover from earlier bad
 repair runs. Retry windows still prevent tight loops, and repair sources linked
 elsewhere on the same object do not block new gaps from being repaired.
+
 Foreground repair attempts use bounded web search and URL-ingest waits, accept
 two repair sources by default, yield between gap attempts, and mark interrupted
 active tasks as blocked-and-retriable on the next run for that space.
@@ -406,32 +475,39 @@ Home Graph relation names include `controls`, `located_in`,
 Home Graph ask uses a namespace-filtered search state, batches extraction
 lookup by source id, and scores bounded document fields. It does not load the
 full graph export state or repeatedly scan every extraction for each source.
+
 Read-only Home Graph routes infer the active Home Assistant space when clients
 omit the space fields, and they resolve existing Home Assistant spaces by
 installation id even if older records stored the config-entry id with different
 letter casing. Home Assistant space reads are case-tolerant so existing
 manuals, graph nodes, links, and extraction rows remain visible without
 reuploading or migrating data.
+
 Object-specific questions are anchored to matching Home Assistant nodes, then
 indexed sources linked to those nodes are preferred over unrelated generic
 keyword hits. The matched sources are semantically enriched into durable facts
 and pages when needed, and the answer is synthesized from that evidence instead
 of returning raw snippets. The response includes answer text, sources, linked HA
 object references, extracted facts, and gaps when the graph cannot answer the
-question. Home Graph passes strict semantic answer candidates after its
-object-scoped search, so a question about one device cannot pull in another
-device's manual only because both manuals contain generic words such as
-"features" or "supports". Object anchoring is limited to Home Assistant graph
-objects; generated semantic pages and extracted fact nodes never become anchors
-for another ask query. This keeps previously generated appliance, integration,
-or device pages from becoming false matches for an unrelated device question.
-Home Graph also uses the shared linked-object filter, so extracted facts and
-generated semantic pages do not appear as Home Assistant linked objects in ask
-responses.
+question.
+
+Home Graph passes strict semantic answer candidates after its object-scoped
+search, so a question about one device cannot pull in another device's manual
+only because both manuals contain generic words such as "features" or
+"supports".
+
+Object anchoring is limited to Home Assistant graph objects; generated semantic
+pages and extracted fact nodes never become anchors for another ask query. This
+keeps previously generated appliance, integration, or device pages from becoming
+false matches for an unrelated device question. Home Graph also uses the shared
+linked-object filter, so extracted facts and generated semantic pages do not
+appear as Home Assistant linked objects in ask responses.
+
 Source-evidence questions such as device features, manuals, specs, reset steps,
 batteries, and warranties require useful source text; low-information
 extraction placeholders and unrelated integration documentation are not treated
 as answer material.
+
 Excerpt selection scans bounded windows across stored searchable text, so
 sections that appear later in a large manual can be used as answer evidence
 without an unbounded document scan.
@@ -443,43 +519,64 @@ stable source ids, durable markdown artifacts, generated-page metadata, and
 unchanged-artifact reuse. Clients can disable or bound this with the sync
 `pageAutomation` object, including `maxRunMs` for foreground sync page work,
 and Home Graph generated sources carry stable ids plus
-`homeGraphGeneratedPage`, `projectionKind`, and `pageEditable` metadata. The
-generated pages are excluded from answer/reindex ranking and from linked-source
-page lists so they do not compete with manuals, receipts, notes, and other
-source evidence. Generated Home Graph pages include Home Assistant identity,
-entity lists, linked sources, typed semantic/profile facts, scoped open
-issues, and open questions. Room pages only render issues attached to the room,
-its devices/entities/automations/scenes/scripts, linked sources, or scoped gap
+`homeGraphGeneratedPage`, `projectionKind`, and `pageEditable` metadata.
+
+The generated pages are excluded from answer/reindex ranking and from
+linked-source page lists so they do not compete with manuals, receipts, notes,
+and other source evidence.
+
+Generated Home Graph pages include Home Assistant identity, entity lists, linked
+sources, typed semantic/profile facts, scoped open issues, and open questions.
+Room pages only render issues attached to the room, its
+devices/entities/automations/scenes/scripts, linked sources, or scoped gap
 nodes; graph-wide backlogs are not dumped into individual room pages. Page
 issues exclude semantic refinement gaps such as `knowledge.answer_gap`,
 `knowledge.semantic_gap`, and `knowledge.intrinsic_gap`; those stay in Ask,
 review, and refinement task surfaces where users can see repair progress
-without turning generated pages into backlog dashboards. Page
-rendering filters manual boilerplate,
-optional-accessory/setup fragments, generic safety/handling facts, truncated
-or heading-only spec fragments, certified-cable warnings, service-only port
-fragments, unsupported-broadcast notices, recommended cable-type notes, remote
-button-map noise, remote battery-low notes, remote infrared/sensor usage
-snippets, dry-cloth cleaning notes, and generic service/repair boilerplate so
-living pages do not become dumps of low-value manual text. Device passport pages
-render structured facts and source inventory, not raw source-snippet sections.
-Clients
-can read the current page index and markdown through
+without turning generated pages into backlog dashboards.
+
+Page rendering filters the following so living pages do not become dumps of
+low-value manual text:
+
+- manual boilerplate
+- optional-accessory/setup fragments
+- generic safety/handling facts
+- truncated or heading-only spec fragments
+- certified-cable warnings
+- service-only port fragments
+- unsupported-broadcast notices
+- recommended cable-type notes
+- remote button-map noise
+- remote battery-low notes
+- remote infrared/sensor usage snippets
+- dry-cloth cleaning notes
+- generic service/repair boilerplate
+
+Device passport pages render structured facts and source inventory, not raw
+source-snippet sections.
+
+Clients can read the current page index and markdown through
 `GET /api/homeassistant/home-graph/pages` or the
 `homeassistant.homeGraph.pages.list` operator method instead of reconstructing
 page content from source inventory locally.
 
-Home Graph reindex repairs existing uploads in place. It re-extracts
-missing or placeholder extraction rows, auto-links sources to matching Home
-Assistant devices/entities when identity evidence is strong enough, semantically
-enriches changed or forced sources into facts/pages/gaps, and regenerates
-generated pages for devices affected by repaired/newly linked evidence or an
-older generated-page policy. It skips generated-page artifacts and reports
+Home Graph reindex repairs existing uploads in place. It:
+
+- re-extracts missing or placeholder extraction rows
+- auto-links sources to matching Home Assistant devices/entities when identity
+  evidence is strong enough
+- semantically enriches changed or forced sources into facts/pages/gaps
+- regenerates generated pages for devices affected by repaired/newly linked
+  evidence or an older generated-page policy
+
+It skips generated-page artifacts and reports
 `changedSourceCount`, `forcedSourceCount`,
 `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
 `generatedPagePolicyVersion`, `coalesced`, `truncated`, and
 `budgetExhausted` so clients can tell what was actually scanned, skipped, or
-regenerated. Overlapping reindex requests are single-flight: the active run
+regenerated.
+
+Overlapping reindex requests are single-flight: the active run
 continues, and later callers receive a quick coalesced response instead of
 starting duplicate source scans. This lets users fix already-uploaded manuals
 and refresh stale generated pages without reuploading anything while keeping

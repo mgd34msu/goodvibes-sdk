@@ -47,13 +47,17 @@ This `SessionManager` is the daemon/runtime conversation session manager
 *distinct* from the client-auth `SessionManager` primitive listed under the
 client-facing subpaths above (`packages/sdk/src/client-auth/session-manager.ts`),
 which only drives the login/current/logout lifecycle and never touches
-`surfaceRoot` or persists session files. Neither `SessionManager`
+`surfaceRoot` or persists session files.
+
+Neither `SessionManager`
 owns tokens. Token storage is a transport-layer concern. The daemon token
 file `operator-tokens.json` (managed by the `companion-token.ts` helpers)
 holds the companion/operator bearer-token record (`{ token, peerId, createdAt }`)
 only; session tokens are in-memory and are not persisted to disk. This token
 file lives under `daemonHomeDir` (default `~/.goodvibes/daemon/`) so the
-bearer token survives workspace swaps. The daemon/runtime conversation
+bearer token survives workspace swaps.
+
+The daemon/runtime conversation
 `SessionManager` and the daemon token file are composed at daemon startup and
 share no file path.
 

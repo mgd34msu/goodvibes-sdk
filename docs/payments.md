@@ -1,9 +1,10 @@
 # Payments — design
 
 **Status:** implemented. This document is the design of record.
-**Owner rulings recorded here are settled.** Choices made under zero-deferrals
-where the owner had not ruled are listed in §12.1 as rulings taken, with their
-reasoning, so they can be overturned deliberately rather than discovered.
+**The behaviors recorded here are contractual. Do not revise them silently.**
+Choices made under zero-deferrals where no owner ruling existed are listed in
+§12.1 as rulings taken, with their reasoning, so they can be overturned
+deliberately rather than discovered.
 
 A card turns a successful prompt injection from "sends an email" into "buys
 something". The platform has just spent a round hardening against exactly that
@@ -16,12 +17,11 @@ other side of it. Read the security section before the feature sections.
 ## 1. Where it lives
 
 The SDK owns the capability, the daemon serves it, surfaces are wiring and UI
-only. Owner's framing:
+only. Two rules set that split:
 
-> "the agent, the tui, the webui, those all exist as a means to expose different
-> parts of the SDK to a user interface"
-
-> "the daemon needs all of the abilities"
+- The agent, the TUI and the webui exist to expose different parts of the SDK to
+  a user interface. None of them owns a part of the capability.
+- The daemon has every ability the capability offers.
 
 Concretely:
 
@@ -158,14 +158,13 @@ interface PaymentsConfig {
 Card metadata (`payments.cards[]`: id, label, brand, last4, kind, issuer cap)
 lives in config; card material lives in secrets. The two are joined by `cardId`.
 
-**Every money default is `0`, and `enabled` defaults to `false`.** Owner's rule
-for defaults here:
+**Every money default is `0`, and `enabled` defaults to `false`.** The rule for
+defaults in this domain: each one takes the safest available value, and only an
+affirmative change by the user moves it.
 
-> "default to most safe, the user can change affirmatively"
-
-Zero is the most safe number: the capability is fully configured and still buys
-nothing until he affirmatively sets an amount. A refusal against a zero budget
-reads "the daily item budget is 0, set one" rather than failing obscurely.
+Zero is the safest number here. The capability can be fully configured and still
+buys nothing until an amount is set affirmatively, and a refusal against a zero
+budget reads "the daily item budget is 0, set one" rather than failing obscurely.
 
 **Note on the billing address.** It sits in config rather than in the secret
 store because surfaces must display and edit it, and it is not card material.
@@ -288,13 +287,18 @@ interface BudgetReservation {
 
 Taken when the decision order reaches step 3, held across the window, and either
 **committed** (charge succeeded) or **released** (vetoed, denied, refused,
-charge failed, expired). **On a cluster, exactly one node may act.** `payments.*` config replicates to
-every opted-in node (`cluster/config-replication-policy.ts`) so a node that takes
-over a handover has the owner's real limits rather than defaults. Today's SPEND
-does not replicate, it lives in the payments spend ledger, which is not config, so a second node acting would start from a clean daily budget and could spend the
-day twice. Until the ledger itself replicates, `checkPaymentGates` refuses on any
-node that is not the elected payments leader, and `isPaymentsLeader` is a
-required input with no default so a caller cannot omit it into a pass.
+charge failed, expired).
+
+**On a cluster, exactly one node may act.** `payments.*` config replicates to
+every opted-in node (`cluster/config-replication-policy.ts`), so a node that
+takes over a handover has the configured limits rather than defaults. Today's
+SPEND does not replicate: it lives in the payments spend ledger, which is not
+config, so a second node acting would start from a clean daily budget and could
+spend the day twice.
+
+Until the ledger itself replicates, `checkPaymentGates` refuses on any node that
+is not the elected payments leader, and `isPaymentsLeader` is a required input
+with no default so a caller cannot omit it into a pass.
 
 Reservations are persisted so a daemon restart does not
 release money that is mid-flight, and, per the platform rule that anything
@@ -317,8 +321,8 @@ testable without a browser, a card or a clock.
     0b. ORIGIN: did CONTENT initiate this purchase?                      → REFUSE
         (absolute — no approval path; §9.1)
     0c. TAINT: do `item` / `requestedMax` derive from untrusted content? → REFUSE
-        `merchant` / `checkoutUrl` too, unless HE asked us to find the
-        merchant (`merchantDiscovered`), in which case they are graded
+        `merchant` / `checkoutUrl` too, unless the OWNER asked us to find
+        the merchant (`merchantDiscovered`), in which case they are graded
         at step 3a rather than refused
     0d. LINK: did the checkout URL arrive from untrusted content?
         → full link validation, or REFUSE (§9.2)
@@ -378,16 +382,19 @@ testable without a browser, a card or a clock.
 6.  COMMIT the reservation, write the audit record
 ```
 
-**The ladder is always attempted before an overage refusal.** Owner's ruling in
-his words:
+**The ladder is always attempted before an overage refusal.** The ruling has four
+parts:
 
-> "if the notification can't be delivered, under/at budget items get through
-> while over budget items do not. however, if it is over budget due to busting
-> the overage budget, attempt to downgrade things like shipping. if no downgrade
-> is possible, the overbudget item does not go though."
+1. When the notification cannot be delivered, a purchase at or under budget goes
+   through.
+2. When the notification cannot be delivered, a purchase over budget does not.
+3. When the excess is in the overage budget rather than the item price,
+   downgrade first, shipping being the usual thing to downgrade.
+4. When no downgrade brings the purchase inside the pools, the over-budget
+   purchase does not go through.
 
 **Note what step 2 does not do:** it does not escalate an exhausted overage pool
-to an approval request. The ruling says refuse. An approval-instead-of-refuse
+to an approval request. The ruling is refuse. An approval-instead-of-refuse
 variant was considered and not chosen because the ruling is explicit; it is
 listed in Open items only so a later reader knows it was ruled on rather than
 overlooked.
@@ -404,12 +411,12 @@ the same option; a merchant offering one leaves nothing to choose.
 
 The chosen tier's cost draws on the overage pool. When the pool cannot cover it,
 **step down one tier at a time until it fits, stopping at the cheapest.** Never
-jump straight to the cheapest, the owner asked for one step at a time, and the
+jump straight to the cheapest: the ladder moves one step at a time, and the
 difference is real when three tiers cost $15 / $9 / $5 and $9 fits.
 
 A step-down needs no approval, because it is within budget. It is **recorded in
-the audit ledger and surfaced in the veto message and the receipt**, because he
-must not learn about it from a late package.
+the audit ledger and surfaced in the veto message and the receipt**, because the
+owner must not learn about it from a late package.
 
 **Never add filler items to cross a free-shipping threshold.** This is an
 invariant, not a preference: the checkout driver has no verb that adds a line the
@@ -434,17 +441,20 @@ They are **deliberately opposite and must stay that way.**
 | Explicit "no" | Denies | Cancels and reports |
 | Default duration | `windows.approvalMinutes` = 60 | `windows.vetoMinutes` = 10 |
 
-**Why the approval window is an hour.** Denial is the recoverable outcome, he
-re-asks and it goes through, so the cost of too-short is friction and the cost
-of too-long is a cart holding a price that may drift. An hour survives a meeting
-or a commute. It is configurable, and someone who is away for long stretches
-should raise it.
+**Why the approval window is an hour.** Denial is the recoverable outcome, the
+owner re-asks and it goes through, so the cost of too-short is friction and the
+cost of too-long is a cart holding a price that may drift. An hour survives a
+meeting or a commute. It is configurable, and someone who is away for long
+stretches should raise it.
 
-Owner's reasoning for the approval side:
+**Why the approval expires at all**, rather than waiting indefinitely:
 
-> "if i didn't want the approval to expire, I should have just increased the
-> limit... puts it directly in the human's hands, never lets automated spending
-> happen"
+- Wanting a purchase to complete without an answer is a request for a higher
+  limit, not for a longer approval. Raising `budget.dailyItem` or the
+  per-purchase ceiling is the supported way to get it.
+- An expiring approval puts the above-budget decision directly in a human's
+  hands.
+- Above-budget spending never happens automatically.
 
 ### 8.0 The two state machines
 
@@ -570,34 +580,28 @@ Config-supplied channel names are parsed into this union and unknown values are
 Two channel rules live side by side and look similar enough that a later reader
 will try to unify them. They answer different questions.
 
-**Attribution, stated precisely**, because an earlier draft of this section got
-it wrong and relayed a coordinator decision as an owner ruling:
+**Where each rule comes from, stated precisely**, because an earlier draft of
+this section got it wrong and relayed a coordinator decision as an owner ruling:
 
-> **Owner, verbatim, on entry surfaces:**
-> *"i need to be able to enter payment details (card info and shipping/billing
-> address etc) in the tui too"*
-> *"and in the agent - basically ui should expose it in both."*
-
-He named the **TUI and the agent**. The webui question was then put to him
-directly, as a two-option choice with the exposure stated, PAN on a browser
-page, form autofill, password managers, browser history, XSS in our own UI. He
-selected the option labelled **"Card entry in webui too"**, and wrote:
-
-> "so is the webui getting card input? i said yes..."
-
-The option he selected carried the six browser-side conditions in §8.2.3. They
-are part of what he chose, not a gloss added afterwards.
-
-**Coordinator ruling:** that card details are refused on remote messaging
-surfaces, with the reasoning below. Recorded as the coordinator's because no
-verbatim owner wording exists for it.
+- **Owner ruling, the first two entry surfaces.** Payment details, meaning card
+  material and the shipping and billing addresses, must be enterable in the
+  **TUI** and in the **agent**. The UI exposes entry in both.
+- **Owner ruling, the webui.** Card entry is available in the webui as well.
+  That question was decided as a two-option choice with the browser exposure
+  stated on its face: a PAN on a browser page, form autofill, password managers,
+  browser history, and XSS in this project's own UI. The option chosen was
+  "Card entry in webui too", and it carried the six browser-side conditions in
+  §8.2.3. Those conditions are part of the ruling, not a gloss added afterwards.
+- **Coordinator ruling, remote messaging surfaces.** Card details are refused
+  there, for the reasoning below. Recorded as the coordinator's because there is
+  no owner ruling behind it.
 
 | | Answering | Entering |
 |---|---|---|
 | The question | May this surface say yes or no to a purchase? | May card details be typed here? |
-| Telegram and other live channels | **Yes**, owner's explicit ruling, and it stays | **No** |
-| TUI, agent terminal | Yes | **Yes**, the two he named first |
-| The webui | Yes | **Yes**, his direct ruling, with the conditions in §8.2.3 |
+| Telegram and other live channels | **Yes**, an explicit owner ruling, and it stays | **No** |
+| TUI, agent terminal | Yes | **Yes**, the first two entry surfaces ruled on |
+| The webui | Yes | **Yes**, a direct owner ruling, with the conditions in §8.2.3 |
 | Email | Never | Never |
 
 **Remote channels have authority to decide about a purchase. They have no path
@@ -623,7 +627,7 @@ When card-shaped content does arrive on a remote channel anyway, it is refused
 without being stored, without being logged, and **without being echoed**, the
 refusal travels over the same channel that already stored the message, so
 quoting the value, even masked, would write it there a second time. The reply
-names the shape that matched, never the value, and tells him to delete the
+names the shape that matched, never the value, and tells the owner to delete the
 message and treat the card as exposed.
 
 Implemented in `platform/payments/entry-surface.ts`; asserted in
@@ -672,13 +676,15 @@ about.
 
 ### 8.3 The window always runs, and presence is not attention
 
-The window runs for its full configured duration regardless of where he is. An
-explicit acknowledgement during it short-circuits to immediate; nothing else
-does. In particular **no presence, focus, idle or activity signal shortens,
-skips or extends it.** Owner's reasoning:
+The window runs for its full configured duration regardless of where the owner
+is. An explicit acknowledgement during it short-circuits to immediate; nothing
+else does. In particular **no presence, focus, idle or activity signal shortens,
+skips or extends it.**
 
-> "this is for situations where the user is multitasking and doesn't look at the
-> specific terminal session for an extended period of time"
+The window exists for the case where the user is multitasking and does not look
+at that specific terminal session for an extended period. A signal that the
+session is open, focused or busy says nothing about whether the message was
+read, so no such signal is allowed to shorten the wait.
 
 A test asserts the computed deadline is a function of the configured duration and
 the start time only, by driving the same decision with every available
@@ -687,8 +693,8 @@ session-activity signal flipped and asserting an identical deadline.
 ### 8.4 The approval carries the final total
 
 Both windows fire at the same point in the flow: once the final total is known
-and before payment. That is what makes the number he approves the number that is
-charged.
+and before payment. That is what makes the number the owner approves the number
+that is charged.
 
 If the merchant re-prices between the answer and the charge, the answer is void:
 the reservation is released and the purchase re-enters the decision order from
@@ -733,18 +739,18 @@ and reloaded.
 
 ### 8.6.1 A window interrupted by downtime is keyed on DELIVERY, not on uptime
 
-**Silence means "he had the chance to object and did not."** Whether our process
-was alive is irrelevant to whether he had that chance. An earlier draft of this
-design keyed the restart rule on daemon uptime; that was wrong, and re-opening a
-window unconditionally is wrong for a specific reason, it re-pings him about
-something he deliberately ignored, and a system that repeats itself is one he
-stops reading.
+**Silence means the owner had the chance to object and did not.** Whether our
+process was alive is irrelevant to whether that chance existed. An earlier draft
+of this design keyed the restart rule on daemon uptime; that was wrong, and
+re-opening a window unconditionally is wrong for a specific reason: it re-pings
+the owner about something deliberately ignored, and a system that repeats itself
+is one people stop reading.
 
-So the rule is keyed on whether the notification reached him:
+So the rule is keyed on whether the notification arrived:
 
 | On restart | Rule |
 |---|---|
-| Notification **was delivered**, window expired during downtime | **The expiry stands.** Before charging, **backfill each live channel** for messages received while we were down and honour any objection found there. No objection → proceed. **Do not re-notify**, he already saw it. |
+| Notification **was delivered**, window expired during downtime | **The expiry stands.** Before charging, **backfill each live channel** for messages received while we were down and honour any objection found there. No objection → proceed. **Do not re-notify**, it was already seen. |
 | Notification **was never delivered** | §6 governs unchanged: in-budget proceeds, above-budget refuses, and the shipping ladder is attempted before any overage refusal. |
 | Channel **cannot be backfilled** for the downtime span | **Re-open the window on that channel only.** For that channel we cannot distinguish silence from an objection we dropped, and only that channel is ambiguous. |
 
@@ -758,7 +764,7 @@ The same reasoning applies to the approval gate, and lands in the same place by 
 different route: an approval that expired resolves **denied** regardless, so a
 dropped objection cannot cost money there. Backfill still runs, because an
 explicit *approve* found in the backfill is worth honouring rather than making
-him ask twice, but only inside the original window, never past it.
+the owner ask twice, but only inside the original window, never past it.
 
 The pending state is bounded, content-validated, swept on a timer, and its
 recoveries are disclosed rather than silent.
@@ -769,14 +775,20 @@ recoveries are disclosed rather than silent.
 
 ### 9.1 Who may initiate a purchase, and who may choose the merchant
 
-These are two different questions, and the owner ruled them differently. This
-section used to conflate them, refusing any purchase whose merchant came from
-page content, and documenting that as a feature. He overrode that:
+These are two different questions, and they are ruled differently. This section
+used to conflate them, refusing any purchase whose merchant came from page
+content, and documenting that as a feature. That blanket taint gate on the
+merchant was overruled as wrong.
 
-> "the taint gate is wrong. if i tell you to buy the cheapest X you find online,
-> you will 1) find it, 2) show it to me, and then 3) alert me prior to purchasing
-> if it is not a major retailer - use your best judgement on what you consider a
-> major retailer"
+On an owner-initiated request of the form "buy the cheapest X you find online",
+the required behaviour is:
+
+1. Find the item.
+2. Show it to the owner.
+3. Alert the owner before purchasing when the merchant is not a major retailer.
+
+What counts as a major retailer is a judgement call, and §9.1.1 is the standard
+that judgement is made against.
 
 **What did not move: who initiates.** A content-initiated purchase is refused
 outright. An email or a web page saying "buy X from Y" cannot start a purchase,
@@ -785,10 +797,11 @@ disclose-instead-of-refuse fallback, **no approval path around it**, this is the
 one gate with no downstream branch at all, because the approval is exactly the
 step an injection is trying to reach.
 
-**What relaxed: who chooses the merchant**, on a purchase he initiated. "Buy the
-cheapest X you can find" is his instruction, the item and the intent are his,
-and only the storefront was found on a page. That now proceeds, with the merchant
-graded by the standard in §9.1.1 into a veto or an approval.
+**What relaxed: who chooses the merchant**, on an owner-initiated purchase. "Buy
+the cheapest X you can find" is the owner's own instruction, so the item and the
+intent came from the owner and only the storefront was found on a page. That now
+proceeds, with the merchant graded by the standard in §9.1.1 into a veto or an
+approval.
 
 The distinction is carried in the **type**, not checked at runtime.
 `merchantDiscovered` exists only on `OwnerOriginIntent`, so "a discovered
@@ -822,9 +835,10 @@ initiating a purchase whatever else is true:
 | `item` | the length thresholds |
 | `requestedMaxCents` | the length thresholds, when the request states a limit |
 
-**Conditionally checked**, only when *he named the merchant*, because then it
-has to be his. When `merchantDiscovered` is set, the storefront came off a page
-by design, and grading it (§9.1.1) rather than refusing it is the safeguard:
+**Conditionally checked**, only when *the owner named the merchant*, because then
+it has to have come from the owner. When `merchantDiscovered` is set, the
+storefront came off a page by design, and grading it (§9.1.1) rather than
+refusing it is the safeguard:
 
 | Field | Test |
 |---|---|
@@ -843,27 +857,29 @@ Not checked, the merchant's own quoted numbers:
 
 ### 9.1.1 The merchant standard: recourse, not recognisability
 
-When he initiates a purchase and we find the storefront, the merchant is
+When the owner initiates a purchase and we find the storefront, the merchant is
 **graded**, and the grade decides only one thing, **what silence means**.
 
-> "if the place we're buying isn't what the average person would consider a major
-> retailer, silence means denial of purchase"
-
-> "even smaller specialty retailers like microcenter would be considered major,
-> unlike something like www.jeffsgadgets.biz"
+The rule: when the place taking the card is not what the average person would
+consider a major retailer, silence means the purchase is denied. Smaller
+specialty retailers do count as major, Micro Center among them; a storefront
+like `www.jeffsgadgets.biz` does not.
 
 | Grade | Window | Silence |
 |---|---|---|
 | Recourse established | veto | **proceeds** |
 | Anything else | approval | **denies** |
 
-**The organizing principle is recourse.** Recognisability was the proxy; he named
-the real test himself when he explained why Etsy counts:
+**The organizing principle is recourse.** Recognisability was only ever the
+proxy, and the real test shows through in why Etsy counts: consumer protections.
+The standard that follows from it:
 
-> "even etsy is fine, mainly because they have consumer protections. so yeah, use
-> judgement in situations like ebay, try to buy from established retailers -- even
-> established online-only retailers like redbubble etc, but be wary of storefronts
-> like jeffsgadgets.biz"
+- Buy from established retailers. Established online-only retailers such as
+  Redbubble qualify on the same footing as ones with stores.
+- Etsy qualifies, mainly because the platform carries consumer protections.
+- Cases like eBay take judgement rather than a blanket yes, and the eBay rules
+  below are that judgement written down.
+- Be wary of storefronts like `jeffsgadgets.biz`; they do not qualify.
 
 A merchant qualifies when there is a real path to remedy if the purchase goes
 wrong, platform buyer protection, an established returns process, an accountable
@@ -873,20 +889,22 @@ dozen stores and Redbubble qualifies with no stores at all, because both are rea
 businesses with real policies. Size and physical presence are weak evidence, not
 the test.
 
-**One notification, not two.** He collapsed the two steps himself, *"2 and 3 are
-basically the same step"*, so there is one message, sent once, when the item is
-chosen and the final total is known, before payment. Both branches carry
-identical content: what was found, the validated registrable domain, the item,
-and the total re-rendered from our own parsed integers (§9.3). The grade changes
-only what silence means, and the message states which mode it is in and what
-happens if he does nothing. `renderPurchaseNotice` is the single send site, a
-selection between the two existing windows, not a third message type.
+**One notification, not two.** Showing the find and alerting before purchase are
+the same step, so they collapse into one message, sent once, when the item is
+chosen and the final total is known, before payment.
+
+Both branches carry identical content: what was found, the validated registrable
+domain, the item, and the total re-rendered from our own parsed integers (§9.3).
+The grade changes only what silence means, and the message states which mode it
+is in and what happens if nobody answers. `renderPurchaseNotice` is the single
+send site, a selection between the two existing windows, not a third message
+type.
 
 **The notification names the recourse, not the verdict.** "Etsy, buyer protection
-applies" is something he can evaluate; "on your approved list" sends him off to
-check a list. When it goes to approval it reads as a checkpoint, not an
-accusation about the seller, he may well want to buy there, and all we are
-saying is that we ask rather than assume.
+applies" is something the owner can evaluate; "on your approved list" sends them
+off to check a list. When it goes to approval it reads as a checkpoint, not an
+accusation about the seller: buying there may be exactly what was wanted, and all
+we are saying is that we ask rather than assume.
 
 **Where "use judgement" lives, and it is not at runtime.** The judgement is
 exercised when the list is **curated**, and recorded as data in
@@ -903,16 +921,16 @@ a later reader understands the list rather than seeing arbitrary strings:
 | Qualifier | Meaning |
 |---|---|
 | `national-chain` | Large general retailer; established returns process |
-| `specialty-retailer` | Established in its category, his Micro Center case |
-| `online-only-retailer` | Established with no physical stores, his Redbubble case |
-| `marketplace-buyer-protection` | The marketplace's own protection covers it, his Etsy case; major outright |
-| `marketplace-per-seller` | Recourse depends on the seller, his eBay case; per-listing conditions |
+| `specialty-retailer` | Established in its category, the Micro Center case |
+| `online-only-retailer` | Established with no physical stores, the Redbubble case |
+| `marketplace-buyer-protection` | The marketplace's own protection covers it, the Etsy case; major outright |
+| `marketplace-per-seller` | Recourse depends on the seller, the eBay case; per-listing conditions |
 
 **Default is not-major.** A longer list does not make a more permissive one:
-everything outside it asks him. There is no benefit of the doubt, because the
-fallback is not refusal, it is asking. Treating a real retailer as unqualified
-costs one message he answers; the reverse costs money spent somewhere with no way
-to get it back.
+everything outside it asks the owner. There is no benefit of the doubt, because
+the fallback is not refusal, it is asking. Treating a real retailer as
+unqualified costs one message and one answer; the reverse costs money spent
+somewhere with no way to get it back.
 
 **The list is owner-editable and nothing learns its way onto it.**
 `payments.majorRetailersAdditional` and `payments.majorRetailersExcluded` take
@@ -925,17 +943,18 @@ on may not follow it, that is not-major, and the notification says why.
 
 #### eBay is per-listing, not per-domain
 
-> "something of a grey area is Ebay - i would allow buy it now purchases on Ebay,
-> but only if the seller has a solid reputation from selling, not just buying"
+eBay is a grey area, and it is ruled this way: Buy It Now purchases are allowed
+on eBay, but only when the seller has a solid reputation earned from **selling**,
+not from buying.
 
 ebay.com is necessary and not sufficient. Two conditions, both required, in
 `payments/marketplace-listing.ts`:
 
 **1. Fixed price only. Auctions are refused structurally, not by policy toggle.**
-The flow he designed is: know the final total → notify him → run the window →
-pay. An auction has no final total until it ends, so that flow *cannot execute at
-all*, this is a structural impossibility, not a preference that could be
-configured away. Bidding is also an open-ended commitment rather than a purchase.
+The flow is: know the final total → notify the owner → run the window → pay. An
+auction has no final total until it ends, so that flow *cannot execute at all*,
+this is a structural impossibility, not a preference that could be configured
+away. Bidding is also an open-ended commitment rather than a purchase.
 The same reasoning covers Best Offer and any listing whose format we could not
 confirm as fixed-price.
 
@@ -953,12 +972,12 @@ the seller. It is nonetheless built as a **ratchet**:
   approval-required and can never move one the other way. No reputation figure
   promotes a domain that was not already recognised.
 - **Unreadable means not-major.** Missing, ambiguous, or an unexpected page shape
-  all fail closed and he is asked.
+  all fail closed and the owner is asked.
 - A figure from a **seller-controlled** region of the page is never accepted, and
   if the region cannot be told apart, the figure is unreadable.
 
-The worst case a hostile listing can achieve is being sent for his approval,
-which is where an unrecognised seller was going anyway.
+The worst case a hostile listing can achieve is being sent for the owner's
+approval, which is where an unrecognised seller was going anyway.
 
 #### The config seam
 
@@ -968,8 +987,8 @@ control-plane handlers, a surface previewing a decision, calls it rather than
 reading the keys itself. A second copy of that mapping is how a renamed key
 silently degrades a purchase gate to its defaults while still looking configured.
 Note that **no config value can make this decision more permissive**: the knobs
-add domains he vouches for, remove domains he does not, and move the eBay seller
-bar.
+add domains the owner vouches for, remove domains the owner does not, and move
+the eBay seller bar.
 
 ### 9.2 Checkout URLs from untrusted content pass full link validation
 
@@ -981,19 +1000,20 @@ link that lands correctly and then 302s away refuses the chain.
 **What `authorizedDomain` is depends on who chose the merchant**, and the two
 cases close the loop differently:
 
-- **He named it.** `authorizedDomain` is the merchant he named, which §9.1 has
-  already established is not page-derived. The domain we validate against cannot
-  itself have been chosen by an attacker.
+- **The owner named it.** `authorizedDomain` is that named merchant, which §9.1
+  has already established is not page-derived. The domain we validate against
+  cannot itself have been chosen by an attacker.
 - **We discovered it.** The domain *was* chosen from page content, so validation
   alone cannot vouch for it and does not pretend to. It still does its real job, proving the URL we are about to open is the domain it claims to be, catching
   userinfo tricks, homographs and redirect chains. **Whether that domain deserves
   the card is a separate question, answered by §9.1.1**, and an unrecognised one
-  goes to an approval he must answer. Link validation establishes identity; the
-  merchant standard establishes recourse. Neither substitutes for the other.
+  goes to an approval the owner must answer. Link validation establishes
+  identity; the merchant standard establishes recourse. Neither substitutes for
+  the other.
 
 In both cases the registrable domain that survives validation is the one shown in
-the notification and the one the recourse test is applied to, so what he is told,
-what is graded, and what takes the card are the same string.
+the notification and the one the recourse test is applied to, so what the owner
+is told, what is graded, and what takes the card are the same string.
 
 The refusal reasons already distinguish userinfo tricks
 (`https://shop.example@evil.example/pay`), non-https schemes, mixed-script
@@ -1003,7 +1023,7 @@ by name because a refused checkout is often something the owner finishes by hand
 ### 9.3 Approval and veto messages are rendered from structured fields only
 
 If page text can reach the message, an attacker writes what the owner reads on
-his phone: *"Approve $12 for coffee?"* attached to a $1,200 order.
+their phone: *"Approve $12 for coffee?"* attached to a $1,200 order.
 
 So the message is rendered from a closed struct of typed scalars, and there is no
 field in it that can carry free text from a page:
@@ -1044,7 +1064,7 @@ the clean run.
 ### 9.3.1 Every merchant-derived string is attacker-chosen
 
 The approval and veto notices carry text a merchant page controls into a message
-the owner reads on his phone and answers under a ten-minute clock, with money
+the owner reads on their phone and answers under a ten-minute clock, with money
 attached. That is the inbound-mail notice defect (SDK `140cbcb4`) with a charge
 on the end of it.
 
@@ -1062,7 +1082,7 @@ quoted back inside a refusal reason.
 | Rule | How |
 |---|---|
 | Merchant identified by **validated domain**, not display name | `registrableDomain()` of the validated checkout URL. A page can call itself anything. `isPlainHostname` asserts the value really is a computed hostname; anything else renders as "(merchant identity unavailable)" rather than being printed. |
-| Amounts **re-rendered from our parsed integers** | `formatMinorUnits` throws on a non-integer rather than rendering something plausible, so a merchant string can never become the number he reads. |
+| Amounts **re-rendered from our parsed integers** | `formatMinorUnits` throws on a non-integer rather than rendering something plausible, so a merchant string can never become the number the owner reads. |
 | Markup and mention syntax **neutralised at the source** | `security/notice-text.ts`, `sanitizeNoticeField` for attacker text, `sanitizeOwnerNoticeField` where underscore is worth keeping. |
 | Owner-authored text sanitized **too** | `OwnerSuppliedText` is a compile-time guarantee, and a compile-time guarantee does not survive a call site that threads provenance wrongly. |
 
@@ -1121,13 +1141,12 @@ asserts the serialized record does not contain any configured card material.
 
 ### 9.5 The CVV is stored
 
-**Settled by the owner, directly:**
+**The CVV is saved, full stop. It is required for autonomous action.** That is a
+settled owner ruling.
 
-> "we save the cvv, full stop. it is 100% needed for autonomous action."
-
-This is not an open question and the code, the tests and this document do not
+It is not an open question, and the code, the tests and this document do not
 treat it as one. What follows is the plain statement of what is kept and what
-that exposes, he is entitled to know that, not a hedge on the decision.
+that exposes, which the owner is entitled to know, not a hedge on the decision.
 
 Autonomous action is the entire point of the capability. The veto window rules
 that an in-budget purchase proceeds on silence, which means it completes with
@@ -1144,14 +1163,16 @@ fill and overwritten after.
 
 **What that exposes, without softening.** This is card verification data at rest,
 which PCI DSS 3.2 prohibits storing after authorization for entities in its
-scope. A personal daemon holding the owner's own CVV in his own encrypted store
-is out of that scope, but not out of danger: anyone who can read
-`~/.goodvibes/daemon/secrets.enc` **and** `~/.goodvibes/secrets.key` has the card
-number, the expiry, the CVV and the billing address, everything a
-card-not-present transaction needs, at any merchant, with no further access to
-this machine. Filesystem permissions (0600/0700) and the encryption at rest
-defend against a different user on the same host; neither defends against a
-process running as the owner. Backups of the home directory carry the whole kit.
+scope. A personal daemon holding the owner's own CVV in the owner's own encrypted
+store is out of that scope, but not out of danger.
+
+Anyone who can read `~/.goodvibes/daemon/secrets.enc` **and**
+`~/.goodvibes/secrets.key` has the card number, the expiry, the CVV and the
+billing address, everything a card-not-present transaction needs, at any
+merchant, with no further access to this machine. Filesystem permissions
+(0600/0700) and the encryption at rest defend against a different user on the
+same host; neither defends against a process running as the owner. Backups of
+the home directory carry the whole kit.
 
 **A virtual card bounds that loss and a real card number does not.** This is
 guidance about which instrument to provision, not a qualification of the ruling.
@@ -1201,7 +1222,7 @@ type CheckoutStepOutcome = 'done' | 'already-done' | 'needs-human' | 'failed';
 interface ChallengeStep {
   readonly kind: '3ds' | 'sca' | 'otp' | 'captcha';
   readonly problem: string;          // OUR strings, not page text
-  readonly fix: string;              // the exact control he must operate
+  readonly fix: string;              // the exact control to interact with
   readonly url: string | null;       // validated by §9.2 before it is shown
   readonly expiresAtMs: number;
 }
@@ -1211,10 +1232,12 @@ interface ChallengeStep {
 resumes by **re-running the whole flow from step 1**, relying on each step
 reporting `already-done`. That is safe for console setup and **unsafe for a
 checkout**: re-running a payment submission is how a single order becomes two
-charges. So the checkout runner is re-entrant in the same shape but every step
-that can move money is guarded by an **idempotency key and a live re-read of
-order state at the merchant** before it will act. A step that cannot establish
-whether it already completed reports `needs-human` and stops. Re-entrancy here
+charges.
+
+So the checkout runner is re-entrant in the same shape, but every step that can
+move money is guarded by an **idempotency key and a live re-read of order state
+at the merchant** before it will act. A step that cannot establish whether it
+already completed reports `needs-human` and stops. Re-entrancy here
 means "safe to call again", never "safe to submit again".
 
 - The browser session is held open; the purchase state machine moves to
@@ -1244,28 +1267,28 @@ The budget is denominated in one currency. A merchant quoting another one is
 The alternative is converting, and converting means picking a rate. Any rate we
 pick is stale by the time the card is charged, because the issuer converts at
 its own rate on its own date and adds its own fee. So a converted number shown
-in an approval would be a number he did not approve, the exact defect §9.3
+in an approval would be a number the owner did not approve, the exact defect §9.3
 exists to prevent, and a budget check against it would be arithmetic on a
 guess. Refusing is honest; converting is confident and wrong.
 
 `CurrencyMismatch` carries the budget currency, the quoted currency, and the
-suggestion to buy from a merchant that quotes in his currency or to raise it as
-a purchase he makes himself.
+suggestion to buy from a merchant that quotes in the budget's currency, or to
+handle the purchase by hand instead.
 
 ### 9.7.2 A checkout that enrols a subscription or recurring charge
 
 **Refused.** A daily budget cannot describe a charge that renews unattended next
 month. Everything in this design, the pools, the reset, the veto window, is
 built around one purchase happening once, and there is no mechanism here that
-would notice a renewal, let alone stop one. Enrolling him in something that
+would notice a renewal, let alone stop one. Enrolling the owner in something that
 charges again later, on a capability whose entire safety story is a daily limit,
 would be the most expensive kind of silent hole.
 
 Detection is deliberately conservative and errs toward refusing: recurring-billing
 language in the order summary, a subscription line item, a trial-then-charge
 term, or a stored-payment-method consent checkbox. A checkout it cannot classify
-with confidence is refused rather than attempted, a false refusal costs him a
-manual purchase, a false accept costs him a recurring charge nobody is watching.
+with confidence is refused rather than attempted, a false refusal costs one
+manual purchase, a false accept costs a recurring charge nobody is watching.
 
 ### 9.7.3 Money coming back does not credit a pool
 
@@ -1275,8 +1298,8 @@ not credit any pool.**
 Crediting would be surprising in the direction that spends money: a refund
 landing on day 5 for something bought on day 1 would silently hand back day 5's
 budget, so a returned item becomes permission to buy another one that day
-without him deciding that. The pools are a rate limit on outward spending, not a
-running balance of net worth.
+without the owner deciding that. The pools are a rate limit on outward spending,
+not a running balance of net worth.
 
 They are still recorded, with the original `purchaseId`, because the ledger's job
 is to reconcile against a card statement and a statement contains refunds. A
@@ -1375,8 +1398,8 @@ added to `SECRET_CONFIG_KEYS`.
 
 ### 10.3 The agent terminal cannot answer a broker approval today
 
-The owner ruled that approval and veto arrive over "the TUI, the agent terminal,
-or a channel like Telegram". The TUI wires the shared `ApprovalBroker` into its
+Approval and veto arrive over the TUI, the agent terminal, or a channel like
+Telegram (§8.2). The TUI wires the shared `ApprovalBroker` into its
 prompt card (`goodvibes-tui/src/permissions/broker-approval-card.ts`,
 `handleBrokerApprovalChange`). **The agent has no equivalent**, its
 `PermissionPromptUI` (`goodvibes-agent/src/permissions/prompt.ts`) is
@@ -1444,13 +1467,14 @@ These are requirements on Phase 2, not suggestions:
 
 ### 12.1 Ruled
 
-Recorded so they are not re-litigated. Items 1 and 8–11 are the owner's own
-rulings and are closed. The rest were taken under zero-deferrals where he had not
-ruled, and he can overturn any of them; none is a coin toss left in the code.
+Recorded so they are not re-litigated. Items 1 and 8–11 are owner rulings and are
+closed. The rest were taken under zero-deferrals where no owner ruling existed;
+any of them can be overturned by the owner, and none is a coin toss left in the
+code.
 
-1. **The CVV is stored (§9.5).** Owner ruling, stated directly: *"we save the
-   cvv, full stop. it is 100% needed for autonomous action."* Settled and closed
-  , see `docs/decisions/2026-07-27-the-cvv-is-stored.md`. `payments.cvvHandling`
+1. **The CVV is stored (§9.5).** Owner ruling: the CVV is saved, full stop,
+   because it is required for autonomous action. Settled and closed, see
+   `docs/decisions/2026-07-27-the-cvv-is-stored.md`. `payments.cvvHandling`
    still ships as a real setting defaulting to `'stored'`; selecting `'prompt'`
    disables unattended purchasing and the surface says so at the moment of
    selection.
@@ -1458,16 +1482,16 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
    outcome, so too-short costs friction and too-long costs price drift on a held
    cart. An hour survives a meeting or a commute.
 3. **A window interrupted by downtime is keyed on DELIVERY, not uptime
-   (§8.6.1).** Silence means he had the chance to object and did not; whether our
-   process was alive has nothing to do with it. Delivered-then-expired stands,
-   with a backfill for objections we might have missed and no re-notification.
-   Only an un-backfillable channel re-opens.
+   (§8.6.1).** Silence means the owner had the chance to object and did not;
+   whether our process was alive has nothing to do with it. A notification that
+   was delivered and then expired stands, with a backfill for objections we might
+   have missed and no re-notification. Only an un-backfillable channel re-opens.
 4. **Exhausted overage pool refuses rather than escalating to an approval
    (§6 step 2).** The ruling is explicit. Recorded so it is not re-opened by
    accident.
-5. **Money defaults are 0 and `enabled` is false (§3.2).** Derived from "default
-   to most safe". A freshly configured capability refuses everything until he
-   sets amounts.
+5. **Money defaults are 0 and `enabled` is false (§3.2).** Derived from the
+   safest-default rule. A freshly configured capability refuses everything until
+   the amounts are set.
 6. **Another currency, a subscription, and a refund credit are refusals by
    design (§9.7)**, each with its own named refusal and its own reasoning,
    not an unhandled case.
@@ -1476,18 +1500,19 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
    not the right to reply.
 8. **A discovered merchant is graded, not refused (§9.1, §9.1.1).** Owner
    ruling, overriding this document's earlier position that "buy the cheapest X
-   you can find" was refused by design: *"the taint gate is wrong."* On a
-   purchase **he** initiated, the merchant and checkout URL may derive from page
-   content; the merchant standard then decides whether silence proceeds or
-   denies. See
+   you can find" was refused by design: the blanket taint gate on the merchant
+   was wrong. On an **owner-initiated** purchase, the merchant and checkout URL
+   may derive from page content; the merchant standard then decides whether
+   silence proceeds or denies. See
    `docs/decisions/2026-07-27-a-discovered-merchant-is-graded-not-refused.md`.
 9. **Content-initiated purchases remain refused absolutely (§9.1).** Unchanged
    by the above, and the reason it is safe: what relaxed is *who chooses the
    merchant*, never *who initiates*. There is still no owner-approval escape
    hatch on this gate.
-10. **The standard is recourse, not recognisability (§9.1.1).** His own reason
-    for admitting Etsy, *"mainly because they have consumer protections"*, which makes recognisability evidence rather than the test. Established
-    online-only retailers qualify with no physical stores.
+10. **The standard is recourse, not recognisability (§9.1.1).** Etsy is admitted
+    mainly because the platform carries consumer protections, which makes
+    recognisability evidence rather than the test. Established online-only
+    retailers qualify with no physical stores.
 11. **eBay is per-listing, with auctions refused structurally (§9.1.1).** Not a
     policy toggle: an auction has no final total, so the notify-then-pay flow
     cannot execute. Seller-side reputation only, and the check may only ever make
@@ -1504,8 +1529,8 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
     the false-refusal rate is unknown until it meets real merchants.
 14. **Backfill coverage varies by channel (§8.6.1).** Telegram has a readable
     history; a channel without one is always treated as un-backfillable and
-    re-opens. The set of channels that can be backfilled will shape how often he
-    sees a re-opened window, and that is only measurable in use.
+    re-opens. The set of channels that can be backfilled will shape how often a
+    re-opened window shows up, and that is only measurable in use.
 15. **eBay account age is not checked (§9.1.1).** `minAccountAgeDays` exists in
     `MarketplaceListingThresholds` and defaults to `null`, meaning no check. eBay
     does not expose a member-since date in a place that can be read reliably and
@@ -1514,10 +1539,10 @@ ruled, and he can overturn any of them; none is a coin toss left in the code.
     looking like a working check. The lever is built and off; turning it on needs
     a trustworthy source for the figure first.
 16. **The shipped retailer list is a starting point, not a survey.** It covers
-    the classes he named and the obvious members of each. Absence is not a
-    judgement about a seller, it only means we ask. The list will need real use
-    to find the retailers he actually buys from, and `majorRetailersAdditional`
-    is how he adds them without a release.
+    the classes named in the ruling and the obvious members of each. Absence is
+    not a judgement about a seller, it only means we ask. The list will need real
+    use to find the retailers actually bought from, and
+    `majorRetailersAdditional` is how the owner adds them without a release.
 
 ## 13. Related
 

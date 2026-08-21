@@ -47,10 +47,14 @@ HTTP routes for `doctor`/`vectorStats`/`reviewQueue`/`vectorRebuild`
 reads/writes `add`/`search`/`searchSemantic` THROUGH it over the session spine.**
 One process = one writer, which is the only way sql.js's whole-file save model is
 safe under concurrent surfaces, and it matches the one-platform charter (the
-daemon is the cross-visible identity). **Deferred out of Wave 6** because it adds
+daemon is the cross-visible identity).
+
+**Deferred out of Wave 6** because it adds
 new operator/wire methods on top of the daemon's existing memory routes, that
 serializes the land on the contract artifacts and gates the release train, and it
-cannot be proven under the no-real-daemons test rule. It also does not remove the
+cannot be proven under the no-real-daemons test rule.
+
+It also does not remove the
 need for a local-embedded fallback: the agent and TUI must both keep working with
 no daemon running (offline), so a daemon-only store would REGRESS the offline
 surface and would need the embedded fallback anyway.
@@ -118,12 +122,15 @@ projection.
   the land does not serialize on contract artifacts. (`platform/state` is a subpath
   export outside api-extractor's tracked rollup, so the new SDK exports do not move
   `etc/goodvibes-sdk.api.md`, exactly as `MemoryStore` itself does not appear.)
+
 - Migration honesty: `foldMemoryStores` never deletes a source and returns a full
   `MemoryFoldReport` (imported / already-present / missing / failed per source),
   mirroring the legacy session fold precedent (`session-store-importer.ts`).
+
 - Follow-on (out of Wave-6 scope, tracked): the daemon single-writer memory service
   over the spine (`add`/`search`/`searchSemantic` wire methods), and the webui
   memory surface (no webui memory UI exists today).
+
 - Consumer rewiring (agent `services.ts:639`, TUI `services.ts:390`, agent
   `vibe-file.ts` → projection, agent `memory-prompt.ts` re-exporting the SDK
   contract) is SDK-dependent and staged on branches until this SDK ships, per the

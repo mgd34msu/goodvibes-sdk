@@ -9,7 +9,7 @@ Status: accepted
 The inbound-email round fixed a real defect in the webui mail view: it sorted
 the inbox by `message.date`, the `Date:` header, which the sender writes. Any
 stranger emailing the owner could set a far-future date and pin their message to
-the top of his inbox indefinitely, a display-order control handed to arbitrary
+the top of the inbox indefinitely, a display-order control handed to arbitrary
 outsiders, above everything real.
 
 The fix was to sort by `uid`, a value the owner's own IMAP server assigns on
@@ -43,7 +43,7 @@ The difference from mail, stated so the shape is not re-litigated:
 | The disputed field | `Date:` header | `start` |
 | What it is | decorative metadata | **the substantive value of the record** |
 | Non-sender-controlled substitute | `uid`, server-assigned | **none exists** that preserves "what's next" |
-| Effect of sorting by it | a stranger picks what he reads first | an event appears at the time it claims to be |
+| Effect of sorting by it | a stranger picks what the owner reads first | an event appears at the time it claims to be |
 
 There is no key that both resists the sender and preserves chronological
 meaning, because chronological meaning *is* the sender-supplied value. A sort
@@ -93,9 +93,9 @@ its own round. Required there:
 
 - **Make provenance visible.** An event whose details came from outside should
   be identifiable as such, so the owner reads it as someone else's claim rather
-  than as his own record. This is the same principle as rendering mail notices
+  than as their own record. This is the same principle as rendering mail notices
   from structured fields: the owner should always be able to tell who wrote what
-  he is looking at.
+  is on the screen.
 - **Make the sort stable on a daemon-stamped secondary key.** Identical start
   times must not be orderable by whoever crafts their payload to win the
   tiebreak. `CalendarEventSummary` carries `id` but not `uid`, only

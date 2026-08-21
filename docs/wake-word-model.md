@@ -62,9 +62,13 @@ evaluation clip. They are the same classifier in two runtime formats.
 runs onnxruntime-web everywhere, including in the browser, so nothing in this
 repository loads the TFLite file and no test scores against it. Its
 bit-identical claim rests on the training-time comparison recorded above, not on
-continuous verification. It IS downloaded alongside the `.onnx` build and served
+continuous verification.
+
+It IS downloaded alongside the `.onnx` build and served
 by `voice.wake.model.get` (`component=tflite`), so a runtime that cannot load
-onnx has the same access to the model as one that can. It does **not** gate
+onnx has the same access to the model as one that can.
+
+It does **not** gate
 `ready`, the only pinned artifact that does not: the detector this SDK runs needs
 the `.onnx` build, the front end, and **both** attribution NOTICEs, so a host that
 got those four and missed the twin is a host that detects, and reporting otherwise
@@ -427,11 +431,15 @@ frame must not let one utterance fire twice.
 positives, MUSAN noise and music as negatives, with per-file gain randomisation
 and **half the speech mixed with noise at 0–18 dB SNR**. A head trained on loud
 clean speech and quiet noise learns "loud", and would then gate the exact case
-the detector has to survive, someone speaking with a fan running. Labels for
+the detector has to survive, someone speaking with a fan running.
+
+Labels for
 speech recordings are weak, derived from energy over the embedding's own 760 ms
 receptive field (≥60 % of the window above the recording's own floor is speech,
 ≤5 % is non-speech, in between is dropped as ambiguous); the negative class is
-anchored by recordings that contain no speech at all. Every corpus is
+anchored by recordings that contain no speech at all.
+
+Every corpus is
 attribution-only or public domain, the same set the wake classifier's NOTICE
 credits, and `goodvibes-vad-1.0.0.NOTICE.txt` carries the attribution.
 

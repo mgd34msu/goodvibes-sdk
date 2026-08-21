@@ -16,10 +16,14 @@ subscription to logind's `PrepareForSleep` signal but nothing reaped it: an
 exiting or crashed process left the watcher parented to init. Repeated
 constructions (mostly test runs) accumulated orphaned watchers until the system
 bus's per-user connection quota was exhausted, which cut every process of that
-user off from the system bus (logind unreachable). The orphans were cleared
+user off from the system bus (logind unreachable).
+
+The orphans were cleared
 manually and the watcher was given the same lifetime discipline the inhibitor
 children already had: owner-pid stamping, process exit/signal cleanup, and
-dead-owner reaping at start. The watcher spawn is now an injectable seam, and the
+dead-owner reaping at start.
+
+The watcher spawn is now an injectable seam, and the
 generic runtime-services factory defaults to a non-spawning power seam (only the
 standalone daemon opts into the host seam), so tests never launch a real watcher
 except one deliberate live leg.

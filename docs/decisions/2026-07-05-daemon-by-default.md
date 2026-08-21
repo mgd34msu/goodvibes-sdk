@@ -97,6 +97,7 @@ Item 5 above ("removal scheduled Wave 6") is done, as W6-R1 in
   from the `ConfigKey`/`ConfigValue` unions in `schema-types.ts`, and from the `danger`
   object's type shape. `resolveDaemonEnabled`'s alias branch (`config/index.ts`) is deleted;
   its signature is unchanged, so all 7 existing callers compiled without edits.
+
 - **The silent-flip hazard (Alternative B, rejected above for the same reason) is closed by
   a config migration, not by the alias.** `platform/config/migrations.ts` exports
   `migrateDangerDaemonAlias`, applied in `ConfigManager.load()` for both the global and
@@ -106,17 +107,21 @@ Item 5 above ("removal scheduled Wave 6") is done, as W6-R1 in
     broken) and the alias key is stripped from the merged shape;
   - an explicit `danger.daemon: true` is stripped with no rewrite (already the default);
   - absent/non-boolean is a no-op.
+
   The migration is a pure function over the raw parsed object and is idempotent by
   construction (an already-migrated object has no `danger.daemon` key left to act on).
+
   It runs at every `load()` rather than rewriting the file on disk, no unexpected write
   during construction; the honest resolution holds indefinitely regardless of whether the
   bytes on disk are literally rewritten (they naturally drop the deprecated key the next
   time anything calls `.save()`).
+
 - **Raw readers migrated in the same change** (not left for later, they stop typechecking
   the moment the union drops the key): TUI `snapshot.ts`, `surface-command.ts`,
   `remote-runtime-setup.ts`, `onboarding-wizard-apply.ts`; agent `settings-modal.ts` +
   `settings-modal-types.ts` (the override-note machinery, now dead and removed) +
   `agent-settings-policy.ts` (`EXTERNAL_HOST_SETTING_KEYS`).
+
 - **The 7 helper callers were untouched**, per the plan: `resolveDaemonEnabled`'s signature
   did not change.
 
@@ -168,15 +173,18 @@ record describes:
   `adopt-only-idle`, so neither the `embed` branch (`platform/runtime/bootstrap-services.ts:695`)
   nor the detached-spawn branch is reachable from a surface. The daemon product does not call
   `startExternalServices` at all.
+
 - **`daemon.embedInProcess` is still a shipped key** (`platform/config/schema-domain-core.ts:119`
   default `false`, schema entry at `:704`) and the `embed` code path still exists, but no shipped
   product reaches it. This is recorded so nobody reads the key's presence as a live topology.
+
 - **`daemon.enabled` remains a real setting with the same default and the same resolver.**
   `resolveDaemonEnabled` still gates the whole external-service block
   (`platform/runtime/bootstrap-services.ts:602`), with it false a surface does not even try to
   adopt, and the daemon's own CLI reports it (`goodvibes-daemon/src/daemon/cli.ts:652`, via the
   SDK's `platform/daemon/cli.ts:169`). What it now means for a surface is "may I adopt a daemon",
   not "shall I start one".
+
 - **The one recovery step for a missing daemon is starting the installed service.**
   `platform/runtime/client/daemon-autostart.ts` (`autostartInstalledDaemon`) asks the platform
   service manager whether the daemon's service entry exists, starts it if so, waits a bounded
@@ -198,17 +206,20 @@ default, but by installing the daemon product, not by a surface conjuring one.
   floor factory; the daemon supplies its workspace trust gate
   (`goodvibes-daemon/src/runtime/hosted-session-composition.ts`, passed at
   `goodvibes-daemon/src/daemon/cli.ts:536`).
+
 - **Five verbs**: `sessions.hosted.create`, `.attach`, `.detach`, `.kill`, `.list`
   (`packages/contracts/src/generated/operator-method-ids.ts:425-429`; descriptors in
   `platform/control-plane/method-catalog-hosted-sessions.ts`, handlers in
   `platform/control-plane/routes/hosted-sessions.ts`). Steering, follow-ups and tool-call cancels
   stay on the ordinary session verbs, which resolve a hosted id daemon-side.
+
 - **The detach toggle, with the owner-confirmed default:** `hostedSessions.detachPolicy`, enum
   `kill` | `survive`, default **`kill`**
   (`platform/config/schema-domain-hosted-sessions.ts:39`, `:49-54`), overridable per session at
   creation. Alongside it: `hostedSessions.maxSessions` (8),
   `hostedSessions.maxMessagesPerSession` (500), `hostedSessions.terminatedRetentionMs`
   (86_400_000), and `hostedSessions.promoteInboundConversations` (default **`false`**).
+
 - **Surfaces reach it as clients.** Terminal app: `src/runtime/client/hosted-sessions.ts`,
   `hosted-session-stream.ts`, `hosted-roster.ts` and the `/hosted` command
   (`src/input/commands/hosted-runtime.ts`). Chat host:

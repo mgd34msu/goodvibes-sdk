@@ -87,6 +87,7 @@ mutation reverting it in the harmful direction, in
   writes → **ten records on disk**, `list()` serving 2. `supervisor.ts:390`
   computes `retention.records.kept` from the filtered `list()`, so **status
   tells the owner a smaller number than the file holds.**
+
 - **The disclosure log is an unreaped second copy of every expectation.**
   `ExpectationSweepReport.survivors` carries full `VerificationExpectation`
   objects and `housekeeping.ts:113-127` writes the whole report, so every
@@ -94,6 +95,7 @@ mutation reverting it in the harmful direction, in
   `email-inbound-housekeeping.json`, which expiry reaping never touches.
   `listDisclosures()` reads it back with **no content validation** — the one
   persisted structure here violating the rule its own file header states.
+
 - **0644 files, 0755 dir, no fsync, no cross-process safety.**
   `persistent-store.ts:49` writes with no `mode`. No fsync on file or
   directory, so a power loss after rename can leave a zero-length file.
@@ -101,6 +103,7 @@ mutation reverting it in the harmful direction, in
   persisted state with no GC. `writeChain` serializes **per instance**; with
   two daemon processes on one machine, six records written by two writers left
   three on disk.
+
 - **Expectation records had no field length bound** on either path: a 1 MB
   `purpose` validated, and `MAX_OPEN_EXPECTATIONS = 32` bounds count only, so a
   32 MB expectation file was a valid one. **Partially closed since** — `id`,
@@ -113,10 +116,12 @@ mutation reverting it in the harmful direction, in
    `stored` (counted from the file, malformed rows included) beside `kept`, plus
    `reapedOnWrite` — §9.5 requires a reap to be disclosed, and a write-time reap
    is one no sweep report can itemise.
+
 2. The persisted log is a projection: `survivors` dropped (`retained` already
    carries the count a disclosure needs about what stayed), removals kept but
    capped at 100 with `removedTotal` recording the true number, free text
    bounded, and `listDisclosures()` validating by content.
+
 3. 0600 files / 0700 directories, fsync before the rename and on the directory
    after it, an age-gated sweep for orphaned temp files, and
    `acquireCrossProcessLock` across the whole read-modify-write in all three
@@ -126,6 +131,7 @@ mutation reverting it in the harmful direction, in
    paths derive from `$HOME` with no port in them, so two daemons on two ports
    share every file and neither refuses to start. `lifecycle-marker.ts` records
    a pid but is a crash-receipt marker, not a mutex.
+
 4. Two gaps remained and two more were found by writing the test rather than by
    reading for them. Remaining: `noticeFailureReason` (unbounded, and the one
    field on the record a remote server writes — `intake.ts` fills it from

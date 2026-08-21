@@ -324,7 +324,9 @@ Skipping the publishing-status step means this integration silently stops workin
 
 **Who does it:** Needs one action from you. The flow opens the page and tells you what to click.
 
-**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser. Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works. Before it opens, expect a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong. The app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
+**Why:** Exchanges a one-time consent for a long-lived refresh token, which is what the agent actually uses from then on. This is the one action asked of you. The link is printed rather than driven in an automated browser. Google blocks automated browsers at its sign-in wall, and clicking a link yourself is both faster and the only thing that reliably works.
+
+Before it opens, expect a red "Google hasn't verified this app" warning. That is expected here and is not a sign anything is wrong. The app is one you created in your own Google Cloud account, and you are its only user, so there is nobody for Google to have verified it for. You will click "Advanced", then "Go to goodvibes agent (unsafe)". This happens once.
 
 **By hand:**
 

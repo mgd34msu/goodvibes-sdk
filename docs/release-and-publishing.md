@@ -46,20 +46,20 @@ work. Local release tooling never re-runs gates; it prepares, commits, and tags.
      handoff), checks the registry state for this version, publishes with
      provenance from the `production` environment, polls propagation, and
      aligns the `latest` dist-tag.
-     The registry check proceeds on empty, complete, or a partial at exactly
-     this version (a mid-loop publish failure is resumable, the publish loop
-     skips what is already up). It refuses when an already-published package
-     records a `gitHead` that is a **different commit** than the one being
-     released, which is another run or a force-moved tag owning the version.
-     An absent `gitHead` (npm omits it when packing outside a git checkout,
-     the normal case here) warns and proceeds; a check that cannot see the
-     commit must not manufacture a refusal.
-     The dist-tag step exists because `npm publish` with no `--tag` moves
-     `latest` to whatever it just published, so two overlapping releases of
-     different versions leave `latest` pointing backward on whichever packages
-     the older run finished last. It states the property instead (`latest` is
-     the highest published version, stable preferred) and converges from any
-     interleaving. See `scripts/align-dist-tags.ts`.
+     - The registry check proceeds on empty, complete, or a partial at exactly
+       this version (a mid-loop publish failure is resumable, the publish loop
+       skips what is already up). It refuses when an already-published package
+       records a `gitHead` that is a **different commit** than the one being
+       released, which is another run or a force-moved tag owning the version.
+       An absent `gitHead` (npm omits it when packing outside a git checkout,
+       the normal case here) warns and proceeds; a check that cannot see the
+       commit must not manufacture a refusal.
+     - The dist-tag step exists because `npm publish` with no `--tag` moves
+       `latest` to whatever it just published, so two overlapping releases of
+       different versions leave `latest` pointing backward on whichever
+       packages the older run finished last. It states the property instead
+       (`latest` is the highest published version, stable preferred) and
+       converges from any interleaving. See `scripts/align-dist-tags.ts`.
    - `github-release`: SBOM asset plus the tag's `CHANGELOG.md` excerpt.
 
 Because tagging is gated on push-CI green, the tag-redo dance is structurally
@@ -142,20 +142,24 @@ All sections are optional. A repo declares only the tools it uses. Import the
 
 Hosted in this repo's `.github/workflows` and consumed cross-repo via
 `uses: mgd34msu/goodvibes-sdk/.github/workflows/<name>.yml@main`:
-`reusable-release-verify.yml` (by-reference per-job-green, emits `run_id` +
-`head_sha`), `reusable-npm-publish.yml` (provenance + propagation poll),
-`reusable-gh-release.yml` (release body from an optional `notes-file` override,
-`{version}` expands to the un-prefixed tag; when the file exists at the
-checked-out ref its prose is the body, e.g. the TUI's `docs/releases/<version>.md`,
-otherwise the CHANGELOG excerpt, plus `SHA256SUMS`), and
-`reusable-binary-matrix.yml` (build-binaries + per-leg post-build-smoke: each
-smoke leg declares its own `binary` in the targets JSON, since matrix legs only
-build their own suffixed artifact. `smoke.binaryDefault` serves local CLI runs
-only). The glob inputs (`assets-glob`, `artifact-glob`) accept spaces or
-newlines as separators; the workflows normalize them to the newline-separated
-form their sinks require. The composite
-`./.github/actions/setup` action is the single Bun setup (one `bun-version`
-source, frozen-lockfile + cache always on).
+
+- `reusable-release-verify.yml`: by-reference per-job-green, emits `run_id` +
+  `head_sha`.
+- `reusable-npm-publish.yml`: provenance + propagation poll.
+- `reusable-gh-release.yml`: release body from an optional `notes-file`
+  override, `{version}` expands to the un-prefixed tag; when the file exists
+  at the checked-out ref its prose is the body, e.g. the TUI's
+  `docs/releases/<version>.md`, otherwise the CHANGELOG excerpt, plus
+  `SHA256SUMS`.
+- `reusable-binary-matrix.yml`: build-binaries + per-leg post-build-smoke:
+  each smoke leg declares its own `binary` in the targets JSON, since matrix
+  legs only build their own suffixed artifact. `smoke.binaryDefault` serves
+  local CLI runs only.
+
+The glob inputs (`assets-glob`, `artifact-glob`) accept spaces or newlines as
+separators; the workflows normalize them to the newline-separated form their
+sinks require. The composite `./.github/actions/setup` action is the single
+Bun setup (one `bun-version` source, frozen-lockfile + cache always on).
 
 ## Changelog
 

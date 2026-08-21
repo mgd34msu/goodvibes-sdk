@@ -86,18 +86,22 @@ UTC. Full TZID→offset conversion is out of scope for v1 and explicitly marked 
 - **Consent = adding.** The store never fetches a URL that a caller didn't explicitly add.
   `add({ url })` is the consent act; the agent tells the user what will be fetched and how
   often at add time.
-- **Paste-URL-and-done** (per Mike's least-friction rule): `add({ url })` fetches ONCE
+
+- **Paste-URL-and-done** (per the owner's least-friction rule): `add({ url })` fetches ONCE
   (no separate validate round trip), auto-derives the subscription name from the feed's
   X-WR-CALNAME (falling back to the URL host), applies the default 1-hour cadence with no
   mandatory knobs, and stores the events, or refuses without saving and names the failed
   stage (`fetch` / `parse` / `duplicate`). `validateByFetch(url)` is the lighter "test this
   URL" pre-check the wizard can run without saving.
+
 - **Bounded refresh**: default 1h, clamped to [15m, 24h]. `refresh(name)` skips the network
   when not due unless `force`; it sends stored etag/last-modified so an unchanged feed
   returns 304 and keeps its events. `refreshDue()` drives boot + on-demand refresh.
+
 - **Honest health**, recomputed live from the injected clock: `never-fetched` / `ok` /
   `stale` (older than 2× the interval, detail carries the age) / `unreachable` (network
   stage, detail carries the HTTP status) / `parse-error` (fetched but unusable).
+
 - **Feed URLs are secrets-adjacent.** A Google "secret address" grants read access, so the
   store never encourages surfacing the raw URL: `maskFeedUrl` keeps scheme+host and masks
   the middle. The agent persists the URL via its secret manager; `snapshot()`/`restore()`
@@ -109,16 +113,19 @@ UTC. Full TZID→offset conversion is out of scope for v1 and explicitly marked 
 Serving `calendar.events.list/get` + `calendar.ics.import` "for real" is NOT cheap, so per
 the brief's guardrail they are left `invokable: false` and the route-reconcile gate keeps
 guarding them. Reasoning:
+
 - Those five descriptors are documented as **CalDAV-backed** (`calendar.ics.import` writes
   "into the configured CalDAV calendar"). There is no CalDAV backend anywhere, and there is
   no `/api/calendar` route surface at any prefix, confirmed by 011c6fc3, which retired the
   route-reconcile debt precisely because no route exists.
+
 - The daemon HTTP router (`platform/daemon/http/router.ts`, ~846 lines) wires every route
   surface through a large dependency-injection context. A real calendar surface would need
   a daemon-side store wired into that context, an `operator.ts` dispatch case, and route
   handlers in the separate `@pellux/goodvibes-daemon-sdk` package, a substantial, separate
   effort, and pointing a CalDAV-labeled contract at a feed-subscription store would
   misrepresent the contract.
+
 - The new machinery is **read-focused file/feed** parsing consumed AGENT-side (the agent's
   `/calendar` is a local store). It does not need a daemon route to be real, and wiring one
   would be half-work against a mismatched contract. So: no route added, no descriptor
@@ -140,11 +147,15 @@ that no file under `platform/calendar/` imports fs/net/tty/process or calls `fet
 
 - **A third-party ICS/RRULE library.** Breaks the zero-runtime-deps convention for the SDK
   package; the read subset is small enough to vendor cleanly and hold honest.
+
 - **A store that fetches on its own (ambient `fetch`).** Would make tests touch the network
   and hide the consent boundary. Network is injected; the store is pure of ambient IO.
+
 - **Persisting events in the SDK store.** Persistence (and secret storage of the URL) is the
   agent's job; the SDK store is the in-memory engine with snapshot/restore of metadata only.
+
 - **Serving the daemon `calendar.*` routes now.** Not cheap and contract-mismatched (CalDAV
   vs feed), see the routes verdict above.
+
 - **Expanding unsupported RRULE parts "best effort".** Explicitly rejected: fabricated dates
   are worse than an honest "not fully expanded" marker.

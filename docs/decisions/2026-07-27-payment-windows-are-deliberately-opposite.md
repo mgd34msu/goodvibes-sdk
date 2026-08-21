@@ -13,9 +13,10 @@ reconstruct it from a diff.
 
 **Above budget, an approval. Silence means DENIED.**
 
-> "if i didn't want the approval to expire, I should have just increased the
-> limit... puts it directly in the human's hands, never lets automated spending
-> happen"
+- An approval is allowed to expire. Wanting it not to expire is an argument for
+  raising the limit, not for changing what expiry means.
+- The mechanism puts the decision directly in the human's hands.
+- It never lets automated spending happen.
 
 **Within budget, a veto. Silence means PROCEEDS.**
 
@@ -26,8 +27,8 @@ The two are not variants of one behaviour with a different default. They answer
 different questions. The approval asks *may this happen at all*, and an
 unanswered question about money above the limit must resolve to no. The veto
 announces *this is about to happen*, and an unanswered announcement about money
-inside a limit the owner already set must resolve to yes, otherwise the limit he
-set does nothing and every purchase is an approval.
+inside a limit the owner already set must resolve to yes, otherwise that limit
+does nothing and every purchase is an approval.
 
 Collapsing them means picking one silence rule for both. Either every
 above-budget purchase starts going through unattended, or every in-budget
@@ -50,12 +51,11 @@ the default, which produces the first one.
   before an overage refusal, is in `docs/payments.md` §6.
 - **Command authority**: these prompts arrive over the TUI, the agent terminal,
   or a channel like Telegram. **Never email, permanently.**
-- **Presence is not attention.** The window runs its full duration wherever he
-  is. Only an explicit acknowledgement short-circuits it; no focus, idle or
-  activity signal touches it.
-
-  > "this is for situations where the user is multitasking and doesn't look at
-  > the specific terminal session for an extended period of time"
+- **Presence is not attention.** The window runs its full duration wherever the
+  owner happens to be. Only an explicit acknowledgement short-circuits it; no
+  focus, idle or activity signal touches it. The case this is built for is an
+  owner who is multitasking and does not look at that particular terminal
+  session for an extended period of time.
 
 ## Where it lives
 

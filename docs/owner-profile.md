@@ -1,56 +1,58 @@
 # Owner Profile
 
-The owner profile is what the platform knows about the person who owns it: his
-name, how to reach him, where he lives, where to ship things, how he likes
-answers written, who the people around him are, and whatever else he has told
-it. It exists because an assistant that asks for a shipping address every time,
-or guesses a metro area for a weather answer, is doing the same work forever.
+The owner profile is what the platform knows about the person who owns it: their
+name, how to reach them, where they live, where to ship things, how they like
+answers written, who the people around them are, and whatever else they have
+told it. It exists because an assistant that asks for a shipping address every
+time, or guesses a metro area for a weather answer, is doing the same work
+forever.
 
 It is **one Markdown file** at daemon scope, read once into memory, and read back
 out at the cost of a property access.
 
 ---
 
-## 1. What the owner asked for
+## 1. Owner rulings
 
-Four rulings define this. They are quoted, not paraphrased.
+Four rulings define this feature. These behaviors are contractual. Do not revise
+them silently.
 
-**Scope.** Offered three widths, he chose the widest:
+**Scope: the widest of the three widths offered.** The profile covers, by area:
 
-> IDENTITY name, preferred name, pronouns · CONTACT email(s), phone, agent alias ·
-> LOCATION home address, city, timezone · COMMERCE billing addr, shipping addr ·
-> PREFS units, date format, currency · CONTACT-ME default channel, quiet hours ·
-> STYLE reply verbosity, formality · DEFAULTS shipping tier, approval window ·
-> PEOPLE name → relationship, contact · PLACES work, gym, regular spots ·
-> WORK employer, role · NOTES free-form facts about you
+- **IDENTITY**: name, preferred name, pronouns
+- **CONTACT**: email(s), phone, agent alias
+- **LOCATION**: home address, city, timezone
+- **COMMERCE**: billing address, shipping address
+- **PREFS**: units, date format, currency
+- **CONTACT-ME**: default channel, quiet hours
+- **STYLE**: reply verbosity, formality
+- **DEFAULTS**: shipping tier, approval window
+- **PEOPLE**: name → relationship, contact
+- **PLACES**: work, gym, regular spots
+- **WORK**: employer, role
+- **NOTES**: free-form facts about the owner
 
-The option he read was labelled *"Richest, and the most sensitive: it becomes a
-dossier that any compromise exposes."* He chose it knowing that, which is why
-containment (§9, §10) is part of the design rather than a caveat on it.
+This is the richest and the most sensitive of the three: it becomes a dossier
+that any compromise exposes. That width was chosen with the cost accepted, which
+is why containment (§9, §10) is part of the design rather than a caveat on it.
 
-**Learning.** Offered propose-first and autonomous, he chose autonomous:
+**Learning: autonomous, not propose-first.** The agent writes facts it learns
+from things the owner says directly to it, without asking each time, and tells
+the owner what it recorded. "Ship it to my office instead" records the office
+address and answers "Noted, saved your office address to your profile." This
+builds the profile up fastest, and the cost of it is that a wrong inference
+lands in the profile silently.
 
-> You: "ship it to my office instead" → Agent: [records office address] "Noted, > saved your office address to your profile."
+Two conditions travel with that choice and are themselves requirements:
 
-described as *"The agent writes facts it learns from things you say directly to
-it, without asking each time, and tells you what it recorded. Fastest to build
-up. Untrusted sources still barred, but a wrong inference lands in the profile
-silently."*
+1. **Untrusted sources stay barred** (§7).
+2. **Every autonomous write is disclosed to the owner** (§8).
 
-Two conditions travelled with that choice and are requirements: **untrusted
-sources stay barred** (§7) and **it tells him what it recorded** (§8).
+**Storage: not the knowledge subsystem.** Lookup must be extremely fast, faster
+than the knowledge system allows. A file holding notes is sufficient.
 
-**Storage.** Asked whether to build on the knowledge subsystem:
-
-> "it needs to be extremely fast and probably faster than the knowledge system
-> will allow"
->
-> "just a file with notes will probably be good"
-
-**Format.**
-
-> "just an MD file that the daemon can access or some other store that will be
-> quick to recall is fine"
+**Format: Markdown.** One `.md` file the daemon can read, or another store
+equally quick to recall.
 
 ---
 
@@ -69,7 +71,7 @@ history machinery twice, and duplicated machinery is a drift class that has cost
 this platform repeatedly. It was still rejected, for three reasons in descending
 weight.
 
-1. **The owner's speed ruling, quoted above.** The knowledge store is sql.js
+1. **The speed ruling in §1.** The knowledge store is sql.js
    (WASM): every open loads the whole database into memory and every `save()`
    rewrites the entire file. A profile lookup would pass through space-scope
    resolution (`scope-records.ts`), node status gates and confidence clamping
@@ -91,7 +93,7 @@ weight.
 ### 2.2 Rejected: a parallel typed store beside knowledge
 
 A second SQLite store with its own provenance and GC tables was where the design
-was heading before the owner ruled. It is rejected by his ruling and,
+was heading before the storage ruling landed. It is rejected by that ruling and,
 independently, by §9.4's reasoning.
 
 ### 2.3 What "a file" rules out
@@ -104,13 +106,13 @@ edit is picked up without a restart; a watcher is not a lookup structure.
 
 ### 2.4 Why Markdown, given the file was already chosen
 
-He named it. Beyond that it is the only one of the candidates that is legible
-*as a document*, he can open it, read the whole dossier at a glance, and fix a
-line the way he would fix a line in any note. JSON, YAML and TOML are all
-formats you edit as data; this is a page he reads. The cost of Markdown is that
-nothing is strictly validated, which is why §4.4 makes leniency explicit and
-§4.5 makes his hand edits authoritative rather than something the parser
-disciplines.
+The format ruling names it. Beyond that it is the only one of the candidates that
+is legible *as a document*: the owner can open it, read the whole dossier at a
+glance, and fix a line the way they would fix a line in any note. JSON, YAML and
+TOML are all formats you edit as data; this is a page the owner reads. The cost
+of Markdown is that nothing is strictly validated, which is why §4.4 makes
+leniency explicit and §4.5 makes hand edits authoritative rather than something
+the parser disciplines.
 
 ---
 
@@ -137,8 +139,8 @@ plane (§11).
 **The daemon is the only *program* that writes it, but it is not the only
 writer.** The owner is one too, by design (§4.5), and an earlier draft of this
 section claimed single-writer to justify having no lock while §4.5 and §5.3
-simultaneously depended on him editing the same file. That contradiction was a
-real defect and it was reproduced: a save of his landing inside the reload
+simultaneously depended on the owner editing the same file. That contradiction
+was a real defect and it was reproduced: an owner save landing inside the reload
 window was destroyed by the next machine write, with a success receipt and no
 error.
 
@@ -149,7 +151,7 @@ the edit against the new content, or refuse and say why. Never clobber. The
 window is small, roughly the debounce with `fs.watch`, up to
 `profile.reloadThrottleMs` on the poll fallback, and unbounded if the watcher
 errored, but "small" is not a property anyone should rely on for the file that
-holds his address.
+holds the owner's address.
 
 **Naming note:** `platform/profiles/` already exists and is a named-config-preset
 manager (`ProfileData` = saved `display.*`/`provider.*` settings), unrelated to
@@ -167,7 +169,7 @@ Headed sections, one per area. Under each heading: a small number of
 prose bullets for everything else.
 
 ```markdown
-# Mike's profile
+# Alex's profile
 
 <!-- GoodVibes keeps this file. Edit it by hand whenever you like — your edits
      win and are never rewritten. Lines it learned from you carry a short note
@@ -176,13 +178,13 @@ prose bullets for everything else.
 
 ## Identity
 
-name: Mike Davis
-goes by: Mike
-pronouns: he/him
+name: Alex Rivera
+goes by: Alex
+pronouns: they/them
 
 ## Contact
 
-email: mgd34msu@gmail.com
+email: alex.rivera@example.com
 phone: +1 517 555 0134
 - Prefers Telegram for anything urgent — agent, 2026-07-27, "ping me on telegram if it's urgent"
 
@@ -239,22 +241,22 @@ quiet hours: 22:00-07:00
 A learned line carries a compact suffix at end of line:
 
 ```
- — <surface>, <YYYY-MM-DD>, "<what he said>"
+ — <surface>, <YYYY-MM-DD>, "<what the owner said>"
 ```
 
 Em dash, surface, date, verbatim quote. It is recognised only when the whole
-shape matches at end of line, so an em dash in his own prose is prose. Where a
-line somehow carries two suffixes, the **rightmost** valid one wins and the
+shape matches at end of line, so an em dash in the owner's own prose is prose.
+Where a line somehow carries two suffixes, the **rightmost** valid one wins and the
 older one stays as ordinary visible text, the newest provenance is the true
 one, and nothing is silently destroyed to reach that answer.
 
-Verified against real strings: `- He said, and I quote, that it was fine`
+Verified against real strings: `- They said, and I quote, that it was fine`
 stays prose; a malformed date, an unknown surface name, and a line ending in a
 bare `"` all stay prose; embedded quotes in the verbatim need no escaping.
 
 That is the lightest rendering that still answers "where did you get that"
 completely: which surface, when, and the exact words. It is not dropped, and if
-he finds it ugly the answer is to delete the suffix on that line, which is
+the owner finds it ugly the answer is to delete the suffix on that line, which is
 allowed and authoritative (§4.5), and after which the honest answer to "where
 did you get that" becomes "no provenance recorded; you edited this line by
 hand."
@@ -265,7 +267,8 @@ A `key: value` line carries the suffix the same way, after the value.
 
 Only these are parsed into typed values. Everything else in the document is
 prose, preserved and served as prose. The people and places sections have **no**
-mechanical fields at all, he asked for notes, and notes are what they are.
+mechanical fields at all: the scope ruling asked for notes there, and notes are
+what they are.
 
 | Section | Field | Parsed as |
 |---|---|---|
@@ -294,8 +297,8 @@ Field names are matched case-insensitively with whitespace collapsed, so
 **An invalid mechanical value does not fail the file.** `timezone: Mars/Olympus`
 is preserved verbatim, reported by `profile.status` as an invalid field with the
 reason, and its consumer falls back exactly as if it were unset. Deleting a line
-he typed because the parser disliked it would be the worst possible behaviour in
-a file he owns.
+the owner typed because the parser disliked it would be the worst possible
+behaviour in a file they own.
 
 ### 4.4 Parse leniently, fail loudly
 
@@ -307,7 +310,7 @@ a file he owns.
   `~~~`) and, while inside a fence, treats nothing as a heading, a field, a
   bullet or a provenance suffix. Without this, a document containing a fenced
   `## Notes` or a fenced `timezone:` line would have that line rewritten by a
-  later write, silent corruption of his own content, which is the worst
+  later write, silent corruption of the owner's own content, which is the worst
   failure this design can have.
 - **Mechanical fields are recognised only at column 0.** An indented
   `Gym: the Y on Michigan Ave` under a bullet is prose, not a field. This also
@@ -339,7 +342,7 @@ you know about me", and it is worse further down: the consumer fallback is
 installed in that window but resolves nothing, so `checkin.quietHours` and
 `daemon.timezone` read as *unset* rather than as their profile values, and a
 first turn landing there gets no open-tier block at all. Nothing logs it. The
-owner would see his check-in fire at the wrong hour once after a restart and have
+owner would see the check-in fire at the wrong hour once after a restart and have
 no way to connect it to anything.
 
 **The initial load is synchronous, at boot.** An earlier version of this section
@@ -347,8 +350,9 @@ prescribed a `ready` promise that verbs and consumer reads would await. That was
 wrong, and the reason is worth keeping: **`ConfigManager.get()` is synchronous**,
 so a fallback reader has nothing to await with. A readiness promise could have
 closed the verb half of the window and never the consumer half, which is the
-half that costs him a mis-timed check-in. Reading the file once, synchronously,
-in the composition root removes the window instead of making it awaitable.
+half that costs the owner a mis-timed check-in. Reading the file once,
+synchronously, in the composition root removes the window instead of making it
+awaitable.
 
 The cost is one small file read on a path the daemon already reads
 `settings.json` from at boot. The reload path stays asynchronous, because the
@@ -358,17 +362,20 @@ This is the class of defect only a live run finds. Every stubbed test constructs
 a loaded store, so the window does not exist for it, and four refusal tests were
 passing on this message rather than on the gate they were written to prove.
 
-### 4.5 His edits are authoritative
+### 4.5 The owner's edits are authoritative
 
-- A line he deletes stays deleted. Nothing restores it, and nothing re-learns it
-  from a superseded record. The `<!-- was: … -->` history comments (§9.1) are
-  themselves deletable, and deleting one destroys that history, his call.
-- A line he rewrites keeps his wording. The writer never normalises prose, never
-  re-orders sections, never re-wraps, never converts a bullet to a field or back.
-- A line whose provenance suffix he strips keeps no provenance and reports none.
-- Sections he adds, renames or removes are respected. A write to a section that
-  does not exist creates it at the end of the document; a write to a section he
-  renamed goes to the renamed one when its heading still matches a known section
+- A line the owner deletes stays deleted. Nothing restores it, and nothing
+  re-learns it from a superseded record. The `<!-- was: … -->` history comments
+  (§9.1) are themselves deletable, and deleting one destroys that history, the
+  owner's call.
+- A rewritten line keeps the owner's wording. The writer never normalises prose,
+  never re-orders sections, never re-wraps, never converts a bullet to a field or
+  back.
+- A line whose provenance suffix the owner strips keeps no provenance and reports
+  none.
+- Sections the owner adds, renames or removes are respected. A write to a section
+  that does not exist creates it at the end of the document; a write to a renamed
+  section goes to the renamed one when its heading still matches a known section
   name case-insensitively, and otherwise creates the canonical one rather than
   guessing.
 
@@ -416,7 +423,7 @@ A mechanical-field read must be **effectively free**, target sub-microsecond.
 `test/owner-profile-read-latency.test.ts` measures nanoseconds per read
 against a realistic document (200 lines), and the measured number goes in the
 round report. Not an assertion that it is fast; a number. If it is not
-effectively free the design has failed his requirement regardless of how correct
+effectively free the design has failed the speed ruling regardless of how correct
 everything else is.
 
 **Measured: 15.2 ns/read**, median of five runs (14.7, 15.0, 15.2, 15.4, 17.2)
@@ -472,11 +479,13 @@ suffix. Nothing turns them into records.
 at a glance they look like the most record-shaped sections in the document. A
 birthday is a REPEATED record, and the field registry maps one section-plus-label
 to one value, it can hold `commerce.shippingAddress` and it cannot hold twenty
-birthdays. So each occasion is an ordinary prose line, preserved verbatim by this
-parser exactly like any other bullet, and typed by a reader layered on top of it
+birthdays.
+
+So each occasion is an ordinary prose line, preserved verbatim by this parser
+exactly like any other bullet, and typed by a reader layered on top of it
 (`platform/occasions/grammar.ts`, see `docs/occasions.md`). §4.4's guarantee that
-a validator never rewrites a line he wrote survives untouched: a date line that
-reader cannot make sense of is reported with a reason rather than corrected.
+a validator never rewrites a line the owner wrote survives untouched: a date line
+that reader cannot make sense of is reported with a reason rather than corrected.
 
 The daemon reads those two sections through `OwnerProfileStore.importantDates()`
 and `.plans()`, named, narrow routes in the same shape as `person()`, because
@@ -507,14 +516,14 @@ body parameter of these verbs, so any caller can send it or omit it. And for
 `forget` and `undo` the authority check is the *only* gate, there is no value
 to check for derivation and no utterance to quote, so an omitted authority on a
 delete was not a weakened gate, it was no gate. A caller that sent nothing at all
-could remove his shipping address. Absent now refuses.
+could remove the owner's shipping address. Absent now refuses.
 
 Each surface answers honestly rather than uniformly:
 
 | Surface | What it sends | Why |
 |---|---|---|
-| TUI | hardcoded `owner-direct` | the only input reaching these calls is him typing on his own machine |
-| Web UI | hardcoded `owner-direct` | the same, his own typing in his own settings page |
+| TUI | hardcoded `owner-direct` | the only input reaching these calls is the owner typing on their own machine |
+| Web UI | hardcoded `owner-direct` | the same, the owner's own typing in their own settings page |
 | Agent | the model states it per write | the agent genuinely can be handed a purported fact by an email, a page, a channel message or a document, and the SDK must be told which so it can refuse |
 
 The contract has to declare it required too. A schema listing `authority` as
@@ -523,9 +532,9 @@ client that follows the contract is broken by construction. A test pins
 `authority` in the required array of all four write descriptors, because a
 contract and a handler that disagree is the drift this platform keeps paying for.
 
-There is **no propose path at all**. He declined propose-first, so no API lets a
-non-owner source stage a fact for later approval. A queue an untrusted source can
-write to is a write.
+There is **no propose path at all**. The learning ruling declined propose-first,
+so no API lets a non-owner source stage a fact for later approval. A queue an
+untrusted source can write to is a write.
 
 ### Layer 2 — derivation
 
@@ -561,8 +570,8 @@ string equality.
 ### Removal is a write, and gets layer 1
 
 `profile.forget` and `profile.undo` pass the same authority gate. An injection
-that cannot add a fact must not be able to delete one either: clearing his
-shipping address or his `contact.email` is tampering and denial, which is
+that cannot add a fact must not be able to delete one either: clearing the
+owner's shipping address or `contact.email` is tampering and denial, which is
 squarely inside what this boundary exists to stop.
 
 Layers 2 and 3 do not apply to a removal and are deliberately not faked, there
@@ -572,8 +581,9 @@ invent a quote. Authority is the whole gate here, and it is the right one.
 
 #### Caller-declared authority on deletes is accepted, knowingly
 
-`authority` is a body parameter, so requiring it removes privilege-by-omission, a caller that sends nothing can no longer delete his shipping address, but it
-**cannot make a lying caller honest**. For `set` and `append` that residue is
+`authority` is a body parameter, so requiring it removes privilege-by-omission, a
+caller that sends nothing can no longer delete the owner's shipping address, but
+it **cannot make a lying caller honest**. For `set` and `append` that residue is
 backstopped by layer 2, which refuses a write whose text overlaps untrusted
 content read this turn. A delete has no text to compare, so layer 1 stands
 alone.
@@ -594,9 +604,9 @@ Recorded here so it is not re-opened later as an oversight. It is a considered
 acceptance of a named residual risk, not a gap nobody noticed.
 
 **Provenance:** this is a coordinator-level engineering decision, taken to avoid
-queuing a 4am ruling, and it is not one of the owner's four rulings in §1. He
-can overturn it; the reasoning is written out above precisely so that he can
-weigh it rather than re-derive it.
+queuing an out-of-hours ruling, and it is not one of the four rulings in §1. The
+owner can overturn it; the reasoning is written out above precisely so that it
+can be weighed rather than re-derived.
 
 ### Layer 3 — a verbatim quote must exist
 
@@ -607,11 +617,11 @@ what makes §8's "where did you get that" answerable. (A settings-UI edit carrie
 
 ### What this does not claim
 
-A reworded injection that the owner then repeats in his own words is
-indistinguishable from him telling the agent something, and nothing here claims
-otherwise. That is the residual risk of the autonomous model he chose. Provenance
-is what makes it recoverable: he can see the utterance that produced the line and
-delete it.
+A reworded injection that the owner then repeats in their own words is
+indistinguishable from the owner telling the agent something, and nothing here
+claims otherwise. That is the residual risk of the autonomous learning model.
+Provenance is what makes it recoverable: the owner can see the utterance that
+produced the line and delete it.
 
 ---
 
@@ -619,12 +629,14 @@ delete it.
 
 ### 8.1 Per line, always
 
-Every learned line carries surface, date and his verbatim words. No write path
-omits it (§7 layer 3). A line without a suffix is one he wrote or edited by hand,
-and that is reported as such rather than dressed up as a recorded source.
+Every learned line carries surface, date and the owner's verbatim words. No write
+path omits it (§7 layer 3). A line without a suffix is one the owner wrote or
+edited by hand, and that is reported as such rather than dressed up as a recorded
+source.
 
 This is the load-bearing safeguard. Autonomous writes without it are
-undebuggable: he cannot tell why it thinks his office is somewhere it is not.
+undebuggable: the owner cannot tell why the machine thinks their office is
+somewhere it is not.
 
 ### 8.2 Disclosure on write
 
@@ -632,15 +644,16 @@ When it records something autonomously it says so in the reply, in one line:
 
 > Noted, saved your office address to your profile.
 
-**One line, naming what was recorded, not quoting the value back** unless he
-asked. Several facts in one turn collapse into one line. It is a receipt, not a
-confirmation prompt, he declined confirmation prompts.
+**One line, naming what was recorded, not quoting the value back** unless the
+owner asked. Several facts in one turn collapse into one line. It is a receipt,
+not a confirmation prompt: confirmation prompts were declined by the learning
+ruling.
 `describeProfileWrite(changes)` in the SDK produces the string so all three
 surfaces say the same thing.
 
 ### 8.3 The three questions, on every surface
 
-| He asks | Verb | Answer |
+| The owner asks | Verb | Answer |
 |---|---|---|
 | "what do you know about me?" | `profile.read` | the whole document, by section |
 | "where did you get that?" | `profile.provenance` | surface, date, verbatim, and superseded predecessors |
@@ -664,7 +677,7 @@ the old one into an HTML comment directly below the section:
 
 Invisible in rendered Markdown, plain text in the file, deletable by hand.
 `profile.provenance` reads them; `profile.undo` promotes the most recent one back, so a wrong correction is recoverable. Prose bullets are not superseded; a new
-bullet is a new bullet, and he removes the old one if he wants it gone.
+bullet is a new bullet, and the owner removes the old one to make it gone.
 
 ### 9.2 Deleting
 
@@ -683,29 +696,30 @@ entry. It does **not** take a raw line index, and `lineIndex` is not a parameter
 of any verb.
 
 The reason is §3: the owner is a concurrent writer. A line index is only valid
-against the exact file state that produced it, and between his `profile.read`
-and his `profile.forget` he can add a line in his editor and shift everything
-below it. Positional addressing would then delete the wrong line and report
-success, the same class of false receipt that §9.2 exists to prevent, arriving
-through the front door. It is not theoretical: a review reproduced a raw index
-of `NaN` deleting his title, `4.9` deleting a currency line, and `2` deleting a
-`## Commerce` heading while reporting "removed a note", orphaning every field
-under it.
+against the exact file state that produced it, and between a `profile.read` and
+the `profile.forget` that follows it, the owner can add a line in an editor and
+shift everything below it. Positional addressing would then delete the wrong line
+and report success, the same class of false receipt that §9.2 exists to prevent,
+arriving through the front door. It is not theoretical: a review reproduced a raw
+index of `NaN` deleting a title line, `4.9` deleting a currency line, and `2`
+deleting a `## Commerce` heading while reporting "removed a note", orphaning
+every field under it.
 
 Content addressing degrades honestly. If the text no longer matches, nothing is
 deleted and the answer is "that is not there any more", which is true, and
-which tells him his file changed. "Forget that" has to mean forget *that*,
+which reports that the file changed. "Forget that" has to mean forget *that*,
 identified by what it says.
 
 **The list marker is syntax, not content, and is normalised on both sides.**
 `ProfileLine.text` keeps the leading `- `, so a naive `text.trim() === wanted`
 requires a caller to pass `- Allergic to shellfish` and finds nothing for
 `Allergic to shellfish`. That is the wrong boundary: the owner says "forget that
-I'm allergic to shellfish", and the marker is a markdown artefact he never
-uttered. The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered
-`1.`) from the stored line and from the wanted text before comparing, so both
-forms find the same line. Nothing else changes, and it cannot widen a match into
-the wrong line, because ambiguity is already refused.
+I'm allergic to shellfish", and the marker is a markdown artefact nobody uttered.
+
+The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered `1.`) from
+the stored line and from the wanted text before comparing, so both forms find the
+same line. Nothing else changes, and it cannot widen a match into the wrong line,
+because ambiguity is already refused.
 
 **A marker only counts when whitespace follows it**, and that condition is
 load-bearing rather than tidiness. Without it a note reading
@@ -720,7 +734,7 @@ matches the stored `- Allergic to shellfish`.
 **Two lines reading identically are refused, never guessed.** The answer names
 how many matched and the file is untouched. Deleting the wrong one of two
 identical lines is unrecoverable; asking is not, and it is not a burden because
-the disambiguating information, which one he meant, is only in his head.
+the disambiguating information, which one was meant, is only in the owner's head.
 
 `ProfileLine.lineIndex` (§5.1) stays, because the writer needs it to splice. It
 describes the **in-memory model**, not the reachable surface: the model is
@@ -744,10 +758,10 @@ on load, swept periodically, discloses what it holds.
 **Bounding and periodic sweeping are dropped, deliberately.** The recovery rule
 exists for state a machine accumulates faster than a person inspects it; the
 reaper protects the owner from the machine. This file is the owner's own notes,
-which he opens and edits. If it grows large that is his content, and a sweeper
-that truncated his own notes to satisfy a size budget would be a worse outcome
-than the size. Retained `<!-- was: -->` history is likewise his, and it is what
-makes undo work.
+opened and edited by hand. If it grows large that is owner content, and a sweeper
+that truncated those notes to satisfy a size budget would be a worse outcome
+than the size. Retained `<!-- was: -->` history is owner content too, and it is
+what makes undo work.
 
 Two limits survive and neither is a reaper: a machine-written line is capped at
 4096 characters and a machine-written value at 2000, enforced **on write only**,
@@ -771,12 +785,13 @@ internal whitespace, because turning `standard` or `imperial` into a redaction
 pattern would blank those words out of every unrelated log line, sound
 reasoning, and it stays for ordinary values. But it conflicts with this section,
 and the conflict was reproduced: `- Bob Lee` is seven characters and left an
-export in the clear. The resolution is that `People` content is keyed on its
-**section**, not on the shape of its value: it is redacted regardless of length,
-while the floor keeps protecting ordinary words everywhere else. An earlier
-draft of this document asserted the absolute rule without acknowledging the
-trade, which is how the code came to implement the floor faithfully and breach
-the rule.
+export in the clear.
+
+The resolution is that `People` content is keyed on its **section**, not on the
+shape of its value: it is redacted regardless of length, while the floor keeps
+protecting ordinary words everywhere else. An earlier draft of this document
+asserted the absolute rule without acknowledging the trade, which is how the code
+came to implement the floor faithfully and breach the rule.
 - Never injected into model context (§11.2, closed tier).
 - Never volunteered in outbound content unless the task genuinely needs it.
 
@@ -789,12 +804,14 @@ judgement is the thing an injection attacks. The rule is structural:
 > that person in the instruction for the current turn, and a consumer called
 > `profile.person(name)` with a name taken from that instruction.
 
-"Email my sister the tickets" reaches for Sarah because he said "my sister".
-"Email the vendor and cc anyone relevant" reaches for nothing, because he named
-nobody. The lookup is by name and the name comes from him, this turn. **There is
-no enumerate-all-people call available to a composition path**: `profile.person`
-takes a name, and `profile.read`, which returns everything, is not callable
-from a composition path at all.
+"Email my sister the tickets" reaches for Sarah because the instruction said "my
+sister". "Email the vendor and cc anyone relevant" reaches for nothing, because
+it named nobody. The lookup is by name and the name comes from the owner, this
+turn.
+
+**There is no enumerate-all-people call available to a composition path**:
+`profile.person` takes a name, and `profile.read`, which returns everything, is
+not callable from a composition path at all.
 
 **The name is flat on purpose.** It was briefly `read:profile.full`, which was
 the only dotted scope in the entire platform and invented a hierarchy the
@@ -803,6 +820,7 @@ on a `prefix:*` wildcard, and nothing else. So `.full` read as "profile, but
 more" while giving its holder *no* access to the plain `read:profile` verbs, a
 token minted with what looked like the superset would have taken 403s on
 `profile.get`, `profile.person`, `profile.provenance` and `profile.status`.
+
 Today that is masked, because `getGrantedGatewayScopes` unions every scope the
 catalog declares and real tokens hold both; it would have surfaced the first
 time a caller passed an explicit list to `gateway.ts`, which accepts one. Two
@@ -821,9 +839,9 @@ and it made the guarantee depend on nobody thinking to call the verb.
 For that guarantee to be structural rather than a comment, the store's generic
 `section(name)` accessor **refuses the closed-tier prose sections**. `People` is
 reachable two ways and only two: `person(name)`, which requires a name, and
-`read()`, which returns the whole document and exists to answer him about
-himself. A generic section accessor that served `People` would be the
-enumerate-all call this rule denies, arriving by another name.
+`read()`, which returns the whole document and exists to answer the owner's
+questions about themselves. A generic section accessor that served `People` would
+be the enumerate-all call this rule denies, arriving by another name.
 
 Every `profile.person` read is disclosed in the reply in the same one-line form
 as §8.2: *"Used Sarah's details from your profile."*
@@ -981,8 +999,8 @@ allowlist is right and not just convenient.
 ### 11.2 Open tier vs closed tier — the outbound rule
 
 **Profile content is never bulk-injected into model context.** That is what makes
-requirement 7 structural rather than a hope: a composition path cannot leak his
-home address, because the address was never in context to leak.
+requirement 7 structural rather than a hope: a composition path cannot leak the
+owner's home address, because the address was never in context to leak.
 
 - **Open tier**, injected as a short system-context block because it is useless
   if it must be asked for and harmless in context: `identity.goesBy`,
@@ -1051,11 +1069,11 @@ settings in the TUI, the agent and the webui.
 
 | Key | Default | Reasoning |
 |---|---|---|
-| `profile.enabled` | `true` | He asked for it built. Off by default ships it dark, and flags ship as features. |
-| `profile.autonomousWrites` | `true` | His explicit ruling. Off leaves reads and manual edits working, the honest "I'll curate this myself" mode. |
-| `profile.discloseWrites` | `true` | The condition attached to his choice. Editable because he may find the receipts noisy, but he turns them off himself, knowingly. |
+| `profile.enabled` | `true` | The feature was asked for as shipped behaviour. Off by default ships it dark, and flags ship as features. |
+| `profile.autonomousWrites` | `true` | The explicit learning ruling. Off leaves reads and manual edits working, the honest "I'll curate this myself" mode. |
+| `profile.discloseWrites` | `true` | The condition attached to the learning ruling. Editable because the receipts may prove noisy, but only the owner turns them off, knowingly. |
 | `profile.injectOpenTier` | `true` | Otherwise the agent still guesses a metro area, which is the failure that started this. |
-| `profile.discloseClosedTierReads` | `true` | Using his address on an order should be visible. |
+| `profile.discloseClosedTierReads` | `true` | Using the owner's address on an order should be visible. |
 | `profile.consumerFallback` | `true` | Whether unset consumer config keys fall back to the profile (§13). On, because a profile nothing reads is a diary. |
 | `profile.reloadThrottleMs` | `2000` | Only used where `fs.watch` is unavailable; under human edit-then-check latency and off the read path. |
 | `profile.path` | `""` | Empty means §3's default path; an override for a non-default daemon home. |
@@ -1098,7 +1116,7 @@ to profile field, and installs it as a **read fallback** in the `ConfigManager`:
 an explicitly configured value still wins; the profile fills the gap where the
 key is unset.
 
-That direction matters. A profile that overrode a value he deliberately
+That direction matters. A profile that overrode a value the owner deliberately
 configured would be the drift class in reverse.
 
 **The fallback applies in `ConfigManager.get()` only, never in a bulk listing or
@@ -1122,11 +1140,12 @@ contention over their files.
 earlier version of this section got it wrong. `ConfigManager.resolvePath()` walks
 only as far as the *parent* section and then reads the field off it. So
 `payments.currency` throws, there is no `payments` section on this branch, and
-the fallback catches that and stays dormant. But `daemon.timezone` resolves
-today: the `daemon` section exists for other reasons, the field is simply unset,
-and an unset field is exactly what the fallback is for. It is live now, not
-waiting on a merge. Both behaviours are correct and both are pinned by tests; it
-was the description that was wrong.
+the fallback catches that and stays dormant.
+
+But `daemon.timezone` resolves today: the `daemon` section exists for other
+reasons, the field is simply unset, and an unset field is exactly what the
+fallback is for. It is live now, not waiting on a merge. Both behaviours are
+correct and both are pinned by tests; it was the description that was wrong.
 
 | Consumer config key | Profile field | Status |
 |---|---|---|

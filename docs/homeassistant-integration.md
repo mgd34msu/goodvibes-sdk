@@ -148,17 +148,20 @@ devices such as TVs, locks, thermostats, cameras, routers, appliances, phones,
 and other physical devices, then defers lower-value software/plugin/add-on pages
 to explicit page generation, reindex, or refinement routes. This keeps Home
 Assistant service calls from timing out while still making the most useful pages
-available quickly after a snapshot. The sync response reports
-`generated.deferredDevicePassports`, `generated.deferredRoomPages`, and
-`generated.truncated` when more pages remain. Page automation also accepts
-`maxRunMs`, so integrations can keep snapshot service calls responsive even
-when a large installation has many pages eligible for refresh. Foreground
-snapshot page generation is still capped by the SDK; callers can request lower
-limits, but very large values are treated as background/deferred intent rather
-than permission to block the sync route indefinitely. The knowledge store also
-batches the thousands of row updates created by a real Home Assistant snapshot
-and persists them once at the end of the sync instead of exporting the SQLite
-database after every node and edge write.
+available quickly after a snapshot.
+
+The sync response reports `generated.deferredDevicePassports`,
+`generated.deferredRoomPages`, and `generated.truncated` when more pages
+remain. Page automation also accepts `maxRunMs`, so integrations can keep
+snapshot service calls responsive even when a large installation has many
+pages eligible for refresh. Foreground snapshot page generation is still
+capped by the SDK; callers can request lower limits, but very large values are
+treated as background/deferred intent rather than permission to block the
+sync route indefinitely.
+
+The knowledge store also batches the thousands of row updates created by a
+real Home Assistant snapshot and persists them once at the end of the sync
+instead of exporting the SQLite database after every node and edge write.
 
 #### Generated device and room pages
 
@@ -167,19 +170,23 @@ passport markdown artifact and a stable generated-page source. For each selected
 active room/area, it materializes a room page. This is built on the same
 generated-projection primitive used by the base knowledge/wiki system, so
 generated Home Graph pages are stable sources with durable markdown artifacts
-instead of temporary one-off files. Generated page markdown includes Home
-Assistant identity, exposed entities, linked source evidence, extracted semantic
-facts, quality issues, and open questions. Linked manuals and other sources are
-converted into typed durable fact nodes before rendering; device passport pages
-do not include raw source-snippet sections. Generated
-page sources are marked with
-`metadata.homeGraphGeneratedPage: true`, `metadata.projectionKind`, and
-`metadata.pageEditable: true`; the source id stays stable across regenerations
-while the artifact id points at the latest rendered markdown. If the rendered
-markdown is unchanged, the SDK reuses the existing generated artifact instead of
-creating a duplicate on every snapshot sync. Generated markdown artifacts are
-stored durably because they back living wiki pages. Clients can retrieve the
-current generated page list and markdown through
+instead of temporary one-off files.
+
+Generated page markdown includes Home Assistant identity, exposed entities,
+linked source evidence, extracted semantic facts, quality issues, and open
+questions. Linked manuals and other sources are converted into typed durable
+fact nodes before rendering; device passport pages do not include raw
+source-snippet sections.
+
+Generated page sources are marked with `metadata.homeGraphGeneratedPage: true`,
+`metadata.projectionKind`, and `metadata.pageEditable: true`; the source id
+stays stable across regenerations while the artifact id points at the latest
+rendered markdown. If the rendered markdown is unchanged, the SDK reuses the
+existing generated artifact instead of creating a duplicate on every snapshot
+sync. Generated markdown artifacts are stored durably because they back living
+wiki pages.
+
+Clients can retrieve the current generated page list and markdown through
 `GET /api/homeassistant/home-graph/pages`; pass `includeMarkdown=false` when a
 panel needs only the page index. Clients can let page generation run
 automatically, call the explicit device/room/packet endpoints to direct or
@@ -230,16 +237,18 @@ by source id and scores bounded fields, capped extraction sections, and
 `structure.searchText` when present. Matched sources are passed through the
 shared semantic enrichment layer, which extracts durable features,
 capabilities, specifications, procedures, maintenance facts, warnings,
-compatibility, configuration, troubleshooting notes, wiki pages, and gaps. The
-answer is synthesized from those facts and source snippets by the daemon's
+compatibility, configuration, troubleshooting notes, wiki pages, and gaps.
+
+The answer is synthesized from those facts and source snippets by the daemon's
 current LLM provider/model, with deterministic fact rendering as the fallback.
 Home Graph uses the same provider-backed answer synthesis path as
 `POST /api/knowledge/ask`; semantic source enrichment is allowed to continue as
 self-improving background work so a question is not forced to wait behind a
-full enrichment pass before answer synthesis starts. If a source matches before
-typed facts have been extracted, the SDK still returns synthesized prose that
-describes the currently indexed evidence and the remaining gap instead of
-dumping raw snippet bullets.
+full enrichment pass before answer synthesis starts.
+
+If a source matches before typed facts have been extracted, the SDK still
+returns synthesized prose that describes the currently indexed evidence and
+the remaining gap instead of dumping raw snippet bullets.
 
 #### Gap repair and self-improvement
 
@@ -250,10 +259,13 @@ high-confidence sources when needed, promotes extracted source evidence into
 typed facts, and re-runs answer selection once if useful facts were created.
 If the bounded pass cannot produce usable facts in time, the response still
 includes `refinementTaskIds` so the panel can show ongoing repair state.
+
 The same self-improvement loop also runs when Home Graph syncs a snapshot,
 ingests a manual/document/URL/note, or reindexes. Snapshot sync schedules a
 tiny delayed repair pass and does not run external web/LLM repair inline with
-the Home Assistant service response. For concrete objects such as devices,
+the Home Assistant service response.
+
+For concrete objects such as devices,
 services, integrations, and providers, the SDK can create intrinsic
 feature/specification gaps as soon as the object or source exists, classify
 whether the gap is applicable, suppress non-applicable gaps before search, and
@@ -262,15 +274,18 @@ pass, Ask, reindex, explicit refinement runs, or scheduled jobs. This means a
 newly added device with a stable manufacturer/model can start filling missing
 feature/spec knowledge without waiting for a user to ask an Assist question,
 while the sync call itself stays bounded.
+
 Repair skip checks are gap-specific: an older repair URL for the same Home
 Assistant object does not block another intrinsic gap unless it is linked to
 that exact gap with `repairs_gap`.
+
 Accepted repair sources are not just remembered as URLs. The SDK re-enriches
 them under the refinement budget, promotes useful extracted evidence into typed
 feature/capability/specification facts, and links those fact nodes back to the
 concrete Home Assistant subject with `describes` edges. Official/vendor repair
 facts are preferred over weaker secondary deterministic fragments during Ask
 and page generation.
+
 Provider-backed semantic calls are bounded by SDK timeouts and abort signals,
 and broad reindex uses a small LLM budget before continuing deterministically,
 so Home Assistant panels should not add host-side wrappers to avoid hung provider
@@ -278,6 +293,7 @@ requests. If a source was previously enriched deterministically because no LLM
 was available or the LLM budget was exhausted, the SDK can upgrade that source
 during a later ask/reindex and supersede weaker deterministic semantic
 facts/pages instead of returning both previous and current interpretations.
+
 Repair tasks that are blocked until a retry window include top-level
 `nextRepairAttemptAt` in addition to trace/metadata details, so Home Assistant
 panels can show retry timing without parsing SDK trace details.
@@ -319,15 +335,20 @@ so "reindex uploads" stays focused on user-provided/manual sources and stale
 page refresh rather than treating generated pages as source material. In a
 normal changed-only run, source auto-linking is limited to sources reparsed in
 that run; a forced reindex can still perform a broader stored-source link
-audit. The
-response reports `scanned`, `reparsed`, `skipped`, `failed`, `truncated`,
-`budgetExhausted`, `changedSourceCount`, `forcedSourceCount`,
-`skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
-`generatedPagePolicyVersion`, `coalesced`, repaired `sources`, auto-link
-`linked` summaries, semantic enrichment counts, regenerated page `generated`
-counts, and per-source `failures`. If another Home Graph reindex is already
-running, the SDK returns `coalesced: true` quickly and leaves the active run in
-charge instead of stacking another foreground scan.
+audit.
+
+The response reports:
+
+- `scanned`, `reparsed`, `skipped`, `failed`, `truncated`, `budgetExhausted`
+- `changedSourceCount`, `forcedSourceCount`
+- `skippedGeneratedPageArtifactCount`, `refreshedGeneratedPageCount`,
+  `generatedPagePolicyVersion`, `coalesced`
+- repaired `sources`, auto-link `linked` summaries, semantic enrichment
+  counts, regenerated page `generated` counts, and per-source `failures`
+
+If another Home Graph reindex is already running, the SDK returns
+`coalesced: true` quickly and leaves the active run in charge instead of
+stacking another foreground scan.
 
 #### Reset and rebuild
 
@@ -339,22 +360,30 @@ diagnosis. Then call the admin-only
 `POST /api/homeassistant/home-graph/reset` route with `installationId` or
 `knowledgeSpaceId`. Use `dryRun: true` first to get the exact delete counts
 without mutating the graph; the response includes `dryRun: true` and the same
-`deleted` summary shape as the real reset, plus artifact candidate counts. A
-non-dry run deletes the selected Home Assistant knowledge space rows: sources,
-nodes, edges, issues, extractions, refinement tasks, job runs, usage records,
-consolidation records, and schedules. It also deletes artifacts referenced by
-those sources and orphan artifacts tagged to that knowledge space. Pass
-`preserveArtifacts: true` only when intentionally preserving uploads for a
-records-only cleanup. After reset, re-sync the real Home Assistant snapshot,
-reingest or relink manuals/documents from the integration, then run
-reindex/refinement/page generation against the clean space.
+`deleted` summary shape as the real reset, plus artifact candidate counts.
+
+A non-dry run deletes the selected Home Assistant knowledge space rows:
+
+- sources, nodes, edges, issues, extractions
+- refinement tasks, job runs, usage records, consolidation records, and
+  schedules
+
+It also deletes artifacts referenced by those sources and orphan artifacts
+tagged to that knowledge space. Pass `preserveArtifacts: true` only when
+intentionally preserving uploads for a records-only cleanup.
+
+After reset, re-sync the real Home Assistant snapshot, reingest or relink
+manuals/documents from the integration, then run reindex/refinement/page
+generation against the clean space.
 
 #### Ask ranking
 
 Ask ranking is object-aware. When a question names a Home Assistant object,
 such as "the TV" or "front door sensor", the SDK matches that query to Home
 Graph nodes and strongly prefers indexed sources linked to those nodes or
-sources whose identity matches a physical/device anchor. For TV questions, the
+sources whose identity matches a physical/device anchor.
+
+For TV questions, the
 source scope favors physical TV devices, `media_player` entities, and matching
 model/manufacturer evidence over generic Home Assistant integrations or other
 devices while ignoring noisy objects such as TV-show calendars, Plex library
@@ -362,39 +391,55 @@ sensors, automations, and Wake-on-LAN switches. Singular object questions such
 as "the TV" are narrowed to the strongest matching object anchor before
 candidate sources are handed to the semantic answer layer, so answers are not
 blended across multiple televisions or manuals that only share broad TV/spec
-tokens. Pending integration documentation candidates are source suggestions,
+tokens.
+
+Pending integration documentation candidates are source suggestions,
 not answer material, until they are indexed. Device feature/spec/manual
 questions require useful source evidence, so low-information extraction
 placeholders, unrelated device manuals, and Home Assistant integration docs are
 excluded from the answer unless the query is explicitly about the integration.
-Binary-like raw PDF payloads and
-other garbled extraction text are treated as unusable and repair-needed, not as
-answer evidence. Answers include synthesized text, sources, linked objects,
+Binary-like raw PDF payloads and other garbled extraction text are treated as
+unusable and repair-needed, not as answer evidence.
+
+Answers include synthesized text, sources, linked objects,
 semantic facts, and knowledge gaps when available; clients should display the
 answer text, sources, facts, and linked objects returned by the SDK rather than
 locally re-ranking the graph or rendering raw extraction snippets.
 `linkedObjects` contains real Home Assistant graph objects only. Semantic
 extraction artifacts such as generated wiki pages, fact nodes, and knowledge
 gaps remain in `facts`/`gaps` and are not reported as linked HA objects.
+
 Home Graph ask passes strict candidate ids into the shared semantic answer
 layer after object-scoped ranking. That keeps answer synthesis inside the
 matched Home Assistant object/source set and prevents unrelated manuals from
 appearing only because they contain generic feature/specification vocabulary.
 Generated semantic wiki pages and extracted fact nodes are not used as Home
 Assistant object anchors, so a generated Kasa page or generic "features" fact
-cannot make a TV query pull Kasa sources into the answer. Feature/spec answers
-also suppress deterministic manual boilerplate such as "items may vary",
-"specifications may change", "new features may be added", recommended
-cable-type fragments, remote button-map noise, remote battery-low notes,
-optional accessory/setup fragments, Magic Remote accessory-compatibility
-snippets such as MR20GA/Bluetooth compatibility, remote infrared/sensor
-instructions, generic "may not work properly" setup fragments, generic
-service/repair boilerplate, and safety/cable warnings unless the user asked for
-that kind of warning or compatibility detail. Truncated deterministic fragments
-are dropped instead of presented as specifications. Provider-returned answer
-text is also post-filtered for those low-value feature/spec fragments, so a
-synthesis model cannot reintroduce boilerplate that the evidence filter already
-removed. Home Graph answer synthesis runs before background semantic enrichment
+cannot make a TV query pull Kasa sources into the answer.
+
+Feature/spec answers also suppress deterministic manual boilerplate such as:
+
+- "items may vary"
+- "specifications may change"
+- "new features may be added"
+- recommended cable-type fragments
+- remote button-map noise
+- remote battery-low notes
+- optional accessory/setup fragments
+- Magic Remote accessory-compatibility snippets such as MR20GA/Bluetooth
+  compatibility
+- remote infrared/sensor instructions
+- generic "may not work properly" setup fragments
+- generic service/repair boilerplate
+- safety/cable warnings
+
+unless the user asked for that kind of warning or compatibility detail.
+Truncated deterministic fragments are dropped instead of presented as
+specifications. Provider-returned answer text is also post-filtered for those
+low-value feature/spec fragments, so a synthesis model cannot reintroduce
+boilerplate that the evidence filter already removed.
+
+Home Graph answer synthesis runs before background semantic enrichment
 so single-concurrency provider wrappers answer the user before refreshing
 source semantics. Generated device passports and room pages apply the same
 fact-quality filter so living pages focus on useful device capabilities,
@@ -402,11 +447,13 @@ specifications, actionable maintenance, troubleshooting, and source-backed
 notes rather than generic handling/safety fragments, certified cable warnings,
 remote/accessory instructions, service-only port fragments, or heading-only
 manual/spec fragments.
+
 Semantic refinement gaps such as `knowledge.answer_gap`,
 `knowledge.semantic_gap`, and `knowledge.intrinsic_gap` are not rendered as
 device/room page issues. They remain available through Ask gaps, review, and
 refinement-task routes where clients can show repair state without mixing
 backlog questions into wiki page content.
+
 Room pages also scope open issues to the requested area and its related graph
 objects. A room page does not render every open Home Graph issue in the house;
 only issues attached to the room, its devices/entities/automations/scenes,
@@ -416,26 +463,33 @@ When Home Graph sync/reindex/ingest/ask can identify an object and missing
 knowledge gaps, the shared semantic gap-repair layer can search the web in the
 background. It scores already-indexed sources and web candidates against the HA
 device/service identity, manufacturer/model hints, the gap wording, and the
-query. Existing official/vendor sources count as usable repair evidence; the
+query.
+
+Existing official/vendor sources count as usable repair evidence; the
 SDK links and promotes them instead of blocking solely because they were already
 indexed. One strong official/vendor source can close a gap, while non-official
-evidence still needs corroboration across distinct domains. Repair tries
-progressively more targeted queries for the exact subject and gap, then accepts
-no more than five high-confidence sources for that gap. Accepted sources are
-linked to the exact gap with `repairs_gap` edges and carry source-assessment
-metadata with confidence, accepted/rejected reasons, search queries, gap IDs,
-original source IDs, and linked HA object IDs. Accepted sources are also
-semantically re-enriched under the run budget, and promoted fact nodes are
-linked back to the HA object with `describes` edges. This is source-backed
-graph refinement, not unsupported inference in the current response. Clients
-can call reindex or ask again later to use newly indexed/promoted facts once
-extraction/enrichment has finished. Existing repair sources only suppress the
-specific gap they repair, not every gap attached to the same device or service.
+evidence still needs corroboration across distinct domains.
+
+Repair tries progressively more targeted queries for the exact subject and
+gap, then accepts no more than five high-confidence sources for that gap.
+Accepted sources are linked to the exact gap with `repairs_gap` edges and
+carry source-assessment metadata with confidence, accepted/rejected reasons,
+search queries, gap IDs, original source IDs, and linked HA object IDs.
+
+Accepted sources are also semantically re-enriched under the run budget, and
+promoted fact nodes are linked back to the HA object with `describes` edges.
+This is source-backed graph refinement, not unsupported inference in the
+current response. Clients can call reindex or ask again later to use newly
+indexed/promoted facts once extraction/enrichment has finished. Existing
+repair sources only suppress the specific gap they repair, not every gap
+attached to the same device or service.
+
 Ask-created gaps queue refinement tasks and start repair asynchronously. Ask
 does not wait for web search, URL ingest, or re-answering; it returns the
 current best source-backed answer and any `refinementTaskIds` for continued
 repair. The route also has an SDK-owned synthesis timeout so a slow provider
 cannot hold the Home Assistant panel or daemon request open indefinitely.
+
 Home Graph reindex also queues repairable gaps, caps foreground source
 enrichment with a run budget, and starts only a small delayed background repair
 pass after returning source-enrichment and queued-task metadata. Panels should
@@ -460,18 +514,23 @@ The base knowledge API exposes the same task model under
 `ready`, `repairing`, `needs_review`, `needs_sources`, and `empty`, plus open
 issue and active refinement task counts. Panels should display those fields
 instead of inferring refinement progress from reindex duration or issue totals.
+
 The refinement run response includes `candidateGaps`, `processedGaps`,
 `requestedLimit`, `effectiveLimit`, `truncated`, and `budgetExhausted`; Home
 Assistant panels should show those fields when a broad run is capped or when a
-short foreground budget leaves additional repair work for a later run. Stale
-active tasks left behind by an interrupted daemon process are recovered as
-blocked-and-retriable the next time refinement runs for that Home Graph space.
-The foreground cap is currently 24 gaps per run; panels should offer repeated
-or scheduled runs instead of sending one unbounded request for the whole house.
+short foreground budget leaves additional repair work for a later run.
+
+Stale active tasks left behind by an interrupted daemon process are recovered
+as blocked-and-retriable the next time refinement runs for that Home Graph
+space. The foreground cap is currently 24 gaps per run; panels should offer
+repeated or scheduled runs instead of sending one unbounded request for the
+whole house.
+
 Historical `No semantic gap repairer is configured` tasks are also reopened
 when the daemon starts running with a configured repairer, so the Refine tab
 should not keep treating those records as current wiring failures after the
 host is fixed.
+
 Run-budget exhaustion is retryable state, not a terminal dead end. When a
 repair attempt times out or runs out of foreground budget, the SDK marks the
 gap `deferred`, records `nextRepairAttemptAt`, and leaves the task blocked with
@@ -479,6 +538,7 @@ retry metadata for the next scheduled/manual refinement pass. If accepted
 source evidence exists but is not sufficient to close the gap, the SDK still
 links/promotes that evidence and defers the task rather than throwing away the
 progress.
+
 Home Graph Ask also keeps real Home Assistant linked objects when the strongest
 evidence comes from web-repaired semantic sources whose `sourceDiscovery`
 metadata references the HA object. Ask source records also include `sourceId`
@@ -486,6 +546,7 @@ and `url` aliases alongside the canonical SDK source fields. Overlapping repair
 and reindex runs are coalesced by the SDK, so repeated broad
 Refine/Reindex/Ask-triggered calls should not stack unbounded LLM/search/source
 work in the daemon.
+
 Home Graph status reports `activeRefinementTaskCount` for running/queued work
 only; detected backlog records remain visible in the refinement task list but
 do not make readiness look like an active repair run.
@@ -511,7 +572,9 @@ Home Assistant-specific filters. Generic filters include `recordKinds`,
 `ha` for JSON requests and include `objectKinds`, `entityIds`, `deviceIds`,
 `areaIds`, `integrationIds`, `integrationDomains`, `domains`, `deviceClasses`,
 and `labels`. The same HA filter names are also accepted as top-level aliases
-for simpler clients. Each field is multi-select: values inside one field are ORed
+for simpler clients.
+
+Each field is multi-select: values inside one field are ORed
 together, and different fields are ANDed together. When a Home Assistant filter
 matches a leaf object such as an entity domain, the SDK also keeps immediate
 device, area, source, fact, and gap context edges so the map remains a graph
