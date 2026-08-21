@@ -13,15 +13,15 @@ tests. Keep it aligned with `package.json` scripts and CI matrix changes.
 
 ---
 
-## 1. DevDependencies to add
+## 1. DevDependency
 
-Add to root `package.json` `devDependencies` (or workspace root):
+Declared in root `package.json` `devDependencies`:
 
 ```json
 "miniflare": "^4.20260415.0"
 ```
 
-Install:
+Fresh install:
 
 ```bash
 bun install
@@ -33,34 +33,26 @@ Miniflare 4 ships workerd binaries. On first install it downloads the platform b
 
 ---
 
-## 2. Scripts entry to add
+## 2. Scripts entry
 
-Add to root `package.json` `scripts`:
+Defined in root `package.json` `scripts`:
 
 ```json
-"test:workers": "bun run build && bun test test/workers/workers.test.ts"
+"test:workers": "bun scripts/test.ts test/workers/workers.test.ts"
 ```
+
+`scripts/test.ts` is the repo's shared test-runner wrapper (temp-directory
+containment, an owned child process, a per-run timeout ceiling). It does not
+build the SDK itself, so a local run needs `bun run build` first; CI supplies
+the dist bytes by restoring the shared `build` job's artifact instead of
+rebuilding per leg.
 
 ---
 
-## 3. CI matrix dimension to add
+## 3. CI matrix dimension
 
-Proposed diff for `.github/workflows/ci.yml`, add `workers` to the `platform-matrix` job:
-
-```yaml
-# Inside jobs.platform-matrix.strategy.matrix:
-      platform:
-        - bun
-        - rn-bundle
-        - workers   # <-- ADD THIS
-
-# Inside jobs.platform-matrix.strategy.matrix.include:
-        - platform: workers
-          node-version: "22"
-          test-cmd: bun run test:workers
-```
-
-Full proposed diff context:
+`.github/workflows/ci.yml` runs `workers` (and `workers-wrangler`) as two of
+the four legs of the `platform-matrix` job:
 
 ```yaml
       matrix:
@@ -68,17 +60,24 @@ Full proposed diff context:
           - bun
           - rn-bundle
           - workers
+          - workers-wrangler
         include:
           - platform: bun
             node-version: "22"
-            test-cmd: bun run build && bun test test
+            test-cmd: bun scripts/test.ts
           - platform: rn-bundle
             node-version: "22"
-            test-cmd: bun run build && bun run test:rn
+            test-cmd: bun run test:rn
           - platform: workers
             node-version: "22"
             test-cmd: bun run test:workers
+          - platform: workers-wrangler
+            node-version: "22"
+            test-cmd: bun run test:workers:wrangler
 ```
+
+Each leg downloads and restores the single `build` job's artifact rather than
+rebuilding, so every platform leg tests the exact same `dist/` bytes.
 
 **Note**: Miniflare downloads workerd binaries during `bun install`. CI needs internet access during the install step (already the case). Cache `node_modules` in CI, this is sufficient to avoid re-downloading the workerd binary on every run.
 
@@ -105,7 +104,7 @@ See `NOTES.md` for the Workers runtime capability notes.
 
 ---
 
-## 5. Bundle guard extension — proposed diff
+## 5. Bundle guard extension
 
 The `./workers` entry is included in `test/rn-bundle-node-imports.test.ts`:
 
@@ -131,7 +130,7 @@ Key constructor options used:
 
 **Module staging pattern** (required due to Miniflare resolution):
 
-We write the worker entry to a tmp directory OUTSIDE `dist/` (e.g. `.test-tmp/workers-harness/`) and set `modulesRoot` to `packages/sdk/dist`. This eliminates the dist-race foot-gun: concurrent builds that clean/rewrite `dist/` cannot clobber the staged file.
+We write the worker entry to a tmp directory OUTSIDE `dist/` (e.g. `.test-tmp/workers-harness/`) and set `modulesRoot` to `packages/sdk/dist`. This eliminates the dist-race foot-gun, since concurrent builds that clean/rewrite `dist/` cannot clobber the staged file.
 
 ```ts
 // In beforeAll: create tmp dir and stage worker entry

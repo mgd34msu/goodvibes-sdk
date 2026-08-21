@@ -37,7 +37,7 @@ same derivation the daemon uses to decide which credentials it owns, which is wh
 lets a connection set up on any surface keep working after a handover.
 
 A **desktop / public-client** registration needs no secret at all. That is the
-recommended shape for both providers: paired with PKCE it is the standard native-app
+recommended shape for both providers. Paired with PKCE it is the standard native-app
 pattern, and it means there is no secret to store, rotate, or leak. Use a
 confidential registration only if you specifically want one.
 
@@ -48,7 +48,12 @@ confidential registration only if you specifically want one.
 2. **APIs & Services → Library** → enable **Google Calendar API**.
 3. **APIs & Services → OAuth consent screen** → configure it. *External* is fine for
    personal use; while the app is unverified, add your own Google account under
-   **Test users** or consent will be refused.
+   **Test users** or consent will be refused. Then, on the audience page
+   (`console.cloud.google.com/auth/audience`), set **Publishing status** to **In
+   production**. That needs no Google review for personal use, just a confirmation
+   click, but skipping it leaves the app in **Testing**, where every refresh token
+   Google issues expires after seven days and the calendar connection dies silently
+   a week later.
 4. **APIs & Services → Credentials → Create Credentials → OAuth client ID** →
    application type **Desktop app**.
 5. Copy the generated **Client ID**. A Desktop-app client needs no client secret with
@@ -63,8 +68,11 @@ confidential registration only if you specifically want one.
    If you registered a Web-app (confidential) client instead, also store its secret
    and point `calendar.google.clientSecretRef` at it.
 
-The scopes requested are `calendar.readonly` and `calendar.events`: read plus event
-creation. Narrow them by supplying your own scope list if you want read-only access.
+The scopes requested are `calendar.readonly` and `calendar.events`, which together
+grant read access plus event creation. There is no config key that narrows this from
+the CLI. An embedder calling the SDK's calendar connector directly can pass its own
+scope list to ask for read-only access instead, but a `goodvibes config set` install
+always gets both.
 
 ## Microsoft
 

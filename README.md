@@ -131,21 +131,21 @@ bun run build
 | --- | --- |
 | `bun run build` | Build every workspace package's `dist/` output once |
 | `bun run test` | Run the full Bun test suite (`test/`, mirroring the package sources) |
-| `bun run validate` | The portable version of everything CI's `validate` job runs: doc/contract/version/changelog gates, TypeScript build, type-level checks, the API-surface check, examples typecheck, browser-compat, package metadata, `publint`, and the bundle-budget check |
+| `bun run validate` | Exactly what CI's `validate` job runs: doc/contract/version/changelog gates, TypeScript build and typecheck, the API-surface and exports checks, examples typecheck, browser-compat, package metadata, packaging smoke checks (`pack`, `publint`, install), and the bundle-budget check |
 | `bun run api:extract` / `bun run api:check` | Regenerate / verify the API Extractor reports under `etc/*.api.md` |
 | `bun run refresh:contracts` | Regenerate contract JSON artifacts and their generated docs after a contract change |
 
-CI (`.github/workflows/ci.yml`) runs `validate`, a dependency and secret-scan audit, a single `build` that every downstream job restores rather than rebuilding, a `platform-matrix` job (Bun tests plus companion-bundle and Workers runtime legs), an exports-resolution check, `publint`, and an SBOM check. Full gate reference: [docs/testing-and-validation.md](./docs/testing-and-validation.md).
+CI (`.github/workflows/ci.yml`) runs `validate`, a standing eval gate scored against a checked-in baseline, a dependency and secret-scan audit, a single `build` that every downstream job restores rather than rebuilding, a `platform-matrix` job (Bun tests plus companion-bundle and Workers runtime legs), a types-resolution check over the packed exports map, `publint`, an SBOM check, and a packaged-artifact conformance lane. On a green `main` push, an auto-release job tags and dispatches the release, but only while the repo's `RELEASE_ARMED` variable is set. Full gate reference: [docs/testing-and-validation.md](./docs/testing-and-validation.md).
 
 ---
 
 ## Release and stability
 
-Package versions are aligned across the whole workspace, and every version is published together. What counts as a major, minor, or patch change, down to specific export and error-kind rules, is fixed by [docs/semver-policy.md](./docs/semver-policy.md). A misclassified bump is a release gate failure. Releases follow a by-reference flow: a commit is validated exactly once on its push-CI run, a local cut bumps versions and tags without re-running gates, and the tag push re-verifies that the tagged commit's CI run was green before publishing with provenance. Full flow: [docs/release-and-publishing.md](./docs/release-and-publishing.md).
+Package versions are aligned across the whole workspace, and every version is published together. What counts as a major, minor, or patch change, down to specific export and error-kind rules, is fixed by [docs/semver-policy.md](./docs/semver-policy.md). A misclassified bump is a release gate failure. Releases follow a by-reference flow in which a commit is validated exactly once on its push-CI run. A cut bumps versions and tags without re-running gates, either locally or automatically on a green `main` push while `RELEASE_ARMED` is set, and the tag push re-verifies that the tagged commit's CI run was green before publishing with provenance. Full flow: [docs/release-and-publishing.md](./docs/release-and-publishing.md).
 
 ## Security
 
-Security fixes land in the latest published pre-1.0 line; earlier minor lines are not patched. The published package carries source-level overrides for reviewed transitive dependencies, including a patched Bash LSP dependency graph. Bash LSP itself stays bundled because shell language support is part of the SDK feature set. Report a vulnerability and read the current dependency posture in [SECURITY.md](./SECURITY.md) and [docs/security.md](./docs/security.md).
+Security fixes land in the latest published release line; earlier lines are not patched, so upgrade to the newest version to receive them. The published package carries source-level overrides for reviewed transitive dependencies, including a patched Bash LSP dependency graph. Bash LSP itself stays bundled because shell language support is part of the SDK feature set. Report a vulnerability and read the current dependency posture in [SECURITY.md](./SECURITY.md) and [docs/security.md](./docs/security.md).
 
 ## License
 

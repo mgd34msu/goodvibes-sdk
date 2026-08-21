@@ -132,6 +132,14 @@ Three SDK test files, 19 tests, all green:
   byte in order), `stop()` cuts the active stream mid-play, bounded
   `waitForDrain` on exit.
 
+Correction (2026-08-21, v2.0.19): the "19 tests" count above is the count at
+hoist time, not the current one. The same three files now hold 35 tests
+(19 in `voice-tts-text-chunker.test.ts`, including markdown-stripping cases
+added after this decision landed; 13 in `voice-spoken-turn-controller.test.ts`;
+3 in `voice-audio-sink-contract.test.ts`). The file list and everything else
+in this decision (the AudioSink interface, the 2-slot window, the 1,500-char
+merge cap, the drain-vs-interrupt contract) still matches the current code.
+
 The **subprocess-level** head-gate and process-drain implementation stays with
 the consumer's sink and remains pinned by the consumer's `player-playback`
 tests; the SDK pins the **contract** those implementations must satisfy.

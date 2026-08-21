@@ -39,5 +39,6 @@ state the production runtime boundary.
 
 Use `./web` for normal Worker-hosted daemon clients.
 
-Use `./workers` only for the GoodVibes Worker bridge: daemon batch route proxying,
-Cloudflare Queue tick/job-signal consumers, or scheduled `/api/batch/tick` calls.
+Use `./workers` only for the GoodVibes Worker bridge, meaning daemon batch route
+proxying, Cloudflare Queue tick/job-signal consumers, or scheduled
+`/api/batch/tick` calls.

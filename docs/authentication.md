@@ -23,6 +23,11 @@ Header shape:
 Authorization: Bearer <token>
 ```
 
+For a mobile or companion client, the bearer token is normally obtained by pairing rather
+than by configuring a static value. Pairing mints a token individually scoped to that one
+device. See [Companion app pairing](./pairing.md) for how a token is provisioned, and
+[Security best practices](./security.md) for the daemon's full set of accepted token shapes.
+
 ## Session login
 
 Login route from the current contract:

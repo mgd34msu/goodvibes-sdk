@@ -4,10 +4,10 @@
 
 | Version | Supported |
 |---------|-----------|
-| Latest published pre-1.0 minor line | :white_check_mark: |
-| Earlier pre-1.0 minor lines | :x: |
+| Latest published minor line (currently 2.0.x) | :white_check_mark: |
+| Earlier minor or major lines | :x: |
 
-Pre-1.0 policy: security fixes land in the latest published pre-1.0 line. Earlier minor lines are not patched; upgrade to the latest release to receive security updates.
+Security fixes land in the latest published minor line. Earlier lines are not patched; upgrade to the latest release to receive security updates.
 
 ## Dependency audit disclosures
 
@@ -21,11 +21,12 @@ available. Current non-vendored overrides are declared in the root
 - `lodash@4.18.1` for Verdaccio storage paths (bumped from `4.17.21` to escape an audit advisory; see root `package.json` overrides)
 - `google-auth-library@10.6.2` for Cloudflare/Wrangler transitive auth tooling
 - `minimatch@^10.2.5` for source-workspace installs
-- `fast-uri@3.1.2` to avoid `GHSA-v39h-62p7-jpjc` in AJV consumers used by release tooling
+- `fast-uri@^3.1.5` to avoid `GHSA-v39h-62p7-jpjc` in AJV consumers used by release tooling
 - `esbuild@0.28.1` to close `GHSA-gv7w-rqvm-qjhr` (RCE via missing binary integrity verification in the Deno module path)
 - `form-data@4.0.6` to close `GHSA-hmw2-7cc7-3qxx` (CRLF injection via unescaped multipart field/file names)
 - `ws@8.21.0` to close `GHSA-96hv-2xvq-fx4p` (memory-exhaustion DoS from tiny fragments)
-- `undici@7.28.0` to close `GHSA-vmh5-mc38-953g`, `GHSA-vxpw-j846-p89q`, and `GHSA-hm92-r4w5-c3mj` (TLS bypass, WebSocket DoS, SOCKS5 routing)
+- `undici@^7.29.0` to close `GHSA-vmh5-mc38-953g`, `GHSA-vxpw-j846-p89q`, and `GHSA-hm92-r4w5-c3mj` (TLS bypass, WebSocket DoS, SOCKS5 routing); also a direct dependency at the same version, not only a transitive override
+- `tar@^7.5.16`, `brace-expansion@^5.0.9`, `sharp@^0.35.0`, `js-yaml@^4.3.1`, and `ip-address@^10.4.0`, later additions to the same override table for transitive advisory remediation; `brace-expansion` and `ip-address` are also direct dependencies at the same pinned version. See the `overridesRationale` field in the root `package.json` for the per-package justification on file; a package listed here without a corresponding `overridesRationale` entry is pinned as a precaution and does not yet have a recorded rationale.
 
 The published SDK keeps Bash LSP bundled as a first-class feature. The
 `bash-language-server@5.6.0 -> editorconfig@2.0.1 -> minimatch@10.0.1` chain is
@@ -59,17 +60,26 @@ not inherit dependency-package overrides:
   "overrides": {
     "ajv": "8.18.0",
     "esbuild": "0.28.1",
-    "fast-uri": "3.1.2",
+    "fast-uri": "^3.1.5",
     "fast-xml-parser": "5.7.1",
     "form-data": "4.0.6",
     "google-auth-library": "10.6.2",
     "lodash": "4.18.1",
     "minimatch": "^10.2.5",
-    "undici": "7.28.0",
-    "ws": "8.21.0"
+    "undici": "^7.29.0",
+    "ws": "8.21.0",
+    "tar": "^7.5.16",
+    "brace-expansion": "^5.0.9",
+    "sharp": "^0.35.0",
+    "js-yaml": "^4.3.1",
+    "ip-address": "^10.4.0"
   }
 }
 ```
+
+The `bash-language-server` and `uuid` vendor-patch overrides described above are omitted from
+this snippet; they are file-path overrides (`file:vendor/...`) specific to this repo's own
+Verdaccio dry-run and Bash LSP bundling, not remediations an application root reproduces.
 
 ## Reporting a vulnerability
 

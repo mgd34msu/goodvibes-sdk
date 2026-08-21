@@ -159,3 +159,18 @@ that no file under `platform/calendar/` imports fs/net/tty/process or calls `fet
 
 - **Expanding unsupported RRULE parts "best effort".** Explicitly rejected: fabricated dates
   are worse than an honest "not fully expanded" marker.
+
+## Correction (2026-08-21, v2.0.19): the routes verdict no longer holds
+
+The "routes verdict" section above is superseded. The five `calendar.*` descriptors
+are no longer `invokable: false`: `packages/sdk/src/platform/control-plane/method-catalog-calendar.ts`
+carries no `invokable: false` on any of them, and a real `/api/calendar` route
+surface exists (`control-plane/routes/calendar.ts`, `GATEWAY_REST_ROUTES`). Two
+gateway implementations now satisfy the shared `CalendarGatewayService` contract:
+`platform/google/gateway-calendar-service.ts` (Google Calendar) and
+`platform/calendar/caldav-gateway-service.ts` (generic CalDAV: Fastmail, iCloud,
+Nextcloud, Radicale, a corporate DAV host), both wired into the daemon composition
+with no product process attached. The claim "There is no CalDAV backend anywhere"
+is no longer true. Untrusted-content marking for calendar reads, called out as
+future work in `2026-07-27-calendar-start-sort-is-not-the-defect.md`, shipped
+alongside this in `platform/calendar/untrusted-events.ts`.

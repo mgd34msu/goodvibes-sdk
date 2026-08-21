@@ -4,7 +4,7 @@
 >
 > Consumers import via explicit public entrypoints such as `@pellux/goodvibes-sdk/platform/runtime`, `@pellux/goodvibes-sdk/platform/knowledge`, and `@pellux/goodvibes-sdk/platform/tools`. Source paths described here are implementation layout, not import paths.
 
-This document describes the internal architecture of the GoodVibes SDK: how its packages, subsystems, and runtime components relate to each other, and how you use them to build AI agent products.
+This document describes the internal architecture of the GoodVibes SDK, how its packages, subsystems, and runtime components relate to each other, and how you use them to build AI agent products.
 
 ## What the SDK enables
 
@@ -57,8 +57,8 @@ All of these share the same orchestration core, permission system, knowledge sto
        │
 ┌──────▼──────────────────────────────────────────────────────────────────┐
 │                        CLIENT PACKAGES                                   │
-│  operator-sdk  — full-access client (TUI, web UI, desktop)              │
-│  peer-sdk      — companion / limited-access client (mobile, 3rd-party)  │
+│  operator-sdk  - full-access client (TUI, web UI, desktop)              │
+│  peer-sdk      - companion / limited-access client (mobile, 3rd-party)  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -84,7 +84,7 @@ All of these share the same orchestration core, permission system, knowledge sto
 
 **Source:** `packages/sdk/src/platform/core/`
 
-The `Orchestrator` class is the central engine of every agent session. It owns the turn loop: receiving user input, sending it to the LLM via `ProviderRegistry`, streaming responses back, executing tool calls, and looping until the model stops requesting tools.
+The `Orchestrator` class is the central engine of every agent session. It owns the turn loop, receiving user input, sending it to the LLM via `ProviderRegistry`, streaming responses back, executing tool calls, and looping until the model stops requesting tools.
 
 ### Key classes
 
@@ -146,6 +146,7 @@ The daemon is an HTTP server (built on Bun) that exposes the agent runtime to ex
 | `remote-routes.ts` | Remote fetch proxy with private-host policy enforcement |
 | `runtime-automation-routes.ts` | Automation job scheduling and execution |
 | `batch-routes.ts` | Opt-in provider Batch API queueing and batch job lifecycle |
+| `cluster-group-routes.ts` | LAN cluster group membership: the `cluster` CLI, the TUI `/cluster` command, and any web UI all render the same structured result these verbs return |
 | `cloudflare-routes.ts` | Cloudflare provisioning: tokens, Workers, Queues, Tunnel, Access, DNS, KV, Durable Objects, R2, and Secrets Store |
 | `home-graph-routes.ts` | Home Assistant Home Graph knowledge queries |
 | `homeassistant-routes.ts` | Home Assistant signed webhook ingress and authenticated Assist conversation routes |
@@ -195,7 +196,7 @@ pending → engineering → reviewing → fixing → awaiting_gates → gating �
 - **Owner phase:** a durable owner agent owns the WRFC chain and remains running until the chain passes or fails
 - **Engineering phase:** an engineer child agent performs the task and emits a `CompletionReport`
 - **Reviewing phase:** reviewer agent scores the complete current result against the original WRFC ask; reviews are never narrowed to only the latest fix, touched files, or rewritten functions
-- **Fixing phase:** fixer agent addresses reviewer feedback; bounded by `fixAttempts` and `reviewCycles` limits
+- **Fixing phase:** reviewer findings are turned into a task graph and run as a workstream through the `platform/orchestration` engine's `FixWorkstreamRunner`, bounded by `fixAttempts` and `reviewCycles` limits. That engine is a separate phase/work-item pipeline layered over this chain controller, not a replacement for it; see [Runtime orchestration](./runtime-orchestration.md) for its full contract
 - **Gating phase:** configured quality gates (e.g. `npm run typecheck`, `npm run lint`) are run; failures start another fixer pass inside the same owner-owned chain
 - `WrfcChain` tracks the full lifecycle: owner agent ID, child agent IDs, gate results, review scores, retry attempts, and owner decisions
 - The owner is deliberately narrow: it keeps the chain running until full-scope review and gates pass, fails, or is cancelled. It may optionally select child model/provider routing through the `selectChildRoute` hook, but default routing remains sufficient.
@@ -239,6 +240,7 @@ Adapters bridge GoodVibes messages to platform-specific APIs:
 | `github` | GitHub (issues, PRs, comments) |
 | `google-chat` | Google Chat |
 | `ntfy` | ntfy push notifications |
+| `telephony` | SMS/voice webhook ingress (Twilio signature verification) |
 | `webhook` | Generic outbound webhook |
 
 ### Slack credential resolution
@@ -383,6 +385,12 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 | `discovery` | Plugin and capability discovery results |
 | `intelligence` | Model intelligence / capability-gate state |
 | `surfacePerf` | Per-surface rendering performance metrics |
+| `overlays` | Which full-screen or floating overlay is visible in a terminal host surface, and its configuration |
+| `panels` | Panel-first operator UX state: which panels are open, their layout, and focus |
+| `providerHealth` | Connectivity, error rate, and latency for every configured LLM provider |
+| `tasks` | Unified task lifecycle tracking across exec, agent, acp, scheduler, daemon, mcp, plugin, and integration task kinds |
+| `uiPerf` | TUI render performance: frame rates and input responsiveness |
+| `watchers` | Managed watch sources that feed automation and routes |
 
 ### Selectors
 
@@ -390,7 +398,7 @@ The `RuntimeStore` is a Redux-style store (using a custom reducer + dispatch pat
 
 ### RuntimeEventBus
 
-The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport. It is synchronous and in-process only. Note: the RuntimeEventBus is not the same as the 27 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
+The `RuntimeEventBus` is an in-process event emitter that carries typed events across subsystems. Components (orchestrator, agent system, channel system) emit events; listeners (diagnostics, TUI renderer, telemetry) subscribe. It is distinct from the SSE transport, and it is synchronous and in-process only. The RuntimeEventBus is not the same as the 27 runtime event domains documented in [Runtime events reference](./reference-runtime-events.md); those are the SSE/WebSocket-facing event streams exposed to SDK consumers, while the bus is daemon-internal only.
 
 ---
 
@@ -402,15 +410,14 @@ The `RuntimeEventBus` is an in-process event emitter that carries typed events a
 
 Context compaction reduces the token footprint of long conversations to stay within the LLM's context window. `CompactionManager` (`compaction/manager.ts`) coordinates the strategy selection and execution lifecycle.
 
-Five built-in strategies:
+Four built-in strategies:
 
 | Strategy | Behavior |
 |---|---|
-| `autocompact` | Triggered when the context window exceeds a configurable threshold |
-| `boundary-commit` | Compacts at natural turn boundaries; preserves key decision points |
-| `collapse` | Aggressive collapse of completed tool chains into a summary |
-| `reactive` | Responds to explicit compaction requests from the orchestrator |
-| `microcompact` | Fine-grained compaction targeting the oldest messages first |
+| `autocompact` | Threshold-based automatic compaction, triggered when the context window exceeds a configurable threshold |
+| `collapse` | Full context collapse into a single summary message |
+| `reactive` | Emergency compaction triggered by prompt-too-long errors from the provider, not by an explicit request |
+| `microcompact` | Lightweight summary of recent turns; the lowest-latency strategy |
 
 `compaction/quality-score.ts` scores the output of each compaction pass to ensure critical information is not lost. `resume-repair.ts` handles recovery when a compacted session cannot be cleanly resumed.
 

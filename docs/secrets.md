@@ -41,6 +41,28 @@ goodvibes://secrets/bws/00000000-0000-0000-0000-000000000000
 JSON-style references are also supported through the `secretref:` prefix when
 clients need structured fields that do not fit naturally in a URI.
 
+## Shorthand URI schemes
+
+Provider-native URI forms are also accepted directly, without the `goodvibes://secrets/`
+prefix, alongside the canonical shape above:
+
+- **`op://vault/item/field`**, 1Password's own reference syntax. Passed through verbatim
+  to the 1Password CLI as `ref`, rather than being decomposed into `vault`/`item`/`field`
+  parameters.
+- **`bw://item/field?...`**, **`vaultwarden://item/field?...`**, and **`bws://id/field?...`**,
+  shorthand host-based forms of the `goodvibes://secrets/bitwarden/...`,
+  `goodvibes://secrets/vaultwarden/...`, and `goodvibes://secrets/bws/...` shapes. The item
+  (or secret id) is the URI host, the field is the first path segment or a `?field=`
+  parameter, and the same query parameters (`server`, `serverEnv`, `customField`,
+  `appDataDir`, `sessionEnv` for Bitwarden; `profile`, `configFile`, `serverUrl`,
+  `accessTokenEnv` for Bitwarden Secrets Manager) apply.
+
+```text
+op://Private/OpenAI/password
+bw://My%20Login/password
+bws://00000000-0000-0000-0000-000000000000/value
+```
+
 ## Resolution
 
 `resolveSecretRef()` returns `{ source, value }`. A `null` value means the

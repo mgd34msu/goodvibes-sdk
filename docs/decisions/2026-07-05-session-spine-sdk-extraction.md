@@ -128,3 +128,19 @@ reconnect flush, and honest close. `test/session-union-cache-daemon-integration.
 proves the adopted-mode union includes a daemon-only (cross-surface) session and degrades
 honestly when the daemon dies. Parameterized parity between the typed and REST adapters is in
 `test/session-spine-client.test.ts`.
+
+## Correction (2026-08-21, v2.0.19): the REST transport itself is now hoisted too
+
+"The SDK never reads token files, each surface builds its own transport adapter and
+hands it in" (Decision, above) is narrower than the current code. A later hoist
+(dated 2026-07-30 in its own file header) added
+`packages/sdk/src/platform/runtime/session-spine/rest-transport.ts`, the agent's
+raw-REST `SpineTransport` implementation itself, folding failures into the same
+`ok`/`offline`/`rejected` vocabulary this decision defined. A consumer no longer has
+to hand-roll a REST adapter; it can use the SDK's own. What is still kept out, per
+that file's header, is `createSpineConnectionResolver`, reading a connected-host
+token file from a specific home directory, still a consumer trust-boundary concern
+the SDK core does not reach into: a consumer builds its own `resolveConnection` and
+passes it into the SDK's transport. Everything else in this decision (the client
+core, the folded result vocabulary, the queue/heartbeat constants, the union cache
+and its constants) still matches the current source unchanged.

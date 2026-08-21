@@ -80,13 +80,13 @@ try {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {
       case 'auth':
-        // token expired — refresh and retry
+        // token expired, refresh and retry
         break;
       case 'network':
-        // transport failure — reconnect or surface to user
+        // transport failure, reconnect or surface to user
         break;
       case 'service':
-        // daemon or upstream service returned 5xx — log and degrade gracefully
+        // daemon or upstream service returned 5xx, log and degrade gracefully
         break;
       case 'protocol':
         // SDK/client and daemon disagreed about the wire contract
@@ -121,7 +121,7 @@ See [react-native-quickstart.ts](../examples/react-native-quickstart.ts) for a r
 - `fetch` can come from the React Native runtime or be injected explicitly.
 - `WebSocket` can come from the runtime or be passed through `WebSocketImpl`.
 - The React Native entrypoint is WebSocket-only; SSE (`viaSse`) is not exposed and `sseReconnect` is a no-op.
-- Provide a token store or `getAuthToken` when token state can rotate during the app session: see [Token storage](#token-storage).
+- Provide a token store or `getAuthToken` when token state can rotate during the app session. See [Token storage](#token-storage).
 - Reconnect after foreground/resume and network transitions.
 - Use HTTP for snapshots/mutations and WebSocket for live updates.
 - For Expo-managed apps, use [expo-integration.md](./expo-integration.md).

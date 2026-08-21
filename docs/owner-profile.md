@@ -404,8 +404,18 @@ interface ProfileFieldValue {
   readonly valid: boolean;
   readonly invalidReason?: string;
   readonly provenance?: ProfileLine['provenance'];
+  readonly fieldId: string;       // e.g. `location.timezone`
+  readonly section: string;       // the heading this field was found under, as written
+  readonly lineIndex: number;     // so a write can edit exactly this line
+  readonly label: string;         // the label as written on the line, e.g. `Shipping Address`
 }
 ```
+
+A field value carries its own `lineIndex`, `section` and `label` rather than
+leaving a caller to look them up again elsewhere; a write locates the exact
+line it is editing from the field value alone, and a caller building a
+settings surface has the label as the owner actually capitalised it without a
+second lookup.
 
 Loaded once into:
 
@@ -500,7 +510,7 @@ re-open the enumerate-all hole §10 closes, by a different name.
 Absolute, enforced in three layers, all built on the existing security modules.
 No parallel notion of trust is introduced.
 
-### Layer 1 — authority
+### Layer 1: authority
 
 Every write takes an `AuthoritySurface`
 (`platform/security/untrusted-content.ts`) and is refused unless
@@ -536,14 +546,63 @@ There is **no propose path at all**. The learning ruling declined propose-first,
 so no API lets a non-owner source stage a fact for later approval. A queue an
 untrusted source can write to is a write.
 
-### Layer 2 — derivation
+#### A conversation on the owner's own channel also counts as `owner-direct`
+
+The rule as first shipped drew the line at whether a message arrived on a
+channel at all. A message from Telegram, Home Assistant or any other routed
+surface was `channel-message` authority, refused by construction, no
+exception. That was too blunt. The
+owner talking to their own assistant over their own Telegram bot is not a
+stranger, but nothing distinguished that from a forwarded email landing on the
+same channel, so a pasted flight itinerary or a mentioned birthday was
+silently never recorded, and asking afterward whether it had been tracked got
+an honest but unwelcome no.
+
+`platform/personal-capture/authority.ts` resolves this with more precision
+rather than a softer tier, which stays the standing rule everywhere else. A
+conversational turn's authority is decided from the channel it arrived on:
+
+- **No channel at all.** The owner typed directly into a surface they are
+  sitting at (the TUI, the agent, the web UI). Authority is `owner-direct`.
+- **A channel listed in `profile.ownerChannels`.** The owner has named this
+  channel, in settings, as one that reaches them privately. A message on it is
+  treated as the owner speaking, and authority is `owner-direct`.
+- **`profile.ownerChannels` is empty (the shipped default).** The channels
+  fall back to `occasions.nudgeChannel`, the channels the system already
+  pushes the owner's private occasion reminders to. A channel trusted to carry
+  a birthday reminder outward is a channel the owner has already claimed as
+  their own, so reading their own words back off it is the same conversation
+  in the other direction. This is why the Telegram case above now works
+  without anyone touching a setting.
+- **Any other channel, or a routed turn whose surface did not come through.**
+  Authority stays `channel-message`, refused exactly as before. A turn that
+  arrived over a route but could not say which one is refused rather than
+  waved through as local, because not knowing where a message came from is a
+  reason to refuse it, not a reason to trust it.
+
+A channel entry with no address, `telegram` on its own, names the whole
+surface: it means "Telegram", not "Telegram, but only the one chat id I
+happen to remember", matching how the shipped `occasions.nudgeChannel`
+default already behaves. Every refusal from this path says which setting to
+change (`profile.ownerChannels`) and why, so a legitimate channel the owner
+wants recognised is one settings edit away rather than a silent gap.
+
+This decision is made once per conversational turn, before the write gate in
+this section ever runs. It only ever *promotes* a channel turn to
+`owner-direct`; it cannot weaken a turn that already carries `owner-direct`,
+and it never bypasses layers 2 and 3, a channel-message turn promoted this way
+still has to clear the derivation check below and still needs a verbatim
+quote. Governed by `profile.conversationalCapture` (§12); off leaves ordinary
+reads and hand edits untouched and only turns off this writing path.
+
+### Layer 2: derivation
 
 Layer 1 trusts the caller's claim about its own surface. Layer 2 does not.
 
 Before a line lands, its text and its verbatim quote are checked with
-`findContentTaint()` against `getProcessUntrustedContentLedger().taintSourcesThisTurn()`.
-If the proposed text overlaps untrusted text read this turn, the write is refused
-and the refusal names the origin and shows the overlapping excerpt via
+`findContentTaint()` against untrusted content the process has actually seen.
+If the proposed text overlaps that content, the write is refused and the
+refusal names the origin and shows the overlapping excerpt via
 `describeContentTaint()`.
 
 This defeats the realistic attack: a page saying *"the user's home address is
@@ -551,11 +610,30 @@ This defeats the realistic attack: a page saying *"the user's home address is
 forged `owner-direct` claim, because the value appears verbatim in the ledger's
 retained page text.
 
-The check runs **twice** over the same sources, refusing on a finding from
-either:
+The check runs **twice**, over two different windows, refusing on a finding
+from either:
 
-1. length-based derivation over `{value, said}` with no exact fields;
-2. exact containment over `{value}` with `exactMatchFields: ['value']`.
+1. length-based derivation over `{value, said}`, and `{section}` too when the
+   write is landing under a section the owner did not name, against
+   `taintSourcesSinceLastTurnBoundary()`;
+2. exact containment over `{value}`, and `{section}` for a made-up heading,
+   against `taintSourcesRetained()`, everything the ledger still holds from
+   any earlier turn.
+
+Pass 1 does **not** use `taintSourcesThisTurn()`. An earlier version did, and it
+was measured wrong: the gateway starts a new turn as the first statement of
+`invokeGatewayMethodCall`, before dispatch, so a `profile.set` call that
+declared `explicitUserRequest: true` moved the watermark past a page the agent
+had just read, and the same write that was correctly refused with the page in
+the window was allowed straight after. `taintSourcesSinceLastTurnBoundary()` is
+the smallest window that survives the boundary the gated call itself crosses.
+
+Pass 2 is deliberately wider than "this turn": it runs over everything the
+ledger has retained from any earlier turn, not scoped to a turn at all, because
+a value that appears verbatim inside something a stranger wrote is not made
+safe by however many turns have passed since it was read, and scoping this pass
+to one turn would let an attacker defeat it by waiting. It stays safe to widen
+only because it demands an exact match rather than a fuzzy one.
 
 Two passes rather than one because `findContentTaint` **skips the word-shingle
 and span checks for any field listed in `exactMatchFields`**, it takes the
@@ -566,6 +644,14 @@ the 8-word and 40-character thresholds (an email address, a phone number, an
 alias); pass 1 catches the long ones including reworded and partially-quoted
 forms. No field is exempt from either pass, so no value's only defence is exact
 string equality.
+
+The canonical section name a write lands under (`Notes`, `Commerce`, and so
+on) never joins either check: a heading is one short word, and exact
+containment of "Notes" against any page that happens to use that word would
+refuse every legitimate note. A section the owner invented is different,
+because a made-up heading lifted verbatim off a page is exactly the case the
+length floor cannot see on its own, so it rides pass 1 by length and pass 2 by
+exact containment like any other proposed value.
 
 ### Removal is a write, and gets layer 1
 
@@ -608,7 +694,7 @@ queuing an out-of-hours ruling, and it is not one of the four rulings in §1. Th
 owner can overturn it; the reasoning is written out above precisely so that it
 can be weighed rather than re-derived.
 
-### Layer 3 — a verbatim quote must exist
+### Layer 3: a verbatim quote must exist
 
 An autonomous write must carry a non-empty `said`. A fact learned from a page has
 no owner utterance to quote, so the requirement is itself a filter, and it is
@@ -716,7 +802,8 @@ requires a caller to pass `- Allergic to shellfish` and finds nothing for
 `Allergic to shellfish`. That is the wrong boundary: the owner says "forget that
 I'm allergic to shellfish", and the marker is a markdown artefact nobody uttered.
 
-The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered `1.`) from
+The matcher strips a leading list marker (`-`, `*`, `+`, or an ordered `1.` or
+`1)`) from
 the stored line and from the wanted text before comparing, so both forms find the
 same line. Nothing else changes, and it cannot widen a match into the wrong line,
 because ambiguity is already refused.
@@ -991,12 +1078,20 @@ while the map itself looks right. It is also wired into `validate`, not only
 exposed as a script. The other file's top-level-only rationale is better argued
 than mine and its header reasoning should be carried across.
 
-Worth recording: both implementations independently found the **same five**
-daemon-owned modules as legitimately internal. Two people reaching the same
+Worth recording: both implementations independently found the **same six**
+daemon-owned modules as legitimately internal (`channel-profiles`,
+`channel-sync`, `checkin`, `ci-watch`, `principals`, `push`, one more has
+joined the list since this was first written). Two people reaching the same
 allowlist without conferring is the strongest evidence available that the
 allowlist is right and not just convenient.
 
-### 11.2 Open tier vs closed tier — the outbound rule
+As of this pass, neither file has actually been deleted: `check-exports-coverage.ts`
+and `check-subpath-declared.ts` both still exist, wired to `exports:check` and
+`subpath:declared:check` respectively, so the ruling above is a decision made
+and not yet carried out. Nothing here should assume the merge already
+happened.
+
+### 11.2 Open tier vs closed tier, the outbound rule
 
 **Profile content is never bulk-injected into model context.** That is what makes
 requirement 7 structural rather than a hope: a composition path cannot leak the
@@ -1045,7 +1140,7 @@ same turn.**
 
   | Path | Function | What it covers |
   |---|---|---|
-  | `platform/export/session-export.ts` | both | markdown and JSON session exports |
+  | `platform/export/session-export.ts` | `redactSensitiveData` | markdown and JSON session exports |
   | `platform/runtime/at-rest-persistence.ts` | `redactSensitiveData` | what a turn writes to disk |
   | `platform/runtime/telemetry/api-helpers.ts` | `redactStructuredData` | telemetry payloads, attributes, span attributes |
   | `platform/utils/error-display.ts` | `redactSensitiveData` | `redactedErrorMessage`, so a thrown value carrying a profile string does not surface it |
@@ -1077,6 +1172,8 @@ settings in the TUI, the agent and the webui.
 | `profile.consumerFallback` | `true` | Whether unset consumer config keys fall back to the profile (§13). On, because a profile nothing reads is a diary. |
 | `profile.reloadThrottleMs` | `2000` | Only used where `fs.watch` is unavailable; under human edit-then-check latency and off the read path. |
 | `profile.path` | `""` | Empty means §3's default path; an override for a non-default daemon home. |
+| `profile.conversationalCapture` | `true` | Let an ordinary conversation record a fact as the owner says it, a trip, a birthday, a preference, a person, instead of only recording it in response to an explicit save. Off leaves every read and every hand edit exactly as before; it only stops this writing path, and a turn that would have recorded something says so instead of staying quiet. |
+| `profile.ownerChannels` | `""` | Which channels count as the owner speaking, for §7's channel-authority rule. Comma-separated, same `surfaceKind` or `surfaceKind:address` grammar as `occasions.nudgeChannel`. Empty means it inherits `occasions.nudgeChannel`, the channels already trusted to carry the owner's own reminders. |
 
 `profile.enabled = false` means the file is not loaded and every verb answers
 "profile is disabled", a stated state, not an empty profile.

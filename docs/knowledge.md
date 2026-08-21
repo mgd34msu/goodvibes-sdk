@@ -397,8 +397,10 @@ repair runs. Retry windows still prevent tight loops, and repair sources linked
 elsewhere on the same object do not block new gaps from being repaired.
 
 Foreground repair attempts use bounded web search and URL-ingest waits, accept
-two repair sources by default, yield between gap attempts, and mark interrupted
-active tasks as blocked-and-retriable on the next run for that space.
+up to five repair sources by default (the same source cap self-improvement and
+scheduled refinement use, since Ask's foreground pass runs through the same
+gap-repair budget), yield between gap attempts, and mark interrupted active
+tasks as blocked-and-retriable on the next run for that space.
 
 ## Review pathways
 

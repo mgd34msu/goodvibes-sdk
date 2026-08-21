@@ -42,9 +42,11 @@ The realtime transport (`@pellux/goodvibes-sdk/transport-realtime`) exposes two 
 - `forSession(...)` / `forSessionRuntime(...)` scope a feed to a single session.
 - `SerializedEventEnvelope` is the wire-envelope type delivered by connectors.
 
-**Outbound-queue backpressure (WebSocket).** Messages queued while the socket is reconnecting are held in a bounded, drop-oldest queue: up to 1,024 messages / 16 MiB total, with a single message above 1 MiB rejected outright. On overflow `onBackpressure` fires with `{ droppedCount, queueLength, queueBytes, reason }`.
+**Outbound-queue backpressure (WebSocket).** Messages queued while the socket is reconnecting are held in a bounded, drop-oldest queue, up to 1,024 messages or 16 MiB total, with a single message above 1 MiB rejected outright. On overflow `onBackpressure` fires with `{ droppedCount, queueLength, queueBytes, reason }`.
 
 **Insecure-transport guard.** The WebSocket connector refuses to send authentication over a non-loopback `ws://` URL, throwing a `ConfigurationError`. Use `wss://` (or `https://`, which is upgraded to `wss://`) for remote hosts.
+
+**Turn lifecycle gate.** A client that opens a fresh stream (rather than resuming from `Last-Event-ID`) can be replayed the tail of whatever turn was running before it connected, including that turn's terminal event. Without protection, a previous turn's `TURN_COMPLETED` lands in the new consumer and prematurely finishes a turn it never started. `createTurnLifecycleGate()` from `transport-realtime` guards against this. It binds per session to whichever turn is seen to start (`TURN_SUBMITTED`) and then accepts only that turn's frames, silently dropping replayed terminal frames while unbound. Pass an explicit `turnId` when the consumer already knows which turn it submitted.
 
 ## Telemetry APIs
 
@@ -59,6 +61,8 @@ const snapshot = await sdk.operator.telemetry.snapshot({ limit: 100 });
 // (since/until), and a cursor for pagination
 const errors = await sdk.operator.telemetry.errors({ severity: 'error' });
 ```
+
+The same filter shape works across the sibling list methods. `sdk.operator.telemetry.events(filter)` returns the raw runtime-event records, a superset of what `errors` returns, unfiltered by severity. `sdk.operator.telemetry.traces(filter)` returns OTel-shaped spans, and `sdk.operator.telemetry.metrics(filter)` returns an aggregate metrics snapshot. `sdk.operator.telemetry.stream(handlers, filter)` opens a live server-sent stream of telemetry records and returns an unsubscribe function, for consumers that want a push feed instead of polling `snapshot`.
 
 ## OTLP exports
 

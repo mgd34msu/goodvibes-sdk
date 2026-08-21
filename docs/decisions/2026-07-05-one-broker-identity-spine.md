@@ -39,6 +39,13 @@ smaller than any distributed alternative.
   in lockstep across the type (`session-types.ts`), the runtime validator (`SESSION_KINDS`),
   the wire enum (`SHARED_SESSION_KIND_SCHEMA`), and the daemon-sdk response reader.
 
+  Correction (2026-08-21, v2.0.19): `SharedSessionKind` has grown three more members since
+  this record, `channel` (a channel-surface conversation, home-scoped like companion chat),
+  `acp` (a hosted third-party coding agent over the Agent Client Protocol), and `hosted` (a
+  first-party conversation loop composed inside the daemon; see Phase B below). The
+  one-broker structure this record decided still holds; only the enumerated kind list has
+  widened.
+
 - **Project-as-data.** `SharedSessionRecord.project` (required on new records, backfilled to
   `'unknown'` on load). The broker store moved from the project-scoped path
   (`<cwd>/.goodvibes/<surface>/control-plane/sessions.json`) to the ONE home-scoped path

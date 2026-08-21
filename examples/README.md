@@ -32,6 +32,7 @@ that handle credentials, pairing tokens, or daemon URLs.
 | `companion-approvals-feed.ts` | `bun examples/companion-approvals-feed.ts` | Approval feed via realtime events. |
 | `daemon-fetch-handler-quickstart.ts` | `bun examples/daemon-fetch-handler-quickstart.ts` | Daemon route handler composition skeleton. Demonstrates the wiring shape with an authenticated status route, the generated operator contract, and minimal host callbacks. To run a real daemon host, provide gateway-method invocations, principal resolution, login/session handling, and a real session manager. See [Daemon embedding](../docs/daemon-embedding.md). |
 | `direct-transport-quickstart.ts` | `bun examples/direct-transport-quickstart.ts` | In-process direct transport usage. |
+| `embed-session-quickstart.ts` | typecheck only | SDK Embedding API 1.0 shape: create an embedded session against a workspace, answer permission asks through the callback seam, subscribe to typed events, send input, shut down. Not executed because it would boot a real daemon. |
 | `expo-quickstart.tsx` | typecheck only | Expo client setup; run inside an Expo app. |
 | `operator-http-quickstart.mjs` | `bun examples/operator-http-quickstart.mjs` | Operator HTTP client calls. Requires `GOODVIBES_TOKEN`. |
 | `peer-http-quickstart.mjs` | `bun examples/peer-http-quickstart.mjs` | Operator snapshot over HTTP. Calls only `sdk.operator.snapshot()`. Demonstrates no peer-specific endpoints (pairing, peer, work). Requires `GOODVIBES_TOKEN`. |

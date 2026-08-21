@@ -1,16 +1,30 @@
 # Automation and watchers
 
-The automation system provides durable jobs, runs, schedules, route bindings,
-deliveries, and watcher services for daemon-hosted work.
+The automation system runs prompts on a schedule instead of waiting for a
+conversation to start one. A **job** is the durable record of what to run and
+when; each time it fires it produces a **run**, the record of one execution
+attempt with its own status, timing, and output. A job's trigger is described
+by a **source** (a cron expression, a fixed interval, a one-off time, a
+webhook, or an external watcher), and where its output goes is described by a
+**route binding** and a **delivery**, the record of what actually happened
+when that output tried to reach a surface. **Schedules** are the host-owned
+records that turn a source description into something the engine actually
+fires on. Consumer apps interact with all of this through the operator
+methods documented below; daemon embedders wire automation through host
+runtime composition rather than a catch-all platform namespace.
 
-Consumer apps interact through operator methods documented below. Daemon embedders wire automation through host runtime composition rather than a catch-all platform namespace.
-
-The method lists below are an index. For the full request and response shape of each method, including the category each method is registered under (for example `watchers.list` under `watchers`, `services.status` under `services`), see the generated [Operator method reference](./reference-operator.md), or fetch the live catalog at `GET /api/control-plane/methods` for the registration in your daemon build.
+The method lists in this document are an index, not the full contract. For
+the request and response shape of each method, including the category it is
+registered under (for example `watchers.list` under `watchers`,
+`services.status` under `services`), see the generated
+[Operator method reference](./reference-operator.md), or fetch the live
+catalog at `GET /api/control-plane/methods` for the registration in your
+daemon build.
 
 ## Automation domain
 
-Automation records are split into jobs, runs, sources, routes, schedules, and
-deliveries.
+Automation records split into jobs, runs, sources, routes, schedules, and
+deliveries, each covering one piece of "what runs, when, and what happened."
 
 Operator methods:
 
@@ -30,23 +44,47 @@ Operator methods:
 - `automation.heartbeat.run`
 - `scheduler.capacity`
 
-Automation config controls enablement, max concurrent runs, run history,
-default timeout, catch-up window, failure cooldown, and delete-after-run.
+`automation.jobs.create` accepts a `kind` of `cron`, `every`, or `at`, and the
+schedule field required alongside it depends on which kind is chosen. It is a cron
+expression for `cron` (also accepted nested as `schedule.expression`), an
+interval for `every`, or a fixed timestamp for `at`. A bare `{ prompt }` with
+no schedule information is never a complete call; the job also carries the
+model and provider to run it under, an execution intent describing how the
+session is created, a delivery policy for where the output goes, and a
+failure policy for what happens after a run fails.
+
+Automation config controls whether the subsystem runs at all, how much of it
+runs at once, and how long its history is kept:
+
+| Key | Default | What it controls |
+|---|---|---|
+| `automation.enabled` | `true` | Master gate for the subsystem: durable jobs, schedule evaluation, run history. With no jobs defined it idles. |
+| `automation.maxConcurrentRuns` | `4` | How many automation runs may execute at the same time. |
+| `automation.runHistoryLimit` | `100` | Run history entries retained per job before the oldest are dropped. |
+| `automation.defaultTimeoutMs` | `900000` (15 minutes) | Execution timeout applied to a run that does not set its own. |
+| `automation.catchUpWindowMinutes` | `30` | How long after daemon startup the engine will still catch up runs it missed while it was down. |
+| `automation.failureCooldownMs` | `300000` (5 minutes) | Cooldown enforced after a failed run before the job is eligible to run again. |
+| `automation.deleteAfterRun` | `false` | Whether a one-shot job (`kind: 'at'`) deletes itself after its first successful run. |
 
 > **Core-verb rename (see CHANGELOG 1.0.0):** `automation.jobs.patch` was renamed to
-> `automation.jobs.update`: the canonical verb is `update`, not `patch`. The
-> separate `automation.jobs.pause` / `automation.jobs.resume` methods were
-> retired: they were a byte-identical redundant lifecycle pair with
+> `automation.jobs.update`. The canonical verb is `update`, not `patch`; the
+> HTTP method on the route (`PATCH /api/automation/jobs/{jobId}`) is
+> unaffected, only the operator-method id changed. The separate
+> `automation.jobs.pause` / `automation.jobs.resume` methods were retired.
+> They were a byte-identical redundant lifecycle pair with
 > `automation.jobs.disable` / `automation.jobs.enable` (same `{id, enabled}`
-> output, same semantics: pause==disable, resume==enable). A caller-facing
+> output, same semantics, pause==disable, resume==enable). A caller-facing
 > "pause"/"resume" verb should now invoke `automation.jobs.disable` /
-> `automation.jobs.enable`. See
+> `automation.jobs.enable`. `patch`, `pause`, and `resume` are permanently
+> banned verb tails (`packages/contracts/src/core-verbs.ts`) and cannot
+> reappear under any automation method id. See
 > [`packages/contracts/src/core-verbs.ts`](../packages/contracts/src/core-verbs.ts)
 > and `docs/decisions/2026-07-06-core-verb-spec.md`.
 
 ## Schedules
 
-The schedule endpoints manage host-owned schedule records:
+A schedule is a host-owned record of a recurring or one-off trigger,
+independent of the job it fires. The schedule endpoints manage those records:
 
 - `automation.schedules.list`
 - `automation.schedules.create`
@@ -67,13 +105,26 @@ The schedule endpoints manage host-owned schedule records:
 > two clearly-scoped "schedule" families: `automation.schedules.*` (this one)
 > and `knowledge.schedule(s).*` (below).
 
-Knowledge jobs also have their own schedule API. The single-record methods are singular: `knowledge.schedule.get`, `knowledge.schedule.save`, `knowledge.schedule.delete`, and `knowledge.schedule.enable`, while the list method is the plural `knowledge.schedules.list`. This singular-item and plural-list split is the CANONICAL namespace convention (see `core-verbs.ts`), not a special case. `automation.schedules.*` above has no separate single-item family because none of its callers need one yet.
+Knowledge jobs have their own, separate schedule API for recurring
+knowledge-ingestion work, not automation prompt jobs. Its single-record
+methods are singular, `knowledge.schedule.get`, `knowledge.schedule.save`,
+`knowledge.schedule.delete`, and `knowledge.schedule.enable`, while the list
+method is the plural `knowledge.schedules.list`. This singular-item and
+plural-list split is the canonical namespace convention
+(`packages/contracts/src/core-verbs.ts`) for a resource family that has both
+a per-item action surface and a collection surface where the plural form
+alone would be ambiguous about which one an action targets, not a special
+case invented for knowledge. `automation.schedules.*` above has no separate
+singular family because nothing needs one yet; introducing one defensively
+"for symmetry" is explicitly against the convention.
 
 ## Route bindings
 
-Route bindings preserve the relationship between external surfaces and daemon
-state. They are used by channel replies, ntfy, Home Assistant, companion/chat
-flows, and automation delivery.
+A route binding is the daemon's memory of which external conversation a piece
+of state belongs to, a Telegram thread, an ntfy topic, a Home Assistant
+callback, a companion-app chat session. Automation delivery, channel replies,
+and other daemon-hosted work read and write these bindings so a reply lands
+back in the same place the original message came from.
 
 Operator methods:
 
@@ -81,46 +132,89 @@ Operator methods:
 - `surfaces.list`
 - `routes.bindings.list`
 - `routes.bindings.create`
-- `routes.bindings.patch`
+- `routes.bindings.update`
 - `routes.bindings.delete`
 
-Route bindings can carry surface kind, external id, thread id, channel id,
-session id, job id, run id, and metadata.
+> **Core-verb rename (see CHANGELOG 1.0.0):** `routes.bindings.patch` was renamed to
+> `routes.bindings.update`, the same rename applied to `automation.jobs.patch`
+> and `watchers.patch` below, for the same reason: `update` is the one
+> canonical partial-mutation verb, and `patch` mirrored the HTTP method name
+> instead of the operator-method vocabulary. The HTTP route
+> (`PATCH /api/routes/bindings/{bindingId}`) is unaffected.
+
+A route binding can carry surface kind, external id, thread id, channel id,
+session id, job id, run id, and metadata, so a single record can describe
+where a job's output should land regardless of which of those identifiers the
+destination surface actually organizes around.
 
 ## Deliveries
 
-Deliveries track outbound results, surface-specific status, retries, and
-dead-letter posture.
+A delivery is the outcome of one attempt to get a message to a surface:
+whether it landed, how many times it was retried, and whether it ended up
+dead-lettered after exhausting its retries.
 
 Operator methods:
 
 - `deliveries.list`
 - `deliveries.get`
 
-The `integrations.delivery.sloEnforced` setting (default on) adds stricter retry/dead-letter
-reporting when enabled.
+The `integrations.delivery.sloEnforced` setting (default `true`) controls how
+strictly a failure is tracked. On, a failure is classified retryable or
+terminal, retried with exponential backoff, and a dead letter is logged at
+error level and surfaced in integration diagnostics, replayable via
+`/notify replay`. Off, dead letters are logged at warn level only. An
+explicit per-queue `sloEnforced` option, when a caller sets one, overrides
+this default for that queue alone.
 
 ## Watchers
 
-Watchers are managed listener/poller services for external triggers and health.
+A watcher is a managed, checkpointed poller or listener over an external
+source, CI status, a webhook endpoint, a health check, with its own recovery
+behavior if the daemon restarts mid-poll. This is a different subsystem from
+the automation jobs above. A job runs a prompt on a schedule, while a watcher
+tracks the state of something external between polls and recovers a missed
+window rather than re-running from scratch.
 
 Operator methods:
 
 - `watchers.list`
 - `watchers.create`
-- `watchers.patch`
+- `watchers.update`
 - `watchers.delete`
 - `watchers.start`
 - `watchers.stop`
 - `watchers.run`
 
-Watcher config controls enablement, poll interval, heartbeat interval, and
-recovery window.
+> **Core-verb rename (see CHANGELOG 1.0.0):** `watchers.patch` was renamed to
+> `watchers.update`, the same rename applied to `automation.jobs.patch` and
+> `routes.bindings.patch` above. The HTTP route
+> (`PATCH /api/watchers/{watcherId}`) is unaffected.
+
+Watcher config controls whether the subsystem runs, how often it polls, and
+how it recovers from a restart:
+
+| Key | Default | What it controls |
+|---|---|---|
+| `watchers.enabled` | `true` | Master gate for managed watcher/listener services. With none configured the framework idles. |
+| `watchers.pollIntervalMs` | `60000` | Polling interval for watcher sources. |
+| `watchers.heartbeatIntervalMs` | `15000` | Heartbeat interval for watcher services, how often a running watcher checks in. |
+| `watchers.ciPollIntervalMs` | `60000` | Cadence for the daemon's recurring CI-status poll specifically; the poller enforces a 15-second floor regardless of this setting, to respect the status source's rate limits. |
+| `watchers.recoveryWindowMinutes` | `10` | How far back a restarted watcher looks to catch up on missed events. |
+
+A separate, unrelated subsystem, the stream/condition/on-exit trigger family
+under `platform/triggers/`, shares a confusingly similar config prefix
+(`watchers.triggers.*`) but is a different feature. It supervises long-lived
+child processes and fires on log patterns, declarative condition checks, or
+process exit, rather than polling an external source. It has no operator
+methods of its own today, so it is configuration-only; see the config keys
+under `watchers.triggers.*` if you are looking for that feature rather than
+the polling watchers documented above.
 
 ## Services
 
 The service-management methods expose installation and runtime control for a
-daemonized GoodVibes host.
+daemonized GoodVibes host, the platform service itself, not a job or a
+watcher.
 
 Operator methods:
 

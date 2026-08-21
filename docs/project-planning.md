@@ -9,29 +9,48 @@ Accessible via `@pellux/goodvibes-sdk/platform/knowledge` (daemon embedders). Co
 
 ## Boundary
 
-The TUI owns the active planning experience:
+The SDK never decides what to ask or when to ask it; it only stores what the
+conversation produces and reports whether the result is ready to execute. The
+TUI is what actually runs the planning conversation, and it owns:
 
-- natural-language planning intent detection
-- repo, docs, settings, and knowledge inspection
-- the relentless interview loop
-- one-question-at-a-time user interaction
-- the passive planning panel
-- execution approval
-- agent assignment UX
+- **Detecting planning intent.** Recognizing, from ordinary conversation, that
+  the user wants to plan something rather than just chat or make a one-off
+  request.
+- **Inspecting the project.** Reading the repo, its docs, its settings, and
+  existing knowledge records before asking the user anything, so questions
+  are informed rather than generic.
+- **The interview loop.** Driving the back-and-forth that turns a vague ask
+  into a goal, a scope, and a list of open questions.
+- **Asking one question at a time.** Keeping the conversation disciplined
+  rather than dumping a checklist on the user at once.
+- **The passive planning panel.** Rendering the state the SDK returns as a
+  visible plan the user can watch build up.
+- **Execution approval.** Deciding when a plan is actually ready to hand to
+  agents, which the SDK can recommend against but never force.
+- **Agent assignment UX.** Presenting which agent would take which task and
+  letting the user confirm or change it.
 
-The SDK owns passive infrastructure:
+The SDK owns the passive infrastructure underneath that experience:
 
-- shared TypeScript types and operator contracts
-- project-scoped durable planning artifacts
-- project-language and ambiguity records
-- decision records
-- task, dependency, verification, and agent-assignment metadata
-- readiness evaluation with gap and next-question hints
-- knowledge/wiki storage helpers
+- **Shared TypeScript types and operator contracts** that the TUI, webui, and
+  daemon all use to agree on the shape of a plan.
+- **Project-scoped durable planning artifacts**, the actual records described
+  below, persisted so a plan survives a restart.
+- **Project-language and ambiguity records**, so a term the user has already
+  clarified is not re-litigated in a later conversation or by a different
+  agent.
+- **Decision records**, for choices worth remembering beyond the code itself.
+- **Task, dependency, verification, and agent-assignment metadata**, the
+  structured pieces a plan decomposes into once it has a goal.
+- **Readiness evaluation**, which inspects a plan and returns concrete gaps
+  and a next question rather than a bare yes/no.
+- **Knowledge and wiki storage helpers**, since planning artifacts are stored
+  as ordinary knowledge records rather than a separate persistence system.
 
-The daemon never initiates planning. It exposes storage/evaluation routes only.
-Home Assistant, companion apps, ntfy, Slack, webhooks, and other programmatic
-surfaces are not routed into planning loops by this feature.
+The daemon never initiates planning on its own. It exposes storage and
+evaluation routes only. Home Assistant, companion apps, ntfy, Slack, webhooks,
+and other programmatic surfaces are not routed into planning loops by this
+feature.
 
 ## Work plans
 
@@ -104,9 +123,11 @@ Planning records are stored as `KnowledgeSourceRecord` rows with:
 - `connectorId: "goodvibes-project-planning"`
 - `sourceType: "dataset"`
 - `metadata.projectPlanning: true`
-- `metadata.planningArtifactKind`
+- `metadata.planningArtifactKind`, one of the four kinds below
+- `metadata.planningArtifactId`, the id of the individual record (a task id, a decision id)
+- `metadata.projectId`
 - `metadata.knowledgeSpaceId`
-- `metadata.value`
+- `metadata.value`, the artifact itself
 
 Artifact kinds:
 

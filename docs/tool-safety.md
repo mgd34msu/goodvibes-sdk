@@ -167,9 +167,10 @@ not replace validation inside a handler for model-provided arguments.
 
 ## Durable approval rules and deny-as-feedback
 
-Approval prompts carry remember tiers, most specific first: this exact
-command, this command class (e.g. every `git ...`), edits under the asked
-path's directory, always for this tool in this project, or session-only.
+Approval prompts carry remember tiers, most specific first. The tiers are
+this exact command, this command class (e.g. every `git ...`), edits under
+the asked path's directory, always for this tool in this project, or
+session-only.
 A generalizing tier writes a durable user-origin rule
 (`UserPermissionRuleStore`, one JSON file per project) that the permission
 manager consults before ever prompting. The tenth `git commit` never
@@ -181,7 +182,7 @@ Allow rules use conservative batch semantics: every command (or edited path)
 in a call must be covered, so a mixed batch never rides in on a partial
 grant. Deny rules fire on any covered element.
 
-Denials are feedback, not turn-enders: a declined tool call resolves with a
+Denials are feedback, not turn-enders. A declined tool call resolves with a
 structured user-declined result, including the user's optional reason
 ("The user said: ..."), in a continuing turn, so the model adapts instead
 of dying. Duplicate in-flight asks coalesce to one prompt, and a remembered

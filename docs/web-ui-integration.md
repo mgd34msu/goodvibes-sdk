@@ -29,8 +29,12 @@ point `controlPlane.webui.bundleDir` at the built web UI directory (`index.html`
 `assets/`). The daemon then serves the bundle at `/` from its own origin, so the
 browser's same-origin policy is a non-issue. Bundle and API share one origin. Static
 assets carry correct content types and caching (hashed `assets/*` immutable, the shell
-`no-cache`), and unknown navigation routes fall back to `index.html` (SPA). Any
-`/api/*` path keeps precedence and is never served as a file. The bundle is public; the
+`no-cache`), and unknown navigation routes fall back to `index.html` (SPA). The daemon's
+own routes always keep precedence over the bundle: every `/api/*` path, `/login`,
+`/webhook/*`, `/task`, the OpenAI-compatible prefix, and every other top-level path
+segment any operator method advertises (for example `/status` and `/config`) is
+dispatched to the API and never served as a file, so an SPA fallback can never shadow
+a liveness probe or an admin read with the HTML shell. The bundle is public; the
 app still token-authenticates every API call.
 
 For cross-machine reach, front the single daemon origin with `tailscale serve` over
@@ -142,16 +146,22 @@ await sdk.chat.messages.create(created.sessionId, {
 ```
 
 `messages.create` accepts text-only, attachment-only, and text-plus-attachment
-messages. Message history and `companion-chat.turn.started` events include the
-resolved attachment descriptors. Small text artifacts are inlined into the
-provider prompt, supported image artifacts are passed as multimodal content, and
-other artifact types remain durable references visible to the model as an
-attachment summary.
+messages, up to 8 attachments per message. Message history and
+`companion-chat.turn.started` events include the resolved attachment descriptors.
+
+What the daemon does with an attachment depends on its size and MIME type. A text
+artifact (`text/*`, `application/json`, `application/xml`, `application/yaml`, or
+`text/csv`) up to 200 KB is read back and inlined into the provider prompt as plain
+text. An image artifact (`image/png`, `image/jpeg`, `image/gif`, or `image/webp`) up
+to 20 MB is base64-encoded and passed as multimodal image content. Everything else,
+and anything over those size limits, stays a durable artifact reference: the model
+sees only a text summary listing the attachment's name, MIME type, and size, not
+its contents.
 
 ## Voice playback (streaming TTS)
 
 `POST /api/voice/tts/stream` returns raw audio bytes as a stream (see
-[Voice and Streaming TTS](./voice.md)). A web UI owns local playback: read the
+[Voice and Streaming TTS](./voice.md)). A web UI owns local playback. Read the
 `fetch` response body as a `ReadableStream` and feed it to the Web Audio API or
 a `MediaSource` so audio starts before the full clip arrives.
 

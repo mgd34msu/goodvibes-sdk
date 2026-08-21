@@ -88,13 +88,13 @@ try {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {
       case 'auth':
-        // session expired — redirect to login or refresh token
+        // session expired, redirect to login or refresh token
         break;
       case 'network':
-        // transport failure — reconnect SSE/WS or retry
+        // transport failure, reconnect SSE/WS or retry
         break;
       case 'service':
-        // daemon or upstream service returned 5xx — log and degrade gracefully
+        // daemon or upstream service returned 5xx, log and degrade gracefully
         break;
       case 'protocol':
         // SDK/client and daemon disagreed about the wire contract

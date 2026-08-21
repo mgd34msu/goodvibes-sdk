@@ -129,3 +129,28 @@ push service, never the external network):
 Contract/verb/parity gates green: `refresh:contracts:check`, `contracts:check`,
 `docs:check`, `line:check`, `any:check`, and the core-verbs conformance +
 operator-contract catalog + transport-parity suites.
+
+## Correction (2026-08-21, v2.0.19)
+
+The delivery and event-source design has grown past what this record describes:
+
+- **Delivery honesty now includes a bounded-retry prune.** Section 3 above says a
+  non-gone failure is reported `failed`, never faked as a success; that is still true,
+  but the daemon now also prunes an endpoint that keeps failing without ever
+  returning 404/410. After 5 consecutive non-gone failures (configurable via
+  `push.subscriptions.failureThreshold`) the subscription is removed and the receipt
+  reports `pruned` with the failure count, not left as an endless string of `failed`
+  receipts.
+- **A fourth subscription verb exists.** `push.subscriptions.reconcile` lets a
+  device heal a stale record by re-registering its current endpoint/keys against a
+  stable `deviceId`, reporting what drifted. It was not part of the original
+  `push.*` verb group above.
+- **The "real event source" is no longer just approvals.** Turn/agent-completion,
+  anticipated above as a natural second source, has been added
+  (`PushService.attachCompletionSource`), and a third source was added that this
+  record did not anticipate at all: fleet needs-input notifications
+  (`PushService.attachFleetNeedsInputSource`), which suppress the immediate push
+  when an operator surface is already attached to the session, then escalate past
+  that suppression with bounded reminders if the block goes unanswered past a grace
+  period. All three sources still funnel through the same `deliver()` dispatch
+  point described above.

@@ -12,11 +12,11 @@ The following changes require a major version bump:
 
 - **Removing a public export** from any subpath export entry (e.g. removing `createGoodVibesSdk` from `@pellux/goodvibes-sdk` or any equivalent factory from a named subpath)
 - **Changing a public export's type signature in a narrowing direction**: removing a property from a public interface or type, narrowing an accepted parameter type, making an optional field required, or removing a union member from a parameter type
-- **Renaming or changing the value of an `SDKErrorKind` union member** (e.g. renaming `'auth'` to `'authentication'`, or `'not-found'` to `'notFound'`). The full current union is: `'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'` (12 values, verified against `packages/errors/src/index.ts:37-49`)
+- **Renaming or changing the value of an `SDKErrorKind` union member** (e.g. renaming `'auth'` to `'authentication'`, or `'not-found'` to `'notFound'`). The full current union has 12 values: `'auth' | 'config' | 'contract' | 'network' | 'not-found' | 'protocol' | 'rate-limit' | 'service' | 'internal' | 'tool' | 'validation' | 'unknown'`
 - **Renaming an SDK factory function** (e.g. renaming `createGoodVibesSdk`, `createBrowserGoodVibesSdk`, `createWebGoodVibesSdk`, `createReactNativeGoodVibesSdk`, `createExpoGoodVibesSdk`, `createPeerSdk`, or `createGoodVibesAuthClient`)
 - **Changing the resolution target of a subpath export** in a way that breaks consumers (e.g. moving `./browser` to resolve to a different module without a redirect, or replacing `./web` with `./browser` in the exports map)
-- **Changing wire-format or transport defaults** in a way that breaks existing consumers without opt-in (e.g. shortening the default realtime reconnect backoff cap of 30 s, changing default retry counts, or changing default headers). Note: the HTTP transport has no built-in default request timeout, cancellation is caller-driven via `AbortSignal`, so there is no timeout default to break here
-- **Removing a supported runtime from the runtime matrix** (currently: `bun`, `browser`, `react-native` / Hermes, `workers`). Note: `node` as a standalone target is not a documented supported runtime. The `engines.node` field in `packages/sdk/package.json` reflects the build/Bun host requirement, not a tested Node consumer surface. See `docs/packages.md` for the full surface split.
+- **Changing wire-format or transport defaults** in a way that breaks existing consumers without opt-in (e.g. shortening the default realtime reconnect backoff cap of 30 s, changing default retry counts, or changing default headers). The HTTP transport has no built-in default request timeout; cancellation is caller-driven via `AbortSignal`, so there is no timeout default to break here
+- **Removing a supported runtime from the runtime matrix**, currently `bun`, `browser`, `react-native` / Hermes, and `workers`. `node` as a standalone target is not a documented supported runtime; the `engines.node` field in `packages/sdk/package.json` reflects the build/Bun host requirement, not a tested Node consumer surface. See [Published surface matrix](./surfaces.md) for the full surface split.
 - **Adding a new required config field** to `GoodVibesSdkOptions` or any public options interface, or promoting an existing optional field to required
 
 ---
@@ -31,7 +31,7 @@ The following changes require a minor version bump:
 - Adding a new subpath export entry (e.g. a new `./workers` entry)
 - Widening a return type in a direction that does not remove or narrow existing members (e.g. adding a new property to a returned object type)
 - Adding a new runtime to the supported runtime matrix
-- Bumping the minimum supported TypeScript version: see [TypeScript support](#typescript-support)
+- Bumping the minimum supported TypeScript version. See [TypeScript support](#typescript-support)
 
 ---
 

@@ -30,10 +30,13 @@ release-history source.
 - [Pairing](./pairing.md)
 - [Realtime and telemetry](./realtime-and-telemetry.md)
 - [Retries and reconnect](./retries-and-reconnect.md)
+- [Zero-knowledge relay](./relay-zero-knowledge.md): reaching a home daemon from outside without trusting the relay operator.
+- [ACP agent](./acp-agent.md): driving GoodVibes from ACP-capable editors through the agent-side adapter.
 
 ## Daemon and runtime
 
 - [Daemon embedding](./daemon-embedding.md)
+- [SDK embedding API](./embedding-api.md): the stability-marked `/embed` surface for hosting the runtime in another app.
 - [Provider and model API](./provider-model-api.md)
 - [Provider architecture](./providers.md)
 - [Runtime orchestration](./runtime-orchestration.md)
@@ -51,8 +54,11 @@ release-history source.
 - [Generated knowledge pages](./knowledge-pages.md)
 - [Browser knowledge ingestion](./knowledge-browser-history.md)
 - [Project Planning](./project-planning.md)
+- [Occasions and plans](./occasions.md): durable facts about the owner's life and the plans built around them.
 - [Home Assistant Home Graph](./home-graph.md)
 - [Voice and streaming TTS](./voice.md)
+- [Local voice engines](./voice-local.md): fully offline speech-to-text and text-to-speech through the `local` provider.
+- [Wake-word model](./wake-word-model.md): the pinned `hey goodvibes` classifier, its measured behavior, and attribution.
 - [Media and multimodal runtime](./media-and-search.md)
 
 ## Surfaces and automation
@@ -62,6 +68,10 @@ release-history source.
 - [Telegram integration](./telegram-integration.md)
 - [Daemon batch processing and Cloudflare](./daemon-batch-processing.md)
 - [Automation and watchers](./automation.md)
+- [Inbound email](./inbound-email.md): the design of record for receiving, classifying, and acting on owner email.
+- [Capability bundles](./plugin-bundles.md): SHA-pinned distribution for plugins, skills, and hook packs.
+- [Calendar OAuth setup](./calendar-oauth-setup.md): registering your own Google or Microsoft OAuth app; GoodVibes ships no client id.
+- [Google setup runbook](./google-setup-runbook.md): the generated manual route through Gmail and Calendar connection steps.
 
 ## Configuration and operations
 
@@ -81,12 +91,22 @@ release-history source.
 - [Testing architecture](./testing.md): suite structure and intent.
 - [Release policy](./release-and-publishing.md)
 - [Semver policy](./semver-policy.md)
+- [OpenAPI operator contract](./openapi-contract.md): the published OpenAPI 3.1 document and how it is generated.
+- [Contract regeneration recipe](./contract-regeneration-recipe.md): the end-to-end procedure for adding an operator method or namespace.
 
 ## Generated references
 
 - [Operator API reference](./reference-operator.md)
 - [Peer API reference](./reference-peer.md)
 - [Runtime events reference](./reference-runtime-events.md)
+
+## Decision records
+
+Dated records of design decisions live in [decisions/](./decisions/). Each one
+captures a choice, its alternatives, and the reasoning at the time it was made.
+Where the code has since moved, a dated correction note appears inside the
+record rather than a silent rewrite. Review findings that shaped the code are
+kept the same way in [reviews/](./reviews/).
 
 ## Project and repository docs
 

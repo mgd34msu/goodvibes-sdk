@@ -6,27 +6,27 @@ SDK ships, and `scripts/build-speexdsp-wasm.ts` is the build.
 
 ## Why WebAssembly and not a native binding
 
-The same reason the wake engine runs `onnxruntime-web` on a WASM backend: the
+The same reason the wake engine runs `onnxruntime-web` on a WASM backend. The
 filter has to run in a daemon child process under Bun **and** in a browser tab,
 and a native binding cannot run in the tab at all. One artifact that both hosts
 load is the only shape where the setting means the same thing on both. The
-module also imports nothing — no WASI syscalls, no JavaScript glue — so
+module also imports nothing, no WASI syscalls, no JavaScript glue, so
 instantiating it needs a `WebAssembly` implementation and nothing else.
 
-The cost of that choice is measured, not assumed: **0.24 ms per 80 ms frame** on
-the reference machine (see `docs/wake-word-model.md`), against the 3.46 ms the
-wake engine itself spends on the same frame.
+The cost of that choice is measured, not assumed. It runs at **0.24 ms per
+80 ms frame** on the reference machine (see `docs/wake-word-model.md`),
+against the 3.46 ms the wake engine itself spends on the same frame.
 
 ## What is compiled in
 
-Four SpeexDSP files are compiled in: `preprocess.c`, `filterbank.c`, `fftwrap.c` (with
-`USE_SMALLFT`), and `smallft.c`, plus `gv-speex-preprocess.c`, the entry points.
-Nothing else from the library is present: no echo canceller, no resampler, no
-jitter buffer, no codec.
+Four SpeexDSP files are compiled in, `preprocess.c`, `filterbank.c`,
+`fftwrap.c` (with `USE_SMALLFT`), and `smallft.c`, plus `gv-speex-preprocess.c`,
+the entry points. Nothing else from the library is present, no echo canceller,
+no resampler, no jitter buffer, no codec.
 
 `preprocess.c` references the echo canceller's `speex_echo_get_residual`, which
 is only reached when a caller attaches an echo state. Nothing here exposes a way
-to attach one, so the symbol is satisfied by a stub that traps: reaching it would
+to attach one, so the symbol is satisfied by a stub that traps. Reaching it would
 mean the module was built with an echo path it cannot service, and denoising
 against an absent canceller's residual would corrupt the audio quietly instead.
 
@@ -58,15 +58,15 @@ bun scripts/build-speexdsp-wasm.ts --check    # verifies the committed artifact,
 
 The build downloads the pinned tarball, refuses to continue unless its sha256
 matches, compiles, and rewrites
-`packages/sdk/src/platform/voice/capture/vendor/speexdsp-wasm.ts`: the base64
-of the module, its byte count, its sha256, and the pins above. `--check`
+`packages/sdk/src/platform/voice/capture/vendor/speexdsp-wasm.ts`, writing the
+base64 of the module, its byte count, its sha256, and the pins above. `--check`
 recomputes the sha256 of the committed base64 and compares it with the recorded
 one, which is also asserted by `test/voice-noise-suppression.test.ts` on every
 test run.
 
 The module is embedded in the source rather than downloaded at runtime like the
 wake models. At 53 kB it is small enough that provisioning it would cost more
-than it saves, and embedding is what makes the setting honest: there is no state
+than it saves, and embedding is what makes the setting honest. There is no state
 in which the filter is configured, unprovisioned, and therefore not running.
 
 ## Attribution

@@ -3,26 +3,26 @@
 The `local` voice provider runs speech-to-text and text-to-speech entirely on
 your machine, behind the exact same seams as the cloud providers (the voice
 provider registry, the spoken-turn controller, the audio-sink contract). It is
-the free peer beside the premium ElevenLabs route: selection is the ordinary
+the free peer beside the premium ElevenLabs route. Selection is the ordinary
 `tts.provider` setting, and a spoken conversation completes with no cloud
 voice dependency once engines are configured.
 
 **Nothing auto-downloads.** Out of the box the provider reports an honest
 `unconfigured` status (never an error). Setup is one explicit action per
-engine: install it, download a model, set the `voice.local.*` keys below.
+engine, install it, download a model, set the `voice.local.*` keys below.
 
 ## Blessed engines (research pass, 2026-07-14)
 
 Chosen from current comparative evidence, not from memory:
 
-- **STT: whisper.cpp** (default): a pure C/C++ Whisper port. CPU-first,
+- **STT, whisper.cpp** (default). A pure C/C++ Whisper port. CPU-first,
   realtime-capable, no Python dependency. On Apple Silicon it runs ~10× real
   time on large-v3 with Metal. **faster-whisper** is the alternative when an
   NVIDIA GPU is present (CTranslate2 int8, ~4× original-Whisper throughput).
   Sources: [promptquorum: whisper.cpp vs faster-whisper 2026 benchmarks](https://www.promptquorum.com/power-local-llm/local-whisper-stt-comparison-2026),
   [codersera: faster-whisper vs whisper.cpp vs OpenAI Whisper (2026)](https://codersera.com/blog/faster-whisper-vs-whisper-cpp-speech-to-text-2026/),
   [modal: choosing Whisper variants](https://modal.com/blog/choosing-whisper-variants).
-- **TTS: Piper** (default): ~0.03 real-time factor, first audio in ~40–50 ms,
+- **TTS, Piper** (default). ~0.03 real-time factor, first audio in ~40–50 ms,
   MIT-licensed, runs on CPU-only and edge hardware. **Kokoro-82M** is the
   quality alternative (Apache 2.0, 54 voices, beats XTTS v2 in blind listening
   tests at a fraction of the size).
@@ -111,7 +111,7 @@ script):
   at `<managedRoot>/engines/whisper.tar.gz`, and it verifies against the same
   pin whether or not a hosted URL is set.
 
-Building + publishing a new bundle: run `scripts/build-whisper-bundle.ts` (it
+To build and publish a new bundle, run `scripts/build-whisper-bundle.ts` (it
 prints the bundle, its `.sha256` sidecar, and the durable hosted URL), or trigger
 the **Voice runtimes** workflow (`.github/workflows/voice-runtimes.yml`), then
 stamp the printed `WHISPER_ENGINES` entry into the manifest. linux-x64 is hosted
@@ -120,12 +120,12 @@ uploaded to the same tag.
 
 ## Cost honesty
 
-- **ElevenLabs (premium route)**: every synthesis/transcription through the
+- **ElevenLabs (premium route)**. Every synthesis/transcription through the
   voice service records billable units (characters for TTS, seconds for STT)
   into cost attribution under a voice-scoped model key
   (`elevenlabs:voice-tts:characters`). It reports honestly UNPRICED until the
   one-key manual price names your plan's rate:
   `pricing.modelPrices["elevenlabs:voice-tts:characters"] = { "input": <USD per 1M characters> }`,
   after which sessions show real dollars with `user` pricing provenance.
-- **Local**: no billing dimension at all. Local calls record nothing. The
+- **Local**. No billing dimension at all. Local calls record nothing. The
   cost surfaces show an honest absence, never a fake $0.00.

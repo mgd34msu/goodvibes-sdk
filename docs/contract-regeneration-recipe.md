@@ -18,7 +18,7 @@ counts, and the API docs all follow. Editing a generated file by hand is always 
 | DirectTransport (the TUI's in-process path) | **HAND-WIRED** in `packages/sdk/src/platform/runtime/operator-client.ts`. A new method is invisible in-process until you add it to `OperatorSessionsClient` (or the relevant namespace surface) **and** the `createOperatorClient` factory. | Explicit code + a manifest entry (see step 4). |
 | Business logic | Written **once** in the daemon route handler; both HTTP and WS/invoke re-enter the same `dispatchApiRoutes`. | One handler. |
 
-The asymmetry in the DirectTransport row is the parity trap: a method can pass every existing
+The asymmetry in the DirectTransport row is the parity trap. A method can pass every existing
 HTTP test while being unreachable in the TUI. `test/transport-parity.test.ts` is the gate that
 makes that fail loudly (see "The parity gate" below).
 
@@ -30,12 +30,19 @@ Add a `methodDescriptor(...)` to the right catalog module under
 `packages/sdk/src/platform/control-plane/`:
 
 - `sessions.*` live in `method-catalog-control-core.ts`.
-- For a **new** namespace (e.g. `fleet.*`) create `method-catalog-fleet.ts` and wire its
-  exported descriptor array into `BUILTIN_GATEWAY_METHODS` in `method-catalog.ts` (the
-  aggregation array around lines 63-72).
+- For a **new** namespace, create `method-catalog-<name>.ts` exporting its own descriptor
+  array, then wire that array into an aggregation point. There are two, and which one you use
+  depends on where the namespace belongs:
+  - `BUILTIN_GATEWAY_METHODS` in `method-catalog.ts` for a namespace that stands on its own
+    (most of the catalog's ~30 families work this way).
+  - `builtinGatewayControlMethodDescriptors` in `method-catalog-control.ts` for a namespace
+    that belongs alongside the other control-plane surfaces (session lifecycle, live-turn,
+    hosted sessions, power, devices, memory, voice-setup, companion, automation). `fleet.*`
+    took this path, its descriptor array is spread into `method-catalog-control.ts`, which is
+    itself one of the spreads inside `BUILTIN_GATEWAY_METHODS`.
 
 Required fields (`GatewayMethodDescriptor`, see `method-catalog-shared.ts`): `id`, `title`,
-`description`, `category`, `scopes`, and — **critically** — an `http` binding
+`description`, `category`, `scopes`, and, **critically**, an `http` binding
 `{ method, path }`. Without an `http` binding the method is not HTTP/DirectTransport-invokable
 (it 501s as "not invokable"), only internal. Use the `methodDescriptor()` helper for the
 `source` / `transport` / `access` defaults (`'builtin'` / `['http','ws']` / `'authenticated'`).
@@ -69,17 +76,28 @@ Add the route path-match + handler in `packages/sdk/src/platform/control-plane/r
 broker / registry. `invokeGatewayMethodCall` resolves the descriptor's `http` template and
 re-enters `dispatchApiRoutes`, so this handler is reused by HTTP **and** WS/invoke.
 
-### 4. DirectTransport surface (only if an in-process consumer needs it)
+### 4. DirectTransport surface (only if `createOperatorClient` is how the in-process consumer reaches the method)
 
-If the TUI (or any in-process consumer) must call the method locally, add it to the namespace
-client interface and the `createOperatorClient` factory in `runtime/operator-client.ts`,
-delegating to the broker/registry. **For `fleet.*` this step is NOT optional.** The TUI fleet
-panel reads in-process.
+Whether this step is needed depends on how the in-process consumer already gets its data.
 
-Then record the decision in the parity manifest `DIRECT_TRANSPORT_COVERAGE` in
+If the only path to the underlying state is through `createOperatorClient`, add the method to
+the namespace client interface (`OperatorSessionsClient`, or a new equivalent) and the
+`createOperatorClient` factory in `runtime/operator-client.ts`, delegating to the broker or
+registry.
+
+If the in-process consumer already holds a direct reference to the same object the method
+reads (a registry, a broker, an engine), it does not need a DirectTransport wrapper at all.
+`fleet.*` is the real case. The TUI's fleet panel holds a direct reference to the daemon's
+`ProcessRegistry` and calls `registry.query()` in-process, never through `operator-client`. All
+of `fleet.*` is declared `'http-only'` in the coverage manifest below, and `createOperatorClient`'s
+`OperatorClient` interface has no `fleet` member at all. The wire methods exist purely for
+remote consumers (webui, a detached session view) that don't share the daemon's process.
+
+Either way, record the decision in the parity manifest `DIRECT_TRANSPORT_COVERAGE` in
 `test/transport-parity.test.ts`: map the contract id to the new client method name, or to the
-sentinel `'http-only'` if you are **deliberately** skipping DirectTransport (webui-only). The
-gate fails until you make this decision explicitly. That is the point.
+sentinel `'http-only'` if you are **deliberately** skipping DirectTransport because no
+DirectTransport wrapper is needed. The gate fails until you make this decision explicitly for
+every method in a namespace listed in `DIRECT_TRANSPORT_NAMESPACES`. That is the point.
 
 ### 5. Zod schema (optional, enables operator-sdk response validation)
 
@@ -100,14 +118,25 @@ multiplexes several logical events onto one wire name, document the discriminant
 
 ```
 bun run refresh:contracts   # rewrites operator-contract.json, generated/operator-contract.ts,
-                            # generated/operator-method-ids.ts (sorted), generated/foundation-metadata.ts
-bun run docs:generate       # rewrites docs/reference-operator.md + reference-runtime-events.md
+                            # generated/operator-method-ids.ts (sorted), generated/foundation-metadata.ts,
+                            # the foundation-io type maps, the OpenAPI contract, the webui facade,
+                            # and the Home Assistant client, in that order
+bun run docs:generate       # rewrites docs/reference-operator.md, docs/reference-peer.md,
+                            # and docs/reference-runtime-events.md
 # or both at once:
 bun run refresh:docs
-bun run pretest             # tsc build — api-extractor reads compiled .d.ts, so a cold
-                            # follower MUST build before extracting (first-cold-run gap)
+bun run pretest             # runs the typecheck gate (tsc -b --force); api-extractor reads
+                            # compiled .d.ts, so a cold follower MUST build before extracting
+                            # (first-cold-run gap)
 bunx api-extractor run --local   # regenerates etc/goodvibes-sdk.api.md
 ```
+
+`refresh:contracts` is five scripts run in sequence (`refresh-contract-artifacts.ts`,
+`generate-foundation-io-entries.ts`, `generate-openapi-contract.ts`,
+`generate-webui-facade.ts`, `generate-homeassistant-client.ts`), not one. The last two emit
+the mechanical transport layers that the webui and the Home Assistant integration otherwise
+hand-write, generated straight from the same committed operator contract, so a new method
+with a plain-REST `http` binding reaches both without hand-editing their client code.
 
 Mid-MERGE note (second first-cold-run gap): `api:check` diffs the working tree against the
 index. During a merge you must `git add` the regenerated artifacts BEFORE the diff-based
@@ -133,16 +162,19 @@ Backstops the DirectTransport asymmetry. It enforces:
 
 1. **Transport-declaration honesty.** A method that advertises `http` transport must carry an
    `http` binding, and vice-versa. A method "present in one transport but not the other" fails.
-2. **DirectTransport coverage.** Every method in an in-process namespace (`sessions.*`,
-   `fleet.*`) must be declared in `DIRECT_TRANSPORT_COVERAGE`, either mapped to a real
-   `createOperatorClient` method or explicitly `'http-only'`. **A new namespace method with no
-   entry fails the gate.** This is what stops `fleet.*` shipping HTTP-only by accident.
+2. **DirectTransport coverage.** Every method in a namespace listed in
+   `DIRECT_TRANSPORT_NAMESPACES` (currently `sessions` and `fleet`) must be declared in
+   `DIRECT_TRANSPORT_COVERAGE`, either mapped to a real `createOperatorClient` method or
+   explicitly `'http-only'`. **A new method in one of these namespaces with no entry fails the
+   gate.** This is what forced a deliberate, documented decision for every `fleet.*` method
+   before it shipped. Every `fleet.*` id today is `'http-only'`, and that is recorded, not
+   accidental.
 3. **Cataloged-but-not-invokable is honest.** A descriptor with no `http` binding is not
    HTTP-invokable (the contract-driven client throws; the daemon returns 501), never a silent
    200.
 
-When you add `fleet.*`, extend `DIRECT_TRANSPORT_COVERAGE` (step 4). The gate already iterates
-the `fleet` namespace.
+Adding a new in-process namespace means adding its name to `DIRECT_TRANSPORT_NAMESPACES` in
+`test/transport-parity.test.ts`; the gate only enforces coverage for namespaces listed there.
 
 ## Realtime / session-lifecycle events
 
@@ -152,10 +184,11 @@ single `session-update` wire event; the specific lifecycle name is the discrimin
 `payload.event` field, enumerated by `SESSION_UPDATE_WIRE_EVENTS`. New broker signals flow
 through the same wire channel automatically (generic `publishUpdate`). Only the enum needs the
 new string. `SESSION_UPDATE_INTENT_MAP` documents which `payload.event` values each
-cross-surface invalidation intent (`created` / `updated` / `steered` / `closed`) reacts to, so
-webui and TUI subscribe identically. Broadcast is **un-domained** (reaches every live SSE/WS
-client) and is dropped entirely when the `control-plane-gateway` flag is off (no phantom
-buffering).
+cross-surface invalidation intent (`created` / `updated` / `steered` / `closed` / `deleted`)
+reacts to, so webui and TUI subscribe identically. The event is domain-tagged `session`. A
+client that narrows its subscription with `?domains=…` must include `session` to receive it; a
+client that opts into no narrowing receives it along with everything else. It is dropped
+entirely when the `control-plane-gateway` flag is off (no phantom buffering).
 
 ## Notes and gotchas
 
@@ -167,5 +200,5 @@ buffering).
   renumbers anything. Renaming or removing a method or a broker event wire name is the breaking
   case. Do not rename existing broker event strings (`session-created`, …) without a
   deprecation window. The webui keys on them.
-- **Regen determinism.** After `refresh:contracts`, eyeball the JSON diff: it should be exactly
+- **Regen determinism.** After `refresh:contracts`, eyeball the JSON diff. It should be exactly
   your addition, nothing else.

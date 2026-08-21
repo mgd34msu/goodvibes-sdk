@@ -39,13 +39,13 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 ### `config`
 
-**When it fires:** The SDK was called with a missing or invalid configuration value. For example, `normalizeBaseUrl` throws this when `baseUrl` is empty.
+**When it fires:** The SDK was called with a missing or invalid configuration value. For example, the HTTP transport's base-URL normalization throws this when `baseUrl` is empty (`SDK_TRANSPORT_BASE_URL_REQUIRED`) or is not a parseable absolute URL (`SDK_TRANSPORT_BASE_URL_INVALID`).
 
 **Remediation:** Inspect `err.message` and `err.code` to identify the missing field, then fix the SDK initialization options before retrying.
 
 **Retryable:** No.
 
-**Example `code` values:** `SDK_CONFIGURATION_ERROR`, `SDK_TRANSPORT_BASE_URL_REQUIRED`
+**Example `code` values:** `SDK_CONFIGURATION_ERROR`, `SDK_TRANSPORT_BASE_URL_REQUIRED`, `SDK_TRANSPORT_BASE_URL_INVALID`
 
 ---
 
@@ -159,15 +159,15 @@ Every error thrown by the SDK's public surface is an instance of `GoodVibesSdkEr
 
 Daemon HTTP routes return structured error bodies with a `code` string that is separate from the SDK-layer `kind` discriminant. These codes appear in route-specific error responses and are not `GoodVibesSdkError` instances. They are HTTP error body fields returned by the daemon before the SDK maps them to a `GoodVibesSdkError`.
 
-Common route-level codes:
+Route-level codes are not standardized across the daemon. Different routes emit different strings for the same HTTP status, and some 401 responses omit a `code` field entirely (a bare `{ error: 'Unauthorized' }`). Treat this as a sample of codes actually in use, not an exhaustive or normalized catalog:
 
 | Code | HTTP Status | Meaning |
 |------|-------------|----------|
-| `INVALID_KIND` | 400 | The `kind` field in the request body is not a recognized or registered event/intent kind. |
+| `INVALID_KIND` | 400 | The `kind` field in a shared-session message body is not `task`, `message`, or `followup`. |
 | `INVALID_REQUEST` | 400 | The request body failed a required-field or schema check. |
-| `PROVIDER_NOT_CONFIGURED` | 400 | The requested provider is not registered with the daemon's provider registry. |
-| `UNAUTHORIZED` | 401 | No valid bearer token or session cookie was present. |
-| `FORBIDDEN` | 403 | The caller's principal does not have the required scope. |
+| `PROVIDER_NOT_CONFIGURED` | 409 | The requested media (voice/TTS) provider is not registered with the daemon's provider registry. |
+| `AUTH_REQUIRED` | 401 | No valid bearer token or session cookie was present. Some routes return this code; others return a bare `{ error: 'Unauthorized' }` with no `code` field at all. |
+| `MISSING_SCOPE` | 403 | The caller's principal authenticated but lacks the scope the route requires. |
 | `NOT_FOUND` | 404 | The resource (session, artifact, job, etc.) does not exist. |
 | `RATE_LIMITED` | 429 | The request was rejected by an upstream rate-limit policy. |
 | `INTERNAL_ERROR` | 500 | The daemon encountered an unhandled internal error. |
@@ -186,12 +186,12 @@ The SDK maps these HTTP error responses to `GoodVibesSdkError` instances using t
 
 ## Canonical SDK error codes
 
-Beyond the `kind` discriminant, every `GoodVibesSdkError` carries a `code`. SDK-produced errors set one of the canonical values in the `SDKErrorCode` union (`index.ts:79-111`); caller-supplied codes may be any string, since `code` is typed `SDKErrorCode | (string & {})`.
+Beyond the `kind` discriminant, every `GoodVibesSdkError` carries a `code`. SDK-produced errors set one of the canonical values in the `SDKErrorCode` union; caller-supplied codes may be any string, since `code` is typed `SDKErrorCode | (string & {})`.
 
-Prefer the `SDKErrorCodes` const (`index.ts:124-147`) and the runtime guards over bare string literals:
+Prefer the `SDKErrorCodes` const and the runtime guards over bare string literals:
 
-- `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)` (`index.ts:172-177`) returns `true` and narrows `err.code` to the given literal. It works on any object with an optional `code` field.
-- `isKnownErrorCode(value)` (`index.ts:185-187`) returns `true` when an arbitrary string is one of the canonical codes, useful for values received over the wire.
+- `isErrorCode(err, SDKErrorCodes.RATE_LIMITED)` returns `true` and narrows `err.code` to the given literal. It works on any object with an optional `code` field.
+- `isKnownErrorCode(value)` returns `true` when an arbitrary string is one of the canonical codes, useful for values received over the wire.
 
 ```ts
 import { isErrorCode, SDKErrorCodes, GoodVibesSdkError } from '@pellux/goodvibes-errors';
@@ -205,11 +205,11 @@ try {
 }
 ```
 
-Canonical codes (`SDKErrorCodes.*`): `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, `PAYMENT_REQUIRED`, `RATE_LIMITED`, `NETWORK_UNREACHABLE`, `TIMEOUT`, `CANCELLED`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`, `AGENT_TIMEOUT`, `AGENT_FAILED`, `TOOL_EXEC_FAILED`, `SERVICE_UNAVAILABLE`, `CONTRACT_MISMATCH`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`, `SDK_CONFIGURATION_ERROR`, `SDK_CONTRACT_ERROR`, `SDK_HTTP_STATUS_ERROR`, `UNKNOWN`.
+The full set of canonical codes, available as `SDKErrorCodes.*`, is `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, `PAYMENT_REQUIRED`, `RATE_LIMITED`, `NETWORK_UNREACHABLE`, `TIMEOUT`, `CANCELLED`, `NOT_FOUND`, `CONFLICT`, `VALIDATION_FAILED`, `AGENT_TIMEOUT`, `AGENT_FAILED`, `TOOL_EXEC_FAILED`, `SERVICE_UNAVAILABLE`, `CONTRACT_MISMATCH`, `PROTOCOL_ERROR`, `INTERNAL_ERROR`, `SDK_CONFIGURATION_ERROR`, `SDK_CONTRACT_ERROR`, `SDK_HTTP_STATUS_ERROR`, and `UNKNOWN`.
 
 ### Kind → representative code
 
-The SDK infers a representative canonical code for each `kind` (via `inferKind` / `inferCodeFromCategory`, `index.ts:189` onward). The mapping is representative, not exhaustive. One `kind` may surface several codes (for example, `auth` covers `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, and `PAYMENT_REQUIRED`).
+The SDK infers a representative canonical code for each `kind` (via `inferKind` and `inferCodeFromCategory`). The mapping is representative, not exhaustive. One `kind` may surface several codes (for example, `auth` covers `AUTH_REQUIRED`, `TOKEN_EXPIRED`, `PERMISSION_DENIED`, and `PAYMENT_REQUIRED`).
 
 | `kind` | Representative `code` |
 |--------|-----------------------|
@@ -262,7 +262,7 @@ export class ProviderError extends AppError {
 }
 ```
 
-> **`err.code` is not compiler-exhaustive.** A `switch (err.code)` with a `const _exhaustive: never = err.code` default does **not** type-check on a `GoodVibesSdkError` or `AppError` value. `GoodVibesSdkError.code` is typed `SDKErrorCode | (string & {})` (`index.ts:418`) and `AppError.code` is plain `string` (`platform/types/errors.ts:131`). Both are wide string types, so the `never` assignment is a type error. The trick only compiles after you narrow to a finite, hand-built union of concrete subclasses, where each branch contributes its literal `code`:
+> **`err.code` is not compiler-exhaustive.** A `switch (err.code)` with a `const _exhaustive: never = err.code` default does **not** type-check on a `GoodVibesSdkError` or `AppError` value. `GoodVibesSdkError.code` is typed `SDKErrorCode | (string & {})` and `AppError.code` is plain `string`. Both are wide string types, so the `never` assignment is a type error. The trick only compiles after you narrow to a finite, hand-built union of concrete subclasses, where each branch contributes its literal `code`:
 
 ```ts
 // Compiles only because `err` is narrowed to a finite subclass union first.
@@ -289,9 +289,9 @@ Two distinct error types relate to configuration; do not confuse them:
 | `ConfigurationError` | `SDK_CONFIGURATION_ERROR` | `@pellux/goodvibes-sdk/errors` |
 | `ConfigError` | `CONFIG_ERROR` | `@pellux/goodvibes-sdk/platform/types` |
 
-`ConfigurationError` (`index.ts:555`) extends `GoodVibesSdkError` directly and is thrown for invalid SDK setup (category and kind `config`). `ConfigError` is an `AppError` subclass used by the platform/runtime layer.
+`ConfigurationError` extends `GoodVibesSdkError` directly and is thrown for invalid SDK setup (category and kind `config`). `ConfigError` is an `AppError` subclass used by the platform/runtime layer.
 
-`AppError` (`platform/types/errors.ts:119`) extends `GoodVibesSdkError` and adds `statusCode`, `guidance`, `detail`, and `rawMessage`; its `code` is widened to plain `string` (`platform/types/errors.ts:131`). The concrete subclasses ship under `@pellux/goodvibes-sdk/platform/types`:
+`AppError` extends `GoodVibesSdkError` and adds `statusCode`, `guidance`, `detail`, and `rawMessage`; its `code` is widened to plain `string`. The concrete subclasses ship under `@pellux/goodvibes-sdk/platform/types`:
 
 | Subclass | `code` | Recoverable |
 |----------|--------|-------------|
@@ -302,11 +302,11 @@ Two distinct error types relate to configuration; do not confuse them:
 | `PermissionError` | `PERMISSION_DENIED` | No |
 | `RenderError` | `RENDER_ERROR` | Yes |
 
-Subclass codes do **not** share one naming convention: `PERMISSION_DENIED` has no `_ERROR` suffix, while the others do.
+Subclass codes do **not** share one naming convention. `PERMISSION_DENIED` has no `_ERROR` suffix, while the others do.
 
 ## Useful fields on every `GoodVibesSdkError`
 
-The class exposes 18 structured fields (`index.ts:406-434`); `toJSON()` (`index.ts:482`) serializes them with `undefined` values omitted.
+The class exposes 18 structured fields; `toJSON()` serializes them with `undefined` values omitted.
 
 | Field | Type | Description |
 |-------|------|-------------|

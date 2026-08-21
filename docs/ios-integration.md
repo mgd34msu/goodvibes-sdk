@@ -21,7 +21,7 @@ Native iOS apps consume the JSON contracts rather than the npm package. See the 
 ## Connecting
 
 - **Auth:** bearer token (`Authorization: Bearer <token>`); `POST /login` mints one and `GET /api/control-plane/auth` verifies the current principal.
-- **Realtime transport:** WebSocket at `/api/control-plane/ws?domains=<comma-joined>&clientKind=web`, with a `{ "type": "auth", "token": "<token>", "domains": ["<domain>"] }` frame sent as the first message.
+- **Realtime transport:** WebSocket at `/api/control-plane/ws?domains=<comma-joined>&clientKind=web`. The daemon authenticates the upgrade request itself, the same `Authorization: Bearer <token>` header (or an already-authenticated cookie session) required on every other route, and refuses the handshake with 401 before any frames are exchanged if it is missing. Once connected, send a `{ "type": "auth", "token": "<token>", "domains": ["<domain>"] }` frame to attach or rotate the token on the open connection and to change subscribed domains without reconnecting.
 - **Method calls:** over HTTP. Invoke with `POST /api/control-plane/methods/{method}/invoke`. List the catalog with `GET /api/control-plane/methods`.
 
 See the [companion wire protocol](./companion-wire-protocol.md) for the full reference (URL upgrade rules, optional trace headers, method-catalog endpoints, and contract artifacts).

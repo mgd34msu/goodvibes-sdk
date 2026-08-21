@@ -18,7 +18,7 @@ Uses the same SHA-pinned action versions as the existing CI jobs.
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: "1.3.10"
+          bun-version: "1.3.14"
       - name: Install dependencies
         run: bun install
       - name: Check for TODO/FIXME/XXX/HACK/STUB markers in public source

@@ -1,4 +1,4 @@
-# Inbound email — design
+# Inbound email: design
 
 **Status:** design of record. Implementation follows this document.
 
@@ -32,7 +32,7 @@ So this is not a bug in a delivery path. There was no delivery path.
 
 ---
 
-## 2. The authority rule — settled, not up for redesign
+## 2. The authority rule: settled, not up for redesign
 
 Email has **no command authority**.
 `surfaceHasCommandAuthority('email')` returns false and stays false;
@@ -56,9 +56,10 @@ reused rather than paralleled.
 
 Matching is keyed on `DeliveredRecipient`, the branded type in
 `platform/google/delivery-evidence.ts` whose brand symbol is not exported, so
-no value can be fabricated outside that module, and whose three constructors
-accept only the mailbox actually fetched from or the top-most
-`Delivered-To`/`X-Original-To` stamped by the receiving delivery agent. The
+no value can be fabricated outside that module, and whose two exported
+constructors accept only the mailbox actually fetched from or the top-most
+`Delivered-To`/`X-Original-To` stamped by the receiving delivery agent, one of
+the three evidence kinds the resulting value records as its `source`. The
 `To:` header is never a correlation key; it is carried as
 `unverifiedToHeaderClaim` for display and nothing reads it for a decision.
 
@@ -94,7 +95,7 @@ export interface InboundMailContext {
   readonly configManager: { get(key: string): unknown };
   readonly secretsManager?: Pick<SecretsManager, 'get' | 'getGlobalHome'> | undefined;
   readonly transport: EmailTransportPort;
-  readonly expectations: ExpectationMatcher;   // NOT the book — see below
+  readonly expectations: ExpectationMatcher;   // NOT the book, see below
   readonly records: InboundMailStore;
   readonly cursors: MailboxCursorStore;
   readonly deliverOwnerNotice: (text: string) => Promise<SurfaceNoticeDelivery>;
@@ -118,11 +119,22 @@ So the inbound path holds a match-only view:
 
 ```ts
 export interface ExpectationMatcher {
-  matchCandidate(input: VerificationMatchInput): VerificationMatchResult;
+  matchCandidate(...args: Parameters<BookMatchCandidate>): Promise<ReturnType<BookMatchCandidate>>;
+  consumeMatch(match: VerificationMatch): Promise<void>;
   // deliberately absent: openExpectation, hydrateExpectation,
   // and every other method that inserts, widens or extends.
 }
 ```
+
+This grew a second method after the first draft, because `matchCandidate`
+itself mutates (a matched answer spends the grant, an expired one deletes it,
+a no-match sweeps every elapsed expectation), and the write-through to disk
+needs to land only once the intake has announced the outcome, not the moment
+matching decides it, or a pass that throws partway through the announcement
+would leave the grant already spent. `consumeMatch` takes the match itself,
+never an id, so the caller can only spend the exact expectation the matcher
+just handed it. Neither method is `openExpectation` or `hydrateExpectation`;
+the interface still cannot register, widen or extend anything.
 
 `VerificationExpectationBook` satisfies this structurally, so nothing is
 wrapped or duplicated, the watcher simply cannot name what it does not hold.
@@ -280,10 +292,15 @@ pieces of setup friction, one of which is disqualifying on its own:
 It also buys nothing IDLE does not already deliver: both are push, both are
 sub-second, and only one of them works for a mailbox that is not Gmail.
 
-### 3.2 What must be fixed first — the IMAP client cannot hold a connection
+### 3.2 What had to be fixed first: the IMAP client could not hold a connection
 
-IDLE is not a new method on the existing client. Four blockers are in the way,
-all verified by reading the code:
+IDLE was not a new method on the existing client. Four blockers stood in the
+way, all verified by reading the code at the time, and all four are closed as
+of the current tree. One `ImapSession` is held per connection, a persistent
+line reader dispatches untagged responses to subscribers, IDLE reads over a
+no-deadline path, and both the UID and the preview-attachment defects are
+fixed at the source. They are recorded below because the shape of each defect
+recurs elsewhere in protocol code, not because any of them is still open.
 
 **(a) A new session object is constructed for every command.**
 `ImapClient.session()` (`imap-client.ts:583`) returns
@@ -612,7 +629,7 @@ Consequences that make the refusal honest rather than merely safe:
   a condition the owner already knows about trains the owner to ignore the
   channel this capability depends on.
 
-### 3.4d Two sources behind one interface — Gmail is first-class
+### 3.4d Two sources behind one interface: Gmail is first-class
 
 Verification mail arriving on a Google mailbox did not work, because the watcher
 was IMAP-only. A user who had already adopted Google credentials would still be
@@ -804,7 +821,7 @@ any expectation is opened, at the cost of one round trip per connection. That is
 the honest version of "connect-time" for IMAP, available whenever there is
 anything to probe, and impossible when there is not.
 
-### 3.5 Where it plugs in — the supervisor model, not the webhook model
+### 3.5 Where it plugs in: the supervisor model, not the webhook model
 
 There are two lifecycle shapes in the adapter family, and email must use the
 second:
@@ -825,10 +842,19 @@ replays rather than loses. That is exactly the cursor rule in §4, already prove
 in this codebase.
 
 `InboundMailSupervisor` therefore exposes the same status triple the other
-poll surfaces do, `{ mode: 'idle' | 'polling' | 'inactive', reason, running }`, which `getStatus()` folds into the standard `ChannelStatusSnapshot`
-(`state: 'healthy' | 'degraded' | 'disabled'`, `enabled`, `accountId`,
-`metadata`) so it appears in channel health and the doctor report alongside
-every other surface.
+poll surfaces do, `{ mode: 'idle' | 'polling' | 'inactive', reason, running }`. Folding that into the channel-health list turned out not to fit the
+literal `ChannelStatusSnapshot` type, because its `surface` field is
+`ChannelSurface`, which has no `'email'` member, and widening it would hand
+email the whole channel family by inheritance, exactly what the
+`ManagedSurface` ruling forbids.
+
+So `InboundMailHealthEntry` is
+`Omit<ChannelStatusSnapshot, 'surface' | 'accountId'> & { kind:
+'email-inbound'; … }`, the same fields (`state: 'healthy' | 'degraded' |
+'disabled'`, `enabled`, `metadata`) minus the two that don't apply, plus a
+discriminant a mixed list can switch on. It still appears in channel health
+and the doctor report alongside every other surface, just as a distinct kind
+rather than a borrowed one.
 
 **It registers as a `ClusterConsumerGate`.** Clustering defaults off, but when
 the owner opts in, two nodes both holding an IDLE connection to the same mailbox
@@ -1110,7 +1136,7 @@ The rules the renderer enforces, and which its tests assert:
   single most useful fact, it says which account this is about, from evidence
   the sender could not forge.
 
-### 7.1 Which fields are attacker-chosen — the audit
+### 7.1 Which fields are attacker-chosen: the audit
 
 A defect found in review makes the case for doing this as a list rather than by
 intuition. `deliveredTo` was given weaker sanitization than the subject line, on
@@ -1254,7 +1280,8 @@ documentation:
 | Discord | `payload.content`, always parses markdown, no opt-in | **Escape.** Masked links render on bot and webhook paths |
 | Slack | body lands in a `{ type: 'mrkdwn' }` block | **Escape.** `mrkdwn` is interpreted |
 | Telegram | `sendMessage` with **no `parse_mode`** | **Neutralize URL and mention forms.** Do not escape markup |
-| html / ntfy | not yet traced | **Unmapped.** If ntfy's title goes in an HTTP header the injection is a newline, not markup, a different defence |
+| ntfy | message is the request body, `Title` is one HTTP header | **Escape.** `toHeaderSafeTitle` guards the header at the send site; the notice escaper is a second, independently-testable layer, control characters and mention forms neutralized so a header-injection newline can't ride in either path |
+| html | no delivery path in this codebase renders the notice as HTML | **Unmapped.** Nothing sends it, so nothing escapes it; add an escaper the day something does |
 
 The general rule, which is the durable part:
 
@@ -1384,8 +1411,17 @@ stated as a rule rather than an anecdote:
 rather than restating it.** `ExpectationMatcher` began as a hand-authored
 interface and described a method the book does not have, it omitted the
 required `now`, so every caller through it would have been type-checked against
-fiction. As `Pick<VerificationExpectationBook, 'matchCandidate'>` it **cannot
-drift, because there is nothing to keep in sync.**
+fiction. Projected as `Parameters<BookMatchCandidate>` /
+`ReturnType<BookMatchCandidate>` off the book's own `matchCandidate`, it
+**cannot drift on that method's signature, because there is nothing to keep in
+sync.**
+
+`ExpectationMatcher` later grew a second method, `consumeMatch`, once
+matching itself turned out to mutate (§2.1). That method is hand-declared
+against the book's own `VerificationMatch` type rather than projected,
+because the book has no single method to project it from, but its argument
+and return types still come from the book's declarations, not restatements of
+them.
 
 > Narrowing by projection (`Pick`, `Omit`) beats narrowing by restatement. A
 > restated interface is a second declaration wearing the word "narrow".
@@ -1423,7 +1459,10 @@ wearing a feature's clothes.
 |---|---|---|---|
 | `surfaces.email.inbound.enabled` | boolean | **`false`** | Reading the owner's mail continuously is not a thing to start doing without being asked. Off until configured, then on. |
 | `surfaces.email.inbound.accounts` | list | `[]` | Which configured mailboxes are watched. A list, not a boolean, because one address for signups and another for the owner's real mail is the expected shape. |
-| `surfaces.email.inbound.mode` | `'idle' \| 'poll' \| 'auto'` | **`'auto'`** | `auto` uses IDLE when the server advertises it and polls when it does not. A user should not have to know what their provider supports. |
+| `surfaces.email.inbound.source` | `'auto' \| 'gmail' \| 'imap'` | **`'auto'`** | `auto` uses the Gmail source when Google credentials are adopted and the configured account is a Gmail account, and IMAP otherwise, so connecting Google is the whole of the setup (§3.4d). Forcing `'gmail'` without an adopted Google credential, or on a non-Gmail account, is refused rather than quietly served over IMAP. |
+| `surfaces.email.inbound.gmailPollSecondsExpecting` | number | **`5`** | How often the Gmail source polls while an expectation is open and something is being waited for (§3.4d). Range 2–60. Ignored when the IMAP source is in use. |
+| `surfaces.email.inbound.gmailPollSecondsIdle` | number | **`60`** | How often the Gmail source polls when nothing is pending (§3.4d). Range 10–3600. Ignored when the IMAP source is in use. |
+| `surfaces.email.inbound.mode` | `'idle' \| 'poll' \| 'auto'` | **`'auto'`** | `auto` uses IDLE when the server advertises it and polls when it does not. A user should not have to know what their provider supports. Applies only to the IMAP source; the Gmail source is always polled, on the two intervals above. |
 | `surfaces.email.inbound.pollIntervalSeconds` | number | **`120`** | The fallback path only. Two minutes is responsive enough for a verification mail and far below any provider's rate limit. Range 30–3600. |
 | `surfaces.email.inbound.idleReissueMinutes` | number | **`27`** | RFC 2177 advises re-issuing at least every 29; 27 leaves room for a slow round trip without crossing the bound. Range 5–29, capped at 29 by validation. |
 | `surfaces.email.inbound.reconnect.maxBackoffSeconds` | number | **`300`** | Five minutes bounds the worst-case silence after a provider outage while not retrying a dead server every second. |
@@ -1437,9 +1476,10 @@ wearing a feature's clothes.
 | `surfaces.email.inbound.onInsufficientCapability` | `'refuse-and-notify' \| 'notice-only'` | **`'refuse-and-notify'`** | §3.4b. `notice-only` is a deliberate downgrade in which expectations can never be satisfied, so signup and order confirmation stop working, and is never entered automatically. It applies to **one** condition: a Google `gmail.metadata` grant, where headers are authorized and bodies are not. Every other insufficient reason leaves no envelope fields to announce, so `notice-only` behaves as `refuse-and-notify` there and the verdict says which is in force (§13.11). |
 
 **Every default above is chosen by this design and needs owner confirmation**,
-fourteen of them now, counting the two capability settings; `flags-are-features`
-requires an explicit per-flag ruling. They are listed here rather than buried in
-a schema file so they can be ruled on as a set.
+seventeen of them now, counting the source-selection setting, the two Gmail
+poll intervals and the two capability settings; `flags-are-features` requires
+an explicit per-flag ruling. They are listed here rather than buried in a
+schema file so they can be ruled on as a set.
 
 The two most likely to be argued:
 
@@ -1461,7 +1501,13 @@ Because `'surfaces.'` is already in `DAEMON_OWNED_CONFIG_PREFIXES`, these keys
 are daemon-owned automatically, no ownership edit, and the TUI's
 daemon-owned-note enrichment picks them up for free.
 
-What each surface needs, verified rather than assumed:
+What each surface needs, verified rather than assumed at the time this was
+written. `buildSettingGroups`, `settings-modal.ts` and the webui config-schema
+snapshot all live in sibling repos (the TUI, the agent, the webui), not in
+this one, so a reader of this SDK cannot re-verify the three bullets below
+from this tree alone; they are recorded here because the schema addition on
+the SDK side is what those repos depend on, and are worth spot-checking
+against those repos directly if this default set ever changes shape:
 
 - **TUI**, nothing. `buildSettingGroups` walks `CONFIG_SCHEMA` and derives the
   category from `key.split('.')[0]`, which is already `surfaces`.
@@ -1520,7 +1566,7 @@ handled.
 | Sweeps | On load, and on config change. |
 | Discloses | `email.inbound.status` reports every cursor with its mailbox, position and age. |
 
-### 9.2 The expectation store — and a decision that overrides the existing one
+### 9.2 The expectation store, and a decision that overrides the existing one
 
 `VerificationExpectationBook` is in-memory today, deliberately: *"an expectation
 is a 15-minute grant, and a grant that survives a restart is a grant nobody
@@ -1690,24 +1736,24 @@ Stated as requirements rather than hopes, because they are load-bearing:
    message read in a turn refuses every outward action until the process
    restarts, and with inbound mail arriving continuously that is permanent.
 
-2. **Inbound email must never be owner-direct.** **Satisfied, by a different
-   mechanism from the one this requirement was written against. The
-   requirement as originally worded must not now be implemented, because it
-   names a function that does not exist.**
+2. **Inbound email must never be owner-direct.** **Satisfied. `platform/security/turn-boundary.ts` has since grown the exact
+   shape this requirement originally asked for, `startTurnForOwnerInput(origin,
+   ledger)` and `inputOriginIsOwnerDirect(origin)`, which checks
+   `origin.ownerDirect === true` and falls back to a source allowlist,
+   `origin === undefined` still reading as the keyboard.** That shape did not
+   exist when this section was first written, which is why it was rejected at
+   the time (see the correction in §13.2 item 1), and a later round added it
+   for a different reason, the in-process TUI and agent conversation
+   boundary. It sits alongside `startTurnForOwnerRequest(explicitUserRequest)`,
+   which the daemon's own gateway dispatch still uses.
 
-   It asked for every inbound-mail invocation to pass an origin carrying
-   `ownerDirect: false` explicitly, because `inputOriginIsOwnerDirect` was
-   understood to return `true` for `origin === undefined`, "nothing routed it
-   in, that is the keyboard". Verified by grepping all of
-   `packages/sdk/src`: `inputOriginIsOwnerDirect`, `startTurnForOwnerInput` and
-   `ownerDirect` appear **nowhere**. The taint round did not ship that shape.
-
-   What shipped keys on an explicit boolean the caller must pass, so there is
-   no absence to be misread as the keyboard and no origin list to keep in sync.
-   Owner-direct is something a caller must now *assert* rather than something
-   inbound mail must remember to *deny*, which is the safer direction. The only
-   obligation left on this round is the trivial one: an arrival path never
-   passes `explicitUserRequest: true`.
+   Neither function matters to inbound mail's safety, because no file under
+   `platform/email/` calls either one or constructs a `TurnInputOrigin`.
+   Inbound mail never advances the turn watermark at all (§5.1), so it is not
+   a caller that could get owner-direct wrong by omission. The obligation this
+   round actually holds is the same trivial one either way: the arrival path
+   never passes `explicitUserRequest: true` and never builds an origin
+   claiming `ownerDirect: true`.
 
 3. **No ingest recording off-turn.** §5.1. The two rounds must not both add
    `ledger.record()` calls to the arrival path.
@@ -1760,7 +1806,7 @@ separation is contractual. Do not revise it silently.
 #### Where the check goes
 
 `SurfaceActions.authorizeSurfaceIngress`
-(`platform/daemon/surface-actions.ts:179`), the single shared hook that all
+(`platform/daemon/surface-actions.ts`), the single shared hook that all
 nineteen remote adapter call sites already pass through. The file argues for
 this placement itself, having put work-proposal and approval-reply consumption
 there *"on the shared ingress hook every surface adapter already calls, which
@@ -1790,7 +1836,7 @@ export interface CardShapeFinding {
   readonly kind: CardShapeKind;
   readonly startIndex: number;
   readonly length: number;
-  // Deliberately no value, text or digits field — see below.
+  // Deliberately no value, text or digits field, see below.
 }
 
 export function detectCardShapes(text: string): readonly CardShapeFinding[];
@@ -1922,7 +1968,7 @@ silently.
 
 ---
 
-## 12. Test plan — every one of these is a gate
+## 12. Test plan: every one of these is a gate
 
 Each test is written to fail without its fix, and that failure is verified
 before the fix lands.
@@ -1999,7 +2045,7 @@ overturn any of them.
 4. **The spawn capability is removed by type, not guarded by check.** §2.1.
 5. **Arrival is not ingest.** §5.1. The single most consequential decision here.
 6. **Dedup identity is `UIDVALIDITY:UID`, not `Message-ID`.** §6.
-7. **All fourteen defaults in §8.** Listed together for a single ruling.
+7. **All seventeen defaults in §8.** Listed together for a single ruling.
 8. **Insufficient capability refuses and notifies; it never silently
    degrades.** §3.4b. `notice-only` exists but is only ever entered by
    configuration.
@@ -2098,10 +2144,16 @@ overturn any of them.
   minutes. It closes the hole where a push was never sent, or was sent while
   nothing was listening. Push is an optimization over polling, never a guarantee
   to be trusted alone.
-- **`fetchEnvelopes(uids, limit)` keeps only the last `limit` UIDs**, default
-  20, silently. A caller handing it a larger delta and then advancing a cursor
-  skips everything dropped. Being fixed at source; recorded because the shape of
-  the bug, a truncating default feeding a cursor, will recur elsewhere.
+- **`fetchEnvelopes(uids, limit)` used to keep only the last `limit` UIDs**,
+  default 20, silently. A caller handing it a larger delta and then advancing
+  a cursor skipped everything dropped. Fixed at source, and fixed stronger
+  than truncation-avoidance alone. `fetchEnvelopes` no longer takes a `limit`
+  at all, it fetches every UID it is asked for and **refuses** (throws) past a
+  hard ceiling, `IMAP_MAX_FETCH_UIDS = 500`, rather than silently trimming.
+  A caller that hands it more than the ceiling finds out immediately, instead
+  of shipping a cursor past mail nobody fetched. Recorded because the shape of
+  the original bug, a truncating default feeding a cursor, will recur
+  elsewhere.
 - **An untagged line arriving BETWEEN IDLE rounds is lost.** After one round's
   subscription is released and before the next `IDLE` is issued, nobody is
   waiting on the socket. This is **not a defect**, the next `EXISTS` or the
@@ -2192,16 +2244,20 @@ which hides its own defects earns more trust than it deserves.
    **discarded by `validateInboundMailRecord` on the next load**, and "mail
    arrived and could not be announced" vanished at restart. The section
    forbidding restated types was itself undermined by a restated type.
-5. **§9.3 never says no Gmail message can be recorded at all.**
-   `validateInboundMailRecord` requires `uidValidity` and `uid` as positive
+5. **§9.3 never said no Gmail message can be recorded at all.**
+   `validateInboundMailRecord` required `uidValidity` and `uid` as positive
    integers, which a Gmail message has neither of, so on the source automatic
-   selection makes primary, nothing is ever persisted. Same root as §13.2's
-   dedup-identity error, never carried into the record store. Being fixed.
+   selection makes primary, nothing was ever persisted. Same root as §13.2's
+   dedup-identity error, never carried into the record store. Fixed, and the
+   stored record is now the same shape of discriminated union as the message
+   and the cursor, `ImapInboundMailRecord | GmailInboundMailRecord` over a
+   common base, so a Gmail record validates on its own fields rather than on
+   IMAP's.
 6. **§8's `notice.route: 'default'` names a concept the platform does not
    have.** There is no owner-notice-route key and no route-manager notion of a
    default. See below.
 
-#### The `default` notice route — an interpretation, flagged as one
+#### The `default` notice route: an interpretation, flagged as one
 
 `default` is implemented as **the most recently seen route binding** (highest
 `lastSeenAt`): the channel the owner last actually reached the daemon on. With
@@ -2380,10 +2436,10 @@ can verify each one rather than take my word for it.
 
 | # | Test | Why it cannot fail |
 |---|---|---|
-| V1 | `inbound-mail-supervisor.test.ts:386` "recovery sweep runs before the source starts" | `getLastReport()` is read **after** `start()` resolves, so the sweep has run either way. Reverse the order and it still passes. The probe must read inside `onStart` |
+| ~~V1~~ | ~~`inbound-mail-supervisor.test.ts:386` "recovery sweep runs before the source starts"~~ | **FIXED, since closed.** It read `getLastReport()` **after** `start()` resolved, so the sweep had run either way regardless of ordering. Current `test/inbound-mail-supervisor.test.ts:386-407` now reads the report **inside** the source's `onStart` callback, the exact fix this row called for |
 | V2 | `inbound-mail-expectation-registry.test.ts:158` "the matcher carries no way to insert" | Asserts `reachable.has('matchCandidate') === true` and `Object.keys(x).length >= 0`, **neither says anything about absence**. This is gate #11's runtime own-property assertion and gate #35, and it asserts nothing |
 | V3 | `platform-email-inbound-gmail-source.test.ts:409` "no source module imports an expectation registry" | Haystack is `lines.filter(l => l.startsWith('import '))`, so a multi-line import contributes only `import {`, the `from './x.js'` line is excluded. Multi-line is the dominant style in those very files |
-| V4 | `inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop" | `expect(() => start(0)).not.toThrow()`. Delete the guard and `setInterval(fn, 0)` still does not throw, **the test passes with the busy loop installed** |
+| ~~V4~~ | ~~`inbound-mail-housekeeping.test.ts:130` "start(0) is a no-op rather than a busy loop"~~ | **FIXED, since closed.** It asserted only `expect(() => start(0)).not.toThrow()`, which passes with the busy loop installed. Current `test/inbound-mail-housekeeping.test.ts:196-197` carries a comment narrating the old vacuous assertion in past tense and replaces it with one that actually reddens under the busy loop |
 | V5 | `platform-email-inbound-gmail-source.test.ts:379` | Terminates in `expect(true).toBe(true)`. A hang-gate, not an assertion |
 | V6 | `inbound-mail-dedup-redelivery.test.ts:234` "a suppressed duplicate still advances the cursor" | Touches no cursor. The suppression half is real; the cursor half is untested. Misnamed |
 | ~~V7~~ | ~~`inbound-mail-supervisor.test.ts:530`~~ | **STRUCK, the row was wrong.** `expect('surface' in health).toBe(false)` is an ordinary runtime own-property check over a real object, and adding `surface: 'email'` to `describeInboundMailHealth` reddens it. The test is sound |
@@ -2416,6 +2472,11 @@ imported and this property is not asserted" call for opposite fixes.
 > eleven entries above were wrong, V7 was not vacuous, and #25's stated cause
 > was not the real one. A list kept so findings do not expire will preserve
 > mistakes just as faithfully.
+
+**Re-checked as of 2026-08-21 (v2.0.19).** V1 and V4 are now fixed, struck
+above rather than removed, for the same reason V7 stays visible rather than
+deleted, a list that only ever shrinks by deletion cannot be told apart from
+a list nobody re-checked. V2, V3, V5, V6, V8, V9 remain open as described.
 
 #### Closing three of them required building the mechanism first
 

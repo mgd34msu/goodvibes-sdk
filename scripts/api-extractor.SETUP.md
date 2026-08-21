@@ -44,7 +44,7 @@ Fails if the extracted public API surface differs from the committed baseline `e
     baselines, then `api:subpath:check`. Exits non-zero if any of them moved.
 - To update the baseline after intentional API changes: run `bun run api:extract` locally and commit `etc/goodvibes-sdk.api.md`
 - Compiler message suppression: `compilerMessageReporting` in `api-extractor.json` keeps the default compiler diagnostic level at warning; a documented set of TypeScript diagnostic codes (`TS1259`, `TS2305`, `TS2307`, `TS2344`, `TS2694`, `TS2702`, `TS2707`, `TS2709`, `TS2304`, `TS2552`, `TS18028`) is set to `none`, each annotated inline in `api-extractor.json`. These stem from module-interop and vendored-upstream noise outside the SDK's public surface. First-party compile failures are still caught by the build and type-check gates before API extraction.
-- The `ae-missing-release-tag` extractor warning is suppressed (pre-1.0 policy: release tags not yet required); `ae-unresolved-inheritdoc-reference` and `ae-forgotten-export` are likewise set to `none` in `extractorMessageReporting`.
+- The `ae-missing-release-tag` extractor warning is suppressed because the generated `api.md` report, not per-declaration release tags, is the authoritative published surface. `ae-unresolved-inheritdoc-reference` and `ae-forgotten-export` are likewise set to `none` in `extractorMessageReporting`, each with its reason annotated inline in `api-extractor.json`.
 - The rollups cover ONE entry point each. Everything published only through a subpath
   export is covered instead by `scripts/check-subpath-api-surface.ts`, which walks each
   tracked package's `exports` map and records every subpath's surface into

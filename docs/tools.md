@@ -24,6 +24,9 @@ For how tool-call arguments are parsed, validated, and dropped when malformed, s
 | `agent` | Spawn and manage agents | spawn, batch-spawn for independent roots, status, cancel, list, templates, get, budget, plan, wait, message, WRFC, cohorts |
 | `goodvibes_context` | Inspect the current GoodVibes harness safely | runtime summary, redacted config reads/schema, integrations, tool catalog, Cloudflare status/token requirements |
 | `goodvibes_settings` | Change GoodVibes settings through the config manager | set, reset with explicit confirmation; rejects raw credential persistence |
+| `profile` | Record what the owner says about themselves into the owner profile | registered only when profile collaborators are provided; write authority is bound per turn by the composition root, never supplied by the model |
+| `repo_map` | Model-invoked, token-budgeted repository outline | directory summary plus highest-centrality source files and their exports, ranked by import-graph centrality; no LLM and no process spawn |
+| `context_accounting` | Let the model read its own context composition | recall-contract floors and exclusions, per-turn injection records; measured token counts reported as fact, estimates flagged as estimates |
 | `state` | Store and inspect runtime state | get, set, list, clear, budget, context, memory, telemetry, hooks, mode, analytics |
 | `workflow` | Start and control workflows | start, status, transition, cancel, triggers, schedule |
 | `registry` | Discover skills/agents/tools | search, recommend, dependencies, preview, content |
@@ -82,6 +85,14 @@ that tells the model to call `goodvibes_context` before answering questions
 about local settings, configured integrations, host capabilities, tools,
 providers, or surfaces. The same instruction tells the model not to spawn
 agents or WRFC chains for ordinary questions or direct environment inspection.
+
+The instruction also treats a configuration value the user states (a bot name,
+chat id, token, host, port, model, or path) as a request to set it. The model
+is told to call `goodvibes_settings` and report the key and the store it
+persisted to, rather than merely repeating the value back in prose. When the
+key or intent is unclear it asks one short question instead of writing config
+nobody asked for, and setup-style requests are held to a setup-intent contract
+that asks what the setup is for before acting literally.
 
 ## Contract verification
 

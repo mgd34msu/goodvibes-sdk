@@ -20,7 +20,7 @@ standalone `bundle-budget-check` job. Generated artifact drift is covered by the
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: "1.3.10"
+          bun-version: "1.3.14"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -69,7 +69,7 @@ Budget-entry objects may carry extra human-readable fields that the size check i
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `<export-key>` | `string` |, | Must exactly match a key from `packages/sdk/package.json` `exports` map (e.g. `"."`, `"./auth"`, `"./browser"`). |
+| `<export-key>` | `string` | yes | Must exactly match a key from `packages/sdk/package.json` `exports` map (e.g. `"."`, `"./auth"`, `"./browser"`). |
 | `gzip_bytes` | `number` | yes | Maximum allowed gzipped size in bytes for the built `.js` file. |
 | `rationale` | `string` | no | Human-readable explanation of the budget value (recommended). |
 

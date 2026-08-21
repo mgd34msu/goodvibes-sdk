@@ -1,12 +1,15 @@
 # Capability bundles and SHA-pinned distribution
 
-A **capability bundle** is a distributable unit (plugin, skill, hook-pack, or
-policy-pack) that declares, up front, in a manifest, exactly which
-capabilities it needs. The runtime grants a bundle **only** what it declared:
-deny-by-default at the surface level, not merely at the security-capability
-level. Distribution is **SHA-256 pinned**, and the marketplace index format is
-**governed by construction**. An unpinned or capability-opaque entry cannot be
-represented.
+A **capability bundle** is a distributable unit that declares, up front, in a
+manifest, exactly which capabilities it needs. `kind` names what the bundle
+is: `plugin` (registers tools and hooks), `skill` (a packaged instruction set
+a runtime loads on demand), `hook-pack` (a set of runtime-hook subscriptions
+with no tools of its own), or `policy-pack` (config-domain and channel
+declarations that shape existing behavior rather than adding new tools). The
+runtime grants a bundle **only** what it declared: deny-by-default at the
+surface level, not merely at the security-capability level. Distribution is
+**SHA-256 pinned**, and the marketplace index format is **governed by
+construction**. An unpinned or capability-opaque entry cannot be represented.
 
 Import from `@pellux/goodvibes-sdk/platform/runtime/ecosystem`.
 

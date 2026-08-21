@@ -30,10 +30,12 @@ Content-Type: application/json
 Response (`202 Accepted`):
 
 ```json
-{ "messageId": "companion-<uuid>", "routedTo": "conversation", "sessionId": "<sessionId>" }
+{ "messageId": "<uuid>", "routedTo": "conversation", "sessionId": "<sessionId>" }
 ```
 
-The `messageId` is always prefixed `companion-` (for example `companion-3f9a2c1e-...`).
+`messageId` is a stable UUID for this message, the same value carried in the
+`ConversationMessageEnvelope` published for it (see "Control-plane event"
+below).
 
 - No agent is spawned.
 - The live TUI should treat the event as operator chat and start a normal LLM
@@ -41,26 +43,13 @@ The `messageId` is always prefixed `companion-` (for example `companion-3f9a2c1e
 - The `kind` field defaults to `'message'` when omitted.
 - `kind: 'task'` explicitly routes through the session broker and can spawn an
   agent/WRFC continuation.
-- `kind: 'followup'` explicitly queues a session follow-up through the broker. Unlike `kind: 'task'` (which spawns a fresh WRFC continuation), a follow-up appends a structured continuation hint to the current session and is processed in the next available agent turn. Use `kind: 'followup'` when the companion wants to steer an already-running session rather than start a new task.
 
-  **Example: `kind: 'followup'`:**
-  ```http
-  POST /api/sessions/:sessionId/messages
-  Content-Type: application/json
-
-  { "body": "Continue with option B", "kind": "followup" }
-  ```
-  Response (`202 Accepted`): the session-submission record returned by `respondToSessionSubmission()`:
-  ```json
-  {
-    "session": { "id": "<sessionId>", "...": "shared session record" },
-    "message": "<the appended user message, or null>",
-    "input": { "...": "the normalized SharedSessionMessageInput" },
-    "mode": "queued-follow-up",
-    "agentId": "<active agent id, or null>"
-  }
-  ```
-- Unknown `kind` values return `400 INVALID_KIND`.
+This route does not accept a `'followup'` kind. To steer an already-running
+session instead of starting a new task, use the dedicated follow-up route
+described below, `POST /api/sessions/:id/follow-up`, which queues a follow-up
+without spawning a fresh continuation. Building an ad-hoc `kind` value onto
+`/messages` for that purpose does not work; the two are separate routes with
+separate input shapes.
 
 ## Control-plane event
 
@@ -92,9 +81,9 @@ bus and handle it as follows:
 2. Delegate to the active orchestrator instead of spawning an agent or WRFC chain.
 
 ```ts
-// NOTE: runtimeBus and orchestrator are TUI host internals — this pattern applies to
+// NOTE: runtimeBus and orchestrator are TUI host internals; this pattern applies to
 // embedders running the full daemon surface. Companion apps receive messages through
-// the realtime event feed (sdk.realtime) — they do not subscribe to runtimeBus directly.
+// the realtime event feed (sdk.realtime); they do not subscribe to runtimeBus directly.
 runtimeBus.on('COMPANION_MESSAGE_RECEIVED', ({ payload }) => {
   if (payload.sessionId !== activeSessionId) return;
   void orchestrator.handleUserInput(payload.body, undefined, {
@@ -154,6 +143,7 @@ Other session routes cover adjacent use cases. Use the one that matches your int
 | `POST /api/sessions/:id/messages` | Inject a companion main-chat message visible to the operator | Yes, when the live TUI delegates `COMPANION_MESSAGE_RECEIVED` to `handleUserInput()` |
 | `GET  /api/sessions/:id/inputs` | List pending inputs awaiting a response on the active turn | No |
 | `POST /api/sessions/:id/steer` | Steer the active turn with new guidance | Yes |
+| `POST /api/sessions/:id/follow-up` | Queue a follow-up, delivered after the current agent completes, or spawned immediately if the session is idle | Yes, on delivery |
 | `POST /api/sessions/:id/inputs/:inputId/cancel` | Cancel a specific pending input on the active turn | Depends on the input |
 | `GET  /api/sessions/:id/messages` | Fetch the full conversation history for the session | n/a |
 | `PATCH /api/companion/chat/sessions/:id` | Update a true remote companion-chat session's own provider/model metadata | No immediate turn; affects subsequent remote-session turns |
@@ -162,7 +152,27 @@ Callers should route structured intents through the dedicated routes:
 `POST /api/sessions/:id/steer` to steer the active turn,
 `POST /api/sessions/:id/inputs/:inputId/cancel` to cancel a pending input, and
 `POST /api/sessions/:id/follow-up` to queue a follow-up, instead of building
-ad-hoc bodies for `/messages`.
+ad-hoc bodies for `/messages`. The follow-up route takes no `kind` field, it is
+already the dedicated route:
+
+```http
+POST /api/sessions/:id/follow-up
+Content-Type: application/json
+
+{ "body": "Continue with option B" }
+```
+
+Response (`202 Accepted`):
+
+```json
+{
+  "session": { "id": "<sessionId>", "...": "shared session record, or null" },
+  "message": "<the appended user message, or null>",
+  "input": { "...": "the normalized session input record" },
+  "mode": "queued-follow-up",
+  "agentId": "<active agent id, or null>"
+}
+```
 
 All companion-chat routes are registered in the live method catalog. Fetch the catalog at `GET /api/control-plane/methods` to confirm the current registration for your daemon build.
 

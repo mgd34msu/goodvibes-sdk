@@ -13,43 +13,49 @@ Public API surfaces:
 
 ## Supported surfaces
 
-The channel contract includes:
+The `ChannelSurface` contract names every conversational or notification
+system the daemon can sit behind. `tui` and `web` are the two first-party
+surfaces the daemon itself ships; everything else is a built-in managed
+external surface, meaning the daemon owns its account setup, ingress, and
+delivery rather than treating it as a generic webhook target.
 
-- `tui`
-- `web`
-- `slack`
-- `discord`
-- `ntfy`
-- `webhook`
-- `homeassistant`
-- `telegram`
-- `google-chat`
-- `signal`
-- `whatsapp`
-- `telephony`
-- `imessage`
-- `msteams`
-- `bluebubbles`
-- `mattermost`
-- `matrix`
-
-Built-in managed external surfaces are Slack, Discord, ntfy, generic webhook,
-Home Assistant, Telegram, Google Chat, Signal, WhatsApp, Telephony, iMessage,
-Microsoft Teams, BlueBubbles, Mattermost, and Matrix.
+| Surface | What it is |
+|---|---|
+| `tui` | The daemon's own terminal UI, treated as a channel like any other for routing purposes. |
+| `web` | The browser-facing operator surface. |
+| `slack` | A Slack app, driven over bot/app-level tokens and Socket Mode. |
+| `discord` | A Discord bot, driven over gateway dispatch and interactions. |
+| `ntfy` | Push notifications and chat over the ntfy pub/sub protocol. |
+| `webhook` | A generic signed inbound/outbound webhook connector for systems with no dedicated adapter. |
+| `homeassistant` | Home Assistant, over its REST API, webhooks, and Assist conversation protocol. |
+| `telegram` | A Telegram bot, over `getUpdates` polling or a registered webhook. |
+| `google-chat` | A Google Chat app, over webhook events. |
+| `signal` | The Signal messenger. |
+| `whatsapp` | WhatsApp Business messaging. |
+| `telephony` | SMS and voice, either through a bridge or direct Twilio calls. |
+| `imessage` | iMessage. |
+| `msteams` | Microsoft Teams. |
+| `bluebubbles` | iMessage reached through a BlueBubbles server. |
+| `mattermost` | Mattermost. |
+| `matrix` | The Matrix protocol. |
 
 ## Capabilities
 
-Channel capabilities are declared per adapter:
+Channel capabilities are declared per adapter, and the channel runtime uses
+them to decide which setup fields, operator actions, tools, directory
+queries, and delivery routes are available for that surface.
 
-- ingress
-- egress
-- threaded reply
-- interactive actions
-- session binding
-- delivery-only mode
-- account lifecycle
-- target resolution
-- agent tools
+| Capability | What it grants |
+|---|---|
+| `ingress` | The adapter can receive inbound messages or events from the provider. |
+| `egress` | The adapter can deliver outbound messages to the provider. |
+| `threaded_reply` | Replies can be posted inside a thread rather than only at the top level of a conversation. |
+| `interactive_actions` | The provider's interactive elements (buttons, components, commands) are supported. |
+| `session_binding` | An external conversation can be bound to daemon runtime state (a route binding), so follow-ups return to the right place. |
+| `delivery_only` | Replies can be delivered without an interactive, session-bound conversation, the shape notification and webhook-style channels need. |
+| `account_lifecycle` | The surface exposes account setup, connect/disconnect, and repair actions rather than being config-only. |
+| `target_resolution` | A human-readable target (a user, channel, or group) can be resolved to a concrete delivery address before dispatch. |
+| `agent_tools` | The surface contributes tool definitions into GoodVibes agent runtimes. |
 
 The channel runtime uses these capabilities to decide which setup fields,
 operator actions, tools, directory queries, and delivery routes are available.
@@ -116,9 +122,10 @@ actions, doctor reports, lifecycle state, allowlist resolution, allowlist edit,
 directory lookup, target resolution, and account actions.
 
 Account lifecycle actions include inspect, setup, retest, connect, disconnect,
-start, stop, login, logout, and wait-login. Secrets can be read from the
-service registry, config, environment variables, derived values, or reported as
-missing.
+start, stop, login, logout, and wait-login. A secret's reported source is one
+of the service registry, config, environment variables, or a derived value;
+`unresolved` marks a value that is declared but resolves to nothing, distinct
+from `missing`, which marks a value that was never declared at all.
 
 ## Directory and targets
 

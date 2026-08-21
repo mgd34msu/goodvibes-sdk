@@ -29,7 +29,7 @@ capabilities it implements:
 | `vydra` | yes | | | | yes |
 
 ElevenLabs is currently the only built-in provider with `tts-stream` support.
-The streaming surface is provider-agnostic: a provider opts in by implementing
+The streaming surface is provider-agnostic. A provider opts in by implementing
 `VoiceProvider.synthesizeStream()` and advertising `tts-stream`, and daemon
 clients do not need ElevenLabs-specific code paths.
 
@@ -43,10 +43,15 @@ Spoken-output clients use these config keys:
 | `tts.voice` | empty | Default voice id when a request omits `voiceId`; providers may still apply their own fallback. |
 | `tts.llmProvider` | empty | Optional future override for spoken-output generation; empty means use the active chat provider. |
 | `tts.llmModel` | empty | Optional future override for spoken-output generation; empty means use the active chat model. |
-| `tts.speed` | `1.0` | Default speed multiplier applied when a request omits `speed`. |
+| `tts.speed` | `1.0` | Default speed multiplier used by the SDK's spoken-turn (live `/tts`) controller when a turn omits speed. |
 
 The config keys are defaults, not locks. Clients can pass `providerId`,
-`voiceId`, `modelId`, `format`, and `speed` on individual requests.
+`voiceId`, `modelId`, `format`, and `speed` on individual requests. `tts.speed`
+is applied by the spoken-turn controller, not injected into the raw
+`POST /api/voice/tts` and `POST /api/voice/tts/stream` requests below. Those
+two routes default only `providerId` and `voiceId` from config, so a request
+that omits `speed` reaches the provider with no speed field, and the
+provider's own default applies.
 
 ## Daemon routes
 
@@ -86,7 +91,7 @@ request and cancels the upstream audio reader when the client cancels the
 response body. TUI implementations should abort the request when a spoken turn
 is cancelled or playback is stopped.
 
-The `POST /api/voice/tts/stream` byte stream is also browser-consumable: a web
+The `POST /api/voice/tts/stream` byte stream is also browser-consumable. A web
 UI can read the `fetch` response body as a `ReadableStream` and feed it to the
 Web Audio API or `MediaSource` for low-latency playback. See
 [Web UI Integration](./web-ui-integration.md) for a full browser playback
@@ -111,8 +116,11 @@ Voice status. No request body. The response reports provider posture:
 ### `GET /api/voice/providers`
 
 Returns registered voice providers. No request body. The response is
-`{ "providers": [...] }`, where each entry has `id`, `label`, and the
-`capabilities` array described above.
+`{ "providers": [...] }`, where each entry carries the same fields as the
+`providers` array in `GET /api/voice` above, `id`, `label`, `state`,
+`capabilities`, `configured`, optional `detail`, and `metadata`. This route
+reuses the same status snapshot as `GET /api/voice` rather than probing
+providers a second time.
 
 ### `GET /api/voice/voices`
 

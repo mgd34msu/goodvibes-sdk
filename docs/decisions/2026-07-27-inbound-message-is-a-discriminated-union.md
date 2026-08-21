@@ -147,3 +147,16 @@ written against `InboundMessageCommon` and never switch on `source` at all.
    defect this round already fixed once in the webui inbox, and the subject of
    `2026-07-27-calendar-start-sort-is-not-the-defect.md`. The name is the
    warning.
+
+**Correction (2026-08-21, v2.0.19).** `GmailInboundMessage` as shipped
+(`inbound/ports.ts`) carries one more required field than this decision
+records: `readonly bodyAvailability: 'full' | 'metadata-only'`. It exists
+because a Gmail grant can authorize headers without authorizing bodies (the
+`gmail.metadata` scope, see `docs/inbound-email.md` §13.11), and the pipeline
+needs to know, per message, whether the body it is holding is real or absent
+before it decides whether that message may consult the expectation book.
+There is no IMAP equivalent because IMAP either delivers a readable body per
+connection (§3.4a's probe) or the connection never reaches this far, so the
+field stays on the Gmail variant only, which is consistent with this
+decision's own rule that an asymmetry between sources belongs on the variant
+that has it rather than on the shared base.

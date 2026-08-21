@@ -37,17 +37,19 @@ them.
 
 ## CI gates
 
-This is the canonical CI-gate reference for the workspace. Every push and PR to `main` runs seven standalone jobs (see `.github/workflows/ci.yml`). The documentation, contract-artifact, version, changelog, error, todo, examples, API-surface, and bundle-budget checks are **not** separate jobs. They run as ordered **steps inside the single `validate` job** (see `scripts/validate.ts`).
+This is the canonical CI-gate reference for the workspace. Every push and PR to `main` runs nine standalone jobs (see `.github/workflows/ci.yml`); a tenth job, `auto-release`, runs only after all nine are green, only on a push to `main`, and only when the repository variable `RELEASE_ARMED` is set to `true`. The documentation, contract-artifact, version, changelog, error, todo, examples, API-surface, and bundle-budget checks are **not** separate jobs. They run as ordered **steps inside the single `validate` job** (see `scripts/validate.ts`).
 
 | Job | Command | Purpose |
 |------|---------|---------|
-| `validate` | `bun run validate` | Kitchen-sink validation. Runs these checks as ordered steps: API docs sync, docs/examples completeness, error/changelog/version/todo/skipped-test/platform-console gates, TypeScript build, type-level checks (`types:check`), API-surface check (`api:check`), examples typecheck, browser-compat, package metadata, no-any, pack, publint, install smoke, contract-artifact check (`contracts:check`), and bundle budget (`bundle:check`) |
+| `validate` | `bun run validate` | Kitchen-sink validation. Runs these checks as ordered steps: API docs sync, docs/examples completeness, error/line-cap/credential-scope/changelog/version/todo/internal-id/skipped-test/architecture/platform-console gates, TypeScript build, the full typecheck gate (`typecheck`, both the composite project solution and the standalone type-test project), API-surface check (`api:check`), exports-coverage check (`exports:check`), examples typecheck, browser-compat, package metadata, no-any, pack, publint, install smoke, contract-artifact check (`contracts:check`), and bundle budget (`bundle:check`) |
+| `eval-gate` | `bun run eval:baseline:check` then `bun run eval:gate` | Runs the standing eval suite through the production eval paths against the restored build artifact. Checks the checked-in baseline for drift first, then fails on any absolute-floor failure or regression against that baseline |
 | `security-audit` | `bun audit --audit-level high` + gitleaks scan (`gitleaks/gitleaks-action`) | Runs `bun audit --audit-level high` against the workspace dependency tree and a gitleaks secret scan; the CI job invokes these two steps directly (local `bun run security:audit` covers only the dependency-audit half) |
 | `build` | `bun run build` | Builds all workspace package `dist/` output once and uploads it as a single `workspace-build-output` artifact for downstream CI jobs |
-| `platform-matrix` | `bun run build && bun run test` (+ `test:rn`, `test:workers`, `test:workers:wrangler` legs) | Runs the full Bun test suite plus the companion-bundle scan and the Workers runtime lanes (see legs below) |
+| `platform-matrix` | `bun scripts/test.ts` (bun leg) plus `bun run test:rn`, `bun run test:workers`, `bun run test:workers:wrangler` legs | Restores the shared `build` job artifact (no per-leg rebuild) and runs the full Bun test suite plus the companion-bundle scan and the two Workers runtime lanes as four matrix legs of one job (see legs below) |
 | `types-resolution-check` | `bunx attw --pack packages/sdk --ignore-rules no-resolution cjs-resolves-to-esm` | Validates the `exports` map resolves cleanly for every published subpath |
 | `publint-check` | `bun run publint:check` | Detects common `package.json` packaging hygiene issues before release |
 | `sbom-check` | `bun run sbom:check` | Generates the CycloneDX SBOM (`sbom.cdx.json`), asserts it is non-empty, validates the CycloneDX schema, and enforces the license policy |
+| `artifact-lane` | `bun run release:artifact-lane` | Packs every workspace package exactly as publish would, installs the tarballs into a scratch consumer, and runs the shipped conformance kit against a catalog/daemon composed from those packed artifacts, proving the tarballs are internally coherent before publish |
 
 The `platform-matrix` job runs as four matrix legs (one job, not four):
 
@@ -62,12 +64,14 @@ The `platform-matrix` job runs as four matrix legs (one job, not four):
 bun run validate
 ```
 
-`bun run validate` runs the complete ordered step list documented in the `validate`
-row of the [CI Gates](#ci-gates) table above: API docs sync, docs/examples
-completeness, the error/changelog/version/todo/skipped-test/platform-console gates,
-TypeScript build, type-level checks (`types:check`), API-surface check (`api:check`),
-examples typecheck, browser-compat, package metadata, no-any, pack, publint, install
-smoke, contract-artifact check (`contracts:check`), and bundle budget (`bundle:check`).
+`bun run validate` runs the same complete ordered step list documented in the
+`validate` row of the [CI Gates](#ci-gates) table above, from API docs sync
+and docs/examples completeness through the error/line-cap/credential-scope/
+changelog/version/todo/internal-id/skipped-test/architecture/platform-console
+gates, the TypeScript build, the full typecheck gate, the API-surface and
+exports-coverage checks, examples typecheck, browser-compat, package
+metadata, no-any, pack, publint, install smoke, the contract-artifact check,
+and bundle budget.
 Test execution is owned by the `platform-matrix` jobs; run `bun run test` locally when
 you need the full Bun test suite.
 
@@ -122,7 +126,7 @@ This is opt-in per call. There is no global schema enforcement. Schema mismatch 
 ## Bundle budget enforcement
 
 `bundle-budgets.json` at the repo root defines per-entry gzip size ceilings using
-`max(ceil(actual * 1.2), actual + 50)` over the last measured gzip size: a 20%
+`max(ceil(actual * 1.2), actual + 50)` over the last measured gzip size, a 20%
 growth multiplier with a `+50 B` floor so tiny facade entries are not failed by a
 handful of bytes. `bun run bundle:check` is both the local budget check and the
 bundle-budget step inside the `validate` job. See
@@ -173,13 +177,15 @@ The `./browser` companion entry point (`createBrowserGoodVibesSdk`) is Workers-r
 
 1. `rn-bundle` statically scans the built `web.js` and `workers.js` for forbidden identifiers (`node:*`, `Bun.*`).
 2. `platform-matrix (workers)` boots the `./web` entry (the `./web` alias of the Workers-ready `./browser`) under Miniflare 4's programmatic workerd isolate and runs 9 real-runtime tests.
-3. `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml` (note: wrangler dev --local uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries).
+3. `platform-matrix (workers-wrangler)` boots the `./web` entry via `wrangler dev --local` to exercise wrangler's esbuild pipeline and `wrangler.toml`. Note that `wrangler dev --local` uses Miniflare 4 internally, so both runtime lanes share the same isolate; see `test/workers/NOTES.md` for runtime coverage boundaries.
 
 The `./workers` entry is a small Worker bridge for daemon batch routes, Cloudflare Queue consumers, and scheduled ticks; its source-level behavior is covered by `test/cloudflare-worker-batch.test.ts`. SDK-owned Cloudflare provisioning is covered without live Cloudflare calls by `test/cloudflare-control-plane.test.ts` using an injected fake Cloudflare API client.
 
 ## Type-level tests
 
 `bun run types:check` compiles type-level usage tests in `tsconfig.type-tests.json`. These catch public API type regressions without running the code, e.g. verifying that factory function return types are assignable to their documented interfaces.
+
+`bun run validate` does not call `types:check` directly. It calls `bun run typecheck`, which runs two TypeScript projects and judges each by its printed diagnostics as well as its exit code. The first is `tsc -b --force` over the composite solution, every package plus `test/` and `scripts/` via `tsconfig.tests.json`; the second is `tsc -p tsconfig.type-tests.json`, the same standalone type-test project `types:check` runs alone. The `--force` flag matters because a restored CI cache or a worktree switch can leave `tsc -b`'s incremental build info believing a change-carrying file is already up to date, so it silently reports nothing. `--force` always recompiles and reports for real.
 
 ## Why each gate exists
 

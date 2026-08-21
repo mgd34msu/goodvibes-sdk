@@ -8,7 +8,7 @@ See also: [Runtime events reference](./reference-runtime-events.md) for the `WOR
 
 ## What constraints are
 
-A **constraint** is an explicit user-declared requirement from the task prompt, one that specifies the *shape* of the work rather than the *what*. Examples: size limits ("under 200 lines"), feature inclusions or exclusions, style rules ("no `any` types"), performance targets, naming conventions, API shape requirements, or scope boundaries.
+A **constraint** is an explicit user-declared requirement from the task prompt, one that specifies the *shape* of the work rather than the *what*. Examples include size limits ("under 200 lines"), feature inclusions or exclusions, style rules ("no `any` types"), performance targets, naming conventions, API shape requirements, or scope boundaries.
 
 Constraints are not the task goal itself, not the engineer's own best practices, and not soft preferences or politeness. They are the conditions the user stated that the output must satisfy.
 
@@ -125,12 +125,22 @@ When the engineer emitted `constraints: []`, the reviewer emits `constraintFindi
 The controller computes pass/fail for each review cycle using:
 
 ```
-passed = review.score >= threshold && !constraintFailure && chain.claimsVerified !== false
+passed = review.score >= threshold
+  && !constraintFailure
+  && checklistGate.unmet.length === 0
+  && !checklistGate.missing
+  && chain.claimsVerified !== false
 ```
 
-where `constraintFailure = (unsatisfiedConstraints.length > 0)`.
+where `constraintFailure = (unsatisfiedConstraints.length > 0)`, and
+`checklistGate` is a sibling gate over the reviewer's separate
+`acceptanceChecklist` (a checklist of concrete acceptance items on the
+`ReviewerReport`, distinct from `Constraint`/`ConstraintFinding`): it fails
+when any checklist item is explicitly marked unverified, or when the
+checklist itself is missing entirely. A subtask on a compound chain is
+evaluated by the identical formula against its own `subtask.claimsVerified`.
 
-Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently. Constraint satisfaction never overrides a low score. All three gates must hold for the review to pass: the score is at or above threshold, all constraints are satisfied, and the engineer/fixer work claims were verified on disk (`claimsVerified !== false`).
+Any unsatisfied constraint forces chain failure regardless of rubric score. Score-below-threshold still fails independently. Constraint satisfaction never overrides a low score. All five gates must hold for the review to pass: the score is at or above threshold, all constraints are satisfied, the acceptance checklist is present with nothing marked unmet, and the engineer/fixer work claims were verified on disk (`claimsVerified !== false`).
 
 When constraints are present, `WORKFLOW_REVIEW_COMPLETED` carries the constraint summary:
 
@@ -149,11 +159,11 @@ When there are no constraints, these fields are omitted entirely.
 
 ## Fixer preservation
 
-When the chain moves to `fixing`, the fixer task payload includes every constraint with per-id status markers resolved from the reviewer's findings:
+When the chain moves to `fixing`, the fixer task payload walks every constraint in the authoritative list against the reviewer's findings and tells the fixer what to do with each:
 
-- **`SATISFIED`.** Reviewer confirmed satisfied. The fix must keep it satisfied.
-- **`UNSATISFIED`.** Reviewer found it violated. The fix must satisfy it.
-- **`UNVERIFIED`.** Reviewer produced no finding for this constraint. The fixer must verify and satisfy it.
+- **Reviewer marked it `satisfied: true`.** The fix must keep it satisfied and must not change code in a way that breaks it.
+- **Reviewer marked it `satisfied: false`.** The fix must satisfy it, and also resolve whichever rubric issues the reviewer raised alongside it.
+- **`UNVERIFIED`.** The reviewer produced no finding at all for this constraint. The fixer must verify and satisfy it before returning, treating an absent finding the same as an unsatisfied one rather than assuming it passed by omission.
 
 ### Conflict escalation
 
@@ -212,6 +222,28 @@ The original `constraints[]` list remains authoritative for the chain. Fixer rep
 | `integratorAgentId` | `string \| undefined` | Integrator child that merges passed subtasks before the chain's final review |
 | `integratorReport` | `CompletionReport \| undefined` | The integrator's completion report |
 | `claimsVerified` | `boolean \| undefined` | Whether the engineer/fixer self-reported work claims were verified on disk; `false` means verification ran and found missing claims (phantom work) |
+| `fanoutCollapse` | `FanoutCollapseInfo \| undefined` | Set when this chain was created by collapsing a requested multi-agent fan-out into a single owner chain. Its presence is what makes a parallelism/spawn-count constraint system-unsatisfiable, see below. |
+| `systemUnsatisfiableConstraintIds` | `string[] \| undefined` | Constraint ids the system itself made impossible to satisfy, derived mechanically from `fanoutCollapse` at enumeration time. |
+
+### Constraints the system itself invalidates
+
+A caller can ask a WRFC chain to run as several parallel agents, one per
+file, in separate worktrees, and so on. When the controller collapses that
+request into a single owner chain instead (a `fanoutCollapse`), any
+constraint the engineer enumerated that described the parallelism or
+spawn-count topology the collapse removed can never be satisfied by any fix
+agent, because the precondition the constraint depended on no longer exists.
+Re-litigating it through fix loop after fix loop would just burn attempts on
+an unwinnable constraint.
+
+So, at the same moment the engineer's constraints are captured, the
+controller mechanically scans them for fan-out-shaped wording and records
+their ids on `chain.systemUnsatisfiableConstraintIds`. `chain.constraints`
+itself is left untouched, so a fixer's continuity check still sees the full
+original list, but the ids on `systemUnsatisfiableConstraintIds` are excluded
+from the reviewer's rubric, are never counted toward `unsatisfiedConstraintIds`,
+and are never entered into the fix-loop's target set. An unwinnable
+constraint can no longer fail a review it was never going to be able to pass.
 
 ## Compound chains and subtasks
 
@@ -241,7 +273,7 @@ in the [Runtime events reference](./reference-runtime-events.md).
 
 ## Owner role and external adapters
 
-The WRFC owner has one narrow job: keep the chain running until the full-scope review score is at or above the configured threshold and all quality gates pass, or until the chain fails/cancels. It is not a broad planner by default. Hosts may provide a `selectChildRoute` hook when they want the owner to choose a different child model/provider/reasoning route, but the default child routing is inherited from the owner record.
+The WRFC owner has one narrow job. It keeps the chain running until the full-scope review score is at or above the configured threshold and all quality gates pass, or until the chain fails/cancels. It is not a broad planner by default. Hosts may provide a `selectChildRoute` hook when they want the owner to choose a different child model/provider/reasoning route, but the default child routing is inherited from the owner record.
 
 TUI implements WRFC directly against the SDK-native controller. Limited surfaces and partner apps should use the generic external work seam (`WrfcExternalWorkAdapter` / `WrfcExternalWorkBridge`) when they need a translation layer instead of direct WRFC control. That seam provides dispatch/status/cancel/result operations without coupling those apps to controller internals.
 

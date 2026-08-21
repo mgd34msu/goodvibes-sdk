@@ -103,6 +103,7 @@ Built-in providers:
 - ElevenLabs
 - Microsoft
 - Vydra
+- `local` (fully offline speech-to-text and text-to-speech; see [Local voice engines](./voice-local.md))
 
 Operator methods:
 

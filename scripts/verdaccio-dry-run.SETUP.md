@@ -10,7 +10,7 @@ still be set to test a different local Verdaccio binary intentionally.
 
 The Verdaccio dry-run is **not** wired into CI, it is a manual script, run
 locally via `bun run release:verify:verdaccio` (`bun scripts/verdaccio-dry-run.ts`).
-The job YAML below is an optional, illustrative snippet: add it to
+The job YAML below is an optional, illustrative snippet. Add it to
 `.github/workflows/ci.yml` (or a dedicated `verdaccio.yml` workflow), scheduled
 after the `build` job succeeds, only if you want it to run in CI.
 
@@ -27,7 +27,7 @@ after the `build` job succeeds, only if you want it to run in CI.
       - name: Setup Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
         with:
-          bun-version: "1.3.10"
+          bun-version: "1.3.14"
 
       - name: Setup Node (for npm publish + node smoke test)
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0

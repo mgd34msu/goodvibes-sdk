@@ -34,8 +34,8 @@ move a nudge that would otherwise land while the owner is abroad.
 
 **Nothing unresolved is ever dropped.**
 
-One principle behind three cases, an unanswered nudge, a conflicting date, and
-an interview the owner walked away from, and therefore ONE mechanism: the open item
+One principle sits behind three cases, an unanswered nudge, a conflicting date, and
+an interview the owner walked away from, so there is one mechanism for all three, the open item
 (`occasions/cadence.ts`, `OccasionStateStore.openItems`). Silence never ends
 anything. It only moves a date.
 
@@ -59,9 +59,9 @@ that guarantee, so the two are kept apart:
 
 The profile's field registry maps one section-plus-label to one value. It can
 hold `commerce.shippingAddress` and it cannot hold twenty birthdays. So
-`## Important dates` and `## Plans` are prose-only canonical sections: the
+`## Important dates` and `## Plans` are prose-only canonical sections, and the
 profile parser preserves each line verbatim exactly as it does any other bullet,
-and `occasions/grammar.ts` types them on the way past. A line the grammar cannot
+while `occasions/grammar.ts` types them on the way past. A line the grammar cannot
 make sense of is reported with a reason and never rewritten.
 
 ```
@@ -81,7 +81,7 @@ write them in any order and add one later. Anything unrecognised is kept verbati
 record by record (a malformed record is dropped and counted, never the file),
 reaped on schedule (an answer expires with its occurrence), swept (orphans and
 aged gift history), and it discloses what it holds through `occasions.state`.
-Every write is ordered through `StoreWriteQueue`: the sweep runs on a timer while
+Every write is ordered through `StoreWriteQueue`, because the sweep runs on a timer while
 an answer arrives over a channel, and an unordered write would put the file back
 without the answer, so the owner would be asked again about something they had
 already answered.
@@ -104,7 +104,7 @@ own and a failure on one is recorded rather than thrown, so an expired
 Telegram token cannot stop the agent hearing about an approaching occasion.
 
 Telegram is a transport the daemon can reach by itself, a bot token and an HTTP
-call. The agent is not: landing a message in an agent conversation means taking a
+call. The agent is not, because landing a message in an agent conversation means taking a
 turn inside the agent product. So the SDK owns the destination and the contract
 (`channels/delivery/strategies-agent.ts`) and the agent product registers the
 callable that does the landing. Until it does, a push addressed to the agent
@@ -119,21 +119,26 @@ loses the TUI entry and keeps the rest.
 #### One thing said once
 The agent is both a push destination and the surface that PULLS through
 `occasions.pending`, so it is the one place where the same nudge could be spoken
-twice. It cannot be, because both read the **same open item**: a push that lands
+twice. It cannot be, because both read the **same open item**. A push that lands
 on the agent stamps the item with the day it landed, and while the agent is a
 configured push destination the pull leaves stamped items out.
 
 The condition is the push that LANDED, not the one that was configured. An item
 no push has ever landed on the agent carries no stamp, so it still comes back
 through the pull, that covers `agent` configured with no sender registered, and
-a send that failed, neither of which may cost the owner the nudge. Once an item HAS
-been landed there, the stamp stays for the life of the item: the agent has
-already raised that occasion, and a later failed re-push on its cadence is a
-channel fault to report rather than a reason to say the same thing again from the
-other direction. An answer resolves the item from either side, exactly as before.
+a send that failed, neither of which may cost the owner the nudge.
+
+The stamp is scoped to the **day** it landed, not to the life of the item. Under
+the two-touch ceiling a permanent stamp would have made an occasion invisible to
+"anything coming up?" for however long remained until its next boundary, which
+defeats the purpose of the pull, since it exists precisely for the stretch between the
+two pushes. So the pull leaves an item out only on the day a push actually
+landed it there; the day after, the stamp no longer matches today and the item
+is listed again, the same as if it had never been pushed. An answer resolves the
+item from either side, exactly as before.
 
 ### 4.3 A nudge names the occasion but **never the date**
-The ruling: a nudge may name the occasion, but the date itself is disclosed
+The ruling is that a nudge may name the occasion, but the date itself is disclosed
 only when the owner explicitly asks for it.
 
 Stronger than "do not print the date": "in 10 days" is the date with arithmetic
@@ -157,7 +162,7 @@ nudge time. For an annual date a silent write means the error surfaces up to
 eleven months later.
 
 ### 4.6 Silence does not end anything, but the push does not repeat
-No give-up-after-one-retry: the open ITEM persists and stays enumerable until it
+There is no give-up-after-one-retry behavior. The open ITEM persists and stays enumerable until it
 is resolved or its date passes, so asking "anything coming up?" always finds it.
 That is what "nothing unresolved drops" means, and it is not a licence to say the
 same thing again.
@@ -165,7 +170,7 @@ same thing again.
 **Two touches is the ceiling** (contractual, 2026-08-05, after a single occasion
 was raised five times in one day). An occasion is raised ONCE when it enters its
 lead window, and at most once more on the day itself. Between those it stays open
-and quiet. The ceiling is structural: each raise records which of the two
+and quiet. The ceiling is structural. Each raise records which of the two
 boundaries it served, and a served boundary is never served again, so no sweep
 interval, restart or clock change can produce a third push.
 
@@ -201,7 +206,7 @@ idea. The agent does **not** make the recommendation. It opens from what the
 profile already knows (People and Notes prose, verbatim), records **what the
 owner landed on** rather than merely that they said yes, and keeps it to
 `occasions.interviewQuestions` questions. A thread the owner goes quiet on is a
-dropped thread, not a completion: it resumes at the unanswered question.
+dropped thread, not a completion, and it resumes at the unanswered question.
 
 ### 4.11 Removal takes one confirmation
 Not unquestioned, and not an argument. People divorce and people die. Orphaned
@@ -222,7 +227,7 @@ Skipped.
 
 ## 5. Calendar: the profile is the record, the calendar is a mirror
 
-The design rule: profile dates are permanent records; calendar entries are
+The design rule is that profile dates are permanent records; calendar entries are
 ephemeral, normally not persisting across occurrences. The calendar may carry a
 mirror of the profile, never the other way around.
 
@@ -236,7 +241,7 @@ mirror of the profile, never the other way around.
   calendar, so there is no path by which it could.
 - **Mirrored occasions suppress our nudge** (`occasions.suppressMirroredNudges`),
   so the calendar's own reminder is the only ping.
-- **The mirror is idempotent**: keyed by occasion AND occurrence, so re-writing
+- **The mirror is idempotent.** It is keyed by occasion AND occurrence, so re-writing
   the same occasion each year adds one record and never accumulates duplicates.
 
 ## 6. Implementation decisions, stated so they can be overridden
@@ -274,6 +279,7 @@ carries the date.
 | `occasions.confirm` | `write:occasions` | Write the confirmed occasion. Refuses without a kind. |
 | `occasions.remove` | `write:occasions` | One confirmation; removes the line and every record against it. |
 | `occasions.answer` | `write:occasions` | yes / no / later. A yes opens the interview. |
+| `occasions.acknowledge` | `write:occasions` | Record that the owner has one occurrence in hand, without ending the question: the open item stays open and stops being pushed. Distinct from `answer`, which resolves and removes the item. |
 | `occasions.interview.get` | `read:occasions` | Resume at the unanswered question. |
 | `occasions.interview.answer` | `write:occasions` | Record one answer, return the next question. |
 | `occasions.interview.record` | `write:occasions` | Close with what the owner landed on; writes gift history. |
@@ -294,8 +300,8 @@ was not a user request.
 ## 8. Settings
 
 All daemon-owned (`config-ownership.ts`), because the sweep runs in the daemon
-with every surface closed. All twelve defaults were confirmed by the owner key by
-key on 2026-07-28; eleven stood as proposed and `occasions.nudgeChannel` changed
+with every surface closed. All eleven defaults were confirmed by the owner key by
+key on 2026-07-28; ten stood as proposed and `occasions.nudgeChannel` changed
 from empty to `telegram`. The "source" column below records where each default
 came from originally.
 
@@ -320,13 +326,13 @@ the whole feature, so the composition arms a repeating timer
 (`occasions/ticker.ts`), re-read from config every tick so
 `occasions.sweepIntervalMinutes` is live rather than restart-only.
 
-The ticker is deliberately dumb, because the sweep is where the judgement is: a
+The ticker is deliberately dumb, because the sweep is where the judgement is. A
 tick inside quiet hours raises nothing and reaps anyway, and a tick on a day an
 occasion has already been raised finds its open item not yet due. The interval
 therefore decides how soon the FIRST nudge lands after a window opens and
 nothing else. Shortening it cannot make the system nag.
 
-Passes are strictly serial: the next tick is armed only when the current pass
+Passes are strictly serial. The next tick is armed only when the current pass
 finishes, so a slow sweep delays the next one rather than having one start on
 top of it and deliver the same batch twice. The re-arm sits in a `finally`, so
 one transient failure cannot end the loop for the life of the process, and the

@@ -56,7 +56,7 @@ same way. No user action is needed.
 | Tool-result reconciliation | `behavior.toolResultReconciliation` | `reconcile` | `reconcile` (on) | no | `warn-only` logs dangling tool calls without synthetic results. |
 | Session compaction | `behavior.compactionStrategy` | `structured`/`distiller` | `structured` (on) | no | `off` runs sessions uncompacted; threshold via `behavior.autoCompactThreshold`. |
 | Distiller compaction strategy | `behavior.compactionStrategy` | `distiller` | off (structured) | no | Fresh-context continuation brief; falls back to structured below the quality floor. |
-| Unified runtime tasks | `runtime.unifiedTasks` | `true` | off | yes | Unified RuntimeTask tracking across subsystems. |
+| Unified runtime tasks | `runtime.unifiedTasks` | `true` | on | yes | Unified RuntimeTask tracking across subsystems, including the `/tasks` command and operator interventions (cancel/pause/resume/retry). |
 | Plugin lifecycle | `runtime.pluginLifecycle` | `true` | off | yes | Structured init/teardown with health integration. |
 | MCP lifecycle | `runtime.mcpLifecycle` | `true` | off | yes | Structured connect/disconnect with health integration. |
 | Tool budget enforcement | `runtime.toolBudget.enforced` | `true` | off | no | Hard wall-clock/token/cost limits via `runtime.toolBudget.maxMs`/`maxTokens`/`maxCostUsd`. |
@@ -75,21 +75,26 @@ same way. No user action is needed.
 | Route binding | `integrations.routeBinding` | `true` | on | no | Durable conversation routes across channel surfaces. |
 | Delivery tracking | `integrations.deliveryTracking` | `true` | on | no | First-class delivery attempts, retries, dead letters. |
 | Automation | `automation.enabled` | `true` | on | no | Idles with a how-to-create-your-first-routine empty state until a routine exists. |
+| Watcher trigger family | `watchers.triggers.enabled` | `true` | off | no | Stream watchers, model-free condition checks, and one-shot on-exit triggers over one supervision spine. Off by default because triggers launch and supervise real processes unattended; tunes via `watchers.triggers.*`. |
 | Control-plane gateway | `controlPlane.gateway` | `true` | on | no | State snapshots, SSE/WS streams, control APIs; every streaming endpoint auth-gated, loopback bind. |
 | Slack surface | `surfaces.slack.enabled` | `true` | off (needs credentials) | no | Capability always present; the adapter runs when enabled + configured. |
 | Discord surface | `surfaces.discord.enabled` | `true` | off (needs credentials) | no | Same activation pattern as Slack. |
 | ntfy surface | `surfaces.ntfy.enabled` | `true` | off (needs topic) | no | Same activation pattern. |
 | Webhook surface | `surfaces.webhook.enabled` | `true` | off (needs target/secret) | no | Same activation pattern. |
 | Home Assistant surface | `surfaces.homeassistant.enabled` | `true` | off (needs instance) | no | Same activation pattern. |
+| Further message surfaces | `surfaces.telegram.enabled`, `.whatsapp`, `.signal`, `.msteams`, `.matrix`, `.mattermost`, `.imessage`, `.bluebubbles`, `.googleChat`, `.telephony` | `true` | off (need credentials) | no | Same activation pattern as Slack; inbound messages gated by the per-surface owner allowlist. |
 | Web surface | `web.enabled` | `true` | on (loopback) | no | Announces its URL once at daemon start; widen via `web.hostMode`. |
 | Watcher framework | `watchers.enabled` | `true` | on | no | Idles with no watchers configured. |
 | Service management | `service.enabled` | `true` | on | no | Install/start/stop/status verbs; nothing installs until requested (`service.autostart` stays off). |
+| Daemon auto-update | `update.auto` | `true` | on | no | Hourly release check, checksum-verified download, binary swap at a no-active-work moment, previous binary kept for one-command rollback; cadence via `update.intervalMinutes`. |
 | Exec sandbox | `sandbox.enabled` | `true` | on (probe-gated) | no | bubblewrap boundary on Linux; honestly unavailable elsewhere; first contained run announces once. |
 | Sandbox model judgment | `sandbox.judgment` | `annotate`/`auto-approve` | `annotate` (on) | no | Annotates escalation asks; `auto-approve` is a separate explicit opt-in. |
 | Outbound relay | `relay.enabled` | `true` | on | no | No connection without an explicit `relay.url`; leave empty to stay LAN-only. |
 | Agent context-window guard | `agents.contextWindowGuard` | `true` | on | no | Pre-call token estimation + compaction at `agents.contextCompactThreshold`. |
 | Passive knowledge injection | `agents.passiveInjection.knowledge` | `true` | on | no | Hard-budgeted per-turn retrieval with visible turn records. |
 | Passive code injection | `agents.passiveInjection.code` | `true` | off | no | Deliberately opt-in; shares the knowledge budget and relevance floor. |
+| Paired phone capabilities | `device.capabilities.mode` | `ask-every-time`/`honor-grants` | `honor-grants` (on) | no | A paired phone as a tool (camera, screen, location, clipboard, device commands) over the peer transport. Every capture asks first; "always allow" writes one revocable per-capability grant with TTL and count caps. Tunes via `device.*`. |
+| Wake-word detection | `voice.wake.enabled` | `true` | off | no | On-device `hey goodvibes` wake detection; see [Wake-word model](./wake-word-model.md). |
 
 The `prompt` value for `permissions.tools.<name>` triggers a user-approval prompt before each call to that tool. See [Tool safety](./tool-safety.md) and [Security](./security.md#permission-system) for how permission decisions are evaluated.
 

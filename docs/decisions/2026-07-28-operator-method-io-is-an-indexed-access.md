@@ -101,3 +101,10 @@ every id in the map, and all 464 are in the map. No consumer call site changes.
 - `IndexPart`, `NamedProps`, `OmitNamed` and `RequiredNamedKeys` are now exported
   from the SDK entry point, because the public `RequiredKeys` and `WithoutKeys`
   are written in terms of them (previously `ae-forgotten-export`).
+
+Correction (2026-08-21, v2.0.19): the method count has grown further since
+this decision, from 464 to 507 (additive-only, see
+`2026-07-06-core-verb-spec.md`'s "Additive only" note). `OperatorMethodInput`/
+`OperatorMethodOutput` are still the plain indexed accesses described above,
+`OmitNamed` is still distributive, and all four listed type helpers are still
+exported from the SDK entry point.

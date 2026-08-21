@@ -149,3 +149,14 @@ shapes are correct.
   separate, larger effort than the ruling requires right now. The scoped
   checker is deliberately named and structured so it does not pretend to be
   that generator.
+
+Correction (2026-08-21, v2.0.19): the scoping of this decision was superseded
+by `2026-07-28-foundation-io-entries-generated-for-every-verb.md`. The eight
+hand-authored entries and the hand-maintained `ENTRIES` list in
+`scripts/check-foundation-io-types.ts` described above no longer exist as
+such: `ENTRIES` is now derived from the full method catalog (currently 507
+methods) rather than named one at a time, and `foundation-client-types.ts`'s
+two typed-IO maps are fully generated. The reasoning in this decision
+(hand-authoring needs an independent consistency check) still holds and
+motivated that later change; only the "eight methods, hand-maintained list"
+scope described here has been replaced.

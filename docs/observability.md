@@ -48,13 +48,17 @@ Each call produces a structured Markdown entry (the outer four-backtick fence es
 
 ### Write behavior
 
-Log entries are buffered in memory and written asynchronously to avoid blocking the event loop:
+Log entries are buffered in memory and flushed in batches. The write itself is synchronous (`appendFileSync`) on purpose. An earlier async implementation could still have a write in flight when the process exited, so a daemon shutting down or handing over lost its last lines at exactly the moment they mattered most. Batching keeps the blocking cost bounded, since a batch is at most `LOG_BUFFER_MAX` entries:
 
 - Entries flush automatically after **100 ms** (hardcoded; `LOG_FLUSH_INTERVAL_MS` is an internal constant, not a public configurable).
 - Buffer flushes immediately when it reaches **10 entries** (hardcoded; `LOG_BUFFER_MAX` is an internal constant, not a public configurable).
-- If `configure()` has not been called, entries are buffered until a log directory is set.
+- If `configure()` has not been called, entries are buffered in memory (up to a 1,000-entry cap; older entries are dropped past that, with a warning entry recording how many were lost) until a log directory is set.
 
-Logger filesystem errors are reported to `stderr` but do not propagate to the caller. Never put secrets or PII in log data.
+The live file rotates once it reaches 10 MB. It is renamed to `activity.md.1` (a single backup, overwritten on the next rotation) and a fresh `activity.md` is started, so a long-lived daemon's debug log does not grow without bound.
+
+If the log directory disappears while the process is running, the logger recreates it and retries the write. If the destination still cannot be written after 3 consecutive flush failures, the logger reports that once to `stderr` and then stops accepting entries for that destination rather than retrying (and failing) on every flush forever.
+
+Values under any key that looks sensitive, matching a pattern for `authorization`, API keys, tokens, passwords, secrets, credentials, or cookies, are automatically replaced with `[REDACTED]` before an entry is written. This is a safety net, not a substitute for care: still avoid passing secrets or PII into log data your own key names would not catch.
 
 ---
 
@@ -103,7 +107,9 @@ Available runtime domains:
 | `communication` | Channel and message communication events |
 | `compaction` | Context compaction start/complete |
 | `control-plane` | Session and control events |
+| `config` | Key-level settings-change notices, carrying the dotted key, its ownership scope, and the new value (a secret-bearing key travels by name only, with no value field) |
 | `deliveries` | Outbound delivery tracking |
+| `fleet` | Live process-registry node lifecycle: started, state changed, finished, blocked on user, unblocked |
 | `forensics` | Failure report generated |
 | `knowledge` | Knowledge base updates |
 | `mcp` | MCP tool call lifecycle |
@@ -203,7 +209,7 @@ Guarantees:
 - Listeners registered during an in-flight dispatch do not receive that dispatch; they are picked up on the next emit.
 - Tests that assert on side effects from a listener must `await` a microtask flush (e.g. `await Promise.resolve()`) before asserting.
 
-The `_emitOps` internal fast-path dispatches synchronously. It is reserved for `ops.*` bus-self-reporting events and must not be used by application code.
+One case bypasses this queueing on purpose. When a listener throws, the bus dispatches a self-reporting `OPS_LISTENER_MISBEHAVING` event directly to that event type's listeners and to the `ops` domain's listeners, with no `queueMicrotask` in between. This avoids a recursion path where a listener watching for misbehaving listeners could itself misbehave and loop. It fires the first time a given listener throws, not on every subsequent error from the same listener. This path is internal; application code should never call it directly.
 
 ### RuntimeEventFeed API
 
@@ -483,9 +489,9 @@ const bundle: ForensicsBundle = registry.buildBundle(id, {
   replaySnapshot: currentReplayState,
 });
 // bundle.schemaVersion === 'v1'
-// bundle.report — the FailureReport
-// bundle.evidence — ForensicsEvidenceSummary (counts, slow phases, related IDs)
-// bundle.replay — ForensicsReplayEvidence (mismatches, turn summaries)
+// bundle.report: the FailureReport
+// bundle.evidence: ForensicsEvidenceSummary (counts, slow phases, related IDs)
+// bundle.replay: ForensicsReplayEvidence (mismatches, turn summaries)
 
 const bundleJson = registry.exportBundleAsJson(id);
 ```
@@ -646,18 +652,13 @@ The observer is propagated internally to the operator transport, peer transport,
 
 ### Observer error isolation
 
-Every observer call site is wrapped in:
+Every observer call site goes through a shared `invokeObserver` helper instead of an ad hoc try/catch:
 
 ```ts
-try {
-  observer.onX?.(...);
-} catch {
-  // Observer errors must not propagate into SDK logic.
-  // Observers are passive listeners; they have no authority to break flows.
-}
+invokeObserver(() => observer?.onAuthTransition?.(transition), { label: 'onAuthTransition' });
 ```
 
-An observer that throws will never disrupt the SDK. This is the hard correctness invariant for the observer contract.
+`invokeObserver` calls the callback, catches anything it throws, and returns `{ ok: true }` or `{ ok: false, error }`. A thrown error is not silently dropped. By default it is reported once to `console.warn` (prefixed `[sdk:observer] observer callback failed`, with the optional `label` identifying the call site) before isolation swallows it, so a broken observer is visible without being allowed to break SDK flow. A caller that wants to handle a failure itself can pass `{ report: false }` to suppress the default warning. An observer that throws will never disrupt the SDK; this is the hard correctness invariant for the observer contract.
 
 ### Console adapter
 
@@ -733,12 +734,12 @@ import {
   injectTraceparentAsync,
 } from '@pellux/goodvibes-sdk/transport-core';
 
-// Synchronous — uses require-based OTel detection. Use for HTTP requests.
+// Synchronous: uses require-based OTel detection. Use for HTTP requests.
 const headers: Record<string, string> = {};
 injectTraceparent(headers);
 // headers['traceparent'] = '00-<traceId>-<spanId>-01'  (if OTel span active)
 
-// Async — uses dynamic import on first call, then caches. Use for SSE/WS setup.
+// Async: uses dynamic import on first call, then caches. Use for SSE/WS setup.
 await injectTraceparentAsync(headers);
 ```
 

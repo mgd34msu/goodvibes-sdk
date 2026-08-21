@@ -25,30 +25,26 @@ const sdk = createGoodVibesSdk({
 console.log(await sdk.operator.control.snapshot());
 ```
 
-Primary entry points (see [public-surface.md](../../docs/public-surface.md) and the package `exports` map for the complete list):
-- `@pellux/goodvibes-sdk`
-- `@pellux/goodvibes-sdk/auth`
-- `@pellux/goodvibes-sdk/client-auth`
-- `@pellux/goodvibes-sdk/operator`
-- `@pellux/goodvibes-sdk/peer`
-- `@pellux/goodvibes-sdk/contracts`
-- `@pellux/goodvibes-sdk/contracts/node`
-- `@pellux/goodvibes-sdk/errors`
-- `@pellux/goodvibes-sdk/events`
-- `@pellux/goodvibes-sdk/observer`
-- `@pellux/goodvibes-sdk/transport-core`
-- `@pellux/goodvibes-sdk/transport-http`
-- `@pellux/goodvibes-sdk/transport-realtime`
-- `@pellux/goodvibes-sdk/transport-direct`
-- `@pellux/goodvibes-sdk/browser`
-- `@pellux/goodvibes-sdk/browser/agent`
-- `@pellux/goodvibes-sdk/browser/knowledge`
-- `@pellux/goodvibes-sdk/browser/homeassistant`
-- `@pellux/goodvibes-sdk/web`
-- `@pellux/goodvibes-sdk/workers`
-- `@pellux/goodvibes-sdk/react-native`
-- `@pellux/goodvibes-sdk/expo`
-- `@pellux/goodvibes-sdk/daemon`
+Every supported import is an explicit subpath in the package `exports` map. The
+table below covers the primary ones; the complete, stability-leveled list is
+[public-surface.md](../../docs/public-surface.md).
+
+| Entry point | Use it for |
+| --- | --- |
+| `@pellux/goodvibes-sdk` | The Bun client factory plus re-exported contracts, auth, operator, peer, and transport pieces |
+| `/auth` | Token stores, login, and OAuth helpers for every surface |
+| `/client-auth` | Session and permission management with auto-refresh middleware |
+| `/operator`, `/peer` | The typed operator and peer clients on their own |
+| `/contracts`, `/contracts/node` | Runtime-neutral contract types, schemas, and method IDs; the `/node` variant adds Node-only helpers |
+| `/errors` | The typed error model (`SDKErrorKind`) |
+| `/events` | Runtime event types and typeguards, with per-domain subpaths such as `/events/agents` and `/events/session` |
+| `/observer` | The `SDKObserver` interface for first-class observability hooks on client factories |
+| `/transport-core`, `/transport-http`, `/transport-realtime`, `/transport-direct` | Transport primitives, the HTTP transport, SSE and WebSocket realtime, and the in-process direct transport |
+| `/browser`, `/web` | Browser client factories free of Bun globals; `/browser/agent`, `/browser/knowledge`, and `/browser/homeassistant` are scoped browser clients |
+| `/workers` | The Cloudflare Worker bridge for daemon batch endpoints |
+| `/react-native`, `/expo` | Mobile client factories with secure token stores |
+| `/daemon` | Daemon route dispatch and embedding helpers for a Bun server host |
+| `/embed` | SDK Embedding API 1.0, the stability-marked surface for hosting a GoodVibes session inside another app |
 
 Cloudflare batch provisioning is exposed through daemon `/api/cloudflare/*`
 routes. The `/workers` entry is for manual Worker deployments.

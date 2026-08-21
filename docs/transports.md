@@ -4,7 +4,10 @@ The transport packages are source-of-truth packages re-exported through the SDK
 facade.
 
 - `transport-core`: shared direct transport primitives, event/error helpers,
-  UUID helpers, and common transport utilities.
+  UUID helpers, and common transport utilities. Its `./relay` subpath (not
+  re-exported from the main entry point) carries the crypto and protocol
+  primitives for the zero-knowledge, self-hostable relay. The relay operator
+  can read the hop-level frames but not the end-to-end encrypted payload.
 - `transport-direct`: SDK facade name for in-process direct transport backed by
   `transport-core`. It is a package export subpath only; there is no separate
   `packages/transport-direct` workspace package.
@@ -55,8 +58,12 @@ const events = createRemoteRuntimeEvents(
 );
 ```
 
-See [Realtime and telemetry](./realtime-and-telemetry.md) for the full connector
-surface: domain events, outbound-queue backpressure caps, and the `ws://` auth guard.
+A reconnecting stream can replay the tail of the turn that was running before
+it connected. `createTurnLifecycleGate` filters those replayed frames out so a
+fresh consumer never finishes a turn it never started; see
+[Realtime and telemetry](./realtime-and-telemetry.md) for the full connector
+surface: domain events, outbound-queue backpressure caps, the `ws://` auth
+guard, and the turn lifecycle gate.
 
 Transport errors should preserve useful event fields and use typed SDK error
 classes. Retryable HTTP status codes come from `@pellux/goodvibes-errors`.

@@ -56,6 +56,16 @@ whenever Google **is** adopted and only the builder is missing. The message was
 corrected. **The underlying gap was later found to be larger and is tracked as
 its own critical**: `GmailSourceBuilder` has no production constructor at all.
 
+**Correction (2026-08-21, v2.0.19): the critical this row deferred to is now
+fixed.** `InboundMailCompositionOptions.gmailReader` is a required field, not
+an optional `gmail` builder, and `platform/daemon/facade-builtin-channels.ts`
+constructs it via `createDaemonGmailInboundReader` and passes it into
+`composeInboundMail`. A composition that stops supplying it stops compiling.
+`GoogleApiClient.getProfile()` / `.currentHistoryId()` exist and call
+`users.getProfile`, and `isGmailMailbox` now accepts the address that call
+returns as direct evidence rather than sniffing the configured IMAP host
+string. See `docs/inbound-email.md` §13.12.
+
 ## M6 — dead status functions — FIXED
 `builtin-runtime.ts:232` `inboundMailStatus()` and `:243` `inboundMailHealth()`
 had zero callers repo-wide, so **email never appeared in any health list**.
@@ -142,6 +152,14 @@ mutation reverting it in the harmful direction, in
    next load — a record built from megabyte fields was 2 MB on disk; and
    `PersistedExpectationStore.replaceAll` did not enforce `maxOpenExpectations`
    at all, which is bullet 1's defect in the neighbouring store.
+
+   **Correction (2026-08-21, v2.0.19): both remaining gaps are now closed.**
+   `record-validation.ts` bounds `noticeFailureReason` at
+   `MAX_NOTICE_FAILURE_REASON_CHARS = 512` and a link verdict's `reason` at
+   `MAX_LINK_REASON_CHARS = 256` (with `MAX_LINK_VERDICTS = 64` unchanged), and
+   `account`/`mailbox` are now clamped at write time via `clampRecordScope`
+   (`MAX_ACCOUNT_CHARS = 256`, `MAX_MAILBOX_CHARS = 512`), applied identically
+   at lookup time so a clamped write still matches a clamped read.
 
 ## M9 — redaction shrinkage leaked card digits — FIXED, severity corrected
 `record-store.ts:293-304` claimed the overshoot meant a straddling span was

@@ -6,6 +6,18 @@ Integration tests live under `test/integration/` and are listed separately.
 
 Regenerate via `bun scripts/print-test-coverage.ts > COVERAGE.md`
 
+**This snapshot is stale.** `scripts/print-test-coverage.ts` numbers every
+`test/*.test.ts` file it finds sequentially with no gaps, so a gap in the `T###`
+sequence below (for example the jump from T028 to T030, or from T086 to T107)
+means a file present when this was generated has since been removed or
+renamed. The repo's `test/` directory currently holds far more root-level
+`*.test.ts` files than are listed here; this table was not regenerated after
+that growth. Nothing in CI enforces freshness (see
+[Testing and Validation](./docs/testing-and-validation.md#test-coverage-snapshot)),
+so treat every row below as "was true at some past point," not as a current
+inventory. Regenerate the file with the command above before relying on it
+for anything beyond a rough starting index.
+
 ## Root-level tests (`test/*.test.ts`)
 
 | # | File |

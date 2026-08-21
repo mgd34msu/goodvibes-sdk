@@ -21,9 +21,9 @@ Live TUI, companion, and daemon chat behavior remains live unless a client uses 
 
 `batch.mode` controls whether the daemon accepts batch work:
 
-- `off`: reject batch jobs.
+- `off`: reject batch jobs. `POST /api/batch/jobs` fails with `BATCH_DISABLED`.
 - `explicit`: accept requests sent to the batch job API. This is the intended default when a client exposes a per-message "run as batch" control.
-- `eligible-by-default`: accept batch-capable daemon requests as batch by default. Current SDK-owned batch-capable request path is `/api/batch/jobs`. Streaming chat paths stay live because provider Batch APIs are asynchronous and non-streaming.
+- `eligible-by-default`: intended to accept batch-capable daemon requests as batch by default, without a client having to call the batch job API explicitly. As shipped, the daemon does not yet implement that automatic routing: `off` is the only value that changes daemon behavior (it disables `/api/batch/jobs`), and `explicit` and `eligible-by-default` are currently equivalent, both simply leave the batch job API open. `batch.mode` is reported to clients (`/api/batch/config`) so a client can read the configured value today and adopt automatic routing on its own, ahead of daemon-side enforcement. Streaming chat paths stay live regardless, because provider Batch APIs are asynchronous and non-streaming.
 
 `batch.fallback` is published for clients that need a policy decision when a request cannot be batched:
 
@@ -49,7 +49,7 @@ All routes require the same daemon auth as other daemon APIs.
 
 | Route | Method | Behavior |
 |---|---:|---|
-| `/api/batch/config` | `GET` | Returns batch mode, queue backend, Cloudflare settings, limits, and supported providers. |
+| `/api/batch/config` (aliases `/api/batch`, `/api/batch/runtime`) | `GET` | Returns batch mode, queue backend, Cloudflare settings, limits, and supported providers. |
 | `/api/batch/jobs` | `POST` | Queues a chat batch job. Returns `202` with the job record. |
 | `/api/batch/jobs` | `GET` | Lists recent jobs. Supports `?limit=100`. |
 | `/api/batch/jobs/{jobId}` | `GET` | Reads one job. |
@@ -182,15 +182,17 @@ Operational-token permissions are scoped to the selected account except for DNS,
 | Component | Permission candidates | Scope |
 |---|---|---|
 | Bootstrap token only | `API Tokens Write`, `API Tokens Edit` | User |
-| Workers | `Workers Scripts Write`, `Workers Scripts Edit` | Account |
-| Queues | `Queues Write`, `Queues Edit`, `Workers Queues Write`, `Cloudflare Queues Write` | Account |
-| Zero Trust Tunnel | `Cloudflare Tunnel Write`, `Cloudflare Tunnel Edit` | Account |
-| Zero Trust Access | `Access: Apps and Policies Write`, `Access: Service Tokens Write`, plus `Edit` variants | Account |
-| DNS | `Zone Read`, `DNS Write`, `DNS Edit` | Zone |
-| KV | `Workers KV Storage Write`, `Workers KV Storage Edit` | Account |
-| Durable Objects | `Workers Scripts Write`, `Workers Scripts Edit` | Account |
-| Secrets Store | `Account Secrets Store Write`, `Account Secrets Store Edit` | Account |
-| R2 | `Workers R2 Storage Write`, `Workers R2 Storage Edit` | Account or R2 bucket, depending on Cloudflare's permission-group scope |
+| Workers | `Workers Scripts Write`, and alternates `Workers Scripts Edit`, `Worker Scripts Write` | Account |
+| Queues | `Queues Write`, and alternates `Workers Queues Write`, `Cloudflare Queues Write` | Account |
+| Zero Trust Tunnel | `Cloudflare Tunnel Write`, and alternates `Cloudflare Tunnels Write`, `Cloudflare Tunnel Edit` | Account |
+| Zero Trust Access | `Access: Apps and Policies Write` (alternates `Access Apps and Policies Write`, `Zero Trust Write`) and `Access: Service Tokens Write` (alternates `Access Service Tokens Write`, `Zero Trust Service Tokens Write`); no `Edit`-suffixed permission is requested for this component | Account |
+| DNS | `Zone Read` (alternate `Zone Settings Read`), `DNS Write` (alternate `DNS Edit`) | Zone |
+| KV | `Workers KV Storage Write`, and alternates `Workers KV Storage Edit`, `KV Storage Write` | Account |
+| Durable Objects | `Workers Scripts Write`, and alternates `Workers Scripts Edit`, `Worker Scripts Write` | Account |
+| Secrets Store | `Account Secrets Store Write`, and alternates `Account Secrets Store Edit`, `Secrets Store Write`, `Secrets Store Edit` | Account |
+| R2 | `Workers R2 Storage Write`, and alternates `R2 Storage Write`, `Workers R2 Storage Edit` | Account or R2 bucket, depending on Cloudflare's permission-group scope |
+
+For each component, the SDK requests the first-listed permission and falls back through its alternates when Cloudflare's account exposes the same capability under a different name; a client never needs to guess which name a given account uses.
 
 R2 provisioning uses Cloudflare's account-scoped R2 API for bucket creation/listing. Most Cloudflare accounts expose the R2 storage permission as account-scoped; accounts that expose it as `com.cloudflare.edge.r2.bucket` receive a separate `com.cloudflare.edge.r2.bucket.*` token policy so the permission group has a matching resource.
 
@@ -204,7 +206,7 @@ All Cloudflare routes require daemon authentication and admin privileges.
 
 | Route | Method | Behavior |
 |---|---:|---|
-| `/api/cloudflare/status` | `GET` | Returns local Cloudflare config, readiness booleans, and warnings without making Cloudflare API calls. |
+| `/api/cloudflare/status` (alias `/api/cloudflare`) | `GET` | Returns local Cloudflare config, readiness booleans, and warnings without making Cloudflare API calls. |
 | `/api/cloudflare/token/requirements` | `GET` or `POST` | Returns the Cloudflare token permission shape for selected components and bootstrap instructions. |
 | `/api/cloudflare/token/create` | `POST` | Uses a temporary bootstrap token to create and optionally store the narrower GoodVibes operational token. |
 | `/api/cloudflare/discover` | `POST` | Discovers accounts, zones, and optional account-scoped Cloudflare resources visible to the token. |
@@ -220,7 +222,7 @@ Saved ids such as `cloudflare.kvNamespaceId`, `cloudflare.secretsStoreId`, `clou
 If Cloudflare returns an exists/quota-style create error after discovery, the SDK performs a second discovery pass and reuses a matching resource when it can:
 
 - **Secrets Store.** For the account-level `maximum_stores_exceeded` response: if the requested store already exists, or Cloudflare exposes a single existing store on the account, provisioning records and reuses that store instead of failing the entire onboarding pass.
-- **Account workers.dev subdomains.** Cloudflare `10036` "Account already has an associated subdomain" responses are recovered by re-reading the existing account subdomain and using it as the canonical Worker URL base.
+- **Account workers.dev subdomains.** A failed subdomain create/update (including Cloudflare's `10036` "Account already has an associated subdomain" error) is recovered by re-reading the existing account subdomain and using it as the canonical Worker URL base; if no subdomain exists after that re-read, the original error is raised instead of being swallowed.
 - **Durable Objects.** Cloudflare `10074` "Cannot apply new-sqlite-class migration" responses are recovered by retrying the Worker upload without the first-run `new_sqlite_classes` migration while keeping the `GOODVIBES_COORDINATOR` binding.
 
 Provisioning request example:
@@ -276,14 +278,14 @@ import { createGoodVibesCloudflareWorker } from '@pellux/goodvibes-sdk/workers';
 export default createGoodVibesCloudflareWorker();
 ```
 
-Manual Worker deployments can still use that entry point, but SDK provisioning uploads an equivalent Worker module automatically. The Worker bridge can:
+Manual Worker deployments can still use that entry point, but SDK provisioning uploads its own Worker module automatically so a client never has to build or upload one by hand. The two are close but not byte-identical: the auto-uploaded module skips daemon-URL hardening (scheme, private-host, and format checks) and the request-size and content-type checks that `createGoodVibesCloudflareWorker` adds, because provisioning always sets `daemonBaseUrl` itself and always installs `GOODVIBES_WORKER_TOKEN`, which makes those checks redundant on the path the SDK controls. Deployments that import `createGoodVibesCloudflareWorker` directly get the fuller check set. The Worker bridge can:
 
 - Proxy `/batch/*` requests to the daemon's `/api/batch/*` routes.
 - Queue small tick signals with `/batch/tick/enqueue`.
 - Run scheduled events that call `/api/batch/tick`.
 - Consume Cloudflare Queue messages and retry failures so Cloudflare dead-letter queues can capture exhausted messages.
 
-Every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>` by default. Set the token with the Worker secret `GOODVIBES_WORKER_TOKEN` or `createGoodVibesCloudflareWorker({ workerAuthToken })`. The SDK provisioning flow generates and installs `GOODVIBES_WORKER_TOKEN` automatically. Manual deployments that intentionally put the Worker behind another trusted auth layer can pass `allowUnauthenticated: true`, but that is an explicit opt-out.
+Every Worker route except `/health` and `/batch/health` requires `Authorization: Bearer <token>` by default. Set the token with the Worker secret `GOODVIBES_WORKER_TOKEN` or `createGoodVibesCloudflareWorker({ workerAuthToken })`. The SDK provisioning flow generates and installs `GOODVIBES_WORKER_TOKEN` automatically. With `createGoodVibesCloudflareWorker`, if no token is configured the Worker refuses every non-health route with `WORKER_AUTH_TOKEN_REQUIRED` rather than silently allowing requests through; manual deployments that intentionally put the Worker behind another trusted auth layer must pass `allowUnauthenticated: true` as an explicit opt-out.
 
 By default, the Worker does not queue full prompt/job payloads. Queue messages should be small signals, not prompt archives or secrets. This keeps usage free-tier friendly and avoids putting sensitive prompt bodies into Cloudflare Queues. Full job payload queueing requires `createGoodVibesCloudflareWorker({ queueJobPayloads: true })` or the Worker environment binding `GOODVIBES_QUEUE_JOB_PAYLOADS=true`.
 
@@ -291,11 +293,19 @@ The SDK provisioning route configures the queue consumer with `dead_letter_queue
 
 **Worker HTTP error codes**
 
+The full set below is what `createGoodVibesCloudflareWorker` returns; the module SDK provisioning uploads only ever returns `NOT_FOUND`, `QUEUE_PAYLOADS_DISABLED`, and `QUEUE_NOT_CONFIGURED` from this list, since provisioning guarantees the daemon URL and auth token are already valid.
+
 | Status | `code` | Meaning |
 |--------|--------|---------|
+| `401` | `WORKER_AUTH_REQUIRED` | A configured worker token did not match the request's `Authorization` header. |
+| `503` | `WORKER_AUTH_TOKEN_REQUIRED` | No `GOODVIBES_WORKER_TOKEN` or `workerAuthToken` is configured and `allowUnauthenticated` was not set. |
 | `404` | `NOT_FOUND` | The request path does not map to a `/batch/*` daemon route. |
 | `409` | `QUEUE_PAYLOADS_DISABLED` | `POST /batch/jobs/enqueue` was called without payload queueing enabled. |
 | `503` | `QUEUE_NOT_CONFIGURED` | A queue route was called but the `GOODVIBES_BATCH_QUEUE` binding is missing. |
+| `503` | `DAEMON_URL_REQUIRED` | Neither `options.daemonUrl` nor `GOODVIBES_DAEMON_URL` is configured. |
+| `400` | `INVALID_JSON` | The request body could not be parsed as JSON. |
+| `415` | `UNSUPPORTED_MEDIA_TYPE` | A non-GET/HEAD proxy request set a `Content-Type` other than `application/json`. |
+| `413` | `PAYLOAD_TOO_LARGE` | The request body exceeded `maxRequestBodyBytes` (default 1 MB). |
 
 `/health` and `/batch/health` are always reachable without authentication; every other route requires `Authorization: Bearer <token>` unless `allowUnauthenticated` is set.
 

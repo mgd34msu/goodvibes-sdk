@@ -39,10 +39,10 @@ async function refresh(): Promise<void> {
   render(await sdk.operator.control.snapshot());
 }
 
-// 1. HTTP bootstrap — load the snapshot before opening any stream.
+// 1. HTTP bootstrap: load the snapshot before opening any stream.
 await refresh();
 
-// 2. Subscribe — keep a live event channel open. Use viaSse() for operator
+// 2. Subscribe: keep a live event channel open. Use viaSse() for operator
 //    dashboards; use sdk.realtime.viaWebSocket() on mobile/React Native.
 const events = sdk.realtime.viaSse();
 const unsubscribe = events.agents.on('AGENT_COMPLETED', () => {
@@ -50,7 +50,7 @@ const unsubscribe = events.agents.on('AGENT_COMPLETED', () => {
   void refresh();
 });
 
-// 3. Snapshot refresh on resume — events can be missed while backgrounded, so
+// 3. Snapshot refresh on resume: events can be missed while backgrounded, so
 //    re-read state on foreground/resume and after network transitions.
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void refresh();

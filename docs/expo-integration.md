@@ -27,7 +27,7 @@ See [Getting started](./getting-started.md#install) for the canonical install co
 
 - prefer bearer tokens for Expo apps
 - persist tokens with a secure `tokenStore` (see [Token storage](#token-storage)) rather than rolling a custom adapter
-- use `sdk.realtime.viaWebSocket()` for realtime: the Expo surface is WebSocket-only (no `viaSse()`), so the inherited `sseReconnect` option is a no-op
+- use `sdk.realtime.viaWebSocket()` for realtime. The Expo surface is WebSocket-only (no `viaSse()`), so the inherited `sseReconnect` option is a no-op
 - reconnect on foreground/resume transitions
 - wrap token access in a `tokenStore` or `getAuthToken` so reconnects do not keep stale tokens
 

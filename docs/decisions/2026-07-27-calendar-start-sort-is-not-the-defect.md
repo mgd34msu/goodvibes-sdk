@@ -114,3 +114,20 @@ permits the attack.
 
 **De-prioritise externally-sourced events.** Rejected: it inverts the feature.
 Meetings other people schedule are most of a calendar.
+
+## Correction (2026-08-21, v2.0.19): the ingest-marking defect has been fixed
+
+The "defect worth fixing" this decision named (calendar content entering with no
+untrusted-content marking) has since shipped, on the SDK side. `UntrustedSurface` in
+`packages/sdk/src/platform/security/untrusted-surface-language.ts` now includes
+`'calendar-event'`. `packages/sdk/src/platform/calendar/untrusted-events.ts` records
+ingest from explicit reads only (`SubscriptionStore.readEvents()` /
+`readAllEvents()`, the CalDAV gateway's `listEvents` / `getEvent` / `exportIcs` /
+`importIcs`), never from `refresh()` / `applyFetch()` / a subscription poll, matching
+required item 2 above exactly. `test/security-calendar-trust.test.ts` source-scans to
+keep calendar content from gaining a path that can initiate work, matching required
+item 3. `platform/control-plane/routes/calendar-composition.ts` is the composition
+root that binds the recorder to the real ledger. The webui-side asks in "Two things
+to do in the view instead of clamping" (a daemon-stamped sort tiebreak, visible
+provenance in `CalendarView.tsx`) could not be verified: that component is not part
+of the goodvibes-sdk repository.

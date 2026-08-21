@@ -22,9 +22,9 @@ This surface is for:
 See [Daemon Embedding](../../docs/daemon-embedding.md) for the full daemon surface, dispatchers, and the recommended embedding pattern.
 
 This package gives you reusable route modules, but your host still owns:
-- request routing
-- concrete services
-- auth/session storage
-- runtime bootstrapping
+- **request routing**: matching an incoming request to the handler this package builds for it.
+- **concrete services**: the session stores, provider clients, and other objects a route-handler factory is built from.
+- **auth/session storage**: where tokens and sessions actually live.
+- **runtime bootstrapping**: starting your process and wiring these pieces together.
 
 Use this surface when you are embedding GoodVibes into another TypeScript server. Do not use it for normal client-side integrations.

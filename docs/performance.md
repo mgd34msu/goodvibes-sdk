@@ -24,25 +24,28 @@ const sdk = createGoodVibesSdk({
 });
 ```
 
-Delay for a one-based attempt `n` is: `min(baseDelayMs * backoffFactor^(attempt-1), maxDelayMs)`. So attempt 1 waits `baseDelayMs`, attempt 2 applies one backoff factor, and so on. `backoffFactor` defaults to `2` and is configurable. There is no jitter. When a server sends a `Retry-After` header on a retryable response, it is honored as a floor on the computed delay.
+Delay for a one-based attempt `n` is: `min(baseDelayMs * backoffFactor^(attempt-1), maxDelayMs)`. So attempt 1 waits `baseDelayMs`, attempt 2 applies one backoff factor, and so on. `backoffFactor` defaults to `2` and is configurable. There is no jitter. When a server sends a `Retry-After` header on a retryable response, it raises the computed delay to at least that value, but the result is still capped at 10 minutes so a hostile or misconfigured server cannot park a client indefinitely.
 
 Retries are only triggered for retryable errors. In the transport-http retry loop an error is retryable when:
-- Its HTTP status is in `RETRYABLE_STATUS_CODES` (408, 429, 500, 502, 503, 504) and the request method is eligible for retry: a safe method (`GET`, `HEAD`, or `OPTIONS`), or a mutation the contract marks `idempotent` or that has a `perMethodPolicy` entry; or
+- Its HTTP status is in `RETRYABLE_STATUS_CODES` (408, 429, 500, 502, 503, 504) and the request method is eligible for retry, meaning a safe method (`GET`, `HEAD`, or `OPTIONS`), or a mutation the contract marks `idempotent` or that has a `perMethodPolicy` entry; or
 - It is a network-level failure (status `0`) surfaced as a `GoodVibesSdkError` with `recoverable: true` (the transport flags fetch/connection errors recoverable).
 
 Never retry unsafe mutations blindly. Only idempotent reads and operations with application-level idempotency guarantees are safe to retry.
 
 ### Adaptive execution planner
 
-The `AdaptivePlanner` selects an execution strategy each turn based on risk, latency budget, and task shape. It supports five strategies:
+The `AdaptivePlanner` selects an execution strategy each turn based on risk, latency budget, and task shape. It supports five strategies. `single` makes one LLM call with no parallelism. `cohort` fans out to a coordinated agent group. `background` defers the work to an async task. `remote` delegates to a remote provider or agent endpoint. `auto` is not itself a candidate; it tells the planner to score the other four and pick the highest.
 
-| Strategy | When Selected |
+Selection is a 0-100 score per strategy, not a hard gate, apart from three disqualifying conditions. `cohort` scores 0 unless `isMultiStep` is true, `background` scores 0 unless `backgroundEligible` is true, and `remote` scores 0 unless `remoteAvailable` is true. Within those bounds, risk acts as a strong penalty rather than a cutoff. `cohort` and `remote` still receive a small nonzero score above risk 0.7, so they can theoretically still win if every other candidate is disqualified, and `background` is penalized above risk 0.6. `single` always has a baseline score of 50 and gains bonuses when risk exceeds 0.7, the latency budget is under 5 seconds, or the task has no multi-step signal, which is why those conditions are the practical case where `single` wins.
+
+| Strategy | Score shape |
 |---|---|
-| `single` | Risk > 0.7, latency budget < 5 s, or no multi-step signal |
-| `cohort` | Multi-step task, risk ≤ 0.7: fan-out to coordinated agents |
-| `background` | `backgroundEligible` true, no latency constraint, risk ≤ 0.6 |
-| `remote` | Remote endpoint available, risk ≤ 0.7 |
-| `auto` | Planner evaluates all strategies and picks the highest scorer |
+| `single` | Baseline 50, +30 if risk > 0.7, +20 if latency budget < 5 s, +10 if not multi-step |
+| `cohort` | 0 unless multi-step; ~5 if risk > 0.7; otherwise 70 + (1 − risk) × 20 |
+| `background` | 0 unless `backgroundEligible`; ~10 if risk > 0.6; otherwise 60, +20 more if the latency budget is unconstrained |
+| `remote` | 0 unless `remoteAvailable`; ~5 if risk > 0.7; otherwise 65 + (1 − risk) × 15 |
+
+`background`'s latency-budget bonus is exactly that, a bonus. An unconstrained latency budget is not required for `background` to win; it only pushes the score higher when present.
 
 ```ts
 import { AdaptivePlanner } from '@pellux/goodvibes-sdk/platform/core';
@@ -81,9 +84,9 @@ import { ConsecutiveErrorBreaker } from '@pellux/goodvibes-sdk/platform/core';
 const breaker = new ConsecutiveErrorBreaker();
 
 const result = breaker.recordAllFailed();
-// 'ok'    — under warning threshold (< 5 consecutive)
-// 'warn'  — approaching break threshold (>= 5)
-// 'break' — at break threshold (>= 10)
+// 'ok'    - under warning threshold (< 5 consecutive)
+// 'warn'  - approaching break threshold (>= 5)
+// 'break' - at break threshold (>= 10)
 
 breaker.recordSuccess(); // resets counter to 0
 ```
@@ -180,10 +183,22 @@ The SDK tracks token usage continuously against the active model's context windo
 
 Automatic compaction is controlled by `behavior.autoCompactThreshold`, a
 percentage of the active context window. The default is `80`, meaning
-compaction becomes eligible at 80% context usage. The safety buffer is still
-enforced as a floor: `shouldAutoCompact` returns true when the configured
-percentage is crossed **or** when remaining tokens are at or below
-`COMPACTION_BUFFER_TOKENS`.
+compaction becomes eligible at 80% context usage. A remaining-token safety
+buffer backstops the percentage threshold. `shouldAutoCompact` returns true
+when the configured percentage is crossed **or** when remaining tokens fall
+to or below the effective buffer.
+
+The effective buffer is not a flat `COMPACTION_BUFFER_TOKENS` (15,000) on
+every window. It is `min(COMPACTION_BUFFER_TOKENS, contextWindow × 0.125)`,
+so a fixed 15,000-token buffer never reserves an outsized share of a small
+or medium context window. On a 128k window the full 15,000-token buffer
+applies (128k × 0.125 = 16k, above the 15k cap). On a 20k window the buffer
+scales down to 2,500 tokens; without that scaling a flat 15,000-token buffer
+would trip at roughly 25% usage and fire on nearly every request, even an
+almost-empty conversation. The buffer still fires independently of the
+percentage threshold, which matters when that threshold is set high or
+disabled, since the buffer is the only backstop standing between usage and
+the window edge in that case.
 
 Preflight checks run before provider calls, including follow-up calls inside
 tool loops. They use the same percentage/buffer decision so a turn can compact
@@ -222,9 +237,9 @@ const result = await checkAndCompact(
 );
 
 if (result) {
-  // result.messages — new compacted message list
+  // result.messages: new compacted message list
   // result.tokensBeforeEstimate / result.tokensAfterEstimate
-  // result.event — CompactionEvent for telemetry
+  // result.event: CompactionEvent for telemetry
 }
 ```
 
@@ -251,21 +266,7 @@ The compacted output is assembled from named sections, each with its own token b
 | Resolved problems | 300 tokens |
 | **Total ceiling** | **6,500 tokens** |
 
-Override the defaults via `CompactionConfig`:
-
-```ts
-const ctx: CompactionContext = {
-  // ...
-  config: {
-    recentConversationBudget: 4_000,
-    toolResultsBudget: 2_000,
-    agentActivityBudget: 1_000,
-    olderAgentSummaryBudget: 500,
-    resolvedProblemsBudget: 300,
-    totalCeiling: 8_000,
-  },
-};
-```
+`CompactionConfig` is an exported type with that shape, but structured compaction (`compactMessages` / `checkAndCompact`) always runs against `DEFAULT_COMPACTION_CONFIG` internally. `CompactionContext` has no `config` field, so there is currently no supported way to override these budgets per call; the type exists for the internal section builders, not as a public override surface.
 
 ### Token estimation
 
@@ -283,7 +284,7 @@ const estimate = estimateConversationTokens(messages); // number
 
 ### Performance budgets
 
-The SDK defines two categories of performance budgets: **bundle size budgets** and **runtime SLO gates**.
+The SDK defines two categories of performance budgets, **bundle size budgets** and **runtime SLO gates**.
 
 **Bundle size budgets** are defined per entry point via `bundle-budgets.json` at
 the repo root. Each entry has a gzip ceiling of `max(ceil(actual × 1.2), actual + 50 B)` (the `+50 B` floor dominates for tiny entries below ~250 B).
@@ -295,7 +296,7 @@ bun run bundle:check  # prints actual vs. budget for every entry point
 
 To update after a legitimate size increase, see [Testing and Validation](./testing-and-validation.md#bundle-budget-enforcement).
 
-**Runtime SLO gates** use consecutive-violation counting: a budget fails only when the threshold is exceeded on `tolerance` consecutive samples, preventing transient spikes from failing the gate.
+**Runtime SLO gates** use consecutive-violation counting. A budget fails only when the threshold is exceeded on `tolerance` consecutive samples, which prevents transient spikes from failing the gate.
 
 | Metric | Threshold | Tolerance |
 |---|---|---|
@@ -304,8 +305,11 @@ To update after a legitimate size increase, see [Testing and Validation](./testi
 | **Tool executor overhead (p95)** | **5 ms** | 3 |
 | Memory growth rate | 50 MiB/hr | 2 |
 | Compaction latency (p95) | 500 ms | 3 |
+| SLO: turn start, cancel, reconnect recovery, permission decision | see the SLO gates table below | 3 each |
+| Integration delivery success rate | 95% (over a 100-delivery window) | 3 |
+| Integration dead-letter queue depth | 10 entries | 3 |
 
-Tool executor overhead measures scheduling, dispatch, and teardown phases only, not the tool's own execution time.
+Tool executor overhead measures scheduling, dispatch, and teardown phases only, not the tool's own execution time. The four end-to-end SLO gates and the two integration-delivery gates share this same default-budget list and consecutive-violation tolerance mechanism; the SLO gates are broken out separately below because `SloCollector` computes their p95 values from the runtime event stream rather than from a single measured duration per sample.
 
 ### SLO gates
 
@@ -359,10 +363,12 @@ Use read models for derived UI state rather than subscribing to raw domain state
 import { createObservabilityReadModels } from '@pellux/goodvibes-sdk/platform/runtime/ui';
 
 const models = createObservabilityReadModels(runtimeServices);
-// models.system   — system-level health and status
-// models.security — security and permission state
-// models.remote   — transport and connection health
-// models.maintenance — compaction, sessions, maintenance state
+// Each property is a UiReadModel<TSnapshot>: { getSnapshot(), subscribe(listener) }.
+// The object is flat, not grouped under system/security/remote/maintenance keys:
+// models.health, models.intelligence, models.marketplace, models.cockpit: system-level status
+// models.security, models.mcp, models.localAuth: security and permission state
+// models.remote: transport and connection health
+// models.settings, models.continuity, models.worktrees: compaction, sessions, maintenance state
 ```
 
 ---
@@ -371,7 +377,7 @@ const models = createObservabilityReadModels(runtimeServices);
 
 ### ComponentHealthMonitor
 
-The `ComponentHealthMonitor` enforces per-component resource contracts at render time. It is surface-agnostic: TUI panels, web widgets, and any renderable unit can register.
+The `ComponentHealthMonitor` enforces per-component resource contracts at render time. It is surface-agnostic, so a TUI panel, a web widget, or any other renderable unit can register.
 
 **Registration and render gating:**
 
@@ -380,7 +386,7 @@ import { ComponentHealthMonitor } from '@pellux/goodvibes-sdk/platform/runtime/o
 
 const monitor = new ComponentHealthMonitor();
 
-// Register with a category — inherits category defaults
+// Register with a category, inherits category defaults
 monitor.register('agent-logs', 'agent');
 
 // Before rendering
@@ -419,10 +425,11 @@ Components progress through three health states based on contract compliance:
 ```
 normal → throttled (rate or render cost exceeded)
 throttled → degraded (consecutiveViolations >= degradeAfterViolations)
+throttled → normal (3 consecutive clean windows)
 degraded → normal (3 consecutive clean windows)
 ```
 
-When `throttled`, `canRender` returns false until `throttleIntervalMs` has elapsed. When `degraded`, the component renders at `degradedIntervalMs` regardless of update rate. Recovery requires 3 consecutive measurement windows without violations.
+When `throttled`, `canRender` returns false until `throttleIntervalMs` has elapsed. When `degraded`, the component renders at `degradedIntervalMs` regardless of update rate. Recovery to `normal` requires 3 consecutive measurement windows without violations, and applies the same way whether the component was throttled or degraded; a throttled component does not have to pass through degraded to recover.
 
 ```ts
 const health = monitor.getHealth('agent-logs');
@@ -448,10 +455,10 @@ Subscribe to multiple event types within a domain in a single feed to avoid per-
 ```ts
 const feed = sdk.realtime.viaSse();
 
-// Subscribe per event type — all share the same underlying connection
+// Subscribe per event type, all share the same underlying connection
 const stopTurns = feed.turn.on('TURN_COMPLETED', (ev) => { /* ... */ });
 const stopAgents = feed.agents.on('AGENT_COMPLETED', (ev) => { /* ... */ });
-const stopTools = feed.tools.on('TOOL_RESULT', (ev) => { /* ... */ });
+const stopTools = feed.tools.on('TOOL_SUCCEEDED', (ev) => { /* ... */ });
 
 // Each on() returns an unsubscribe function
 // Cleanup:

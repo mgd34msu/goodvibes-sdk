@@ -262,3 +262,16 @@ the same arg-forwarding TUI has, for identical behavior on both surfaces.
 - Full SDK suite: 3428 pass / 0 fail.
 - `contracts:check`, `refresh:contracts:check`, `api:check`, `version:check`: green
   (see the W6-C3 work-order report for exact commands/output).
+
+Correction (2026-08-21, v2.0.19): `EXEMPT_VERB_CATEGORIES` in `core-verbs.ts`
+has grown from the ~9 categories described above to 27, and a second,
+namespace-scoped mechanism, `SCOPED_EXEMPT_VERB_CATEGORIES` (5 entries), was
+added for verbs that could plausibly belong to more than one domain (`remove`,
+`add`, `check`). `mcp.servers.remove` now lives there under
+`mcp-server-registry-alias`, not under a flat `legacy-verb-aliases` category.
+`test/core-verbs-conformance.test.ts` now carries 14 tests, not 10, covering
+the added scoping rules. `test/w6-c3-core-verb-rename-daemon-wire.test.ts` was
+renamed to `test/core-verb-rename-daemon-wire.test.ts` (still 9 tests). The
+renames and retirements described in sections 2-8 above are unchanged and
+still hold: the `.patch` ids, `automation.jobs.pause`/`resume`, and the bare
+`schedules.*` family remain absent from the current catalog.

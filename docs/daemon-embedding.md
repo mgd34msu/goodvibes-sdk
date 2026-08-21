@@ -4,22 +4,22 @@ This is the **full surface**. Bun runtime required. See [Runtime surfaces](./sur
 
 ## What the daemon surface gives you
 
-- Agent execution and lifecycle management
-- Tool execution, LSP integration, and MCP protocol support
-- Workflow triggers and runtime automation
-- HTTP server via `Bun.serve` with typed daemon route contracts
-- File-system state and process spawning
-- Full operator control and telemetry surfaces
-- Structured daemon error handling via error-kind taxonomy
+Use `@pellux/goodvibes-sdk/daemon` when you want to host GoodVibes daemon routes in another server process, rather than running the standalone `goodvibes-daemon` binary. It gives you:
 
-Use `@pellux/goodvibes-sdk/daemon` when you want to host GoodVibes daemon routes in another server process.
+- **Agent execution and lifecycle management**: creating, running, and tearing down agent turns.
+- **Tool execution, LSP integration, and MCP protocol support**: the tool-calling surface an agent turn drives, including language-server-backed tools and MCP server connections.
+- **Workflow triggers and runtime automation**: scheduled and event-driven automation that starts sessions without a human present.
+- **An HTTP server built on `Bun.serve`** with typed daemon route contracts, so route handlers and their request/response shapes are checked at compile time.
+- **File-system state and process spawning**: the daemon's own persisted state and the subprocesses it starts for tools and channels.
+- **Full operator control and telemetry surfaces**: the control-plane routes and metrics/tracing endpoints an operator dashboard or CLI drives.
+- **Structured daemon error handling** through the `SDKErrorKind` taxonomy described below, so callers branch on an error's kind instead of parsing English messages.
 
-The package gives you:
-- typed route-handler contracts
-- route-group builders
-- route dispatchers
-- shared auth/scope helpers
-- structured daemon error helpers
+Concretely, the package gives you:
+- **typed route-handler contracts**, the request/response shapes each route factory expects and returns;
+- **route-group builders**, factories like `createDaemonControlRouteHandlers` that build a set of handlers from your service adapters;
+- **route dispatchers**, functions like `dispatchDaemonApiRoutes` that route a request to the right handler for you;
+- **shared auth/scope helpers**, for resolving the authenticated principal and checking required scopes;
+- **structured daemon error helpers**, for building and summarizing `GoodVibesSdkError`-shaped responses.
 
 ## Control and telemetry routes
 
@@ -57,37 +57,60 @@ explicit public subpaths rather than through a catch-all platform barrel.
 ## Host responsibility
 
 The SDK does not replace your server framework. You still own:
-- request routing
-- concrete service implementations
-- auth/session storage
-- host-specific surface/storage root decisions
-- runtime bootstrapping
-- concrete host policies like CORS, TLS, and deployment-specific auth envelopes
+- **request routing**: matching incoming requests to the handlers this package builds.
+- **concrete service implementations**: the objects (session stores, provider clients, and so on) the route-handler factories are built from.
+- **auth/session storage**: where tokens and sessions actually live; the SDK gives you the auth/scope helpers, not the storage.
+- **host-specific surface/storage root decisions**: where on disk or in which bucket your host keeps its state.
+- **runtime bootstrapping**: starting your process and wiring these pieces together.
+- **concrete host policies** like CORS, TLS termination, and deployment-specific auth envelopes.
 
-## Connect-or-start daemon startup
+## Adopt-or-spawn daemon startup
 
-Full-surface hosts such as the TUI call `startHostServices` to start SDK-owned
-local services. When `daemon.enabled` is
-true (the default; resolved via `resolveDaemonEnabled`), the SDK treats daemon
-startup as a connect-or-start decision:
+Full-surface hosts such as the TUI call `startHostServices` to start the
+services a client surface owns. The daemon itself is never one of them:
+`startHostServices` never constructs a `DaemonServer` in the calling process.
+The daemon is a separate product (`goodvibes-daemon`) with its own
+composition root; a host either adopts an already-running compatible daemon
+or spawns the standalone `goodvibes-daemon` binary as a detached child
+process and then adopts that. `daemonServer` on the returned handle is always
+`null`, there is no in-process daemon instance to hold or stop.
 
-- If the configured `controlPlane.host` and `controlPlane.port` are free, the
-  SDK starts an embedded daemon and returns `daemonStatus.mode: "embedded"`.
-- If the port is occupied, the SDK probes `GET /status` with the configured
-  shared daemon token. A matching GoodVibes status response returns
-  `daemonStatus.mode: "external"` and includes the detected version.
-- If the port is occupied but the process cannot be verified as GoodVibes, the
-  SDK does not start another daemon and returns `daemonStatus.mode: "blocked"`
-  with a reason.
-- If daemon startup times out, the SDK returns
-  `daemonStatus.mode: "unavailable"`.
+When `daemon.enabled` is true (the default; resolved via
+`resolveDaemonEnabled`), the shared pure decision in
+`decideDaemonAdoption` (`platform/runtime/daemon-adoption-policy.ts`) maps
+a port probe and an identity probe onto one of these outcomes, reported as
+`daemonStatus.mode`:
 
-The `daemonServer` property remains `null` for external, blocked,
-disabled, and unavailable cases because there is no embedded server instance to
-stop. Hosts should read `daemonStatus` to distinguish these cases instead of
-treating every `daemonServer: null` as the same outcome. `httpListenerStatus`
-provides the same disabled, embedded, blocked, and unavailable reporting for the
-HTTP listener.
+- **`external`** (adopt): a compatible GoodVibes daemon already answers on the
+  configured host/port, or a freshly spawned detached daemon became reachable.
+  The host runs without owning the daemon process itself.
+- **`incompatible`**: a GoodVibes daemon answers, but on a version band this
+  host cannot adopt. The host never starts a second, competing daemon; it
+  reports the mismatch and runs without one.
+- **`blocked`**: the configured port is occupied by a process that does not
+  verify as a GoodVibes daemon. The host runs without a daemon rather than
+  guessing.
+- **`unavailable`**: the port is free but no daemon exists to adopt and this
+  call is not allowed to spawn one (`adoptOnly: true`, what both `goodvibes-tui`
+  and `goodvibes-agent` pass), or a spawn attempt did not become reachable in
+  time.
+- **`disabled`**: `daemon.enabled` (or the caller's own gate) is false.
+
+A caller that does not pass `adoptOnly: true` and finds the port free spawns
+the detached `goodvibes-daemon` binary (Owner ruling D7a: the daemon is a
+system service, so a surface starting must not couple the daemon's lifetime to
+that surface's process) and then adopts it the same way as an already-running
+one, still reported as `external`.
+
+Hosts should read `daemonStatus` rather than treat every `daemonServer: null`
+as the same outcome, since `daemonServer` is unconditionally `null` regardless
+of which of the outcomes above occurred.
+
+`httpListenerStatus` reports on a different, separate service: the optional
+HTTP listener gated by `danger.httpListener` (default off). Unlike the daemon,
+the listener genuinely can be constructed in-process, so its modes include a
+real `"embedded"` state (`embeddedHttpListener` on the handle is non-null in
+that case) alongside `"disabled"`, `"blocked"`, and `"unavailable"`.
 
 ## Recommended embedding pattern
 
@@ -111,10 +134,10 @@ try {
   if (err instanceof GoodVibesSdkError) {
     switch (err.kind) {
       case 'auth':
-        // scope or token problem — return 401/403
+        // scope or token problem, return 401/403
         break;
       case 'validation':
-        // bad request shape — return 400
+        // bad request shape, return 400
         break;
       case 'service':
       case 'protocol':
@@ -123,7 +146,7 @@ try {
         // Upstream service, wire-protocol, tool, or daemon-internal failure.
         break;
       case 'unknown':
-        // unexpected failure — log with full err context
+        // unexpected failure, log with full err context
         break;
       default:
         throw err;
@@ -134,12 +157,21 @@ try {
 
 ## Observability
 
-`SDKObserver` integrates with the full daemon surface for structured event tracing. Use `createConsoleObserver` during development or wire a custom observer for production telemetry pipelines. See [Observability](./observability.md) for the full observer API.
+`SDKObserver` is not part of the daemon route-handler surface itself: `bootDaemon`
+and `DaemonServer` take no observer option. It belongs to the client SDK
+(`createGoodVibesSdk`), the HTTP client other code uses to call a running
+daemon's API, so it is the right tool when your host both embeds daemon routes
+and also talks to a daemon (its own or another one) as a client. Use
+`createConsoleObserver` during development or wire a custom observer for
+production telemetry pipelines. See [Observability](./observability.md) for the
+full observer API.
 
 ```ts
-import { createConsoleObserver } from '@pellux/goodvibes-sdk';
+import { createGoodVibesSdk, createConsoleObserver } from '@pellux/goodvibes-sdk';
 
 const sdk = createGoodVibesSdk({
+  baseUrl: 'https://daemon.example.com',
+  authToken: process.env.GV_TOKEN,
   observer: createConsoleObserver(),
 });
 ```

@@ -245,3 +245,37 @@ The daemon running by default does not mean sessions run in the daemon by defaul
   `/hosted attach` in the terminal, or an inbound channel conversation with
   `hostedSessions.promoteInboundConversations` turned on. With the shipped defaults, no session
   is daemon-hosted and detaching still ends work, exactly as it always has.
+
+## Correction (2026-08-21, v2.0.19): "still local mode" no longer describes the shipped default
+
+Two things in this record have moved since the 2026-07-31 update above:
+
+- **A surface's own conversation turns now route into the daemon by default.** The SDK config
+  schema (`platform/config/schema-domain-hosted-sessions.ts`) defines
+  `hostedSessions.routeConversationTurns`, default **`true`**, alongside `promoteInboundConversations`
+  (still default `false`, for inbound channel messages only). Its schema description states: with
+  the setting on and a connected daemon reachable, the first message of a conversation creates a
+  daemon-hosted session rooted at the surface's working directory, every later message is steered
+  into it, and the surface renders the turn from the daemon's event stream, "so the turn survives
+  this process closing and every surface sees one conversation." With no daemon reachable, the turn
+  still runs locally and the transcript names the reason. This directly supersedes "What is still
+  local mode" above: the shipped default is no longer that a surface's own turns stay local. The
+  code that reads this setting and drives the routing lives in the surface repos (`goodvibes-tui`,
+  `goodvibes-agent`), which this SDK repo does not contain, so the consuming call sites could not be
+  re-verified from here; the schema default and description are read directly from the current SDK
+  source.
+- **The "embed" daemon branch this record describes no longer exists in the code.** The Phase A
+  section above cites `platform/runtime/bootstrap-services.ts:695` for "neither the embed branch...
+  nor the detached-spawn branch is reachable from a surface," describing it as unreachable given
+  `adoptOnly: true`. In the current source, `startHostServices` (same file) has no daemon-embed
+  branch at all: the decision switch it drives (`decideDaemonAdoption` in
+  `platform/runtime/daemon-adoption-policy.ts`) only ever produces `'disabled' | 'adopt' |
+  'incompatible' | 'blocked' | 'spawn' | 'adopt-only-idle'`, and the daemon's own host-service status
+  handle is a `hostedDaemonServer: DaemonService | null = null` constant that is never reassigned.
+  There is no code path, adopt-only or otherwise, that constructs a daemon in a surface's own
+  process anymore; the removal is total, not merely unreached by shipped surfaces. (An `'embedded'`
+  status mode still exists for the separate, opt-in HTTP listener gated by `danger.httpListener`,
+  default off; that is a different service from the daemon and is unaffected by this note.)
+- A second, related settings addition not previously recorded: `hostedSessions.attachmentTtlMs`
+  (default `600000`, 10 minutes) governs how long a client's attachment to a hosted session stands
+  without renewal before the session is treated as detached and `detachPolicy` applies.

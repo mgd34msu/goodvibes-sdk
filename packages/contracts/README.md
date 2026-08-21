@@ -67,6 +67,14 @@ isPeerEndpointId('pair.request'); // true
 RUNTIME_EVENT_DOMAINS.forEach((domain) => isRuntimeEventDomain(domain));
 ```
 
+The package also exports the generated `OPERATOR_CONTRACT` and `PEER_CONTRACT`
+manifests directly (for callers that want the raw data instead of the lookup
+helpers above), the core-verb classification used to lint operator method ids
+(`CORE_VERBS`, `BANNED_VERBS`, `EXEMPT_VERB_CATEGORIES`, `classifyVerb`), and
+the key-mapping helpers the generated typed-IO maps are built with
+(`RequiredNamedKeys`, `OmitNamed`, `NamedProps`, `IndexPart`), for consumers
+writing their own generic helpers over `OperatorMethodInput`/`OperatorMethodOutput`.
+
 Node-only artifact path helpers:
 
 ```ts

@@ -8,6 +8,7 @@ Public API surfaces:
 
 - `@pellux/goodvibes-sdk/platform/core`
 - `@pellux/goodvibes-sdk/platform/runtime`
+- `@pellux/goodvibes-sdk/platform/orchestration`
 
 > See [Public surface reference](./public-surface.md) for stability status and the full list of exported platform subpaths.
 
@@ -133,6 +134,51 @@ event set for these transitions lives in the
 
 Constraint propagation is documented in
 [WRFC constraint propagation](./wrfc-constraint-propagation.md).
+
+## Orchestration engine
+
+`@pellux/goodvibes-sdk/platform/orchestration` is a separate phase/work-item
+pipeline layered over the WRFC chain controller described above, not a
+replacement for it. A workstream holds one or more ordered phases (`plan`,
+`engineer`, `review`, `fix`, `gate`, `integrate`, or a custom kind); a work
+item advances to its next phase the instant that phase's gate passes, claimed
+by whichever capacity slot is free next, rather than being bound to one
+reviewer for its whole history the way a WRFC chain is.
+
+Today the engine's live integration point is the WRFC fix phase. When a
+reviewer finds issues, `planFixWorkstream` turns those findings into a task
+graph and runs it as a workstream through `FixWorkstreamRunner`; a chain
+without a fix-workstream runner wired into its composition fails outright
+rather than degrading silently. A second integration path, `fromChainSpec`,
+can convert a whole WRFC chain into a workstream spec for callers that want
+the engine-backed pipeline directly instead of the standalone chain state
+machine; as of this writing that path is additive and opt-in, and the
+standard chain lifecycle above remains what `/teamwork`, forced-WRFC spawns,
+and built-in archetypes actually run.
+
+Beyond the phase pipeline itself, the engine adds capabilities the chain
+controller does not have:
+
+- **Best-of-N attempts.** A work item declared with `attempts: N` runs N
+  independent siblings in isolated worktrees. A passing sibling is held
+  rather than auto-merged; once every sibling in the group finishes, a
+  winner is picked explicitly or proposed by an optional judge model, then
+  merged through the normal integration lane while the other worktrees are
+  cleaned up.
+- **Elastic fleet sizing.** A ready task with no available agent spawns one,
+  up to a configured fleet ceiling; hitting the ceiling is a visible "N
+  ready, M running, at cap" state rather than a silent stall, and an agent
+  with nothing left to claim retires instead of idling.
+- **Budget ceilings.** Spend is checked before a work item is claimed into a
+  new phase, never mid-phase, so an in-flight phase always finishes even if
+  a later item would be refused for budget reasons.
+- **Dynamic dependency graphs.** Dependency and conflict-serialization edges
+  can be added while a workstream is running, with orphan detection and
+  cycle prevention.
+
+Workstream state is snapshotted for resume across restarts, and drafts (a
+workstream not yet launched) are held in a capped, swept store so a proposed
+plan can be edited before it runs.
 
 ## Runtime events
 

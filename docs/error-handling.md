@@ -30,7 +30,7 @@ try {
         }
         break;
       case 'config':
-        // Fix SDK initialization options — do not retry
+        // Fix SDK initialization options, do not retry
         break;
       case 'contract':
       case 'protocol':
@@ -110,7 +110,7 @@ Do not parse `message` strings when the structured fields are available.
 
 ## Category guidance
 
-`ErrorCategory` has 16 values: the 15 daemon wire categories plus `contract`, which is added by the SDK (`index.ts:20`) and is never marshalled over the wire.
+`ErrorCategory` has 16 values: the 15 daemon wire categories plus `contract`, which is added by the SDK and is never marshalled over the wire.
 
 - `authentication`
   Missing or invalid credentials.

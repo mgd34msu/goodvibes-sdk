@@ -15,7 +15,9 @@ use POSIX process management and filesystem behavior.
 - `CHANGELOG.md` must contain the release narrative for the package version.
 - Generated contracts and generated docs must match source.
 - Validation must pass before a release is cut.
-- Releases must not be cut while the operator has explicitly placed a hold.
+- The automatic release path only fires once the `RELEASE_ARMED` repository
+  variable is deliberately set to `true`; leaving it unset holds every green
+  push on `main` without tagging or publishing.
 
 The SDK targets Bun for daemon/platform surfaces and browser, Hermes, and
 Workers for companion-safe surfaces. Node.js is not a documented consumer
@@ -25,46 +27,87 @@ runtime target; see [Runtime surfaces](./surfaces.md).
 
 A commit is validated exactly once, on its push-CI run, per-job green.
 Everything downstream verifies *that run's* conclusions instead of re-executing
-work. Local release tooling never re-runs gates; it prepares, commits, and tags.
+work. Two paths reach a published release: an automatic zero-touch path gated
+on the repository variable `RELEASE_ARMED`, and a manual path for everything
+else, including holding a release back or redoing a failed dispatch.
 
-1. **Land the release commit on `main`.** Push-CI (`ci.yml`) builds the
-   workspace once, uploads the `workspace-build-output` artifact, and runs every
-   gate. The matrix legs and the eval gate restore that one artifact rather than
-   rebuilding. Build once, restore everywhere.
-2. **Cut locally.** With CI green, run the local release cut (bump every
-   workspace `package.json`, refresh generated version surfaces, prepend the
-   `CHANGELOG.md` section, commit, and create the annotated tag). This step runs
-   **no gates**. Validation already happened in step 1. See *Release commands*.
-3. **Push the tag.** `release.yml` runs:
-   - `verify-tag-version`: the tag equals `packages/sdk` version.
-   - `release-verify`: the reusable `reusable-release-verify.yml` confirms the
-     tagged commit's push-CI run concluded with **every job green** (the
-     toolchain `per-job-green` tool, with a 503-resilient check-suites
-     fallback). This replaces the former 45-minute `validate-release` re-run.
-   - `publish-npm`: restores the **CI build artifact for the recorded run id**,
-     asserts the run's head SHA equals the tagged SHA (the artifact-integrity
-     handoff), checks the registry state for this version, publishes with
-     provenance from the `production` environment, polls propagation, and
-     aligns the `latest` dist-tag.
-     - The registry check proceeds on empty, complete, or a partial at exactly
-       this version (a mid-loop publish failure is resumable, the publish loop
-       skips what is already up). It refuses when an already-published package
-       records a `gitHead` that is a **different commit** than the one being
-       released, which is another run or a force-moved tag owning the version.
-       An absent `gitHead` (npm omits it when packing outside a git checkout,
-       the normal case here) warns and proceeds; a check that cannot see the
-       commit must not manufacture a refusal.
-     - The dist-tag step exists because `npm publish` with no `--tag` moves
-       `latest` to whatever it just published, so two overlapping releases of
-       different versions leave `latest` pointing backward on whichever
-       packages the older run finished last. It states the property instead
-       (`latest` is the highest published version, stable preferred) and
-       converges from any interleaving. See `scripts/align-dist-tags.ts`.
-   - `github-release`: SBOM asset plus the tag's `CHANGELOG.md` excerpt.
+### Landing on `main`
 
-Because tagging is gated on push-CI green, the tag-redo dance is structurally
-retired. The SDK release wall drops from ~45–70m to ~15–20m, dominated by the
-publish itself.
+Every push to `main` runs the full `ci.yml` gate set once: the consolidated
+`validate` job, the eval gate, the security audit, the platform test matrix
+(`bun`, React Native bundling, Workers, Workers with Wrangler), the
+packaged-artifact conformance lane, and the packaging checks (`publint`, SBOM
+generation, exports-map resolution). A single `build` job produces the
+workspace `dist` output once and uploads it as the `workspace-build-output`
+artifact; every other job restores that artifact rather than rebuilding, so
+every gate tests the exact bytes a release would publish.
+
+### Automatic path (`RELEASE_ARMED`)
+
+An `auto-release` job runs after every gating job above succeeds, but only for
+a push to `main`, and only when the `RELEASE_ARMED` repository variable is
+`true`. Unset, or any other value, means CI finishes green without tagging or
+publishing, which is how work can accumulate across several merges before
+someone deliberately arms the next release.
+
+When armed and green, the job reads the version out of the root
+`package.json`, creates the annotated tag `v<version>` at that commit, and
+pushes it. A tag pushed with the workflow's own token does not trigger
+`release.yml`, since GitHub does not fire workflow events for token-authored
+pushes, so the job also dispatches `release.yml` directly at that tag ref with
+`mode=release`.
+
+If the tag already exists, from a re-run of this job or a tag pushed by hand,
+the job checks whether `release.yml` has ever run for it. A run in any state,
+including a failed one, is left alone, since re-running a failed release is a
+human decision. A tag with genuinely no run gets re-dispatched.
+
+### Manual path
+
+When `RELEASE_ARMED` is not set, or to redo a specific tag, cut and push the
+tag by hand. Bump the workspace package versions, prepend the `CHANGELOG.md`
+section, run `bun run sync:version` to refresh the generated version fallback,
+commit, then run `bun run release:tag --push` (or tag locally and `git push
+origin <tag>` separately). This step runs **no gates**; validation already
+happened on the push-CI run for that commit. A pushed `v*` tag triggers
+`release.yml` directly through its own tag-push trigger, the same workflow the
+automatic path dispatches.
+
+A `workflow_dispatch` run of `release.yml` with `mode=release` re-runs the
+publish steps for an already-tagged commit, the redo path the automatic job
+prints when it cannot resolve whether a release run exists. `mode=dry-run`,
+the default for a manual dispatch, only packs and previews; it never
+publishes and it is the only mode a manual dispatch outside `mode=release` can
+run.
+
+### What `release.yml` does, either way
+
+1. `verify-tag-version` confirms the tag equals `packages/sdk`'s version.
+2. `release-verify` (the reusable `reusable-release-verify.yml`, run in
+   `workspace` mode so the SDK verifies itself with its own toolchain rather
+   than a published one) confirms the tagged commit's push-CI run concluded
+   with **every job green**, using the toolchain `per-job-green` tool with a
+   check-suites fallback. It reports the resolved run id and head SHA. This
+   replaces the former 45-minute `validate-release` re-run.
+3. `generate-sbom` builds the CycloneDX SBOM for the release assets.
+4. `publish-npm` requires all three jobs above to be green. It asserts the
+   recorded head SHA equals the tagged SHA (the artifact-integrity handoff),
+   then downloads the push-CI run's build artifact by that run id instead of
+   rebuilding. It checks the registry state for this version, proceeding on
+   empty, complete, or a resumable partial, and refuses only when an
+   already-published package records a different commit than the one being
+   released. It publishes with provenance from the `production` environment,
+   polls propagation, and aligns the `latest` dist-tag across every published
+   package with `scripts/align-dist-tags.ts`, needed because a plain `npm
+   publish` moves `latest` to whatever it just published, which two
+   overlapping releases can leave pointing backward.
+5. `github-release` creates the GitHub release from the tagged
+   `CHANGELOG.md` excerpt plus the SBOM, once publish and SBOM generation both
+   succeed.
+
+Because tagging is gated on push-CI green either way, the tag-redo dance is
+structurally retired. The SDK release wall drops from ~45-70m to ~15-20m,
+dominated by the publish itself.
 
 ## Validation scope
 
@@ -93,7 +136,7 @@ Each release step has a dedicated script in the root `package.json`:
 | `bun run release:publish` | Publishes all workspace packages to npm (`scripts/publish-packages.ts`) |
 | `bun run release:publish:ci` | Publishes from CI with npm provenance attestations (`--provenance`) |
 | `bun run release:tag` | Creates the git release tag (`scripts/create-release-tag.ts`) |
-| `bun run release:verify` | Full local release gate: `validate`, `security:audit`, the `test`/`test:rn`/`test:workers`/`test:workers:wrangler` suites, `release:dry-run`, and `install:smoke` |
+| `bun run release:verify` | Full local release gate: `validate`, `flags:graduation`, `security:audit`, the `test`/`test:rn`/`test:workers`/`test:workers:wrangler` suites, `release:dry-run`, and `install:smoke` |
 | `bun run release:verify:published` | Verifies already-published packages and runs a registry install smoke check (`--registry`) |
 | `bun run release:verify:verdaccio` | End-to-end publish/install dry-run against a local Verdaccio registry (`scripts/verdaccio-dry-run.ts`) |
 
@@ -120,7 +163,12 @@ root; the behavior lives in the package.
 
 Tools: `sdk-pin-gate`, `build-binaries`, `release-cut`, `coverage-gate`,
 `verification-ledger`, `post-build-smoke`, `package-install-check`,
-`publish-package`, `per-job-green`, `changelog-gate`, `sha256sums`.
+`publish-package`, `per-job-green`, `changelog-gate`, `sha256sums`, and
+`train-status`. `train-status` is read-only: given a `train-manifest.json`
+listing the family's repos, it reports each one's release-train cycle state
+across their local checkouts without pushing, tagging, or installing
+anything. It takes its own `--manifest` flag rather than reading
+`toolchain.config.json`.
 
 ### `toolchain.config.json` contract
 

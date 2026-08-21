@@ -110,8 +110,9 @@ Both capabilities default off; the daemon stays loopback-only until you opt in e
 
 | Config key | Default | Notes |
 |------|---------|-------|
-| `controlPlane.webui.serve` | `false` | Serve a built web UI bundle same-origin from the daemon at `/`. The bundle is public; the app token-authenticates its own API calls. |
-| `controlPlane.webui.bundleDir` | `''` | Directory holding the built bundle (`index.html` + assets). Empty disables serving. |
+| `controlPlane.webui.serve` | `false` | Serve a built web UI bundle same-origin from the daemon at `/`. The bundle is public; the app token-authenticates its own API calls. This flag is the only on/off switch; neither directory key below turns serving on by itself. |
+| `controlPlane.webui.bundleDir` | `''` | Directory holding the built bundle (`index.html` + assets). Wins whenever it names a directory. When empty, serving falls back to `web.staticAssetsDir`. |
+| `web.staticAssetsDir` | `dist/web` | The web surface's own assets directory, used when `controlPlane.webui.bundleDir` is empty. Ships with the build's conventional output path, so a host that lays the bundle down where the build puts it only needs to flip `controlPlane.webui.serve`. |
 | `controlPlane.cors.enabled` | `false` | Answer OPTIONS preflight and emit `Access-Control-Allow-*` for allowlisted origins. Never wildcards; credentials are allowlist-gated. |
 | `controlPlane.cors.allowedOrigins` | `''` | Comma-separated explicit origin allowlist (e.g. `http://localhost:5173`). Empty refuses every cross-origin request. |
 
@@ -155,7 +156,7 @@ There is no separate auth-specific timeout; callers should pass an `AbortSignal`
 |----------|---------|-------|
 | `DEFAULT_SESSION_TTL_MS` | `3 600 000` (1 hour) | Session tokens expire after 1 hour of creation; expired sessions are rejected and pruned on access |
 
-**Source:** `packages/sdk/src/platform/security/user-auth.ts`. Not a public configurable. Set via daemon config `auth.sessionTtlMs` if your embedding exposes it.
+**Source:** `packages/sdk/src/platform/security/user-auth.ts`. Not a public configurable and not a daemon config key. A daemon embedding can override it only by passing `sessionTtlMs` when constructing the user-auth manager.
 
 ## Rate limits (daemon built-in)
 

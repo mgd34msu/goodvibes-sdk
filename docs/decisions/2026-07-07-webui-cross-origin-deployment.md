@@ -93,3 +93,20 @@ allowlist-gated and never wildcarded.
 
 Serving and CORS logic live in `platform/daemon/http/webui-serving.ts`; the router
 integrates them as a pre-auth step in `handleRequest`.
+
+## Correction (2026-08-21, v2.0.19)
+
+Two parts of this record describe a narrower daemon than the one now shipping:
+
+- **Reserved API paths are no longer a fixed list.** The "API routes keep precedence"
+  claim above named four roots plus the OpenAI-compatible prefix. Since a later fix
+  (the served bundle was answering `/status` and `/config` with the SPA shell instead
+  of JSON), the reserved set is derived from every path any registered operator
+  method advertises, not just the original four, and `/status` and `/config` are
+  reserved unconditionally alongside them.
+- **`controlPlane.webui.bundleDir` is no longer the only way to name the bundle
+  directory.** When it is empty, the daemon now falls back to `web.staticAssetsDir`
+  (the web surface's own assets directory, which ships with a non-empty default), so
+  a host that lays its build down at that conventional path needs only
+  `controlPlane.webui.serve` to turn serving on. The "Config surface added" table
+  above predates this fallback.

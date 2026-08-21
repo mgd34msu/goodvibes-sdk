@@ -34,20 +34,34 @@ See `examples/embed-session-quickstart.ts` (compile-checked in CI).
 `createEmbeddedSession(options)` boots an in-process daemon for the workspace and
 returns an `EmbeddedSession`:
 
-| member        | purpose                                                        |
-| ------------- | ------------------------------------------------------------- |
-| `workspace`   | the project root the session operates against                 |
-| `url`         | base URL of the daemon's HTTP surface                          |
-| `events`      | the `RuntimeEventBus`: `.on(type, cb)` or `.onDomain(dom, cb)` |
-| `approvals`   | the `ApprovalBroker` permission asks flow through             |
-| `sessions`    | the `SharedSessionBroker` backing the session                 |
-| `submit(in)`  | send input; resolves with the broker's submission record      |
-| `stop()`      | tear down and release the port (idempotent)                   |
+| member                  | purpose                                                        |
+| ------------------------ | ------------------------------------------------------------- |
+| `workspace`               | the project root the session operates against                 |
+| `url`                     | base URL of the daemon's HTTP surface                          |
+| `events`                  | the `RuntimeEventBus`: `.on(type, cb)` or `.onDomain(dom, cb)` |
+| `approvals`               | the `ApprovalBroker` permission asks flow through             |
+| `sessions`                | the `SharedSessionBroker` backing the session                 |
+| `submit(in)`              | send input; resolves with the broker's submission record      |
+| `cancelActive(agentIds)`  | cancel one or more in-flight agent turns by the agent id a submission reported as `activeAgentId`; returns the number actually cancelled |
+| `stop()`                  | tear down and release the port (idempotent)                   |
 
 **Permission callback injection.** When `requestPermission` is provided, every
 pending approval on the session's broker is routed to it and resolved with its
 decision. An embedder answers permission asks with a callback instead of driving
 the HTTP approvals routes.
+
+**Cancelling in-flight work.** `cancelActive` is a real cancellation, not a
+courtesy flag: it aborts the agent's in-flight provider call so the turn stops
+mid-flight and emits its cancelled outcome, rather than only cancelling a
+still-queued input. Unknown agent ids are ignored.
+
+**Connecting MCP servers.** `EmbedSessionOptions.mcpServers` lets an embedder
+declare MCP servers (for example, the servers an ACP client passes in
+`session/new`) to connect into the session's live tool surface at boot; their
+tools join the session namespaced as `mcp:<name>:<tool>`. Only the stdio
+transport is supported; the registry spawns a process for each server. A
+server that fails to connect is logged and skipped; it never aborts session
+creation.
 
 **Receiving events.** Subscribe to the typed `RuntimeEventBus`. Each envelope
 carries `type`, `payload` (the typed event), and correlation ids

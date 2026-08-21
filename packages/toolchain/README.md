@@ -1,7 +1,7 @@
 # @pellux/goodvibes-toolchain
 
 Shared GoodVibes CI/CD toolchain. One published home for the release, publish,
-and verification scripts that used to live as 2–3 parallel copies across the
+and verification scripts that used to live as parallel copies across the
 `goodvibes-tui`, `goodvibes-agent`, `goodvibes-webui`, and `goodvibes-sdk`
 repos. Repo-specific values live in each repo's `toolchain.config.json`; the
 behavior lives here, so every repo maintains one implementation instead of
@@ -49,5 +49,5 @@ const results = runSdkPinGate(realFsReader(process.cwd()), config.sdkPin);
 ```
 
 Every function accepts its effects (exec, fs, http, sleep, logger) as
-parameters, so unit tests drive them with in-memory stubs — no network and no
-real git mutations.
+parameters, so unit tests drive them with in-memory stubs, with no network and
+no real git mutations.

@@ -36,10 +36,13 @@ variables that configure each provider. Model ids are intentionally omitted
 because they version frequently. Call `GET /api/models` for the live set of
 models and `registryKey` values.
 
-Labels come from the SDK provider label map and env vars from the built-in
-provider env-key map. A provider is reported as `configured` when any of its
-environment variables is set, or when credentials are supplied through the
-`SecretsManager` or an OAuth/subscription route.
+Labels come from a curated brand-label map keyed by provider id, with two
+fallbacks: a label declared by the provider's own compat-catalog entry, and
+finally the provider id itself with its first letter capitalized. Env vars
+come from the built-in provider env-key map. A provider is reported as
+`configured` when any of its environment variables is set, or when
+credentials are supplied through the `SecretsManager` or an OAuth/subscription
+route.
 
 | Provider id | Label | Primary env var(s) |
 |-------------|-------|--------------------|
@@ -47,6 +50,8 @@ environment variables is set, or when credentials are supplied through the
 | `anthropic` | Anthropic | `ANTHROPIC_API_KEY` (or `CLAUDE_API_KEY`) |
 | `gemini` | Gemini | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`, `GOOGLE_GEMINI_API_KEY`) |
 | `inceptionlabs` | Inception Labs | `INCEPTION_API_KEY` |
+| `openrouter` | (title-cased id; not in the curated label map) | `OPENROUTER_API_KEY` |
+| `aihubmix` | (title-cased id; not in the curated label map) | `AIHUBMIX_API_KEY` |
 | `groq` | Groq | `GROQ_API_KEY` |
 | `cerebras` | Cerebras | `CEREBRAS_API_KEY` |
 | `mistral` | Mistral | `MISTRAL_API_KEY` |
@@ -68,11 +73,21 @@ environment variables is set, or when credentials are supplied through the
 | `alibaba` | Alibaba Cloud | `MODELSTUDIO_API_KEY` (or `DASHSCOPE_API_KEY`, `QWEN_API_KEY`) |
 | `vydra` | Vydra | `VYDRA_API_KEY` |
 
+`openrouter` and `aihubmix` are registered the same way as every other row
+above (a built-in entry with a fixed base URL and a starter model list), but
+neither has an entry in the curated brand-label map, so `GET /api/models`
+reports them with the id's default capitalization rather than a designed
+brand label. This is current behavior, not a documentation simplification.
+
 Many additional OpenAI-compatible providers ship through the built-in compat
 catalog (for example `stepfun`, `together`, `deepseek`, `fireworks`,
-`moonshot`, `qwen`, `xai`, and `venice`); their ids, labels, and env vars are
-likewise reported by `GET /api/models`. The `synthetic` provider is local and
-needs no API key. A few native voice and media providers (such as the `microsoft` voice provider) are also enumerated by the same endpoint. Treat `GET /api/models` as the authoritative, live source.
+`moonshot`, `qwen`, `xai`, and `venice`, plus `minimax`, `qianfan`, `sglang`,
+`volcengine`, `xiaomi`, `zai`, `microsoft-foundry`, `cloudflare-ai-gateway`,
+`vercel-ai-gateway`, `litellm`, and `copilot-proxy`); their ids, labels, and
+env vars are likewise reported by `GET /api/models`. The `synthetic` provider
+is local and needs no API key. A few native voice and media providers (such
+as the `microsoft` voice provider) are also enumerated by the same endpoint.
+Treat `GET /api/models` as the authoritative, live source.
 
 ## Model pricing
 

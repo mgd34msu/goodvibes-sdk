@@ -39,7 +39,7 @@ ACP `session/new` boots an embedded GoodVibes session against the request's
 | `tool_call` / `tool_call_update` | runtime `TOOL_EXECUTING` / `TOOL_SUCCEEDED` / `TOOL_FAILED` |
 | stop reason                   | terminal turn events (see mapping below)               |
 | `session/request_permission`  | the platform permission callback (allow once / always / reject) |
-| `session/cancel`              | broker `cancelInput` + prompt resolves `cancelled`     |
+| `session/cancel`              | aborts the session's active agent in-flight, then resolves the prompt `cancelled` |
 
 Stop-reason mapping: `TURN_COMPLETED → end_turn`, `TURN_CANCEL → cancelled`,
 `context_overflow → max_tokens`, `tool_loop_circuit_breaker →
@@ -52,11 +52,16 @@ Anything the platform does not support is reported `false`, never stubbed:
 - `loadSession: false`: no session restore over ACP.
 - `promptCapabilities.image`, `audio`, and `embeddedContext` are all `false`: prompt input is
   text (text blocks plus `resource_link` URIs folded in as text references).
-- `mcpCapabilities.http` and `sse` are both `false`: the adapter does not wire the client's
-  MCP servers into the embedded session. `mcpServers` entries in `session/new`
-  are ignored.
-- Cancellation is best-effort: a queued input is cancelled via the broker; an
-  already-executing provider call is not aborted mid-flight.
+- `mcpCapabilities.http` and `sse` are both `false`, the adapter's MCP client is stdio
+  JSON-RPC only. Stdio `mcpServers` entries declared in `session/new` are translated
+  and wired into the embedded session's tool surface. An `http` or `sse` entry is
+  never silently dropped; `session/new` throws, naming the unsupported server, since a
+  compliant client should not send one given the advertised capabilities.
+- Cancellation is real, not best-effort. `session/cancel` aborts the session's active
+  agent in-flight (the agent's cancellation signal is threaded into the provider call),
+  so an already-executing call is stopped mid-flight and the turn emits its cancelled
+  outcome. A still-queued input, one not yet delivered to an agent, is additionally
+  cancelled through the broker's `cancelInput`.
 
 ## Event attribution
 

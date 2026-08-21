@@ -10,7 +10,31 @@ For vulnerability reporting, see [`SECURITY.md`](../SECURITY.md) at the repo roo
 
 ## Authentication modes
 
-The daemon supports two authentication modes. The active mode is determined by how the daemon is configured at startup.
+The daemon accepts bearer tokens and session cookies. A presented bearer token is checked
+against three sources in order, a per-device pairing token first, then the legacy shared token,
+then a user session. Only the shared-token and session-login paths are configured at daemon
+startup; per-device pairing tokens are minted on demand whenever a device pairs.
+
+### Per-device pairing tokens
+
+**When to use:** this is the current pairing mechanism for companion apps and browsers. See
+[Companion app pairing](./pairing.md) for the full mint/revoke/migrate flow.
+
+Every device that pairs mints its own named, individually-revocable token
+(`PairingTokenManager`, prefix `gvp_`) instead of sharing one operator-wide token. Only a
+SHA-256 hash of each token is persisted; the plaintext is returned exactly once, at mint
+time. Revoking one device's token (`pairing.tokens.delete`) leaves every other paired
+device working. A device pairing while already at the `device.nodes.maxPaired` cap that is
+re-pairing under its existing name supersedes its own prior token rather than being
+refused; a genuinely new device at the cap is refused with a named, actionable error.
+
+A device still holding the legacy shared token calls `pairing.tokens.migrate` once to mint
+its own per-device token without disrupting other clients; `pairing.tokens.revokeShared`
+then turns the legacy shared token off entirely, after which only per-device tokens and
+user sessions authenticate.
+
+A paired device (per-device token or legacy shared token) carries the same operator
+authority as the shared token: `isOperatorAdmin()` returns true for either.
 
 ### Shared bearer token
 
@@ -47,6 +71,7 @@ Users authenticate with a username and password via the login endpoint. On succe
 - Sessions are pruned on access; expired sessions are rejected and cleaned up
 - Local auth status reports expose `tokenFingerprint` only; raw session bearer tokens are not returned by status APIs
 - On first boot with no user store, the daemon bootstraps a default admin account and writes a plaintext credential file for initial login; this file should be deleted after the first login
+- Login failures are locked out per account, independent of the per-IP login rate limiter below. Failures are tracked by username and never leak whether the username exists; an unknown username still runs a constant-time password check against a dummy hash. The lockout escalates with repeated failures, 30 seconds at 6-9 failures, 5 minutes at 10-19, and 30 minutes at 20 or more. The thresholds are set above the default 5-per-minute IP login budget so the per-IP limiter throttles an attacker before the account lock engages for a normal in-budget attempt. A successful login clears the failure count.
 
 Session tokens are carried as:
 1. `Authorization: Bearer <token>` header
@@ -56,7 +81,7 @@ The session cookie is set on login and cleared on logout by the daemon's interna
 
 **Role model:**
 - Users may have any combination of string roles
-- `isOperatorAdmin()` returns true for shared-token requests OR for session users with the `admin` role
+- `isOperatorAdmin()` returns true for shared-token requests, per-device pairing-token requests, OR for session users with the `admin` role
 - Admin-gated routes call `requireElevatedAccess` before proceeding
 
 ---
@@ -83,12 +108,12 @@ interface SpawnToken {
 }
 ```
 
-Tokens are signed with a per-session HMAC secret. Before spawning, `canSpawn()` validates:
-1. Token signature is valid
-2. Token has not expired (default TTL: 1 hour)
+Tokens are signed with a per-session HMAC secret. Before spawning, `canSpawn()` checks, in order:
+1. Recursion is enabled in the `OrchestrationPolicyConfig`
+2. Total active agent count is within `maxActiveAgents`
 3. Nesting depth is within the configured `maxDepth`
-4. Total active agent count is within `maxActiveAgents`
-5. Recursion is enabled in the `OrchestrationPolicyConfig`
+4. Token signature is valid, registered, and not revoked
+5. Token has not expired (default TTL: 1 hour)
 
 Tokens can be revoked by signature via `revoke(tokenSignature)`. Revoked tokens are rejected even if unexpired.
 
@@ -132,7 +157,8 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 ### Token storage recommendations
 
-- **Companion/operator tokens** are stored at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). The file is written at mode `0600`. Consumers should keep the daemon-home directory outside any project tree.
+- **Per-device pairing tokens** are stored, hashed, under `<surfaceRoot>/control-plane/pairing-tokens.json` (a daemon's `surfaceRoot` is `tui` for historical reasons; see [Companion app pairing](./pairing.md)). Only a SHA-256 hash is persisted; the plaintext is returned once, at mint time.
+- **The legacy shared/operator token** is stored at `<daemonHomeDir>/operator-tokens.json` (default: `~/.goodvibes/daemon/operator-tokens.json`). The file is written at mode `0600`. Consumers should keep the daemon-home directory outside any project tree.
 - **Session tokens** are in-memory only; they are not persisted to disk.
 - **Spawn tokens** are in-memory per session; they expire automatically.
 - **API keys and provider credentials** should be stored via `SecretsManager` in secure (encrypted) mode, not plaintext. See [Secret Management](#secret-management) below.
@@ -143,32 +169,41 @@ On rotation: call `deregisterToken(oldId)` then `registerToken(newMetadata)` to 
 
 **Public subpath:** `@pellux/goodvibes-sdk/platform/pairing` (daemon embedders).
 
-The QR pairing flow connects a companion app to the daemon without requiring the user to manually enter credentials. For the full companion pairing walkthrough, QR flow, token lifecycle, and client integration, see [Companion app pairing](./pairing.md).
+Pairing connects a companion app or browser to the daemon without requiring the user to
+manually enter credentials, by scanning a QR code or opening a deep link. For the full
+pairing walkthrough, both the current per-device token flow and the legacy shared-token
+flow, the deep-link/QR content, offer set, migration path, and client integration, see
+[Companion app pairing](./pairing.md).
 
 ### Security properties
 
-1. **Token generation.** Companion tokens are generated with `randomBytes(24)` (192 bits of entropy), base64url-encoded, and prefixed with `gv_`. The `gv_` prefix makes tokens machine-identifiable in logs and secret scanners.
+1. **Two token shapes.** The current mechanism mints a named, individually-revocable
+   **per-device token** (prefix `gvp_`) for every pairing; only its SHA-256 hash is
+   persisted, and the plaintext is returned exactly once, at mint time. The **legacy
+   shared token** (prefix `gv_`, `randomBytes(24)` base64url-encoded, 192 bits of entropy)
+   is stored in full at `<daemonHomeDir>/operator-tokens.json` and is shared by every
+   client that has not migrated off it.
 
-2. **Persistence.** Tokens are stored on disk at `<daemonHomeDir>/operator-tokens.json`. The file is created at mode `0600`. The token is stable across daemon restarts.
+2. **Deep link, not a raw connection blob.** The current QR/deep-link content is the
+   `#pair=<token>` URL fragment (plus an `offers=` key); the legacy flow instead encoded a
+   raw JSON connection object as the QR content. A `#` fragment is never sent to a server,
+   so the current flow's one-time token cannot leak through an access log or `Referer`
+   header.
 
-3. **QR payload.** `encodeConnectionPayload()` serializes the connection info (URL, token, username, version, surface, and password when set) as JSON. This JSON is what gets encoded into the QR matrix. The QR is displayed in a trusted UI context (TUI screen or authenticated web page). It should not be left visible in shared screen recordings.
+3. **No challenge-response.** Pairing is a direct token transfer. Security relies on the
+   QR/link being shown only in a trusted context, the transport using TLS when the daemon
+   is reachable over a network, and the token being individually revocable
+   (`pairing.tokens.delete` for a per-device token; `pairing.tokens.revokeShared` turns the
+   legacy shared token off for everyone using it).
 
-4. **No challenge-response.** The pairing is a direct token transfer. Security relies on:
-   - The QR being displayed only in a trusted environment
-   - The transport using TLS when the daemon is accessed over a network
-   - The token being revocable: `regenerateCompanionToken({ daemonHomeDir })` instantly invalidates all existing companion connections
+4. **Connection.** After scanning, the companion app connects using `transport-http` with
+   `Authorization: Bearer <token>`. The daemon validates this through the normal
+   `authenticateOperatorToken()` path, which checks per-device pairing tokens before the
+   legacy shared token.
 
-5. **Connection.** After scanning, the companion app connects using `transport-http` with `Authorization: Bearer gv_<token>`. The daemon validates this through the normal `authenticateOperatorToken()` path.
-
-### Token lifecycle
-
-| Event | Action |
-|---|---|
-| First QR display | `getOrCreateCompanionToken({ daemonHomeDir })`: generates and persists token |
-| Companion connects | Token validated against stored record |
-| Companion disconnects | Token remains valid; reconnection requires no re-scan |
-| Revocation needed | `regenerateCompanionToken({ daemonHomeDir })`: replaces the stored token; existing sessions using the previous token are rejected on next request |
-| Daemon restart | Token is loaded from disk; companion reconnects without re-scan |
+5. **Device cap.** Pairing a device beyond the configured `device.nodes.maxPaired` limit is
+   refused with a named, actionable error rather than silently succeeding; a device
+   re-pairing under a name it already holds is never refused by the cap.
 
 ---
 
@@ -298,22 +333,35 @@ The analyzer detects inline secrets in command arguments using pattern matching 
 
 ### Decision sources
 
-Permission decisions flow through a layered policy stack:
+Permission decisions are evaluated in this order, and the first layer that reaches an
+opinion wins:
 
-| Source | Priority | Behavior |
-|---|---|---|
-| `config_policy` | Highest | Allow/deny lists in `permissions` config |
-| `managed_policy` | High | Programmatic policies registered at runtime |
-| `safety_check` | High | Hardcoded safety guardrails (cannot be overridden) |
-| `runtime_mode` | Medium | Auto-approve mode (`mode_allow_all`) or restricted mode |
-| `session_override` | Medium | Cached allow/deny decisions from this session |
-| `user_prompt` | Lowest | Falls through to interactive user prompt |
+1. **`behavior.autoApprove`.** When true, every call is approved (`sourceLayer:
+   config_policy`, `reasonCode: config_allow`) before anything else runs.
+2. **`permissions.mode`.** Four of the five modes settle most calls outright:
+   `allow-all` approves everything (`mode_allow_all`); `plan` allows reads and refuses
+   every mutating/exec/delegate call with a structured plan-mode denial (`plan_mode`),
+   steering the model toward presenting a plan instead of acting; `accept-edits`
+   auto-approves reads and file writes (`mode_accept_edits`) but lets `execute`/`delegate`
+   calls fall through to the layers below; `custom` checks the per-tool
+   `permissions.tools` setting (`config_allow` / `config_deny`, or falls through on
+   `prompt`). The fifth mode, the default `prompt`, auto-approves reads (except a
+   gated credential-store read) and falls through for everything else.
+3. **The policy engine**, only when the `permissions-policy-engine` feature is on. It
+   layers hardcoded safety guardrails (`safety_check` / `safety_guardrail`, deny-only,
+   cannot be overridden) over programmatic policies registered at runtime
+   (`managed_policy`) over the mode/default layers above.
+4. **`session_override`.** A cached allow/deny decision from earlier in this session.
+5. **`user_rule`.** A durable, remembered decision that survives a restart (distinct from
+   the in-memory session cache).
+6. **`user_prompt`.** Falls through to an interactive prompt; the operator's choice can be
+   remembered as a session or durable rule for next time.
 
 `checkDetailed()` returns a `PermissionCheckResult` with `approved: boolean`, `persisted: boolean` (whether to cache for session), `sourceLayer`, `reasonCode`, and the full `analysis`.
 
 ### Auto-approve policies
 
-When `behavior.autoApprove: true` is set in config (default `false`), all tool calls are approved without prompting; the decision is reported with `sourceLayer: config_policy` and `reasonCode: config_allow`. The distinct `permissions.mode: 'allow-all'` setting also approves every call, but reports `reasonCode: mode_allow_all`. This is appropriate for headless automation runs. For interactive use, leave this disabled and configure explicit per-tool permissions instead:
+When `behavior.autoApprove: true` is set in config (default `false`), all tool calls are approved without prompting; the decision is reported with `sourceLayer: config_policy` and `reasonCode: config_allow`. The distinct `permissions.mode: 'allow-all'` setting also approves every call, but reports `reasonCode: mode_allow_all`. This is appropriate for headless automation runs. For interactive use, leave this disabled and configure explicit per-tool permissions, or use `plan` mode to require an explicit plan before any mutating call:
 
 ```yaml
 permissions:

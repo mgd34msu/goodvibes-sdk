@@ -4,6 +4,15 @@
 **Status:** Open, these block the payments round from shipping
 **Owner of this list:** the SDK round (not the individual consumers)
 
+**Correction (2026-08-21, v2.0.19):** the blocking fact below is resolved.
+`./platform/payments` published for the first time in SDK 1.19.0
+(2026-07-28, the CHANGELOG entry names this file directly), and the current
+package.json exports map carries the subpath. Gate 1's mirrored
+`WEBUI_CARD_ENTRY_CONDITIONS` copy and Gate 3's overlay-refresh status were not
+re-checked as part of this pass; anyone relying on this record for current
+release status should verify those two directly rather than assume they closed
+along with the blocking fact.
+
 Every payments consumer builds against a **local SDK overlay**, not a published
 package. This is expected for new work and it is a sequencing dependency, not a
 consumer-side problem to be rediscovered three times.

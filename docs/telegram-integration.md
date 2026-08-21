@@ -100,22 +100,36 @@ Resolution order for the bot token:
 2. `surfaces.telegram.botToken` (literal or `goodvibes://` reference)
 3. `TELEGRAM_BOT_TOKEN`
 
-### Which config file: this trips people up
+### Which config file actually gets read
 
-The daemon reads its own surface-scoped settings, **not** the ones belonging to
-another GoodVibes surface. Each host owns a separate `.goodvibes/<surface>/`
-tree, and they are not shared:
+Every `surfaces.*` key, including all of `surfaces.telegram.*`, is daemon-owned
+config. It does not matter which host's UI you set it from, `goodvibes-daemon`,
+`goodvibes-agent`, or a TUI, the value is written to one shared file, the daemon
+tier, and that is the only file the running daemon reads it from:
 
-| Host | Settings file it reads | Secrets store |
-|---|---|---|
-| `goodvibes-daemon` | `~/.goodvibes/goodvibes/settings.json` | `~/.goodvibes/goodvibes/secrets.enc` |
-| `goodvibes-agent` | `~/.goodvibes/agent/settings.json` | `~/.goodvibes/agent/secrets.enc` |
+| What | Where it lives |
+|---|---|
+| Daemon-owned config (`surfaces.*`, including `surfaces.telegram.*`) | `~/.goodvibes/daemon/settings.json` |
+| Secrets a daemon-owned key points at (a `goodvibes://secrets/...` reference such as the bot token or webhook secret) | `~/.goodvibes/daemon/secrets.enc` |
 
-Setting a Telegram bot token inside `goodvibes-agent` writes it to the **agent's**
-tree. The daemon does not read that file, and nothing copies the value across.
-There is no config push between them. If you want the daemon to receive Telegram
-messages, set the token in the daemon's own settings, or via
-`TELEGRAM_BOT_TOKEN` in the daemon's environment.
+This used to be a real trap. A Telegram bot token set from `goodvibes-agent`
+landed in the agent's own settings file, the daemon never read it, and the
+setting reported success while changing nothing. That failure mode is closed.
+Config ownership routes every `surfaces.*` key, and every secret one of those
+keys names, to the daemon tier regardless of which client captured it, the
+same rule that fixed the equivalent problem for Slack tokens, Google Chat
+verification tokens, and payment card fields.
+
+The one thing that still has to line up is the **home directory**. The daemon
+tier is derived from `GOODVIBES_HOME` (or an explicit `GOODVIBES_DAEMON_HOME`
+override), defaulting to the login home. If the process you use to set the
+token and the process running the daemon resolve to different home
+directories, different machines, different OS users, or one of them has
+`GOODVIBES_HOME`/`GOODVIBES_DAEMON_HOME` overridden, they read and write
+different daemon-tier files and the setting genuinely will not reach the
+daemon. When that happens, set the token directly in the daemon's own
+environment with `TELEGRAM_BOT_TOKEN`, or run the setting command against the
+same home the daemon uses.
 
 ## Step 3: enable the surface
 
@@ -260,9 +274,10 @@ While a task is running:
 
 **Nothing happens when I message the bot.**
 Check the startup log first. If it says the ingress is inactive, the reason names
-the setting to change. The two most common causes are `mode=webhook` on a machine
-with no public URL, and a token set in `goodvibes-agent` rather than in the
-daemon's own settings (see "Which config file" above).
+the setting to change. The most common cause is `mode=webhook` on a machine with
+no public URL. If the token was set from a different host than the one running
+the daemon, and the two do not resolve to the same home directory (see "Which
+config file actually gets read" above), the daemon never saw it either.
 
 **`409 Conflict: can't use getUpdates method while webhook is active`.**
 A webhook is registered for this bot, so polling cannot run. The daemon clears it

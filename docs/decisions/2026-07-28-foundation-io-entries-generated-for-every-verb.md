@@ -116,3 +116,10 @@ the additional-properties escape hatch.
   (`TS2322: Type 'number' is not assignable to type 'string'`) and compiles
   **clean** against the original file, where that verb had no entry. The entry is
   what does the work.
+
+Correction (2026-08-21, v2.0.19): `OPERATOR_METHOD_IDS` is an additive-only
+union (see the "Additive only" note in
+`2026-07-06-core-verb-spec.md`), and it has grown since this decision from 443
+to 507 methods. Both typed-IO maps carry all 507 entries and the coverage
+ratchet still reads 0. The 443 figures above describe the count at the time
+of this change, not the current catalog size.
