@@ -24,8 +24,9 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
       + 'Disabled by default because holding a microphone open must be an explicit act; enabling '
       + 'it starts a supervised capture process and shows a persistent listening indicator for as '
       + 'long as it runs. '
-      + 'Live on all three surfaces: the terminal and the agent through a recorder subprocess, the web UI '
-      + 'in a browser tab. Each is opted in by its own voice.wake.surfaces.* row. '
+      + 'Live on all four surfaces: the terminal and the agent through a recorder subprocess, the web UI '
+      + 'in a browser tab, and the desktop companion app in its embedded webview. Each is opted in by its '
+      + 'own voice.wake.surfaces.* row. '
       + 'Tuned through voice.wake.*, whose threshold, patience and cooldown rows govern how '
       + 'readily it fires, and whose supervisor rows bound how a crashing detector is retried. '
       + 'The model\'s published recall figures are measured on synthesised speech only, no human '
@@ -35,9 +36,10 @@ export const VOICE_FEATURE_FLAGS: FeatureFlag[] = [
     runtimeToggleable: true,
     // `notOperable` is GONE, in the same change that wired capture up, which is
     // the rule this field carried in writing. The terminal and the agent open a
-    // recorder subprocess and the browser tab opens getUserMedia; all three feed
-    // the engine frames and all three hand the utterance after a wake to the same
-    // speech-to-text call. What remains limited is per-ROW, not per-surface
+    // recorder subprocess and the web UI and the desktop companion app open
+    // getUserMedia; all four feed the engine frames and all four hand the
+    // utterance after a wake to the same speech-to-text call. What remains
+    // limited is per-ROW, not per-surface
     // (voice.wake.vadThreshold has no pinned VAD model; a browser tab has no
     // filesystem), and each of those rows says so itself.
   },

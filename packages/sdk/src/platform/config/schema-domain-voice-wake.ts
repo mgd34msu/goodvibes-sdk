@@ -71,7 +71,7 @@ export interface VoiceWakeConfig {
     noiseSuppression: 'none' | 'speex';
     inputDevice: string;
     captureCommand: 'auto' | 'pw-record' | 'parecord' | 'arecord' | 'ffmpeg' | 'sox';
-    surfaces: { tui: boolean; agent: boolean; webui: boolean };
+    surfaces: { tui: boolean; agent: boolean; webui: boolean; app: boolean };
     activationSound: 'none' | 'chime' | 'custom';
     activationSoundPath: string;
     indicator: 'off' | 'statusline' | 'banner';
@@ -113,7 +113,7 @@ export const voiceWakeConfigDefaults: { voice: VoiceWakeConfig } = {
       noiseSuppression: 'none',
       inputDevice: '',
       captureCommand: 'auto',
-      surfaces: { tui: true, agent: false, webui: false },
+      surfaces: { tui: true, agent: false, webui: false, app: false },
       activationSound: 'chime',
       activationSoundPath: '',
       indicator: 'statusline',
@@ -306,6 +306,16 @@ export const voiceWakeConfigSettings: ConfigSettingDefinition[] = [
       + 'microphone permission prompt, it is opted into per browser, not inherited from the host. While it is off the tab never '
       + 'calls getUserMedia at all, so no permission prompt appears. A plain-http origin cannot capture and says so instead of '
       + 'failing silently.',
+  },
+  {
+    key: 'voice.wake.surfaces.app',
+    type: 'boolean',
+    default: false,
+    description:
+      'Listen for the wake phrase in the desktop companion app, which runs the detector inside its embedded webview on a WASM '
+      + 'backend, the same runtime and download path the web UI uses. Off by default because webview capture is a separate stack '
+      + 'with its own microphone permission prompt, it is opted into per install, not inherited from the host. While it is off the '
+      + 'webview never calls getUserMedia at all, so no permission prompt appears.',
   },
   {
     key: 'voice.wake.activationSound',

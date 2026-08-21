@@ -517,6 +517,7 @@ export type ConfigValue<K extends ConfigKey> =
   K extends 'voice.wake.surfaces.tui' ? boolean :
   K extends 'voice.wake.surfaces.agent' ? boolean :
   K extends 'voice.wake.surfaces.webui' ? boolean :
+  K extends 'voice.wake.surfaces.app' ? boolean :
   K extends 'voice.wake.activationSound' ? 'none' | 'chime' | 'custom' :
   K extends 'voice.wake.activationSoundPath' ? string :
   K extends 'voice.wake.indicator' ? 'off' | 'statusline' | 'banner' :

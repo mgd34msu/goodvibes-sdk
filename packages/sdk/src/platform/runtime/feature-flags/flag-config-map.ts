@@ -155,6 +155,7 @@ export const FEATURE_FLAG_CONFIG: Readonly<Record<string, FeatureFlagConfigAssoc
       'voice.wake.surfaces.tui',
       'voice.wake.surfaces.agent',
       'voice.wake.surfaces.webui',
+      'voice.wake.surfaces.app',
       'voice.wake.activationSound',
       'voice.wake.activationSoundPath',
       'voice.wake.indicator',

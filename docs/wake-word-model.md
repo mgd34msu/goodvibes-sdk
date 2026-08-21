@@ -16,8 +16,9 @@ the front of the sentence and race whatever still holds the device.
 > **Detection runs, and where it runs is stated per surface.** The
 > `notOperable` declaration is gone, removed in the change that wired capture up
 > as it required. The terminal and the agent open a recorder subprocess
-> (`voice.wake.captureCommand`) and a browser tab opens `getUserMedia`; all three
-> feed the same engine and all three hand the utterance after a wake to the same
+> (`voice.wake.captureCommand`) and the web UI and the desktop companion app open
+> `getUserMedia` from their browser tab or embedded webview; all four surfaces
+> feed the same engine and all four hand the utterance after a wake to the same
 > speech-to-text call. `voice.wake.enabled` now drives the feature gate the way
 > every other capability's setting does, and each surface is opted in by its own
 > `voice.wake.surfaces.*` row.

@@ -41,11 +41,12 @@ describe('the wake-word settings rows', () => {
     // The design listed 26 rows. Row 26, voice.wake.wyomingServer, is the
     // Tier-B Wyoming wake-server, ruled "NOT built; needs its own explicit
     // owner go". Shipping its key would be a switch wired to nothing.
-    // 27 built rows now: the 25 from that design, plus voice.wake.silenceFloorRms
-    // (what makes silenceStopMs work in a room that is not quiet) and
+    // 28 built rows now: the 25 from that design, plus voice.wake.silenceFloorRms
+    // (what makes silenceStopMs work in a room that is not quiet),
     // voice.wake.speechRetriggerMs (what makes it work on a close-worn
-    // microphone, where a breath is loud enough to restart the wait).
-    expect(voiceWakeConfigSettings.length).toBe(27);
+    // microphone, where a breath is loud enough to restart the wait), and
+    // voice.wake.surfaces.app (the desktop companion app's own delivery row).
+    expect(voiceWakeConfigSettings.length).toBe(28);
     expect(voiceWakeConfigSettings.some((s) => s.key === 'voice.wake.wyomingServer')).toBe(false);
   });
 
@@ -106,8 +107,8 @@ describe('the wake-word settings rows', () => {
     expect(WAKE.customModelDir).toBe('');
   });
 
-  test('surfaces default to tui on, agent off, webui off', () => {
-    expect(WAKE.surfaces).toEqual({ tui: true, agent: false, webui: false });
+  test('surfaces default to tui on, agent off, webui off, app off', () => {
+    expect(WAKE.surfaces).toEqual({ tui: true, agent: false, webui: false, app: false });
   });
 
   test('the supervisor defaults are 3 restarts / 2000 ms / 60 s', () => {
@@ -155,7 +156,7 @@ describe('the wake-word feature registry row', () => {
     expect(association.configKeys).toContain('voice.wake.threshold');
     expect(association.configKeys).toContain('voice.wake.silenceFloorRms');
     expect(association.configKeys).toContain('voice.wake.speechRetriggerMs');
-    expect(association.configKeys.length).toBe(26);
+    expect(association.configKeys.length).toBe(27);
   });
 });
 
@@ -381,7 +382,7 @@ describe('every row reaches the runtime — no row configures nothing', () => {
   });
 
   test('the shipped defaults resolve to the shipped behaviour: off, and off everywhere but the terminal', () => {
-    for (const surface of ['tui', 'agent', 'webui'] as WakeSurface[]) {
+    for (const surface of ['tui', 'agent', 'webui', 'app'] as WakeSurface[]) {
       const resolved = resolveWakeRuntimeSettings(wakeReader(), surface);
       expect(resolved.enabled).toBe(false);
       expect(resolved.active).toBe(false);
@@ -391,6 +392,7 @@ describe('every row reaches the runtime — no row configures nothing', () => {
     expect(WAKE.surfaces.tui).toBe(true);
     expect(WAKE.surfaces.agent).toBe(false);
     expect(WAKE.surfaces.webui).toBe(false);
+    expect(WAKE.surfaces.app).toBe(false);
   });
 
   test('a partial config source falls back to the shipped defaults rather than to zeroes', () => {
@@ -400,6 +402,26 @@ describe('every row reaches the runtime — no row configures nothing', () => {
     expect(resolved.captureMaxSeconds).toBe(10);
     expect(resolved.supervisor.maxRestarts).toBe(3);
     expect(resolved.modelIds).toEqual([DEFAULT_WAKE_MODEL_ID]);
+  });
+
+  test('the app surface resolves undefined-and-permanently-inactive no longer: enabling its row activates it', () => {
+    // Before this row existed, resolveWakeRuntimeSettings('app') read a surface
+    // key the schema never defined, so surfaceEnabled fell back to `undefined`
+    // being treated as falsy and the surface could never activate no matter what
+    // was configured. A real DEFAULTS.surfaces.app row fixes that.
+    const off = resolveWakeRuntimeSettings(wakeReader({ 'voice.wake.enabled': true }), 'app');
+    expect(off.surfaceEnabled).toBe(false);
+    expect(off.active).toBe(false);
+
+    const on = resolveWakeRuntimeSettings(
+      wakeReader({ 'voice.wake.enabled': true, 'voice.wake.surfaces.app': true }),
+      'app',
+      { speexAvailable: true, canRetainAudio: true, canPlayLocalFile: true },
+    );
+    expect(on.surfaceEnabled).toBe(true);
+    expect(on.active).toBe(true);
+    expect(on.blockers).toEqual([]);
+    expect(wakeSurfaceKey('app')).toBe('voice.wake.surfaces.app');
   });
 });
 
@@ -518,5 +540,6 @@ describe('the feature is operable now, and the copy no longer says otherwise', (
     // The terminal and browser rows describe what they now actually do.
     expect(rowFor('voice.wake.surfaces.tui')).toContain('recorder subprocess');
     expect(rowFor('voice.wake.surfaces.webui')).toContain('browser tab');
+    expect(rowFor('voice.wake.surfaces.app')).toContain('embedded webview');
   });
 });

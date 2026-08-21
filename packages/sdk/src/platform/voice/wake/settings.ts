@@ -43,7 +43,7 @@ import type { WakeSupervisorPolicy } from './supervisor.js';
 import type { WakeDetectorTuning } from './types.js';
 
 /** The surfaces `voice.wake.surfaces.*` enumerates. */
-export type WakeSurface = 'tui' | 'agent' | 'webui';
+export type WakeSurface = 'tui' | 'agent' | 'webui' | 'app';
 
 /** What a surface can actually do, so a row is refused rather than faked. */
 export interface WakeSurfaceCapabilities {
@@ -169,6 +169,7 @@ export const WAKE_SETTING_KEYS: readonly string[] = [
   'voice.wake.surfaces.tui',
   'voice.wake.surfaces.agent',
   'voice.wake.surfaces.webui',
+  'voice.wake.surfaces.app',
   'voice.wake.activationSound',
   'voice.wake.activationSoundPath',
   'voice.wake.indicator',
